@@ -270,6 +270,12 @@ export class Player {
 
     // animation + solve
     this.animator.update(dt)
+    // Base layer: the clip FULLY owns the pose each frame (write, never
+    // accumulate). applyProcedural() is a bounded additive layer on top.
+    // Without this copy, procedural += deltas integrate unbounded → spine
+    // spin + root sink. (Same contract as Spine's AnimationState.apply /
+    // Godot AnimationTree → Skeleton2D.)
+    this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
     solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
     this.updateBladeWorld()
