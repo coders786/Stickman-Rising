@@ -26,17 +26,22 @@ export interface SkelSpec {
   blade: number
 }
 
+/** Humanoid proportions (research: da Vinci Vitruvian ratios adapted to a
+ * silhouette fighter): torso 37 + neck 7.5 + head 8.8 ≈ upper body; legs
+ * thigh 25 + shin 24 = 49 (HIP_H 64 stays valid: 49 × SCALE ≈ 64.7). Blade
+ * 44 ≈ 43% of standing height — a REAL katana proportion (blade ~70cm on a
+ * 170cm swordsman); the old 56 was anime-oversized and read as a windmill. */
 export const PLAYER_SPEC: SkelSpec = {
-  torso: 34,
-  neck: 7,
-  headR: 8.6,
-  upperArm: 21,
-  foreArm: 19,
-  hand: 6,
+  torso: 37,
+  neck: 7.5,
+  headR: 8.8,
+  upperArm: 22,
+  foreArm: 20,
+  hand: 6.5,
   thigh: 25,
   shin: 24,
-  foot: 9,
-  blade: 56,
+  foot: 10,
+  blade: 44,
 }
 
 export interface SkelGeom {
@@ -162,17 +167,20 @@ export interface StickStyle {
   armor: boolean
   core?: string
   visorAlpha?: number
+  /** full black silhouette humanoid (player remodel): filled capsules,
+   * tapered torso, glowing eyes — Limbo/INSIDE readability language */
+  silhouette?: boolean
 }
 
 export const PLAYER_STYLE: StickStyle = {
-  body: '#dfe7ee',
-  dark: '#8b98a6',
-  outline: '#04060a',
-  glow: '#35f2ff',
+  body: '#04060a',
+  dark: '#04060a',
+  outline: '#2c3a50',
+  glow: '#41f6ff',
   lineW: 5,
   headStyle: 'visor',
-  armor: true,
-  core: '#ff3b57',
+  armor: false,
+  silhouette: true,
 }
 
 export interface DrawOpts {
@@ -193,6 +201,69 @@ function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number,
   ctx.lineTo(bx, by)
   ctx.lineTo(cx, cy)
   ctx.stroke()
+}
+
+/** Fills a tapered capsule (quad + round caps) — the silhouette limb. */
+function fillCapsule(
+  ctx: CanvasRenderingContext2D,
+  ax: number, ay: number, bx: number, by: number,
+  wa: number, wb: number,
+  color: string,
+  alpha = 1,
+): void {
+  const dx = bx - ax
+  const dy = by - ay
+  const len = Math.hypot(dx, dy) || 1
+  const nx = -dy / len
+  const ny = dx / len
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(ax + nx * wa, ay + ny * wa)
+  ctx.lineTo(bx + nx * wb, by + ny * wb)
+  ctx.lineTo(bx - nx * wb, by - ny * wb)
+  ctx.lineTo(ax - nx * wa, ay - ny * wa)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(ax, ay, wa, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(bx, by, wb, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Fills a foot wedge (ankle → toe) with heel/toe widths. */
+function fillFoot(
+  ctx: CanvasRenderingContext2D,
+  ax: number, ay: number, bx: number, by: number,
+  color: string,
+  alpha = 1,
+): void {
+  const dx = bx - ax
+  const dy = by - ay
+  const len = Math.hypot(dx, dy) || 1
+  const nx = -dy / len
+  const ny = dx / len
+  ctx.save()
+  ctx.globalAlpha *= alpha
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(ax + nx * 3.4, ay + ny * 3.4)
+  ctx.lineTo(bx + nx * 2.5, by + ny * 2.5)
+  ctx.lineTo(bx - nx * 2.5, by - ny * 2.5)
+  ctx.lineTo(ax - nx * 3.4, ay - ny * 3.4)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(ax, ay, 3.4, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(bx, by, 2.3, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
 }
 
 /**
@@ -231,8 +302,15 @@ export function drawStick(
     ctx.lineTo(g.chest.x, g.chest.y)
     ctx.stroke()
     ctx.beginPath()
-    ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.6 : 8, 0, Math.PI * 2)
+    ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.8 : 8, 0, Math.PI * 2)
     ctx.stroke()
+    ctx.restore()
+    return
+  }
+
+  // ---- full-black humanoid silhouette (player) ----
+  if (style.silhouette) {
+    drawSilhouette(ctx, g, style, opts, t, lineW)
     ctx.restore()
     return
   }
@@ -306,7 +384,7 @@ export function drawStick(
   }
 
   // ---- 7. head ----
-  const hr = 8.6
+  const hr = 8.8
   ctx.fillStyle = style.outline
   ctx.beginPath()
   ctx.arc(g.headC.x, g.headC.y, hr + 1.4, 0, Math.PI * 2)
@@ -393,4 +471,126 @@ export function drawStick(
   }
 
   ctx.restore()
+}
+
+/* ------------------------------------------------------------------ */
+/* Full-black humanoid silhouette (player remodel)                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Limbo/INSIDE-style silhouette: solid black tapered body with a whisper of
+ * cool rim light and two glowing eyes. Draw order back-to-front:
+ * rim → back limbs (recessed alpha) → torso wedge → front limbs → hands/feet
+ * → head → eyes → hit flash. Local space, ctx pre-flipped for facing.
+ */
+function drawSilhouette(
+  ctx: CanvasRenderingContext2D,
+  g: SkelGeom,
+  style: StickStyle,
+  opts: DrawOpts,
+  t: number,
+  lineW: number,
+): void {
+  const black = style.body
+  const rim = style.outline
+
+  // torso mid point (waist) for the tapered wedge
+  const mx = (g.hip.x + g.chest.x) * 0.5
+  const my = (g.hip.y + g.chest.y) * 0.5
+
+  // ---- 0. rim pass (separates pure black from the night city) ----
+  if (!opts.simple) {
+    ctx.save()
+    ctx.globalAlpha *= 0.78
+    ctx.strokeStyle = rim
+    ctx.lineWidth = lineW + 3.6
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    ctx.lineWidth = (lineW + 3.6) * 1.55
+    ctx.beginPath()
+    ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.chest.x, g.chest.y)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // ---- 1. back limbs (recessed — depth cue) ----
+  fillCapsule(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, 6.0, 4.3, black, 0.82)
+  fillCapsule(ctx, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y, 4.0, 2.9, black, 0.82)
+  fillFoot(ctx, g.ankleL.x, g.ankleL.y, g.toeL.x, g.toeL.y, black, 0.82)
+  fillCapsule(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, 4.4, 3.4, black, 0.82)
+  fillCapsule(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 3.2, 2.5, black, 0.82)
+  ctx.save()
+  ctx.globalAlpha *= 0.82
+  ctx.fillStyle = black
+  ctx.beginPath()
+  ctx.arc(g.handL.x, g.handL.y, 2.8, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  // ---- 2. torso: pelvis + tapered chest wedge (humanoid mass) ----
+  fillCapsule(ctx, g.hip.x, g.hip.y, mx, my, 8.8, 7.2, black)
+  fillCapsule(ctx, mx, my, g.chest.x, g.chest.y, 7.2, 10.8, black)
+  // neck column
+  fillCapsule(ctx, g.chest.x, g.chest.y, g.neckBase.x, g.neckBase.y, 4.2, 3.4, black)
+
+  // ---- 3. front limbs (solid black) ----
+  fillCapsule(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, 6.6, 4.7, black)
+  fillCapsule(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 3.1, black)
+  fillFoot(ctx, g.ankleR.x, g.ankleR.y, g.toeR.x, g.toeR.y, black)
+  fillCapsule(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, 4.8, 3.6, black)
+  fillCapsule(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.4, 2.6, black)
+  // sword hand (slightly bigger — the grip reads)
+  ctx.fillStyle = black
+  ctx.beginPath()
+  ctx.arc(g.handR.x, g.handR.y, 3.1, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.arc(g.handL.x, g.handL.y, 2.8, 0, Math.PI * 2)
+  ctx.fill()
+
+  // ---- 4. head ----
+  ctx.fillStyle = black
+  ctx.beginPath()
+  ctx.arc(g.headC.x, g.headC.y, 8.8, 0, Math.PI * 2)
+  ctx.fill()
+
+  // ---- 5. glowing eyes (the only light on the body) ----
+  if (!opts.simple) {
+    const blink = 0.85 + 0.15 * Math.sin(t * 3.1)
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.fillStyle = rgba(style.glow, 0.95 * blink)
+    // two distinct eye dots (readable at gameplay zoom)
+    ctx.beginPath()
+    ctx.arc(g.headC.x + 2.3, g.headC.y - 1.1, 1.3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.beginPath()
+    ctx.arc(g.headC.x + 5.7, g.headC.y - 1.7, 1.0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
+  // ---- 6. hit flash overlay (whole body flashes) ----
+  const flash = clamp01(opts.flash ?? 0)
+  if (flash > 0.02) {
+    const fc = opts.flashColor ?? '#ffffff'
+    fillCapsule(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, 6.6, 4.7, fc, flash)
+    fillCapsule(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 3.1, fc, flash)
+    fillCapsule(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, 6.0, 4.3, fc, flash * 0.8)
+    fillCapsule(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, 4.8, 3.6, fc, flash)
+    fillCapsule(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.4, 2.6, fc, flash)
+    fillCapsule(ctx, mx, my, g.chest.x, g.chest.y, 7.2, 10.8, fc, flash)
+    ctx.fillStyle = fc
+    ctx.save()
+    ctx.globalAlpha *= flash
+    ctx.beginPath()
+    ctx.arc(g.headC.x, g.headC.y, 8.8, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
 }
