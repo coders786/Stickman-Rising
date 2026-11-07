@@ -196,6 +196,9 @@ export interface DrawOpts {
   ghostAlpha?: number
   /** skip outline+details (perf for far enemies) */
   simple?: boolean
+  /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
+   * the swinging/charging edge illuminates the body that carries it */
+  edgeLight?: { color: string; a: number }
 }
 
 function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, cx: number, cy: number): void {
@@ -616,6 +619,41 @@ function drawSilhouette(
     ctx.lineWidth = 1.2
     ctx.beginPath()
     ctx.arc(g.handR.x, g.handR.y, 3.6, -1.2, 0.9)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  // ---- 4.5 BLADE-CAST RIM LIGHT (2.8D dynamic lighting): the glowing
+  // edge lights the sword-side of the body — arm, torso leading edge,
+  // front thigh. An additive whisper that separates the carrier from the
+  // night and sells the blade as a real 3D light source in the scene. ----
+  const el = opts.edgeLight
+  if (el && el.a > 0.03) {
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = rgba(el.color, Math.min(0.85, el.a))
+    ctx.lineWidth = 2
+    // sword arm chain (shoulder → elbow → hand) — closest to the source
+    ctx.beginPath()
+    ctx.moveTo(g.chest.x, g.chest.y)
+    ctx.lineTo(g.elbR.x, g.elbR.y)
+    ctx.lineTo(g.handR.x, g.handR.y)
+    ctx.stroke()
+    // torso leading edge (the lit side of the ribcage)
+    ctx.beginPath()
+    ctx.moveTo(g.hip.x + 5.2, g.hip.y - 1)
+    ctx.quadraticCurveTo(mx + 6.5, my - 1, g.chest.x + 8.2, g.chest.y + 1.5)
+    ctx.stroke()
+    // front thigh quad — the forward leg catches the spill
+    ctx.beginPath()
+    ctx.moveTo(g.hip.x + 4.4, g.hip.y + 1)
+    ctx.lineTo(g.kneeR.x + 3.4, g.kneeR.y - 1)
+    ctx.stroke()
+    // off-hand knuckles kiss the light when gripping the tsuka
+    ctx.lineWidth = 1.4
+    ctx.beginPath()
+    ctx.arc(g.handL.x, g.handL.y, 2.6, 0, Math.PI * 2)
     ctx.stroke()
     ctx.restore()
   }

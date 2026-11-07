@@ -64,18 +64,19 @@ const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
 ]
 
 /** blade segment vs an enemy's full visual body (any sphere, swept-aware).
- * Radius carries +3px edge forgiveness — a katana edge is a plane, not a
- * line; the visual blade is ~3px wide so the hit volume matches the art. */
+ * `pad` fattens the radius per-attack — a katana edge is a plane; the hit
+ * volume must match the visual footprint of the blade edge corridor. */
 function bladeHitsBody(
   e: { x: number; y: number; scale: number },
   hasPrev: boolean,
   prev: { bx: number; by: number; tx: number; ty: number },
   cur: { bx: number; by: number; tx: number; ty: number },
+  pad = 3,
 ): boolean {
   const s = e.scale
   for (const sp of BODY_SPHERES) {
     const cy = e.y - sp.oy * s
-    const r = sp.r * s + 3
+    const r = sp.r * s + pad
     if (hasPrev
       ? circleHitsSweptQuad(e.x, cy, r, prev.bx, prev.by, prev.tx, prev.ty, cur.bx, cur.by, cur.tx, cur.ty)
       : segHitsCircle(cur.bx, cur.by, cur.tx, cur.ty, e.x, cy, r)
@@ -89,6 +90,14 @@ const ACCEL = 2600
 const FRICTION = 2800
 const AIR_ACCEL = 1800
 const GRAVITY = 2050
+/** ANTI-FLOAT gravity shaping (Sekiro-weight): apex decay ×2.2 kills the
+ * moon-hover; the fall accelerates ×3.5 so the body plummets; terminal
+ * velocity caps the plunge. Rising hard (launch/juggle) keeps ~1.35× so
+ * launches still read. */
+const GRAV_APEX = 2.2
+const GRAV_RISE = 1.35
+const GRAV_FALL = 3.5
+const TERMINAL_VY = 1650
 const JUMP_V = -700
 const AIR_JUMP_V = -620
 const DASH_SPEED = 980
@@ -105,7 +114,11 @@ interface ActionState {
   moveDone: boolean
   moveYDone: boolean
   impactDone: boolean
+  overshootDone: boolean
+  flashDone: boolean
   fromParry: boolean
+  /** accumulated aim-assist correction (radians, bounded) */
+  aimUsed: number
 }
 
 interface AbilityState {
@@ -159,6 +172,9 @@ export class Player {
   private airDashUsed = false
   private jumpsUsed = 0
   private afterimgTimer = 0
+  /** when the last dash ended — the momentum tail window feeds the
+   * dash-strike conversion (attacking on dash momentum = through-cut) */
+  private dashEndedAt = -10
 
   private parryT = 0
   private parryActive = 0
@@ -182,6 +198,24 @@ export class Player {
   private bladeLag = 0
   private bladeLagVel = 0
   private prevArmSum = 0
+  /** signed arm angular velocity (rad/s) — drives lag, chain reaction, overshoot */
+  private armVel = 0
+
+  /* ---- KINETIC CHAIN (anti "spinning top"): hips → torso → shoulders
+   * counter-lag spring. When the arm whips, the body visibly loads against
+   * it (30% hips · 50% torso · 20% shoulders) — Newton's third law, read. */
+  private chainLag = 0
+  private chainLagVel = 0
+
+  /* ---- 2.8D: camera-side depth of the blade plane (−1..1) + hyper-scale
+   * (blade grows during active frames, anime weapon read) + smear tracking */
+  private bladeZ = 0
+  private swingScale = 1
+  private prevBladeAng = 0
+  private hasPrevAng = false
+  /** this frame's angular smear window (prev → current blade angle) */
+  private smearA0 = 0
+  private smearA1 = 0
 
   /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
    * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
@@ -225,6 +259,14 @@ export class Player {
     this.exitScriptedSoon = 0
     this.lightIndex = 0
     this.airIndex = 0
+    this.bladeZ = 0
+    this.swingScale = 1
+    this.bladeLag = 0
+    this.bladeLagVel = 0
+    this.chainLag = 0
+    this.chainLagVel = 0
+    this.prevArmSum = 0
+    this.hasPrevAng = false
     this.animator.play(IDLE_CLIP, { blend: 0.05 })
   }
 
@@ -287,10 +329,19 @@ export class Player {
 
     // physics integration (shared)
     if (this.state !== 'dash') {
-      const g = this.state === 'attack' && this.action && this.action.def.float
-        ? GRAVITY * this.action.def.float
-        : GRAVITY
+      let g: number
+      if (this.state === 'attack' && this.action && this.action.def.float) {
+        // authored air-combo float overrides the shaping (juggle windows)
+        g = GRAVITY * this.action.def.float
+      } else if (this.vy < 0) {
+        // ANTI-FLOAT: apex decay — no moon hovering
+        g = GRAVITY * (this.vy < -260 ? GRAV_RISE : GRAV_APEX)
+      } else {
+        // heavy fall: the body plummets
+        g = GRAVITY * GRAV_FALL
+      }
       this.vy += g * dt
+      if (this.vy > TERMINAL_VY) this.vy = TERMINAL_VY
     }
     this.x += this.vx * dt
     this.y += this.vy * dt
@@ -342,11 +393,14 @@ export class Player {
     this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
     // procedural layers (bounded, frame-local — never accumulate):
-    this.updateBladeDynamics(dt) // wrist lag spring — feeds hitboxes
-    this.applyTwoHandGrip(dt)    // off-hand IK onto the tsuka
+    this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
+    this.applyAimAssist(dt, w)      // bounded wrist convergence onto the target center line
+    this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
     solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
-    this.updateFootLock(dt)      // weight: hips sit on the planted foot
+    this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.updateBladeWorld()
+    this.updateSwingScale(dt)
+    this.updateBladeZ(dt)
   }
 
   private onLand(w: WorldRef): void {
@@ -473,6 +527,17 @@ export class Player {
     // light
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
+      // DASH MOMENTUM STRIKE: attacking while the last dash's momentum
+      // still carries the body converts into the through-cut — the
+      // dash-strike feel (Hades). Without this, the 150ms in-dash input
+      // window was brutally tight and dash attacks "randomly" whiffed.
+      if (this.grounded
+        && w.time - this.dashEndedAt < 0.18
+        && Math.abs(this.vx) > 110
+        && this.riposteT <= 0) {
+        this.startAttack(ATTACKS.dashSlash, w)
+        return true
+      }
       const id = this.riposteT > 0 ? 'riposte' : this.pickLight(w, ax, ay)
       this.startAttack(ATTACKS[id], w)
       return true
@@ -528,6 +593,7 @@ export class Player {
     w.audio.play('dash', { pitch: rand(0.95, 1.1) })
     const colors = this.sword.colors
     w.fx.speedStreaks(this.x, this.y - 40, dx * DASH_SPEED * 0.9, 6, rgba(colors.trail, 1))
+    w.fx.chroma(0.4) // lens strain on the launch
     w.fx.dust(this.x, this.grounded ? 0 : this.y, 5)
     w.cam.addTrauma(0.06)
   }
@@ -565,8 +631,17 @@ export class Player {
     }
     if (this.dashT <= 0) {
       this.state = 'move'
+      this.dashEndedAt = w.time
       this.vx *= 0.55
-      if (!this.grounded) this.vy *= 0.5
+      if (!this.grounded) {
+        this.vy *= 0.5
+      } else if (Math.abs(this.vx) > 260) {
+        // THE BRAKING SKID: momentum must shed through a visible physical
+        // pose — heel-dig crouch + a dust scrape, never a dead stop.
+        w.fx.dust(this.x - this.face * 12, 0, 5)
+        this.landSpring = 0.35
+        this.animator.play(LAND_CLIP, { blend: 0.05 })
+      }
     }
   }
 
@@ -611,7 +686,17 @@ export class Player {
 
     // face toward held direction at attack start
     const ax = w.input.axisX()
-    if (ax !== 0 && !fromParry) this.face = ax > 0 ? 1 : -1
+    if (ax !== 0 && !fromParry) {
+      this.face = ax > 0 ? 1 : -1
+    } else if (!fromParry) {
+      // SOFT AIM: no direction held → face the nearest threat. Every swing
+      // commits toward a real target — the root of "aimed at different
+      // angles": cuts should converge on the enemy, not on empty planes.
+      const tgt = this.nearestEnemy(w, 600)
+      if (tgt && Math.abs(tgt.x - this.x) > 24) {
+        this.face = tgt.x > this.x ? 1 : -1
+      }
+    }
 
     // heavy chain bookkeeping (h1 → h2 → h3 sequencing)
     const hm = /^h([123])$/.exec(def.id)
@@ -627,6 +712,7 @@ export class Player {
 
     const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
+    this.hasPrevAng = false
     this.action = {
       def,
       animT: 0,
@@ -636,12 +722,18 @@ export class Player {
       moveDone: false,
       moveYDone: false,
       impactDone: false,
+      overshootDone: false,
+      flashDone: !def.drawFlash,
       fromParry,
+      aimUsed: 0,
     }
     if (fromParry) this.riposteT = 0
     this.state = 'attack'
     this.charging = false
-    this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed })
+    // ANIME TIMING: attack bodies play "on twos" (24Hz stepped keys —
+    // crisp, keyframed combat beats à la GG Strive) while blade physics,
+    // smears, and trails run full-rate on the procedural layers.
+    this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed, stepRate: 24 })
     // slight ground friction during attacks
   }
 
@@ -667,6 +759,16 @@ export class Player {
       a.sfxDone = true
       w.audio.play(def.swingSfx.name, { pitch: rand(0.94, 1.08) })
     }
+    // iai SNAP-DRAW flash release: the blade clears the saya in one frame —
+    // a localized light event + a 2-frame stretch on the steel sells it.
+    if (!a.flashDone && animT >= def.trail.start) {
+      a.flashDone = true
+      const c = this.sword.colors
+      w.fx.burst(this.blade.tx, this.blade.ty, 7, c.core, 300, 0.3, 'spark')
+      w.fx.shockwave(this.blade.tx, this.blade.ty, 46, c.glow, 0.18, 3)
+      w.cam.addTrauma(0.05)
+      this.swingScale = Math.max(this.swingScale, 1.3) // velocity stretch
+    }
     // forward impulse
     if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
       a.moveDone = true
@@ -687,6 +789,25 @@ export class Player {
     if (animT >= h.start && animT <= h.end) {
       this.swingGlow = 1
       const info = makeRuntimeInfo(def, this.sword.stats.dmg)
+      // DASH THROUGH-CUT: the iai pass cuts everything the dash swept
+      // through — the player crosses the target at 980px/s BEFORE the
+      // attack anim even starts, so the blade-only segment points past
+      // them. The corridor is the DASH PATH itself: a fixed chest-height
+      // band from 124px behind the player to 66px ahead — anchored to the
+      // path (not the wandering kissaki, which wraps behind on the
+      // follow-through and would collapse the span). This is the swept
+      // volume of the through-cut.
+      let curSeg = this.blade
+      let usePrev = this.hasPrevBlade
+      if (def.kind === 'dash') {
+        curSeg = {
+          bx: this.x - this.face * 124,
+          by: this.y - 55,
+          tx: this.x + this.face * 66,
+          ty: this.y - 55,
+        }
+        usePrev = false
+      }
       for (const e of w.enemies) {
         // spawning enemies within blade reach (landing pods, y > -90) are
         // fair game — the swing connects the moment the body crosses the arc
@@ -694,7 +815,7 @@ export class Player {
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
-        if (bladeHitsBody(e, this.hasPrevBlade, this.prevBlade, this.blade)) {
+        if (bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)) {
           a.hitMap.set(e.id, animT)
           w.hitEnemy(e.id, this.blade, info)
           this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
@@ -706,12 +827,31 @@ export class Player {
       this.prevBlade.tx = this.blade.tx
       this.prevBlade.ty = this.blade.ty
       this.hasPrevBlade = true
-      // aoe shockwave at strike moment for heavy hits
+      // aoe shockwave at strike moment for heavy hits — the wave is REAL:
+      // enemies inside the radius eat the strike (the charged/h3 promise:
+      // the shockwave visual must connect, not just decorate)
       if (h.aoe && h.aoe > 0 && !a.impactDone && this.grounded && animT >= h.start + 0.02) {
         a.impactDone = true
         w.fx.shockwave(this.x + this.face * 30, 0, h.aoe, this.sword.colors.glow, 0.4, 6)
         if (this.grounded) w.fx.groundCrack(this.x + this.face * 34, 0, h.aoe * 0.45)
+        for (const e of w.enemies) {
+          if (e.dead || e.spawning) continue
+          if (a.hitMap.has(e.id) && !h.multiHit) continue
+          if (Math.abs(e.x - this.x) < h.aoe && e.y > -140) {
+            a.hitMap.set(e.id, animT)
+            w.hitEnemy(e.id, this.blade, info)
+            this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
+          }
+        }
       }
+    }
+
+    // OVERSHOOT (follow-through law): as the active window closes, inject a
+    // 2-frame rotational impulse — the tip pushes PAST the stop point and
+    // the wrist spring elastic-snaps it back. Stopping dead reads weightless.
+    if (!a.overshootDone && animT > h.end && this.armVel !== 0) {
+      a.overshootDone = true
+      this.bladeLagVel += Math.sign(this.armVel) * 2.4
     }
 
     // trail emission
@@ -845,6 +985,7 @@ export class Player {
     const colors = this.sword.colors
     const px = (this.x + sourceX) / 2
     const py = this.y - 55
+    w.fx.impactFrame(px, py, colors.glow) // the counter's kill frame
     w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), true, colors.glow, '#ffffff')
     w.fx.shockwave(px, py, 90, colors.glow, 0.3, 5)
     w.fx.screenFlash('#ffffff', 0.22, 6)
@@ -1293,15 +1434,22 @@ export class Player {
    * energy whips the tip THROUGH the target line with a small overshoot —
    * the physical furi-otoshi snap real swordsmen feel. Under-damped
    * (ζ≈0.3): lively, never mushy. Applied BEFORE solve → hitboxes inherit
-   * the physical blade, not just the keyframed one. */
-  private updateBladeDynamics(dt: number): void {
+   * the physical blade, not just the keyframed one.
+   *
+   * During hit-stop (world timeScale ≈ 0.05) the blade takes a ±5° impact
+   * resistance deflection AGAINST its swing direction — the cut bites into
+   * something with mass (spec: kinetic impact modulation). */
+  private updateBladeDynamics(dt: number, w: WorldRef): void {
     if (dt <= 1e-5) return
     const p = this.pose
     const armSum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
     const armVel = (armSum - this.prevArmSum) / dt
+    this.armVel = armVel
     this.prevArmSum = armSum
     // lag target: proportional to angular velocity (inertia resisting)
-    const target = clamp(-armVel * 0.045, -0.15, 0.15)
+    const target = w.timeScale < 0.5
+      ? clamp(-Math.sign(armVel || this.bladeLag || 1) * 0.09, -0.15, 0.15) // impact resistance ~5°
+      : clamp(-armVel * 0.045, -0.15, 0.15)
     // spring toward target, under-damped for the whip-through
     const K = 260
     const C = 9
@@ -1310,8 +1458,119 @@ export class Player {
     this.bladeLag = clamp(this.bladeLag, -0.17, 0.17)
     this.bladeLagVel = clamp(this.bladeLagVel, -6, 6)
     p[CH.wrR] += this.bladeLag
+
+    // KINETIC CHAIN (hips 30% · torso 50% · shoulders 20%): a slower spring
+    // driven by the same arm whip. Accelerating into a cut → the torso loads
+    // INTO the swing; the deceleration at impact → the body recoils back.
+    // The upper body can never again rotate independently of the hips.
+    const k2 = 90
+    const c2 = 7.5
+    const chainTarget = clamp(-armVel * 0.02, -0.14, 0.14)
+    this.chainLagVel += (k2 * (chainTarget - this.chainLag) - c2 * this.chainLagVel) * dt
+    this.chainLag = clamp(this.chainLag + this.chainLagVel * dt, -0.16, 0.16)
+    p[CH.rootRot] += -this.chainLag * 0.3
+    p[CH.spine] += -this.chainLag * 0.5
+    p[CH.shR] += this.chainLag * 0.2
   }
 
+  /** AIM ASSIST — bounded wrist convergence onto the target's center line.
+   * Runs on the pose AFTER blade-dynamics, so the correction steers the
+   * FINAL blade angle (physical blade included). Soft-lock rules:
+   *  · only during the pre-strike chamber + active frames
+   *  · only toward enemies within the attack's reach envelope
+   *  · total correction capped (±0.24 rad) + rate-limited — a nudge onto
+   *    the center line, never a robotic snap. This is what makes every
+   *    sword read as "aimed" at the enemy regardless of chain angle. */
+  private applyAimAssist(dt: number, w: WorldRef): void {
+    const a = this.action
+    if (this.state !== 'attack' || !a) return
+    const h = a.def.hit
+    const animT = a.animT
+    // converge during chamber (weak) → strike (strong) → off after the window
+    if (animT < h.start - 0.06 || animT > h.end + 0.02) return
+    const g = this.geom // last frame's solve — continuous, 1-frame stale
+    const reach = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale + 74
+    let tx = 0
+    let ty = 0
+    let bestD = Infinity
+    for (const e of w.enemies) {
+      if (e.dead || e.spawning) continue
+      const dx = (e.x - this.x) * this.face // in facing space
+      if (dx < 14 || dx > reach) continue
+      if (Math.abs(e.y - this.y) > 170) continue
+      const chestY = e.y - 48 * e.scale
+      const d = Math.abs(dx) + Math.abs(chestY - (this.y - 60)) * 0.5
+      if (d < bestD) {
+        bestD = d
+        tx = (e.x - this.x) * this.face / SCALE // → character-local
+        ty = (chestY - this.hipY) / SCALE
+      }
+    }
+    if (bestD === Infinity) return
+    // desired blade angle from the hand to the target chest
+    const desired = Math.atan2(ty - g.handR.y, tx - g.handR.x)
+    let dAng = desired - g.bladeAngle
+    while (dAng > Math.PI) dAng -= TAU_LIKE
+    while (dAng < -Math.PI) dAng += TAU_LIKE
+    if (Math.abs(dAng) < 0.03) return
+    const strong = animT >= h.start ? 1 : 0.35
+    const maxRate = 3.4 * dt * strong
+    let corr = clamp(dAng * 3.2 * strong * dt, -maxRate, maxRate)
+    // respect the per-attack budget so technique variety survives
+    const room = AIM_BUDGET - Math.abs(a.aimUsed)
+    if (room <= 0) return
+    corr = clamp(corr, -room, room)
+    a.aimUsed += corr
+    // bladeAngle = π/2 − (shR+elR+wrR) → subtracting from wrR ADDS to the angle
+    this.pose[CH.wrR] -= corr
+  }
+
+  private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null
+    let bestD = Infinity
+    for (const e of w.enemies) {
+      if (e.dead || e.spawning) continue
+      const d = Math.abs(e.x - this.x)
+      if (d < bestD && d < range) {
+        bestD = d
+        best = { x: e.x, y: e.y }
+      }
+    }
+    return best
+  }
+
+  /** HYPER-SCALE: the blade grows ×1.22 through the active frames and ×1.12
+   * on dashes (anime weapon read; the hit segment grows with it — visuals
+   * and hit volume stay one object). Damped so it never pops. */
+  private updateSwingScale(dt: number): void {
+    let target = 1
+    if (this.state === 'dash') target = 1.12
+    else if (this.state === 'attack' && this.action) {
+      const h = this.action.def.hit
+      const t = this.action.animT
+      if (t >= h.start - 0.06 && t <= h.end + 0.1) target = 1.22
+    }
+    this.swingScale = damp(this.swingScale, target, 18, dt)
+  }
+
+  /** 2.8D Z-envelope: the blade plane swings toward/away from the camera
+   * through the strike — a sin pulse peaking mid-active-window. Pure visual
+   * depth (foreshortening, pierce flare); the X/Y sweep is untouched. */
+  private updateBladeZ(dt: number): void {
+    let target = 0
+    if (this.state === 'attack' && this.action) {
+      const def = this.action.def
+      if (def.zArc) {
+        const tr = def.trail
+        const t = this.action.animT
+        if (t >= tr.start && t <= tr.end) {
+          const u = clamp01((t - tr.start) / (tr.end - tr.start))
+          target = def.zArc * Math.sin(u * Math.PI)
+        }
+      }
+    }
+    this.bladeZ = damp(this.bladeZ, target, 16, dt)
+  }
   /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
    * (te-no-uchi: left hand at the pommel, right near the guard — how a
    * katana is actually swung). Blended over the authored off-arm channels
@@ -1407,21 +1666,29 @@ export class Player {
   private updateBladeWorld(): void {
     const g = this.geom
     const spec = PLAYER_SPEC
-    const len = spec.blade * this.sword.stats.range * 1.06
-    // The hit segment spans from the TSUKA BUTT (9 units behind the hand
-    // along the blade axis) out to the kissaki tip. Including the handle
-    // closes the inner gap: point-blank enemies standing INSIDE the swing
-    // arc (closer than ma-ai) used to slip between the player's body and
-    // the old segment base that started past the hand — the classic
-    // "sword animation disconnects from the hitbox" whiff.
-    const bx = g.handR.x + Math.cos(g.bladeAngle) * -9
-    const by = g.handR.y + Math.sin(g.bladeAngle) * -9
+    // hyper-scale grows the whole weapon (visual blade AND hit segment are
+    // one object — spec 1.35-1.5× tamed to 1.22× to protect the silhouette)
+    const len = spec.blade * this.sword.stats.range * 1.06 * this.swingScale
+    // The hit segment spans from the TSUKA BUTT (14 units behind the hand
+    // along the blade axis — the full grip: point-blank enemies standing
+    // INSIDE the swing arc, between the player's body and the hand, used to
+    // slip through the gap; the real tsuka is ~30% of the blade anyway)
+    // out to the kissaki tip.
+    const bx = g.handR.x + Math.cos(g.bladeAngle) * -14
+    const by = g.handR.y + Math.sin(g.bladeAngle) * -14
     const tx = g.handR.x + Math.cos(g.bladeAngle) * len
     const ty = g.handR.y + Math.sin(g.bladeAngle) * len
     this.blade.bx = this.x + this.face * SCALE * bx
     this.blade.by = this.hipY + SCALE * by
     this.blade.tx = this.x + this.face * SCALE * tx
     this.blade.ty = this.hipY + SCALE * ty
+    // smear tracking: this frame's angle becomes next frame's smear tail
+    if (this.hasPrevAng) {
+      this.smearA0 = this.prevBladeAng
+      this.smearA1 = g.bladeAngle
+    }
+    this.prevBladeAng = g.bladeAngle
+    this.hasPrevAng = true
   }
 
   /* ------------------------------------------------------------------ */
@@ -1483,14 +1750,74 @@ export class Player {
       alpha,
       flash: this.flashT * 0.85,
       flashColor: '#ff3b57',
+      // BLADE-CAST LIGHT: the swinging/charging edge lights the body —
+      // a rim pass on the sword-side silhouette (spec: dynamic blade light)
+      edgeLight: {
+        color: this.sword.colors.glow,
+        a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
+      },
     })
     drawSword(ctx, this.geom, this.sword, {
       time,
       charge: this.chargeRatio,
       alpha,
       swingGlow: this.swingGlow,
+      z: this.bladeZ,
+      lenScale: this.swingScale,
     })
     ctx.restore()
+
+    // ---- ANIME SMEAR: when tip velocity explodes, the blade stretches
+    // across this frame's angular sweep as a translucent wedge — stylized
+    // velocity smear (replaces motion blur). World space, under nothing —
+    // drawn here so it composites over the body with additive glow.
+    const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
+    const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
+    if (tipSpd > 950 && this.state !== 'dead') {
+      // pivot = the sword hand (the blade's true rotation center), world space
+      const px = this.x + this.face * SCALE * this.geom.handR.x
+      const py = this.hipY + SCALE * this.geom.handR.y
+      const R = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale
+      // local → world angles (facing mirror flips around the Y axis)
+      const wa0 = this.face === 1 ? this.smearA0 : Math.PI - this.smearA0
+      const wa1 = this.face === 1 ? this.smearA1 : Math.PI - this.smearA1
+      const k = Math.min(1, (tipSpd - 950) / 1400)
+      const ccw = wa1 < wa0
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = rgba(this.sword.colors.trail, 0.1 + 0.16 * k)
+      ctx.beginPath()
+      ctx.moveTo(px, py)
+      ctx.arc(px, py, R, wa0, wa1, ccw)
+      ctx.closePath()
+      ctx.fill()
+      // hot inner edge of the smear
+      ctx.fillStyle = rgba(this.sword.colors.core, 0.1 + 0.2 * k)
+      ctx.beginPath()
+      ctx.moveTo(px, py)
+      ctx.arc(px, py, R * 0.86, wa0, wa1, ccw)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
+
+    // ---- BLADE POINT-LIGHT: the edge emits a real localized light into
+    // the world while swinging/charging (additive radial at blade mid) ----
+    const lightI = clamp01(this.swingGlow * 0.8 + this.chargeRatio * 0.6)
+    if (lightI > 0.25) {
+      const mx = (this.blade.bx + this.blade.tx) / 2
+      const my = (this.blade.by + this.blade.ty) / 2
+      const r = 72 + lightI * 74 + this.bladeZ * 30
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      const grad = ctx.createRadialGradient(mx, my, 6, mx, my, r)
+      grad.addColorStop(0, rgba(this.sword.colors.glow, 0.16 * lightI))
+      grad.addColorStop(0.55, rgba(this.sword.colors.trail, 0.07 * lightI))
+      grad.addColorStop(1, rgba(this.sword.colors.trail, 0))
+      ctx.fillStyle = grad
+      ctx.fillRect(mx - r, my - r, r * 2, r * 2)
+      ctx.restore()
+    }
 
     // parry aura
     if (this.state === 'parry' && this.parryActive > 0) {
@@ -1522,6 +1849,10 @@ export class Player {
 /* ------------------------------------------------------------------ */
 
 const TAU_LIKE = Math.PI * 2
+
+/** total aim-assist correction budget per attack (radians) — keeps every
+ * chain link's technique angle intact while still converging on the target */
+const AIM_BUDGET = 0.24
 
 interface EnemyLike {
   id: number

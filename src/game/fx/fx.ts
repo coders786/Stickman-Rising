@@ -92,6 +92,18 @@ interface Debris {
   age: number; life: number
 }
 
+/** MANGA IMPACT FRAME: a 2-4 frame monochrome inversion beat — hard white
+ * flash + black radial spikes punching out of the impact point + a thin
+ * accent ring. The classic anime "kill frame" (Berserk / Afro Samurai
+ * language) reserved for heavy connects, parries, and executions. */
+interface ImpactFrame {
+  active: boolean
+  x: number; y: number
+  age: number; life: number
+  color: string
+  seed: number
+}
+
 /* ------------------------------------------------------------------ */
 
 const MAX_PARTICLES = 1500
@@ -114,6 +126,11 @@ export class FX {
   private txtFree: DmgText[] = []
   private debris: Debris[] = []
   private dFree: Debris[] = []
+  private impactFrames: ImpactFrame[] = []
+
+  /** chromatic aberration intensity (0..1) — edge lens strain on dashes
+   * and heavy impacts; decays every update */
+  caIntensity = 0
 
   /** screen flash */
   flashColor = '#ffffff'
@@ -139,7 +156,9 @@ export class FX {
     for (const c of this.cracks) c.active = false
     for (const t of this.texts) t.active = false
     for (const d of this.debris) d.active = false
+    for (const i of this.impactFrames) i.active = false
     this.flashAlpha = 0
+    this.caIntensity = 0
   }
 
   /* ---------------- particles ---------------- */
@@ -427,6 +446,21 @@ export class FX {
     this.flashDecay = decay
   }
 
+  /** register chromatic lens strain (dash launches, heavy connects) */
+  chroma(intensity: number): void {
+    this.caIntensity = Math.max(this.caIntensity, Math.min(1, intensity))
+  }
+
+  /** the anime impact frame: white inversion + black radial spikes */
+  impactFrame(x: number, y: number, color: string): void {
+    if (this.impactFrames.length > 3) return
+    this.impactFrames.push({
+      active: true, x, y, age: 0, life: 0.11, color, seed: rand(TAU),
+    })
+    this.screenFlash('#ffffff', 0.85, 9)
+    this.chroma(0.7)
+  }
+
   /* ---------------- afterimages ---------------- */
 
   afterimage(pose: Pose, x: number, y: number, face: number, color: string, life = 0.34, scale = 1): void {
@@ -598,6 +632,19 @@ export class FX {
     if (this.flashAlpha > 0) {
       this.flashAlpha -= this.flashDecay * dt
       if (this.flashAlpha < 0) this.flashAlpha = 0
+    }
+    // chromatic strain decay
+    if (this.caIntensity > 0) {
+      this.caIntensity = Math.max(0, this.caIntensity - dt * 3.4)
+    }
+    // impact frames
+    for (let i = this.impactFrames.length - 1; i >= 0; i--) {
+      const f = this.impactFrames[i]
+      f.age += dt
+      if (f.age >= f.life) {
+        f.active = false
+        this.impactFrames.splice(i, 1)
+      }
     }
   }
 
@@ -785,6 +832,48 @@ export class FX {
     ctx.fillStyle = rgba(this.flashColor, clamp01(this.flashAlpha))
     ctx.fillRect(0, 0, w, h)
     ctx.restore()
+  }
+
+  /** MANGA IMPACT FRAME pass — draw AFTER the additive layer so the black
+   * spikes punch through the glow: white core → black wedges → accent ring.
+   * Called by the renderer in world space. */
+  drawImpactFrames(ctx: CanvasRenderingContext2D): void {
+    for (const f of this.impactFrames) {
+      if (!f.active) continue
+      const k = 1 - f.age / f.life
+      // white inversion core
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = rgba('#ffffff', 0.9 * k)
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, 34 + (1 - k) * 26, 0, TAU)
+      ctx.fill()
+      ctx.restore()
+      // black radial spikes — alternating long/short, jittered by seed
+      ctx.save()
+      ctx.fillStyle = rgba('#04060a', 0.96 * k)
+      const spikes = 13
+      for (let i = 0; i < spikes; i++) {
+        const base = f.seed + (i / spikes) * TAU
+        const long = i % 2 === 0
+        const r0 = 26 * k + 8
+        const r1 = (long ? 250 : 140) * (0.55 + 0.45 * k)
+        const halfW = (long ? 0.055 : 0.03) * (0.6 + 0.4 * k)
+        ctx.beginPath()
+        ctx.moveTo(f.x + Math.cos(base - halfW) * r0, f.y + Math.sin(base - halfW) * r0)
+        ctx.lineTo(f.x + Math.cos(base) * r1, f.y + Math.sin(base) * r1)
+        ctx.lineTo(f.x + Math.cos(base + halfW) * r0, f.y + Math.sin(base + halfW) * r0)
+        ctx.closePath()
+        ctx.fill()
+      }
+      // thin accent ring at the shock front
+      ctx.strokeStyle = rgba(f.color, 0.85 * k)
+      ctx.lineWidth = 2.6
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, 46 + (1 - k) * 90, 0, TAU)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 }
 

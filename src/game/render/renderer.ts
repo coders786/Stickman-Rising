@@ -10,7 +10,7 @@ import { Player } from '../entities/player'
 import { ProjectilePool } from '../entities/projectiles'
 import { CyberBackground } from '../world/background'
 import { HUD, HudState } from './hud'
-import { rgba } from '../core/utils'
+import { clamp01, rgba } from '../core/utils'
 
 export interface RenderWorld {
   cam: Camera
@@ -30,6 +30,9 @@ export class Renderer {
   private vigH = 0
   /* wet-floor reflection fade gradient (built once; world-space strip) */
   private reflFade: HTMLCanvasElement | null = null
+  /* film grain tile + pattern (built once; animated by random offsets) */
+  private grainTile: HTMLCanvasElement | null = null
+  private grainPattern: CanvasPattern | null = null
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
     const { cam, fx, bg, player, enemies, projectiles, hud, hudState } = world
@@ -59,6 +62,9 @@ export class Renderer {
     const li = bg.lightningI()
     const az = bg.lightningAz()
     drawShadow(ctx, player.x, 0, 1.1, 0.4, li, az)
+    // BLADE SELF-SHADOW: the raised steel casts its own slanted ground
+    // streak — grounds the 3D weapon in the scene (2.8D read)
+    drawBladeShadow(ctx, player)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
@@ -83,18 +89,27 @@ export class Renderer {
     // additive FX (trails, particles, rings, afterimages)
     fx.drawAdditive(ctx, time)
 
+    // MANGA IMPACT FRAMES — black spikes punch through the glow layer
+    fx.drawImpactFrames(ctx)
+
     ctx.restore()
 
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
 
-    // 4. vignette
+    // 4. chromatic aberration (lens strain on dashes / heavy impacts)
+    this.drawChroma(ctx, w, h, fx.caIntensity)
+
+    // 5. vignette
     this.drawVignette(ctx, w, h)
 
-    // 5. screen flash
+    // 6. film grain — 3.5% monochrome noise ties 2D art + FX into one film
+    this.drawGrain(ctx, w, h)
+
+    // 7. screen flash
     fx.drawFlash(ctx, w, h)
 
-    // 6. HUD
+    // 8. HUD
     hud.draw(ctx, w, h, hudState, dt)
   }
 
@@ -116,6 +131,62 @@ export class Renderer {
       this.vigH = h
     }
     ctx.drawImage(this.vignette, 0, 0, w, h)
+  }
+
+  /** CHROMATIC ABERRATION — selective edge lens strain. A true per-pixel
+   * channel split is not tractable in Canvas2D; the anime-honest version
+   * tints opposing screen edges red/cyan (radial CA's visible symptom) and
+   * only while the camera is being strained (dash / heavy connect). */
+  private drawChroma(ctx: CanvasRenderingContext2D, w: number, h: number, i: number): void {
+    if (i <= 0.02) return
+    ctx.save()
+    const a = 0.1 * Math.min(1, i)
+    const g1 = ctx.createLinearGradient(0, 0, w * 0.3, 0)
+    g1.addColorStop(0, rgba('#ff2a46', a))
+    g1.addColorStop(1, rgba('#ff2a46', 0))
+    ctx.fillStyle = g1
+    ctx.fillRect(0, 0, w * 0.3, h)
+    const g2 = ctx.createLinearGradient(w, 0, w * 0.7, 0)
+    g2.addColorStop(0, rgba('#31e6ff', a))
+    g2.addColorStop(1, rgba('#31e6ff', 0))
+    ctx.fillStyle = g2
+    ctx.fillRect(w * 0.7, 0, w * 0.3, h)
+    ctx.restore()
+  }
+
+  /** FILM GRAIN — a pre-baked 160×160 monochrome noise tile, randomly
+   * re-offset each frame (animated grain) at a 3.5% whisper. Ties the 2D
+   * silhouette art, the 3D blade, and the glow FX into one photographic
+   * plane — the "one film stock" trick. */
+  private drawGrain(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    if (!this.grainTile) {
+      const c = document.createElement('canvas')
+      c.width = 160
+      c.height = 160
+      const g = c.getContext('2d')
+      if (!g) return
+      const img = g.createImageData(160, 160)
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = 118 + (Math.random() * 2 - 1) * 74
+        img.data[i] = v
+        img.data[i + 1] = v
+        img.data[i + 2] = v
+        img.data[i + 3] = 255
+      }
+      g.putImageData(img, 0, 0)
+      this.grainTile = c
+      this.grainPattern = ctx.createPattern(c, 'repeat')
+    }
+    if (!this.grainPattern) return
+    ctx.save()
+    ctx.globalAlpha = 0.035
+    ctx.globalCompositeOperation = 'overlay'
+    const ox = (Math.random() * 160) | 0
+    const oy = (Math.random() * 160) | 0
+    ctx.translate(-ox, -oy)
+    ctx.fillStyle = this.grainPattern
+    ctx.fillRect(0, 0, w + 160, h + 160)
+    ctx.restore()
   }
 
   /** wet-floor mirror pass — the 2D-native take on ray-traced reflections:
@@ -176,6 +247,32 @@ function drawShadow(
   ctx.fillStyle = rgba('#010307', a * 0.85)
   ctx.beginPath()
   ctx.ellipse(x, groundY + 3, 14 * scale, 4.2 * scale, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+/** BLADE SELF-SHADOW: the 3D weapon casts its own directional shadow onto
+ * the ground plane — a soft slanted streak from the player's feet toward
+ * the kissaki's ground projection. Stronger the higher the blade is held
+ * (a raised jōdan blade throws a long shadow; a grounded blade barely
+ * registers). Grounds the sword in the scene's lighting model. */
+function drawBladeShadow(ctx: CanvasRenderingContext2D, p: Player): void {
+  if (p.isDead) return
+  const b = p.blade
+  const lift = clamp01(-b.ty / 110) // 0 at ground level → 1 overhead
+  const a = 0.08 + lift * 0.14
+  ctx.save()
+  ctx.strokeStyle = rgba('#010307', a)
+  ctx.lineCap = 'round'
+  ctx.lineWidth = 3.5 + lift * 2.5
+  ctx.beginPath()
+  ctx.moveTo(p.x, 3)
+  ctx.quadraticCurveTo((p.x + b.tx) / 2, 9, b.tx, 3)
+  ctx.stroke()
+  // kissaki contact dot — the tip's ground projection
+  ctx.fillStyle = rgba('#010307', a * 0.9)
+  ctx.beginPath()
+  ctx.ellipse(b.tx, 3, 5, 2.2, 0, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }

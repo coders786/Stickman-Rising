@@ -77,6 +77,12 @@ export interface PlayOpts {
   blend?: number
   speed?: number
   restart?: boolean
+  /** MIXED FRAME-RATE TIMING (anime limited animation): quantizes clip
+   * time to N steps/second (24 = "on twos"). The body snaps between
+   * authored keys — crisp 2D combat beats — while the physics layers
+   * (blade lag spring, trails, FX) keep integrating at a full 60/120Hz.
+   * The crossfade still runs on real dt, so transitions stay smooth. */
+  stepRate?: number
 }
 
 export class Animator {
@@ -89,11 +95,15 @@ export class Animator {
   private fromPose: Pose = makePose()
   private targetPose: Pose = makePose()
   private lastPose: Pose = makePose()
+  /** stepped-clock accumulator (stepRate > 0 → quantized anime timing) */
+  private stepRate = 0
+  private stepAcc = 0
 
   play(clip: Clip, opts: PlayOpts = {}): void {
     if (this.clip === clip && !opts.restart) {
       // same clip: just adjust speed (used for run cycle tempo)
       this.speed = opts.speed ?? this.speed
+      if (opts.stepRate !== undefined) this.stepRate = opts.stepRate
       return
     }
     // snapshot current output for crossfade
@@ -104,6 +114,8 @@ export class Animator {
     this.speed = opts.speed ?? 1
     this.blendDur = opts.blend ?? 0.08
     this.blendT = 0
+    this.stepRate = opts.stepRate ?? 0
+    this.stepAcc = 0
     sampleClip(clip, 0, this.targetPose)
   }
 
@@ -111,7 +123,20 @@ export class Animator {
   update(dt: number): boolean {
     if (!this.clip) return false
     const before = this.time
-    this.time += dt * this.speed
+    if (this.stepRate > 0) {
+      // ANIME STEPPED TIMING: advance the clock only in fixed quanta, so
+      // the pose HOLDS each key for 1/24s — keyframed beats on twos. The
+      // blade/trails live on the full-rate physics layers outside.
+      this.stepAcc += dt * this.speed
+      const step = 1 / this.stepRate
+      if (this.stepAcc >= step) {
+        const n = Math.floor(this.stepAcc / step)
+        this.stepAcc -= n * step
+        this.time += n * step
+      }
+    } else {
+      this.time += dt * this.speed
+    }
     const finished = !this.clip.loop && this.time >= this.clip.dur && before < this.clip.dur
     if (this.blendT < this.blendDur) {
       // IN-BETWEEN GUARANTEE: the crossfade consumes at most 34ms of blend

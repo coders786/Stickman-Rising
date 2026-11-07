@@ -338,10 +338,14 @@ export class Game {
       if (this.hitstopT > 0) {
         this.hitstopT -= dtRaw
         simDt = dtRaw * 0.05
+        this.timeScale = 0.05 // world consumers (blade impact deflection) must SEE the freeze
       } else if (this.slowmoT > 0) {
         this.slowmoT -= dtRaw
         simDt = dtRaw * this.slowmoScale
+        this.timeScale = this.slowmoScale
         if (this.slowmoT <= 0) this.timeScale = 1
+      } else {
+        this.timeScale = 1
       }
 
       // --- cinematics run on real time ---
@@ -623,7 +627,14 @@ export class Game {
         this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), atk.heavy, sword.colors.glow, sword.colors.accent)
         const dmgShown = Math.round(atk.dmg * (e.vulnerableT > 0 ? 2 : 1) * (e.kind === 'heavy' || e.kind === 'boss' ? 0.72 : 1))
         this.fx.text(ex, ey - 46, `${dmgShown}`, atk.heavy ? sword.colors.accent : '#f4f9fc', atk.heavy ? 17 : 13)
-        this.addHitstop(atk.hitstop)
+        // crash-zoom punch on heavies (Z-axis push-pull) + impact frames on
+        // the big connects — the anime kill-frame language
+        this.addHitstop(atk.hitstop, atk.heavy ? 0.09 : 0)
+        if (atk.heavy && atk.dmg >= 15) {
+          this.fx.impactFrame(ex, ey, sword.colors.glow)
+        } else if (atk.heavy) {
+          this.fx.chroma(0.45)
+        }
         this.cam.addTrauma(atk.shake)
         if (e.vulnerableT > 0) this.fx.text(ex, ey - 70, 'WEAK POINT', '#ffe14d', 11)
         break
@@ -668,6 +679,7 @@ export class Game {
     this.addSlowmo(0.2, 1.6)
     this.addHitstop(0.16, 0.15)
     this.cam.addTrauma(1)
+    this.fx.impactFrame(e.x, e.y - 60, '#ffae2e')
     this.fx.screenFlash('#ffffff', 0.5, 1.6)
     for (let i = 0; i < 6; i++) {
       const ex = e.x + rand(-90, 90)
@@ -709,9 +721,9 @@ export class Game {
   private findExecuteTarget(): Enemy | null {
     for (const e of this.enemies) {
       if (e.dead || e.spawning || e.kind === 'boss') continue
-      if (e.hp > e.maxHp * 0.35) continue
+      if (e.hp > e.maxHp * 0.5) continue
       if (e.state !== 'stun' && e.state !== 'launched' && e.state !== 'down') continue
-      if (Math.abs(e.x - this.player.x) < 150 && Math.abs(e.y - this.player.y) < 190) return e
+      if (Math.abs(e.x - this.player.x) < 170 && Math.abs(e.y - this.player.y) < 190) return e
     }
     return null
   }
@@ -755,6 +767,7 @@ export class Game {
         // final blow
         this.audio.play('explosion', { volume: 0.8 })
         this.audio.play('deathHeavy', { volume: 1 })
+        this.fx.impactFrame(e.x, e.y - 40, sword.colors.accent) // the kill frame
         this.fx.screenFlash('#ffffff', 0.4, 3)
         this.fx.dismember(e.x, e.y, this.player.face, e.cfg.style.body, this.settings.gore === 'blood' ? '#c31432' : sword.colors.glow)
         this.fx.shockwave(e.x, e.y - 30, 140, sword.colors.glow, 0.5, 8)

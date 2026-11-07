@@ -40,6 +40,9 @@ export interface AttackHit {
   aoe?: number
   multiHit?: number
   breakGuard?: boolean
+  /** hit-volume padding in px fattening the blade segment — a katana edge
+   * is a plane, not a line; heavies carve a wider corridor than lights */
+  pad?: number
 }
 
 export interface AttackDef {
@@ -64,6 +67,14 @@ export interface AttackDef {
   /** two-handed grip weight (0..1): how strongly the off-hand IK takes the
    * tsuka during this attack — real kenjutsu cuts are two-handed */
   grip?: number
+  /** 2.8D Z-EXCURSION (0..1): how far the blade plane sweeps toward (+) or
+   * away from (-) the camera through the swing. Drives foreshortening on
+   * the blade mesh — tsuki spears the lens (0.85), kiri falls through the
+   * near plane (0.6). Pure depth read; the X/Y hit sweep is unchanged. */
+  zArc?: number
+  /** iai snap-draw: spawn the flash-release burst at ignition (blade
+   * clearing the saya reads as a 1-frame light event) */
+  drawFlash?: boolean
 }
 
 /** Chūdan-no-kamae guard — shared start/end pose for ground chains. */
@@ -118,13 +129,14 @@ const l1: AttackDef = {
     keyframe(0.44, GUARD, 'inOutCubic'),
     keyframe(0.52, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.14, end: 0.26, dmg: 9, stagger: 0.2, kb: 130, hitstop: 0.045, shake: 0.1, heavy: false },
+  hit: { start: 0.14, end: 0.26, dmg: 9, stagger: 0.2, kb: 130, hitstop: 0.045, shake: 0.1, heavy: false, pad: 5 },
   trail: { start: 0.13, end: 0.32 },
   swingSfx: { t: 0.13, name: 'swing' },
   cancel: 0.32,
   chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
   moveX: 150, moveXAt: 0.13,
   grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
+  zArc: 0.4, drawFlash: true,
 }
 
 /** L2 — KESA GIRI (袈裟斬り): the diagonal temple-to-hip cut. Wind high
@@ -160,13 +172,14 @@ const l2: AttackDef = {
     keyframe(0.47, GUARD, 'inOutCubic'),
     keyframe(0.55, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.15, end: 0.27, dmg: 9.5, stagger: 0.22, kb: 150, hitstop: 0.05, shake: 0.12, heavy: false },
+  hit: { start: 0.15, end: 0.27, dmg: 9.5, stagger: 0.22, kb: 150, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
   trail: { start: 0.14, end: 0.33 },
   swingSfx: { t: 0.14, name: 'swing' },
   cancel: 0.31,
   chain: ['l3', 'h1', 'h2', 'launcher', 'spin', 'retreat'],
   moveX: 130, moveXAt: 0.14,
   grip: 0.9, // kesa from jōdan — both hands on the tsuka through the diagonal
+  zArc: 0.5,
 }
 
 /** L3 — GYAKU KESA (逆袈裟): the reverse diagonal — hip-to-temple rising
@@ -205,13 +218,14 @@ const l3: AttackDef = {
     keyframe(0.49, GUARD, 'inOutCubic'),
     keyframe(0.57, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.11, end: 0.26, dmg: 11, stagger: 0.24, kb: 120, kbY: -140, hitstop: 0.055, shake: 0.14, heavy: false },
+  hit: { start: 0.11, end: 0.26, dmg: 11, stagger: 0.24, kb: 120, kbY: -140, hitstop: 0.055, shake: 0.14, heavy: false, pad: 5 },
   trail: { start: 0.1, end: 0.33 },
   swingSfx: { t: 0.1, name: 'swing' },
   cancel: 0.33,
   chain: ['l4', 'h1', 'h2', 'launcher', 'retreat'],
   moveX: 110, moveXAt: 0.12,
   grip: 0.9,
+  zArc: 0.5,
 }
 
 /** L4 — YOKO GIRI (横斬り): level horizontal sweep. Coil into waki (blade
@@ -247,13 +261,14 @@ const l4: AttackDef = {
     keyframe(0.53, GUARD, 'inOutCubic'),
     keyframe(0.61, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.17, end: 0.35, dmg: 6, stagger: 0.16, kb: 190, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.12 },
+  hit: { start: 0.17, end: 0.35, dmg: 6, stagger: 0.16, kb: 190, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.12, pad: 6 },
   trail: { start: 0.15, end: 0.41 },
   swingSfx: { t: 0.16, name: 'swing' },
   cancel: 0.37,
   chain: ['l5', 'h2', 'launcher'],
   moveX: 90, moveXAt: 0.16,
   grip: 0.7,
+  zArc: 0.55,
 }
 
 /** L5 — KIRI OROSHI (切り下ろし): the vertical finishing cut. Full jōdan
@@ -296,13 +311,14 @@ const l5: AttackDef = {
     keyframe(0.59, GUARD, 'inOutCubic'),
     keyframe(0.67, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.22, end: 0.35, dmg: 22, stagger: 0.4, kb: 460, hitstop: 0.09, shake: 0.32, heavy: true, breakGuard: true },
+  hit: { start: 0.22, end: 0.35, dmg: 22, stagger: 0.4, kb: 460, hitstop: 0.09, shake: 0.32, heavy: true, breakGuard: true, pad: 8 },
   trail: { start: 0.19, end: 0.41 },
   swingSfx: { t: 0.2, name: 'swingHeavy' },
   cancel: 0.37,
   chain: [],
   moveX: 240, moveXAt: 0.2,
   grip: 1, // kiri oroshi — full two-handed vertical
+  zArc: 0.65,
 }
 
 /** Backstep Slash — retreating rising cut (hold back + light): gyaku-kesa
@@ -336,13 +352,14 @@ const retreat: AttackDef = {
     keyframe(0.51, GUARD, 'inOutCubic'),
     keyframe(0.59, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.16, end: 0.28, dmg: 10, stagger: 0.22, kb: 90, kbY: -160, hitstop: 0.05, shake: 0.12, heavy: false },
+  hit: { start: 0.16, end: 0.28, dmg: 10, stagger: 0.22, kb: 90, kbY: -160, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
   trail: { start: 0.15, end: 0.34 },
   swingSfx: { t: 0.14, name: 'swing' },
   cancel: 0.31,
   chain: ['l1', 'l2', 'launcher', 'spin'],
   moveX: -240, moveXAt: 0.05,
   grip: 0.85,
+  zArc: 0.45,
 }
 
 /** HASSŌ SWEEP (down + light): crouched low horizontal sweep with a
@@ -388,12 +405,13 @@ const spin: AttackDef = {
     }, 'inOutCubic'),
     keyframe(0.65, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.09, end: 0.42, dmg: 5.5, stagger: 0.14, kb: 160, hitstop: 0.028, shake: 0.07, heavy: false, multiHit: 0.11 },
+  hit: { start: 0.09, end: 0.42, dmg: 5.5, stagger: 0.14, kb: 160, hitstop: 0.028, shake: 0.07, heavy: false, multiHit: 0.11, pad: 6 },
   trail: { start: 0.08, end: 0.46 },
   swingSfx: { t: 0.08, name: 'swing' },
   cancel: 0.4,
   chain: ['l5', 'launcher', 'h2'],
   grip: 0.75,
+  zArc: 0.5,
 }
 
 /* ------------------------------------------------------------------ */
@@ -445,13 +463,14 @@ const h1: AttackDef = {
     keyframe(0.71, GUARD, 'inOutCubic'),
     keyframe(0.79, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.28, end: 0.42, dmg: 18, stagger: 0.38, kb: 260, hitstop: 0.08, shake: 0.26, heavy: true },
+  hit: { start: 0.28, end: 0.42, dmg: 18, stagger: 0.38, kb: 260, hitstop: 0.08, shake: 0.26, heavy: true, pad: 8 },
   trail: { start: 0.25, end: 0.48 },
   swingSfx: { t: 0.26, name: 'swingHeavy' },
   cancel: 0.43,
   chain: ['h2', 'l1', 'launcher'],
   moveX: 200, moveXAt: 0.24,
   grip: 1, // jōdan raise + vertical fall — both hands, te-no-uchi
+  zArc: 0.6,
 }
 
 /** H2 — TSUKI (突き): the thrust. Hilt chambered back at the hip, then a
@@ -494,13 +513,14 @@ const h2: AttackDef = {
     keyframe(0.72, GUARD, 'inOutCubic'),
     keyframe(0.8, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.2, end: 0.34, dmg: 22, stagger: 0.42, kb: 560, hitstop: 0.09, shake: 0.34, heavy: true, breakGuard: true },
+  hit: { start: 0.2, end: 0.34, dmg: 22, stagger: 0.42, kb: 560, hitstop: 0.09, shake: 0.34, heavy: true, breakGuard: true, pad: 10 },
   trail: { start: 0.18, end: 0.4 },
   swingSfx: { t: 0.2, name: 'swingHeavy' },
   cancel: 0.4,
   chain: ['h3', 'l1'],
   moveX: 320, moveXAt: 0.2,
   grip: 1, // tsuki: the thrust is ALWAYS two-handed
+  zArc: 0.85, // the thrust SPEARS the camera — full foreshortening
 }
 
 /** H3 — Grand Slam: leaping kiri oroshi. Jump to jōdan, hang at apex,
@@ -549,7 +569,7 @@ const h3: AttackDef = {
     keyframe(0.9, GUARD, 'inOutCubic'),
     keyframe(0.98, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.48, end: 0.6, dmg: 30, stagger: 0.5, kb: 380, launch: -320, hitstop: 0.12, shake: 0.5, heavy: true, aoe: 135, breakGuard: true },
+  hit: { start: 0.48, end: 0.6, dmg: 30, stagger: 0.5, kb: 380, launch: -320, hitstop: 0.12, shake: 0.5, heavy: true, aoe: 135, breakGuard: true, pad: 10 },
   trail: { start: 0.43, end: 0.63 },
   swingSfx: { t: 0.44, name: 'swingHeavy' },
   cancel: 0.55,
@@ -557,6 +577,7 @@ const h3: AttackDef = {
   moveY: -780, moveYAt: 0.04,
   slamImpact: { r: 135, dmg: 26, launch: -280 },
   grip: 1,
+  zArc: 0.7,
 }
 
 /** LAUNCHER — Rising Fang: gedan chamber, then the whole body rips upward
@@ -593,14 +614,15 @@ const launcher: AttackDef = {
     keyframe(0.46, GUARD, 'inOutCubic'),
     keyframe(0.54, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.08, end: 0.21, dmg: 12, stagger: 0.3, kb: 60, launch: -640, hitstop: 0.07, shake: 0.2, heavy: false },
-  trail: { start: 0.06, end: 0.26 },
-  swingSfx: { t: 0.07, name: 'swing' },
+  hit: { start: 0.04, end: 0.12, dmg: 12, stagger: 0.3, kb: 60, launch: -640, hitstop: 0.07, shake: 0.2, heavy: false, pad: 8 },
+  trail: { start: 0.03, end: 0.26 },
+  swingSfx: { t: 0.05, name: 'swing' },
   cancel: 0.28,
   chain: ['a1', 'a2', 'a3', 'dive'],
-  moveX: 170, moveXAt: 0.07,
-  moveY: -520, moveYAt: 0.08,
+  moveX: 170, moveXAt: 0.05,
+  moveY: -520, moveYAt: 0.1,
   grip: 0.9,
+  zArc: 0.5,
 }
 
 /* ------------------------------------------------------------------ */
@@ -640,13 +662,14 @@ const dashSlash: AttackDef = {
     keyframe(0.35, GUARD, 'inOutCubic'),
     keyframe(0.43, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.07, end: 0.21, dmg: 12, stagger: 0.26, kb: 220, hitstop: 0.05, shake: 0.16, heavy: false, multiHit: 0.1 },
+  hit: { start: 0.07, end: 0.21, dmg: 12, stagger: 0.26, kb: 220, hitstop: 0.05, shake: 0.16, heavy: false, multiHit: 0.1, pad: 6 },
   trail: { start: 0.05, end: 0.25 },
   swingSfx: { t: 0.06, name: 'swing' },
   cancel: 0.23,
   chain: ['l1', 'l2', 'h1', 'launcher'],
   moveX: 560, moveXAt: 0.02,
   grip: 0.3, // iai through-cut on the pass — one hand, saya hand back
+  zArc: 0.6, drawFlash: true,
 }
 
 /** Dash Heavy — PIERCING FANG: tsuki from the dash. */
@@ -680,13 +703,14 @@ const dashHeavy: AttackDef = {
     keyframe(0.5, GUARD, 'inOutCubic'),
     keyframe(0.58, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.1, end: 0.26, dmg: 24, stagger: 0.45, kb: 540, hitstop: 0.1, shake: 0.3, heavy: true },
+  hit: { start: 0.1, end: 0.26, dmg: 24, stagger: 0.45, kb: 540, hitstop: 0.1, shake: 0.3, heavy: true, pad: 10 },
   trail: { start: 0.09, end: 0.3 },
   swingSfx: { t: 0.1, name: 'swingHeavy' },
   cancel: 0.3,
   chain: [],
   moveX: 420, moveXAt: 0.08,
   grip: 1,
+  zArc: 0.85, // piercing fang: dead at the lens
 }
 
 /** CHARGED — OVERLOAD SLASH: element-charged kesa. Huge windup with the
@@ -722,13 +746,14 @@ const charged: AttackDef = {
     keyframe(0.66, GUARD, 'inOutCubic'),
     keyframe(0.74, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.15, end: 0.31, dmg: 46, stagger: 0.6, kb: 420, launch: -380, hitstop: 0.14, shake: 0.55, heavy: true, aoe: 150, breakGuard: true },
+  hit: { start: 0.15, end: 0.31, dmg: 46, stagger: 0.6, kb: 420, launch: -380, hitstop: 0.14, shake: 0.55, heavy: true, aoe: 150, breakGuard: true, pad: 12 },
   trail: { start: 0.11, end: 0.39 },
   swingSfx: { t: 0.13, name: 'swingHeavy' },
   cancel: 0.41,
   chain: [],
   moveX: 260, moveXAt: 0.1,
   grip: 1, // element-charged kesa — a full-body two-handed diagonal
+  zArc: 0.75,
 }
 
 /** RIPOSTE — JUDGMENT CUT: the counter is a true iai nukitsuke. Perfect
@@ -775,13 +800,14 @@ const riposte: AttackDef = {
     keyframe(0.56, GUARD, 'inOutCubic'),
     keyframe(0.64, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.11, end: 0.24, dmg: 34, stagger: 0.55, kb: 380, hitstop: 0.12, shake: 0.42, heavy: true, breakGuard: true },
+  hit: { start: 0.11, end: 0.24, dmg: 34, stagger: 0.55, kb: 380, hitstop: 0.12, shake: 0.42, heavy: true, breakGuard: true, pad: 8 },
   trail: { start: 0.1, end: 0.31 },
   swingSfx: { t: 0.1, name: 'swingHeavy' },
   cancel: 0.35,
   chain: [],
   moveX: 200, moveXAt: 0.1,
   grip: 0.5, // iai nukitsuke: draw one-handed, settle two-handed on noto
+  zArc: 0.5, drawFlash: true,
 }
 
 /* ------------------------------------------------------------------ */
@@ -822,13 +848,14 @@ const a1: AttackDef = {
     keyframe(0.33, { ...AIR_LEGS }, 'inOutCubic'),
     keyframe(0.41, { ...AIR_LEGS }, 'inOutCubic'),
   ]),
-  hit: { start: 0.07, end: 0.18, dmg: 9, stagger: 0.22, kb: 110, juggle: -420, hitstop: 0.045, shake: 0.1, heavy: false },
+  hit: { start: 0.07, end: 0.18, dmg: 9, stagger: 0.22, kb: 110, juggle: -420, hitstop: 0.045, shake: 0.1, heavy: false, pad: 5 },
   trail: { start: 0.06, end: 0.21 },
   swingSfx: { t: 0.06, name: 'swing' },
   cancel: 0.21,
   chain: ['a2', 'a3', 'dive', 'slam'],
   float: 0.42,
   grip: 0.9,
+  zArc: 0.45,
 }
 
 /** A2 — AIR REVERSE: rising gyaku kesa — the follow-up rising diagonal. */
@@ -860,13 +887,14 @@ const a2: AttackDef = {
     keyframe(0.33, { ...AIR_LEGS }, 'inOutCubic'),
     keyframe(0.41, { ...AIR_LEGS }, 'inOutCubic'),
   ]),
-  hit: { start: 0.07, end: 0.18, dmg: 9.5, stagger: 0.24, kb: 130, juggle: -460, hitstop: 0.05, shake: 0.12, heavy: false },
+  hit: { start: 0.07, end: 0.18, dmg: 9.5, stagger: 0.24, kb: 130, juggle: -460, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
   trail: { start: 0.06, end: 0.21 },
   swingSfx: { t: 0.055, name: 'swing' },
   cancel: 0.21,
   chain: ['a3', 'dive', 'slam'],
   float: 0.42,
   grip: 0.9,
+  zArc: 0.45,
 }
 
 /** A3 — AIR YOKO: level horizontal sweep with a counter-pass — no aerial
@@ -904,13 +932,14 @@ const a3: AttackDef = {
     keyframe(0.49, { ...AIR_LEGS }, 'inOutCubic'),
     keyframe(0.57, { ...AIR_LEGS }, 'inOutCubic'),
   ]),
-  hit: { start: 0.08, end: 0.37, dmg: 6, stagger: 0.16, kb: 150, juggle: -400, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.1 },
+  hit: { start: 0.08, end: 0.37, dmg: 6, stagger: 0.16, kb: 150, juggle: -400, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.1, pad: 6 },
   trail: { start: 0.07, end: 0.39 },
   swingSfx: { t: 0.07, name: 'swing' },
   cancel: 0.31,
   chain: ['dive', 'slam', 'a1'],
   float: 0.34,
   grip: 0.8,
+  zArc: 0.5,
 }
 
 /** DIVE — Falcon Dive: blade-first diagonal plunge, tip locked on the
@@ -946,7 +975,7 @@ const dive: AttackDef = {
     }, 'outQuad'),
     keyframe(0.62, { ...GUARD }, 'inOutCubic'),
   ]),
-  hit: { start: 0.1, end: 0.5, dmg: 7, stagger: 0.16, kb: 80, juggle: -260, hitstop: 0.035, shake: 0.09, heavy: false, multiHit: 0.13 },
+  hit: { start: 0.1, end: 0.5, dmg: 7, stagger: 0.16, kb: 80, juggle: -260, hitstop: 0.035, shake: 0.09, heavy: false, multiHit: 0.13, pad: 6 },
   trail: { start: 0.08, end: 0.52 },
   swingSfx: { t: 0.09, name: 'swing' },
   cancel: 0.2,
@@ -956,6 +985,7 @@ const dive: AttackDef = {
   float: 0.9,
   slamImpact: { r: 80, dmg: 12, launch: -160 },
   grip: 0.6,
+  zArc: 0.6,
 }
 
 /** SLAM — Meteor Fall: vertical plunging kiri — the blade points at the
@@ -999,7 +1029,7 @@ const slam: AttackDef = {
     keyframe(0.78, GUARD, 'inOutCubic'),
     keyframe(0.86, GUARD, 'inOutCubic'),
   ]),
-  hit: { start: 0.14, end: 0.5, dmg: 10, stagger: 0.2, kb: 60, juggle: -180, hitstop: 0.04, shake: 0.12, heavy: false, multiHit: 0.16 },
+  hit: { start: 0.14, end: 0.5, dmg: 10, stagger: 0.2, kb: 60, juggle: -180, hitstop: 0.04, shake: 0.12, heavy: false, multiHit: 0.16, pad: 6 },
   trail: { start: 0.12, end: 0.55 },
   swingSfx: { t: 0.12, name: 'swingHeavy' },
   cancel: 0.3,
@@ -1007,6 +1037,7 @@ const slam: AttackDef = {
   moveY: 1050, moveYAt: 0.1,
   slamImpact: { r: 145, dmg: 26, launch: -300 },
   grip: 1,
+  zArc: 0.7,
 }
 
 /* ------------------------------------------------------------------ */

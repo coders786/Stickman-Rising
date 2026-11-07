@@ -1,7 +1,7 @@
 /** STICKMAN RISING — sword definitions: six elemental blades + renderer. */
 
 import { SkelGeom, PLAYER_SPEC } from '../anim/skeleton'
-import { clamp01, rgba } from '../core/utils'
+import { clamp, clamp01, rgba } from '../core/utils'
 
 export type SwordId = 'katana' | 'inferno' | 'void' | 'thunder' | 'gravity' | 'phantom'
 
@@ -153,6 +153,12 @@ export interface DrawSwordOpts {
   charge: number // 0..1 charge glow
   alpha?: number
   swingGlow?: number // extra energy right after a swing
+  /** 2.8D depth (−1..1): + = blade plane rotated TOWARD the camera →
+   * procedural foreshortening (face opens up: wider silhouette, fatter
+   * tsuba, huge kissaki flare). Thrusts (z≈0.85) read as spearing the lens. */
+  z?: number
+  /** hyper-scale multiplier on the whole weapon (active swing / dash) */
+  lenScale?: number
 }
 
 export function drawSword(
@@ -164,6 +170,7 @@ export function drawSword(
   const t = opts.time
   const charge = clamp01(opts.charge)
   const swing = clamp01(opts.swingGlow ?? 0)
+  const z = clamp(opts.z ?? 0, -1, 1) // + = toward camera
   const hx = g.handR.x
   const hy = g.handR.y
   const a = g.bladeAngle
@@ -175,8 +182,13 @@ export function drawSword(
   const ey = dx
   // REAL long-katana proportion: blade = PLAYER_SPEC.blade (~50% of body
   // height), tsuka ≈ 30% of the blade, motohaba→kissaki taper with sori.
-  const len = PLAYER_SPEC.blade * sword.stats.range
+  // lenScale = anime hyper-scale during active frames (visual == hitbox).
+  const len = PLAYER_SPEC.blade * sword.stats.range * (opts.lenScale ?? 1)
   const tsuka = len * 0.3
+  // 2.8D FORESHORTENING: blade pitched toward the camera presents its FACE
+  // — the silhouette fattens with z (up to ×1.85), the fittings swell, the
+  // kissaki flares. Away from camera (z<0) it slims toward a needle.
+  const zm = 1 + Math.max(0, z) * 0.85 + Math.min(0, z) * 0.35
   const alpha = opts.alpha ?? 1
   if (alpha <= 0.01) return
 
@@ -188,27 +200,27 @@ export function drawSword(
 
   // ---- 0. tsuka (handle): wrapped grip BEHIND the hand, kashira pommel ----
   ctx.strokeStyle = '#1a2230'
-  ctx.lineWidth = 5.0
+  ctx.lineWidth = 5.0 * zm
   ctx.beginPath()
   ctx.moveTo(hx - dx * tsuka, hy - dy * tsuka)
   ctx.lineTo(hx + dx * 2.4, hy + dy * 2.4)
   ctx.stroke()
   // tsuka-ito diamond wraps — the classic katana grip read
   ctx.strokeStyle = rgba(sword.colors.accent, 0.8)
-  ctx.lineWidth = 1.5
+  ctx.lineWidth = 1.5 * zm
   for (let i = 1; i <= 4; i++) {
     const k = i / 4.8
     const wx = hx - dx * tsuka * k
     const wy = hy - dy * tsuka * k
     ctx.beginPath()
-    ctx.moveTo(wx - ey * 2.8, wy + ex * 2.8)
-    ctx.lineTo(wx + ey * 2.8, wy - ex * 2.8)
+    ctx.moveTo(wx - ey * 2.8 * zm, wy + ex * 2.8 * zm)
+    ctx.lineTo(wx + ey * 2.8 * zm, wy - ex * 2.8 * zm)
     ctx.stroke()
   }
   // kashira (pommel cap) — metal end disc
   ctx.fillStyle = '#3d4f6e'
   ctx.beginPath()
-  ctx.ellipse(hx - dx * tsuka, hy - dy * tsuka, 2.0, 3.4, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.ellipse(hx - dx * tsuka, hy - dy * tsuka, 2.0 * zm, 3.4 * zm, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.fill()
 
   // ---- 1. aura pass (additive) behind the blade ----
@@ -223,23 +235,25 @@ export function drawSword(
   ctx.stroke()
   ctx.globalCompositeOperation = 'source-over'
 
-  // ---- 2. tsuba (guard): crisp disc at the hand ----
+  // ---- 2. tsuba (guard): crisp disc at the hand (swells with z — the
+  // hand socket pitching toward the camera shows the guard's face) ----
   ctx.fillStyle = '#4a5d7d'
   ctx.beginPath()
-  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2, 5.6, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2 * zm, 5.6 * zm, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.fill()
   ctx.strokeStyle = rgba(sword.colors.accent, 0.95)
   ctx.lineWidth = 1.4
   ctx.beginPath()
-  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2, 5.6, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2 * zm, 5.6 * zm, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.stroke()
 
   // ---- 3. the blade: filled polygon with sori + kissaki + habaki ----
-  // base past the tsuba; motohaba (base width) → kissaki taper
+  // base past the tsuba; motohaba (base width) → kissaki taper — the base
+  // width rides the foreshortening multiplier zm (blade face → camera)
   const bx0 = hx + dx * 3.4
   const by0 = hy + dy * 3.4
   const bladeLen = len - 3.4
-  const wBase = 2.1 * sword.trailWidth
+  const wBase = 2.1 * sword.trailWidth * zm
   // fill body
   ctx.beginPath()
   buildBladePolygon(ctx, sword, bx0, by0, dx, dy, ex, ey, bladeLen, wBase, t)
@@ -273,7 +287,8 @@ export function drawSword(
   const tipX = hx + dx * len
   const tipY = hy + dy * len
   ctx.globalCompositeOperation = 'lighter'
-  const tw = 2.2 + Math.sin(t * 9) * 0.7 + charge * 3 + swing * 3.6
+  // the tip flares with depth — a blade driving at the lens blooms
+  const tw = (2.2 + Math.sin(t * 9) * 0.7 + charge * 3 + swing * 3.6) * (1 + Math.max(0, z) * 1.3)
   ctx.fillStyle = rgba(sword.colors.core, 0.75 + swing * 0.25)
   ctx.beginPath()
   ctx.arc(tipX, tipY, tw, 0, Math.PI * 2)
@@ -284,6 +299,33 @@ export function drawSword(
     ctx.beginPath()
     ctx.arc(tipX, tipY, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
     ctx.stroke()
+  }
+  // ---- 5. CAMERA-PIERCE FLARE: when the thrust drives the blade deep
+  // toward the lens (z > 0.55), bloom a hard halo + streak ring at the
+  // kissaki — instant depth pop, the anime "spear at the screen" beat ----
+  if (z > 0.55) {
+    const pz = (z - 0.55) / 0.45
+    const fr = 9 + pz * 15 + swing * 6
+    ctx.strokeStyle = rgba(sword.colors.glow, 0.5 * pz)
+    ctx.lineWidth = 2.4
+    ctx.beginPath()
+    ctx.arc(tipX, tipY, fr, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.strokeStyle = rgba(sword.colors.core, 0.85 * pz)
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.arc(tipX, tipY, fr * 0.62, 0, Math.PI * 2)
+    ctx.stroke()
+    // radial pierce streaks
+    ctx.strokeStyle = rgba(sword.colors.core, 0.4 * pz)
+    ctx.lineWidth = 1
+    for (let i = 0; i < 5; i++) {
+      const sa = a + Math.PI + (i - 2) * 0.16
+      ctx.beginPath()
+      ctx.moveTo(tipX + Math.cos(sa) * fr * 1.15, tipY + Math.sin(sa) * fr * 1.15)
+      ctx.lineTo(tipX + Math.cos(sa) * fr * 1.8, tipY + Math.sin(sa) * fr * 1.8)
+      ctx.stroke()
+    }
   }
   ctx.globalCompositeOperation = 'source-over'
   ctx.restore()
