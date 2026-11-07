@@ -3,6 +3,7 @@
  */
 
 import { Animator } from '../anim/animator'
+import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
 import { CHARGE_CLIP, DASH_AIR_CLIP, DASH_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP } from '../anim/clips'
@@ -117,8 +118,6 @@ interface ActionState {
   overshootDone: boolean
   flashDone: boolean
   fromParry: boolean
-  /** accumulated aim-assist correction (radians, bounded) */
-  aimUsed: number
 }
 
 interface AbilityState {
@@ -220,6 +219,16 @@ export class Player {
   /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
    * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
   private twoHandW = 0
+
+  /* ---- SWORD-LED ARM CONTROL (anim/armarc.ts): during each strike the
+   * blade follows a geometrically-locked arc and a 2-bone IK chain solves
+   * the sword arm to carry it — the enemy sits on the monouchi BY
+   * construction, so the visual cut and the hitbox are one object. */
+  private swordArc = new SwordArcSolver()
+
+  /* ---- arm life: idle breathing clock + anime impact-frame timer ---- */
+  private animClock = 0
+  private impactFlashT = 0
 
   /* ---- HEAVY CHAIN: h1 → h2 → h3 (was: single animation forever). */
   private heavyIndex = 0
@@ -393,8 +402,22 @@ export class Player {
     this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
     // procedural layers (bounded, frame-local — never accumulate):
+    // SWORD-LED ARC first: it rewrites the arm channels, so the blade
+    // dynamics spring below sees the ARC's angular velocity — the whip
+    // lags/overshoots the real swing, not the raw keyframes.
+    this.swordArc.update(dt, {
+      pose: this.pose,
+      chestX: this.geom.chest.x, chestY: this.geom.chest.y,
+      handX: this.geom.handR.x, handY: this.geom.handR.y,
+      def: this.state === 'attack' ? this.action?.def ?? null : null,
+      animT: this.action ? this.action.animT : 0,
+      enemies: w.enemies,
+      face: this.face,
+      x: this.x,
+      hipY: this.hipY,
+      reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
+    })
     this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
-    this.applyAimAssist(dt, w)      // bounded wrist convergence onto the target center line
     this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
     solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
@@ -725,9 +748,9 @@ export class Player {
       overshootDone: false,
       flashDone: !def.drawFlash,
       fromParry,
-      aimUsed: 0,
     }
     if (fromParry) this.riposteT = 0
+    this.swordArc.begin() // sword-led arc: reset the engage capture
     this.state = 'attack'
     this.charging = false
     // ANIME TIMING: attack bodies play "on twos" (24Hz stepped keys —
@@ -927,6 +950,12 @@ export class Player {
   private onLandedHit(w: WorldRef, info: AttackRuntimeInfo, ex: number, ey: number): void {
     this.energy = Math.min(this.maxEnergy, this.energy + 5)
     this.meter = Math.min(100, this.meter + info.dmg * 0.32)
+    // ANIME IMPACT FRAME (research: 1-2 frame white beat at contact): heavy
+    // connects flash the whole silhouette white through the hit-stop — the
+    // classic anime cut-in. Lighter hits keep the spark burst only.
+    if (info.hitstop >= 0.07 && this.impactFlashT <= 0) {
+      this.impactFlashT = 0.085
+    }
     // elemental on-hit flourishes
     const c = this.sword.colors
     const dir = Math.atan2(ey - this.y + 40, ex - this.x)
@@ -1473,58 +1502,6 @@ export class Player {
     p[CH.shR] += this.chainLag * 0.2
   }
 
-  /** AIM ASSIST — bounded wrist convergence onto the target's center line.
-   * Runs on the pose AFTER blade-dynamics, so the correction steers the
-   * FINAL blade angle (physical blade included). Soft-lock rules:
-   *  · only during the pre-strike chamber + active frames
-   *  · only toward enemies within the attack's reach envelope
-   *  · total correction capped (±0.24 rad) + rate-limited — a nudge onto
-   *    the center line, never a robotic snap. This is what makes every
-   *    sword read as "aimed" at the enemy regardless of chain angle. */
-  private applyAimAssist(dt: number, w: WorldRef): void {
-    const a = this.action
-    if (this.state !== 'attack' || !a) return
-    const h = a.def.hit
-    const animT = a.animT
-    // converge during chamber (weak) → strike (strong) → off after the window
-    if (animT < h.start - 0.06 || animT > h.end + 0.02) return
-    const g = this.geom // last frame's solve — continuous, 1-frame stale
-    const reach = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale + 74
-    let tx = 0
-    let ty = 0
-    let bestD = Infinity
-    for (const e of w.enemies) {
-      if (e.dead || e.spawning) continue
-      const dx = (e.x - this.x) * this.face // in facing space
-      if (dx < 14 || dx > reach) continue
-      if (Math.abs(e.y - this.y) > 170) continue
-      const chestY = e.y - 48 * e.scale
-      const d = Math.abs(dx) + Math.abs(chestY - (this.y - 60)) * 0.5
-      if (d < bestD) {
-        bestD = d
-        tx = (e.x - this.x) * this.face / SCALE // → character-local
-        ty = (chestY - this.hipY) / SCALE
-      }
-    }
-    if (bestD === Infinity) return
-    // desired blade angle from the hand to the target chest
-    const desired = Math.atan2(ty - g.handR.y, tx - g.handR.x)
-    let dAng = desired - g.bladeAngle
-    while (dAng > Math.PI) dAng -= TAU_LIKE
-    while (dAng < -Math.PI) dAng += TAU_LIKE
-    if (Math.abs(dAng) < 0.03) return
-    const strong = animT >= h.start ? 1 : 0.35
-    const maxRate = 3.4 * dt * strong
-    let corr = clamp(dAng * 3.2 * strong * dt, -maxRate, maxRate)
-    // respect the per-attack budget so technique variety survives
-    const room = AIM_BUDGET - Math.abs(a.aimUsed)
-    if (room <= 0) return
-    corr = clamp(corr, -room, room)
-    a.aimUsed += corr
-    // bladeAngle = π/2 − (shR+elR+wrR) → subtracting from wrR ADDS to the angle
-    this.pose[CH.wrR] -= corr
-  }
-
   private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
     let best: { x: number; y: number } | null = null
     let bestD = Infinity
@@ -1640,6 +1617,9 @@ export class Player {
 
   private applyProcedural(dt: number): void {
     const p = this.pose
+    this.animClock += dt
+    // anime impact-frame timer (white silhouette beat on heavy connects)
+    if (this.impactFlashT > 0) this.impactFlashT = Math.max(0, this.impactFlashT - dt)
     // velocity lean (proportional, eased)
     const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
     p[2] += speedLean * 0.14
@@ -1660,6 +1640,18 @@ export class Player {
     // hurt shake
     if (this.hurtT > 0) {
       p[0] += rand(-1.4, 1.4) * this.hurtT
+    }
+    // ARM LIFE: the guard breathes — out-of-phase micro sway on the sword
+    // arm joints (research: even "idle" reference poses hold live tension).
+    // Bounded ±0.025 rad; blended away the moment any state layer drives
+    // the arm (attacks own it via the sword-led arc + keyframes).
+    if (this.state === 'move' && this.grounded && Math.abs(this.vx) < 40 && this.hurtT <= 0) {
+      const t = this.animClock
+      p[CH.shR] += Math.sin(t * 1.9) * 0.018
+      p[CH.elR] += Math.sin(t * 1.5 + 0.8) * 0.024
+      p[CH.wrR] += Math.sin(t * 1.7 + 1.6) * 0.016
+      p[CH.shL] += Math.sin(t * 1.6 + 2.2) * 0.015
+      p[CH.elL] += Math.sin(t * 1.4 + 3.0) * 0.02
     }
   }
 
@@ -1748,8 +1740,10 @@ export class Player {
     drawStick(ctx, this.geom, PLAYER_STYLE, {
       time,
       alpha,
-      flash: this.flashT * 0.85,
-      flashColor: '#ff3b57',
+      // flash: hurt red OR the anime impact-frame white beat (whichever
+      // is stronger this frame — impact wins during hit-stop)
+      flash: Math.max(this.flashT * 0.85, this.impactFlashT > 0 ? 0.92 : 0),
+      flashColor: this.impactFlashT > this.flashT * 0.85 ? '#eafcff' : '#ff3b57',
       // BLADE-CAST LIGHT: the swinging/charging edge lights the body —
       // a rim pass on the sword-side silhouette (spec: dynamic blade light)
       edgeLight: {
@@ -1767,10 +1761,12 @@ export class Player {
     })
     ctx.restore()
 
-    // ---- ANIME SMEAR: when tip velocity explodes, the blade stretches
-    // across this frame's angular sweep as a translucent wedge — stylized
-    // velocity smear (replaces motion blur). World space, under nothing —
-    // drawn here so it composites over the body with additive glow.
+    // ---- ANIME SMEAR (two-layer, research-applied): when tip velocity
+    // explodes, the blade stretches across this frame's angular sweep as
+    // translucent wedges — a COOL WAKE over the full span plus a HOT
+    // LEADING EDGE on the leading ~55% of the sweep (reference sheets:
+    // the hot core leads, a cooler wake trails it 30-45° behind). World
+    // space, drawn here so it composites over the body with additive glow.
     const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
     const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
     if (tipSpd > 950 && this.state !== 'dead') {
@@ -1783,19 +1779,29 @@ export class Player {
       const wa1 = this.face === 1 ? this.smearA1 : Math.PI - this.smearA1
       const k = Math.min(1, (tipSpd - 950) / 1400)
       const ccw = wa1 < wa0
+      // leading edge start: 45% back from the tip of the sweep
+      const leadA = wa0 + (wa1 - wa0) * 0.45
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = rgba(this.sword.colors.trail, 0.1 + 0.16 * k)
+      // cool wake — the full angular span at full radius
+      ctx.fillStyle = rgba(this.sword.colors.trail, 0.09 + 0.15 * k)
       ctx.beginPath()
       ctx.moveTo(px, py)
       ctx.arc(px, py, R, wa0, wa1, ccw)
       ctx.closePath()
       ctx.fill()
-      // hot inner edge of the smear
-      ctx.fillStyle = rgba(this.sword.colors.core, 0.1 + 0.2 * k)
+      // hot leading edge — rides the front of the sweep
+      ctx.fillStyle = rgba(this.sword.colors.core, 0.12 + 0.2 * k)
       ctx.beginPath()
       ctx.moveTo(px, py)
-      ctx.arc(px, py, R * 0.86, wa0, wa1, ccw)
+      ctx.arc(px, py, R * 0.9, leadA, wa1, ccw)
+      ctx.closePath()
+      ctx.fill()
+      // white-hot kissaki streak — the very tip of the arc
+      ctx.fillStyle = rgba('#eaffff', 0.1 + 0.22 * k)
+      ctx.beginPath()
+      ctx.moveTo(px, py)
+      ctx.arc(px, py, R * 0.97, wa0 + (wa1 - wa0) * 0.72, wa1, ccw)
       ctx.closePath()
       ctx.fill()
       ctx.restore()
@@ -1849,10 +1855,6 @@ export class Player {
 /* ------------------------------------------------------------------ */
 
 const TAU_LIKE = Math.PI * 2
-
-/** total aim-assist correction budget per attack (radians) — keeps every
- * chain link's technique angle intact while still converging on the target */
-const AIM_BUDGET = 0.24
 
 interface EnemyLike {
   id: number
