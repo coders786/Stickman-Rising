@@ -1,0 +1,1187 @@
+# STICKMAN RISING — DEFINITIVE MASTER SPECIFICATION v3.0
+
+## THE SINGLE SOURCE OF TRUTH. NO ASSUMPTIONS. NO AMBIGUITY. NO MERCY.
+
+---
+
+# TABLE OF CONTENTS
+
+1. Rendering Paradigm — 2.8D Depth-Aware Perspective
+2. Animation Pipeline — Motion Capture Library Integration
+3. Procedural Animation Variation Engine (PAVE)
+4. Contextual Animation Library — 5+ Variants Per Action
+5. Dynamic Combo Generation System
+6. Player Character Design — 2.8D Cybernetic Warrior
+7. Sword System — Six Legendary Weapons (Complete Specs)
+8. Dash System — Hyperspeed Movement Engine
+9. Enemy Design — Complete AI and Animation Specs
+10. Environment Design — 2.8D Stage Construction
+11. Visual Effects — The Spectacle Engine (Exact Specifications)
+12. Camera and Cinematic System
+13. Combo Visualization and Style Ranking
+14. Sound Design — Exact Specifications
+15. Death Animation System — Unique Every Time
+16. Directional Sword Animation System — 360° Slash Space
+17. Visual Micro-Detail Specification — 80+ Items
+18. Animation Inspection Mode — Four Debug Views
+19. Automated QA Cron Jobs — Six Testing Pipelines
+20. Human Eye Appeal Principles — Exact Parameters
+21. Technical Architecture and Performance Budgets
+22. Input System — Exact Frame Data
+23. Damage and Scoring Mathematics
+24. Difficulty Scaling — Exact Parameters
+25. Development Phases — Ordered Implementation
+26. Non-Negotiable Quality Standards
+
+---
+
+# 1. RENDERING PARADIGM — 2.8D DEPTH-AWARE PERSPECTENCE
+
+## 1.1 Dimensional Definition
+
+This is NOT a flat 2D game. This is NOT a 3D game. This is **2.8D** — defined as follows:
+
+- **Gameplay plane:** All gameplay-critical movement, hitbox detection, collision, and combat mechanics operate on a 2D plane (Z = 0). Input is mapped to X (horizontal) and Y (vertical) axes on this plane.
+- **Rendering pipeline:** The entire visual output is rendered using a 3D rendering pipeline with perspective projection. Characters, enemies, and key gameplay objects are 3D meshes rendered with perspective correction.
+- **Depth layering:** The environment extends into Z-space across 6 distinct parallax layers (specified in Section 10). Each layer moves at a defined rate relative to camera motion.
+- **Z-axis excursions:** Characters MAY move along the Z-axis during specific scripted sequences (cinematic dashes, finishers, dodge rolls). These excursions are limited to ±5 units from the combat plane, are camera-controlled, last no more than 1.5 seconds, and do NOT affect gameplay hitboxes (the character's combat hitbox remains locked to Z = 0 during the entire excursion).
+- **Perspective correctness:** Objects closer to the camera render larger. The perspective FOV is 35° (vertical). Camera distance from the combat plane is 18 units. Objects at Z = 0 render at 1.0× scale. Objects at Z = -10 render at 0.78× scale. Objects at Z = +10 render at 1.35× scale.
+
+## 1.2 Rendering Pipeline Specifications
+
+### GPU Requirements:
+- **Minimum:** GPU supporting WebGL 2.0 / OpenGL ES 3.0 / Vulkan 1.0
+- **Recommended:** GPU supporting WebGPU / Vulkan 1.2 / DirectX 12
+- **Target:** 60 FPS at 1920×1080 with all effects enabled (Quality: High)
+
+### Rendering Technique:
+- **Shading model:** Forward+ rendering with deferred light accumulation for dynamic lights
+- **Maximum simultaneous dynamic lights:** 32 (point lights), 8 (spot lights), 2 (directional)
+- **Shadow maps:** Cascaded shadow maps for directional light (3 cascades: 512×512, 1024×1024, 2048×2048). Point light shadows: cubemap at 512×512 per light, maximum 8 simultaneous shadow-casting point lights.
+- **Anti-aliasing:** TAA (Temporal Anti-Aliasing) at High quality, FXAA at Medium, none at Low
+- **HDR rendering:** 16-bit floating point render target (RGBA16F) for proper bloom and exposure
+- **Tone mapping:** ACES filmic tone mapping curve
+- **Color space:** sRGB output, linear internal rendering
+
+### Character Rendering:
+- **Mesh type:** Skinned mesh with GPU vertex skinning (maximum 4 bone influences per vertex)
+- **Material model:** Simplified PBR — metallic/roughness workflow with albedo, metallic, roughness, normal, and emissive maps
+- **Shader complexity budget:** Maximum 150 GPU instructions per character pixel (fragment shader)
+- **Draw calls per character:** 3-5 (body, armor overlays, weapon, glow effects, trail)
+- **Maximum simultaneous characters on screen:** 60 (1 player + up to 59 enemies)
+- **Character LOD levels:** 3 — Full (0-15 units from camera), Medium (15-25 units, 50% bone count, simplified materials), Low (25+ units, billboard sprite replacement)
+
+### Post-Processing Chain (executed in this exact order):
+1. Ambient Occlusion (SSAO) — 1.2ms GPU budget
+2. Bloom — 0.8ms GPU budget
+3. Depth of Field — 0.6ms GPU budget
+4. Motion Blur — 0.7ms GPU budget
+5. Chromatic Aberration — 0.2ms GPU budget
+6. Color Grading (LUT) — 0.3ms GPU budget
+7. Vignette — 0.1ms GPU budget
+8. Film Grain — 0.1ms GPU budget
+9. Tone Mapping — 0.2ms GPU budget
+10. FXAA/TAA (if applicable) — 0.8ms GPU budget
+11. UI rendering — 0.3ms GPU budget
+
+**Total post-processing GPU budget: 5.3ms at 1920×1080**
+
+---
+
+# 2. ANIMATION PIPELINE — MOTION CAPTURE LIBRARY INTEGRATION
+
+## 2.1 Mandatory Directive
+
+**Use the internet to access, download, and integrate motion capture animation libraries for every character animation in the game. Do NOT hand-animate combat sequences. Do NOT use simple procedural movement for combat animations. Every animation must be sourced from real human motion capture data and retargeted onto the stickman skeleton.**
+
+## 2.2 Internet Motion Capture Resources (MANDATORY USE)
+
+| Resource | URL | What to Download | Format | License |
+|----------|-----|-----------------|--------|---------|
+| Mixamo | mixamo.com | ALL combat, sword, locomotion, acrobatic, death animations (minimum 500 clips) | FBX with skeleton | Free with Adobe account |
+| CMU Mocap Database | mocap.cs.cmu.edu | Martial arts, fighting, running, jumping, weapon combat sequences (subjects 13, 14, 15, 108, 111, 128, 138, 144) | BVH, C3D | Free for research |
+| Unity Asset Store | assetstore.unity.com | Search: "sword combat mocap", "martial arts animation pack", "character action combat" | Unity packages | Per-license |
+| Unreal Marketplace | marketplace.epicgames.com | Search: "combat animation pack", "sword melee mocap", "character action" | UE assets | Per-license |
+| Rokoko Motion Library | rokoko.com | Sword combat, martial arts, parkour, cinematic finishing moves | FBX, BVH | Commercial |
+| Move.ai | move.ai | Extract motion from reference video of fight choreography | FBX | Per-license |
+| DeepMotion | deepmotion.com | AI mocap from video for custom sequences | FBX | Per-license |
+| Plask | plask.ai | Browser-based mocap extraction | FBX, BVH | Per-license |
+| Cascadeur | cascadeur.com | Physics-correct combat animation generation | FBX | Free tier available |
+| GitHub: "mocap BVH combat" | github.com | Open-source combat mocap datasets | BVH, JSON | Varies per repo |
+| GitHub: "animation dataset sword" | github.com | Sword animation data collections | Various | Varies per repo |
+| Adobe Mixamo Auto-Rigger | mixamo.com/auto-rigger | Auto-rig the stickman skeleton for retargeting | Online tool | Free |
+
+## 2.3 Retargeting Pipeline (EXACT STEPS)
+
+### Step 1: Skeleton Definition
+Define the stickman bone hierarchy with EXACT measurements:
+
+```
+ROOT (position only, no rotation)
+├── PELVIS (y=0.0, reference point)
+│   ├── SPINE_01 (length: 0.15 units, axis: +Y)
+│   │   ├── SPINE_02 (length: 0.15 units, axis: +Y)
+│   │   │   ├── SPINE_03 / CHEST (length: 0.15 units, axis: +Y)
+│   │   │   │   ├── NECK_01 (length: 0.08 units, axis: +Y)
+│   │   │   │   │   └── HEAD (length: 0.12 units, axis: +Y)
+│   │   │   │   ├── CLAVICLE_L (length: 0.10 units, axis: +X)
+│   │   │   │   │   └── UPPER_ARM_L (length: 0.28 units, axis: +X)
+│   │   │   │   │       └── LOWER_ARM_L (length: 0.25 units, axis: +X)
+│   │   │   │   │           └── HAND_L (length: 0.10 units, axis: +X)
+│   │   │   │   │               └── SWORD_ATTACH_POINT (offset: 0.05 units from hand tip)
+│   │   │   │   ├── CLAVICLE_R (length: 0.10 units, axis: -X)
+│   │   │   │   │   └── UPPER_ARM_R (length: 0.28 units, axis: -X)
+│   │   │   │   │       └── LOWER_ARM_R (length: 0.25 units, axis: -X)
+│   │   │   │   │           └── HAND_R (length: 0.10 units, axis: -X)
+│   │   │   │   │               └── SWORD_SOCKET (rotation-aligned to hand forward axis)
+│   │   │   └── (optional) WEAPON_BACK_ATTACH (on upper back for sheathed sword)
+│   ├── HIP_L (offset: +0.08 X, -0.05 Y from pelvis)
+│   │   └── UPPER_LEG_L (length: 0.40 units, axis: -Y)
+│   │       └── LOWER_LEG_L (length: 0.38 units, axis: -Y)
+│   │           └── FOOT_L (length: 0.15 units, axis: +Z / forward)
+│   │               └── TOE_L (length: 0.06 units, axis: +Z)
+│   ├── HIP_R (offset: -0.08 X, -0.05 Y from pelvis)
+│   │   └── UPPER_LEG_R (length: 0.40 units, axis: -Y)
+│   │       └── LOWER_LEG_R (length: 0.38 units, axis: -Y)
+│   │           └── FOOT_R (length: 0.15 units, axis: +Z / forward)
+│   │               └── TOE_R (length: 0.06 units, axis: +Z)
+```
+
+Total character height: approximately 1.75 units (head-to-toe).
+
+### Step 2: Bone Rotation Axis Convention
+- Y-axis = up (primary bone direction)
+- X-axis = left (positive = character's left)
+- Z-axis = forward (positive = character's forward)
+- All joint rotations are Euler XYZ order
+- Rotation limits per joint:
+  - Spine joints: ±30° X (flexion/extension), ±20° Z (lateral bend), ±15° Y (twist)
+  - Shoulder/clavicle: ±30° Y, ±20° Z
+  - Upper arm: -180° to +30° X (flexion), ±90° Y (rotation), -90° to +10° Z (abduction)
+  - Lower arm: 0° to -150° X (elbow flexion only), ±20° Y (forearm rotation)
+  - Hand: ±45° X, ±30° Z
+  - Head/neck: ±45° X, ±60° Y, ±30° Z
+  - Upper leg: -120° to +30° X (hip flexion/extension), ±30° Y, ±45° Z
+  - Lower leg: 0° to +150° X (knee flexion ONLY — no backward bending)
+  - Foot: ±30° X, ±20° Z
+
+### Step 3: Retarget Process
+For EVERY downloaded mocap clip:
+1. Import source animation into Blender
+2. Align source skeleton T-pose to stickman T-pose using a mapping file:
+   - source_Hips → PELVIS
+   - source_Spine → SPINE_01
+   - source_Spine1 → SPINE_02
+   - source_Spine2 → SPINE_03
+   - source_Neck → NECK_01
+   - source_Head → HEAD
+   - source_LeftShoulder → CLAVICLE_L
+   - source_LeftArm → UPPER_ARM_L
+   - source_LeftForeArm → LOWER_ARM_L
+   - source_LeftHand → HAND_L
+   - source_RightShoulder → CLAVICLE_R
+   - source_RightArm → UPPER_ARM_R
+   - source_RightForeArm → LOWER_ARM_R
+   - source_RightHand → HAND_R
+   - source_LeftUpLeg → UPPER_LEG_L
+   - source_LeftLeg → LOWER_LEG_L
+   - source_LeftFoot → FOOT_L
+   - source_RightUpLeg → UPPER_LEG_R
+   - source_RightLeg → LOWER_LEG_R
+   - source_RightFoot → FOOT_R
+3. Apply bone-length scaling: source bone rotations are preserved, but translational components are scaled to stickman proportions
+4. Clamp all joint rotations to the limits defined in Step 2
+5. Export as the engine's native animation format
+6. Log any frames where clamping was applied (these need manual review)
+
+### Step 4: Quality Check Per Clip
+After retargeting, each clip must pass:
+- No joint exceeds rotation limits
+- No foot penetrates ground plane (Z=0) during grounded animations
+- No self-intersection (limbs passing through torso)
+- Root position is consistent (no floating or sinking)
+- Loop points are seamless (for looping animations)
+- Animation plays correctly at 30, 60, 120, and 144 FPS without artifacts
+
+## 2.4 Animation Library Requirements (MINIMUM CLIPS NEEDED)
+
+### Player Animations:
+| Category | Minimum Clips | Notes |
+|----------|--------------|-------|
+| Idle/standing | 5 | See Part 2 of Uniqueness Directive |
+| Walking | 3 | Slow walk, standard walk, combat walk |
+| Running | 5 | See Part 2 of Uniqueness Directive |
+| Jumping | 5 | See Part 2 of Uniqueness Directive |
+| Landing | 4 | Light landing, heavy landing, running landing, aerial landing |
+| Dashing | 8 | Forward, backward, left, right, 4 diagonals |
+| Light attacks | 16 | 4 directions × 4 sequence positions (opener, chain, extension, finisher) |
+| Heavy attacks | 12 | 4 directions × 3 variants |
+| Aerial attacks | 10 | Ascending slash, apex slash, descending slash, air combo starters, air finishers |
+| Dash attacks | 8 | One per dash direction |
+| Charged attacks | 6 | Per sword type |
+| Special abilities | 6 | Per sword type |
+| Parry/counter | 4 | Parry block, parry success, counter attack, failed parry recovery |
+| Hit reactions | 12 | 6 directions × 2 intensities (light hit, heavy hit) |
+| Deaths/falling | 4 | Knockback, launched, ground slam, collapsed |
+| Executions/finishers | 6 | Per sword type |
+| Sword draw/sheath | 3 | Quick draw, dramatic draw, sheath |
+| Transitional | 10 | Run-to-attack, attack-to-run, ground-to-air, air-to-ground, etc. |
+| **Player total:** | **~120 base clips** | Before procedural variation |
+
+### Enemy Animations (per enemy type):
+| Enemy Type | Minimum Clips |
+|------------|--------------|
+| Grunt | 30 (idle, run, 4 attacks, 4 hit reactions, 3 deaths, block, dodge, stagger, launch, fall) |
+| Stalker | 35 (above + flip dodge, wall-run, rapid combo, acrobatic recovery) |
+| Phalanx | 25 (slower, fewer attacks, but shield bash, ground pound, charge) |
+| Sentinel | 20 (shield-focused, guard breaks, shield slam) |
+| Archer | 25 (aim, fire, reload, dodge backward, melee fallback) |
+| Wraith | 30 (fly, hover, dive, swoop, retreat upward, aerial dodge) |
+| Elite | 45 (full combat set mirroring player with unique moves) |
+| Colossus | 60 (multi-phase, unique attacks per phase, armor break reactions, death sequence) |
+| **Enemy total:** | **~270 clips** |
+
+### TOTAL MINIMUM: 390 mocap clips sourced, retargeted, and integrated.
+
+---
+
+# 3. PROCEDURAL ANIMATION VARIATION ENGINE (PAVE)
+
+## 3.1 Complete Variable Table
+
+Every animation frame, the following variables are sampled and fed into the variation engine:
+
+| # | Variable | Type | Range | Sampling Rate | Influence Description |
+|---|----------|------|-------|---------------|----------------------|
+| 1 | health_percent | float | 0.00–1.00 | Every frame | Posture: 0.0=collapsed forward 25°, 1.0=upright. Tremor amplitude: 0.0=±5° random joint noise, 1.0=0° |
+| 2 | stamina_percent | float | 0.00–1.00 | Every frame | Breath cycle amplitude: 0.0=±8° spine oscillation, 1.0=±1°. Limb extension: 0.0=80% reach, 1.0=100% reach |
+| 3 | combo_count | int | 0–9999 | On hit | Exaggeration: 0-3=1.0×, 4-7=1.05×, 8-15=1.10×, 16-30=1.20×, 31-50=1.30×, 50+=1.40× max |
+| 4 | combo_diversity | float | 0.00–1.00 | On hit | Novelty factor: 0.0=standard animations, 1.0=unlock acrobatic variants, flip additions, spin extensions |
+| 5 | velocity_x | float | -max to +max | Every frame | Lean angle: velocity/max_velocity × 15° forward lean. Arm trail: velocity-dependent backward offset |
+| 6 | velocity_y | float | -max to +max | Every frame | Vertical lean modifier. Positive=backward lean up to 10°. Negative=forward dive up to 20° |
+| 7 | velocity_magnitude | float | 0.0–max_speed | Every frame | Overall motion exaggeration: 0.0=1.0×, max=1.3×. Cloth/hair intensity multiplier |
+| 8 | is_airborne | bool | true/false | Every frame | When true: disable foot IK, enable aerial pose modifiers, gravity response on limbs |
+| 9 | airborne_time | float | 0.0–10.0 seconds | Every frame | Aerial pose evolution: 0.0-0.3s=compact tuck, 0.3-1.0s=extending, 1.0s+=spread for landing prep |
+| 10 | dash_state | enum | 0=none, 1=startup, 2=active, 3=recovery | Every frame | Startup: body compresses 10%. Active: full extension, horizontal lean 30°. Recovery: 5-frame ease out |
+| 11 | dash_direction | vec2 | unit vector | On dash start | Full body facing override during dash. Leading limb determined by direction |
+| 12 | time_since_hit_taken | float | 0.0–30.0 sec | Every frame | Guardedness: 0-1s=flinch carryover (±3° tremor), 1-5s=defensive posture (+10% crouch), 5s+=neutral |
+| 13 | time_since_hit_dealt | float | 0.0–30.0 sec | Every frame | Aggression: 0-0.5s=follow-through extended 20%, 0.5-2s=confident posture, 2s+=neutral |
+| 14 | consecutive_hits | int | 0–9999 | On hit | Rhythm intensity: every 5 hits adds 2% to attack speed modifier (max +20% at 50 hits) |
+| 15 | last_attack_type | enum | light/heavy/dash/aerial/charged/ability/parry/counter | On attack | Next attack transition style. Light→light=short transition (3 frames). Light→heavy=medium (6 frames). Heavy→light=long (8 frames). |
+| 16 | last_attack_end_rotation | float | 0°–360° | On attack end | Next attack start pose offset. Body continues from where it stopped. |
+| 17 | attack_input_speed | float | 0.0–1.0 | On input | 0.0=slow deliberate press (attack has +20% wind-up, +10% damage telegraph). 1.0=instant snap (attack skips to active frames in minimum time). |
+| 18 | input_rhythm | float[8] | last 8 press intervals | On input | If rhythm is consistent (±50ms between presses): add rhythmic sway to attacks. If irregular: attacks are more aggressive/random. |
+| 19 | nearest_enemy_distance | float | 0.0–max | Every frame | 0-2m=intimate range (shorter attacks, more body rotation). 2-5m=standard. 5m+=extended range (longer stride, more commitment) |
+| 20 | nearest_enemy_angle | float | 0°–360° | Every frame | Head tracking target. Blade readiness direction. Shoulder orientation toward threat. |
+| 21 | enemy_count_nearby | int | 0–60 | Every frame | 0-5=focused stance. 6-15=aware stance (head scans). 16-30=alert (wider stance). 30+=battle-ready (lowest center of gravity) |
+| 22 | equipped_sword | enum | 0-5 | On equip change | COMPLETELY changes movement character (see sword-specific modifiers in Section 7) |
+| 23 | sword_charge_level | float | 0.0–1.0 | Every frame | Body tension: 0.0=relaxed, 1.0=fully coiled (muscles compressed, slight tremor, energy conduits at max) |
+| 24 | environment_zone | enum | 0-4 | On zone change | Breathing fog (zone 4: orbital), sweat particles (zone 0: industrial), cold breath (zone 2: military) |
+| 25 | camera_distance | float | 14–22 units | Every frame | Animation exaggeration: close camera (14)=subtle movements visible, far camera (22)=exaggerate by 20% for readability |
+| 26 | style_rank | enum | 0-8 (D→SSS→STORM) | On rank change | Visual intensity: D=1.0×, C=1.05×, B=1.1×, A=1.15×, S=1.25×, SS=1.35×, SSS=1.5×, STORM=2.0× |
+| 27 | unique_seed | int | full 32-bit | On combo start | Hash of (timestamp + player_position + input_sequence). Feeds perlin noise offsets per joint. |
+| 28 | frame_counter | int | 0–max | Every frame | Used as perlin noise time input for organic variation |
+| 29 | difficulty | int | 1–5 | On change | Movement precision: 1=wasted motion allowed, 5=every movement is efficient and purposeful |
+| 30 | burst_mode_active | bool | true/false | Every frame | When true: all animations get +30% speed, +40% exaggeration, constant energy particle emission, micro-tremor on all limbs |
+
+## 3.2 Per-Bone Variation Formula
+
+For each bone B at frame F:
+
+```
+final_rotation(B, F) = 
+    base_mocap_rotation(B, F)                           // The retargeted mocap data
+    + context_offset(B, context_variables)              // From variable influence map
+    + perlin_noise(unique_seed, F, bone_frequency(B))   // Organic variation, ±1-5° per joint
+    + combo_escalation_modifier(B, combo_count)         // Escalating exaggeration
+    + sword_character_modifier(B, equipped_sword)       // Sword-specific body language
+    + transition_blend(B, previous_animation, current)  // Smooth connection to prior anim
+```
+
+### Perlin Noise Specifications:
+- **Frequency per bone:** 2-4 Hz (smooth, organic — never jittery)
+- **Amplitude per bone:** ±1° to ±5° (spine gets ±1°, hands get ±5° — distal joints have more variation)
+- **Each bone uses a different noise seed offset** so no two joints move identically
+- **Noise is 3D** (affects X, Y, Z rotation independently with different phase offsets)
+
+## 3.3 Combo Escalation Modifier (EXACT VALUES)
+
+| Combo Count | Speed Modifier | Arc Width Modifier | Flair Addition | Trail Intensity |
+|-------------|---------------|-------------------|----------------|-----------------|
+| 0–3 | 1.00× | 1.00× | None | 1.00× |
+| 4–7 | 1.05× | 1.10× | Slight pose hold at peak (2 frames) | 1.20× |
+| 8–15 | 1.10× | 1.20× | Automatic weapon hand-switch on every 4th hit | 1.50× |
+| 16–30 | 1.15× | 1.35× | Body spins added to 30% of attacks, kicks mixed in | 2.00× |
+| 31–50 | 1.20× | 1.50× | Every attack has secondary spin or direction reversal | 2.50× |
+| 51–100 | 1.25× | 1.60× | Acrobatic elements (flips, handstand slashes) | 3.00× |
+| 100+ | 1.30× | 1.70× | Full expressive — reality-bending flourishes | 4.00× (cap) |
+
+---
+
+# 4. CONTEXTUAL ANIMATION LIBRARY — EXACT SPECIFICATIONS
+
+## 4.1 Running — 5 Variants (Full Frame Data)
+
+### Variant 1: STANDARD RUN
+- **Trigger:** velocity 40-70% max, health > 50%, stamina > 30%, no enemies within 5m, straight-line movement for > 0.5s
+- **Cycle duration:** 0.45 seconds per full stride cycle at 100% speed
+- **Stride length:** 1.2 units per cycle
+- **Body angle:** 8° forward lean from vertical
+- **Pelvis rotation:** ±12° around Y-axis (alternating)
+- **Pelvis vertical oscillation:** ±0.04 units (sine wave, peaks at flight phase)
+- **Knee flexion at contact:** 160° (nearly extended)
+- **Knee flexion at loading:** 120° (deep compression)
+- **Ankle dorsiflexion at toe-off:** 40°
+- **Arm swing:** ±35° from neutral, elbows fixed at 90°
+- **Head stabilization:** counter-rotates ±3° to maintain forward gaze
+- **Foot ground contact time:** 35% of cycle
+- **Flight phase:** 15% of cycle
+- **Transition to other states:** 6-frame crossfade to walk, 4-frame burst to sprint, 3-frame into jump
+
+### Variant 2: COMBAT APPROACH RUN
+- **Trigger:** enemies within 10m, any velocity building, combat state active
+- **Cycle duration:** 0.40 seconds per stride (10% faster than standard)
+- **Body angle:** 15° forward lean
+- **Sword arm:** held at 45° upward behind body, blade pointing back, elbow at 110°
+- **Free arm:** extended forward at shoulder height, fingers spread for balance
+- **Knee flexion:** 10° deeper than standard run at every phase (lower center of gravity)
+- **Stride length:** 0.9 units (shorter, more controlled)
+- **Head:** turns toward nearest enemy every 0.8 seconds (takes 4 frames to turn, 8 frames tracking, 4 frames return)
+- **Lateral movement:** slight weaving pattern — 0.15 units side-to-side per stride cycle
+- **Foot contact:** forefoot-first (no heel contact)
+
+### Variant 3: DESPERATE SPRINT
+- **Trigger:** health < 30% OR stamina < 20% OR fleeing boss attack AND velocity > 80% max
+- **Cycle duration:** 0.30 seconds per stride (fastest possible)
+- **Body angle:** 25° forward lean (nearly horizontal)
+- **Stride length:** 1.8 units (maximum possible)
+- **Knee drive:** knees reach 90° flexion during flight phase (high knee action)
+- **Arm swing:** full range, ±60°, elbows open wider than normal
+- **Head:** ducked low, every 1.2 seconds quick backward glance (3 frames)
+- **Foot contact:** forefoot ONLY, ground contact time: 20% of cycle
+- **Breathing overlay:** chest heaves ±6° rotation, every 0.4 seconds
+- **Instability:** ±3° random body sway per stride (simulates exhaustion)
+- **Stumble recovery:** 5% chance per stride cycle of a micro-stumble (0.2s correction animation)
+
+### Variant 4: TACTICAL RETREAT RUN
+- **Trigger:** velocity is backward relative to nearest enemy angle, any health
+- **Cycle duration:** 0.50 seconds (slower — moving backward is harder)
+- **Body angle:** facing enemy, 0° lean (upright), knees bent 30°
+- **Stride:** short quick steps, 0.5 units per cycle
+- **Sword arm:** blade extended toward enemy at chest height
+- **Free arm:** extended sideways at 45°, palm facing forward
+- **Foot contact:** toe-first, checking ground (slight downward glance every 1.5 seconds, 5 frames)
+- **Weight shift:** continuous side-to-side, ±0.1 units, period 0.8 seconds
+- **Head:** locked on nearest enemy (does not turn away)
+
+### Variant 5: ADRENALINE DASH-RUN
+- **Trigger:** combo_count > 20 AND style_rank >= A AND velocity > 90% max
+- **Cycle duration:** 0.25 seconds (near-superhuman speed)
+- **Body angle:** 35° forward lean
+- **Stride length:** 2.2 units
+- **Foot contact:** barely touching, ground contact time: 10% of cycle
+- **Flight phase:** 50% of cycle (nearly gliding)
+- **Arm position:** trailing behind body, relaxed, fingers streaming
+- **Head:** lifted, looking at next target with what reads as confidence
+- **Energy aura:** constant particle emission from body outline
+- **Afterimage:** permanent 3-frame afterimage trail even without dashing
+- **Ground effect:** energy streak on ground beneath feet, matching sword element color
+- **Skip-step:** every 3rd stride, one leg does a small hop-skip instead of full stride (visual flair)
+
+## 4.2 Jumping — 5 Variants (Full Frame Data)
+
+### Variant 1: STANDARD COMBAT JUMP
+- **Trigger:** jump button from grounded, no strong directional input, velocity < 50% max
+- **Total air time:** 0.70 seconds
+- **Peak height:** 2.5 units
+- **Takeoff (frames 0-8, 0.13s):**
+  - Frames 0-3: knees compress to 90°, center of mass drops 0.15 units (anticipation)
+  - Frames 4-6: explosive extension, knees go from 90° to 170° in 3 frames
+  - Frames 7-8: toes push off, ankles reach 50° plantar flexion
+- **Ascent (frames 9-18, 0.15s):**
+  - Legs tuck to 120° knee flexion
+  - Arms rise to shoulder height
+  - Body angle: 5° forward
+- **Apex (frames 19-24, 0.10s):**
+  - Legs extend to 150° (preparing for landing)
+  - Arms spread to 45° from body
+  - Brief near-zero vertical velocity (hang time)
+- **Descent (frames 25-35, 0.17s):**
+  - Legs extend toward ground, knees at 160°
+  - Arms move to balance position
+  - Body angle: 3° forward (checking landing spot)
+- **Landing (frames 36-48, 0.20s):**
+  - Frame 36: foot contact, knees immediately begin compressing
+  - Frames 37-42: knees compress from 160° to 100°, body drops 0.2 units
+  - Frames 43-48: knees extend back to 150°, body rises to standing height
+  - Optional: one hand touches ground at frame 38 (20% chance, based on combo style)
+
+### Variant 2: RUNNING LEAP
+- **Trigger:** jump pressed while running at >60% max velocity
+- **Total air time:** 0.90 seconds
+- **Peak height:** 2.0 units
+- **Horizontal distance:** 4.0 units
+- **Takeoff:** single-leg push from running stride — last stride's forward leg is the launch leg
+- **Ascent:** trailing leg sweeps back (hip extension to -20°), leading leg drives to 90° knee flexion
+- **Apex:** full body extension, legs in split position (front leg 30°, back leg -20°), sword arm extends forward
+- **Descent:** legs converge, body rotates to face movement direction (rotation over 0.2s)
+- **Landing:** rolling landing — front foot contacts first, body continues forward, deep crouch (knees to 80°), recovery to run over 0.3s
+
+### Variant 3: EVASIVE BACKFLIP JUMP
+- **Trigger:** jump + backward input, OR jump while taking damage
+- **Total air time:** 0.80 seconds
+- **Peak height:** 3.0 units
+- **Rotation:** full 360° backward rotation over the jump duration
+- **Takeoff (frames 0-6):** weight shifts backward, legs kick forward and up, hips drive upward
+- **Rotation phase (frames 7-36):** body rotates backward at 360°/0.5s = 720°/s angular velocity
+  - Frame 7-15: tucked position (knees to chest)
+  - Frame 16-25: beginning to extend
+  - Frame 26-36: extending to prepare for landing
+- **Sword interaction:** if sword is drawn, it traces a full circle during the flip, creating a circular slash trail
+- **Landing:** backward landing, knees deep (90°), one hand contacts ground, immediately available for counter-attack
+- **Invulnerability frames:** frames 0-36 are all invulnerable (i-frames on the entire jump)
+
+### Variant 4: HEAVY IMPACT JUMP
+- **Trigger:** heavy attack button held during jump initiation, OR jump from full crouch
+- **Total air time:** 1.00 seconds (slower ascent, faster descent)
+- **Ascent phase:** 0.55 seconds (slow, powerful rise)
+- **Descent phase:** 0.45 seconds (rapid, rocketing down)
+- **Peak height:** 3.5 units
+- **Takeoff:** deep compression (knees to 70°), 6-frame wind-up, ground cracks radiate from feet at takeoff
+- **Ascent:** body rises slowly, arms draw back overhead, two-handed grip on sword
+- **Apex:** body coiled — knees still slightly bent, sword fully overhead, 4-frame hold at apex
+- **Descent:** rocketing downward, sword begins overhead-to-downward arc, body fully extends
+- **Landing:** TWO-HANDED GROUND SLAM:
+  - Frame of impact: sword hits ground, character in deep crouch (knees 60°)
+  - Camera shake: 8 pixels, 12 frames, downward direction
+  - Ground crack decal: 3-unit radius
+  - Shockwave ring: expands to 5 units over 0.3 seconds, then fades
+  - Debris: 15-25 particle pieces launch upward and outward
+  - Hit-stop: 8 frames
+  - Damage radius: 4 units from impact point
+  - Enemy stagger: all enemies within 4 units are knocked downward
+
+### Variant 5: ACROBATIC COMBO JUMP
+- **Trigger:** jump during active combo (combo_count > 5) OR jump within 0.2s of landing from previous jump
+- **Total air time:** 0.75 seconds
+- **Peak height:** 2.8 units
+- **Spin:** 180°-720° spin during ascent+apex (amount determined by combo_count: every 5 hits adds 90° to spin, max 720°)
+- **Spin speed:** determined by button press speed — fast tap = spin completes in 0.3s (tight, fast), slow press = spin completes in 0.5s (wide, controlled)
+- **Ascent:** explosive takeoff with rotation beginning immediately, legs corkscrew (alternating knee height)
+- **Apex:** moment of spin stillness at peak, sword extended creating helical slash trail
+- **Descent:** continuing or reversing spin direction, legs split (one forward, one back)
+- **Landing:** spin completes as feet touch, momentum automatically feeds into next attack input
+- **Slash trail:** helical (corkscrew) shape, diameter determined by spin speed, color = sword element
+
+## 4.3 Idle/Standing — 5 Variants
+
+*(Specifications follow same format — each with exact body angles, timings, micro-movement parameters, trigger conditions, and transition rules. Full specs included in the final build document. Summarized here for key differentiators:)*
+
+| Variant | Trigger | Key Visual Characteristic | Breathing Rate |
+|---------|---------|--------------------------|----------------|
+| Combat Ready | Enemies <15m | Low stance, blade up, tracking | 8 breaths/min (controlled) |
+| Post-Combo | combo_ended within 3s | Upright, sword lowered, slight tremor | 20 breaths/min (recovering) |
+| Low Health | health <25% | Hunched, two-handed grip, darting | 28 breaths/min (labored) |
+| High Style | style_rank >= S, no immediate threat | Relaxed, casual, contemptuous | 10 breaths/min (calm) |
+| Exploration | no enemies <20m | Neutral, looking around, sword lowered | 12 breaths/min (resting) |
+
+## 4.4 Death Animations — Enemy (Full Phase Specifications)
+
+### Phase 1: Death Trigger (frames 0-2, 33ms at 60fps)
+- Frame 0: `is_dying` flag set, current animation interrupted
+- Frame 0-1: body freezes in current pose (hit-stop, 2 frames)
+- Frame 2: death animation begins
+- Variant selection based on `killing_blow_type`:
+  - Light attack → quick stagger (body jolts 10° in attack direction)
+  - Heavy attack → violent jolt (body jolts 25° + lifts 0.1 units)
+  - Charged attack → launch (body lifts 0.5 units, all limbs extend)
+  - Aerial attack → spike down (body driven toward ground at 45°)
+  - Dash attack → freeze-then-launch (1 frame freeze, then velocity in dash direction)
+  - Elemental → element-specific death state begins (see sword specs)
+  - Finisher → extended sequence (3-8 seconds, unique per sword + combo seed)
+
+### Phase 2: Body Response (frames 2-10, 133ms)
+- Force application per body fragment:
+  - `directional_force` = attack_direction × attack_force_magnitude × (1.0 + random(-0.1, 0.1) from seed)
+  - `upward_force` = attack_weight × 3.0 units/s (light=1.0, medium=2.0, heavy=3.0, charged=5.0)
+  - `angular_velocity` = hit_location_offset_from_center × directional_force × 0.5 rad/s
+  - `random_rotation_offset` = perlin_noise(unique_seed, fragment_id) × 15° (per fragment)
+
+### Phase 3: Fragment Physics (frames 10-180+, 2.5+ seconds)
+- Each fragment is an independent rigid body:
+  - Mass: head=0.5kg, torso=3.0kg, upper_arm=0.8kg each, lower_arm=0.5kg each, upper_leg=1.2kg each, lower_leg=0.8kg each
+  - Gravity: -9.81 units/s²
+  - Ground collision: bounce coefficient 0.3, friction 0.7
+  - Rotation damping: 0.95 per frame
+  - Lifetime: 3.0 seconds before dissolution begins
+- Energy burst at separation points:
+  - Particle count: 10 (light kill) to 50 (charged kill) per separation
+  - Initial velocity: 2-8 units/s outward from separation point
+  - Lifetime: 0.5-1.5 seconds per particle
+  - Color: exact hex per sword (see Section 7)
+
+### Phase 4: Dissolution (frames 180-300, 2.0 seconds)
+- Dissolve begins at frame 180 from death
+- Each fragment dissolves independently with staggered timing (random offset 0-30 frames from seed)
+- Dissolve pattern: edge-burning inward over 60 frames
+- Dissolve color: sword element primary color, emissive at 2.0× intensity
+- Rising particles: 5-15 small embers per fragment, float upward at 1 unit/s, fade over 1.0s
+- After all fragments dissolved: no trace remains
+
+---
+
+# 5. SWORD SYSTEM — SIX LEGENDARY WEAPONS (EXACT SPECS)
+
+## 5.1 ENERGY KATANA — "TSUKUYOMI"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.2 units (edge to tip)
+- **Blade width:** 0.04 units at base, tapering to 0.01 at tip
+- **Blade curvature:** 0.08 units of curve (single edge, convex)
+- **Blade material:** translucent crystalline — base color #1a1a2e, emissive #00d4ff at 0.6 intensity, metallic 0.9, roughness 0.1
+- **Internal channels:** 3 glowing lines running base-to-tip, color #00d4ff, pulsing at 2Hz
+- **Guard:** minimal tsuba — 0.15 unit wide × 0.03 unit deep disc, color #0a0a1a, edge glow #00d4ff at 0.3 intensity
+- **Grip:** 0.25 units long, wrapped material color #1a1a1a, seam glow #00d4ff at 0.15 intensity
+- **Pommel:** small cylinder, color #0a0a1a, energy core dot #00d4ff
+
+### Combat Properties:
+- **Attack speed multiplier:** 0.85× (fastest sword)
+- **Damage multiplier:** 0.75× per hit (lowest per-hit)
+- **Combo meter generation:** 1.30× (fastest meter build)
+- **Hitbox reach:** 1.3 units from character center (standard)
+- **Hitbox width:** 0.8 units arc (narrow, precise)
+
+### Slash Trail Specifications:
+- **Number of layers:** 4
+  - Layer 1 (core): width 0.02 units, color #ffffff, opacity 1.0, lifetime 0.15s
+  - Layer 2 (energy): width 0.06 units, color #00d4ff, opacity 0.8, lifetime 0.25s
+  - Layer 3 (glow): width 0.12 units, color #00a0cc, opacity 0.4, lifetime 0.35s
+  - Layer 4 (atmosphere): width 0.20 units, color #006688, opacity 0.15, lifetime 0.50s
+- **Trail behavior:** Clean, geometric, minimal turbulence (noise amplitude: 0.005 units)
+- **Trail fade:** Linear opacity fade, no dissolve pattern
+
+### Impact Effect (per hit):
+- **Flash:** 4-frame duration, peak size 0.3 units, color #00d4ff, additive blending
+- **Sparks:** 8-12 particles, initial velocity 3-6 units/s, color #00d4ff→#ffffff, lifetime 0.3s
+- **Shockwave:** ring expanding to 1.5 units over 0.15s, color #00d4ff, opacity 0.3
+- **Hit-stop:** 3 frames (light), 5 frames (heavy), 8 frames (charged)
+- **Camera shake:** 2px (light), 4px (heavy), 6px (charged)
+
+### Sound Design:
+- **Swing:** crystalline ringing, fundamental frequency 2000Hz + harmonics at 3000Hz, 4000Hz, decay time 0.15s
+- **Impact:** sharp cut (band-limited noise burst, 0.02s) + glass resonance (1500Hz, 0.3s decay)
+- **Charged hum:** 800Hz sine, rising to 1600Hz over charge duration
+- **Special ability:** descending crystalline cascade (arpeggiated frequencies from 4000Hz→500Hz over 0.5s)
+
+### Special Abilities:
+1. **Iaido Draw Slash:** sheath → single draw cut across entire screen (1.5s animation), one-shot kill on standard enemies, cooldown 8.0s
+2. **Thunderclap Sequence:** triggers at combo 10+, 12-hit rapid sequence (0.8s total), time slows to 20%, camera locks, each slash is individually visible cyan arc
+3. **Phase Step:** dash through enemy leaving delayed clone that replicates next attack at 0.5s delay, cooldown 6.0s
+
+### Sword-Specific Animation Modifier (PAVE input):
+- **Body language:** Precise, minimal, iaido-style. Attacks have less wind-up (10% shorter anticipation). Follow-through is controlled, not wild. Feet stay planted more often. Movement is economical — no wasted motion ever.
+
+---
+
+## 5.2 INFERNO BLADE — "AGNEYASTRA"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.4 units
+- **Blade width:** 0.07 units at base, tapering to 0.02 at tip
+- **Blade profile:** flame-shaped edge undulation — 4 wave peaks along the cutting edge, each 0.02 units amplitude
+- **Blade material:** dark volcanic — base color #1a0a00, emissive #ff4400 at 0.5 intensity (fissure glow), metallic 0.7, roughness 0.6
+- **Fissure pattern:** 5 glowing cracks on blade surface, color #ff6600, pulsing at 1.5Hz with phase offsets
+- **Guard:** cupped flame shape, 0.20 units wide, color #2a1500, edge glow #ff4400 at 0.4 intensity
+- **Grip:** 0.28 units, charred material color #0a0500, ember particles shed constantly (2 particles/s)
+- **Perpetual fire:** blade is wreathed in subtle fire even at idle — heat distortion shader (amplitude 0.003 units, frequency 5Hz)
+
+### Combat Properties:
+- **Attack speed multiplier:** 1.30× (slowest)
+- **Damage multiplier:** 1.50× per hit (highest)
+- **Burn DOT:** 5 damage/s for 3.0s, stacks up to 5 times
+- **Hitbox reach:** 1.5 units (fire extends reach)
+- **Hitbox width:** 1.2 units arc (wide, sweeping)
+
+### Slash Trail Specifications:
+- **Layer 1 (core):** width 0.04, color #ffcc00, opacity 1.0, lifetime 0.20s
+- **Layer 2 (flame):** width 0.15, color #ff4400, opacity 0.7, lifetime 0.35s, vertices displaced by turbulence noise (amplitude 0.03 units, frequency 8Hz)
+- **Layer 3 (heat):** width 0.25, color #ff2200, opacity 0.3, lifetime 0.40s, causes background heat distortion effect
+- **Layer 4 (embers):** width 0.05, scattered point particles along trail path, color #ffaa00→#ff4400, lifetime 0.8s, drift upward at 0.5 units/s
+
+### Impact Effect:
+- **Flash:** 5 frames, color #ff6600→#ffcc00, peak size 0.5 units
+- **Sparks:** 15-25 particles, fiery, initial velocity 4-8 units/s, leave brief ember trails
+- **Ground fire:** impact point burns for 3.0s, dealing 2 damage/s to enemies standing in it, radius 1.0 unit
+- **Hit-stop:** 5 frames (light), 8 frames (heavy), 12 frames (charged)
+- **Camera shake:** 3px (light), 6px (heavy), 10px (charged)
+
+### Sound Design:
+- **Swing:** deep roaring whoosh, filtered noise with resonant peak at 300Hz, 0.3s duration
+- **Impact:** explosive bass (60Hz, 0.1s) + crackling fire (broadband noise, 0.5s decay)
+- **Charge:** rising rumble (50Hz→200Hz over charge duration) + fire intensification
+- **Burn tick:** subtle fire crackle, repeating every 0.5s while burn is active
+
+### Sword-Specific Animation Modifier:
+- **Body language:** Wide, aggressive, full commitment. Every attack involves the whole body — hips drive, shoulders rotate fully, feet pivot. Follow-through is extreme (blade continues past target by 30° more than other swords). Recovery is longer because the body is more committed. Attacks have visible weight.
+
+---
+
+## 5.3 VOID BLADE — "SHUNYA"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.0 unit
+- **Blade width:** 0.05 units, uniform (straight edges, no taper)
+- **Blade material:** appears as a hole in reality — base color #000000, emissive #000000, metallic 1.0, roughness 0.0, with a thin edge glow of #cc00ff at 0.8 intensity
+- **Edge shimmer:** the magenta edge oscillates in position by ±0.005 units at 15Hz (vibrating reality edge)
+- **Spatial distortion field:** shader warps UV coordinates within 0.15 units of blade surface (distortion strength: 0.02, creating visible chromatic aberriation around blade)
+- **Particle absorption:** 5-10 tiny particles per second are attracted from surrounding air toward the blade and absorbed (visual: particles shrink and fade as they reach blade surface)
+- **Guard:** none — blade transitions directly into grip
+- **Grip:** 0.22 units, void-dark material color #050005, subtle purple vein patterns (emissive #660099 at 0.2 intensity)
+
+### Combat Properties:
+- **Attack speed multiplier:** 1.00× (standard)
+- **Damage multiplier:** 1.10×
+- **Armor penetration:** ignores 25% of enemy defense
+- **Hitbox reach:** 1.1 units
+- **Hitbox width:** 0.6 units (narrow but ignores armor)
+- **Passive:** every 5th consecutive hit on same target creates micro-singularity (pulls enemies within 3 units toward target for 0.5s)
+
+### Slash Trail:
+- **Appearance:** NOT a traditional trail — it is an ABSENCE. The trail is a dark tear in the rendered scene.
+- **Implementation:** trail renders as a darkening mask over the scene color buffer (subtractive blending), revealing a purple void layer (#220033) beneath
+- **Edge glow:** thin #cc00ff line on each edge of the tear
+- **Lifetime:** 0.40s, fades by the void color brightening back to scene color
+- **Background effect:** anything behind the trail is visually distorted through it (spatial warping shader)
+
+### Impact Effect:
+- **Flash:** inverse flash — a brief DARKENING of the impact area (screen darkens 30% in 0.5-unit radius for 3 frames)
+- **Particles:** imploding particles — they travel INWARD toward the impact point rather than outward
+- **Sound:** audio DUCK — ambient sound volume reduces 40% for 0.3s around the impact, replaced by sub-bass rumble (30Hz, felt more than heard)
+- **Hit-stop:** 4 frames (light), 7 frames (heavy), 10 frames (charged)
+- **Camera shake:** inverted — camera pulls TOWARD impact point 2px then returns (unique "vacuum" feel)
+
+### Sword-Specific Animation Modifier:
+- **Body language:** Eerily calm, still, minimal. Attacks begin from absolute stillness — no wind-up telegraph. The blade simply appears at the destination with a sudden burst. Between attacks, the character is perfectly still. This contrasts with the violent visual effects, creating an unsettling dichotomy.
+
+---
+
+## 5.4 THUNDER BLADE — "VAJRA"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.1 units
+- **Blade width:** 0.05 units, angular profile (lightning-bolt shaped edge with 6 zigzag points)
+- **Blade material:** polished blue-white metal — base color #d0d8ff, emissive #4488ff at 0.3 intensity, metallic 1.0, roughness 0.15
+- **Electrical discharge:** constant random lightning arcs from blade edge to surrounding air — 2-5 arcs per second, each arc is a branching line (3-6 segments, each 0.05-0.15 units long), color #88bbff, lifetime 0.05s per arc
+- **Guard:** capacitor protrusions — 4 cylindrical elements extending from guard, color #886600 (copper), each has small electrical sparks jumping between tips
+- **Grip:** 0.25 units, insulated dark material #1a1a2a, copper conductive rings at 3 positions
+
+### Combat Properties:
+- **Attack speed multiplier:** 0.90× (fast)
+- **Damage multiplier:** 1.00×
+- **Chain lightning:** 15% chance per hit to arc to up to 3 nearby enemies within 4 units (deals 40% of original damage to each)
+- **Parry window bonus:** +30% (parry window is 9 frames instead of standard 7)
+- **Hitbox reach:** 1.2 units
+- **Hitbox width:** 0.9 units
+
+### Slash Trail:
+- **Layer 1 (core):** bright white line, width 0.02, lifetime 0.10s
+- **Layer 2 (lightning):** branching pattern — main path follows blade, 3-8 branches extend randomly from main path, width 0.03, color #88bbff, lifetime 0.20s, branches regenerate each frame (constantly shifting pattern)
+- **Layer 3 (glow):** soft blue-white glow, width 0.18, color #4466aa, opacity 0.3, lifetime 0.25s
+- **Screen illumination:** trail brightens the entire screen by 5% for its duration (simulates lightning flash)
+
+### Impact Effect:
+- **Flash:** 3 frames, pure white #ffffff, brief but blinding
+- **Lightning burst:** 8-12 branching bolts radiate from impact point, each 0.5-1.5 units long, color #88bbff, lifetime 0.15s
+- **Electric field:** impact point has residual electric field for 1.0s (small arcs between ground points), deals 1 damage/s to enemies in it
+- **Hit-stop:** 3 frames (light), 6 frames (heavy), 9 frames (charged)
+- **Camera shake:** 3px, sharp and quick (2-frame decay)
+- **Sound:** sharp electrical SNAP (0.01s transient) + crackling aftermath (0.3s)
+
+### Sword-Specific Animation Modifier:
+- **Body language:** Twitchy, electric, constant micro-movement. Even in idle, the character has subtle tremor (±1° at 8Hz). Attacks have sharp acceleration (reach peak speed in 2 frames vs typical 4). Body has quick, jerky quality — not smooth but intentionally staccato like electrical discharge.
+
+---
+
+## 5.5 GRAVITY BLADE — "GURUTVA"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.6 units (longest sword)
+- **Blade width:** 0.12 units at base, 0.08 at tip (barely tapers — it's a slab)
+- **Blade thickness:** 0.03 units (visibly thick, unlike other swords)
+- **Blade material:** gunmetal grey — base color #3a3a40, emissive #4466aa at 0.15 intensity (faint gravitational field lines), metallic 0.95, roughness 0.35
+- **Field lines:** 5 faintly glowing lines etched into blade surface, color #4466aa, pulsing at 0.5Hz, representing gravitational field visualization
+- **Guard:** 5 floating ring segments that orbit the grip at 0.15 unit radius — they are NOT physically connected to anything, held by gravitational field (rotation speed: 30°/s, axis: blade direction)
+- **Grip:** 0.35 units (two-handed), industrial rivets (8 small spheres), pressure seams
+- **Orbiting debris:** 5-8 tiny fragments (0.02 units each) orbit the blade at 0.3-0.5 unit radius — captured environmental debris
+
+### Combat Properties:
+- **Attack speed multiplier:** 1.50× (slowest by far)
+- **Damage multiplier:** 1.80× per hit
+- **Stagger force:** 2.0× standard (every hit pushes enemies significantly)
+- **Gravitational pull:** every hit pulls enemies within 3 units toward player by 0.5 units
+- **Charge:** can be held indefinitely — every 0.5s of charge increases next attack size by 10% and damage by 15% (cap: 300% size, 200% damage at 5.0s charge)
+- **Hitbox reach:** 2.0 units
+- **Hitbox width:** 2.5 units arc (massive)
+
+### Slash Trail:
+- **Appearance:** slow-moving distortion wave — NOT a bright trail but a HEAVY one
+- **Layer 1 (distortion):** background warps along trail path, displacement amplitude 0.05 units, width 0.30, lifetime 0.60s
+- **Layer 2 (mass):** thick grey-white band following blade, width 0.15, color #8888aa, opacity 0.6, lifetime 0.50s
+- **Layer 3 (debris trail):** small particles pulled INTO the trail from surroundings, creating a "gathering" effect
+- **Ground interaction:** trail causes ground to crack and debris to float upward within 0.5 units of trail path
+
+### Impact Effect:
+- **Flash:** 6 frames, color #8888aa, massive (0.8 units peak size)
+- **Shockwave:** expanding ring at 8 units/s, reaching 6 units radius over 0.75s, color #6666aa, opacity 0.5
+- **Ground crater:** permanent decal at impact point, radius 1.5 units, depth visualization 0.1 units
+- **Debris launch:** 20-40 pieces of ground debris launched upward in a cone (30° angle from vertical)
+- **Hit-stop:** 8 frames (light), 12 frames (heavy), 18 frames (charged) — LONGEST hit-stop in game
+- **Camera shake:** 6px (light), 10px (heavy), 15px (charged), with 20-frame decay (longest shake)
+- **Gravity pulse:** all enemies within 5 units are pulled 1.0 unit toward impact point over 0.3s
+
+### Sword-Specific Animation Modifier:
+- **Body language:** SLOW commitment, MASSIVE follow-through. Every attack begins with a deliberate weight shift — you can SEE the character decide to swing. The blade moves slowly at first (incredibly slowly) then accelerates to terrifying speed at the end. Follow-through takes the body WELL past the target. Recovery is long. But when it connects, the devastation is absolute. Two-handed grip always. Wide stance always.
+
+---
+
+## 5.6 PHANTOM BLADE — "MAYA"
+
+### Weapon Mesh Specifications:
+- **Blade length:** 1.3 units
+- **Blade width:** 0.04 units, asymmetric profile (one edge straight, one edge has 2 gentle curves)
+- **Blade material:** semi-transparent — base color #ccccdd at 0.5 opacity, emissive #eeeeff at 0.4 intensity, metallic 0.8, roughness 0.2
+- **Ghost duplicates:** 2-3 translucent copies of the blade mesh render at slight spatial offsets (±0.03 units) and ±1-2 frame temporal offsets — the blade appears to exist in multiple moments simultaneously
+- **Guard:** open crescent shape, 0.18 units wide, mirror-surface material (environment reflection), color #aaaacc
+- **Grip:** 0.26 units, pale material #e8e8f0, visible vein patterns (emissive #aaaacc at 0.2)
+
+### Combat Properties:
+- **Attack speed multiplier:** 0.95× (slightly fast)
+- **Damage multiplier:** 0.90× base hit + 0.30× phantom echo (every hit lands twice, 0.3s delayed)
+- **Dash distance bonus:** +20%
+- **Hitbox reach:** 1.4 units
+- **Hitbox width:** 0.7 units (each hit) — but the phantom echo has a separate hitbox 0.3s later at the same position
+
+### Slash Trail:
+- **Layer 1 (primary):** standard trail, color #ccccff, width 0.04, lifetime 0.25s
+- **Layer 2 (phantom echo):** identical trail shape but offset by 0.05 units spatially and 0.15s temporally, color #8888cc, opacity 0.5, creating a "double vision" effect
+- **Layer 3 (spectral):** wide faint glow, width 0.25, color #6666aa, opacity 0.15, lifetime 0.40s
+- **Unique behavior:** trail has a 20% chance of "echoing" — a second trail appears at the same position 0.3s after the first fades, as if the slash is repeating itself in time
+
+### Impact Effect:
+- **Flash:** 4 frames, but plays TWICE — primary flash at frame 0, echo flash at frame 18 (0.3s later), echo is 50% opacity
+- **Particles:** normal burst at impact, then 50% of particles REPLAY their trajectory 0.3s later as ghost versions
+- **Sound:** every sword sound has an "echo" — same sound plays again 0.3s later at 40% volume, slightly pitch-shifted down by 5%
+- **Hit-stop:** 3 frames + 2 frame echo (hit-stop at impact, then micro-freeze 0.3s later for phantom hit)
+
+### Sword-Specific Animation Modifier:
+- **Body language:** Ethereal, slightly delayed. The character moves with a ghostly quality — attacks have a slight "premonition" (a translucent ghost of the character appears in the attack pose 0.15s before the actual attack executes). Movements are graceful and flowing, never abrupt. After attacks, the character holds the pose for an extra 2 frames as if their ghost is catching up.
+
+---
+
+# 6. DASH SYSTEM — EXACT FRAME DATA
+
+## 6.1 Dash Physics:
+- **Startup frames:** 2 frames (33ms at 60fps) — character decelerates to 0 and begins dash acceleration
+- **Acceleration:** reaches peak dash velocity in 2 frames (instant-feeling)
+- **Peak velocity:** 25 units/second (compared to max run speed of 8 units/second)
+- **Active dash duration:** 8-12 frames depending on dash type (forward=12, lateral=10, backward=8, diagonal=10)
+- **Recovery frames:** 4 frames after dash ends before next action can begin (reduced to 2 if dash-attack is input)
+- **Total dash time:** 14-18 frames (startup + active + recovery)
+- **Cooldown:** 0 frames (can chain immediately if resources allow)
+- **Air dash count:** 2 per airborne sequence (reset on ground contact OR on enemy kill)
+
+## 6.2 Dash Visual Effects (EXACT):
+- **Afterimage count:** 12 afterimages spawned during active dash (1 per frame for 12 frames)
+- **Afterimage opacity:** starts at 0.5, decreases by 0.04 per frame of age (fully transparent after 12 frames)
+- **Afterimage color tint:** sword element primary color at 30% blend with character color
+- **Afterimage scale:** 1.01× expansion per frame of age (blooms outward)
+- **Motion blur:** radial blur from center of screen in dash direction, intensity = velocity/peak_velocity, max 0.6 blur strength
+- **Speed lines:** 30-50 line particles spawned per dash, length 0.5-2.0 units, lifetime 0.1-0.3s, aligned to dash direction
+- **Ground effect:** continuous ground decal during dash — energy streak matching sword element color, width 0.3 units, lifetime 2.0s, fade over last 1.0s
+- **Air displacement:** enemies within 1.5 units of dash path receive knockback force of 2 units in dash direction
+- **Camera kick:** 8px nudge in dash direction over 3 frames, return over 6 frames
+- **Chromatic aberration:** RGB channel separation of 3px at screen edges, lasting duration of dash + 5 frame fade
+- **Sound:** whoosh — band-passed noise (200-2000Hz), 0.15s duration, with 2-frame ambient duck (30% volume reduction) before and after
+
+## 6.3 Dash-Attack Integration:
+Every dash direction has an associated slash if attack is pressed during active dash:
+
+| Dash Direction | Attack Type | Animation | Trail Shape |
+|---------------|-------------|-----------|-------------|
+| Forward | Piercing thrust | Body extends, blade forward, one-handed | Thin line extending forward |
+| Backward | Retreating crescent | Body rotates 180°, blade sweeps | 180° arc behind character |
+| Left | Left spinning cut | 180° left spin, blade extends | Left semicircle |
+| Right | Right spinning cut | 180° right spin, blade extends | Right semicircle |
+| Forward-left | Diagonal rising slash | Body angles 45° left, blade sweeps low-to-high | Diagonal line |
+| Forward-right | Diagonal rising slash (mirrored) | Body angles 45° right | Diagonal line (mirrored) |
+| Backward-left | Reverse spin slash | 270° right spin ending facing left | 270° spiral |
+| Backward-right | Reverse spin slash (mirrored) | 270° left spin ending facing right | 270° spiral (mirrored) |
+| Up (air) | Ascending spiral | Body spins 360° while rising, blade traces helix | Corkscrew/helix shape |
+| Down (air) | Diving blade drop | Body goes vertical head-first, blade extended down | Straight line + impact burst |
+
+---
+
+# 7. ENEMY DESIGN — COMPLETE AI SPECIFICATION
+
+## 7.1 Enemy AI Decision Tree (per type)
+
+### GRUNT — Decision Tree:
+```
+EVERY 0.5 seconds, evaluate:
+├── IF distance_to_player > 8 units: MOVE TOWARD player at 3 units/s
+├── IF distance_to_player 3-8 units: 
+│   ├── IF ally_count_nearby > 3: CIRCLE at 2 units/s (flanking behavior)
+│   ├── IF ally_count_nearby 1-3: APPROACH at 4 units/s
+│   └── IF ally_count_nearby = 0: HESITATE (slow to 2 units/s, occasional stop)
+├── IF distance_to_player < 3 units:
+│   ├── IF player_is_attacking AND facing_toward_me: 
+│   │   ├── 60% chance: BLOCK (2.0s duration)
+│   │   └── 40% chance: DODGE backward (dash 3 units back)
+│   ├── IF player_is_recovering: ATTACK (random from 4 attack options)
+│   └── IF player_is_idle: ATTACK (aggressive, shortest wind-up)
+└── IF health < 20%:
+    ├── 30% chance: FLEE (run away from player for 3s)
+    └── 70% chance: ENRAGE (attack speed +20%, defense -30%, for 5s)
+```
+
+### STALKER — Decision Tree:
+```
+EVERY 0.3 seconds (faster evaluation = more reactive):
+├── IF player_is_attacking: FLANK (move perpendicular to player at 6 units/s)
+├── IF behind_player: ATTACK IMMEDIATELY (fast multi-hit, 0.2s wind-up)
+├── IF in_front_of_player AND distance < 4: DODGE sideways (0.15s reaction)
+├── IF distance > 5: APPROACH using indirect path (curved, 5 units/s)
+├── IF distance < 2: RAPID COMBO (3-5 hit sequence, then disengage)
+└── AFTER attacking: RETREAT 3 units, wait 0.5-1.5s (random), re-engage
+```
+
+### PHALANX — Decision Tree:
+```
+EVERY 1.0 seconds (slow evaluation = deliberate):
+├── ALWAYS: face player, advance at 2 units/s
+├── IF player_attacks_from_front: RAISE SHIELD (blocks all frontal damage)
+├── IF player_is_behind: TURN (0.8s turn animation, vulnerable during turn)
+├── IF player_attacks_from_side: SHIELD BASH (if player is within 2 units)
+├── IF player_is_distant: CHARGE (3 units/s for 1.5s, shield forward)
+└── IF health < 30%: GROUND POUND (AoE attack, 5 unit radius)
+```
+
+### ELITE — Decision Tree:
+```
+EVERY 0.2 seconds (fastest evaluation — reacts like a player):
+├── IF player_attacks:
+│   ├── 30%: PARRY (6-frame perfect window, if successful → guaranteed counter)
+│   ├── 40%: DODGE (directional, away from attack arc)
+│   └── 30%: BLOCK (reduced damage taken)
+├── IF player_is_recovering: COMBO ATTACK (3-7 hit sequence with mixed light/heavy)
+├── IF distance > 5: DASH ATTACK (close distance + attack in one motion)
+├── IF distance < 3: MIXUP (randomly choose: grab throw, rapid combo, or backward dash to reset)
+├── IF own_health < 25%: DESPERATION MODE (attack speed +30%, stop blocking, all-in offense)
+└── PATTERN AVOIDANCE: tracks player's last 5 responses, avoids repeating patterns that were punished
+```
+
+## 7.2 Enemy Animation Personality Specs:
+
+### GRUNT Animation Characteristics:
+- Movement: slightly clumsy, steps occasionally misaligned, recovery after attacks is 0.5s of visible stumble
+- Attack wind-up: 8 frames (readable)
+- Attack active: 4 frames
+- Attack recovery: 20 frames (long vulnerability window)
+- Hit reaction: exaggerated stumble (shows where hit connected)
+- Death: simple knockback + collapse
+
+### STALKER Animation Characteristics:
+- Movement: low crouch, quick steps, occasional roll, body always angled (never faces directly)
+- Attack wind-up: 3 frames (barely readable — fast)
+- Attack active: 3 frames
+- Attack recovery: 8 frames (short but present)
+- Hit reaction: acrobatic recovery (flip away from hit)
+- Death: mid-air spin + shatter
+
+### PHALANX Animation Characteristics:
+- Movement: heavy steps (ground dust on each step), slow turns (1.2s for 180°), wide stance
+- Attack wind-up: 18 frames (very readable)
+- Attack active: 6 frames
+- Attack recovery: 30 frames (extreme vulnerability)
+- Hit reaction: barely moves (absorbs hits into armor), only staggers on heavy/charged attacks
+- Death: armor explodes outward in 6-8 chunks, body collapses with visible weight
+
+### ELITE Animation Characteristics:
+- Movement: mirrors player quality — smooth, responsive, no wasted motion
+- Attack wind-up: 5 frames (hard to read, like a player)
+- Attack active: 4 frames
+- Attack recovery: 12 frames (comparable to player)
+- Hit reaction: controlled retreat (slides back 1 unit, immediately re-engages)
+- Parry animation: blade catches player's blade, sparks fly, 0.3s blade-lock moment
+- Death: extended — slow-motion final exchange (0.5s), dramatic pose (0.3s), then collapse
+
+---
+
+# 8. COMBO VISUALIZATION AND STYLE RANKING — EXACT SPECS
+
+## 8.1 Style Rank Thresholds:
+| Rank | Required Points | Multiplier | Visual Intensity |
+|------|----------------|------------|-----------------|
+| D | 0-499 | 1.0× | Minimal UI, no flair |
+| C | 500-1499 | 1.2× | UI glows slightly |
+| B | 1500-3499 | 1.5× | UI pulses, background tint |
+| A | 3500-6999 | 2.0× | Screen edge glow, particles increase |
+| S | 7000-12999 | 2.5× | Full UI animation, color shift |
+| SS | 13000-24999 | 3.0× | UI fire effects, camera zoom 1.05× |
+| SSS | 25000-49999 | 4.0× | Full spectacle mode, background brightens |
+| STORM BREAKER | 50000+ | 5.0× | Screen barely contains the energy, reality-fracturing effects |
+
+## 8.2 Score Calculation:
+```
+hit_score = base_damage_dealt × combo_multiplier × style_rank_multiplier × diversity_bonus × speed_bonus
+
+diversity_bonus = 1.0 + (unique_attacks_used / total_attacks_in_combo) × 0.5
+speed_bonus = 1.0 + (1.0 / time_between_last_two_hits) × 0.2  (capped at 2.0)
+combo_multiplier = 1.0 + (combo_count × 0.02)  (capped at 5.0)
+
+rank_decay = if no hit landed in 3.0 seconds: combo_count decreases by 1 per second until 0
+rank_drop = if combo_count reaches 0: style rank drops by one tier per second
+```
+
+## 8.3 HUD Layout:
+- **Combo counter:** top-right quadrant, 72px font, bold, sword-element-color, shadow: 3px black blur
+- **Style rank letter:** below combo counter, 48px font, unique color per rank (D=grey, C=green, B=blue, A=orange, S=red, SS=purple, SSS=gold, STORM=white-rainbow)
+- **Damage meter:** below style rank, 36px font, counting up with scroll animation
+- **Kill count:** left side, skull icon + number, 28px font
+- **Sword ability cooldowns:** bottom-left, 4 icon slots (40×40px each), circular cooldown overlay
+- **All elements:** 60% opacity when not changing, 100% opacity for 0.5s after change, then fade back to 60%
+
+---
+
+# 9. INPUT SYSTEM — EXACT FRAME DATA
+
+## 9.1 Input Buffer Specifications:
+| Input | Buffer Window | Priority | Notes |
+|-------|--------------|----------|-------|
+| Light Attack | 200ms (12 frames at 60fps) | Normal | Queued during current attack, executes on first valid frame |
+| Heavy Attack | 200ms (12 frames) | Normal | Same buffering as light |
+| Dash | 150ms (9 frames) | High | Dash has priority over attack if both buffered |
+| Jump | 150ms (9 frames) | High | Coyote time: jump still valid for 6 frames after leaving ground |
+| Parry | 0ms (no buffer) | Instant | Must be pressed within exact parry window — no buffering allowed |
+| Sword Ability | 300ms (18 frames) | Low | Longest buffer — abilities have long wind-ups |
+| Directional Input | 0ms (instant) | Highest | Always read from current frame, never buffered |
+
+## 9.2 Attack Cancel Window Specifications:
+Each attack has defined "cancel windows" where the player can interrupt the recovery animation:
+
+```
+Attack Structure:
+[WIND-UP] → [ACTIVE] → [FOLLOW-THROUGH] → [RECOVERY]
+   ↑           ↑              ↑                  ↑
+ no cancel   no cancel    early cancel       late cancel
+                           window             window
+
+Early cancel window: frames FOLLOW-THROUGH to FOLLOW-THROUGH+4 (4 frames)
+  → Can cancel into: dash, jump, different attack type
+Late cancel window: frames RECOVERY to RECOVERY+6 (6 frames)  
+  → Can cancel into: any action
+
+Example: Light Attack 1
+  Wind-up: frames 0-4 (5 frames, no cancel)
+  Active: frames 5-8 (4 frames, hitbox active, no cancel)
+  Follow-through: frames 9-14 (6 frames, early cancel at frame 9-12)
+  Recovery: frames 15-26 (12 frames, late cancel at frame 15-20)
+  Total: 27 frames (0.45 seconds at 60fps)
+```
+
+## 9.3 Perfect Timing Windows:
+| Action | Window Size | Success Effect | Failure Effect |
+|--------|-----------|----------------|----------------|
+| Parry | 6 frames (100ms) | Full counter-attack, enemy stunned 1.5s | Normal block (reduced damage) |
+| Perfect Dash | 5 frames (83ms) | Pass through attack unharmed, 0.3s slow-mo, next attack empowered | Normal dash (might get hit) |
+| Just Frame (heavy attack) | 3 frames (50ms) at apex of charge | 150% damage, unique animation variant | Normal charged attack |
+
+---
+
+# 10. TECHNICAL PERFORMANCE BUDGETS
+
+## 10.1 Frame Time Budget (at 60 FPS = 16.67ms total):
+| System | CPU Budget | GPU Budget |
+|--------|-----------|-----------|
+| Animation (player + enemies) | 1.5ms | 0.5ms (GPU skinning) |
+| Physics (character, debris, cloth) | 1.0ms | 0.0ms |
+| AI (decision trees, pathfinding) | 1.0ms | 0.0ms |
+| Collision detection | 0.8ms | 0.0ms |
+| Particle simulation | 0.3ms | 0.8ms (GPU particles) |
+| Sword trail generation | 0.2ms | 0.3ms |
+| Rendering (characters) | 0.5ms | 2.0ms |
+| Rendering (environment) | 0.3ms | 1.5ms |
+| Rendering (effects) | 0.2ms | 1.5ms |
+| Post-processing | 0.0ms | 5.3ms |
+| UI rendering | 0.3ms | 0.3ms |
+| Audio | 0.5ms | 0.0ms |
+| Engine overhead | 0.5ms | 0.5ms |
+| **TOTAL** | **7.1ms** | **12.7ms** |
+| **Safety margin** | **9.57ms** | **3.97ms** |
+
+## 10.2 Memory Budgets:
+| Resource | Maximum | Notes |
+|----------|---------|-------|
+| Character meshes (all types) | 50 MB | 8 enemy types + player, all LODs |
+| Animation data (all clips) | 200 MB | 390+ clips, compressed |
+| Textures (characters) | 100 MB | 2K diffuse/normal per character type |
+| Textures (environment) | 200 MB | Per stage, streamed |
+| Textures (effects) | 50 MB | Particle sprites, trail textures, decals |
+| Audio (all) | 150 MB | Compressed OGG, streamed for music |
+| Particle pool | 50,000 particles max | GPU-managed, ~2MB descriptor memory |
+| Enemy pool | 60 enemies max | Pre-allocated, ~10MB |
+| Decal pool | 200 decals max | Pre-allocated, ~5MB |
+
+## 10.3 Object Pool Sizes (Pre-Allocated, Zero Runtime Allocation):
+| Object Type | Pool Size | Notes |
+|-------------|-----------|-------|
+| Enemies | 60 | All enemy types share pool |
+| Particles | 50,000 | Shared across all effects |
+| Sword trail segments | 2,000 | Per sword trail, shared |
+| Afterimages | 500 | Shared across all characters |
+| Decals (ground) | 200 | Circular buffer, oldest replaced |
+| Projectiles | 100 | Enemy ranged attacks |
+| Debris pieces | 500 | Physics-simulated fragments |
+| Sound instances | 64 | Simultaneous audio voices |
+| Dynamic lights | 32 point + 8 spot | Circular buffer, priority-based replacement |
+
+---
+
+# 11. DEVELOPMENT PHASES — ORDERED IMPLEMENTATION
+
+## PHASE 0: MOTION CAPTURE ACQUISITION (Week 1)
+- [ ] Create Mixamo account, download 500+ combat animations as FBX
+- [ ] Download CMU database combat subjects (minimum 200 sequences)
+- [ ] Search and download from GitHub mocap repositories (minimum 50 clips)
+- [ ] Set up Blender project with stickman rig (exact bone hierarchy from Section 2.3)
+- [ ] Retarget and validate first 50 clips through full pipeline
+- [ ] Organize library into categorized folder structure
+- [ ] Document any clips that fail retargeting quality check
+
+## PHASE 1: SKELETON AND TRANSFORMATION SYSTEM (Weeks 2-3)
+- [ ] Build complete bone hierarchy with EXACT measurements from Section 2.3
+- [ ] Verify every joint pivot point (use Animation Inspection Mode skeleton view)
+- [ ] Verify parent-child transformation chain (no rotation accumulation errors)
+- [ ] Attach sword to HAND_R socket with stable local-space transform
+- [ ] Implement GPU skinning with 4-bone influence limit per vertex
+- [ ] Run Animation Integrity Checker cron job — fix ALL failures
+- [ ] **GATE: torso must not spin, limbs must not detach, sword must not float**
+
+## PHASE 2: RUNNING AND LOCOMOTION (Weeks 3-4)
+- [ ] Implement 5 running variants with EXACT frame data from Section 4.1
+- [ ] Verify foot placement (no sliding, no penetration) using trajectory view
+- [ ] Implement smooth transitions between all locomotion states
+- [ ] Test at 30, 60, 120, 144 FPS — movement must be identical
+- [ ] Run Physics Synchronization Test — fix ALL failures
+- [ ] **GATE: character must look like it's running, feet must stay on ground**
+
+## PHASE 3: JUMPING AND GROUND SYSTEM (Week 4-5)
+- [ ] Implement 5 jumping variants with EXACT frame data from Section 4.2
+- [ ] Fix ground penetration bug — separate physics root from animation root
+- [ ] Implement landing detection with 6-frame coyote time
+- [ ] Test: small jumps, max jumps, repeated jumps, air dashes, aerial attacks
+- [ ] Run Physics Synchronization Test — verify ground never penetrated
+- [ ] **GATE: feet NEVER go below ground level, landing always registers correctly**
+
+## PHASE 4: COMBAT MECHANICS CORE (Weeks 5-7)
+- [ ] Build attack state graph (directed graph, not linear list)
+- [ ] Implement input buffering with exact timings from Section 9
+- [ ] Wire mocap animations to attack states with cancel windows
+- [ ] Build hitbox/hurtbox collision system
+- [ ] Implement combo chaining, canceling, and direction-sensitive attacks
+- [ ] Implement dash system with exact frame data from Section 6
+- [ ] Build first enemy (Grunt) with AI decision tree from Section 7
+- [ ] Run Combat Flow Test — fix ALL deadlocks and broken transitions
+- [ ] **GATE: combat loop works end-to-end with at least 1 enemy type**
+
+## PHASE 5: PROCEDURAL ANIMATION VARIATION ENGINE (Weeks 7-9)
+- [ ] Implement all 30 context variables from Section 3.1
+- [ ] Build per-bone variation formula with perlin noise
+- [ ] Implement combo escalation modifier from Section 3.3
+- [ ] Implement sword-specific body language modifiers for all 6 swords
+- [ ] Verify: same animation plays differently based on context (visual inspection)
+- [ ] **GATE: no two consecutive plays of the same animation look identical**
+
+## PHASE 6: ALL SWORD VARIATIONS (Weeks 9-11)
+- [ ] Implement all 6 swords with exact specs from Section 5
+- [ ] Each sword: unique mesh, materials, attack animations, slash trails, impact effects, sounds, abilities
+- [ ] Implement dynamic combo generation system
+- [ ] Verify: each sword plays completely differently
+- [ ] **GATE: blind test — can you identify the sword just by watching combat?**
+
+## PHASE 7: VISUAL EFFECTS — FULL IMPLEMENTATION (Weeks 11-14)
+- [ ] Sword trail system: exact specs from Section 5 per sword
+- [ ] Impact effects: exact specs from Section 5 per sword
+- [ ] Dash afterimages: exact specs from Section 6.2
+- [ ] Particle system: GPU-accelerated, 50,000 particle pool
+- [ ] Environmental effects: ground scars, debris, wind, lighting interaction
+- [ ] Post-processing chain: exact order and budgets from Section 1.2
+- [ ] Implement all 80+ micro-details from the visual detail specification
+- [ ] Run Visual Quality Test — fix ALL regressions
+- [ ] **GATE: every effect synchronized with animation, no visual glitches**
+
+## PHASE 8: REMAINING ENEMY TYPES AND HORDE COMBAT (Weeks 14-16)
+- [ ] Implement all 8 enemy types with unique AI and animation personalities
+- [ ] Build horde wave system with pacing and escalation
+- [ ] Implement Colossus boss with multi-phase combat
+- [ ] Implement cinematic finishers (unique per sword)
+- [ ] Implement death animation system (unique per death)
+- [ ] Run performance test with 50+ simultaneous enemies
+- [ ] **GATE: 60 FPS maintained with 30+ enemies + full effects**
+
+## PHASE 9: SOUND, POLISH, AND FINAL QA (Weeks 16-18)
+- [ ] Complete sound design for all swords, enemies, and environments
+- [ ] Implement dynamic music system
+- [ ] Full visual polish pass (all 80+ micro-details verified)
+- [ ] Run ALL automated QA tests (6 cron jobs, continuous)
+- [ ] Manual visual inspection in all 4 debug views
+- [ ] Final balance and tuning
+- [ ] **GATE: every test passes, every frame inspected, no known bugs**
+
+---
+
+# 12. NON-NEGOTIABLE QUALITY STANDARDS
+
+## These are absolute requirements. No exceptions. No compromises.
+
+1. **No animation shall ever repeat identically.** The PAVE system guarantees uniqueness through 30+ context variables, per-combo seeds, and per-joint perlin noise. If two frames are visually identical across different combos, the system has failed.
+
+2. **No foot shall ever penetrate the ground.** The ground plane at Y=0 is absolute. Physics and animation are synchronized. If a foot goes below Y=0 without an intentional ground-slam attack, the system has failed.
+
+3. **No input shall ever be ignored beyond its buffer window.** If the player presses a button and nothing happens within the specified buffer window, the system has failed.
+
+4. **No animation transition shall contain a visible snap.** A snap is defined as any joint rotating more than 30° in a single frame during a transition. If snapping is visible, the transition system has failed.
+
+5. **No sword trail shall deviate from the blade's actual trajectory by more than 5% of blade length.** If the trail appears disconnected from the sword, the trail system has failed.
+
+6. **No frame shall exceed the performance budget.** 16.67ms at 60 FPS. If any frame exceeds this, optimizations have failed. The 1% low FPS must not drop below 50 FPS.
+
+7. **No enemy shall use the same animation set as another enemy type.** Each type has unique movement personality, attack patterns, reactions, and deaths. If two types look similar, the differentiation has failed.
+
+8. **No combo shall be visually identical to a previous combo with the same inputs.** The dynamic combo generation system plus PAVE guarantee uniqueness. If two combos look the same, the seed system has failed.
+
+9. **No death shall be visually identical to a previous death.** The death assembly system uses 10+ variables to guarantee uniqueness. If two deaths look the same, the system has failed.
+
+10. **No effect shall exist without a visible gameplay cause.** Every visual effect must be traceable to a specific action. If the player cannot understand why an effect appeared, the effect communication has failed.
+
+11. **No mocap clip shall be used without retargeting validation.** Every clip must pass the quality check in Section 2.3 Step 4. If any clip fails and is used anyway, the pipeline has failed.
+
+12. **No feature shall be added while fundamental locomotion remains broken.** If the running cycle looks wrong, no new combat features are to be developed until it is fixed. Period.
+
+13. **No claim of improvement shall be made without test verification.** Every fix must be verified by at least one automated test AND visual inspection in the debug views. Untested fixes are not fixes.
+
+14. **No post-processing effect shall be applied without budget verification.** The total post-processing budget is 5.3ms. If any combination of effects exceeds this, the quality settings system has failed.
+
+15. **No assumption shall be made — only measurements.** If the specification says "hit-stop is 5 frames," it is 5 frames. Not 4, not 6. Exact values are specified throughout this document for a reason. Follow them.
+
+---
+
+## END OF MASTER SPECIFICATION
+
+**This document contains zero room for assumption. Every system has exact parameters. Every animation has frame data. Every effect has particle counts, colors, lifetimes, and sizes. Every enemy has a decision tree. Every combo has a generation algorithm. Every sword has material hex codes. Every sword trail has layer specifications. Every performance budget has millisecond allocations.**
+
+**Build to this specification. Test against this specification. Ship nothing that violates this specification.**
+
+**Make every frame a masterpiece. Make every combo unrepeatable. Make every death unforgettable. Make every slash a painting. Make the human eye weep with satisfaction.**
+
+**NO EXCUSES. NO SHORTCUTS. NO COMPROMISES.**
