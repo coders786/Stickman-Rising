@@ -114,7 +114,11 @@ export class Animator {
     this.time += dt * this.speed
     const finished = !this.clip.loop && this.time >= this.clip.dur && before < this.clip.dur
     if (this.blendT < this.blendDur) {
-      this.blendT += dt
+      // IN-BETWEEN GUARANTEE: the crossfade consumes at most 34ms of blend
+      // time per frame, so a transition ALWAYS spans ≥3 interpolated
+      // in-between frames — even on janky/low-fps frames where a raw dt
+      // would swallow the whole blend (and the pose) in one step.
+      this.blendT += Math.min(dt, 0.034)
       const u = clamp01(this.blendT / this.blendDur)
       // smooth crossfade from snapshot to live sample
       sampleClip(this.clip, this.time, scratchA)

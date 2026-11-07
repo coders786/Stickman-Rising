@@ -33,37 +33,50 @@ export type ChannelKey = keyof typeof CH
 export type PoseInput = Partial<Record<ChannelKey, number>>
 export type Pose = Float32Array
 
-/** Relaxed combat idle baseline. */
+/** Chūdan-no-kamae combat baseline — the guard every attack starts from and
+ * returns to. Blade sum (shR+elR+wrR) ≈ 1.5 → blade points at the enemy's
+ * throat, tip level. This is the in-between continuity anchor: partial
+ * keyframes inherit these channels, so every clip blends guard→guard. */
 const NEUTRAL_SRC: PoseInput = {
   rootX: 0,
   rootY: 0,
-  rootRot: 0.06,
-  spine: 0.04,
-  head: -0.08,
-  hipL: 0.24,
-  kneeL: -0.12,
-  footL: 0.1,
-  hipR: -0.26,
-  kneeR: -0.14,
+  rootRot: 0.1,
+  spine: 0.05,
+  head: -0.1,
+  hipL: -0.3,
+  kneeL: -0.42,
+  footL: 0.12,
+  hipR: 0.32,
+  kneeR: -0.5,
   footR: 0.12,
-  shL: 0.12,
-  elL: -0.42,
-  wrL: -0.2,
-  shR: 0.55,
+  shL: 0.5,
+  elL: -0.85,
+  wrL: -0.3,
+  shR: 0.85,
   elR: -0.5,
-  wrR: 1.7,
+  wrR: 1.15,
 }
 
-export const NEUTRAL: Pose = makePose(NEUTRAL_SRC)
+export const NEUTRAL: Pose = (() => {
+  const p = new Float32Array(CH_COUNT)
+  for (const k of Object.keys(NEUTRAL_SRC) as ChannelKey[]) {
+    p[CH[k]] = NEUTRAL_SRC[k] as number
+  }
+  return p
+})()
 
 export function makePose(src?: PoseInput): Pose {
   const p = new Float32Array(CH_COUNT)
+  // ALWAYS base on the guard (NEUTRAL), then overlay specified channels.
+  // The old semantics (zeros for unspecified channels) made every partial
+  // keyframe blip unlisted joints to rigid-zero and back — the hidden
+  // source of chained-attack snaps. With guard-merging, `keyframe(t, {})`
+  // IS the chūdan guard and partial frames keep continuity for free.
+  p.set(NEUTRAL)
   if (src) {
     for (const k of Object.keys(src) as ChannelKey[]) {
       p[CH[k]] = src[k] as number
     }
-  } else {
-    p.set(NEUTRAL)
   }
   return p
 }
