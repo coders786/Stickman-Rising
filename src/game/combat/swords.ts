@@ -1,6 +1,6 @@
 /** STICKMAN RISING — sword definitions: six elemental blades + renderer. */
 
-import { SkelGeom } from '../anim/skeleton'
+import { SkelGeom, PLAYER_SPEC } from '../anim/skeleton'
 import { clamp01, rgba } from '../core/utils'
 
 export type SwordId = 'katana' | 'inferno' | 'void' | 'thunder' | 'gravity' | 'phantom'
@@ -169,7 +169,10 @@ export function drawSword(
   const a = g.bladeAngle
   const dx = Math.cos(a)
   const dy = Math.sin(a)
-  const len = 56 * sword.stats.range
+  // REAL katana proportion: blade ≈ 43% of body height (PLAYER_SPEC.blade),
+  // tsuka ≈ 30% of blade — the old 56-unit windmill is dead.
+  const len = PLAYER_SPEC.blade * sword.stats.range
+  const tsuka = len * 0.3
   const alpha = opts.alpha ?? 1
   if (alpha <= 0.01) return
 
@@ -177,7 +180,7 @@ export function drawSword(
   ctx.globalAlpha *= alpha
   ctx.lineCap = 'round'
 
-  const glowW = 5.5 + charge * 4 + swing * 3.5
+  const glowW = 5 + charge * 4 + swing * 3.2
 
   // aura pass (additive)
   ctx.globalCompositeOperation = 'lighter'
@@ -192,46 +195,81 @@ export function drawSword(
   ctx.stroke()
   ctx.globalCompositeOperation = 'source-over'
 
-  // handle + guard
-  ctx.strokeStyle = '#10151c'
-  ctx.lineWidth = 4.4
+  // ---- tsuka (handle): dark wrapped grip behind the hand ----
+  ctx.strokeStyle = '#20293a'
+  ctx.lineWidth = 4.8
   ctx.beginPath()
-  ctx.moveTo(hx - dx * 9, hy - dy * 9)
-  ctx.lineTo(hx, hy)
+  ctx.moveTo(hx - dx * tsuka, hy - dy * tsuka)
+  ctx.lineTo(hx + dx * 2, hy + dy * 2)
   ctx.stroke()
-  ctx.strokeStyle = rgba(sword.colors.accent, 0.9)
-  ctx.lineWidth = 2.4
-  const gx = hx - dx * 2
-  const gy = hy - dy * 2
+  // tsuka-ito cross wraps
+  ctx.strokeStyle = rgba(sword.colors.accent, 0.75)
+  ctx.lineWidth = 1.4
+  for (let i = 1; i <= 3; i++) {
+    const k = i / 3.6
+    const wx = hx - dx * tsuka * k
+    const wy = hy - dy * tsuka * k
+    ctx.beginPath()
+    ctx.moveTo(wx - dy * 2.6, wy + dx * 2.6)
+    ctx.lineTo(wx + dy * 2.6, wy - dx * 2.6)
+    ctx.stroke()
+  }
+
+  // ---- tsuba (guard): crisp oval at the hand — the dark notch between
+  // tsuka and blade is what makes the katana silhouette read at zoom ----
+  ctx.fillStyle = '#4a5d7d'
   ctx.beginPath()
-  ctx.moveTo(gx - dy * 5.5, gy + dx * 5.5)
-  ctx.lineTo(gx + dy * 5.5, gy - dx * 5.5)
+  ctx.ellipse(hx + dx * 1.5, hy + dy * 1.5, 3.3, 6.9, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = rgba(sword.colors.accent, 0.95)
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.ellipse(hx + dx * 1.5, hy + dy * 1.5, 3.3, 6.9, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.stroke()
 
-  // core blade
+  // core blade (starts past the guard — habaki notch)
   ctx.strokeStyle = sword.colors.blade
-  ctx.lineWidth = 3.4 * sword.trailWidth
-  bladePath(ctx, sword, hx, hy, dx, dy, len, t)
+  ctx.lineWidth = 3.6 * sword.trailWidth
+  bladePath(ctx, sword, hx + dx * 3.5, hy + dy * 3.5, dx, dy, len - 3.5, t)
+  ctx.stroke()
+  // habaki (blade collar): bright metallic band right past the tsuba —
+  // reads at any zoom and separates grip from blade
+  ctx.strokeStyle = rgba(sword.colors.core, 0.9)
+  ctx.lineWidth = 3.8 * sword.trailWidth
+  ctx.beginPath()
+  ctx.moveTo(hx + dx * 3.5, hy + dy * 3.5)
+  ctx.lineTo(hx + dx * 8.5, hy + dy * 8.5)
+  ctx.stroke()
+  // ha (cutting edge) highlight — offset toward the cutting side
+  ctx.strokeStyle = rgba(sword.colors.core, 0.85)
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.moveTo(hx + dx * 6 - dy * 1.2, hy + dy * 6 + dx * 1.2)
+  const midX = hx + dx * len * 0.62 - dy * 2.1
+  const midY = hy + dy * len * 0.62 + dx * 2.1
+  const tipX = hx + dx * (len - 2) - dy * 1.4
+  const tipY = hy + dy * (len - 2) + dx * 1.4
+  ctx.quadraticCurveTo(midX, midY, tipX, tipY)
   ctx.stroke()
   ctx.strokeStyle = sword.colors.core
-  ctx.lineWidth = 1.5
-  bladePath(ctx, sword, hx, hy, dx, dy, len * 0.97, t)
+  ctx.lineWidth = 1.4
+  bladePath(ctx, sword, hx + dx * 3.5, hy + dy * 3.5, dx, dy, (len - 3.5) * 0.97, t)
   ctx.stroke()
 
-  // tip glint
-  const tipX = hx + dx * len
-  const tipY = hy + dy * len
+  // kissaki (tip) glint
+  const tipGx = hx + dx * len
+  const tipGy = hy + dy * len
   ctx.globalCompositeOperation = 'lighter'
-  const tw = 2.5 + Math.sin(t * 9) * 0.8 + charge * 3 + swing * 4
+  const tw = 2.2 + Math.sin(t * 9) * 0.7 + charge * 3 + swing * 3.6
   ctx.fillStyle = rgba(sword.colors.core, 0.75 + swing * 0.25)
   ctx.beginPath()
-  ctx.arc(tipX, tipY, tw, 0, Math.PI * 2)
+  ctx.arc(tipGx, tipGy, tw, 0, Math.PI * 2)
   ctx.fill()
   if (charge > 0.05) {
     ctx.strokeStyle = rgba(sword.colors.glow, charge * 0.8)
     ctx.lineWidth = 1.6
     ctx.beginPath()
-    ctx.arc(tipX, tipY, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
+    ctx.arc(tipGx, tipGy, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
     ctx.stroke()
   }
   ctx.globalCompositeOperation = 'source-over'
