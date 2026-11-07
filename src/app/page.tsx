@@ -74,24 +74,35 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>('title')
   const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
   const [stats, setStats] = useState<RunStats | null>(null)
-  const [save, setSave] = useState<SaveData>(loadSave)
-  const [settings, setSettings] = useState<GameSettings>(loadSettings)
-  const [selectedSword, setSelectedSword] = useState<SwordId>(() => (loadSave().unlocked[loadSave().unlocked.length - 1] ?? 'katana'))
+  /* persisted state starts from SSR-safe defaults; real values load in a
+   * mount effect below so server HTML === first client render (no
+   * hydration mismatch badge) */
+  const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
+  const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
+  const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
   const [scores, setScores] = useState<ScoreRow[]>([])
-  const [name, setName] = useState<string>(() => {
-    if (typeof window === 'undefined') return ''
-    try {
-      return window.localStorage.getItem(NAME_KEY) ?? ''
-    } catch {
-      return ''
-    }
-  })
+  const [name, setName] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [newUnlocks, setNewUnlocks] = useState<SwordId[]>([])
-  const [touchMode, setTouchMode] = useState<boolean>(() =>
-    typeof window !== 'undefined' ? (window.matchMedia?.('(pointer: coarse)').matches ?? false) : false,
-  )
+  const [touchMode, setTouchMode] = useState(false)
   const [gameInput, setGameInput] = useState<GameInput | null>(null)
+
+  /* hydrate persisted values AFTER mount (SSR-safe pattern). Batched into a
+   * rAF callback: asynchronous by design, so no cascading renders and no
+   * flash of default content before the first paint. */
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const s = loadSave()
+      setSave(s)
+      setSelectedSword(s.unlocked[s.unlocked.length - 1] ?? 'katana')
+      setSettings(loadSettings())
+      setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
+      try {
+        setName(window.localStorage.getItem(NAME_KEY) ?? '')
+      } catch { /* ignore */ }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   /* ---------------- game mount ---------------- */
 

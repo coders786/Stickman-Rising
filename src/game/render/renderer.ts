@@ -1,5 +1,6 @@
-/** STICKMAN RISING — render pipeline: sky → world (arena, shadows, entities,
- * additive FX) → weather → vignette → flash → HUD.
+/** STICKMAN RISING — render pipeline: sky → world (arena, wet-floor
+ * reflections, shadows, entities, additive FX) → weather → vignette →
+ * flash → HUD.
  */
 
 import { Camera } from '../core/camera'
@@ -27,6 +28,8 @@ export class Renderer {
   private vignette: HTMLCanvasElement | null = null
   private vigW = 0
   private vigH = 0
+  /* wet-floor reflection fade gradient (built once; world-space strip) */
+  private reflFade: HTMLCanvasElement | null = null
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
     const { cam, fx, bg, player, enemies, projectiles, hud, hudState } = world
@@ -47,12 +50,19 @@ export class Renderer {
     // arena floor
     bg.drawArena(ctx)
 
-    // entity shadows
-    drawShadow(ctx, player.x, 0, 1.1, 0.4)
+    // wet-ground reflections: entities mirrored about y=0, foreshortened,
+    // fading with depth — the rain-soaked roof reads as a black mirror and
+    // snaps brighter whenever lightning strobes it
+    this.drawReflections(ctx, world, viewHalfW)
+
+    // entity shadows (stretch + lean with the lightning key light)
+    const li = bg.lightningI()
+    const az = bg.lightningAz()
+    drawShadow(ctx, player.x, 0, 1.1, 0.4, li, az)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      drawShadow(ctx, e.x, e.kind === 'drone' ? 0 : 0, e.scale, e.kind === 'drone' ? 0.22 : 0.32)
+      drawShadow(ctx, e.x, 0, e.scale, e.kind === 'drone' ? 0.22 : 0.32, li, az)
     }
 
     // ground decals + debris
@@ -107,13 +117,65 @@ export class Renderer {
     }
     ctx.drawImage(this.vignette, 0, 0, w, h)
   }
+
+  /** wet-floor mirror pass — the 2D-native take on ray-traced reflections:
+   *  every entity is re-drawn mirrored about the ground plane with vertical
+   *  foreshortening, then melted into the dark facade by a depth gradient. */
+  private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
+    const { bg, cam, player, enemies, time } = world
+    const li = bg.lightningI()
+    const a = 0.20 + li * 0.3                  // flashes make the mirror snap bright
+    ctx.save()
+    ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
+    ctx.globalAlpha = a
+    player.draw(ctx, time)
+    for (const e of enemies) {
+      if (e.dead || e.spawning) continue
+      if (Math.abs(e.x - cam.x) > viewHalfW) continue
+      e.draw(ctx, time)
+    }
+    ctx.restore()
+    // vertical falloff: reflections dissolve into the wet dark with depth
+    // (tall enough to swallow airborne entities' deep mirrored strokes)
+    if (!this.reflFade) {
+      const c = document.createElement('canvas')
+      c.width = 8
+      c.height = 256
+      const fc = c.getContext('2d')
+      if (fc) {
+        const g = fc.createLinearGradient(0, 0, 0, 256)
+        g.addColorStop(0, 'rgba(3,6,10,0)')
+        g.addColorStop(0.35, 'rgba(3,6,10,0.38)')
+        g.addColorStop(0.7, 'rgba(3,6,10,0.9)')
+        g.addColorStop(1, 'rgba(3,6,10,1)')
+        fc.fillStyle = g
+        fc.fillRect(0, 0, 8, 256)
+      }
+      this.reflFade = c
+    }
+    ctx.globalAlpha = 1
+    ctx.drawImage(this.reflFade, cam.x - viewHalfW, 0, viewHalfW * 2, 195)
+  }
 }
 
-function drawShadow(ctx: CanvasRenderingContext2D, x: number, groundY: number, scale: number, alpha: number): void {
+function drawShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number, groundY: number, scale: number, alpha: number,
+  li = 0, az = 0,
+): void {
+  /* lightning acts as a hard key light: shadows stretch away from the bolt,
+   * tighten vertically, and gain an AO-ish contact core so nothing floats */
+  const stretch = 1 + li * 1.5
+  const sx = x - az * li * 26 * scale
+  const a = alpha * (1 + li * 0.5)
   ctx.save()
-  ctx.fillStyle = rgba('#020409', alpha)
+  ctx.fillStyle = rgba('#020409', a > 0.75 ? 0.75 : a)
   ctx.beginPath()
-  ctx.ellipse(x, groundY + 3, 26 * scale, 6.5 * scale, 0, 0, Math.PI * 2)
+  ctx.ellipse(sx, groundY + 3, 26 * scale * stretch, 6.5 * scale * (1 - li * 0.25), 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = rgba('#010307', a * 0.85)
+  ctx.beginPath()
+  ctx.ellipse(x, groundY + 3, 14 * scale, 4.2 * scale, 0, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }

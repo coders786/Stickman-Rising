@@ -108,6 +108,10 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   bg = new CyberBackground('high')
+  /* ambient storm audio: a soft distant crackle each time the sky strikes */
+  private thunderCb = (): void => {
+    this.audio.play('lightning', { volume: 0.22 })
+  }
   hud = new HUD()
   private renderer = new Renderer()
   player = new Player()
@@ -179,6 +183,7 @@ export class Game {
     this.lastFrame = performance.now()
     this.raf = requestAnimationFrame(this.loop)
     this.input.setEnabled(false)
+    this.bg.onThunder = this.thunderCb
     // debug/testing handle (harmless in production)
     ;(window as unknown as Record<string, unknown>).__sr = this
   }
@@ -218,6 +223,7 @@ export class Game {
     this.audio.setMuted(s.muted)
     if (qualityChanged) {
       this.bg = new CyberBackground(s.quality)
+      this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
     }
@@ -410,6 +416,7 @@ export class Game {
     }
 
     this.fx.update(dt)
+    this.bg.update(dt)               // living storm: rain, gusts, fog, lightning
     this.updateCamera(dt)
   }
 
