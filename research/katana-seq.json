@@ -1,0 +1,68 @@
+🚀 Initializing Z-AI SDK...
+🔎 Searching images: "katana slash attack animation frames sequence pixel art game asset"
+✅ Got 8 images
+{
+  "success": true,
+  "query": "katana slash attack animation frames sequence pixel art game asset",
+  "count": 8,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/7cb9936fc25d.jpg",
+      "caption": "",
+      "source": "YouTube",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/bf0cd08bb3d7.jpg",
+      "caption": "",
+      "source": "kr.pinterest.com",
+      "original_width": "736px",
+      "original_height": "1472px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/0c83fbaa039d.jpg",
+      "caption": "",
+      "source": "www.framesprite.com",
+      "original_width": "1280px",
+      "original_height": "720px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/2e21e08f89c1.png",
+      "caption": "",
+      "source": "Seele AI",
+      "original_width": "1672px",
+      "original_height": "941px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/e7068f178886.png",
+      "caption": "",
+      "source": "arXiv",
+      "original_width": "2180px",
+      "original_height": "1680px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/9ab1428016ca.png",
+      "caption": "",
+      "source": "Seele AI",
+      "original_width": "1672px",
+      "original_height": "941px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/8eafd8a12db8.jpg",
+      "caption": "",
+      "source": "Etsy",
+      "original_width": "2700px",
+      "original_height": "2025px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/ed5b97021a7c.jpg",
+      "caption": "",
+      "source": "Dreamstime",
+      "original_width": "1600px",
+      "original_height": "890px"
+    }
+  ]
+}

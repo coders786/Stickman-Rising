@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Honest correction up front: this image is **not a sprite sheet or frame sequence**. It's a single static illustration (pixel-art knight on a trading-card layout, glowing green, on a wood-plank background). Only **one pose** is visible, so I can't report a multi-frame arc or timing chart. Here's what I *can* extract technically:\n\n## 1. Frames present\n- **1 distinct pose**, readable as a **mid-anticipation / windup freeze** (or a stylized \"ready\" card-art pose): sword raised high-right, torso coiled.\n\n## 2. Sword arc\n- Cannot be traced from one frame. Current blade angle: roughly **75–80° from horizontal, tilted up-right**, hilt at chest height, tip well above helmet.\n- If this is the windup key of a classic overhead/diagonal slash, the implied arc would run **up-right (~75°) → down-left (~-60°)** through the front target zone — but that's inference, not observed data.\n\n## 3. Body mechanics (from the single pose)\n- **Stance:** wide, both feet planted, front foot (screen-left) angled out, back leg extended — a loaded, grounded base.\n- **Torso:** rotated slightly toward the sword side; hips coiled, consistent with stored rotational energy.\n- **Arms:** sword arm (screen-left, leading) bent ~90° at the elbow, grip two-handed-looking with the off-hand near the hilt/crossguard — chambered high.\n- **Weight:** reads centered-to-back foot, i.e., weight *not yet committed* — correct for anticipation, wrong for contact.\n\n## 4. Exaggeration\n- **No smear frames, trails, or squash/stretch** — it's a static illustration. The only \"effects\" are presentation-layer: the green glow bloom around the card and drop shadow under the sprite, which function as framing/VFX, not animation techniques.\n\n## 5. Timing\n- Unassessable — no frame spacing exists. As a *key pose*, it reads like a **hold/anticipation frame** that would deserve 4–8 held ticks before a 2–3 frame strike burst with wide spacing deltas.\n\nIf you can supply the actual frame strip (or the video this card came from showing animated frames), I'll give you a proper per-frame breakdown with arc degrees, contact frames, and timing multiples.",
+        "reasoning_content": "Only one static pose is shown — a card illustration. Be honest: not a frame sequence.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794080607,
+  "id": "20261108034314c1be8399e3794e83",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108034314c1be8399e3794e83",
+  "usage": {
+    "completion_tokens": 530,
+    "completion_tokens_details": {
+      "reasoning_tokens": 19
+    },
+    "prompt_tokens": 1382,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1912
+  }
+}

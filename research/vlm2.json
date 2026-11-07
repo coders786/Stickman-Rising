@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Frame Analysis: Samurai Pack Sprites (Pixel Art, ~side view)\n\n**Important caveat up front:** This is *not* a sequential sprite sheet of a single attack. It's a promotional layout showing **three distinct character poses/units** (ninja/swordsman, archer, armored samurai), each in a single frozen pose. So the \"frame count\" and \"timing\" analysis must be reconstructed from implied phases, not true frame-to-frame spacing. Here's the honest breakdown:\n\n## 1. Distinct frames/poses\n- **3 poses total, not one animation sequence:**\n  - **Pose A (left, ninja/swordsman):** Overhead strike, **strike/contact phase** — blade already sweeping down-forward with a motion smear on the tip.\n  - **Pose B (center, archer):** Full-draw **anticipation/hold phase** (archery equivalent of windup), bow at full tension, anchor point at cheek.\n  - **Pose C (right, armored samurai):** Low horizontal slash, **follow-through/early recovery** — blade extended past the target line with a trailing blue smear.\n\n## 2. Sword arc\n- **Pose A:** Blade arcs from ~10–11 o'clock (raised up-right behind the head) down toward ~4 o'clock (down-forward). Classic **overhead diagonal cut**, and yes — the sweep plane passes directly through the forward target zone at roughly chest/head height.\n- **Pose C:** Blade travels roughly **horizontal**, from ~9 o'clock pulled back to ~3 o'clock extended forward (or reversed depending on facing) — a **kesa/level draw-cut**, blade tip trailing a smear at the terminal arc position. Sweep is at hip/waist height, in front of the character.\n- The archer obviously has a straight-line bowstring release arc instead.\n\n## 3. Body mechanics\n- **Pose A:** Hips and shoulders rotated back-then-over (torque visible in the twisted torso sash), **right arm overhead leading the cut**, elbow nearly extended at contact, wide forward stance (~2 shoulder widths), weight shifted onto the front leg.\n- **Pose B:** Shoulders squared perpendicular to target, **left arm fully extended** pushing the bow, right elbow high and bent pulling string to anchor, wide stable archer stance, weight centered/slightly back — correct \"hold at full draw\" mechanics.\n- **Pose C:** Deep lunge, torso leaning aggressively forward (~15–20°), lead arm extended through the cut, rear arm chambered back for counterbalance, weight heavily on the front foot — classic committed follow-through posture.\n\n## 4. Exaggeration techniques\n- **Motion smears:** Both sword poses use a **multi-segment blue/white broken streak** extending off the blade tip — a pixel-art equivalent of a smear frame / speed line. Pose A's smear arcs above the blade (indicating it just swept down), Pose C's trails behind the tip.\n- **No true squash/stretch** (rigid armor silhouette), but the deep lunge on Pose C reads as **pose exaggeration** — pushing the silhouette past natural stance width.\n- **No impact flashes** visible — contact VFX (slash arcs, hit sparks) would presumably be separate frames/layers not shown here.\n- High-contrast rim accents (orange/red trim) help the silhouette pop, aiding readability at speed.\n\n## 5. Timing (inferred, not measured)\n- **Pose B is a hold frame** — full-draw anticipation frames in packs like this are typically held 6–12 frames before a fast release (release frames would be 1–2 frames with heavy spacing jumps).\n- **Pose A reads as a 1–2 frame contact frame** — the smear implies the strike consumed 2–3 fast multiples (large angular jumps between in-betweens, ~30–45° of blade rotation per frame).\n- **Pose C is a follow-through that would sit on a 3–4 frame ease-out** after the fast strike multiples, easing into recovery.\n- Typical implied structure for such packs: **windup hold (8–12f) → 2–3 strike multiples → 2–4f follow-through → recovery ease**, i.e., slow-in to the windup, very slow-out of nothing — fast-in/fast-out around contact.\n\n**Verdict as reference material:** Good for *key pose libraries* (strong silhouettes, readable arcs, correct weapon mechanics), but you'd need the actual sheet to do real spacing/timing analysis — these are marketing poses, not an animation timeline.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794080612,
+  "id": "20261108034314a038a08d6a16412d",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108034314a038a08d6a16412d",
+  "usage": {
+    "completion_tokens": 960,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2981,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3941
+  }
+}

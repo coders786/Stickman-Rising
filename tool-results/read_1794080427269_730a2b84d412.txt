@@ -1,0 +1,1874 @@
+     1→/** STICKMAN RISING — the Player: state machine, dash system, combo machine,
+     2→ * parry/riposte, charged attacks, elemental abilities, execution finishers.
+     3→ */
+     4→
+     5→import { Animator } from '../anim/animator'
+     6→import { makePose, Pose, CH } from '../anim/pose'
+     7→import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+     8→import { CHARGE_CLIP, DASH_AIR_CLIP, DASH_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP } from '../anim/clips'
+     9→import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
+    10→import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
+    11→import { Trail } from '../fx/fx'
+    12→import { WorldRef } from '../core/types'
+    13→import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
+    14→
+    15→/** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
+    16→function circleHitsSweptQuad(
+    17→  cx: number, cy: number, r: number,
+    18→  pbx: number, pby: number, ptx: number, pty: number,
+    19→  bx: number, by: number, tx: number, ty: number,
+    20→): boolean {
+    21→  // current + previous blade segments
+    22→  if (segHitsCircle(bx, by, tx, ty, cx, cy, r)) return true
+    23→  if (segHitsCircle(pbx, pby, ptx, pty, cx, cy, r)) return true
+    24→  // swept edges (tip path + base path)
+    25→  if (segHitsCircle(ptx, pty, tx, ty, cx, cy, r)) return true
+    26→  if (segHitsCircle(pbx, pby, bx, by, cx, cy, r)) return true
+    27→  // circle center inside the swept quad (spins / wide arcs)
+    28→  if (pointInTri(cx, cy, pbx, pby, ptx, pty, tx, ty)) return true
+    29→  if (pointInTri(cx, cy, pbx, pby, tx, ty, bx, by)) return true
+    30→  return false
+    31→}
+    32→
+    33→function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): boolean {
+    34→  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2)
+    35→  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3)
+    36→  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1)
+    37→  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0
+    38→  const hasPos = d1 > 0 || d2 > 0 || d3 > 0
+    39→  return !(hasNeg && hasPos)
+    40→}
+    41→
+    42→export type PlayerState =
+    43→  | 'move' | 'attack' | 'dash' | 'parry' | 'charge' | 'hurt' | 'dead'
+    44→  | 'scripted' // driven by Game cinematics (ult / execution)
+    45→
+    46→const SCALE = 1.32
+    47→/** nominal (airborne) hip height = thigh(25)+shin(24) = 49 local × SCALE.
+    48→ * Grounded height is NOT fixed — it derives from the planted foot via the
+    49→ * foot-ground lock (updateFootLock): idle bent knees, lunges and landing
+    50→ * squashes all sit exactly ON the ground line. */
+    51→const HIP_H = (25 + 24) * SCALE
+    52→
+    53→/**
+    54→ * Enemy body spheres: [centerY offset above ground, radius] in enemy-local
+    55→ * units (× e.scale). Traced from the ENEMY_SPEC skeleton — hip at 47u, torso
+    56→ * 32u, head top ≈ 94u. The old single circle (y-34, r 26) only covered the
+    57→ * lower 2/3 of the body, so chest/head-height slashes passed straight
+    58→ * through the sprite without connecting. Three spheres hug the visual body.
+    59→ */
+    60→const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
+    61→  { oy: 14, r: 15 }, // legs / hip mass
+    62→  { oy: 48, r: 21 }, // torso (the main target)
+    63→  { oy: 78, r: 17 }, // chest / head zone
+    64→]
+    65→
+    66→/** blade segment vs an enemy's full visual body (any sphere, swept-aware).
+    67→ * `pad` fattens the radius per-attack — a katana edge is a plane; the hit
+    68→ * volume must match the visual footprint of the blade edge corridor. */
+    69→function bladeHitsBody(
+    70→  e: { x: number; y: number; scale: number },
+    71→  hasPrev: boolean,
+    72→  prev: { bx: number; by: number; tx: number; ty: number },
+    73→  cur: { bx: number; by: number; tx: number; ty: number },
+    74→  pad = 3,
+    75→): boolean {
+    76→  const s = e.scale
+    77→  for (const sp of BODY_SPHERES) {
+    78→    const cy = e.y - sp.oy * s
+    79→    const r = sp.r * s + pad
+    80→    if (hasPrev
+    81→      ? circleHitsSweptQuad(e.x, cy, r, prev.bx, prev.by, prev.tx, prev.ty, cur.bx, cur.by, cur.tx, cur.ty)
+    82→      : segHitsCircle(cur.bx, cur.by, cur.tx, cur.ty, e.x, cy, r)
+    83→    ) return true
+    84→  }
+    85→  return false
+    86→}
+    87→
+    88→const MOVE_MAX = 350
+    89→const ACCEL = 2600
+    90→const FRICTION = 2800
+    91→const AIR_ACCEL = 1800
+    92→const GRAVITY = 2050
+    93→/** ANTI-FLOAT gravity shaping (Sekiro-weight): apex decay ×2.2 kills the
+    94→ * moon-hover; the fall accelerates ×3.5 so the body plummets; terminal
+    95→ * velocity caps the plunge. Rising hard (launch/juggle) keeps ~1.35× so
+    96→ * launches still read. */
+    97→const GRAV_APEX = 2.2
+    98→const GRAV_RISE = 1.35
+    99→const GRAV_FALL = 3.5
+   100→const TERMINAL_VY = 1650
+   101→const JUMP_V = -700
+   102→const AIR_JUMP_V = -620
+   103→const DASH_SPEED = 980
+   104→const DASH_TIME = 0.15
+   105→const DASH_CD = 0.1
+   106→const DASH_RECHARGE = 0.32
+   107→
+   108→interface ActionState {
+   109→  def: AttackDef
+   110→  animT: number
+   111→  hitMap: Map<number, number>
+   112→  trail: Trail
+   113→  sfxDone: boolean
+   114→  moveDone: boolean
+   115→  moveYDone: boolean
+   116→  impactDone: boolean
+   117→  overshootDone: boolean
+   118→  flashDone: boolean
+   119→  fromParry: boolean
+   120→  /** accumulated aim-assist correction (radians, bounded) */
+   121→  aimUsed: number
+   122→}
+   123→
+   124→interface AbilityState {
+   125→  kind: SwordId
+   126→  t: number
+   127→  step: number
+   128→  targets: number[]
+   129→  x: number
+   130→  y: number
+   131→}
+   132→
+   133→export class Player {
+   134→  x = 400
+   135→  y = 0
+   136→  vx = 0
+   137→  vy = 0
+   138→  face: 1 | -1 = 1
+   139→  grounded = true
+   140→
+   141→  hp = 100
+   142→  maxHp = 100
+   143→  energy = 100
+   144→  maxEnergy = 100
+   145→  meter = 0
+   146→
+   147→  sword: SwordDef = SWORDS.katana
+   148→
+   149→  state: PlayerState = 'move'
+   150→  private animator = new Animator()
+   151→  pose: Pose = makePose()
+   152→  geom: SkelGeom = makeSkelGeom()
+   153→  swingGlow = 0
+   154→  flashT = 0
+   155→  iframes = 0
+   156→
+   157→  private action: ActionState | null = null
+   158→  private ability: AbilityState | null = null
+   159→
+   160→  private lightIndex = 0
+   161→  private airIndex = 0
+   162→  private lastLightAt = -10
+   163→  private lastGrounded = true
+   164→  private landSpring = 0
+   165→
+   166→  private dashT = 0
+   167→  private dashCd = 0
+   168→  private dashConsec = 0
+   169→  private dashRecharge = 0
+   170→  private dashDx = 1
+   171→  private dashDy = 0
+   172→  private airDashUsed = false
+   173→  private jumpsUsed = 0
+   174→  private afterimgTimer = 0
+   175→  /** when the last dash ended — the momentum tail window feeds the
+   176→   * dash-strike conversion (attacking on dash momentum = through-cut) */
+   177→  private dashEndedAt = -10
+   178→
+   179→  private parryT = 0
+   180→  private parryActive = 0
+   181→  riposteT = 0
+   182→  private parryPerfect = false
+   183→
+   184→  private chargeT = 0
+   185→  charging = false
+   186→  private chargeReady = false
+   187→
+   188→  private hurtT = 0
+   189→  private deadT = 0
+   190→
+   191→  /* ---- WEIGHT: hip height derives from the planted foot (foot-ground
+   192→   * lock) — no floating, no digging, real weight transfer for every pose. */
+   193→  private footLock = HIP_H
+   194→
+   195→  /* ---- BLADE DYNAMICS: rotational inertia of the katana. The tip lags
+   196→   * the arm's angular acceleration and whips through on release — a
+   197→   * physically-motivated furi-otoshi accent layered under the keyframes. */
+   198→  private bladeLag = 0
+   199→  private bladeLagVel = 0
+   200→  private prevArmSum = 0
+   201→  /** signed arm angular velocity (rad/s) — drives lag, chain reaction, overshoot */
+   202→  private armVel = 0
+   203→
+   204→  /* ---- KINETIC CHAIN (anti "spinning top"): hips → torso → shoulders
+   205→   * counter-lag spring. When the arm whips, the body visibly loads against
+   206→   * it (30% hips · 50% torso · 20% shoulders) — Newton's third law, read. */
+   207→  private chainLag = 0
+   208→  private chainLagVel = 0
+   209→
+   210→  /* ---- 2.8D: camera-side depth of the blade plane (−1..1) + hyper-scale
+   211→   * (blade grows during active frames, anime weapon read) + smear tracking */
+   212→  private bladeZ = 0
+   213→  private swingScale = 1
+   214→  private prevBladeAng = 0
+   215→  private hasPrevAng = false
+   216→  /** this frame's angular smear window (prev → current blade angle) */
+   217→  private smearA0 = 0
+   218→  private smearA1 = 0
+   219→
+   220→  /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
+   221→   * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
+   222→  private twoHandW = 0
+   223→
+   224→  /* ---- HEAVY CHAIN: h1 → h2 → h3 (was: single animation forever). */
+   225→  private heavyIndex = 0
+   226→  private lastHeavyAt = -10
+   227→
+   228→  /* ---- HYPER-ARMOR window (charged release): damage bleeds at 35%, but
+   229→   * the swing is never interrupted — the counter to "charged never hits". */
+   230→  private armorT = 0
+   231→
+   232→  /** world-space blade segment (hit + trail sampling) */
+   233→  blade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   234→  /** previous frame's blade segment (swept hit detection) */
+   235→  private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   236→  private hasPrevBlade = false
+   237→
+   238→  constructor() {
+   239→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   240→  }
+   241→
+   242→  reset(x: number): void {
+   243→    this.x = x
+   244→    this.y = 0
+   245→    this.vx = 0
+   246→    this.vy = 0
+   247→    this.face = 1
+   248→    this.grounded = true
+   249→    this.hp = this.maxHp
+   250→    this.energy = this.maxEnergy
+   251→    this.meter = 0
+   252→    this.state = 'move'
+   253→    this.action = null
+   254→    this.ability = null
+   255→    this.charging = false
+   256→    this.hurtT = 0
+   257→    this.iframes = 0
+   258→    this.deadT = 0
+   259→    this.exitScriptedSoon = 0
+   260→    this.lightIndex = 0
+   261→    this.airIndex = 0
+   262→    this.bladeZ = 0
+   263→    this.swingScale = 1
+   264→    this.bladeLag = 0
+   265→    this.bladeLagVel = 0
+   266→    this.chainLag = 0
+   267→    this.chainLagVel = 0
+   268→    this.prevArmSum = 0
+   269→    this.hasPrevAng = false
+   270→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   271→  }
+   272→
+   273→  setSword(id: SwordId): void {
+   274→    this.sword = SWORDS[id]
+   275→  }
+   276→
+   277→  get atkSpeed(): number {
+   278→    return this.sword.stats.spd
+   279→  }
+   280→
+   281→  get busy(): boolean {
+   282→    return this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
+   283→  }
+   284→
+   285→  get chargeRatio(): number {
+   286→    return clamp01(this.chargeT / 0.55)
+   287→  }
+   288→
+   289→  get parryWindowOpen(): boolean {
+   290→    return this.parryActive > 0
+   291→  }
+   292→
+   293→  get isDead(): boolean {
+   294→    return this.state === 'dead'
+   295→  }
+   296→
+   297→  get deadTime(): number {
+   298→    return this.deadT
+   299→  }
+   300→
+   301→  get hipY(): number {
+   302→    // footLock (damped) IS the hip height: planted-foot-derived → weight.
+   303→    // (geom already contains pose rootY, so no double count.)
+   304→    return this.y - this.footLock
+   305→  }
+   306→
+   307→  /* ------------------------------------------------------------------ */
+   308→  /* main update                                                          */
+   309→  /* ------------------------------------------------------------------ */
+   310→
+   311→  update(dt: number, w: WorldRef): void {
+   312→    this.iframes = Math.max(0, this.iframes - dt)
+   313→    this.armorT = Math.max(0, this.armorT - dt)
+   314→    this.flashT = Math.max(0, this.flashT - dt * 5)
+   315→    this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
+   316→    this.riposteT = Math.max(0, this.riposteT - dt)
+   317→    this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
+   318→
+   319→    switch (this.state) {
+   320→      case 'move': this.updateMove(dt, w); break
+   321→      case 'attack': this.updateAttack(dt, w); break
+   322→      case 'dash': this.updateDash(dt, w); break
+   323→      case 'parry': this.updateParry(dt, w); break
+   324→      case 'charge': this.updateCharge(dt, w); break
+   325→      case 'hurt': this.updateHurt(dt, w); break
+   326→      case 'dead': this.updateDead(dt, w); break
+   327→      case 'scripted': this.updateScripted(dt); break
+   328→    }
+   329→
+   330→    // physics integration (shared)
+   331→    if (this.state !== 'dash') {
+   332→      let g: number
+   333→      if (this.state === 'attack' && this.action && this.action.def.float) {
+   334→        // authored air-combo float overrides the shaping (juggle windows)
+   335→        g = GRAVITY * this.action.def.float
+   336→      } else if (this.vy < 0) {
+   337→        // ANTI-FLOAT: apex decay — no moon hovering
+   338→        g = GRAVITY * (this.vy < -260 ? GRAV_RISE : GRAV_APEX)
+   339→      } else {
+   340→        // heavy fall: the body plummets
+   341→        g = GRAVITY * GRAV_FALL
+   342→      }
+   343→      this.vy += g * dt
+   344→      if (this.vy > TERMINAL_VY) this.vy = TERMINAL_VY
+   345→    }
+   346→    this.x += this.vx * dt
+   347→    this.y += this.vy * dt
+   348→
+   349→    // ground
+   350→    const wasAir = !this.grounded
+   351→    if (this.y >= 0) {
+   352→      this.y = 0
+   353→      if (this.vy > 140) {
+   354→        this.landSpring = clamp(this.vy / 700, 0, 1)
+   355→        if (wasAir) this.onLand(w)
+   356→      } else if (wasAir) {
+   357→        this.landSpring = 0.4
+   358→        this.onLand(w)
+   359→      }
+   360→      this.vy = 0
+   361→      this.grounded = true
+   362→      this.jumpsUsed = 0
+   363→      this.airDashUsed = false
+   364→    } else {
+   365→      this.grounded = false
+   366→    }
+   367→    // arena bounds
+   368→    if (this.x < w.arenaMinX + 20) {
+   369→      this.x = w.arenaMinX + 20
+   370→      if (this.vx < -200) w.fx.dust(this.x - 12, 0, 5)
+   371→      this.vx = Math.max(0, this.vx)
+   372→    }
+   373→    if (this.x > w.arenaMaxX - 20) {
+   374→      this.x = w.arenaMaxX - 20
+   375→      if (this.vx > 200) w.fx.dust(this.x + 12, 0, 5)
+   376→      this.vx = Math.min(0, this.vx)
+   377→    }
+   378→
+   379→    this.dashCd = Math.max(0, this.dashCd - dt)
+   380→    this.dashRecharge = Math.max(0, this.dashRecharge - dt)
+   381→    if (this.dashRecharge <= 0) this.dashConsec = 0
+   382→
+   383→    // ability script
+   384→    if (this.ability) this.updateAbility(dt, w)
+   385→
+   386→    // animation + solve
+   387→    this.animator.update(dt)
+   388→    // Base layer: the clip FULLY owns the pose each frame (write, never
+   389→    // accumulate). applyProcedural() is a bounded additive layer on top.
+   390→    // Without this copy, procedural += deltas integrate unbounded → spine
+   391→    // spin + root sink. (Same contract as Spine's AnimationState.apply /
+   392→    // Godot AnimationTree → Skeleton2D.)
+   393→    this.pose.set(this.animator.pose)
+   394→    this.applyProcedural(dt)
+   395→    // procedural layers (bounded, frame-local — never accumulate):
+   396→    this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
+   397→    this.applyAimAssist(dt, w)      // bounded wrist convergence onto the target center line
+   398→    this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
+   399→    solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
+   400→    this.updateFootLock(dt)         // weight: hips sit on the planted foot
+   401→    this.updateBladeWorld()
+   402→    this.updateSwingScale(dt)
+   403→    this.updateBladeZ(dt)
+   404→  }
+   405→
+   406→  private onLand(w: WorldRef): void {
+   407→    w.audio.play('land', { volume: 0.5 })
+   408→    w.fx.dust(this.x, 0, 7)
+   409→    // slam impact while attacking
+   410→    const a = this.action
+   411→    if (a && a.def.slamImpact && !a.impactDone) {
+   412→      a.impactDone = true
+   413→      this.slamAoe(w, a.def.slamImpact.r, a.def.slamImpact.dmg, a.def.slamImpact.launch)
+   414→    }
+   415→    if (this.state === 'move' && this.lastGrounded === false) {
+   416→      this.animator.play(LAND_CLIP, { blend: 0.06 })
+   417→    }
+   418→    this.airIndex = 0
+   419→  }
+   420→
+   421→  private slamAoe(w: WorldRef, r: number, dmg: number, launch: number): void {
+   422→    const info: AttackRuntimeInfo = {
+   423→      id: 'slam', dmg: dmg * this.sword.stats.dmg, heavy: true,
+   424→      stagger: 0.5, kb: 240, kbY: 0, launch, juggle: 0,
+   425→      hitstop: 0.11, shake: 0.45, aoe: r, breakGuard: true, kind: 'heavy',
+   426→    }
+   427→    const colors = this.sword.colors
+   428→    w.fx.shockwave(this.x, 0, r, colors.glow, 0.5, 8)
+   429→    w.fx.groundCrack(this.x, 0, r * 0.6)
+   430→    w.fx.burst(this.x, -6, 14, colors.glow, 340, 0.5, 'spark')
+   431→    w.fx.screenFlash(colors.trail, 0.16, 5)
+   432→    w.addHitstop(0.09, 0.06)
+   433→    w.cam.addTrauma(0.4)
+   434→    w.audio.play('slam', { intensity: 1 })
+   435→    const bx = this.x
+   436→    for (const e of w.enemies) {
+   437→      if (e.dead || e.spawning) continue
+   438→      const dx = e.x - bx
+   439→      if (Math.abs(dx) < r && e.y > -140) {
+   440→        w.hitEnemy(e.id, { bx: bx - 20, by: -20, tx: bx + 20, ty: -20 }, info)
+   441→      }
+   442→    }
+   443→  }
+   444→
+   445→  /* ------------------------------------------------------------------ */
+   446→  /* locomotion                                                           */
+   447→  /* ------------------------------------------------------------------ */
+   448→
+   449→  private updateMove(dt: number, w: WorldRef): void {
+   450→    const input = w.input
+   451→    const ax = input.axisX()
+   452→    const ay = input.axisY()
+   453→
+   454→    // facing follows input
+   455→    if (ax !== 0) this.face = ax > 0 ? 1 : -1
+   456→
+   457→    // horizontal movement
+   458→    if (ax !== 0) {
+   459→      const accel = this.grounded ? ACCEL : AIR_ACCEL
+   460→      this.vx += ax * accel * dt
+   461→      this.vx = clamp(this.vx, -MOVE_MAX, MOVE_MAX)
+   462→    } else if (this.grounded) {
+   463→      const f = FRICTION * dt
+   464→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   465→    } else {
+   466→      this.vx = damp(this.vx, 0, 0.4, dt)
+   467→    }
+   468→
+   469→    // locomotion clip selection
+   470→    const speed = Math.abs(this.vx)
+   471→    if (this.grounded) {
+   472→      if (speed > 40) {
+   473→        this.animator.play(RUN_CLIP, { blend: 0.09, speed: clamp(speed / MOVE_MAX, 0.65, 2.1) })
+   474→      } else if (this.vy === 0) {
+   475→        this.animator.play(IDLE_CLIP, { blend: 0.16 })
+   476→      }
+   477→    } else if (this.vy < -60) {
+   478→      this.animator.play(JUMP_CLIP, { blend: 0.06 })
+   479→    } else {
+   480→      this.animator.play(FALL_CLIP, { blend: 0.12 })
+   481→    }
+   482→
+   483→    // ---- actions ----
+   484→    if (this.tryCombatInputs(w, ax, ay)) return
+   485→  }
+   486→
+   487→  /** returns true if a new state was entered */
+   488→  private tryCombatInputs(w: WorldRef, ax: number, ay: number): boolean {
+   489→    const input = w.input
+   490→
+   491→    // dash (anytime, from move)
+   492→    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   493→      this.startDash(w, ax, ay)
+   494→      return true
+   495→    }
+   496→    // jump (grounded = jump 1, plus one air jump)
+   497→    if (input.pressed('jump') || input.buffered('jump', 0.18)) {
+   498→      if (this.jumpsUsed < 2) {
+   499→        this.doJump(w)
+   500→        return false
+   501→      }
+   502→    }
+   503→    // parry
+   504→    if (input.pressed('parry')) {
+   505→      this.enterParry(w)
+   506→      return true
+   507→    }
+   508→    // ability
+   509→    if (input.pressed('ability')) {
+   510→      if (this.energy >= this.sword.ability.cost) {
+   511→        this.startAbility(w)
+   512→        return true
+   513→      }
+   514→    }
+   515→    // ult is handled by Game (cinematic)
+   516→
+   517→    // heavy: charge vs tap
+   518→    if (input.down('heavy') && this.grounded) {
+   519→      this.enterCharge(w)
+   520→      return true
+   521→    }
+   522→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   523→      input.takeBuffered('heavy')
+   524→      this.startAttack(this.pickHeavy(w), w)
+   525→      return true
+   526→    }
+   527→    // light
+   528→    if (input.pressed('light') || input.buffered('light')) {
+   529→      input.takeBuffered('light')
+   530→      // DASH MOMENTUM STRIKE: attacking while the last dash's momentum
+   531→      // still carries the body converts into the through-cut — the
+   532→      // dash-strike feel (Hades). Without this, the 150ms in-dash input
+   533→      // window was brutally tight and dash attacks "randomly" whiffed.
+   534→      if (this.grounded
+   535→        && w.time - this.dashEndedAt < 0.18
+   536→        && Math.abs(this.vx) > 110
+   537→        && this.riposteT <= 0) {
+   538→        this.startAttack(ATTACKS.dashSlash, w)
+   539→        return true
+   540→      }
+   541→      const id = this.riposteT > 0 ? 'riposte' : this.pickLight(w, ax, ay)
+   542→      this.startAttack(ATTACKS[id], w)
+   543→      return true
+   544→    }
+   545→    return false
+   546→  }
+   547→
+   548→  private doJump(w: WorldRef): void {
+   549→    w.input.takeBuffered('jump')
+   550→    this.jumpsUsed++
+   551→    this.vy = this.jumpsUsed === 1 ? JUMP_V : AIR_JUMP_V
+   552→    this.grounded = false
+   553→    w.audio.play('jump', { volume: 0.4 })
+   554→    w.fx.dust(this.x, 0, 4)
+   555→    if (this.jumpsUsed === 2) {
+   556→      w.fx.burst(this.x, this.y - 20, 6, '#9fb4c4', 160, 0.4, 'dot')
+   557→    }
+   558→  }
+   559→
+   560→  /* ------------------------------------------------------------------ */
+   561→  /* dash                                                                 */
+   562→  /* ------------------------------------------------------------------ */
+   563→
+   564→  private canDash(): boolean {
+   565→    if (this.dashCd > 0 || this.dashRecharge > 0) return false
+   566→    if (!this.grounded && this.airDashUsed) return false
+   567→    return true
+   568→  }
+   569→
+   570→  startDash(w: WorldRef, ax: number, ay: number): void {
+   571→    w.input.takeBuffered('dash')
+   572→    let dx = ax
+   573→    let dy = ay
+   574→    if (dx === 0 && dy === 0) dx = this.face
+   575→    const len = Math.hypot(dx, dy) || 1
+   576→    dx /= len
+   577→    dy /= len
+   578→    if (dx !== 0) this.face = dx > 0 ? 1 : -1
+   579→    this.dashDx = dx
+   580→    this.dashDy = dy
+   581→    this.state = 'dash'
+   582→    this.dashT = DASH_TIME
+   583→    this.dashCd = DASH_CD
+   584→    this.dashConsec++
+   585→    if (this.dashConsec >= 2) this.dashRecharge = DASH_RECHARGE
+   586→    if (!this.grounded) this.airDashUsed = true
+   587→    this.iframes = Math.max(this.iframes, 0.12)
+   588→    this.action = null
+   589→    this.charging = false
+   590→    this.vx = dx * DASH_SPEED
+   591→    this.vy = dy * DASH_SPEED * (this.grounded && dy < -0.4 ? 0.55 : 1)
+   592→    this.animator.play(this.grounded ? DASH_CLIP : DASH_AIR_CLIP, { blend: 0.05 })
+   593→    w.audio.play('dash', { pitch: rand(0.95, 1.1) })
+   594→    const colors = this.sword.colors
+   595→    w.fx.speedStreaks(this.x, this.y - 40, dx * DASH_SPEED * 0.9, 6, rgba(colors.trail, 1))
+   596→    w.fx.chroma(0.4) // lens strain on the launch
+   597→    w.fx.dust(this.x, this.grounded ? 0 : this.y, 5)
+   598→    w.cam.addTrauma(0.06)
+   599→  }
+   600→
+   601→  private updateDash(dt: number, w: WorldRef): void {
+   602→    this.dashT -= dt
+   603→    // afterimages
+   604→    this.afterimgTimer -= dt
+   605→    if (this.afterimgTimer <= 0) {
+   606→      this.afterimgTimer = 0.026
+   607→      w.fx.afterimage(this.pose, this.x, this.hipY, this.face, this.sword.colors.trail, 0.3, SCALE)
+   608→    }
+   609→    // maintain velocity with slight decay
+   610→    const k = 1 - this.dashT / DASH_TIME
+   611→    const sp = DASH_SPEED * (1 - k * 0.25)
+   612→    this.vx = this.dashDx * sp
+   613→    this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)
+   614→
+   615→    // dash attack
+   616→    const input = w.input
+   617→    if (input.pressed('light') || input.buffered('light')) {
+   618→      input.takeBuffered('light')
+   619→      this.startAttack(ATTACKS.dashSlash, w)
+   620→      return
+   621→    }
+   622→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   623→      if (!this.grounded) {
+   624→        input.takeBuffered('heavy')
+   625→        this.startAttack(ATTACKS.slam, w)
+   626→        return
+   627→      }
+   628→      input.takeBuffered('heavy')
+   629→      this.startAttack(ATTACKS.dashHeavy, w)
+   630→      return
+   631→    }
+   632→    if (this.dashT <= 0) {
+   633→      this.state = 'move'
+   634→      this.dashEndedAt = w.time
+   635→      this.vx *= 0.55
+   636→      if (!this.grounded) {
+   637→        this.vy *= 0.5
+   638→      } else if (Math.abs(this.vx) > 260) {
+   639→        // THE BRAKING SKID: momentum must shed through a visible physical
+   640→        // pose — heel-dig crouch + a dust scrape, never a dead stop.
+   641→        w.fx.dust(this.x - this.face * 12, 0, 5)
+   642→        this.landSpring = 0.35
+   643→        this.animator.play(LAND_CLIP, { blend: 0.05 })
+   644→      }
+   645→    }
+   646→  }
+   647→
+   648→  /* ------------------------------------------------------------------ */
+   649→  /* attacks / combo machine                                              */
+   650→  /* ------------------------------------------------------------------ */
+   651→
+   652→  private pickLight(w: WorldRef, ax: number, ay: number): string {
+   653→    // contextual branches
+   654→    if (ay < -0.4 && this.grounded) return 'launcher'
+   655→    if (ay > 0.4 && this.grounded) return 'spin'
+   656→    if (this.grounded && ax !== 0 && Math.sign(ax) !== this.face) return 'retreat'
+   657→    if (!this.grounded) {
+   658→      if (ay > 0.4) return 'dive'
+   659→      this.airIndex = (this.airIndex % 3) + 1
+   660→      return `a${this.airIndex}`
+   661→    }
+   662→    // ground light chain (with time decay)
+   663→    if (w.time - this.lastLightAt > 1.1) this.lightIndex = 0
+   664→    this.lightIndex = Math.min(this.lightIndex + 1, 5)
+   665→    return `l${Math.min(this.lightIndex, 5)}`
+   666→  }
+   667→
+   668→  /** Heavy CHAIN: Kiri Oroshi → Tsuki → Grand Slam. Sequential like the
+   669→   * light chain, with time decay — heavy attacks finally have combo
+   670→   * pairing instead of one animation forever. */
+   671→  private pickHeavy(w: WorldRef): AttackDef {
+   672→    if (w.time - this.lastHeavyAt > 1.15) this.heavyIndex = 0
+   673→    this.heavyIndex = Math.min(this.heavyIndex + 1, 3)
+   674→    return ATTACKS[`h${this.heavyIndex}`] ?? ATTACKS.h1
+   675→  }
+   676→
+   677→  startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
+   678→    if (!def) return
+   679→    // IN-BETWEEN LAW: capture the source state BEFORE switching — chained
+   680→    // attacks crossfade slower (0.11s) than fresh entries (0.07s) so every
+   681→    // transition between animation instances gets real in-betweens.
+   682→    const wasAttack = this.state === 'attack'
+   683→    // requirement checks
+   684→    if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
+   685→    if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
+   686→
+   687→    // face toward held direction at attack start
+   688→    const ax = w.input.axisX()
+   689→    if (ax !== 0 && !fromParry) {
+   690→      this.face = ax > 0 ? 1 : -1
+   691→    } else if (!fromParry) {
+   692→      // SOFT AIM: no direction held → face the nearest threat. Every swing
+   693→      // commits toward a real target — the root of "aimed at different
+   694→      // angles": cuts should converge on the enemy, not on empty planes.
+   695→      const tgt = this.nearestEnemy(w, 600)
+   696→      if (tgt && Math.abs(tgt.x - this.x) > 24) {
+   697→        this.face = tgt.x > this.x ? 1 : -1
+   698→      }
+   699→    }
+   700→
+   701→    // heavy chain bookkeeping (h1 → h2 → h3 sequencing)
+   702→    const hm = /^h([123])$/.exec(def.id)
+   703→    if (hm) {
+   704→      this.heavyIndex = Number(hm[1])
+   705→      this.lastHeavyAt = w.time
+   706→    }
+   707→    if (/^l[1-5]$/.test(def.id)) this.lastLightAt = w.time
+   708→
+   709→    // HYPER-ARMOR: the charged release cannot be interrupted (the root
+   710→    // cause of "charged never hits" — enemies struck mid-swing cancelled it)
+   711→    if (def.id === 'charged') this.armorT = 0.5
+   712→
+   713→    const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
+   714→    this.hasPrevBlade = false
+   715→    this.hasPrevAng = false
+   716→    this.action = {
+   717→      def,
+   718→      animT: 0,
+   719→      hitMap: new Map(),
+   720→      trail,
+   721→      sfxDone: false,
+   722→      moveDone: false,
+   723→      moveYDone: false,
+   724→      impactDone: false,
+   725→      overshootDone: false,
+   726→      flashDone: !def.drawFlash,
+   727→      fromParry,
+   728→      aimUsed: 0,
+   729→    }
+   730→    if (fromParry) this.riposteT = 0
+   731→    this.state = 'attack'
+   732→    this.charging = false
+   733→    // ANIME TIMING: attack bodies play "on twos" (24Hz stepped keys —
+   734→    // crisp, keyframed combat beats à la GG Strive) while blade physics,
+   735→    // smears, and trails run full-rate on the procedural layers.
+   736→    this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed, stepRate: 24 })
+   737→    // slight ground friction during attacks
+   738→  }
+   739→
+   740→  private updateAttack(dt: number, w: WorldRef): void {
+   741→    const a = this.action
+   742→    if (!a) {
+   743→      this.state = 'move'
+   744→      return
+   745→    }
+   746→    const def = a.def
+   747→    a.animT = this.animator.getTime()
+   748→    const animT = a.animT
+   749→    const spd = this.atkSpeed
+   750→
+   751→    // ground friction / air drag during attack
+   752→    if (this.grounded) {
+   753→      const f = 900 * dt
+   754→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   755→    }
+   756→
+   757→    // sfx event
+   758→    if (!a.sfxDone && animT >= def.swingSfx.t) {
+   759→      a.sfxDone = true
+   760→      w.audio.play(def.swingSfx.name, { pitch: rand(0.94, 1.08) })
+   761→    }
+   762→    // iai SNAP-DRAW flash release: the blade clears the saya in one frame —
+   763→    // a localized light event + a 2-frame stretch on the steel sells it.
+   764→    if (!a.flashDone && animT >= def.trail.start) {
+   765→      a.flashDone = true
+   766→      const c = this.sword.colors
+   767→      w.fx.burst(this.blade.tx, this.blade.ty, 7, c.core, 300, 0.3, 'spark')
+   768→      w.fx.shockwave(this.blade.tx, this.blade.ty, 46, c.glow, 0.18, 3)
+   769→      w.cam.addTrauma(0.05)
+   770→      this.swingScale = Math.max(this.swingScale, 1.3) // velocity stretch
+   771→    }
+   772→    // forward impulse
+   773→    if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
+   774→      a.moveDone = true
+   775→      this.vx = this.face * def.moveX * (def.kind === 'dash' ? 1 : 1)
+   776→    }
+   777→    // vertical impulse (launcher hop / slam plunge)
+   778→    if (!a.moveYDone && def.moveY !== undefined && animT >= (def.moveYAt ?? 0)) {
+   779→      a.moveYDone = true
+   780→      this.vy = def.moveY
+   781→      if (def.moveY < 0) {
+   782→        this.grounded = false
+   783→        w.fx.dust(this.x, 0, 6)
+   784→      }
+   785→    }
+   786→
+   787→    // hit window: sample blade segment & test enemies (swept, anti-tunneling)
+   788→    const h = def.hit
+   789→    if (animT >= h.start && animT <= h.end) {
+   790→      this.swingGlow = 1
+   791→      const info = makeRuntimeInfo(def, this.sword.stats.dmg)
+   792→      // DASH THROUGH-CUT: the iai pass cuts everything the dash swept
+   793→      // through — the player crosses the target at 980px/s BEFORE the
+   794→      // attack anim even starts, so the blade-only segment points past
+   795→      // them. The corridor is the DASH PATH itself: a fixed chest-height
+   796→      // band from 124px behind the player to 66px ahead — anchored to the
+   797→      // path (not the wandering kissaki, which wraps behind on the
+   798→      // follow-through and would collapse the span). This is the swept
+   799→      // volume of the through-cut.
+   800→      let curSeg = this.blade
+   801→      let usePrev = this.hasPrevBlade
+   802→      if (def.kind === 'dash') {
+   803→        curSeg = {
+   804→          bx: this.x - this.face * 124,
+   805→          by: this.y - 55,
+   806→          tx: this.x + this.face * 66,
+   807→          ty: this.y - 55,
+   808→        }
+   809→        usePrev = false
+   810→      }
+   811→      for (const e of w.enemies) {
+   812→        // spawning enemies within blade reach (landing pods, y > -90) are
+   813→        // fair game — the swing connects the moment the body crosses the arc
+   814→        if (e.dead || (e.spawning && e.y < -90)) continue
+   815→        const last = a.hitMap.get(e.id)
+   816→        const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
+   817→        if (!reArm) continue
+   818→        if (bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)) {
+   819→          a.hitMap.set(e.id, animT)
+   820→          w.hitEnemy(e.id, this.blade, info)
+   821→          this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
+   822→        }
+   823→      }
+   824→      // remember this frame's blade for the next sweep test
+   825→      this.prevBlade.bx = this.blade.bx
+   826→      this.prevBlade.by = this.blade.by
+   827→      this.prevBlade.tx = this.blade.tx
+   828→      this.prevBlade.ty = this.blade.ty
+   829→      this.hasPrevBlade = true
+   830→      // aoe shockwave at strike moment for heavy hits — the wave is REAL:
+   831→      // enemies inside the radius eat the strike (the charged/h3 promise:
+   832→      // the shockwave visual must connect, not just decorate)
+   833→      if (h.aoe && h.aoe > 0 && !a.impactDone && this.grounded && animT >= h.start + 0.02) {
+   834→        a.impactDone = true
+   835→        w.fx.shockwave(this.x + this.face * 30, 0, h.aoe, this.sword.colors.glow, 0.4, 6)
+   836→        if (this.grounded) w.fx.groundCrack(this.x + this.face * 34, 0, h.aoe * 0.45)
+   837→        for (const e of w.enemies) {
+   838→          if (e.dead || e.spawning) continue
+   839→          if (a.hitMap.has(e.id) && !h.multiHit) continue
+   840→          if (Math.abs(e.x - this.x) < h.aoe && e.y > -140) {
+   841→            a.hitMap.set(e.id, animT)
+   842→            w.hitEnemy(e.id, this.blade, info)
+   843→            this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
+   844→          }
+   845→        }
+   846→      }
+   847→    }
+   848→
+   849→    // OVERSHOOT (follow-through law): as the active window closes, inject a
+   850→    // 2-frame rotational impulse — the tip pushes PAST the stop point and
+   851→    // the wrist spring elastic-snaps it back. Stopping dead reads weightless.
+   852→    if (!a.overshootDone && animT > h.end && this.armVel !== 0) {
+   853→      a.overshootDone = true
+   854→      this.bladeLagVel += Math.sign(this.armVel) * 2.4
+   855→    }
+   856→
+   857→    // trail emission
+   858→    if (animT >= def.trail.start && animT <= def.trail.end) {
+   859→      w.fx.pushTrail(a.trail, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+   860→    } else if (animT > def.trail.end && a.trail.emitting) {
+   861→      w.fx.endTrail(a.trail)
+   862→    }
+   863→
+   864→    // cancel window → allow chaining / dash-cancel / jump-cancel
+   865→    const dashCancel = animT >= h.end * 0.6
+   866→    if (animT >= def.cancel || dashCancel) {
+   867→      const input = w.input
+   868→      if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   869→        w.fx.endTrail(a.trail)
+   870→        this.startDash(w, input.axisX(), input.axisY())
+   871→        return
+   872→      }
+   873→      if (input.pressed('parry')) {
+   874→        w.fx.endTrail(a.trail)
+   875→        this.enterParry(w)
+   876→        return
+   877→      }
+   878→      if (animT >= def.cancel) {
+   879→        // chain next attack
+   880→        const ax = input.axisX()
+   881→        const ay = input.axisY()
+   882→        let next: string | null = null
+   883→        if (input.buffered('light')) {
+   884→          input.takeBuffered('light')
+   885→          next = this.riposteT > 0 && this.grounded ? 'riposte' : this.pickLight(w, ax, ay)
+   886→        } else if (input.buffered('heavy')) {
+   887→          input.takeBuffered('heavy')
+   888→          if (!this.grounded) {
+   889→            next = 'slam'
+   890→          } else if (input.down('heavy')) {
+   891→            // still holding → convert to charge
+   892→            this.enterCharge(w)
+   893→            w.fx.endTrail(a.trail)
+   894→            return
+   895→          } else {
+   896→            // advance the heavy CHAIN (h1 → h2 → h3) like the light chain
+   897→            const heavyNext = def.chain.find((c) => /^h[123]$/.test(c))
+   898→            next = heavyNext ?? (def.kind === 'heavy' ? 'l1' : 'h1')
+   899→          }
+   900→        }
+   901→        if (next) {
+   902→          // validate chain (or allow from-parry riposte)
+   903→          if (fromChain(def, next, this)) {
+   904→            w.fx.endTrail(a.trail)
+   905→            this.startAttack(ATTACKS[next], w)
+   906→            return
+   907→          }
+   908→        }
+   909→        // jump cancel on ground
+   910→        if (this.grounded && (input.pressed('jump') || input.buffered('jump', 0.15))) {
+   911→          w.fx.endTrail(a.trail)
+   912→          this.doJump(w)
+   913→          this.state = 'move'
+   914→          return
+   915→        }
+   916→      }
+   917→    }
+   918→
+   919→    // finish
+   920→    if (this.animator.isDone()) {
+   921→      w.fx.endTrail(a.trail, 0.18)
+   922→      this.action = null
+   923→      this.state = 'move'
+   924→    }
+   925→  }
+   926→
+   927→  private onLandedHit(w: WorldRef, info: AttackRuntimeInfo, ex: number, ey: number): void {
+   928→    this.energy = Math.min(this.maxEnergy, this.energy + 5)
+   929→    this.meter = Math.min(100, this.meter + info.dmg * 0.32)
+   930→    // elemental on-hit flourishes
+   931→    const c = this.sword.colors
+   932→    const dir = Math.atan2(ey - this.y + 40, ex - this.x)
+   933→    switch (this.sword.id) {
+   934→      case 'inferno':
+   935→        w.fx.embers(ex, ey, 5, c.accent, 18)
+   936→        break
+   937→      case 'thunder':
+   938→        if (Math.random() < 0.3) w.fx.lightningArc(ex, ey, ex + rand(-40, 40), ey + rand(-30, 30), c.trail)
+   939→        break
+   940→      case 'void':
+   941→        w.fx.burst(ex, ey, 4, c.core, 120, 0.4, 'shard')
+   942→        break
+   943→      case 'gravity':
+   944→        w.fx.burst(ex, ey, 3, c.accent, 60, 0.5, 'ember')
+   945→        break
+   946→      case 'phantom':
+   947→        w.fx.slashArc(ex, ey, dir + rand(-0.5, 0.5), 1.4, 30, c.trail, c.trail2)
+   948→        break
+   949→      default:
+   950→        break
+   951→    }
+   952→  }
+   953→
+   954→  /* ------------------------------------------------------------------ */
+   955→  /* parry / riposte                                                      */
+   956→  /* ------------------------------------------------------------------ */
+   957→
+   958→  private enterParry(w: WorldRef): void {
+   959→    w.input.takeBuffered('parry')
+   960→    this.state = 'parry'
+   961→    this.parryT = 0.3
+   962→    this.parryActive = 0.17
+   963→    this.parryPerfect = true
+   964→    this.action = null
+   965→    this.charging = false
+   966→    if (this.grounded) this.vx *= 0.2
+   967→    this.animator.play(PARRY_CLIP, { blend: 0.06 })
+   968→    w.audio.play('parry', { volume: 0.4, pitch: 1.15 })
+   969→  }
+   970→
+   971→  private updateParry(dt: number, w: WorldRef): void {
+   972→    this.parryT -= dt
+   973→    this.parryActive -= dt
+   974→    if (this.grounded) {
+   975→      const f = 1200 * dt
+   976→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   977→    }
+   978→    if (this.parryT <= 0) {
+   979→      this.state = 'move'
+   980→    }
+   981→  }
+   982→
+   983→  /** Called by Game when an enemy strike connects while parry window is open. */
+   984→  onParrySuccess(w: WorldRef, sourceX: number, perfect: boolean): void {
+   985→    const colors = this.sword.colors
+   986→    const px = (this.x + sourceX) / 2
+   987→    const py = this.y - 55
+   988→    w.fx.impactFrame(px, py, colors.glow) // the counter's kill frame
+   989→    w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), true, colors.glow, '#ffffff')
+   990→    w.fx.shockwave(px, py, 90, colors.glow, 0.3, 5)
+   991→    w.fx.screenFlash('#ffffff', 0.22, 6)
+   992→    w.audio.play(perfect ? 'parryPerfect' : 'parry')
+   993→    w.addHitstop(0.11, 0.1)
+   994→    w.addSlowmo(0.25, 0.22)
+   995→    w.cam.addTrauma(0.3)
+   996→    w.cam.zoomPulse(0.12)
+   997→    this.meter = Math.min(100, this.meter + 10)
+   998→    this.energy = Math.min(this.maxEnergy, this.energy + 12)
+   999→    this.riposteT = 0.95
+  1000→    this.parryT = 0.12
+  1001→    this.parryActive = 0
+  1002→    this.flashT = 0.6
+  1003→  }
+  1004→
+  1005→  /* ------------------------------------------------------------------ */
+  1006→  /* charge                                                               */
+  1007→  /* ------------------------------------------------------------------ */
+  1008→
+  1009→  private enterCharge(w: WorldRef): void {
+  1010→    this.state = 'charge'
+  1011→    this.charging = true
+  1012→    this.chargeT = 0
+  1013→    this.chargeReady = false
+  1014→    this.action = null
+  1015→    if (this.grounded) this.vx = 0
+  1016→    this.animator.play(CHARGE_CLIP, { blend: 0.08 })
+  1017→    w.audio.play('charge', { volume: 0.5 })
+  1018→  }
+  1019→
+  1020→  private updateCharge(dt: number, w: WorldRef): void {
+  1021→    const input = w.input
+  1022→    this.chargeT += dt
+  1023→    if (!this.chargeReady && this.chargeT >= 0.55) {
+  1024→      this.chargeReady = true
+  1025→      w.audio.play('chargeReady')
+  1026→    }
+  1027→    // converge particles on the blade
+  1028→    if (this.chargeReady && Math.random() < 0.5) {
+  1029→      const c = this.sword.colors
+  1030→      w.fx.embers(this.blade.tx, this.blade.ty, 2, c.glow, 10)
+  1031→    }
+  1032→    if (this.grounded) this.vx = 0
+  1033→
+  1034→    // release
+  1035→    if (!input.down('heavy')) {
+  1036→      this.charging = false
+  1037→      if (this.chargeT >= 0.4) {
+  1038→        this.startAttack(ATTACKS.charged, w)
+  1039→        w.audio.play('chargeReady', { pitch: 0.8 })
+  1040→        return
+  1041→      }
+  1042→      // too short: treat as heavy tap
+  1043→      this.startAttack(this.pickHeavy(w), w)
+  1044→      return
+  1045→    }
+  1046→    // dash cancels charge
+  1047→    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+  1048→      this.charging = false
+  1049→      this.startDash(w, input.axisX(), input.axisY())
+  1050→    }
+  1051→  }
+  1052→
+  1053→  /* ------------------------------------------------------------------ */
+  1054→  /* hurt / death                                                         */
+  1055→  /* ------------------------------------------------------------------ */
+  1056→
+  1057→  takeDamage(w: WorldRef, dmg: number, dir: number, heavy: boolean): boolean {
+  1058→    if (this.iframes > 0 || this.state === 'dash' || this.state === 'dead' || this.state === 'scripted') return false
+  1059→    // HYPER-ARMOR (charged release): the swing is uninterruptible — damage
+  1060→    // bleeds at 35%, no knockback, no hurt state. The commitment reads as
+  1061→    // power instead of a liability.
+  1062→    if (this.armorT > 0) {
+  1063→      this.hp = Math.max(0, this.hp - dmg * 0.35)
+  1064→      this.flashT = Math.max(this.flashT, 0.45)
+  1065→      if (this.hp <= 0) {
+  1066→        this.state = 'dead'
+  1067→        this.deadT = 0
+  1068→        this.armorT = 0
+  1069→        this.vx = dir * 300
+  1070→        this.vy = -420
+  1071→        w.audio.play('hurt', { volume: 0.8, intensity: 1 })
+  1072→      } else {
+  1073→        w.fx.burst(this.x, this.y - 50, 4, '#ffb14a', 140, 0.4, 'spark')
+  1074→      }
+  1075→      return true
+  1076→    }
+  1077→    this.hp = Math.max(0, this.hp - dmg)
+  1078→    this.flashT = 1
+  1079→    this.hurtT = 0.34
+  1080→    this.iframes = 0.75
+  1081→    this.action = null
+  1082→    this.charging = false
+  1083→    this.ability = null
+  1084→    this.state = 'hurt'
+  1085→    this.vx = dir * (heavy ? 380 : 240)
+  1086→    if (!this.grounded) this.vy = -220
+  1087→    else this.vy = heavy ? -320 : -140
+  1088→    this.grounded = false
+  1089→    this.animator.play(HURT_CLIP, { blend: 0.05 })
+  1090→    w.audio.play('hurt', { volume: 0.8, intensity: heavy ? 1 : 0.5 })
+  1091→    w.fx.burst(this.x, this.y - 50, 10, '#ff3b57', 300, 0.5, 'spark')
+  1092→    w.fx.screenFlash('#ff2a4a', 0.2, 4)
+  1093→    w.cam.addTrauma(heavy ? 0.45 : 0.3)
+  1094→    w.addHitstop(0.06)
+  1095→    if (this.hp <= 0) {
+  1096→      this.state = 'dead'
+  1097→      this.deadT = 0
+  1098→      this.vx = dir * 300
+  1099→      this.vy = -420
+  1100→    }
+  1101→    return true
+  1102→  }
+  1103→
+  1104→  private updateHurt(dt: number, w: WorldRef): void {
+  1105→    this.hurtT -= dt
+  1106→    if (this.hurtT <= 0) this.state = 'move'
+  1107→    if (this.grounded) {
+  1108→      const f = 1400 * dt
+  1109→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+  1110→    }
+  1111→  }
+  1112→
+  1113→  private updateDead(dt: number, _w: WorldRef): void {
+  1114→    this.deadT += dt
+  1115→    // ragdoll-ish settle
+  1116→    if (this.grounded) this.vx = damp(this.vx, 0, 4, dt)
+  1117→  }
+  1118→
+  1119→  /* ------------------------------------------------------------------ */
+  1120→  /* scripted (ult / execution cinematics driven by Game)                 */
+  1121→  /* ------------------------------------------------------------------ */
+  1122→
+  1123→  enterScripted(): void {
+  1124→    this.state = 'scripted'
+  1125→    this.action = null
+  1126→    this.charging = false
+  1127→    this.vx = 0
+  1128→  }
+  1129→
+  1130→  exitScripted(): void {
+  1131→    if (this.state === 'scripted') this.state = 'move'
+  1132→    this.animator.play(IDLE_CLIP, { blend: 0.1 })
+  1133→  }
+  1134→
+  1135→  private updateScripted(_dt: number): void {
+  1136→    if (this.grounded) this.vx = 0
+  1137→  }
+  1138→
+  1139→  playClip(clip: Parameters<Animator['play']>[0], speed = 1): void {
+  1140→    this.animator.play(clip, { blend: 0.03, speed, restart: true })
+  1141→  }
+  1142→
+  1143→  /* ------------------------------------------------------------------ */
+  1144→  /* abilities                                                            */
+  1145→  /* ------------------------------------------------------------------ */
+  1146→
+  1147→  startAbility(w: WorldRef): void {
+  1148→    const cost = this.sword.ability.cost
+  1149→    this.energy -= cost
+  1150→    w.audio.play('energyFull', { volume: 0.4, pitch: 0.9 })
+  1151→    this.ability = { kind: this.sword.id, t: 0, step: 0, targets: [], x: this.x, y: this.y }
+  1152→    const c = this.sword.colors
+  1153→    w.fx.screenFlash(c.trail, 0.14, 4)
+  1154→    w.cam.zoomPulse(0.1)
+  1155→
+  1156→    switch (this.sword.id) {
+  1157→      case 'katana': {
+  1158→        // BLADE STORM — chain of teleport dashes through nearest enemies
+  1159→        this.enterScripted()
+  1160→        w.audio.play('dash', { pitch: 1.2 })
+  1161→        break
+  1162→      }
+  1163→      case 'inferno': {
+  1164→        // INFERNO WAVE — rolling fire projectile
+  1165→        w.audio.play('fire', { intensity: 1 })
+  1166→        w.spawnProjectile({
+  1167→          kind: 'firewave', x: this.x + this.face * 46, y: -12,
+  1168→          vx: this.face * 560, vy: 0, dmg: 38 * this.sword.stats.dmg, life: 1.4,
+  1169→        })
+  1170→        w.fx.shockwave(this.x + this.face * 40, 0, 120, c.glow, 0.5, 7)
+  1171→        w.fx.burst(this.x + this.face * 50, -20, 18, c.trail, 420, 0.6, 'ember')
+  1172→        w.cam.addTrauma(0.35)
+  1173→        this.animator.play(ATTACKS.l5.clip, { blend: 0.04, speed: 1.15 })
+  1174→        break
+  1175→      }
+  1176→      case 'thunder': {
+  1177→        // THUNDER RUSH — instant dash + chain lightning
+  1178→        this.enterScripted()
+  1179→        this.x = clamp(this.x + this.face * 300, w.arenaMinX + 30, w.arenaMaxX - 30)
+  1180→        w.audio.play('lightning', { intensity: 1 })
+  1181→        w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.4, SCALE)
+  1182→        w.fx.speedStreaks(this.x, this.y - 40, this.face * 900, 10, rgba(c.trail, 1))
+  1183→        // chain to nearest enemies
+  1184→        const chain = this.collectNearest(w, 5, 360)
+  1185→        let px = this.x
+  1186→        let py = this.y - 55
+  1187→        for (const e of chain) {
+  1188→          w.fx.lightningArc(px, py, e.x, e.y - 40, c.trail)
+  1189→          w.fx.burst(e.x, e.y - 40, 6, c.accent, 200, 0.4, 'spark')
+  1190→          this.dealAbilityDamage(w, e, 24, 0.35, 160, -180)
+  1191→          px = e.x
+  1192→          py = e.y - 40
+  1193→        }
+  1194→        w.cam.addTrauma(0.4)
+  1195→        w.addHitstop(0.08)
+  1196→        this.exitScriptedSoon = 0.35
+  1197→        break
+  1198→      }
+  1199→      case 'void': {
+  1200→        // VOID STEP — teleport into densest cluster + implode
+  1201→        this.enterScripted()
+  1202→        const target = this.findDensest(w, 200)
+  1203→        if (target) {
+  1204→          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
+  1205→          this.x = clamp(target.x + (target.x > this.x ? -70 : 70), w.arenaMinX + 30, w.arenaMaxX - 30)
+  1206→          this.face = target.x > this.x ? 1 : -1
+  1207→          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
+  1208→          w.audio.play('void', { intensity: 1 })
+  1209→          w.fx.shockwave(this.x, 0, 160, c.glow, 0.5, 8)
+  1210→          for (const e of w.enemies) {
+  1211→            if (e.dead || e.spawning) continue
+  1212→            if (Math.abs(e.x - this.x) < 130 && e.y > -160) {
+  1213→              this.dealAbilityDamage(w, e, 34, 0.5, 100, -420)
+  1214→            }
+  1215→          }
+  1216→          this.animator.play(ATTACKS.charged.clip, { blend: 0.02, speed: 1.3 })
+  1217→          w.addHitstop(0.1, 0.12)
+  1218→          w.addSlowmo(0.3, 0.3)
+  1219→          w.cam.addTrauma(0.5)
+  1220→        }
+  1221→        this.exitScriptedSoon = 0.4
+  1222→        break
+  1223→      }
+  1224→      case 'gravity': {
+  1225→        // GRAVITY CRUSH — pull, suspend, slam
+  1226→        this.enterScripted()
+  1227→        w.audio.play('gravity', { intensity: 1 })
+  1228→        w.fx.shockwave(this.x, 0, 240, c.glow, 0.7, 9)
+  1229→        for (const e of w.enemies) {
+  1230→          if (e.dead || e.spawning) continue
+  1231→          const dx = this.x - e.x
+  1232→          if (Math.abs(dx) < 260 && e.y > -200) {
+  1233→            e.vx = dx * 3.2
+  1234→            e.vy = -rand(380, 480)
+  1235→            e.launched = true
+  1236→            this.ability.targets.push(e.id)
+  1237→          }
+  1238→        }
+  1239→        this.animator.play(ATTACKS.h3.clip, { blend: 0.04, speed: 1.2 })
+  1240→        this.exitScriptedSoon = 0.75
+  1241→        break
+  1242→      }
+  1243→      case 'phantom': {
+  1244→        // PHANTOM BARRAGE — delayed echo slashes
+  1245→        this.enterScripted()
+  1246→        const targets = this.collectNearest(w, 4, 420)
+  1247→        this.ability.targets = targets.map((e) => e.id)
+  1248→        w.audio.play('phantom', { intensity: 1 })
+  1249→        break
+  1250→      }
+  1251→    }
+  1252→  }
+  1253→
+  1254→  /** set > 0 to auto-exit scripted state after t seconds */
+  1255→  exitScriptedSoon = 0
+  1256→
+  1257→  private updateAbility(dt: number, w: WorldRef): void {
+  1258→    const ab = this.ability
+  1259→    if (!ab) return
+  1260→    ab.t += dt
+  1261→    if (this.exitScriptedSoon > 0) {
+  1262→      this.exitScriptedSoon -= dt
+  1263→      if (this.exitScriptedSoon <= 0) {
+  1264→        this.exitScripted()
+  1265→        if (ab.kind !== 'gravity') this.ability = null
+  1266→      }
+  1267→    }
+  1268→
+  1269→    const c = this.sword.colors
+  1270→
+  1271→    switch (ab.kind) {
+  1272→      case 'katana': {
+  1273→        // storm: dash-slash through a new enemy every 0.13s, 6 steps
+  1274→        const interval = 0.13
+  1275→        if (ab.t >= ab.step * interval && ab.step < 6) {
+  1276→          ab.step++
+  1277→          const targets = this.collectNearest(w, 6, 520).filter((e) => !ab.targets.includes(e.id))
+  1278→          const tgt = targets[0]
+  1279→          if (tgt) {
+  1280→            ab.targets.push(tgt.id)
+  1281→            w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.35, SCALE)
+  1282→            w.fx.speedStreaks(this.x, this.y - 40, tgt.x - this.x, 6, rgba(c.trail, 1))
+  1283→            this.x = clamp(tgt.x + (tgt.x > this.x ? -54 : 54), w.arenaMinX + 30, w.arenaMaxX - 30)
+  1284→            this.face = tgt.x > this.x ? 1 : -1
+  1285→            const ang = Math.atan2(tgt.y - 40 - (this.y - 55), tgt.x - this.x)
+  1286→            w.fx.slashArc(tgt.x, tgt.y - 40, ang, 2.6, 66, c.trail, c.trail2)
+  1287→            w.fx.impact(tgt.x, tgt.y - 40, ang, false, c.glow, c.accent)
+  1288→            this.dealAbilityDamage(w, tgt, 16, 0.3, 140, -220)
+  1289→            w.audio.play('swing', { pitch: rand(1.1, 1.3), volume: 0.7 })
+  1290→            this.animator.play(ATTACKS.dashSlash.clip, { blend: 0.02, speed: 1.4 })
+  1291→            w.cam.addTrauma(0.12)
+  1292→            w.addHitstop(0.03)
+  1293→          }
+  1294→        }
+  1295→        if (ab.step >= 6 && ab.t > 6 * interval + 0.2) {
+  1296→          this.ability = null
+  1297→          this.exitScripted()
+  1298→        }
+  1299→        break
+  1300→      }
+  1301→      case 'gravity': {
+  1302→        // suspend hold, then crush at t=0.55
+  1303→        if (ab.step === 0 && ab.t >= 0.55) {
+  1304→          ab.step = 1
+  1305→          w.audio.play('slam', { intensity: 1 })
+  1306→          w.fx.shockwave(this.x, 0, 220, c.glow, 0.5, 10)
+  1307→          w.fx.groundCrack(this.x, 0, 130)
+  1308→          w.addHitstop(0.1)
+  1309→          w.cam.addTrauma(0.5)
+  1310→          for (const e of w.enemies) {
+  1311→            if (e.dead || !ab.targets.includes(e.id)) continue
+  1312→            if (Math.abs(e.x - this.x) < 240) {
+  1313→              e.vy = 520
+  1314→              this.dealAbilityDamage(w, e, 30, 0.5, 0, 0)
+  1315→            }
+  1316→          }
+  1317→          this.animator.play(ATTACKS.h2.clip, { blend: 0.03, speed: 1.25 })
+  1318→        }
+  1319→        if (ab.t >= 1.0) {
+  1320→          this.ability = null
+  1321→          this.exitScripted()
+  1322→        }
+  1323→        break
+  1324→      }
+  1325→      case 'phantom': {
+  1326→        // echoes every 0.2s
+  1327→        const interval = 0.2
+  1328→        if (ab.t >= ab.step * interval && ab.step < ab.targets.length) {
+  1329→          const eid = ab.targets[ab.step]
+  1330→          ab.step++
+  1331→          const e = w.enemies.find((en) => en.id === eid && !en.dead)
+  1332→          if (e) {
+  1333→            const ang = rand(TAU_LIKE)
+  1334→            w.fx.slashArc(e.x, e.y - 40, ang, 2.4, 60, c.trail, c.trail2, 1.2)
+  1335→            w.fx.afterimage(this.pose, e.x - this.face * 60, this.hipY, this.face, c.trail, 0.4, SCALE)
+  1336→            w.fx.impact(e.x, e.y - 40, ang, false, c.glow, c.accent)
+  1337→            this.dealAbilityDamage(w, e, 18, 0.34, 120, -160)
+  1338→            w.audio.play('swing', { pitch: rand(0.9, 1.1), volume: 0.6 })
+  1339→          }
+  1340→        }
+  1341→        if (ab.step >= Math.max(ab.targets.length, 1) && ab.t > ab.targets.length * interval + 0.25) {
+  1342→          this.ability = null
+  1343→          this.exitScripted()
+  1344→        }
+  1345→        break
+  1346→      }
+  1347→      default:
+  1348→        if (ab.t > 1.2) {
+  1349→          this.ability = null
+  1350→        }
+  1351→    }
+  1352→  }
+  1353→
+  1354→  private collectNearest(w: WorldRef, n: number, range: number): EnemyLike[] {
+  1355→    const list: EnemyLike[] = []
+  1356→    for (const e of w.enemies) {
+  1357→      if (e.dead || e.spawning) continue
+  1358→      const d = Math.hypot(e.x - this.x, e.y - this.y)
+  1359→      if (d < range) list.push({ id: e.id, x: e.x, y: e.y, d })
+  1360→    }
+  1361→    list.sort((a, b) => (a.d ?? 0) - (b.d ?? 0))
+  1362→    return list.slice(0, n)
+  1363→  }
+  1364→
+  1365→  private findDensest(w: WorldRef, range: number): EnemyLike | null {
+  1366→    let best: EnemyLike | null = null
+  1367→    let bestScore = -1
+  1368→    for (const e of w.enemies) {
+  1369→      if (e.dead || e.spawning) continue
+  1370→      let score = 0
+  1371→      for (const o of w.enemies) {
+  1372→        if (o.dead || o.spawning) continue
+  1373→        if (Math.abs(o.x - e.x) < range) score++
+  1374→      }
+  1375→      if (score > bestScore) {
+  1376→        bestScore = score
+  1377→        best = { id: e.id, x: e.x, y: e.y, d: 0 }
+  1378→      }
+  1379→    }
+  1380→    return best
+  1381→  }
+  1382→
+  1383→  private dealAbilityDamage(w: WorldRef, e: EnemyLike, dmg: number, stagger: number, kb: number, kbY: number): void {
+  1384→    const info: AttackRuntimeInfo = {
+  1385→      id: 'ability', dmg: dmg * this.sword.stats.dmg, heavy: dmg > 20,
+  1386→      stagger, kb, kbY, launch: kbY < -300 ? kbY : 0, juggle: kbY < -100 ? kbY : 0,
+  1387→      hitstop: dmg > 20 ? 0.07 : 0.03, shake: dmg > 20 ? 0.25 : 0.1,
+  1388→      aoe: 0, breakGuard: true, kind: 'ability',
+  1389→    }
+  1390→    w.hitEnemy(e.id, { bx: e.x - 20, by: e.y - 40, tx: e.x + 20, ty: e.y - 40 }, info)
+  1391→    this.meter = Math.min(100, this.meter + dmg * 0.25)
+  1392→  }
+  1393→
+  1394→  /* ------------------------------------------------------------------ */
+  1395→  /* animation glue                                                       */
+  1396→  /* ------------------------------------------------------------------ */
+  1397→
+  1398→  /* ------------------------------------------------------------------ */
+  1399→  /* procedural layers: weight, blade physics, two-handed grip            */
+  1400→  /* ------------------------------------------------------------------ */
+  1401→
+  1402→  /** FOOT-GROUND LOCK — the hip sits at the planted foot's extension. This
+  1403→   * is the weight system: idle bent knees no longer float (measured 9.5px
+  1404→   * gap), lunges/crouches stay exactly grounded, landing squashes through
+  1405→   * the leg bend instead of sinking into the floor. Airborne → nominal
+  1406→   * hip height (physics owns y). */
+  1407→  private updateFootLock(dt: number): void {
+  1408→    const g = this.geom
+  1409→    // lowest contact point: ankles AND toes (a pointed trailing toe grazes
+  1410→    // the ground at toe-off — real gait), plus the sole half-width so the
+  1411→    // visual foot bottom kisses the line, not the ankle joint center
+  1412→    const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y) + 2.4
+  1413→    const support = lowContact * SCALE
+  1414→    const groundedPose = this.grounded && this.state !== 'dead'
+  1415→    let target: number
+  1416→    if (groundedPose && support >= HIP_H * 0.86) {
+  1417→      // SUPPORT phase — the lowest foot is load-bearing (within 14% of full
+  1418→      // leg extension): pin the hip so the sole EXACTLY contacts. This is
+  1419→      // the weight: no float, no dig, crouches stay crouched.
+  1420→      target = support
+  1421→    } else {
+  1422→      // FLIGHT (both feet swinging/tucked mid-stride) or airborne: physics
+  1423→      // owns height — honor the clip's authored bob instead of dragging the
+  1424→      // hip down to a tucked toe (which inverted the run's natural bounce)
+  1425→      target = HIP_H + this.pose[1] * SCALE
+  1426→    }
+  1427→    // k=24: tracks a 0.3s stride with ~2px residual — crisp, never mushy
+  1428→    this.footLock = damp(this.footLock, target, 24, dt)
+  1429→  }
+  1430→
+  1431→  /** BLADE DYNAMICS — rotational inertia of the katana as a spring-damper
+  1432→   * on the wrist channel. When the arm accelerates (windup → cut), the tip
+  1433→   * lags behind the drive angle; when the arm decelerates, the stored
+  1434→   * energy whips the tip THROUGH the target line with a small overshoot —
+  1435→   * the physical furi-otoshi snap real swordsmen feel. Under-damped
+  1436→   * (ζ≈0.3): lively, never mushy. Applied BEFORE solve → hitboxes inherit
+  1437→   * the physical blade, not just the keyframed one.
+  1438→   *
+  1439→   * During hit-stop (world timeScale ≈ 0.05) the blade takes a ±5° impact
+  1440→   * resistance deflection AGAINST its swing direction — the cut bites into
+  1441→   * something with mass (spec: kinetic impact modulation). */
+  1442→  private updateBladeDynamics(dt: number, w: WorldRef): void {
+  1443→    if (dt <= 1e-5) return
+  1444→    const p = this.pose
+  1445→    const armSum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
+  1446→    const armVel = (armSum - this.prevArmSum) / dt
+  1447→    this.armVel = armVel
+  1448→    this.prevArmSum = armSum
+  1449→    // lag target: proportional to angular velocity (inertia resisting)
+  1450→    const target = w.timeScale < 0.5
+  1451→      ? clamp(-Math.sign(armVel || this.bladeLag || 1) * 0.09, -0.15, 0.15) // impact resistance ~5°
+  1452→      : clamp(-armVel * 0.045, -0.15, 0.15)
+  1453→    // spring toward target, under-damped for the whip-through
+  1454→    const K = 260
+  1455→    const C = 9
+  1456→    this.bladeLagVel += (K * (target - this.bladeLag) - C * this.bladeLagVel) * dt
+  1457→    this.bladeLag += this.bladeLagVel * dt
+  1458→    this.bladeLag = clamp(this.bladeLag, -0.17, 0.17)
+  1459→    this.bladeLagVel = clamp(this.bladeLagVel, -6, 6)
+  1460→    p[CH.wrR] += this.bladeLag
+  1461→
+  1462→    // KINETIC CHAIN (hips 30% · torso 50% · shoulders 20%): a slower spring
+  1463→    // driven by the same arm whip. Accelerating into a cut → the torso loads
+  1464→    // INTO the swing; the deceleration at impact → the body recoils back.
+  1465→    // The upper body can never again rotate independently of the hips.
+  1466→    const k2 = 90
+  1467→    const c2 = 7.5
+  1468→    const chainTarget = clamp(-armVel * 0.02, -0.14, 0.14)
+  1469→    this.chainLagVel += (k2 * (chainTarget - this.chainLag) - c2 * this.chainLagVel) * dt
+  1470→    this.chainLag = clamp(this.chainLag + this.chainLagVel * dt, -0.16, 0.16)
+  1471→    p[CH.rootRot] += -this.chainLag * 0.3
+  1472→    p[CH.spine] += -this.chainLag * 0.5
+  1473→    p[CH.shR] += this.chainLag * 0.2
+  1474→  }
+  1475→
+  1476→  /** AIM ASSIST — bounded wrist convergence onto the target's center line.
+  1477→   * Runs on the pose AFTER blade-dynamics, so the correction steers the
+  1478→   * FINAL blade angle (physical blade included). Soft-lock rules:
+  1479→   *  · only during the pre-strike chamber + active frames
+  1480→   *  · only toward enemies within the attack's reach envelope
+  1481→   *  · total correction capped (±0.24 rad) + rate-limited — a nudge onto
+  1482→   *    the center line, never a robotic snap. This is what makes every
+  1483→   *    sword read as "aimed" at the enemy regardless of chain angle. */
+  1484→  private applyAimAssist(dt: number, w: WorldRef): void {
+  1485→    const a = this.action
+  1486→    if (this.state !== 'attack' || !a) return
+  1487→    const h = a.def.hit
+  1488→    const animT = a.animT
+  1489→    // converge during chamber (weak) → strike (strong) → off after the window
+  1490→    if (animT < h.start - 0.06 || animT > h.end + 0.02) return
+  1491→    const g = this.geom // last frame's solve — continuous, 1-frame stale
+  1492→    const reach = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale + 74
+  1493→    let tx = 0
+  1494→    let ty = 0
+  1495→    let bestD = Infinity
+  1496→    for (const e of w.enemies) {
+  1497→      if (e.dead || e.spawning) continue
+  1498→      const dx = (e.x - this.x) * this.face // in facing space
+  1499→      if (dx < 14 || dx > reach) continue
+  1500→      if (Math.abs(e.y - this.y) > 170) continue
+  1501→      const chestY = e.y - 48 * e.scale
+  1502→      const d = Math.abs(dx) + Math.abs(chestY - (this.y - 60)) * 0.5
+  1503→      if (d < bestD) {
+  1504→        bestD = d
+  1505→        tx = (e.x - this.x) * this.face / SCALE // → character-local
+  1506→        ty = (chestY - this.hipY) / SCALE
+  1507→      }
+  1508→    }
+  1509→    if (bestD === Infinity) return
+  1510→    // desired blade angle from the hand to the target chest
+  1511→    const desired = Math.atan2(ty - g.handR.y, tx - g.handR.x)
+  1512→    let dAng = desired - g.bladeAngle
+  1513→    while (dAng > Math.PI) dAng -= TAU_LIKE
+  1514→    while (dAng < -Math.PI) dAng += TAU_LIKE
+  1515→    if (Math.abs(dAng) < 0.03) return
+  1516→    const strong = animT >= h.start ? 1 : 0.35
+  1517→    const maxRate = 3.4 * dt * strong
+  1518→    let corr = clamp(dAng * 3.2 * strong * dt, -maxRate, maxRate)
+  1519→    // respect the per-attack budget so technique variety survives
+  1520→    const room = AIM_BUDGET - Math.abs(a.aimUsed)
+  1521→    if (room <= 0) return
+  1522→    corr = clamp(corr, -room, room)
+  1523→    a.aimUsed += corr
+  1524→    // bladeAngle = π/2 − (shR+elR+wrR) → subtracting from wrR ADDS to the angle
+  1525→    this.pose[CH.wrR] -= corr
+  1526→  }
+  1527→
+  1528→  private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
+  1529→    let best: { x: number; y: number } | null = null
+  1530→    let bestD = Infinity
+  1531→    for (const e of w.enemies) {
+  1532→      if (e.dead || e.spawning) continue
+  1533→      const d = Math.abs(e.x - this.x)
+  1534→      if (d < bestD && d < range) {
+  1535→        bestD = d
+  1536→        best = { x: e.x, y: e.y }
+  1537→      }
+  1538→    }
+  1539→    return best
+  1540→  }
+  1541→
+  1542→  /** HYPER-SCALE: the blade grows ×1.22 through the active frames and ×1.12
+  1543→   * on dashes (anime weapon read; the hit segment grows with it — visuals
+  1544→   * and hit volume stay one object). Damped so it never pops. */
+  1545→  private updateSwingScale(dt: number): void {
+  1546→    let target = 1
+  1547→    if (this.state === 'dash') target = 1.12
+  1548→    else if (this.state === 'attack' && this.action) {
+  1549→      const h = this.action.def.hit
+  1550→      const t = this.action.animT
+  1551→      if (t >= h.start - 0.06 && t <= h.end + 0.1) target = 1.22
+  1552→    }
+  1553→    this.swingScale = damp(this.swingScale, target, 18, dt)
+  1554→  }
+  1555→
+  1556→  /** 2.8D Z-envelope: the blade plane swings toward/away from the camera
+  1557→   * through the strike — a sin pulse peaking mid-active-window. Pure visual
+  1558→   * depth (foreshortening, pierce flare); the X/Y sweep is untouched. */
+  1559→  private updateBladeZ(dt: number): void {
+  1560→    let target = 0
+  1561→    if (this.state === 'attack' && this.action) {
+  1562→      const def = this.action.def
+  1563→      if (def.zArc) {
+  1564→        const tr = def.trail
+  1565→        const t = this.action.animT
+  1566→        if (t >= tr.start && t <= tr.end) {
+  1567→          const u = clamp01((t - tr.start) / (tr.end - tr.start))
+  1568→          target = def.zArc * Math.sin(u * Math.PI)
+  1569→        }
+  1570→      }
+  1571→    }
+  1572→    this.bladeZ = damp(this.bladeZ, target, 16, dt)
+  1573→  }
+  1574→  /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
+  1575→   * (te-no-uchi: left hand at the pommel, right near the guard — how a
+  1576→   * katana is actually swung). Blended over the authored off-arm channels
+  1577→   * with a state-driven weight so running/dashing pumps stay authored. */
+  1578→  private applyTwoHandGrip(dt: number): void {
+  1579→    // desired grip weight by state
+  1580→    let target = 0
+  1581→    switch (this.state) {
+  1582→      case 'move':
+  1583→        target = this.grounded && Math.abs(this.vx) < 60 ? 1 : 0.1
+  1584→        break
+  1585→      case 'attack':
+  1586→        target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
+  1587→        break
+  1588→      case 'charge':
+  1589→      case 'parry':
+  1590→        target = 1
+  1591→        break
+  1592→      case 'scripted':
+  1593→        target = 0.5
+  1594→        break
+  1595→      default:
+  1596→        target = 0
+  1597→    }
+  1598→    this.twoHandW = damp(this.twoHandW, target, 11, dt)
+  1599→    const w = this.twoHandW
+  1600→    if (w < 0.03) return
+  1601→
+  1602→    const g = this.geom // last frame's solve — continuous, 1-frame stale
+  1603→    const tsuka = PLAYER_SPEC.blade * this.sword.stats.range * 0.3
+  1604→    // tsuka butt (pommel end) in local space
+  1605→    const bax = Math.cos(g.bladeAngle)
+  1606→    const bay = Math.sin(g.bladeAngle)
+  1607→    const tx = g.handR.x - bax * tsuka
+  1608→    const ty = g.handR.y - bay * tsuka
+  1609→    // shoulder anchor = chest (solver attaches arms there)
+  1610→    const sx = g.chest.x
+  1611→    const sy = g.chest.y
+  1612→    const U = PLAYER_SPEC.upperArm
+  1613→    const F = PLAYER_SPEC.foreArm
+  1614→    let dx = tx - sx
+  1615→    let dy = ty - sy
+  1616→    let d = Math.hypot(dx, dy)
+  1617→    const maxD = (U + F) * 0.98
+  1618→    if (d > maxD) {
+  1619→      const k = maxD / d
+  1620→      dx *= k
+  1621→      dy *= k
+  1622→      d = maxD
+  1623→    }
+  1624→    if (d < 2) return
+  1625→    // law of cosines: interior angles of the shoulder-elbow-target triangle
+  1626→    const cosB = clamp((U * U + d * d - F * F) / (2 * U * d), -1, 1)
+  1627→    const B = Math.acos(cosB)
+  1628→    const base = Math.atan2(dy, dx)
+  1629→    // elbow bends DOWN (anatomical) → rotate the upper arm below the line
+  1630→    const upperAng = base + B
+  1631→    const ex = sx + Math.cos(upperAng) * U
+  1632→    const ey = sy + Math.sin(upperAng) * U
+  1633→    // convert elbow/hand to the channel convention (from straight-down, +fwd)
+  1634→    const shIk = Math.atan2(ex - sx, ey - sy)
+  1635→    const elIk = Math.atan2(tx - ex, ty - ey) - shIk
+  1636→    const p = this.pose
+  1637→    p[CH.shL] += (shIk - p[CH.shL]) * w
+  1638→    p[CH.elL] += (elIk - p[CH.elL]) * w
+  1639→  }
+  1640→
+  1641→  private applyProcedural(dt: number): void {
+  1642→    const p = this.pose
+  1643→    // velocity lean (proportional, eased)
+  1644→    const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
+  1645→    p[2] += speedLean * 0.14
+  1646→    // vertical pitch while airborne
+  1647→    if (!this.grounded && this.state !== 'attack') {
+  1648→      p[2] += clamp(this.vy / 1400, -0.22, 0.3)
+  1649→    }
+  1650→    // landing spring (squash)
+  1651→    if (this.landSpring > 0) {
+  1652→      this.landSpring = Math.max(0, this.landSpring - dt * 5)
+  1653→      p[1] += this.landSpring * 6
+  1654→    }
+  1655→    // charge tremble
+  1656→    if (this.charging) {
+  1657→      p[0] += rand(-0.8, 0.8) * this.chargeRatio
+  1658→      p[1] += rand(-0.5, 0.5) * this.chargeRatio
+  1659→    }
+  1660→    // hurt shake
+  1661→    if (this.hurtT > 0) {
+  1662→      p[0] += rand(-1.4, 1.4) * this.hurtT
+  1663→    }
+  1664→  }
+  1665→
+  1666→  private updateBladeWorld(): void {
+  1667→    const g = this.geom
+  1668→    const spec = PLAYER_SPEC
+  1669→    // hyper-scale grows the whole weapon (visual blade AND hit segment are
+  1670→    // one object — spec 1.35-1.5× tamed to 1.22× to protect the silhouette)
+  1671→    const len = spec.blade * this.sword.stats.range * 1.06 * this.swingScale
+  1672→    // The hit segment spans from the TSUKA BUTT (14 units behind the hand
+  1673→    // along the blade axis — the full grip: point-blank enemies standing
+  1674→    // INSIDE the swing arc, between the player's body and the hand, used to
+  1675→    // slip through the gap; the real tsuka is ~30% of the blade anyway)
+  1676→    // out to the kissaki tip.
+  1677→    const bx = g.handR.x + Math.cos(g.bladeAngle) * -14
+  1678→    const by = g.handR.y + Math.sin(g.bladeAngle) * -14
+  1679→    const tx = g.handR.x + Math.cos(g.bladeAngle) * len
+  1680→    const ty = g.handR.y + Math.sin(g.bladeAngle) * len
+  1681→    this.blade.bx = this.x + this.face * SCALE * bx
+  1682→    this.blade.by = this.hipY + SCALE * by
+  1683→    this.blade.tx = this.x + this.face * SCALE * tx
+  1684→    this.blade.ty = this.hipY + SCALE * ty
+  1685→    // smear tracking: this frame's angle becomes next frame's smear tail
+  1686→    if (this.hasPrevAng) {
+  1687→      this.smearA0 = this.prevBladeAng
+  1688→      this.smearA1 = g.bladeAngle
+  1689→    }
+  1690→    this.prevBladeAng = g.bladeAngle
+  1691→    this.hasPrevAng = true
+  1692→  }
+  1693→
+  1694→  /* ------------------------------------------------------------------ */
+  1695→  /* render                                                               */
+  1696→  /* ------------------------------------------------------------------ */
+  1697→
+  1698→  draw(ctx: CanvasRenderingContext2D, time: number): void {
+  1699→    if (this.state === 'dead' && this.deadT > 2.6) return
+  1700→    const alpha = this.iframes > 0 && this.state !== 'scripted'
+  1701→      ? 0.55 + 0.25 * Math.sin(time * 40)
+  1702→      : 1
+  1703→    ctx.save()
+  1704→    ctx.translate(this.x, this.hipY)
+  1705→    ctx.scale(this.face * SCALE, SCALE)
+  1706→    // saya (scabbard) at the left hip, angled back-down through the obi like
+  1707→    // a real katana — sized to sheathe the blade (blade 52): the iai
+  1708→    // draw-cuts (l1 / riposte) pull the steel from exactly here.
+  1709→    {
+  1710→      const hp = this.geom.hip
+  1711→      const sayLen = PLAYER_SPEC.blade * 0.88
+  1712→      const ang = 0.24 // radians below horizontal, sweeping back-down
+  1713→      const tipX = hp.x - Math.cos(ang) * sayLen
+  1714→      const tipY = hp.y + Math.sin(ang) * sayLen
+  1715→      // saya body (slightly lighter than the body so it reads on the hip)
+  1716→      ctx.strokeStyle = '#0d1219'
+  1717→      ctx.lineWidth = 4.6
+  1718→      ctx.lineCap = 'round'
+  1719→      ctx.beginPath()
+  1720→      ctx.moveTo(hp.x + 3, hp.y + 1)
+  1721→      ctx.lineTo(tipX, tipY)
+  1722→      ctx.stroke()
+  1723→      // rim highlight along the top edge — sells it as a scabbard
+  1724→      ctx.strokeStyle = '#465a7a'
+  1725→      ctx.lineWidth = 1.6
+  1726→      ctx.beginPath()
+  1727→      ctx.moveTo(hp.x + 2.4, hp.y - 1.2)
+  1728→      ctx.lineTo(tipX + Math.cos(ang) * 2, tipY - Math.sin(ang) * 2)
+  1729→      ctx.stroke()
+  1730→      // sageo knot + kojiri (end cap) accents
+  1731→      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.5)
+  1732→      ctx.lineWidth = 1.2
+  1733→      ctx.beginPath()
+  1734→      ctx.moveTo(hp.x - 2, hp.y + 3.4)
+  1735→      ctx.lineTo(hp.x - 5.5, hp.y + 0.8)
+  1736→      ctx.stroke()
+  1737→      // kojiri: FILLED metal cap on the saya mouth (a bare accent ring read
+  1738→      // as a floating rig artifact at gameplay zoom — cap the tube properly)
+  1739→      ctx.fillStyle = '#0d1219'
+  1740→      ctx.beginPath()
+  1741→      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+  1742→      ctx.fill()
+  1743→      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.6)
+  1744→      ctx.beginPath()
+  1745→      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+  1746→      ctx.stroke()
+  1747→    }
+  1748→    drawStick(ctx, this.geom, PLAYER_STYLE, {
+  1749→      time,
+  1750→      alpha,
+  1751→      flash: this.flashT * 0.85,
+  1752→      flashColor: '#ff3b57',
+  1753→      // BLADE-CAST LIGHT: the swinging/charging edge lights the body —
+  1754→      // a rim pass on the sword-side silhouette (spec: dynamic blade light)
+  1755→      edgeLight: {
+  1756→        color: this.sword.colors.glow,
+  1757→        a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
+  1758→      },
+  1759→    })
+  1760→    drawSword(ctx, this.geom, this.sword, {
+  1761→      time,
+  1762→      charge: this.chargeRatio,
+  1763→      alpha,
+  1764→      swingGlow: this.swingGlow,
+  1765→      z: this.bladeZ,
+  1766→      lenScale: this.swingScale,
+  1767→    })
+  1768→    ctx.restore()
+  1769→
+  1770→    // ---- ANIME SMEAR: when tip velocity explodes, the blade stretches
+  1771→    // across this frame's angular sweep as a translucent wedge — stylized
+  1772→    // velocity smear (replaces motion blur). World space, under nothing —
+  1773→    // drawn here so it composites over the body with additive glow.
+  1774→    const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
+  1775→    const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
+  1776→    if (tipSpd > 950 && this.state !== 'dead') {
+  1777→      // pivot = the sword hand (the blade's true rotation center), world space
+  1778→      const px = this.x + this.face * SCALE * this.geom.handR.x
+  1779→      const py = this.hipY + SCALE * this.geom.handR.y
+  1780→      const R = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale
+  1781→      // local → world angles (facing mirror flips around the Y axis)
+  1782→      const wa0 = this.face === 1 ? this.smearA0 : Math.PI - this.smearA0
+  1783→      const wa1 = this.face === 1 ? this.smearA1 : Math.PI - this.smearA1
+  1784→      const k = Math.min(1, (tipSpd - 950) / 1400)
+  1785→      const ccw = wa1 < wa0
+  1786→      ctx.save()
+  1787→      ctx.globalCompositeOperation = 'lighter'
+  1788→      ctx.fillStyle = rgba(this.sword.colors.trail, 0.1 + 0.16 * k)
+  1789→      ctx.beginPath()
+  1790→      ctx.moveTo(px, py)
+  1791→      ctx.arc(px, py, R, wa0, wa1, ccw)
+  1792→      ctx.closePath()
+  1793→      ctx.fill()
+  1794→      // hot inner edge of the smear
+  1795→      ctx.fillStyle = rgba(this.sword.colors.core, 0.1 + 0.2 * k)
+  1796→      ctx.beginPath()
+  1797→      ctx.moveTo(px, py)
+  1798→      ctx.arc(px, py, R * 0.86, wa0, wa1, ccw)
+  1799→      ctx.closePath()
+  1800→      ctx.fill()
+  1801→      ctx.restore()
+  1802→    }
+  1803→
+  1804→    // ---- BLADE POINT-LIGHT: the edge emits a real localized light into
+  1805→    // the world while swinging/charging (additive radial at blade mid) ----
+  1806→    const lightI = clamp01(this.swingGlow * 0.8 + this.chargeRatio * 0.6)
+  1807→    if (lightI > 0.25) {
+  1808→      const mx = (this.blade.bx + this.blade.tx) / 2
+  1809→      const my = (this.blade.by + this.blade.ty) / 2
+  1810→      const r = 72 + lightI * 74 + this.bladeZ * 30
+  1811→      ctx.save()
+  1812→      ctx.globalCompositeOperation = 'lighter'
+  1813→      const grad = ctx.createRadialGradient(mx, my, 6, mx, my, r)
+  1814→      grad.addColorStop(0, rgba(this.sword.colors.glow, 0.16 * lightI))
+  1815→      grad.addColorStop(0.55, rgba(this.sword.colors.trail, 0.07 * lightI))
+  1816→      grad.addColorStop(1, rgba(this.sword.colors.trail, 0))
+  1817→      ctx.fillStyle = grad
+  1818→      ctx.fillRect(mx - r, my - r, r * 2, r * 2)
+  1819→      ctx.restore()
+  1820→    }
+  1821→
+  1822→    // parry aura
+  1823→    if (this.state === 'parry' && this.parryActive > 0) {
+  1824→      ctx.save()
+  1825→      ctx.globalCompositeOperation = 'lighter'
+  1826→      ctx.strokeStyle = rgba(this.sword.colors.glow, 0.4 + 0.2 * Math.sin(time * 30))
+  1827→      ctx.lineWidth = 2.4
+  1828→      ctx.beginPath()
+  1829→      ctx.arc(this.x, this.hipY - 18, 44 + Math.sin(time * 22) * 3, -1.1, 1.1)
+  1830→      ctx.stroke()
+  1831→      ctx.restore()
+  1832→    }
+  1833→    // charge aura
+  1834→    if (this.charging && this.chargeReady) {
+  1835→      const c = this.sword.colors
+  1836→      ctx.save()
+  1837→      ctx.globalCompositeOperation = 'lighter'
+  1838→      const r = 30 + this.chargeRatio * 16 + Math.sin(time * 18) * 4
+  1839→      ctx.strokeStyle = rgba(c.glow, 0.3 + 0.2 * Math.sin(time * 14))
+  1840→      ctx.lineWidth = 2
+  1841→      ctx.beginPath()
+  1842→      ctx.arc(this.x, this.hipY - 16, r, 0, Math.PI * 2)
+  1843→      ctx.stroke()
+  1844→      ctx.restore()
+  1845→    }
+  1846→  }
+  1847→}
+  1848→
+  1849→/* ------------------------------------------------------------------ */
+  1850→
+  1851→const TAU_LIKE = Math.PI * 2
+  1852→
+  1853→/** total aim-assist correction budget per attack (radians) — keeps every
+  1854→ * chain link's technique angle intact while still converging on the target */
+  1855→const AIM_BUDGET = 0.24
+  1856→
+  1857→interface EnemyLike {
+  1858→  id: number
+  1859→  x: number
+  1860→  y: number
+  1861→  d?: number
+  1862→}
+  1863→
+  1864→function fromChain(def: AttackDef, next: string, player: Player): boolean {
+  1865→  if (next === 'riposte') return true
+  1866→  // launcher chains naturally into air attacks
+  1867→  if (def.id === 'launcher' && (next.startsWith('a') || next === 'dive' || next === 'slam')) return true
+  1868→  if (def.chain.includes(next)) return true
+  1869→  // any light may restart the chain if the window allows
+  1870→  if (player.grounded && next.startsWith('l') && def.chain.some((c) => c.startsWith('l'))) return true
+  1871→  if (!player.grounded && (next.startsWith('a') || next === 'dive' || next === 'slam') && def.chain.some((c) => c.startsWith('a') || c === 'dive' || c === 'slam')) return true
+  1872→  return false
+  1873→}
+  1874→
