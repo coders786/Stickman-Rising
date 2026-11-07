@@ -61,7 +61,9 @@ const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
   { oy: 78, r: 17 }, // chest / head zone
 ]
 
-/** blade segment vs an enemy's full visual body (any sphere, swept-aware) */
+/** blade segment vs an enemy's full visual body (any sphere, swept-aware).
+ * Radius carries +3px edge forgiveness — a katana edge is a plane, not a
+ * line; the visual blade is ~3px wide so the hit volume matches the art. */
 function bladeHitsBody(
   e: { x: number; y: number; scale: number },
   hasPrev: boolean,
@@ -71,7 +73,7 @@ function bladeHitsBody(
   const s = e.scale
   for (const sp of BODY_SPHERES) {
     const cy = e.y - sp.oy * s
-    const r = sp.r * s
+    const r = sp.r * s + 3
     if (hasPrev
       ? circleHitsSweptQuad(e.x, cy, r, prev.bx, prev.by, prev.tx, prev.ty, cur.bx, cur.by, cur.tx, cur.ty)
       : segHitsCircle(cur.bx, cur.by, cur.tx, cur.ty, e.x, cy, r)
@@ -325,7 +327,7 @@ export class Player {
       this.slamAoe(w, a.def.slamImpact.r, a.def.slamImpact.dmg, a.def.slamImpact.launch)
     }
     if (this.state === 'move' && this.lastGrounded === false) {
-      this.animator.play(LAND_CLIP, { blend: 0.03 })
+      this.animator.play(LAND_CLIP, { blend: 0.06 })
     }
     this.airIndex = 0
   }
@@ -490,7 +492,7 @@ export class Player {
     this.charging = false
     this.vx = dx * DASH_SPEED
     this.vy = dy * DASH_SPEED * (this.grounded && dy < -0.4 ? 0.55 : 1)
-    this.animator.play(this.grounded ? DASH_CLIP : DASH_AIR_CLIP, { blend: 0.03 })
+    this.animator.play(this.grounded ? DASH_CLIP : DASH_AIR_CLIP, { blend: 0.05 })
     w.audio.play('dash', { pitch: rand(0.95, 1.1) })
     const colors = this.sword.colors
     w.fx.speedStreaks(this.x, this.y - 40, dx * DASH_SPEED * 0.9, 6, rgba(colors.trail, 1))
@@ -562,6 +564,10 @@ export class Player {
 
   startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
     if (!def) return
+    // IN-BETWEEN LAW: capture the source state BEFORE switching — chained
+    // attacks crossfade slower (0.11s) than fresh entries (0.07s) so every
+    // transition between animation instances gets real in-betweens.
+    const wasAttack = this.state === 'attack'
     // requirement checks
     if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
     if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
@@ -589,7 +595,7 @@ export class Player {
     if (def === ATTACKS.l1 || def === ATTACKS.l2 || def === ATTACKS.l3 || def === ATTACKS.l4 || def === ATTACKS.l5) {
       this.lastLightAt = w.time
     }
-    this.animator.play(def.clip, { blend: 0.045, speed: this.atkSpeed })
+    this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed })
     // slight ground friction during attacks
   }
 
@@ -768,7 +774,7 @@ export class Player {
     this.action = null
     this.charging = false
     if (this.grounded) this.vx *= 0.2
-    this.animator.play(PARRY_CLIP, { blend: 0.03 })
+    this.animator.play(PARRY_CLIP, { blend: 0.06 })
     w.audio.play('parry', { volume: 0.4, pitch: 1.15 })
   }
 
@@ -816,7 +822,7 @@ export class Player {
     this.chargeReady = false
     this.action = null
     if (this.grounded) this.vx = 0
-    this.animator.play(CHARGE_CLIP, { blend: 0.06 })
+    this.animator.play(CHARGE_CLIP, { blend: 0.08 })
     w.audio.play('charge', { volume: 0.5 })
   }
 
@@ -871,7 +877,7 @@ export class Player {
     if (!this.grounded) this.vy = -220
     else this.vy = heavy ? -320 : -140
     this.grounded = false
-    this.animator.play(HURT_CLIP, { blend: 0.02 })
+    this.animator.play(HURT_CLIP, { blend: 0.05 })
     w.audio.play('hurt', { volume: 0.8, intensity: heavy ? 1 : 0.5 })
     w.fx.burst(this.x, this.y - 50, 10, '#ff3b57', 300, 0.5, 'spark')
     w.fx.screenFlash('#ff2a4a', 0.2, 4)
@@ -1209,8 +1215,14 @@ export class Player {
     const g = this.geom
     const spec = PLAYER_SPEC
     const len = spec.blade * this.sword.stats.range * 1.06
-    const bx = g.handR.x + Math.cos(g.bladeAngle) * 6
-    const by = g.handR.y + Math.sin(g.bladeAngle) * 6
+    // The hit segment spans from the TSUKA BUTT (9 units behind the hand
+    // along the blade axis) out to the kissaki tip. Including the handle
+    // closes the inner gap: point-blank enemies standing INSIDE the swing
+    // arc (closer than ma-ai) used to slip between the player's body and
+    // the old segment base that started past the hand — the classic
+    // "sword animation disconnects from the hitbox" whiff.
+    const bx = g.handR.x + Math.cos(g.bladeAngle) * -9
+    const by = g.handR.y + Math.sin(g.bladeAngle) * -9
     const tx = g.handR.x + Math.cos(g.bladeAngle) * len
     const ty = g.handR.y + Math.sin(g.bladeAngle) * len
     this.blade.bx = this.x + this.face * SCALE * bx
@@ -1231,6 +1243,38 @@ export class Player {
     ctx.save()
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * SCALE, SCALE)
+    // saya (scabbard) at the left hip, angled back — worn through the obi
+    // like a real katana; the iai draw-cuts (l1 / riposte) pull the blade
+    // from exactly here, so the draw reads as a draw.
+    {
+      const hp = this.geom.hip
+      // saya body (slightly lighter than the body so it reads on the hip)
+      ctx.strokeStyle = '#0d1219'
+      ctx.lineWidth = 4.4
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(hp.x + 3, hp.y + 1)
+      ctx.lineTo(hp.x - 21, hp.y + 10.5)
+      ctx.stroke()
+      // rim highlight along the top edge — sells it as a scabbard
+      ctx.strokeStyle = '#465a7a'
+      ctx.lineWidth = 1.6
+      ctx.beginPath()
+      ctx.moveTo(hp.x + 2.4, hp.y - 1.2)
+      ctx.lineTo(hp.x - 20.4, hp.y + 8.2)
+      ctx.stroke()
+      // sageo knot + kojiri cap accents
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.5)
+      ctx.lineWidth = 1.2
+      ctx.beginPath()
+      ctx.moveTo(hp.x - 2, hp.y + 3.4)
+      ctx.lineTo(hp.x - 5.5, hp.y + 0.8)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(hp.x - 18.5, hp.y + 9.3)
+      ctx.lineTo(hp.x - 21.5, hp.y + 11.4)
+      ctx.stroke()
+    }
     drawStick(ctx, this.geom, PLAYER_STYLE, {
       time,
       alpha,
