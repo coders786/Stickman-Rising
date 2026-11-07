@@ -44,7 +44,41 @@ export type PlayerState =
   | 'scripted' // driven by Game cinematics (ult / execution)
 
 const SCALE = 1.32
-const HIP_H = 60
+/** standing hip height = thigh(25)+shin(24)=49 local × SCALE ≈ 64.7 — keeps
+ *  straight legs exactly on the ground line instead of sinking 4px into it */
+const HIP_H = 64
+
+/**
+ * Enemy body spheres: [centerY offset above ground, radius] in enemy-local
+ * units (× e.scale). Traced from the ENEMY_SPEC skeleton — hip at 47u, torso
+ * 32u, head top ≈ 94u. The old single circle (y-34, r 26) only covered the
+ * lower 2/3 of the body, so chest/head-height slashes passed straight
+ * through the sprite without connecting. Three spheres hug the visual body.
+ */
+const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
+  { oy: 14, r: 15 }, // legs / hip mass
+  { oy: 48, r: 21 }, // torso (the main target)
+  { oy: 78, r: 17 }, // chest / head zone
+]
+
+/** blade segment vs an enemy's full visual body (any sphere, swept-aware) */
+function bladeHitsBody(
+  e: { x: number; y: number; scale: number },
+  hasPrev: boolean,
+  prev: { bx: number; by: number; tx: number; ty: number },
+  cur: { bx: number; by: number; tx: number; ty: number },
+): boolean {
+  const s = e.scale
+  for (const sp of BODY_SPHERES) {
+    const cy = e.y - sp.oy * s
+    const r = sp.r * s
+    if (hasPrev
+      ? circleHitsSweptQuad(e.x, cy, r, prev.bx, prev.by, prev.tx, prev.ty, cur.bx, cur.by, cur.tx, cur.ty)
+      : segHitsCircle(cur.bx, cur.by, cur.tx, cur.ty, e.x, cy, r)
+    ) return true
+  }
+  return false
+}
 
 const MOVE_MAX = 350
 const ACCEL = 2600
@@ -606,15 +640,10 @@ export class Player {
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
-        const cy = e.y - 34 * e.scale
-        const r = 26 * e.scale + 6
-        const hit = this.hasPrevBlade
-          ? circleHitsSweptQuad(e.x, cy, r, this.prevBlade.bx, this.prevBlade.by, this.prevBlade.tx, this.prevBlade.ty, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
-          : segHitsCircle(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, e.x, cy, r)
-        if (hit) {
+        if (bladeHitsBody(e, this.hasPrevBlade, this.prevBlade, this.blade)) {
           a.hitMap.set(e.id, animT)
           w.hitEnemy(e.id, this.blade, info)
-          this.onLandedHit(w, info, e.x, cy)
+          this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
         }
       }
       // remember this frame's blade for the next sweep test

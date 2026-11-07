@@ -566,7 +566,10 @@ export class Game {
     const hx = (blade.bx + blade.tx) / 2
     const hy = (blade.by + blade.ty) / 2
     const ex = e.x
-    const ey = e.y - 34 * e.scale
+    // impact FX at the blade's actual contact height, clamped to the visual
+    // body (head-top ≈ 88u … feet ≈ 10u) — sparks appear where the edge
+    // crossed the silhouette, not at a fixed belly point
+    const ey = clamp(hy, e.y - 86 * e.scale, e.y - 10 * e.scale)
 
     // elite parry: occasionally deflects light strikes
     if (e.kind === 'elite' && !atk.heavy && Math.random() < 0.16 && e.state !== 'stun' && e.state !== 'launched') {
@@ -782,7 +785,7 @@ export class Game {
         if (alive.length > 0) {
           const e = alive[(Math.random() * alive.length) | 0]
           const ex = e.x
-          const ey = e.y - 34 * e.scale
+          const ey = e.y - 48 * e.scale // torso height — ult slashes cross the chest
           const ang = rand(Math.PI * 2)
           switch (sword.id) {
             case 'inferno':

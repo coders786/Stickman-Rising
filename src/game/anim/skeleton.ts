@@ -104,7 +104,12 @@ export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGe
   const al = hl + kl
   out.ankleL.x = out.kneeL.x + Math.sin(al) * spec.shin
   out.ankleL.y = out.kneeL.y + Math.cos(al) * spec.shin
-  const tl = al + fl
+  // foot roll (Williams, Animator's Survival Kit): the toe defaults to FLAT
+  // on the ground line; the foot channel is heel/toe flex (±) with a whisper
+  // of shin influence so airborne tucks still point. Authoring foot angles
+  // relative to the shin pointed the toe nearly straight down, planting
+  // ~12px of rigid foot below the ground in every grounded pose.
+  const tl = Math.PI / 2 + al * 0.35 + fl * 0.5
   out.toeL.x = out.ankleL.x + Math.sin(tl) * spec.foot
   out.toeL.y = out.ankleL.y + Math.cos(tl) * spec.foot
 
@@ -116,7 +121,7 @@ export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGe
   const ar = hr + kr
   out.ankleR.x = out.kneeR.x + Math.sin(ar) * spec.shin
   out.ankleR.y = out.kneeR.y + Math.cos(ar) * spec.shin
-  const tr = ar + fr
+  const tr = Math.PI / 2 + ar * 0.35 + fr * 0.5
   out.toeR.x = out.ankleR.x + Math.sin(tr) * spec.foot
   out.toeR.y = out.ankleR.y + Math.cos(tr) * spec.foot
 
