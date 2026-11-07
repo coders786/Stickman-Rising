@@ -169,8 +169,12 @@ export function drawSword(
   const a = g.bladeAngle
   const dx = Math.cos(a)
   const dy = Math.sin(a)
-  // REAL katana proportion: blade ≈ 43% of body height (PLAYER_SPEC.blade),
-  // tsuka ≈ 30% of blade — the old 56-unit windmill is dead.
+  // edge-side perpendicular: for a forward blade this points DOWN — the ha
+  // (cutting edge) faces down-forward, correct for kiri-oroshi cuts.
+  const ex = -dy
+  const ey = dx
+  // REAL long-katana proportion: blade = PLAYER_SPEC.blade (~50% of body
+  // height), tsuka ≈ 30% of the blade, motohaba→kissaki taper with sori.
   const len = PLAYER_SPEC.blade * sword.stats.range
   const tsuka = len * 0.3
   const alpha = opts.alpha ?? 1
@@ -182,156 +186,219 @@ export function drawSword(
 
   const glowW = 5 + charge * 4 + swing * 3.2
 
-  // aura pass (additive)
-  ctx.globalCompositeOperation = 'lighter'
-  ctx.strokeStyle = rgba(sword.colors.glow, 0.16 + charge * 0.3 + swing * 0.25)
-  ctx.lineWidth = glowW + 5
-  bladePath(ctx, sword, hx, hy, dx, dy, len, t)
-  ctx.stroke()
-
-  ctx.strokeStyle = rgba(sword.colors.glow, 0.5 + charge * 0.35)
-  ctx.lineWidth = glowW * 0.55
-  bladePath(ctx, sword, hx, hy, dx, dy, len, t)
-  ctx.stroke()
-  ctx.globalCompositeOperation = 'source-over'
-
-  // ---- tsuka (handle): dark wrapped grip behind the hand ----
-  ctx.strokeStyle = '#20293a'
-  ctx.lineWidth = 4.8
+  // ---- 0. tsuka (handle): wrapped grip BEHIND the hand, kashira pommel ----
+  ctx.strokeStyle = '#1a2230'
+  ctx.lineWidth = 5.0
   ctx.beginPath()
   ctx.moveTo(hx - dx * tsuka, hy - dy * tsuka)
-  ctx.lineTo(hx + dx * 2, hy + dy * 2)
+  ctx.lineTo(hx + dx * 2.4, hy + dy * 2.4)
   ctx.stroke()
-  // tsuka-ito cross wraps
-  ctx.strokeStyle = rgba(sword.colors.accent, 0.75)
-  ctx.lineWidth = 1.4
-  for (let i = 1; i <= 3; i++) {
-    const k = i / 3.6
+  // tsuka-ito diamond wraps — the classic katana grip read
+  ctx.strokeStyle = rgba(sword.colors.accent, 0.8)
+  ctx.lineWidth = 1.5
+  for (let i = 1; i <= 4; i++) {
+    const k = i / 4.8
     const wx = hx - dx * tsuka * k
     const wy = hy - dy * tsuka * k
     ctx.beginPath()
-    ctx.moveTo(wx - dy * 2.6, wy + dx * 2.6)
-    ctx.lineTo(wx + dy * 2.6, wy - dx * 2.6)
+    ctx.moveTo(wx - ey * 2.8, wy + ex * 2.8)
+    ctx.lineTo(wx + ey * 2.8, wy - ex * 2.8)
     ctx.stroke()
   }
+  // kashira (pommel cap) — metal end disc
+  ctx.fillStyle = '#3d4f6e'
+  ctx.beginPath()
+  ctx.ellipse(hx - dx * tsuka, hy - dy * tsuka, 2.0, 3.4, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.fill()
 
-  // ---- tsuba (guard): crisp oval at the hand — the dark notch between
-  // tsuka and blade is what makes the katana silhouette read at zoom ----
+  // ---- 1. aura pass (additive) behind the blade ----
+  ctx.globalCompositeOperation = 'lighter'
+  ctx.strokeStyle = rgba(sword.colors.glow, 0.16 + charge * 0.3 + swing * 0.25)
+  ctx.lineWidth = glowW + 5
+  strokeBlade(ctx, sword, hx, hy, dx, dy, ex, ey, len, t)
+  ctx.stroke()
+  ctx.strokeStyle = rgba(sword.colors.glow, 0.5 + charge * 0.35)
+  ctx.lineWidth = glowW * 0.55
+  strokeBlade(ctx, sword, hx, hy, dx, dy, ex, ey, len, t)
+  ctx.stroke()
+  ctx.globalCompositeOperation = 'source-over'
+
+  // ---- 2. tsuba (guard): crisp disc at the hand ----
   ctx.fillStyle = '#4a5d7d'
   ctx.beginPath()
-  ctx.ellipse(hx + dx * 1.5, hy + dy * 1.5, 3.3, 6.9, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2, 5.6, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.fill()
   ctx.strokeStyle = rgba(sword.colors.accent, 0.95)
   ctx.lineWidth = 1.4
   ctx.beginPath()
-  ctx.ellipse(hx + dx * 1.5, hy + dy * 1.5, 3.3, 6.9, a + Math.PI / 2, 0, Math.PI * 2)
+  ctx.ellipse(hx + dx * 2.2, hy + dy * 2.2, 2.2, 5.6, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.stroke()
 
-  // core blade (starts past the guard — habaki notch)
-  ctx.strokeStyle = sword.colors.blade
-  ctx.lineWidth = 3.6 * sword.trailWidth
-  bladePath(ctx, sword, hx + dx * 3.5, hy + dy * 3.5, dx, dy, len - 3.5, t)
+  // ---- 3. the blade: filled polygon with sori + kissaki + habaki ----
+  // base past the tsuba; motohaba (base width) → kissaki taper
+  const bx0 = hx + dx * 3.4
+  const by0 = hy + dy * 3.4
+  const bladeLen = len - 3.4
+  const wBase = 2.1 * sword.trailWidth
+  // fill body
+  ctx.beginPath()
+  buildBladePolygon(ctx, sword, bx0, by0, dx, dy, ex, ey, bladeLen, wBase, t)
+  ctx.fillStyle = rgba(sword.colors.blade, 0.96)
+  ctx.fill()
+  // spine (mune) hairline — separates the two faces
+  ctx.strokeStyle = rgba(sword.colors.trail2, 0.9)
+  ctx.lineWidth = 0.9
+  ctx.beginPath()
+  const munePts = bladeSpine(bx0, by0, dx, dy, ex, ey, bladeLen, wBase)
+  ctx.moveTo(munePts[0], munePts[1])
+  ctx.quadraticCurveTo(munePts[2], munePts[3], munePts[4], munePts[5])
   ctx.stroke()
-  // habaki (blade collar): bright metallic band right past the tsuba —
-  // reads at any zoom and separates grip from blade
+  // habaki (blade collar): bright metallic band right past the tsuba
+  ctx.strokeStyle = rgba(sword.colors.core, 0.92)
+  ctx.lineWidth = 3.4 * sword.trailWidth
+  ctx.beginPath()
+  ctx.moveTo(bx0 + ex * 0.4, by0 + ey * 0.4)
+  ctx.lineTo(bx0 + dx * 5 - ex * 0.2, by0 + dy * 5 - ey * 0.2)
+  ctx.stroke()
+  // ha (cutting edge) highlight — the glowing sharp side
   ctx.strokeStyle = rgba(sword.colors.core, 0.9)
-  ctx.lineWidth = 3.8 * sword.trailWidth
+  ctx.lineWidth = 1.2
   ctx.beginPath()
-  ctx.moveTo(hx + dx * 3.5, hy + dy * 3.5)
-  ctx.lineTo(hx + dx * 8.5, hy + dy * 8.5)
-  ctx.stroke()
-  // ha (cutting edge) highlight — offset toward the cutting side
-  ctx.strokeStyle = rgba(sword.colors.core, 0.85)
-  ctx.lineWidth = 1.1
-  ctx.beginPath()
-  ctx.moveTo(hx + dx * 6 - dy * 1.2, hy + dy * 6 + dx * 1.2)
-  const midX = hx + dx * len * 0.62 - dy * 2.1
-  const midY = hy + dy * len * 0.62 + dx * 2.1
-  const tipX = hx + dx * (len - 2) - dy * 1.4
-  const tipY = hy + dy * (len - 2) + dx * 1.4
-  ctx.quadraticCurveTo(midX, midY, tipX, tipY)
-  ctx.stroke()
-  ctx.strokeStyle = sword.colors.core
-  ctx.lineWidth = 1.4
-  bladePath(ctx, sword, hx + dx * 3.5, hy + dy * 3.5, dx, dy, (len - 3.5) * 0.97, t)
+  const edgePts = bladeEdge(sword, bx0, by0, dx, dy, ex, ey, bladeLen, wBase, t)
+  ctx.moveTo(edgePts[0], edgePts[1])
+  ctx.quadraticCurveTo(edgePts[2], edgePts[3], edgePts[4], edgePts[5])
   ctx.stroke()
 
-  // kissaki (tip) glint
-  const tipGx = hx + dx * len
-  const tipGy = hy + dy * len
+  // ---- 4. kissaki (tip) glint + charge halo ----
+  const tipX = hx + dx * len
+  const tipY = hy + dy * len
   ctx.globalCompositeOperation = 'lighter'
   const tw = 2.2 + Math.sin(t * 9) * 0.7 + charge * 3 + swing * 3.6
   ctx.fillStyle = rgba(sword.colors.core, 0.75 + swing * 0.25)
   ctx.beginPath()
-  ctx.arc(tipGx, tipGy, tw, 0, Math.PI * 2)
+  ctx.arc(tipX, tipY, tw, 0, Math.PI * 2)
   ctx.fill()
   if (charge > 0.05) {
     ctx.strokeStyle = rgba(sword.colors.glow, charge * 0.8)
     ctx.lineWidth = 1.6
     ctx.beginPath()
-    ctx.arc(tipGx, tipGy, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
+    ctx.arc(tipX, tipY, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
     ctx.stroke()
   }
   ctx.globalCompositeOperation = 'source-over'
   ctx.restore()
 }
 
-/** traces the blade path with per-sword character */
-function bladePath(
+/** Builds the filled blade silhouette: ha (curved edge) → kissaki → mune. */
+function buildBladePolygon(
+  ctx: CanvasRenderingContext2D,
+  sword: SwordDef,
+  bx: number, by: number,
+  dx: number, dy: number, ex: number, ey: number,
+  len: number, wBase: number,
+  t: number,
+): void {
+  // sori: the blade bows toward the cutting edge (~6% of length, peak at 60%)
+  const sori = len * 0.06
+  // per-sword edge character offset at parameter k (0..1)
+  const jit = (k: number): number => {
+    switch (sword.id) {
+      case 'thunder':
+        return Math.sin(k * 19 + t * 31) * 1.1
+      case 'inferno':
+        return Math.sin(k * 9 + t * 17) * 1.6
+      case 'void':
+        return Math.sin(k * 6 - t * 5) * 0.7
+      case 'phantom':
+        return 0
+      default:
+        return 0
+    }
+  }
+  // ha (edge) curve — from the wide base to the kissaki
+  const e0x = bx + ex * wBase
+  const e0y = by + ey * wBase
+  const midK = 0.62
+  const emx = bx + dx * len * midK + ex * (sori + jit(midK) + wBase * 0.24)
+  const emy = by + dy * len * midK + ey * (sori + jit(midK) + wBase * 0.24)
+  const kx = bx + dx * len + ex * (sori * 1.15 + jit(1))
+  const ky = by + dy * len + ey * (sori * 1.15 + jit(1))
+  // mune (spine) curve — straighter, meets the kissaki
+  const m0x = bx - ex * wBase * 0.86
+  const m0y = by - ey * wBase * 0.86
+  const mmx = bx + dx * len * 0.6 - ex * (wBase * 0.42 - sori * 0.25 - jit(0.6) * 0.5)
+  const mmy = by + dy * len * 0.6 - ey * (wBase * 0.42 - sori * 0.25 - jit(0.6) * 0.5)
+  ctx.moveTo(e0x, e0y)
+  ctx.quadraticCurveTo(emx, emy, kx, ky)
+  ctx.lineTo(kx - dx * 2.2, ky - dy * 2.2) // yokote line — the tip facet
+  ctx.quadraticCurveTo(mmx, mmy, m0x, m0y)
+  ctx.closePath()
+}
+
+/** Edge (ha) polyline for the highlight stroke. */
+function bladeEdge(
+  sword: SwordDef,
+  bx: number, by: number,
+  dx: number, dy: number, ex: number, ey: number,
+  len: number, wBase: number,
+  t: number,
+): number[] {
+  const sori = len * 0.06
+  const jit = (k: number): number => {
+    switch (sword.id) {
+      case 'thunder': return Math.sin(k * 19 + t * 31) * 1.1
+      case 'inferno': return Math.sin(k * 9 + t * 17) * 1.6
+      case 'void': return Math.sin(k * 6 - t * 5) * 0.7
+      default: return 0
+    }
+  }
+  const midK = 0.62
+  return [
+    bx + ex * wBase,
+    by + ey * wBase,
+    bx + dx * len * midK + ex * (sori + jit(midK) + wBase * 0.24),
+    by + dy * len * midK + ey * (sori + jit(midK) + wBase * 0.24),
+    bx + dx * len + ex * (sori * 1.15 + jit(1)),
+    by + dy * len + ey * (sori * 1.15 + jit(1)),
+  ]
+}
+
+/** Spine (mune) polyline for the hairline stroke. */
+function bladeSpine(
+  bx: number, by: number,
+  dx: number, dy: number, ex: number, ey: number,
+  len: number, wBase: number,
+): number[] {
+  const sori = len * 0.06
+  const mmx = bx + dx * len * 0.6 - ex * (wBase * 0.42 - sori * 0.25)
+  const mmy = by + dy * len * 0.6 - ey * (wBase * 0.42 - sori * 0.25)
+  return [
+    bx - ex * wBase * 0.86,
+    by - ey * wBase * 0.86,
+    mmx,
+    mmy,
+    bx + dx * len + ex * sori,
+    by + dy * len + ey * sori,
+  ]
+}
+
+/** Aura stroke path (centerline of the blade with sori). */
+function strokeBlade(
   ctx: CanvasRenderingContext2D,
   sword: SwordDef,
   hx: number, hy: number,
-  dx: number, dy: number,
+  dx: number, dy: number, ex: number, ey: number,
   len: number,
   t: number,
 ): void {
+  const sori = len * 0.06 * 0.5
+  const wobble = sword.id === 'thunder' ? Math.sin(t * 31) * 1.1 : sword.id === 'inferno' ? Math.sin(t * 17) * 1.4 : 0
   ctx.beginPath()
-  switch (sword.id) {
-    case 'katana': {
-      // gentle curve
-      const mx = hx + dx * len * 0.5 - dy * 3.2
-      const my = hy + dy * len * 0.5 + dx * 3.2
-      ctx.moveTo(hx, hy)
-      ctx.quadraticCurveTo(mx, my, hx + dx * len, hy + dy * len)
-      break
-    }
-    case 'thunder': {
-      // jagged lightning edge
-      ctx.moveTo(hx, hy)
-      const j = 2.4 + Math.sin(t * 31) * 1.1
-      ctx.lineTo(hx + dx * len * 0.33 - dy * j, hy + dy * len * 0.33 + dx * j)
-      ctx.lineTo(hx + dx * len * 0.66 - dy * -j, hy + dy * len * 0.66 + dx * -j)
-      ctx.lineTo(hx + dx * len, hy + dy * len)
-      break
-    }
-    case 'inferno': {
-      // flickering flame edge
-      ctx.moveTo(hx, hy)
-      const f = Math.sin(t * 17) * 2.2
-      ctx.quadraticCurveTo(
-        hx + dx * len * 0.45 - dy * f,
-        hy + dy * len * 0.45 + dx * f,
-        hx + dx * len,
-        hy + dy * len,
-      )
-      break
-    }
-    case 'gravity': {
-      // heavy straight edge
-      ctx.moveTo(hx, hy)
-      ctx.lineTo(hx + dx * len, hy + dy * len)
-      break
-    }
-    case 'void': {
-      ctx.moveTo(hx, hy)
-      ctx.lineTo(hx + dx * len, hy + dy * len)
-      break
-    }
-    case 'phantom': {
-      // echo offset blade
-      ctx.moveTo(hx - dy * 2, hy + dx * 2)
-      ctx.lineTo(hx + dx * len - dy * 2, hy + dy * len + dx * 2)
-      break
-    }
-  }
+  ctx.moveTo(hx + dx * 3.4, hy + dy * 3.4)
+  ctx.quadraticCurveTo(
+    hx + dx * len * 0.62 + ex * (sori + wobble),
+    hy + dy * len * 0.62 + ey * (sori + wobble),
+    hx + dx * len,
+    hy + dy * len,
+  )
 }

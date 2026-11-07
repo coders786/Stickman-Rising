@@ -54,53 +54,50 @@ export const IDLE_CLIP: Clip = makeClip('idle', [
 
 /* ------------------------------- RUN -------------------------------- */
 
-/* Five-phase cycle notes (contact → loading → push-off → flight →
- * recovery). The sword trails low-back in a relaxed guard (sum ≈ 2.2 —
- * blade down-back), off-arm pumps in counter-phase, head counter-balances
- * the vertical bob, feet roll heel → toe.
+/* Five-phase gait (Williams, Animator's Survival Kit): CONTACT → LOADING
+ * (absorb) → PUSH-OFF → FLIGHT → REACH, mirrored per stride. Every span is
+ * eased — never linear: the fall INTO contact accelerates (inQuad), the
+ * absorb decelerates (outQuad), the drive is smooth (inOutSine), the launch
+ * explodes (outCubic). The hip bob is authored SMALL because the foot-ground
+ * lock in player.ts derives hip height from the planted leg — real weight
+ * transfer instead of a painted bob. Off-arm pumps in counter-phase; the
+ * sword trails low-back in a relaxed guard (sum ≈ 2.2).
  */
 const RUN_Q: PoseInput[] = [
-  {
-    rootX: 0, rootY: -1.5, rootRot: 0.3, spine: 0.05, head: -0.17,
-    hipR: 0.66, kneeR: -0.12, footR: 0.18,
-    hipL: -0.6, kneeL: -0.5, footL: 0.14,
-    shR: 0.45, elR: -0.75, wrR: 0.9,
-    shL: 0.55, elL: -0.7, wrL: -0.26,
+  { // CONTACT — lead heel strikes FAR forward, trail toe still down
+    rootX: 0, rootY: 0.6, rootRot: 0.3, spine: 0.05, head: -0.17,
+    hipR: 0.88, kneeR: -0.08, footR: 0.24,
+    hipL: -0.8, kneeL: -0.62, footL: -0.06,
+    shR: 0.3, elR: -1.0, wrR: 0.9,
+    shL: 0.7, elL: -1.05, wrL: -0.24,
   },
-  {
-    rootX: 0, rootY: 1.5, rootRot: 0.33, spine: 0.075, head: -0.24,
-    hipR: 0.3, kneeR: -0.45, footR: 0.06,
-    hipL: -0.75, kneeL: -0.85, footL: 0.04,
-    shR: 0.6, elR: -0.8, wrR: 0.8,
-    shL: 0.35, elL: -0.75, wrL: -0.22,
+  { // LOADING — weight absorbs over the bending lead leg, big stride split
+    rootX: 0, rootY: 2.2, rootRot: 0.33, spine: 0.075, head: -0.24,
+    hipR: 0.5, kneeR: -0.72, footR: 0.06,
+    hipL: -0.95, kneeL: -0.3, footL: 0.02,
+    shR: 0.55, elR: -1.05, wrR: 0.82,
+    shL: 0.32, elL: -1.0, wrL: -0.2,
   },
-  {
-    rootX: 0, rootY: 2.5, rootRot: 0.3, spine: 0.09, head: -0.28,
-    hipR: -0.05, kneeR: -0.55, footR: -0.16,
-    hipL: -0.25, kneeL: -1.5, footL: -0.22,
-    shR: 0.7, elR: -0.7, wrR: 0.7,
-    shL: 0.1, elL: -0.65, wrL: -0.18,
-  },
-  {
-    rootX: 0, rootY: 0, rootRot: 0.28, spine: 0.06, head: -0.21,
-    hipR: -0.4, kneeR: -0.35, footR: -0.04,
-    hipL: 0.3, kneeL: -0.85, footL: 0.05,
-    shR: 0.5, elR: -0.7, wrR: 0.85,
-    shL: -0.2, elL: -0.7, wrL: -0.24,
+  { // PUSH-OFF — lead leg drives back hard, trail knee punches through high
+    rootX: 0, rootY: 1.0, rootRot: 0.3, spine: 0.09, head: -0.28,
+    hipR: -0.3, kneeR: -0.38, footR: -0.1,
+    hipL: 0.52, kneeL: -1.32, footL: 0.2,
+    shR: 0.72, elR: -0.95, wrR: 0.74,
+    shL: 0.08, elL: -0.95, wrL: -0.16,
   },
 ]
 
 const RUN_DUR = 0.5
 const runFrames = [
-  keyframe(0, RUN_Q[0], 'linear'),
-  keyframe(RUN_DUR * 0.125, RUN_Q[1], 'linear'),
-  keyframe(RUN_DUR * 0.25, RUN_Q[2], 'linear'),
-  keyframe(RUN_DUR * 0.375, RUN_Q[3], 'linear'),
-  keyframe(RUN_DUR * 0.5, mirrorPose(RUN_Q[0]), 'linear'),
-  keyframe(RUN_DUR * 0.625, mirrorPose(RUN_Q[1]), 'linear'),
-  keyframe(RUN_DUR * 0.75, mirrorPose(RUN_Q[2]), 'linear'),
-  keyframe(RUN_DUR * 0.875, mirrorPose(RUN_Q[3]), 'linear'),
-  keyframe(RUN_DUR, RUN_Q[0], 'linear'),
+  // stride A — right leg contact (0.0) → absorb (13%) → push (30%) → flight (50%)
+  keyframe(0, RUN_Q[0], 'inQuad'),               // fall into contact
+  keyframe(RUN_DUR * 0.13, RUN_Q[1], 'outQuad'), // absorb
+  keyframe(RUN_DUR * 0.3, RUN_Q[2], 'inOutSine'), // drive
+  // stride B — left leg contact (50%) → absorb (63%) → push (80%) → wrap
+  keyframe(RUN_DUR * 0.5, mirrorPose(RUN_Q[0]), 'outCubic'), // launch/reach
+  keyframe(RUN_DUR * 0.63, mirrorPose(RUN_Q[1]), 'inQuad'),
+  keyframe(RUN_DUR * 0.8, mirrorPose(RUN_Q[2]), 'outQuad'),
+  keyframe(RUN_DUR, RUN_Q[0], 'inOutSine'),
 ]
 
 export const RUN_CLIP: Clip = makeClip('run', runFrames, true)

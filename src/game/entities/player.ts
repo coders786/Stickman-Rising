@@ -3,7 +3,7 @@
  */
 
 import { Animator } from '../anim/animator'
-import { makePose, Pose } from '../anim/pose'
+import { makePose, Pose, CH } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
 import { CHARGE_CLIP, DASH_AIR_CLIP, DASH_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP } from '../anim/clips'
 import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
@@ -44,9 +44,11 @@ export type PlayerState =
   | 'scripted' // driven by Game cinematics (ult / execution)
 
 const SCALE = 1.32
-/** standing hip height = thigh(25)+shin(24)=49 local × SCALE ≈ 64.7 — keeps
- *  straight legs exactly on the ground line instead of sinking 4px into it */
-const HIP_H = 64
+/** nominal (airborne) hip height = thigh(25)+shin(24) = 49 local × SCALE.
+ * Grounded height is NOT fixed — it derives from the planted foot via the
+ * foot-ground lock (updateFootLock): idle bent knees, lunges and landing
+ * squashes all sit exactly ON the ground line. */
+const HIP_H = (25 + 24) * SCALE
 
 /**
  * Enemy body spheres: [centerY offset above ground, radius] in enemy-local
@@ -170,6 +172,29 @@ export class Player {
   private hurtT = 0
   private deadT = 0
 
+  /* ---- WEIGHT: hip height derives from the planted foot (foot-ground
+   * lock) — no floating, no digging, real weight transfer for every pose. */
+  private footLock = HIP_H
+
+  /* ---- BLADE DYNAMICS: rotational inertia of the katana. The tip lags
+   * the arm's angular acceleration and whips through on release — a
+   * physically-motivated furi-otoshi accent layered under the keyframes. */
+  private bladeLag = 0
+  private bladeLagVel = 0
+  private prevArmSum = 0
+
+  /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
+   * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
+  private twoHandW = 0
+
+  /* ---- HEAVY CHAIN: h1 → h2 → h3 (was: single animation forever). */
+  private heavyIndex = 0
+  private lastHeavyAt = -10
+
+  /* ---- HYPER-ARMOR window (charged release): damage bleeds at 35%, but
+   * the swing is never interrupted — the counter to "charged never hits". */
+  private armorT = 0
+
   /** world-space blade segment (hit + trail sampling) */
   blade = { bx: 0, by: 0, tx: 0, ty: 0 }
   /** previous frame's blade segment (swept hit detection) */
@@ -232,7 +257,9 @@ export class Player {
   }
 
   get hipY(): number {
-    return this.y - HIP_H + this.pose[1] * SCALE
+    // footLock (damped) IS the hip height: planted-foot-derived → weight.
+    // (geom already contains pose rootY, so no double count.)
+    return this.y - this.footLock
   }
 
   /* ------------------------------------------------------------------ */
@@ -241,6 +268,7 @@ export class Player {
 
   update(dt: number, w: WorldRef): void {
     this.iframes = Math.max(0, this.iframes - dt)
+    this.armorT = Math.max(0, this.armorT - dt)
     this.flashT = Math.max(0, this.flashT - dt * 5)
     this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
     this.riposteT = Math.max(0, this.riposteT - dt)
@@ -313,7 +341,11 @@ export class Player {
     // Godot AnimationTree → Skeleton2D.)
     this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
+    // procedural layers (bounded, frame-local — never accumulate):
+    this.updateBladeDynamics(dt) // wrist lag spring — feeds hitboxes
+    this.applyTwoHandGrip(dt)    // off-hand IK onto the tsuka
     solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
+    this.updateFootLock(dt)      // weight: hips sit on the planted foot
     this.updateBladeWorld()
   }
 
@@ -558,8 +590,13 @@ export class Player {
     return `l${Math.min(this.lightIndex, 5)}`
   }
 
-  private pickHeavy(_w: WorldRef): AttackDef {
-    return ATTACKS.h1
+  /** Heavy CHAIN: Kiri Oroshi → Tsuki → Grand Slam. Sequential like the
+   * light chain, with time decay — heavy attacks finally have combo
+   * pairing instead of one animation forever. */
+  private pickHeavy(w: WorldRef): AttackDef {
+    if (w.time - this.lastHeavyAt > 1.15) this.heavyIndex = 0
+    this.heavyIndex = Math.min(this.heavyIndex + 1, 3)
+    return ATTACKS[`h${this.heavyIndex}`] ?? ATTACKS.h1
   }
 
   startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
@@ -575,6 +612,18 @@ export class Player {
     // face toward held direction at attack start
     const ax = w.input.axisX()
     if (ax !== 0 && !fromParry) this.face = ax > 0 ? 1 : -1
+
+    // heavy chain bookkeeping (h1 → h2 → h3 sequencing)
+    const hm = /^h([123])$/.exec(def.id)
+    if (hm) {
+      this.heavyIndex = Number(hm[1])
+      this.lastHeavyAt = w.time
+    }
+    if (/^l[1-5]$/.test(def.id)) this.lastLightAt = w.time
+
+    // HYPER-ARMOR: the charged release cannot be interrupted (the root
+    // cause of "charged never hits" — enemies struck mid-swing cancelled it)
+    if (def.id === 'charged') this.armorT = 0.5
 
     const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
@@ -592,9 +641,6 @@ export class Player {
     if (fromParry) this.riposteT = 0
     this.state = 'attack'
     this.charging = false
-    if (def === ATTACKS.l1 || def === ATTACKS.l2 || def === ATTACKS.l3 || def === ATTACKS.l4 || def === ATTACKS.l5) {
-      this.lastLightAt = w.time
-    }
     this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed })
     // slight ground friction during attacks
   }
@@ -642,7 +688,9 @@ export class Player {
       this.swingGlow = 1
       const info = makeRuntimeInfo(def, this.sword.stats.dmg)
       for (const e of w.enemies) {
-        if (e.dead || e.spawning) continue
+        // spawning enemies within blade reach (landing pods, y > -90) are
+        // fair game — the swing connects the moment the body crosses the arc
+        if (e.dead || (e.spawning && e.y < -90)) continue
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
@@ -705,7 +753,9 @@ export class Player {
             w.fx.endTrail(a.trail)
             return
           } else {
-            next = def.chain.find((c) => c.startsWith('h')) ?? 'h1'
+            // advance the heavy CHAIN (h1 → h2 → h3) like the light chain
+            const heavyNext = def.chain.find((c) => /^h[123]$/.test(c))
+            next = heavyNext ?? (def.kind === 'heavy' ? 'l1' : 'h1')
           }
         }
         if (next) {
@@ -865,6 +915,24 @@ export class Player {
 
   takeDamage(w: WorldRef, dmg: number, dir: number, heavy: boolean): boolean {
     if (this.iframes > 0 || this.state === 'dash' || this.state === 'dead' || this.state === 'scripted') return false
+    // HYPER-ARMOR (charged release): the swing is uninterruptible — damage
+    // bleeds at 35%, no knockback, no hurt state. The commitment reads as
+    // power instead of a liability.
+    if (this.armorT > 0) {
+      this.hp = Math.max(0, this.hp - dmg * 0.35)
+      this.flashT = Math.max(this.flashT, 0.45)
+      if (this.hp <= 0) {
+        this.state = 'dead'
+        this.deadT = 0
+        this.armorT = 0
+        this.vx = dir * 300
+        this.vy = -420
+        w.audio.play('hurt', { volume: 0.8, intensity: 1 })
+      } else {
+        w.fx.burst(this.x, this.y - 50, 4, '#ffb14a', 140, 0.4, 'spark')
+      }
+      return true
+    }
     this.hp = Math.max(0, this.hp - dmg)
     this.flashT = 1
     this.hurtT = 0.34
@@ -1186,6 +1254,131 @@ export class Player {
   /* animation glue                                                       */
   /* ------------------------------------------------------------------ */
 
+  /* ------------------------------------------------------------------ */
+  /* procedural layers: weight, blade physics, two-handed grip            */
+  /* ------------------------------------------------------------------ */
+
+  /** FOOT-GROUND LOCK — the hip sits at the planted foot's extension. This
+   * is the weight system: idle bent knees no longer float (measured 9.5px
+   * gap), lunges/crouches stay exactly grounded, landing squashes through
+   * the leg bend instead of sinking into the floor. Airborne → nominal
+   * hip height (physics owns y). */
+  private updateFootLock(dt: number): void {
+    const g = this.geom
+    // lowest contact point: ankles AND toes (a pointed trailing toe grazes
+    // the ground at toe-off — real gait), plus the sole half-width so the
+    // visual foot bottom kisses the line, not the ankle joint center
+    const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y) + 2.4
+    const support = lowContact * SCALE
+    const groundedPose = this.grounded && this.state !== 'dead'
+    let target: number
+    if (groundedPose && support >= HIP_H * 0.86) {
+      // SUPPORT phase — the lowest foot is load-bearing (within 14% of full
+      // leg extension): pin the hip so the sole EXACTLY contacts. This is
+      // the weight: no float, no dig, crouches stay crouched.
+      target = support
+    } else {
+      // FLIGHT (both feet swinging/tucked mid-stride) or airborne: physics
+      // owns height — honor the clip's authored bob instead of dragging the
+      // hip down to a tucked toe (which inverted the run's natural bounce)
+      target = HIP_H + this.pose[1] * SCALE
+    }
+    // k=24: tracks a 0.3s stride with ~2px residual — crisp, never mushy
+    this.footLock = damp(this.footLock, target, 24, dt)
+  }
+
+  /** BLADE DYNAMICS — rotational inertia of the katana as a spring-damper
+   * on the wrist channel. When the arm accelerates (windup → cut), the tip
+   * lags behind the drive angle; when the arm decelerates, the stored
+   * energy whips the tip THROUGH the target line with a small overshoot —
+   * the physical furi-otoshi snap real swordsmen feel. Under-damped
+   * (ζ≈0.3): lively, never mushy. Applied BEFORE solve → hitboxes inherit
+   * the physical blade, not just the keyframed one. */
+  private updateBladeDynamics(dt: number): void {
+    if (dt <= 1e-5) return
+    const p = this.pose
+    const armSum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
+    const armVel = (armSum - this.prevArmSum) / dt
+    this.prevArmSum = armSum
+    // lag target: proportional to angular velocity (inertia resisting)
+    const target = clamp(-armVel * 0.045, -0.15, 0.15)
+    // spring toward target, under-damped for the whip-through
+    const K = 260
+    const C = 9
+    this.bladeLagVel += (K * (target - this.bladeLag) - C * this.bladeLagVel) * dt
+    this.bladeLag += this.bladeLagVel * dt
+    this.bladeLag = clamp(this.bladeLag, -0.17, 0.17)
+    this.bladeLagVel = clamp(this.bladeLagVel, -6, 6)
+    p[CH.wrR] += this.bladeLag
+  }
+
+  /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
+   * (te-no-uchi: left hand at the pommel, right near the guard — how a
+   * katana is actually swung). Blended over the authored off-arm channels
+   * with a state-driven weight so running/dashing pumps stay authored. */
+  private applyTwoHandGrip(dt: number): void {
+    // desired grip weight by state
+    let target = 0
+    switch (this.state) {
+      case 'move':
+        target = this.grounded && Math.abs(this.vx) < 60 ? 1 : 0.1
+        break
+      case 'attack':
+        target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
+        break
+      case 'charge':
+      case 'parry':
+        target = 1
+        break
+      case 'scripted':
+        target = 0.5
+        break
+      default:
+        target = 0
+    }
+    this.twoHandW = damp(this.twoHandW, target, 11, dt)
+    const w = this.twoHandW
+    if (w < 0.03) return
+
+    const g = this.geom // last frame's solve — continuous, 1-frame stale
+    const tsuka = PLAYER_SPEC.blade * this.sword.stats.range * 0.3
+    // tsuka butt (pommel end) in local space
+    const bax = Math.cos(g.bladeAngle)
+    const bay = Math.sin(g.bladeAngle)
+    const tx = g.handR.x - bax * tsuka
+    const ty = g.handR.y - bay * tsuka
+    // shoulder anchor = chest (solver attaches arms there)
+    const sx = g.chest.x
+    const sy = g.chest.y
+    const U = PLAYER_SPEC.upperArm
+    const F = PLAYER_SPEC.foreArm
+    let dx = tx - sx
+    let dy = ty - sy
+    let d = Math.hypot(dx, dy)
+    const maxD = (U + F) * 0.98
+    if (d > maxD) {
+      const k = maxD / d
+      dx *= k
+      dy *= k
+      d = maxD
+    }
+    if (d < 2) return
+    // law of cosines: interior angles of the shoulder-elbow-target triangle
+    const cosB = clamp((U * U + d * d - F * F) / (2 * U * d), -1, 1)
+    const B = Math.acos(cosB)
+    const base = Math.atan2(dy, dx)
+    // elbow bends DOWN (anatomical) → rotate the upper arm below the line
+    const upperAng = base + B
+    const ex = sx + Math.cos(upperAng) * U
+    const ey = sy + Math.sin(upperAng) * U
+    // convert elbow/hand to the channel convention (from straight-down, +fwd)
+    const shIk = Math.atan2(ex - sx, ey - sy)
+    const elIk = Math.atan2(tx - ex, ty - ey) - shIk
+    const p = this.pose
+    p[CH.shL] += (shIk - p[CH.shL]) * w
+    p[CH.elL] += (elIk - p[CH.elL]) * w
+  }
+
   private applyProcedural(dt: number): void {
     const p = this.pose
     // velocity lean (proportional, eased)
@@ -1243,36 +1436,46 @@ export class Player {
     ctx.save()
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * SCALE, SCALE)
-    // saya (scabbard) at the left hip, angled back — worn through the obi
-    // like a real katana; the iai draw-cuts (l1 / riposte) pull the blade
-    // from exactly here, so the draw reads as a draw.
+    // saya (scabbard) at the left hip, angled back-down through the obi like
+    // a real katana — sized to sheathe the blade (blade 52): the iai
+    // draw-cuts (l1 / riposte) pull the steel from exactly here.
     {
       const hp = this.geom.hip
+      const sayLen = PLAYER_SPEC.blade * 0.88
+      const ang = 0.24 // radians below horizontal, sweeping back-down
+      const tipX = hp.x - Math.cos(ang) * sayLen
+      const tipY = hp.y + Math.sin(ang) * sayLen
       // saya body (slightly lighter than the body so it reads on the hip)
       ctx.strokeStyle = '#0d1219'
-      ctx.lineWidth = 4.4
+      ctx.lineWidth = 4.6
       ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(hp.x + 3, hp.y + 1)
-      ctx.lineTo(hp.x - 21, hp.y + 10.5)
+      ctx.lineTo(tipX, tipY)
       ctx.stroke()
       // rim highlight along the top edge — sells it as a scabbard
       ctx.strokeStyle = '#465a7a'
       ctx.lineWidth = 1.6
       ctx.beginPath()
       ctx.moveTo(hp.x + 2.4, hp.y - 1.2)
-      ctx.lineTo(hp.x - 20.4, hp.y + 8.2)
+      ctx.lineTo(tipX + Math.cos(ang) * 2, tipY - Math.sin(ang) * 2)
       ctx.stroke()
-      // sageo knot + kojiri cap accents
+      // sageo knot + kojiri (end cap) accents
       ctx.strokeStyle = rgba(this.sword.colors.accent, 0.5)
       ctx.lineWidth = 1.2
       ctx.beginPath()
       ctx.moveTo(hp.x - 2, hp.y + 3.4)
       ctx.lineTo(hp.x - 5.5, hp.y + 0.8)
       ctx.stroke()
+      // kojiri: FILLED metal cap on the saya mouth (a bare accent ring read
+      // as a floating rig artifact at gameplay zoom — cap the tube properly)
+      ctx.fillStyle = '#0d1219'
       ctx.beginPath()
-      ctx.moveTo(hp.x - 18.5, hp.y + 9.3)
-      ctx.lineTo(hp.x - 21.5, hp.y + 11.4)
+      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.6)
+      ctx.beginPath()
+      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
       ctx.stroke()
     }
     drawStick(ctx, this.geom, PLAYER_STYLE, {

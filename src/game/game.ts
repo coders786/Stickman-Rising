@@ -709,9 +709,9 @@ export class Game {
   private findExecuteTarget(): Enemy | null {
     for (const e of this.enemies) {
       if (e.dead || e.spawning || e.kind === 'boss') continue
-      if (e.hp > e.maxHp * 0.3) continue
+      if (e.hp > e.maxHp * 0.35) continue
       if (e.state !== 'stun' && e.state !== 'launched' && e.state !== 'down') continue
-      if (Math.abs(e.x - this.player.x) < 130 && Math.abs(e.y - this.player.y) < 160) return e
+      if (Math.abs(e.x - this.player.x) < 150 && Math.abs(e.y - this.player.y) < 190) return e
     }
     return null
   }

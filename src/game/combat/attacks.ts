@@ -61,6 +61,9 @@ export interface AttackDef {
   float?: number
   /** AoE + fx fire when the player touches ground mid-attack (slams / dive) */
   slamImpact?: { r: number; dmg: number; launch: number }
+  /** two-handed grip weight (0..1): how strongly the off-hand IK takes the
+   * tsuka during this attack — real kenjutsu cuts are two-handed */
+  grip?: number
 }
 
 /** Chūdan-no-kamae guard — shared start/end pose for ground chains. */
@@ -121,6 +124,7 @@ const l1: AttackDef = {
   cancel: 0.32,
   chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
   moveX: 150, moveXAt: 0.13,
+  grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
 }
 
 /** L2 — KESA GIRI (袈裟斬り): the diagonal temple-to-hip cut. Wind high
@@ -162,6 +166,7 @@ const l2: AttackDef = {
   cancel: 0.31,
   chain: ['l3', 'h1', 'h2', 'launcher', 'spin', 'retreat'],
   moveX: 130, moveXAt: 0.14,
+  grip: 0.9, // kesa from jōdan — both hands on the tsuka through the diagonal
 }
 
 /** L3 — GYAKU KESA (逆袈裟): the reverse diagonal — hip-to-temple rising
@@ -206,6 +211,7 @@ const l3: AttackDef = {
   cancel: 0.33,
   chain: ['l4', 'h1', 'h2', 'launcher', 'retreat'],
   moveX: 110, moveXAt: 0.12,
+  grip: 0.9,
 }
 
 /** L4 — YOKO GIRI (横斬り): level horizontal sweep. Coil into waki (blade
@@ -247,6 +253,7 @@ const l4: AttackDef = {
   cancel: 0.37,
   chain: ['l5', 'h2', 'launcher'],
   moveX: 90, moveXAt: 0.16,
+  grip: 0.7,
 }
 
 /** L5 — KIRI OROSHI (切り下ろし): the vertical finishing cut. Full jōdan
@@ -295,6 +302,7 @@ const l5: AttackDef = {
   cancel: 0.37,
   chain: [],
   moveX: 240, moveXAt: 0.2,
+  grip: 1, // kiri oroshi — full two-handed vertical
 }
 
 /** Backstep Slash — retreating rising cut (hold back + light): gyaku-kesa
@@ -334,6 +342,7 @@ const retreat: AttackDef = {
   cancel: 0.31,
   chain: ['l1', 'l2', 'launcher', 'spin'],
   moveX: -240, moveXAt: 0.05,
+  grip: 0.85,
 }
 
 /** HASSŌ SWEEP (down + light): crouched low horizontal sweep with a
@@ -384,6 +393,7 @@ const spin: AttackDef = {
   swingSfx: { t: 0.08, name: 'swing' },
   cancel: 0.4,
   chain: ['l5', 'launcher', 'h2'],
+  grip: 0.75,
 }
 
 /* ------------------------------------------------------------------ */
@@ -441,6 +451,7 @@ const h1: AttackDef = {
   cancel: 0.43,
   chain: ['h2', 'l1', 'launcher'],
   moveX: 200, moveXAt: 0.24,
+  grip: 1, // jōdan raise + vertical fall — both hands, te-no-uchi
 }
 
 /** H2 — TSUKI (突き): the thrust. Hilt chambered back at the hip, then a
@@ -489,6 +500,7 @@ const h2: AttackDef = {
   cancel: 0.4,
   chain: ['h3', 'l1'],
   moveX: 320, moveXAt: 0.2,
+  grip: 1, // tsuki: the thrust is ALWAYS two-handed
 }
 
 /** H3 — Grand Slam: leaping kiri oroshi. Jump to jōdan, hang at apex,
@@ -544,6 +556,7 @@ const h3: AttackDef = {
   chain: [],
   moveY: -780, moveYAt: 0.04,
   slamImpact: { r: 135, dmg: 26, launch: -280 },
+  grip: 1,
 }
 
 /** LAUNCHER — Rising Fang: gedan chamber, then the whole body rips upward
@@ -587,6 +600,7 @@ const launcher: AttackDef = {
   chain: ['a1', 'a2', 'a3', 'dive'],
   moveX: 170, moveXAt: 0.07,
   moveY: -520, moveYAt: 0.08,
+  grip: 0.9,
 }
 
 /* ------------------------------------------------------------------ */
@@ -632,6 +646,7 @@ const dashSlash: AttackDef = {
   cancel: 0.23,
   chain: ['l1', 'l2', 'h1', 'launcher'],
   moveX: 560, moveXAt: 0.02,
+  grip: 0.3, // iai through-cut on the pass — one hand, saya hand back
 }
 
 /** Dash Heavy — PIERCING FANG: tsuki from the dash. */
@@ -671,6 +686,7 @@ const dashHeavy: AttackDef = {
   cancel: 0.3,
   chain: [],
   moveX: 420, moveXAt: 0.08,
+  grip: 1,
 }
 
 /** CHARGED — OVERLOAD SLASH: element-charged kesa. Huge windup with the
@@ -711,7 +727,8 @@ const charged: AttackDef = {
   swingSfx: { t: 0.13, name: 'swingHeavy' },
   cancel: 0.41,
   chain: [],
-  moveX: 220, moveXAt: 0.12,
+  moveX: 260, moveXAt: 0.1,
+  grip: 1, // element-charged kesa — a full-body two-handed diagonal
 }
 
 /** RIPOSTE — JUDGMENT CUT: the counter is a true iai nukitsuke. Perfect
@@ -764,6 +781,7 @@ const riposte: AttackDef = {
   cancel: 0.35,
   chain: [],
   moveX: 200, moveXAt: 0.1,
+  grip: 0.5, // iai nukitsuke: draw one-handed, settle two-handed on noto
 }
 
 /* ------------------------------------------------------------------ */
@@ -810,6 +828,7 @@ const a1: AttackDef = {
   cancel: 0.21,
   chain: ['a2', 'a3', 'dive', 'slam'],
   float: 0.42,
+  grip: 0.9,
 }
 
 /** A2 — AIR REVERSE: rising gyaku kesa — the follow-up rising diagonal. */
@@ -847,6 +866,7 @@ const a2: AttackDef = {
   cancel: 0.21,
   chain: ['a3', 'dive', 'slam'],
   float: 0.42,
+  grip: 0.9,
 }
 
 /** A3 — AIR YOKO: level horizontal sweep with a counter-pass — no aerial
@@ -890,6 +910,7 @@ const a3: AttackDef = {
   cancel: 0.31,
   chain: ['dive', 'slam', 'a1'],
   float: 0.34,
+  grip: 0.8,
 }
 
 /** DIVE — Falcon Dive: blade-first diagonal plunge, tip locked on the
@@ -934,6 +955,7 @@ const dive: AttackDef = {
   moveX: 260, moveXAt: 0.08,
   float: 0.9,
   slamImpact: { r: 80, dmg: 12, launch: -160 },
+  grip: 0.6,
 }
 
 /** SLAM — Meteor Fall: vertical plunging kiri — the blade points at the
@@ -984,6 +1006,7 @@ const slam: AttackDef = {
   chain: [],
   moveY: 1050, moveYAt: 0.1,
   slamImpact: { r: 145, dmg: 26, launch: -300 },
+  grip: 1,
 }
 
 /* ------------------------------------------------------------------ */
