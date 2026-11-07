@@ -15,8 +15,13 @@ export interface Vec2 {
 
 export interface SkelSpec {
   torso: number
+  /** visible neck column: shoulder-line (C7) → skull base (atlas) */
   neck: number
   headR: number
+  /** glenohumeral joint forward of the spine-top, along the torso frame */
+  shoulderFwd: number
+  /** glenohumeral joint below the shoulder line, along the torso frame */
+  shoulderDrop: number
   upperArm: number
   foreArm: number
   hand: number
@@ -26,20 +31,35 @@ export interface SkelSpec {
   blade: number
 }
 
-/** Humanoid proportions (research: da Vinci Vitruvian ratios adapted to a
- * silhouette fighter): torso 37 + neck 7.5 + head 8.8 ≈ upper body; legs
- * thigh 25 + shin 24 = 49 (HIP_H 64 stays valid: 49 × SCALE ≈ 64.7).
- * Blade 56 ≈ 54% of the ~104u standing height (plus tsuka ≈ 17 → 70%
- * overall) — a REAL long-katana proportion; 44 read as a knife, 52 still
- * a touch short in playtesting. 56 is the "legit" read: the kissaki
- * clears the knee sheathed, breaks overhead raised — classic iai
- * silhouette landmarks. */
+/** ANATOMICAL PROPORTION SYSTEM — 8-head canon adapted to a silhouette
+ * fighter (H ≈ 104 local units ≈ 137px at SCALE 1.32). Every joint offset
+ * below derives from this table; nothing is placed by eye:
+ *
+ *   region            fraction    local units
+ *   ──────────────────────────────────────────────
+ *   skull height      1.28 head   17.6 (r 8.8 — stylized readability)
+ *   neck column       0.35 head    4.6 (C7 → skull base)
+ *   hip→shoulder line 0.355 H     37   (waist split 0.57/0.43)
+ *   femur head offset             ±~2  (front hip +1.7, rear −2.1)
+ *   glenohumeral jt   0.031 H      3.2 fwd × 3.3 drop (near shoulder)
+ *   humerus           0.20 H      21
+ *   forearm           0.18 H      19   (humerus:forearm = 1.1:1 ✓)
+ *   femur             0.24 H      25
+ *   tibia             0.23 H      24   (femur:tibia = 1.04:1 ✓)
+ *   foot length       0.10 H      10
+ *   blade 56 ≈ 54% of height + tsuka ≈ 70% — legit long-katana read
+ *
+ * Leg chain 49 keeps HIP_H = 64 world EXACTLY stable (ground contact,
+ * foot-lock and hitbox heights all depend on it).
+ */
 export const PLAYER_SPEC: SkelSpec = {
   torso: 37,
-  neck: 7.5,
+  neck: 5.6,
   headR: 8.8,
-  upperArm: 22,
-  foreArm: 20,
+  shoulderFwd: 3.2,
+  shoulderDrop: 3.3,
+  upperArm: 21,
+  foreArm: 19,
   hand: 6.5,
   thigh: 25,
   shin: 24,
@@ -49,10 +69,19 @@ export const PLAYER_SPEC: SkelSpec = {
 
 export interface SkelGeom {
   hip: Vec2
+  /** femur head, front leg (near side) */
+  hipPtR: Vec2
+  /** femur head, back leg (far side) */
+  hipPtL: Vec2
+  waist: Vec2
   chest: Vec2
-  neckBase: Vec2
+  /** skull base (atlas joint) — top of the neck column */
+  neckTop: Vec2
   headC: Vec2
   headAng: number
+  /** glenohumeral joints — THE arm roots (anatomical) */
+  shoulderR: Vec2
+  shoulderL: Vec2
   kneeL: Vec2
   ankleL: Vec2
   toeL: Vec2
@@ -70,7 +99,8 @@ export interface SkelGeom {
 export function makeSkelGeom(): SkelGeom {
   const z = (): Vec2 => ({ x: 0, y: 0 })
   return {
-    hip: z(), chest: z(), neckBase: z(), headC: z(), headAng: 0,
+    hip: z(), hipPtR: z(), hipPtL: z(), waist: z(), chest: z(), neckTop: z(),
+    headC: z(), headAng: 0, shoulderR: z(), shoulderL: z(),
     kneeL: z(), ankleL: z(), toeL: z(),
     kneeR: z(), ankleR: z(), toeR: z(),
     elbL: z(), handL: z(), elbR: z(), handR: z(),
@@ -78,37 +108,71 @@ export function makeSkelGeom(): SkelGeom {
   }
 }
 
-/** Solve joint positions. Reuses `out`. */
+/** Solve joint positions. Reuses `out`.
+ *
+ * SPINE CHAIN (four articulated regions, parented in order):
+ *   hip → waist (pelvis/abdomen, 57% along `rot`) → chest (ribcage +
+ *   shoulder line, 43% along `rot + spine`) → neck column (along the head
+ *   channel) → skull. The waist joint makes the torso BEND instead of
+ *   shear — the lumbar and thoracic curves separate.
+ *
+ * SHOULDER GIRDLE (the arms-from-the-neck fix): the glenohumeral joints
+ * solve as chest + (shoulderFwd, shoulderDrop) in the chest's frame —
+ * below the shoulder line and slightly anterior, like a real skeleton.
+ * The far shoulder sits behind and lower (2.8D depth read). Arms chain
+ * from THESE, never from the spine top.
+ *
+ * LEGS chain from offset femur-head joints (front hip slightly anterior,
+ * rear hip behind) — the pelvis reads as a real basin, and stride scissor
+ * from two distinct roots. */
 export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGeom {
   const rot = pose[2]
   const spine = pose[3]
   const head = pose[4]
 
-  // torso chain: hip → mid → chest (spine bends the upper half)
+  // spine: hip → waist → chest
   out.hip.x = pose[0]
   out.hip.y = pose[1]
   const t1 = rot
-  const mx = out.hip.x + Math.sin(t1) * spec.torso * 0.55
-  const my = out.hip.y - Math.cos(t1) * spec.torso * 0.55
+  out.waist.x = out.hip.x + Math.sin(t1) * spec.torso * 0.57
+  out.waist.y = out.hip.y - Math.cos(t1) * spec.torso * 0.57
   const t2 = rot + spine
-  out.chest.x = mx + Math.sin(t2) * spec.torso * 0.45
-  out.chest.y = my - Math.cos(t2) * spec.torso * 0.45
+  out.chest.x = out.waist.x + Math.sin(t2) * spec.torso * 0.43
+  out.chest.y = out.waist.y - Math.cos(t2) * spec.torso * 0.43
   out.torsoAngle = t2
 
-  // head
+  // neck column + skull — a REAL neck: full spec.neck of visible column
+  // between the shoulder line and the skull base
   const ha = t2 + head
-  out.neckBase.x = out.chest.x + Math.sin(ha) * spec.neck * 0.45
-  out.neckBase.y = out.chest.y - Math.cos(ha) * spec.neck * 0.45
-  out.headC.x = out.neckBase.x + Math.sin(ha) * spec.neck * 0.7
-  out.headC.y = out.neckBase.y - Math.cos(ha) * spec.neck * 0.7
+  out.neckTop.x = out.chest.x + Math.sin(ha) * spec.neck
+  out.neckTop.y = out.chest.y - Math.cos(ha) * spec.neck
+  out.headC.x = out.neckTop.x + Math.sin(ha) * spec.headR * 0.9
+  out.headC.y = out.neckTop.y - Math.cos(ha) * spec.headR * 0.9
   out.headAng = ha
+
+  // ---- SHOULDER GIRDLE: the arm roots ----
+  // fwd(t) = (cos t, sin t); down-along-torso = (−sin t, cos t)
+  const sf = spec.shoulderFwd
+  const sd = spec.shoulderDrop
+  out.shoulderR.x = out.chest.x + Math.cos(t2) * sf - Math.sin(t2) * sd
+  out.shoulderR.y = out.chest.y + Math.sin(t2) * sf + Math.cos(t2) * sd
+  const sfL = -sf * 0.62
+  const sdL = sd * 1.18
+  out.shoulderL.x = out.chest.x + Math.cos(t2) * sfL - Math.sin(t2) * sdL
+  out.shoulderL.y = out.chest.y + Math.sin(t2) * sfL + Math.cos(t2) * sdL
+
+  // ---- femur heads ----
+  out.hipPtR.x = out.hip.x + Math.cos(t1) * 1.7
+  out.hipPtR.y = out.hip.y + Math.sin(t1) * 1.7
+  out.hipPtL.x = out.hip.x + Math.cos(t1) * -2.1
+  out.hipPtL.y = out.hip.y + Math.sin(t1) * -2.1
 
   // legs (angle from straight-down, positive = forward)
   const hl = pose[5]
   const kl = pose[6]
   const fl = pose[7]
-  out.kneeL.x = out.hip.x + Math.sin(hl) * spec.thigh
-  out.kneeL.y = out.hip.y + Math.cos(hl) * spec.thigh
+  out.kneeL.x = out.hipPtL.x + Math.sin(hl) * spec.thigh
+  out.kneeL.y = out.hipPtL.y + Math.cos(hl) * spec.thigh
   const al = hl + kl
   out.ankleL.x = out.kneeL.x + Math.sin(al) * spec.shin
   out.ankleL.y = out.kneeL.y + Math.cos(al) * spec.shin
@@ -124,8 +188,8 @@ export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGe
   const hr = pose[8]
   const kr = pose[9]
   const fr = pose[10]
-  out.kneeR.x = out.hip.x + Math.sin(hr) * spec.thigh
-  out.kneeR.y = out.hip.y + Math.cos(hr) * spec.thigh
+  out.kneeR.x = out.hipPtR.x + Math.sin(hr) * spec.thigh
+  out.kneeR.y = out.hipPtR.y + Math.cos(hr) * spec.thigh
   const ar = hr + kr
   out.ankleR.x = out.kneeR.x + Math.sin(ar) * spec.shin
   out.ankleR.y = out.kneeR.y + Math.cos(ar) * spec.shin
@@ -133,19 +197,19 @@ export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGe
   out.toeR.x = out.ankleR.x + Math.sin(tr) * spec.foot
   out.toeR.y = out.ankleR.y + Math.cos(tr) * spec.foot
 
-  // arms (angle from straight-down, positive = forward)
+  // arms — FROM THE SHOULDERS (angle from straight-down, positive = forward)
   const sl = pose[11]
   const el = pose[12]
-  out.elbL.x = out.chest.x + Math.sin(sl) * spec.upperArm
-  out.elbL.y = out.chest.y + Math.cos(sl) * spec.upperArm
+  out.elbL.x = out.shoulderL.x + Math.sin(sl) * spec.upperArm
+  out.elbL.y = out.shoulderL.y + Math.cos(sl) * spec.upperArm
   const wl = sl + el
   out.handL.x = out.elbL.x + Math.sin(wl) * spec.foreArm
   out.handL.y = out.elbL.y + Math.cos(wl) * spec.foreArm
 
   const sr = pose[14]
   const er = pose[15]
-  out.elbR.x = out.chest.x + Math.sin(sr) * spec.upperArm
-  out.elbR.y = out.chest.y + Math.cos(sr) * spec.upperArm
+  out.elbR.x = out.shoulderR.x + Math.sin(sr) * spec.upperArm
+  out.elbR.y = out.shoulderR.y + Math.cos(sr) * spec.upperArm
   const wr = sr + er
   out.handR.x = out.elbR.x + Math.sin(wr) * spec.foreArm
   out.handR.y = out.elbR.y + Math.cos(wr) * spec.foreArm
@@ -267,12 +331,13 @@ export function drawStick(
     ctx.lineWidth = lineW * 0.85
     const ga = opts.ghostAlpha ?? 1
     ctx.globalAlpha *= ga
-    limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-    limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
     ctx.beginPath()
     ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.waist.x, g.waist.y)
     ctx.lineTo(g.chest.x, g.chest.y)
     ctx.stroke()
     ctx.beginPath()
@@ -293,12 +358,13 @@ export function drawStick(
   if (!opts.simple) {
     ctx.strokeStyle = style.outline
     ctx.lineWidth = lineW + 3.6
-    limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-    limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
     ctx.beginPath()
     ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.waist.x, g.waist.y)
     ctx.lineTo(g.chest.x, g.chest.y)
     ctx.stroke()
   }
@@ -306,23 +372,24 @@ export function drawStick(
   // ---- 2. back limbs ----
   ctx.strokeStyle = style.dark
   ctx.lineWidth = lineW
-  limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+  limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
   ctx.strokeStyle = rgba(style.dark, 0.82)
-  limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+  limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
 
   // ---- 3. torso (thicker, armored core) ----
   ctx.strokeStyle = style.body
   ctx.lineWidth = lineW * 1.42
   ctx.beginPath()
   ctx.moveTo(g.hip.x, g.hip.y)
+  ctx.lineTo(g.waist.x, g.waist.y)
   ctx.lineTo(g.chest.x, g.chest.y)
   ctx.stroke()
 
   // ---- 4. front limbs ----
   ctx.strokeStyle = style.body
   ctx.lineWidth = lineW
-  limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-  limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+  limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+  limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
 
   // ---- 5. feet ----
   ctx.strokeStyle = style.body
@@ -433,13 +500,14 @@ export function drawStick(
   if (flash > 0.02) {
     ctx.strokeStyle = rgba(opts.flashColor ?? '#ffffff', flash)
     ctx.lineWidth = lineW
-    limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-    limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
     ctx.lineWidth = lineW * 1.4
     ctx.beginPath()
     ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.waist.x, g.waist.y)
     ctx.lineTo(g.chest.x, g.chest.y)
     ctx.stroke()
   }
@@ -512,11 +580,11 @@ function fillTaper(
 }
 
 /**
- * Limbo/INSIDE-style silhouette, re-modeled with real anatomy:
- * trapezius neck → deltoid caps → tapered arms → fists; skull dome + jaw
- * + swept hood crest; pelvis → lat taper → chest mass. Draw order
- * back-to-front: rim → back limbs → torso wedge → front limbs → hands/feet
- * → head → eyes → hit flash. Local space, ctx pre-flipped for facing.
+ * Limbo/INSIDE-style silhouette, modeled on the articulated skeleton:
+ * pelvis basin → abdominal taper → ribcage flare → trapezius → neck column
+ * → skull; deltoid caps AT the glenohumeral joints; arms chain shoulder →
+ * elbow → fist. Draw order back-to-front: rim → back limbs → torso → front
+ * limbs → hands/feet → head → eyes → hit flash. Local space, ctx pre-flipped.
  */
 function drawSilhouette(
   ctx: CanvasRenderingContext2D,
@@ -532,10 +600,6 @@ function drawSilhouette(
   // pure-black mass (the old 82%-alpha-black vanished against the torso)
   const back = style.dark !== black ? style.dark : rgba(black, 0.82)
 
-  // torso mid point (waist) for the tapered wedge
-  const mx = (g.hip.x + g.chest.x) * 0.5
-  const my = (g.hip.y + g.chest.y) * 0.5
-
   // ---- 0. rim pass (separates pure black from the night city) ----
   if (!opts.simple) {
     ctx.save()
@@ -544,64 +608,92 @@ function drawSilhouette(
     ctx.lineWidth = lineW + 3.6
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-    limb(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-    limb(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
-    limb(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
-    ctx.lineWidth = (lineW + 3.6) * 1.55
+    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    ctx.lineWidth = (lineW + 3.6) * 1.5
     ctx.beginPath()
     ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.waist.x, g.waist.y)
     ctx.lineTo(g.chest.x, g.chest.y)
+    ctx.lineTo(g.neckTop.x, g.neckTop.y)
     ctx.stroke()
     ctx.restore()
   }
 
   // ---- 1. back limbs (recessed — depth cue), with anatomy ----
-  // back leg: thigh (quad mass) → calf taper
-  fillTaper(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, 6.0, 4.4, back)
-  fillTaper(ctx, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y, 4.1, 2.9, back)
+  // back leg from the far femur head: thigh (quad mass) → calf taper
+  fillTaper(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, 5.8, 4.3, back)
+  fillTaper(ctx, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y, 4.0, 2.8, back)
   fillFoot(ctx, g.ankleL.x, g.ankleL.y, g.toeL.x, g.toeL.y, back)
-  // back arm: deltoid nub + triceps taper + forearm
-  fillTaper(ctx, g.chest.x, g.chest.y, g.elbL.x, g.elbL.y, 4.9, 3.5, back)
-  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 3.3, 2.6, back)
-
-  // ---- 2. torso: pelvis + waist taper + lat-swept chest + trapezius ----
-  fillTaper(ctx, g.hip.x, g.hip.y, mx, my, 8.6, 7.0, black)
-  fillTaper(ctx, mx, my, g.chest.x, g.chest.y, 7.0, 10.6, black)
-  // trapezius: neck slopes wide into the shoulders — the V of the back
-  const neckDx = g.neckBase.x - g.chest.x
-  const neckDy = g.neckBase.y - g.chest.y
-  const nLen = Math.hypot(neckDx, neckDy) || 1
-  const perpX = -neckDy / nLen
-  const perpY = neckDx / nLen
-  ctx.save()
-  ctx.fillStyle = black
+  // knee cap (back) — centers the joint inside the calf silhouette
+  ctx.fillStyle = back
   ctx.beginPath()
-  ctx.moveTo(g.neckBase.x + perpX * 3.1, g.neckBase.y + perpY * 3.1)
-  ctx.lineTo(g.chest.x + perpX * 10.4, g.chest.y + perpY * 10.4)
-  ctx.lineTo(g.chest.x - perpX * 10.4, g.chest.y - perpY * 10.4)
-  ctx.lineTo(g.neckBase.x - perpX * 3.1, g.neckBase.y - perpY * 3.1)
-  ctx.closePath()
+  ctx.arc(g.kneeL.x, g.kneeL.y, 4.2, 0, Math.PI * 2)
   ctx.fill()
-  ctx.restore()
-  // neck column
-  fillTaper(ctx, g.chest.x, g.chest.y, g.neckBase.x, g.neckBase.y, 4.4, 3.6, black)
+  // rear deltoid cap — the back arm's root reads at the far shoulder
+  ctx.beginPath()
+  ctx.arc(g.shoulderL.x, g.shoulderL.y, 4.6, 0, Math.PI * 2)
+  ctx.fill()
+  // back arm: triceps taper + forearm, from the far glenohumeral joint
+  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 4.4, 3.3, back)
+  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 3.2, 2.5, back)
+
+  // ---- 2. torso: pelvis basin + abdomen + ribcage + trapezius + neck ----
+  // pelvis: WIDE at the hip (iliac crest), tapering hard to the waist —
+  // strong region contrast so the pelvis reads as a basin
+  fillTaper(ctx, g.hip.x, g.hip.y, g.waist.x, g.waist.y, 9.6, 6.6, black)
+  // abdomen → ribcage: narrow at the navel, flaring WIDE at the chest —
+  // the V-taper of the latissimus into the ribcage
+  fillTaper(ctx, g.waist.x, g.waist.y, g.chest.x, g.chest.y, 6.6, 10.4, black)
+  // trapezius: the shoulder girdle — slopes from the skull base out to BOTH
+  // deltoid caps (near + far). This polygon is what ties arms to shoulders.
+  {
+    const ndx = g.neckTop.x - g.chest.x
+    const ndy = g.neckTop.y - g.chest.y
+    const nl = Math.hypot(ndx, ndy) || 1
+    const px = -ndy / nl
+    const py = ndx / nl
+    ctx.save()
+    ctx.fillStyle = black
+    ctx.beginPath()
+    ctx.moveTo(g.neckTop.x + px * 3.4, g.neckTop.y + py * 3.4)
+    ctx.lineTo(g.neckTop.x - px * 3.4, g.neckTop.y - py * 3.4)
+    // out to the FAR shoulder cap (behind + lower — 2.8D depth read)
+    ctx.lineTo(g.shoulderL.x + px * 4.8, g.shoulderL.y + py * 4.8)
+    ctx.lineTo(g.shoulderL.x - px * 3.4, g.shoulderL.y - py * 3.4)
+    // through the shoulder line to the NEAR shoulder cap
+    ctx.lineTo(g.shoulderR.x - px * 5.2, g.shoulderR.y - py * 5.2)
+    ctx.lineTo(g.shoulderR.x + px * 5.8, g.shoulderR.y + py * 5.8)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
+  // neck column: chest (shoulder line) up to the skull base — a real neck,
+  // wide at the base (sternocleidomastoid + trap roots) tapering to atlas
+  fillTaper(ctx, g.chest.x, g.chest.y, g.neckTop.x, g.neckTop.y, 4.6, 3.3, black)
 
   // ---- 3. front limbs (solid black, anatomical) ----
-  fillTaper(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, 6.7, 4.8, black)
-  fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.5, 3.0, black)
+  // front leg from the near femur head: quad → knee → calf
+  fillTaper(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, 6.5, 4.7, black)
+  fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 2.9, black)
   fillFoot(ctx, g.ankleR.x, g.ankleR.y, g.toeR.x, g.toeR.y, black)
-  // deltoid cap on the sword shoulder — the arm reads from the shoulder
+  // knee cap — centers the joint in the front calf silhouette
   ctx.fillStyle = black
   ctx.beginPath()
-  ctx.arc(g.chest.x, g.chest.y, 5.6, 0, Math.PI * 2)
+  ctx.arc(g.kneeR.x, g.kneeR.y, 4.6, 0, Math.PI * 2)
+  ctx.fill()
+  // deltoid cap ON the glenohumeral joint — the arm reads from the shoulder
+  ctx.beginPath()
+  ctx.arc(g.shoulderR.x, g.shoulderR.y, 5.7, 0, Math.PI * 2)
   ctx.fill()
   // bicep → forearm taper
-  fillTaper(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, 5.1, 3.7, black)
-  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.6, 2.7, black)
+  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 4.9, 3.6, black)
+  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.5, 2.6, black)
   // elbow sphere (silhouette joint)
   ctx.beginPath()
-  ctx.arc(g.elbR.x, g.elbR.y, 3.8, 0, Math.PI * 2)
+  ctx.arc(g.elbR.x, g.elbR.y, 3.7, 0, Math.PI * 2)
   ctx.fill()
 
   // ---- 4. hands: fists oriented on the blade axis (grip anatomy) ----
@@ -636,18 +728,18 @@ function drawSilhouette(
     ctx.lineWidth = 2
     // sword arm chain (shoulder → elbow → hand) — closest to the source
     ctx.beginPath()
-    ctx.moveTo(g.chest.x, g.chest.y)
+    ctx.moveTo(g.shoulderR.x, g.shoulderR.y)
     ctx.lineTo(g.elbR.x, g.elbR.y)
     ctx.lineTo(g.handR.x, g.handR.y)
     ctx.stroke()
     // torso leading edge (the lit side of the ribcage)
     ctx.beginPath()
     ctx.moveTo(g.hip.x + 5.2, g.hip.y - 1)
-    ctx.quadraticCurveTo(mx + 6.5, my - 1, g.chest.x + 8.2, g.chest.y + 1.5)
+    ctx.quadraticCurveTo(g.waist.x + 6.5, g.waist.y - 1, g.chest.x + 8.2, g.chest.y + 1.5)
     ctx.stroke()
     // front thigh quad — the forward leg catches the spill
     ctx.beginPath()
-    ctx.moveTo(g.hip.x + 4.4, g.hip.y + 1)
+    ctx.moveTo(g.hipPtR.x + 4.4, g.hipPtR.y + 1)
     ctx.lineTo(g.kneeR.x + 3.4, g.kneeR.y - 1)
     ctx.stroke()
     // off-hand knuckles kiss the light when gripping the tsuka
@@ -713,12 +805,13 @@ function drawSilhouette(
   const flash = clamp01(opts.flash ?? 0)
   if (flash > 0.02) {
     const fc = opts.flashColor ?? '#ffffff'
-    fillTaper(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y, 6.7, 4.8, fc, flash)
-    fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.5, 3.0, fc, flash)
-    fillTaper(ctx, g.hip.x, g.hip.y, g.kneeL.x, g.kneeL.y, 6.0, 4.4, fc, flash * 0.8)
-    fillTaper(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y, 5.1, 3.7, fc, flash)
-    fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.6, 2.7, fc, flash)
-    fillTaper(ctx, mx, my, g.chest.x, g.chest.y, 7.0, 10.6, fc, flash)
+    fillTaper(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, 6.5, 4.7, fc, flash)
+    fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 2.9, fc, flash)
+    fillTaper(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, 5.8, 4.3, fc, flash * 0.8)
+    fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 4.9, 3.6, fc, flash)
+    fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.5, 2.6, fc, flash)
+    fillTaper(ctx, g.waist.x, g.waist.y, g.chest.x, g.chest.y, 6.6, 10.4, fc, flash)
+    fillTaper(ctx, g.hip.x, g.hip.y, g.waist.x, g.waist.y, 9.6, 6.6, fc, flash)
     ctx.fillStyle = fc
     ctx.save()
     ctx.globalAlpha *= flash

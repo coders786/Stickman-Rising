@@ -80,9 +80,10 @@ export interface ArcEnemy {
 
 export interface ArcCtx {
   pose: Pose
-  /** live chest + sword-hand from last frame's solve (character-local) */
-  chestX: number
-  chestY: number
+  /** live sword-shoulder + sword-hand from last frame's solve (character-local).
+   * The IK pivots from the GLENOHUMERAL joint — the arm's anatomical root. */
+  shoulderX: number
+  shoulderY: number
   handX: number
   handY: number
   /** current attack (null → solver decays out) */
@@ -138,7 +139,7 @@ function profileFor(def: AttackDef): ArcProfile {
   }
   // authored extension at strike (slightly boosted: the arm drives
   // THROUGH the target — research: elbow near-locked at contact)
-  const extAuth = Math.hypot(dGeom.handR.x - dGeom.chest.x, dGeom.handR.y - dGeom.chest.y) / ARM_REACH
+  const extAuth = Math.hypot(dGeom.handR.x - dGeom.shoulderR.x, dGeom.handR.y - dGeom.shoulderR.y) / ARM_REACH
   p = {
     authA,
     handY,
@@ -157,25 +158,26 @@ function profileFor(def: AttackDef): ArcProfile {
  * Places the sword hand so the blade line (hand → tip along dir(A))
  * passes through the target point E: hand = E − dir(A)·s, with s chosen
  * to land the hand inside the arm's reach annulus (law-of-cosines IK can
- * then always solve). Returns the hand position.
+ * then always solve). `sx, sy` = the sword SHOULDER (glenohumeral pivot).
+ * Returns the hand position.
  */
 function placeHand(
   ex: number, ey: number, // target center (character-local)
   a: number, // blade angle
-  cx: number, cy: number, // chest (shoulder pivot)
+  sx: number, sy: number, // shoulder pivot
 ): { x: number; y: number } {
   const dx = Math.cos(a)
   const dy = Math.sin(a)
-  const vx = ex - cx
-  const vy = ey - cy
+  const vx = ex - sx
+  const vy = ey - sy
   const d2 = vx * vx + vy * vy
   // projection of the target onto the blade axis
   const proj = vx * dx + vy * dy
-  // perpendicular distance from the chest to the blade line through E
+  // perpendicular distance from the shoulder to the blade line through E
   const perp2 = Math.max(0, d2 - proj * proj)
   const r = ARM_REACH * 0.92
-  // hand = E − dir·s at radius r from the chest:
-  //   |E − dir·s − chest|² = r²  →  s² − 2·proj·s + d2 − r² = 0
+  // hand = E − dir·s at radius r from the shoulder:
+  //   |E − dir·s − shoulder|² = r²  →  s² − 2·proj·s + d2 − r² = 0
   const disc = r * r - perp2
   let s = -1
   if (disc >= 0) {
@@ -194,17 +196,17 @@ function placeHand(
   if (s < 0) {
     // blade line passes outside the annulus (extreme geometry): fall back
     // to a radial extension — the blade still sweeps the front plane
-    return { x: cx + dx * ARM_REACH * 0.9, y: cy + dy * ARM_REACH * 0.9 }
+    return { x: sx + dx * ARM_REACH * 0.9, y: sy + dy * ARM_REACH * 0.9 }
   }
   let hx = ex - dx * s
   let hy = ey - dy * s
   // hard clamp into the reachable annulus (solving drift safety)
-  const rx = hx - cx
-  const ry = hy - cy
+  const rx = hx - sx
+  const ry = hy - sy
   const rr = Math.hypot(rx, ry) || 1e-4
   const rc = clamp(rr, ARM_REACH * 0.34, ARM_REACH * 0.965)
-  hx = cx + (rx / rr) * rc
-  hy = cy + (ry / rr) * rc
+  hx = sx + (rx / rr) * rc
+  hy = sy + (ry / rr) * rc
   return { x: hx, y: hy }
 }
 
@@ -314,26 +316,26 @@ export class SwordArcSolver {
 
     // ---- 2-bone IK: the arm carries the blade ----
     if (w > 0.02) {
-      // clamp the hand target into the reach annulus around the chest
-      let rx = hx - c.chestX
-      let ry = hy - c.chestY
+      // clamp the hand target into the reach annulus around the SHOULDER
+      let rx = hx - c.shoulderX
+      let ry = hy - c.shoulderY
       const rr = Math.hypot(rx, ry) || 1e-4
       const rc = clamp(rr, ARM_REACH * 0.34, ARM_REACH * 0.965)
-      const tx = c.chestX + (rx / rr) * rc
-      const ty = c.chestY + (ry / rr) * rc
+      const tx = c.shoulderX + (rx / rr) * rc
+      const ty = c.shoulderY + (ry / rr) * rc
       const U = PLAYER_SPEC.upperArm
       const F = PLAYER_SPEC.foreArm
-      rx = tx - c.chestX
-      ry = ty - c.chestY
+      rx = tx - c.shoulderX
+      ry = ty - c.shoulderY
       const d = Math.hypot(rx, ry)
       const cosB = clamp((U * U + d * d - F * F) / (2 * U * d), -1, 1)
       const B = Math.acos(cosB)
       const base = Math.atan2(ry, rx)
       // elbow bends DOWN (anatomical — matches the off-hand IK)
       const upperAng = base + B
-      const ex = c.chestX + Math.cos(upperAng) * U
-      const ey = c.chestY + Math.sin(upperAng) * U
-      const shIk = Math.atan2(ex - c.chestX, ey - c.chestY)
+      const ex = c.shoulderX + Math.cos(upperAng) * U
+      const ey = c.shoulderY + Math.sin(upperAng) * U
+      const shIk = Math.atan2(ex - c.shoulderX, ey - c.shoulderY)
       const elIk = Math.atan2(tx - ex, ty - ey) - shIk
       // bladeAngle = π/2 − (shR+elR+wrR) → wrist closes the chain onto A
       const wrIk = (Math.PI / 2 - a) - shIk - elIk
@@ -365,13 +367,13 @@ export class SwordArcSolver {
       }
     }
     // ---- contact angle: the technique angle, nudged toward the enemy ----
-    const dirC = Math.atan2(ey - c.chestY, ex - c.chestX)
+    const dirC = Math.atan2(ey - c.shoulderY, ex - c.shoulderX)
     let dA = dirC - profile.authA
     while (dA > Math.PI) dA -= Math.PI * 2
     while (dA < -Math.PI) dA += Math.PI * 2
     const locked = profile.authA + clamp(dA, -0.35, 0.35) * 0.24
     // ---- monouchi hand placement ----
-    const hand = placeHand(ex, ey, locked, c.chestX, c.chestY)
+    const hand = placeHand(ex, ey, locked, c.shoulderX, c.shoulderY)
     this.handCX = hand.x
     this.handCY = hand.y
     return locked

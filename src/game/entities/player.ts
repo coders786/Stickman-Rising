@@ -6,7 +6,11 @@ import { Animator } from '../anim/animator'
 import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
-import { CHARGE_CLIP, DASH_AIR_CLIP, DASH_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP } from '../anim/clips'
+import {
+  BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_STEP_CLIP, DASH_AIR_CLIP, DASH_CLIP,
+  FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP,
+  SPRINT_CLIP, WALK_CLIP,
+} from '../anim/clips'
 import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
 import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
 import { Trail } from '../fx/fx'
@@ -43,6 +47,19 @@ function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, 
 export type PlayerState =
   | 'move' | 'attack' | 'dash' | 'parry' | 'charge' | 'hurt' | 'dead'
   | 'scripted' // driven by Game cinematics (ult / execution)
+
+/** Locomotion styles — each a genuinely distinct authored cycle (never a
+ * playback rescale of one clip). Selected by the context-aware controller
+ * from: speed, direction relative to facing, sprint latch, enemy formation
+ * (proximity weight + surrounded), and previous mode (dwell hysteresis). */
+export type LocoMode =
+  | 'idle'        // grounded, slow — guard breathing (or relaxed when safe)
+  | 'walk'        // Condition A: relaxed open-space carry
+  | 'run'         // conventional run
+  | 'sprint'      // Condition C: explosive double-tap dash-run
+  | 'combat'      // Condition B: enemy near — low quick shuffle, live guard
+  | 'backpedal'   // retreating while facing the threat — guard up
+  | 'brake'       // one-shot hard stop (input reversal at speed)
 
 const SCALE = 1.32
 /** nominal (airborne) hip height = thigh(25)+shin(24) = 49 local × SCALE.
@@ -87,8 +104,14 @@ function bladeHitsBody(
 }
 
 const MOVE_MAX = 350
+/** Condition C sprint ceiling + its own accel curve — sprint is a distinct
+ * mechanical system (pose + cadence + stride), not a playback-rate hack. */
+const SPRINT_MAX = 480
+const SPRINT_ACCEL = 3400
 const ACCEL = 2600
 const FRICTION = 2800
+/** braking deceleration when reversing at speed (skid → BRAKE_CLIP + dust) */
+const BRAKE_DECEL = 4600
 const AIR_ACCEL = 1800
 const GRAVITY = 2050
 /** ANTI-FLOAT gravity shaping (Sekiro-weight): apex decay ×2.2 kills the
@@ -147,6 +170,49 @@ export class Player {
 
   state: PlayerState = 'move'
   private animator = new Animator()
+
+  /* ---------------------------------------------------------------- */
+  /* CONTEXT-AWARE LOCOMOTION (spec §4–§7)                              */
+  /* ---------------------------------------------------------------- */
+
+  /** current locomotion style — selected from speed, direction, enemy
+   * formation, sprint latch, and previous state; NEVER from a raw threshold
+   * without hysteresis (no flicker). Read by the inspection lab. */
+  loco: LocoMode = 'idle'
+  /** time spent in the current loco mode (dwell hysteresis) */
+  private locoT = 0
+  /** explicit sprint latch: double-tap-and-hold a direction (DMC-style) */
+  private sprintLatch = false
+  private lastTapDir = 0
+  private lastTapT = -10
+  /** last-seen PRESS EVENT stamps (event-driven: frame-rate independent) */
+  private stampR = -1
+  private stampL = -1
+  /** damped enemy-proximity weight 0..1 — hysteresis via asymmetric rates
+   * (in k=7, out k=2.2): drives combat crouch, guard raise, combat shuffle */
+  enemyNearW = 0
+  /** nearest live threat (world) — head tracking + context, public for QA */
+  threatX = 0
+  threatY = 0
+  hasThreat = false
+  /** enemies both sides within combat radius — surrounded read */
+  private surrounded = false
+  /** one-shot brake clip state */
+  private braking = false
+  /** 180° turn pivot blend (cosmetic counter-rotation while face flips) */
+  private turnT = 0
+  private turnDir = 1
+  /** POST-ATTACK MOMENTUM: the body preserves the last swing's rotational
+   * momentum into locomotion (follow-through + recovery), decaying */
+  private postAttackT = 0
+  private postArmVel = 0
+  /** smoothed acceleration → anticipatory lean (previous-frame awareness) */
+  private accelSm = 0
+  private prevVx = 0
+  /** damped head-aim toward the threat (alive even while retreating) */
+  private headTrackW = 0
+  /** wall-clock seconds (input rhythm: double-tap sprint detection) */
+  private now = 0
   pose: Pose = makePose()
   geom: SkelGeom = makeSkelGeom()
   swingGlow = 0
@@ -276,6 +342,24 @@ export class Player {
     this.chainLagVel = 0
     this.prevArmSum = 0
     this.hasPrevAng = false
+    // context-aware locomotion state
+    this.loco = 'idle'
+    this.locoT = 0
+    this.sprintLatch = false
+    this.lastTapDir = 0
+    this.lastTapT = -10
+    // NOTE: stampR/stampL deliberately NOT reset — re-syncing against the
+    // input's live press-stamps on the next frame avoids a phantom press
+    this.enemyNearW = 0
+    this.hasThreat = false
+    this.surrounded = false
+    this.braking = false
+    this.turnT = 0
+    this.postAttackT = 0
+    this.postArmVel = 0
+    this.accelSm = 0
+    this.prevVx = 0
+    this.headTrackW = 0
     this.animator.play(IDLE_CLIP, { blend: 0.05 })
   }
 
@@ -324,6 +408,12 @@ export class Player {
     this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
     this.riposteT = Math.max(0, this.riposteT - dt)
     this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
+
+    // context-system clocks
+    this.now += dt
+    this.locoT += dt
+    if (this.turnT > 0) this.turnT = Math.max(0, this.turnT - dt * 6) // ~0.17s pivot
+    if (this.postAttackT > 0) this.postAttackT = Math.max(0, this.postAttackT - dt)
 
     switch (this.state) {
       case 'move': this.updateMove(dt, w); break
@@ -407,7 +497,7 @@ export class Player {
     // lags/overshoots the real swing, not the raw keyframes.
     this.swordArc.update(dt, {
       pose: this.pose,
-      chestX: this.geom.chest.x, chestY: this.geom.chest.y,
+      shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
       handX: this.geom.handR.x, handY: this.geom.handR.y,
       def: this.state === 'attack' ? this.action?.def ?? null : null,
       animT: this.action ? this.action.animT : 0,
@@ -466,22 +556,159 @@ export class Player {
   }
 
   /* ------------------------------------------------------------------ */
-  /* locomotion                                                           */
+  /* context-aware locomotion                                            */
   /* ------------------------------------------------------------------ */
+
+  /** Per-frame enemy-formation scan (spec §5): nearest threat + proximity
+   * weight (with hysteresis) + surrounded flag. Feeds the locomotion
+   * selector AND the procedural posture layers. NEVER takes control away
+   * from the player — posture only. */
+  private scanEnemies(dt: number, w: WorldRef): void {
+    const RADIUS = 430
+    let bestD = Infinity
+    let ahead = false
+    let behind = false
+    for (const e of w.enemies) {
+      if (e.dead || e.spawning) continue
+      const dx = e.x - this.x
+      const ad = Math.abs(dx)
+      if (ad < RADIUS) {
+        if (dx * this.face > 0) ahead = true
+        else behind = true
+      }
+      if (ad < bestD) {
+        bestD = ad
+        this.threatX = e.x
+        this.threatY = e.y
+        this.hasThreat = true
+      }
+    }
+    if (bestD === Infinity) this.hasThreat = false
+    this.surrounded = ahead && behind && bestD < 300
+    // asymmetric damp = hysteresis: fast to raise the guard, slow to relax
+    const target = bestD < RADIUS ? 1 : 0
+    const k = target > this.enemyNearW ? 7 : 2.2
+    this.enemyNearW = damp(this.enemyNearW, target, k, dt)
+    // head-tracking weight: quick to look, slower to look away
+    const ht = this.hasThreat && bestD < 520 ? 1 : 0
+    const hk = ht > this.headTrackW ? 8 : 3
+    this.headTrackW = damp(this.headTrackW, ht, hk, dt)
+  }
+
+  /** Select the locomotion mode with dwell hysteresis (no flicker): a mode
+   * must be held ≥0.1s before another can take over (except brake/turn
+   * interrupts). Priority: brake > sprint latch > combat (enemy near) >
+   * backpedal (retreating vs facing) > run > walk > idle. */
+  private pickLoco(speed: number, ax: number): LocoMode {
+    const fwd = this.vx * this.face
+    if (this.braking) return 'brake'
+    if (!this.grounded) return this.loco // airborne handled by clips, not modes
+    if (speed < 36) {
+      return this.enemyNearW > 0.5 || this.surrounded ? 'combat' : 'idle'
+    }
+    // retreating while a threat is engaged → guarded backpedal
+    if (fwd < -60 && this.enemyNearW > 0.4) return 'backpedal'
+    // explicit sprint outranks proximity awareness (player intent wins)
+    if (this.sprintLatch && speed > 300) return 'sprint'
+    // Condition B: combat shuffle while enemies are near (but full-speed
+    // committed running still uses the run mechanics)
+    if (this.enemyNearW > 0.55 && speed < 310 && ax !== 0) return 'combat'
+    if (speed > 210) return 'run'
+    return 'walk'
+  }
+
+  private setLoco(mode: LocoMode): void {
+    if (mode === this.loco) return
+    // dwell hysteresis: hold each mode ≥0.1s (brake interrupts instantly)
+    if (this.locoT < 0.1 && mode !== 'brake' && this.loco !== 'brake') return
+    this.loco = mode
+    this.locoT = 0
+  }
 
   private updateMove(dt: number, w: WorldRef): void {
     const input = w.input
     const ax = input.axisX()
     const ay = input.axisY()
 
-    // facing follows input
-    if (ax !== 0) this.face = ax > 0 ? 1 : -1
+    // ---- enemy-formation awareness (posture influence ONLY) ----
+    this.scanEnemies(dt, w)
 
-    // horizontal movement
+    // ---- facing: hold toward an engaged threat at maneuvering speed ----
+    // (Condition B: circle/retreat keeps the guard trained on the enemy —
+    // backpedal instead of a civilian turn-away. Full-speed escape or
+    // open-space movement flips freely.)
+    if (ax !== 0 && this.face !== (ax > 0 ? 1 : -1)) {
+      const engaged = this.enemyNearW > 0.55 && this.hasThreat
+      const slow = Math.abs(this.vx) < 260 && !this.sprintLatch
+      if (!(engaged && slow)) {
+        if (Math.abs(this.vx) > 120) {
+          this.turnT = 1
+          this.turnDir = -Math.sign(ax)
+          w.fx.dust(this.x, 0, 4)
+        }
+        this.face = ax > 0 ? 1 : -1
+      }
+    }
+
+    // ---- double-tap direction → sprint latch (DMC-style, event-driven) ----
+    // Press stamps come from the keydown EVENTS (input clock), so a rapid
+    // tap-release-tap registers even if the release window contained zero
+    // game frames (low fps / throttled rAF).
+    {
+      const sr = w.input.pressStamp('right')
+      const sl = w.input.pressStamp('left')
+      const newR = sr !== this.stampR && sr >= 0
+      const newL = sl !== this.stampL && sl >= 0
+      if (newR || newL) {
+        const stamp = newR ? sr : sl
+        const dir = newR ? 1 : -1
+        if (stamp - this.lastTapT < 0.3 && dir === this.lastTapDir) {
+          this.sprintLatch = true
+        }
+        this.lastTapDir = dir
+        this.lastTapT = stamp
+      }
+      this.stampR = sr
+      this.stampL = sl
+    }
+    if (ax === 0) this.sprintLatch = false
+
+    // ---- horizontal movement (sprint has its own accel curve + ceiling) ----
+    const sprinting = this.sprintLatch && this.grounded && ax !== 0 && Math.sign(ax) === Math.sign(this.vx || ax)
+    const vMax = sprinting ? SPRINT_MAX : MOVE_MAX
     if (ax !== 0) {
-      const accel = this.grounded ? ACCEL : AIR_ACCEL
-      this.vx += ax * accel * dt
-      this.vx = clamp(this.vx, -MOVE_MAX, MOVE_MAX)
+      // input reversal at speed → BRAKE (skid decel + one-shot clip + dust)
+      const reversing = Math.sign(ax) !== Math.sign(this.vx) && Math.abs(this.vx) > 240
+      if (reversing && this.grounded && !this.braking) {
+        this.braking = true
+        this.animator.play(BRAKE_CLIP, { blend: 0.04 })
+        w.fx.dust(this.x - this.face * 10, 0, 7)
+        w.audio.play('land', { volume: 0.35 })
+      }
+      if (reversing || this.braking) {
+        // hard skid deceleration toward zero before re-accelerating
+        const d = BRAKE_DECEL * dt
+        this.vx = Math.abs(this.vx) <= d ? 0 : this.vx - Math.sign(this.vx) * d
+      } else {
+        // analog target speed: axis magnitude maps to a target velocity —
+        // partial input = partial speed (walk reachable; touch-friendly),
+        // full keys still hit the ceiling. Accelerate toward it, never past.
+        const targetV = ax * vMax
+        const movingToward = Math.sign(this.vx) === Math.sign(targetV) || this.vx === 0
+        if (!movingToward || Math.abs(this.vx) < Math.abs(targetV)) {
+          const accel = sprinting ? SPRINT_ACCEL : this.grounded ? ACCEL : AIR_ACCEL
+          this.vx += ax * accel * dt
+          if (Math.sign(this.vx) === Math.sign(targetV) && Math.abs(this.vx) > Math.abs(targetV)) {
+            this.vx = targetV
+          }
+        } else if (Math.sign(this.vx) === Math.sign(targetV) && Math.abs(this.vx) > Math.abs(targetV)) {
+          // ease down toward the lower analog target (stick pushed softer)
+          const f = FRICTION * dt
+          const dv = Math.min(f, Math.abs(this.vx) - Math.abs(targetV))
+          this.vx -= Math.sign(this.vx) * dv
+        }
+      }
+      this.vx = clamp(this.vx, -vMax, vMax)
     } else if (this.grounded) {
       const f = FRICTION * dt
       this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
@@ -489,13 +716,32 @@ export class Player {
       this.vx = damp(this.vx, 0, 0.4, dt)
     }
 
-    // locomotion clip selection
+    // ---- locomotion clip selection (context-aware, hysteresis) ----
     const speed = Math.abs(this.vx)
     if (this.grounded) {
-      if (speed > 40) {
-        this.animator.play(RUN_CLIP, { blend: 0.09, speed: clamp(speed / MOVE_MAX, 0.65, 2.1) })
-      } else if (this.vy === 0) {
-        this.animator.play(IDLE_CLIP, { blend: 0.16 })
+      if (this.braking) {
+        if (this.animator.isDone() || speed < 90) this.braking = false
+      } else {
+        this.setLoco(this.pickLoco(speed, ax))
+        switch (this.loco) {
+          case 'walk':
+            this.animator.play(WALK_CLIP, { blend: 0.18, speed: clamp(speed / 210, 0.7, 1.35) })
+            break
+          case 'run':
+            this.animator.play(RUN_CLIP, { blend: 0.12, speed: clamp(speed / MOVE_MAX, 0.8, 1.5) })
+            break
+          case 'sprint':
+            this.animator.play(SPRINT_CLIP, { blend: 0.1, speed: clamp(speed / SPRINT_MAX, 0.85, 1.25) })
+            break
+          case 'combat':
+            this.animator.play(COMBAT_STEP_CLIP, { blend: 0.16, speed: clamp(speed / 260, 0.7, 1.7) })
+            break
+          case 'backpedal':
+            this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: clamp(speed / 240, 0.7, 1.6) })
+            break
+          default:
+            this.animator.play(IDLE_CLIP, { blend: 0.16 })
+        }
       }
     } else if (this.vy < -60) {
       this.animator.play(JUMP_CLIP, { blend: 0.06 })
@@ -939,9 +1185,12 @@ export class Player {
       }
     }
 
-    // finish
+    // finish — capture the swing's final rotational momentum: the body
+    // carries it into locomotion (post-attack recovery, spec §7)
     if (this.animator.isDone()) {
       w.fx.endTrail(a.trail, 0.18)
+      this.postAttackT = 0.34
+      this.postArmVel = this.armVel
       this.action = null
       this.state = 'move'
     }
@@ -1500,6 +1749,49 @@ export class Player {
     p[CH.rootRot] += -this.chainLag * 0.3
     p[CH.spine] += -this.chainLag * 0.5
     p[CH.shR] += this.chainLag * 0.2
+
+    // GROUND CLEARANCE — the floor is SOLID: the kissaki can never pass
+    // below the ground plane. Clip-blends between carries (guard ↔ walk
+    // side-carry ↔ run trail) linearly sweep the wrist through
+    // straight-down angles; without this, the tip pierces the floor for
+    // ~10 frames on every transition. A positional wrist constraint rotates
+    // the tip toward the NEARER horizon (forward-level or back-level,
+    // preserving the carry direction), rate-limited so the lowering reads
+    // as the kissaki TAPPING the floor and sliding along it.
+    // (Attacks exempt: their tips target enemy bodies above the floor.)
+    if (this.state !== 'attack') {
+      const sum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
+      const bladeA = Math.PI / 2 - sum
+      const sinA = Math.sin(bladeA)
+      const cosA = Math.cos(bladeA)
+      if (sinA > 0.05) {
+        const len = PLAYER_SPEC.blade * this.sword.stats.range * 1.06 * this.swingScale
+        const tipLY = this.geom.handR.y + sinA * len
+        // local floor = the stance foot's contact point (crouch-aware),
+        // small margin for the drawn edge width
+        const floorLocal = Math.max(
+          this.geom.ankleL.y, this.geom.ankleR.y, this.geom.toeL.y, this.geom.toeR.y,
+        ) + 2.5
+        if (tipLY > floorLocal) {
+          const dY = tipLY - floorLocal
+          // solve for the angle that puts the tip exactly on the floor
+          const sinT = Math.max(0.06, (sinA * len - dY) / len)
+          const aT = Math.asin(clamp01(sinT))
+          // quadrant-safe (raw channels are up-wound): cos<0 → back-down
+          // carry rotates toward straight-back; cos≥0 → forward-down
+          // rotates toward level-forward — the carry direction is preserved
+          if (cosA < 0) {
+            const aNorm = Math.PI - Math.asin(clamp01(sinA))
+            const delta = Math.PI - aT - aNorm
+            p[CH.wrR] -= clamp(delta, 0, 20 * dt)
+          } else {
+            const aNorm = Math.asin(clamp01(sinA))
+            const delta = aNorm - aT
+            p[CH.wrR] += clamp(delta, 0, 20 * dt)
+          }
+        }
+      }
+    }
   }
 
   private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
@@ -1583,9 +1875,9 @@ export class Player {
     const bay = Math.sin(g.bladeAngle)
     const tx = g.handR.x - bax * tsuka
     const ty = g.handR.y - bay * tsuka
-    // shoulder anchor = chest (solver attaches arms there)
-    const sx = g.chest.x
-    const sy = g.chest.y
+    // shoulder anchor = the LEFT glenohumeral joint (the off arm's true root)
+    const sx = g.shoulderL.x
+    const sy = g.shoulderL.y
     const U = PLAYER_SPEC.upperArm
     const F = PLAYER_SPEC.foreArm
     let dx = tx - sx
@@ -1620,13 +1912,81 @@ export class Player {
     this.animClock += dt
     // anime impact-frame timer (white silhouette beat on heavy connects)
     if (this.impactFlashT > 0) this.impactFlashT = Math.max(0, this.impactFlashT - dt)
-    // velocity lean (proportional, eased)
+
+    // ---- previous-frame awareness: smoothed acceleration lean ----
+    const accel = (this.vx - this.prevVx) / Math.max(dt, 1e-4)
+    this.prevVx = this.vx
+    this.accelSm = damp(this.accelSm, accel, 14, dt)
     const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
     p[2] += speedLean * 0.14
+    // acceleration leans the body INTO the push, deceleration rocks it back
+    p[2] += clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+
     // vertical pitch while airborne
     if (!this.grounded && this.state !== 'attack') {
       p[2] += clamp(this.vy / 1400, -0.22, 0.3)
     }
+
+    // ---- 180° TURN PIVOT: cosmetic counter-rotation sweep through the
+    // flip — the body leans back over the OLD direction, unwinding into the
+    // new one, with a hip drop + knee flex (weight shift through the turn)
+    if (this.turnT > 0) {
+      const e = this.turnT * this.turnT // ease-out unwind
+      p[2] += this.turnDir * this.face * 1.15 * e
+      p[1] += 3.2 * e
+      p[CH.kneeR] -= 0.22 * e
+      p[CH.kneeL] -= 0.16 * e
+    }
+
+    // ---- POST-ATTACK MOMENTUM (sword-aware locomotion, spec §7): the
+    // torso/shoulder chain preserves the final swing's rotational momentum
+    // and recovers over ~0.34s — never snapping to an upright neutral
+    if (this.postAttackT > 0 && this.state === 'move') {
+      const e = Math.pow(this.postAttackT / 0.34, 1.6) // decaying carryover
+      const m = clamp(this.postArmVel * 0.02, -0.16, 0.16)
+      p[CH.rootRot] += m * 0.6 * e
+      p[CH.spine] += m * 0.8 * e
+      p[CH.shR] += m * 1.2 * e
+      p[CH.wrR] += m * 0.5 * e
+    }
+
+    // ---- COMBAT CROUCH + GUARD RAISE (Condition B, spec §4/§5): enemy
+    // proximity lowers the COG, flexes the knees, coils the torso — a
+    // weighted, damped overlay (never a snap; hysteresis in scanEnemies)
+    const wC = this.enemyNearW
+    if (wC > 0.02 && this.state === 'move' && this.grounded) {
+      p[1] += wC * 2.4
+      p[2] += wC * 0.06
+      p[CH.kneeR] -= wC * 0.1
+      p[CH.kneeL] -= wC * 0.07
+      // surrounded: even lower, blade centered
+      if (this.surrounded) p[1] += wC * 1.2
+    }
+    // ---- SWORD RELAX/RAISE: safe → the katana lowers into a deep side
+    // carry (arm drops, wrist rotates the kissaki down-BACK ~139° so the
+    // tip sweeps behind the heels and clears the ground plane); threat →
+    // it rises back into the live guard (the blade "notices" enemies
+    // before the player swings — emergent, damped, alive). The wrR offset
+    // is UP-WOUND (+4.33 ≡ −1.95 mod 2π) so the relax↔guard sweep passes
+    // through the UP hemisphere — the kissaki never dives through the
+    // floor mid-transition (clips.ts winding convention).
+    if (this.state === 'move' && this.grounded && Math.abs(this.vx) < 60) {
+      const relax = 1 - wC
+      p[CH.shR] += relax * -0.35
+      p[CH.elR] += relax * -0.05
+      p[CH.wrR] += relax * 4.33
+      p[CH.shL] += relax * -0.18
+    }
+
+    // ---- HEAD TRACKING: the head turns toward the nearest threat (alive
+    // even mid-locomotion — running away while glancing back)
+    if (this.headTrackW > 0.02 && this.hasThreat && this.state === 'move') {
+      const dx = (this.threatX - this.x) * this.face
+      const dy = this.threatY - (this.hipY - 70) // vs head height (world)
+      const ang = Math.atan2(dy, Math.abs(dx) + 24) // +pitch = look down
+      p[CH.head] += clamp(ang, -0.42, 0.5) * 0.55 * this.headTrackW
+    }
+
     // landing spring (squash)
     if (this.landSpring > 0) {
       this.landSpring = Math.max(0, this.landSpring - dt * 5)

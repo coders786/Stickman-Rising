@@ -1042,8 +1042,10 @@ export const PLAYER_X_REF = { x: 400, y: 0 }
 
 const ENEMY_SPEC = {
   torso: 32,
-  neck: 6.5,
+  neck: 3.9,
   headR: 8,
+  shoulderFwd: 2.7,
+  shoulderDrop: 2.8,
   upperArm: 20,
   foreArm: 18,
   hand: 6,

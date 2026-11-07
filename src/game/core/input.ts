@@ -41,10 +41,17 @@ export class Input {
   private downMap = new Map<Action, boolean>()
   private pressedMap = new Map<Action, boolean>()
   private releasedMap = new Map<Action, boolean>()
-  private pressTime = new Map<Action, number>() // seconds
+  private pressTime = new Map<Action, number>() // REAL seconds (performance.now)
   private consumedBuffer = new Map<Action, boolean>()
-  private now = 0
   private attached = false
+
+  /** REAL-time clock in seconds (performance.now based) — immune to
+   * frame-rate distortion (throttled rAF, synthetic compositor timestamps,
+   * hitstop): input rhythm (double-tap windows, buffers, holds) must
+   * measure real human timing, not simulation time. */
+  private get now(): number {
+    return performance.now() / 1000
+  }
 
   /** virtual stick + buttons (touch layer in React) */
   private vAxis = { x: 0, y: 0 }
@@ -134,6 +141,14 @@ export class Input {
     return this.now - (this.pressTime.get(a) ?? this.now)
   }
 
+  /** Timestamp (input clock) of the last PRESS EVENT for this action, or
+   * −1 if never pressed. Event-driven: updates on the keydown/virtual
+   * press itself, so it detects rapid re-presses even when frames are
+   * dropped or throttled (double-tap sprint detection). */
+  pressStamp(a: Action): number {
+    return this.pressTime.get(a) ?? -1
+  }
+
   /** Combo buffering: was this pressed within `window` seconds and not yet consumed? */
   buffered(a: Action, window = 0.22): boolean {
     if (!this.enabled) return false
@@ -168,9 +183,9 @@ export class Input {
     return Math.max(-1, Math.min(1, y))
   }
 
-  /** Tick: advance clock, clear edge flags. Call once at end of frame. */
-  endFrame(dt: number): void {
-    this.now += dt
+  /** Tick: clear edge flags. Call once at end of frame. (The clock is
+   * real-time via performance.now — no dt accumulation needed.) */
+  endFrame(_dt: number): void {
     for (const a of ACTIONS) {
       this.pressedMap.set(a, false)
       this.releasedMap.set(a, false)

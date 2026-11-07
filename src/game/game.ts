@@ -17,6 +17,7 @@ import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
 import { SWORDS, SwordId, SWORD_ORDER } from './combat/swords'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
+import { Inspect, runQA, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
 const ARENA_MAX = 2560
@@ -115,6 +116,11 @@ export class Game {
   hud = new HUD()
   private renderer = new Renderer()
   player = new Player()
+  /** animation inspection lab (skeleton viz / contact sheets / QA) */
+  inspect: Inspect
+  /** QA harness mode: suppresses wave spawning + death→gameover so
+   * scripted sequences run in a controlled empty arena */
+  qaMode = false
   enemies: Enemy[] = []
   projectiles = new ProjectilePool()
   waves: WaveDirector
@@ -186,6 +192,16 @@ export class Game {
     this.bg.onThunder = this.thunderCb
     // debug/testing handle (harmless in production)
     ;(window as unknown as Record<string, unknown>).__sr = this
+    // ANIMATION INSPECTION LAB (spec §12): skeleton viz, contact sheets,
+    // state readout + scripted QA harness
+    this.inspect = new Inspect()
+    const srAny = window as unknown as Record<string, unknown>
+    srAny.__srInspect = {
+      setView: (m: InspectMode) => this.inspect.setMode(m),
+      toggleBones: () => this.inspect.toggleBones(),
+      get mode() { return this.inspect.mode },
+    }
+    srAny.__srQA = { run: () => runQA(this) }
   }
 
   destroy(): void {
@@ -374,6 +390,8 @@ export class Game {
       time: this.time,
     }
     this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
+    // inspection overlay (solo/sheet views + state readout)
+    this.inspect.draw(ctx, this, this.time)
 
     this.input.endFrame(dtRaw)
   }
@@ -404,12 +422,12 @@ export class Game {
       this.projectiles.update(dt, this.worldRef)
 
       if (this.phase === 'playing') {
-        this.waves.update(dt, this.enemies.length)
+        if (!this.qaMode) this.waves.update(dt, this.enemies.length)
         this.combo.update(dt)
         this.runTime += dt
         this.stats.timeAlive = this.runTime
         // death → game over
-        if (this.player.isDead && this.player.deadTime > 1.4) {
+        if (!this.qaMode && this.player.isDead && this.player.deadTime > 1.4) {
           this.gameOver()
         }
       }
