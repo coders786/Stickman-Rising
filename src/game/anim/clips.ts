@@ -21,47 +21,67 @@ function mirrorPose(src: PoseInput): PoseInput {
 
 /* ------------------------------- IDLE ------------------------------- */
 
+/* Asymmetric breath: quicker inhale, slower settling exhale, with a faint
+ * wrist/shoulder micro-shift so the sword hand never feels frozen. */
 export const IDLE_CLIP: Clip = makeClip('idle', [
   keyframe(0, {}, 'inOutCubic'),
+  keyframe(1.25, {
+    rootY: -1.7, rootRot: 0.055, spine: 0.08, head: -0.12,
+    shR: 0.62, elR: -0.47, wrR: 1.78,
+    shL: 0.17, elL: -0.4, wrL: -0.19,
+    hipL: 0.26, hipR: -0.27,
+  }, 'inOutCubic'),
   keyframe(1.8, {
     rootY: -1.6, rootRot: 0.05, spine: 0.075, head: -0.11,
     shR: 0.6, elR: -0.46, wrR: 1.75,
     shL: 0.16, elL: -0.38, wrL: -0.18,
     hipL: 0.26, hipR: -0.27,
   }, 'inOutCubic'),
-  keyframe(3.6, {}, 'inOutCubic'),
+  keyframe(2.6, {
+    rootY: -0.9, rootRot: 0.055, spine: 0.05, head: -0.09,
+    shR: 0.57, elR: -0.48, wrR: 1.72,
+    shL: 0.15, elL: -0.39, wrL: -0.2,
+    hipL: 0.25, hipR: -0.26,
+  }, 'inOutSine'),
+  keyframe(3.6, {}, 'inOutSine'),
 ], true)
 
 /* ------------------------------- RUN -------------------------------- */
 
+/* Secondary motion notes:
+ * - head counter-balances the vertical bob (body low → head lifts, and vice versa)
+ * - spine pulses slightly with the weight absorption at the passing pose
+ * - feet roll heel → toe through each stride (foot channel)
+ * - sword wrist bobs a touch with the stride; off-hand counter-swings
+ */
 const RUN_Q: PoseInput[] = [
   {
-    rootX: 0, rootY: -1.5, rootRot: 0.3, spine: 0.06, head: -0.22,
-    hipR: 0.66, kneeR: -0.12, footR: 0.05,
-    hipL: -0.6, kneeL: -0.5, footL: 0.15,
-    shR: -0.5, elR: -0.75, wrR: 1.4,
-    shL: 0.55, elL: -0.7, wrL: -0.3,
+    rootX: 0, rootY: -1.5, rootRot: 0.3, spine: 0.05, head: -0.17,
+    hipR: 0.66, kneeR: -0.12, footR: 0.18,
+    hipL: -0.6, kneeL: -0.5, footL: 0.14,
+    shR: -0.5, elR: -0.75, wrR: 1.38,
+    shL: 0.55, elL: -0.7, wrL: -0.26,
   },
   {
-    rootX: 0, rootY: 1.5, rootRot: 0.32, spine: 0.06, head: -0.24,
-    hipR: 0.3, kneeR: -0.45, footR: 0.1,
-    hipL: -0.75, kneeL: -0.85, footL: 0.05,
-    shR: -0.25, elR: -0.8, wrR: 1.5,
-    shL: 0.35, elL: -0.75, wrL: -0.25,
+    rootX: 0, rootY: 1.5, rootRot: 0.33, spine: 0.075, head: -0.24,
+    hipR: 0.3, kneeR: -0.45, footR: 0.06,
+    hipL: -0.75, kneeL: -0.85, footL: 0.04,
+    shR: -0.25, elR: -0.8, wrR: 1.52,
+    shL: 0.35, elL: -0.75, wrL: -0.22,
   },
   {
-    rootX: 0, rootY: 2.5, rootRot: 0.3, spine: 0.07, head: -0.22,
-    hipR: -0.05, kneeR: -0.55, footR: -0.1,
-    hipL: -0.25, kneeL: -1.5, footL: -0.2,
-    shR: 0, elR: -0.7, wrR: 1.6,
-    shL: 0.1, elL: -0.65, wrL: -0.2,
+    rootX: 0, rootY: 2.5, rootRot: 0.3, spine: 0.09, head: -0.28,
+    hipR: -0.05, kneeR: -0.55, footR: -0.16,
+    hipL: -0.25, kneeL: -1.5, footL: -0.22,
+    shR: 0, elR: -0.7, wrR: 1.62,
+    shL: 0.1, elL: -0.65, wrL: -0.18,
   },
   {
-    rootX: 0, rootY: 0, rootRot: 0.3, spine: 0.06, head: -0.22,
-    hipR: -0.4, kneeR: -0.35, footR: -0.05,
+    rootX: 0, rootY: 0, rootRot: 0.28, spine: 0.06, head: -0.21,
+    hipR: -0.4, kneeR: -0.35, footR: -0.04,
     hipL: 0.3, kneeL: -0.85, footL: 0.05,
-    shR: 0.3, elR: -0.7, wrR: 1.6,
-    shL: -0.2, elL: -0.7, wrL: -0.25,
+    shR: 0.3, elR: -0.7, wrR: 1.56,
+    shL: -0.2, elL: -0.7, wrL: -0.24,
   },
 ]
 
@@ -161,7 +181,7 @@ export const DASH_CLIP: Clip = makeClip('dash', [
     rootRot: 0.62, rootY: 4, spine: 0.12, head: -0.44,
     hipR: 1.05, kneeR: -0.9, footR: 0.1,
     hipL: -0.95, kneeL: -0.8, footL: 0.25,
-    shR: -1.05, elR: -0.3, wrR: -0.6,
+    shR: -1.05, elR: -0.3, wrR: -0.72,
     shL: 0.85, elL: -0.5,
   }, 'outQuad'),
 ])

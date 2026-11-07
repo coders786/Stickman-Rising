@@ -802,6 +802,9 @@ function pushPolar(t: Trail, x: number, y: number, a: number, r0: number, r1: nu
   if (t.count < t.N) t.count++
 }
 
+const segA: number[] = [0, 0, 0, 0]
+const segB: number[] = [0, 0, 0, 0]
+
 function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void {
   const n = t.count
   const pts = t.pts
@@ -813,43 +816,110 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
     out[0] = pts[i]; out[1] = pts[i + 1]; out[2] = pts[i + 2]; out[3] = pts[i + 3]
   }
 
-  const a1: number[] = [0, 0, 0, 0]
-  const a2: number[] = [0, 0, 0, 0]
-
-  // wide soft layer + bright core layer
+  // ---- wide soft halo + mid core ribbon ----
   for (let layer = 0; layer < 2; layer++) {
     const wide = layer === 0
     const color = wide ? t.color2 : t.color
     const baseAlpha = wide ? 0.3 : 0.55
     for (let i = 0; i < n - 1; i++) {
-      seg(i, a1)
-      seg(i + 1, a2)
+      seg(i, segA)
+      seg(i + 1, segB)
       const headBias = i / Math.max(1, n - 1)
       const alpha = baseAlpha * fade * (0.35 + 0.65 * headBias)
       ctx.fillStyle = rgba(color, alpha)
       // quad between consecutive blade segments
       ctx.beginPath()
-      ctx.moveTo(a1[0], a1[1])
-      ctx.lineTo(a1[2], a1[3])
-      ctx.lineTo(a2[2], a2[3])
-      ctx.lineTo(a2[0], a2[1])
+      ctx.moveTo(segA[0], segA[1])
+      ctx.lineTo(segA[2], segA[3])
+      ctx.lineTo(segB[2], segB[3])
+      ctx.lineTo(segB[0], segB[1])
       ctx.closePath()
       ctx.fill()
     }
   }
 
-  // bright cutting edge along the tip path
-  if (n >= 2) {
-    ctx.strokeStyle = rgba('#ffffff', 0.5 * fade)
-    ctx.lineWidth = 1.8 * t.width
+  // ---- hot inner core: thin near-white strip hugging the blade path ----
+  // (strided every 2nd segment — plasma-line look at half the fill cost)
+  for (let i = 0; i < n - 1; i += 2) {
+    seg(i, segA)
+    seg(Math.min(i + 1, n - 1), segB)
+    const headBias = i / Math.max(1, n - 1)
+    const alpha = 0.5 * fade * (0.3 + 0.7 * headBias)
+    // inset both blade endpoints 45% toward the tip → thin strip near the edge
+    const ax = segA[0] + (segA[2] - segA[0]) * 0.55
+    const ay = segA[1] + (segA[3] - segA[1]) * 0.55
+    const bx = segB[0] + (segB[2] - segB[0]) * 0.55
+    const by = segB[1] + (segB[3] - segB[1]) * 0.55
+    ctx.fillStyle = rgba('#ffffff', alpha)
     ctx.beginPath()
-    seg(0, a1)
-    ctx.moveTo(a1[2], a1[3])
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(segA[2], segA[3])
+    ctx.lineTo(segB[2], segB[3])
+    ctx.lineTo(bx, by)
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  // ---- layered cutting edges along the tip path ----
+  if (n >= 2) {
+    ctx.beginPath()
+    seg(0, segA)
+    ctx.moveTo(segA[2], segA[3])
     for (let i = 1; i < n; i++) {
-      seg(i, a1)
-      ctx.lineTo(a1[2], a1[3])
+      seg(i, segA)
+      ctx.lineTo(segA[2], segA[3])
     }
+    // soft colored edge under a hot white edge → layered "energy blade" look
+    ctx.strokeStyle = rgba(t.color2, 0.34 * fade)
+    ctx.lineWidth = 3.2 * t.width
     ctx.stroke()
+    ctx.strokeStyle = rgba('#ffffff', 0.55 * fade)
+    ctx.lineWidth = 1.5 * t.width
+    ctx.stroke()
+  }
+
+  // ---- tip glint + motion-blur streaks (only while the swing is live) ----
+  if (t.emitting && n >= 3) {
+    seg(n - 1, segA)
+    seg(n - 2, segB)
+    const dx = segA[2] - segB[2]
+    const dy = segA[3] - segB[3]
+    const spd = Math.sqrt(dx * dx + dy * dy)
+    if (spd > 3) {
+      const ix = 1 / spd
+      const nx = -dy * ix // perpendicular
+      const ny = dx * ix
+      const glint = Math.min(1, spd / 26) * fade
+      // 4-point star flare at the newest tip
+      const gx = segA[2]
+      const gy = segA[3]
+      const g1 = 4 + t.width * 2.4
+      const g2 = g1 * 0.42
+      ctx.strokeStyle = rgba('#ffffff', 0.75 * glint)
+      ctx.lineWidth = 1.1
+      ctx.beginPath()
+      ctx.moveTo(gx - g1, gy)
+      ctx.lineTo(gx + g1, gy)
+      ctx.moveTo(gx, gy - g1)
+      ctx.lineTo(gx, gy + g1)
+      ctx.moveTo(gx - g2 * nx, gy - g2 * ny)
+      ctx.lineTo(gx + g2 * nx, gy + g2 * ny)
+      ctx.stroke()
+      ctx.fillStyle = rgba(t.color, 0.9 * glint)
+      ctx.beginPath()
+      ctx.arc(gx, gy, 1.4 + t.width * 0.7, 0, TAU)
+      ctx.fill()
+      // two faint speed streaks trailing behind the tip
+      ctx.strokeStyle = rgba(t.color2, 0.3 * glint)
+      ctx.lineWidth = 1
+      const off = 2.6 + t.width
+      ctx.beginPath()
+      ctx.moveTo(gx - nx * off, gy - ny * off)
+      ctx.lineTo(gx - dx * 2.4 - nx * off, gy - dy * 2.4 - ny * off)
+      ctx.moveTo(gx + nx * off, gy + ny * off)
+      ctx.lineTo(gx - dx * 2.4 + nx * off, gy - dy * 2.4 + ny * off)
+      ctx.stroke()
+    }
   }
 }
 

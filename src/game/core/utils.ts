@@ -35,6 +35,7 @@ export const easeInCubic: EaseFn = (t) => t * t * t
 export const easeOutCubic: EaseFn = (t) => 1 - Math.pow(1 - t, 3)
 export const easeInOutCubic: EaseFn = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+export const easeInOutSine: EaseFn = (t) => -(Math.cos(Math.PI * t) - 1) / 2
 export const easeOutQuart: EaseFn = (t) => 1 - Math.pow(1 - t, 4)
 export const easeInQuart: EaseFn = (t) => t * t * t * t
 export const easeOutBack: EaseFn = (t) => {
@@ -55,6 +56,7 @@ export const EASES: Record<string, EaseFn> = {
   inCubic: easeInCubic,
   outCubic: easeOutCubic,
   inOutCubic: easeInOutCubic,
+  inOutSine: easeInOutSine,
   outQuart: easeOutQuart,
   inQuart: easeInQuart,
   outBack: easeOutBack,
