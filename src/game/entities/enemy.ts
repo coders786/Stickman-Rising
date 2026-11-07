@@ -880,6 +880,46 @@ export class Enemy {
     }
   }
 
+  /** CHEAP MIRROR GHOST — single flat-color stroke pass for the wet-floor
+   * reflection (and any future multipass use). Full-detail redraws × 2
+   * passes × N enemies were a frame-rate sink; the mirror only needs a
+   * silhouette. */
+  drawGhost(ctx: CanvasRenderingContext2D, _time: number): void {
+    if (this.dead || this.spawning) return
+    const g = this.geom
+    ctx.save()
+    ctx.translate(this.x, this.hipY)
+    ctx.scale(this.face * this.scale, this.scale)
+    ctx.strokeStyle = rgba(this.cfg.style.body, 0.9)
+    ctx.lineWidth = this.cfg.style.lineW * 0.85
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    // legs + arms as two-point chains
+    ctx.beginPath()
+    ctx.moveTo(g.hipPtL.x, g.hipPtL.y); ctx.lineTo(g.kneeL.x, g.kneeL.y); ctx.lineTo(g.ankleL.x, g.ankleL.y)
+    ctx.moveTo(g.hipPtR.x, g.hipPtR.y); ctx.lineTo(g.kneeR.x, g.kneeR.y); ctx.lineTo(g.ankleR.x, g.ankleR.y)
+    ctx.moveTo(g.shoulderL.x, g.shoulderL.y); ctx.lineTo(g.elbL.x, g.elbL.y); ctx.lineTo(g.handL.x, g.handL.y)
+    ctx.moveTo(g.shoulderR.x, g.shoulderR.y); ctx.lineTo(g.elbR.x, g.elbR.y); ctx.lineTo(g.handR.x, g.handR.y)
+    ctx.stroke()
+    // torso + head
+    ctx.lineWidth = this.cfg.style.lineW * 1.3
+    ctx.beginPath()
+    ctx.moveTo(g.hip.x, g.hip.y)
+    ctx.lineTo(g.waist.x, g.waist.y)
+    ctx.lineTo(g.chest.x, g.chest.y)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(g.headC.x, g.headC.y, 8, 0, Math.PI * 2)
+    ctx.stroke()
+    // weapon as one flat stroke (blade line only)
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.moveTo(g.handR.x, g.handR.y)
+    ctx.lineTo(g.handR.x + Math.cos(g.bladeAngle) * 26, g.handR.y + Math.sin(g.bladeAngle) * 26)
+    ctx.stroke()
+    ctx.restore()
+  }
+
   private drawWeapon(ctx: CanvasRenderingContext2D, time: number): void {
     const g = this.geom
     const cfg = this.cfg

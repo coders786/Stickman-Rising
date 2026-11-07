@@ -5,9 +5,21 @@
  * Torso angles are measured from vertical-up (positive = lean toward facing).
  * Limb angles are measured from straight-down (positive = swing toward facing).
  * Raw floats are never angle-wrapped, so continuous spin animations are possible.
+ *
+ * ── 3D DEPTH CHANNELS (rig3d) ──────────────────────────────────────────
+ * The rig is genuinely three-dimensional. Axis convention (documented once,
+ * used everywhere — see anim/rig3d.ts):
+ *   +X = facing direction (horizontal)
+ *   +Y = DOWN (canvas vertical — character-local, feet at +49)
+ *   +Z = TOWARD THE CAMERA (out of the gameplay plane)
+ * Yaw channels rotate a limb/girdle around the vertical (Y) axis:
+ *   positive yaw swings the limb/segment TOWARD the camera (+Z).
+ * Channels 17–25 are appended AFTER the classic 2D set so every existing
+ * keyframe, clip, and enemy pose stays bit-compatible (they simply read as
+ * depth-zero until authored otherwise).
  */
 
-export const CH_COUNT = 17
+export const CH_COUNT = 26
 
 export const CH = {
   rootX: 0,
@@ -27,6 +39,23 @@ export const CH = {
   shR: 14,
   elR: 15,
   wrR: 16,
+  /* ---- 3D depth channels (all default 0 = flat 2D pose) ---- */
+  /** whole-body depth offset (visual lean into/out of the screen) */
+  rootZ: 17,
+  /** pelvis yaw around the vertical spine axis; + = near hip swings forward */
+  pelvisYaw: 18,
+  /** shoulder-girdle yaw ON TOP of the pelvis fraction (counter-rotation) */
+  chestYaw: 19,
+  /** per-leg hip yaw: + swings that leg toward the camera */
+  hipLz: 20,
+  hipRz: 21,
+  /** per-arm shoulder yaw: + swings that arm toward the camera */
+  armLz: 22,
+  armRz: 23,
+  /** blade yaw: + points the kissaki toward the camera (out-of-plane cut) */
+  bladeYaw: 24,
+  /** grip depth offset: translates the whole weapon along +Z (thrust paths) */
+  bladeZ: 25,
 } as const
 
 export type ChannelKey = keyof typeof CH
@@ -55,6 +84,16 @@ const NEUTRAL_SRC: PoseInput = {
   shR: 0.85,
   elR: -0.5,
   wrR: 1.15,
+  // 3D depth channels: the guard is square-on (0 depth articulation)
+  rootZ: 0,
+  pelvisYaw: 0,
+  chestYaw: 0,
+  hipLz: 0,
+  hipRz: 0,
+  armLz: 0,
+  armRz: 0,
+  bladeYaw: 0,
+  bladeZ: 0,
 }
 
 export const NEUTRAL: Pose = (() => {

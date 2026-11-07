@@ -5,7 +5,8 @@
 import { Animator } from '../anim/animator'
 import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
-import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
+import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import {
   BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_STEP_CLIP, DASH_AIR_CLIP, DASH_CLIP,
   FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP,
@@ -214,7 +215,7 @@ export class Player {
   /** wall-clock seconds (input rhythm: double-tap sprint detection) */
   private now = 0
   pose: Pose = makePose()
-  geom: SkelGeom = makeSkelGeom()
+  geom: FighterGeom = makeFighterGeom()
   swingGlow = 0
   flashT = 0
   iframes = 0
@@ -281,6 +282,14 @@ export class Player {
   /** this frame's angular smear window (prev → current blade angle) */
   private smearA0 = 0
   private smearA1 = 0
+
+  /* ---- 3D GAIT / SWORD-CARRY state (rig3d consumers) ---- */
+  /** damped gait twist amplitude (pelvis swivel + shoulder counter) */
+  private gaitYawAmp = 0
+  /** damped weapon carry yaw per locomotion (sprint tuck etc.) */
+  private carryYaw = 0
+  /** damped sword-arm depth carry */
+  private carryArmZ = 0
 
   /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
    * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
@@ -360,6 +369,9 @@ export class Player {
     this.accelSm = 0
     this.prevVx = 0
     this.headTrackW = 0
+    this.gaitYawAmp = 0
+    this.carryYaw = 0
+    this.carryArmZ = 0
     this.animator.play(IDLE_CLIP, { blend: 0.05 })
   }
 
@@ -491,6 +503,7 @@ export class Player {
     // Godot AnimationTree → Skeleton2D.)
     this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
+    this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
     // procedural layers (bounded, frame-local — never accumulate):
     // SWORD-LED ARC first: it rewrites the arm channels, so the blade
     // dynamics spring below sees the ARC's angular velocity — the whip
@@ -498,7 +511,9 @@ export class Player {
     this.swordArc.update(dt, {
       pose: this.pose,
       shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
+      shoulderZ: this.geom.shoulderR.z,
       handX: this.geom.handR.x, handY: this.geom.handR.y,
+      handZ: this.geom.handR.z,
       def: this.state === 'attack' ? this.action?.def ?? null : null,
       animT: this.action ? this.action.animT : 0,
       enemies: w.enemies,
@@ -509,11 +524,15 @@ export class Player {
     })
     this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
     this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
-    solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
+    // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
+    solveFighter3D(
+      this.pose, PLAYER_SPEC, this.geom,
+      PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
+      this.swingScale,
+    )
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.updateBladeWorld()
     this.updateSwingScale(dt)
-    this.updateBladeZ(dt)
   }
 
   private onLand(w: WorldRef): void {
@@ -1822,9 +1841,10 @@ export class Player {
     this.swingScale = damp(this.swingScale, target, 18, dt)
   }
 
-  /** 2.8D Z-envelope: the blade plane swings toward/away from the camera
-   * through the strike — a sin pulse peaking mid-active-window. Pure visual
-   * depth (foreshortening, pierce flare); the X/Y sweep is untouched. */
+  /** zArc Z-envelope → BLADE YAW: the legacy visual depth pulse, expressed
+   * as a 3D yaw on the weapon. Only attacks WITHOUT a declared 3D
+   * trajectory use it — traj'd attacks own the bladeYaw channel through
+   * the arc solver (real yaw paths, not a sine pulse). */
   private updateBladeZ(dt: number): void {
     let target = 0
     if (this.state === 'attack' && this.action) {
@@ -1839,6 +1859,7 @@ export class Player {
       }
     }
     this.bladeZ = damp(this.bladeZ, target, 16, dt)
+    if (!this.action?.def.traj) this.pose[CH.bladeYaw] += this.bladeZ * 0.85
   }
   /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
    * (te-no-uchi: left hand at the pommel, right near the guard — how a
@@ -1869,12 +1890,9 @@ export class Player {
     if (w < 0.03) return
 
     const g = this.geom // last frame's solve — continuous, 1-frame stale
-    const tsuka = PLAYER_SPEC.blade * this.sword.stats.range * 0.3
-    // tsuka butt (pommel end) in local space
-    const bax = Math.cos(g.bladeAngle)
-    const bay = Math.sin(g.bladeAngle)
-    const tx = g.handR.x - bax * tsuka
-    const ty = g.handR.y - bay * tsuka
+    // tsuka butt (pommel end) — solved in 3D with the blade (rig3d)
+    const tx = g.pommel.x
+    const ty = g.pommel.y
     // shoulder anchor = the LEFT glenohumeral joint (the off arm's true root)
     const sx = g.shoulderL.x
     const sy = g.shoulderL.y
@@ -1918,13 +1936,101 @@ export class Player {
     this.prevVx = this.vx
     this.accelSm = damp(this.accelSm, accel, 14, dt)
     const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
-    p[2] += speedLean * 0.14
-    // acceleration leans the body INTO the push, deceleration rocks it back
-    p[2] += clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+    const lean = speedLean * 0.14 + clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+
+    // ---- FULL-BODY LEAN (THE "torso-only bend" fix): the forward pitch
+    // is distributed through the ENTIRE articulation — and crucially the
+    // PELVIS TRANSLATES toward the facing (rootX) so the body hangs over
+    // its toes while the feet stay planted BEHIND the COG: the legs become
+    // diagonal struts (front knee loaded, rear leg extended), not vertical
+    // hangers under a rotated chest. Lumbar adds its fraction, the ankle
+    // dorsi-flexes to brake, the COG drops as the body commits. A body
+    // that leans only from the chest reads as a puppet; a body that leans
+    // from the ground up reads as an athlete.
+    if (this.state !== 'dead') {
+      p[CH.rootRot] += lean * 0.6
+      p[CH.spine] += lean * 0.22
+      p[CH.rootX] += lean * 7 // pelvis surge: hips ride forward over the stance
+      p[CH.hipR] += lean * 0.5
+      p[CH.hipL] -= lean * 0.38
+      p[CH.kneeR] -= lean * 0.3
+      p[CH.kneeL] -= lean * 0.2
+      p[CH.footR] += lean * 0.18
+      p[CH.rootY] += Math.abs(lean) * 2.2
+      // head counter-pitches to keep the eyes on the horizon (the sprint
+      // tell: body flat, gaze level — MGR:R Raiden's forward drive)
+      p[CH.head] -= lean * 0.35
+    }
 
     // vertical pitch while airborne
     if (!this.grounded && this.state !== 'attack') {
-      p[2] += clamp(this.vy / 1400, -0.22, 0.3)
+      p[CH.rootRot] += clamp(this.vy / 1400, -0.22, 0.3)
+    }
+
+    // ---- GAIT TWIST (the 3D torso read): pelvis swivel + shoulder
+    // COUNTER-rotation in depth, phased to the stride cycle. This is the
+    // transverse-plane half of locomotion the sagittal clips can't carry:
+    // the hip sockets advance/recede per stride and the shoulder girdle
+    // counter-rotates — the #1 depth tell of real bipedal gait.
+    if (this.state === 'move' && this.grounded) {
+      const clip = this.animator.getClip()
+      const ph = clip && clip.loop && clip.dur > 0
+        ? (this.animator.getTime() / clip.dur) % 1
+        : 0
+      const sway = Math.sin(ph * Math.PI * 2)
+      let amp = 0
+      let cAmp = 0
+      switch (this.loco) {
+        case 'walk': amp = 0.13; cAmp = 0.11; break
+        case 'run': amp = 0.21; cAmp = 0.15; break
+        case 'sprint': amp = 0.27; cAmp = 0.21; break
+        case 'combat': case 'backpedal': amp = 0.05; cAmp = 0.06; break
+        default: break
+      }
+      this.gaitYawAmp = damp(this.gaitYawAmp, amp, 8, dt)
+      p[CH.pelvisYaw] += sway * this.gaitYawAmp
+      p[CH.chestYaw] += -sway * this.gaitYawAmp * (cAmp / 0.13) * 0.9
+    } else {
+      this.gaitYawAmp = damp(this.gaitYawAmp, 0, 8, dt)
+    }
+
+    // ---- SWORD CARRY per gait (depth-aware weapon handling): each
+    // locomotion state carries the weapon DIFFERENTLY — walk: relaxed
+    // low-back carry; run: trailing flat behind the hip; sprint: tucked
+    // HARD back with the blade swinging through depth BEHIND the torso
+    // plane (bladeYaw −0.5: the steel visibly recedes past the body);
+    // combat: square-on live guard. Never one frozen carry for all states.
+    {
+      let carryYaw = 0
+      let carryArm = 0
+      if (this.state === 'move' && this.grounded) {
+        switch (this.loco) {
+          case 'walk': carryYaw = -0.12; carryArm = -0.08; break
+          case 'run': carryYaw = -0.28; carryArm = -0.2; break
+          case 'sprint': carryYaw = -0.34; carryArm = -0.3; break
+          case 'combat': carryYaw = 0.06; carryArm = 0.1; break
+          case 'backpedal': carryYaw = 0.04; carryArm = 0.06; break
+          default: break
+        }
+      } else if (this.state === 'dash') {
+        carryYaw = -0.42; carryArm = -0.3
+      }
+      this.carryYaw = damp(this.carryYaw, carryYaw, 6, dt)
+      this.carryArmZ = damp(this.carryArmZ, carryArm, 6, dt)
+      if (this.state !== 'attack') {
+        p[CH.bladeYaw] += this.carryYaw
+        p[CH.armRz] += this.carryArmZ
+      }
+    }
+
+    // ---- ATTACK TORSO DRIVE: the body follows the blade. When a cut
+    // sweeps through depth (bladeYaw), the pelvis rotates WITH it and the
+    // shoulders rotate FURTHER — hips → torso → shoulders generate the
+    // sword's power together (spec: full-body power generation).
+    if (this.state === 'attack') {
+      const by = p[CH.bladeYaw]
+      p[CH.pelvisYaw] += by * 0.35
+      p[CH.chestYaw] += by * 0.65
     }
 
     // ---- 180° TURN PIVOT: cosmetic counter-rotation sweep through the
@@ -1932,10 +2038,13 @@ export class Player {
     // new one, with a hip drop + knee flex (weight shift through the turn)
     if (this.turnT > 0) {
       const e = this.turnT * this.turnT // ease-out unwind
-      p[2] += this.turnDir * this.face * 1.15 * e
-      p[1] += 3.2 * e
+      p[CH.rootRot] += this.turnDir * this.face * 1.15 * e
+      p[CH.rootY] += 3.2 * e
       p[CH.kneeR] -= 0.22 * e
       p[CH.kneeL] -= 0.16 * e
+      // the turn also YAWS the pelvis through depth — the body carves the
+      // reversal instead of flat-spinning
+      p[CH.pelvisYaw] += this.turnDir * 0.3 * e
     }
 
     // ---- POST-ATTACK MOMENTUM (sword-aware locomotion, spec §7): the
@@ -2017,29 +2126,19 @@ export class Player {
 
   private updateBladeWorld(): void {
     const g = this.geom
-    const spec = PLAYER_SPEC
-    // hyper-scale grows the whole weapon (visual blade AND hit segment are
-    // one object — spec 1.35-1.5× tamed to 1.22× to protect the silhouette)
-    const len = spec.blade * this.sword.stats.range * 1.06 * this.swingScale
-    // The hit segment spans from the TSUKA BUTT (14 units behind the hand
-    // along the blade axis — the full grip: point-blank enemies standing
-    // INSIDE the swing arc, between the player's body and the hand, used to
-    // slip through the gap; the real tsuka is ~30% of the blade anyway)
-    // out to the kissaki tip.
-    const bx = g.handR.x + Math.cos(g.bladeAngle) * -14
-    const by = g.handR.y + Math.sin(g.bladeAngle) * -14
-    const tx = g.handR.x + Math.cos(g.bladeAngle) * len
-    const ty = g.handR.y + Math.sin(g.bladeAngle) * len
-    this.blade.bx = this.x + this.face * SCALE * bx
-    this.blade.by = this.hipY + SCALE * by
-    this.blade.tx = this.x + this.face * SCALE * tx
-    this.blade.ty = this.hipY + SCALE * ty
-    // smear tracking: this frame's angle becomes next frame's smear tail
+    // The hit segment IS the projected 3D blade: tsuka-side grip → kissaki.
+    // Because both the renderer and this hitbox consume the same projection,
+    // visual contact == gameplay contact for every depth excursion.
+    this.blade.bx = this.x + this.face * SCALE * g.grip.x
+    this.blade.by = this.hipY + SCALE * g.grip.y
+    this.blade.tx = this.x + this.face * SCALE * g.tip.x
+    this.blade.ty = this.hipY + SCALE * g.tip.y
+    // smear tracking: this frame's PROJECTED angle becomes the smear tail
     if (this.hasPrevAng) {
       this.smearA0 = this.prevBladeAng
-      this.smearA1 = g.bladeAngle
+      this.smearA1 = g.bladeProjAngle
     }
-    this.prevBladeAng = g.bladeAngle
+    this.prevBladeAng = g.bladeProjAngle
     this.hasPrevAng = true
   }
 
@@ -2061,7 +2160,12 @@ export class Player {
     {
       const hp = this.geom.hip
       const sayLen = PLAYER_SPEC.blade * 0.88
-      const ang = 0.24 // radians below horizontal, sweeping back-down
+      // the scabbard rides the PELVIS: its angle follows the hip pitch
+      // (rootRot) + a slice of the pelvis yaw, so it stays glued to the
+      // body through leans, lunges and twists — a world-fixed angle read
+      // as a floating rod whenever the fighter committed forward
+      const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
+      const ang = 0.24 + pelvisPitch * 0.6
       const tipX = hp.x - Math.cos(ang) * sayLen
       const tipY = hp.y + Math.sin(ang) * sayLen
       // saya body (slightly lighter than the body so it reads on the hip)
@@ -2097,7 +2201,7 @@ export class Player {
       ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
       ctx.stroke()
     }
-    drawStick(ctx, this.geom, PLAYER_STYLE, {
+    drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
       alpha,
       // flash: hurt red OR the anime impact-frame white beat (whichever
@@ -2111,14 +2215,15 @@ export class Player {
         a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
       },
     })
-    drawSword(ctx, this.geom, this.sword, {
+    // THE 3D BLADE: projected metrics from the rig — grip, projected angle
+    // (after yaw + perspective), projected length, tip depth. Visual blade
+    // == hitbox blade (updateBladeWorld consumes the same numbers).
+    drawSword(ctx, this.sword, {
       time,
       charge: this.chargeRatio,
       alpha,
       swingGlow: this.swingGlow,
-      z: this.bladeZ,
-      lenScale: this.swingScale,
-    })
+    }, this.geom.grip.x, this.geom.grip.y, this.geom.bladeProjAngle, this.geom.bladeProjLen, this.geom.bladeTipZ)
     ctx.restore()
 
     // ---- ANIME SMEAR (two-layer, research-applied): when tip velocity
@@ -2130,10 +2235,10 @@ export class Player {
     const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
     const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
     if (tipSpd > 950 && this.state !== 'dead') {
-      // pivot = the sword hand (the blade's true rotation center), world space
-      const px = this.x + this.face * SCALE * this.geom.handR.x
-      const py = this.hipY + SCALE * this.geom.handR.y
-      const R = PLAYER_SPEC.blade * this.sword.stats.range * SCALE * this.swingScale
+      // pivot = the weapon grip (the blade's true rotation center), world space
+      const px = this.x + this.face * SCALE * this.geom.grip.x
+      const py = this.hipY + SCALE * this.geom.grip.y
+      const R = this.geom.bladeProjLen * SCALE
       // local → world angles (facing mirror flips around the Y axis)
       const wa0 = this.face === 1 ? this.smearA0 : Math.PI - this.smearA0
       const wa1 = this.face === 1 ? this.smearA1 : Math.PI - this.smearA1

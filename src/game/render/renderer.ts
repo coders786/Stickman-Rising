@@ -155,9 +155,12 @@ export class Renderer {
   }
 
   /** FILM GRAIN — a pre-baked 160×160 monochrome noise tile, randomly
-   * re-offset each frame (animated grain) at a 3.5% whisper. Ties the 2D
+   * re-offset each frame (animated grain) at a ~3% whisper. Ties the 2D
    * silhouette art, the 3D blade, and the glow FX into one photographic
-   * plane — the "one film stock" trick. */
+   * plane — the "one film stock" trick. Drawn with source-over (the old
+   * 'overlay' composite mode was a per-pixel blend on the FULL canvas —
+   * one of the two biggest raster costs on weak GPUs / software raster).
+   * Same whisper, fraction of the cost. */
   private drawGrain(ctx: CanvasRenderingContext2D, w: number, h: number): void {
     if (!this.grainTile) {
       const c = document.createElement('canvas')
@@ -179,8 +182,7 @@ export class Renderer {
     }
     if (!this.grainPattern) return
     ctx.save()
-    ctx.globalAlpha = 0.035
-    ctx.globalCompositeOperation = 'overlay'
+    ctx.globalAlpha = 0.028
     const ox = (Math.random() * 160) | 0
     const oy = (Math.random() * 160) | 0
     ctx.translate(-ox, -oy)
@@ -191,7 +193,10 @@ export class Renderer {
 
   /** wet-floor mirror pass — the 2D-native take on ray-traced reflections:
    *  every entity is re-drawn mirrored about the ground plane with vertical
-   *  foreshortening, then melted into the dark facade by a depth gradient. */
+   *  foreshortening, then melted into the dark facade by a depth gradient.
+   *  The PLAYER keeps its full-detail redraw; ENEMIES use the cheap single-
+   *  pass ghost (full detail × N enemies × 2 passes was a quiet frame-rate
+   *  killer once waves scaled — the mirror only needs a silhouette). */
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world
     const li = bg.lightningI()
@@ -200,10 +205,11 @@ export class Renderer {
     ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
     ctx.globalAlpha = a
     player.draw(ctx, time)
+    ctx.globalAlpha = a * 0.8
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      e.draw(ctx, time)
+      e.drawGhost(ctx, time)
     }
     ctx.restore()
     // vertical falloff: reflections dissolve into the wet dark with depth

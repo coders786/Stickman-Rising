@@ -1,0 +1,958 @@
+     1→     1→/** STICKMAN RISING — the Game orchestrator: loop, timing (hitstop/slow-mo),
+     2→     2→ * combat resolution, combo & score, executions, ultimates, waves, events.
+     3→     3→ */
+     4→     4→
+     5→     5→import { Camera } from './core/camera'
+     6→     6→import { Input } from './core/input'
+     7→     7→import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, RunStats, WorldRef } from './core/types'
+     8→     8→import { clamp, clamp01, damp, fmt, rand } from './core/utils'
+     9→     9→import { AudioEngine } from './audio/audio'
+    10→    10→import { FX } from './fx/fx'
+    11→    11→import { CyberBackground } from './world/background'
+    12→    12→import { WaveDirector } from './world/waves'
+    13→    13→import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
+    14→    14→import { Player } from './entities/player'
+    15→    15→import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
+    16→    16→import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
+    17→    17→import { SWORDS, SwordId, SWORD_ORDER } from './combat/swords'
+    18→    18→import { HUD, HudState, rankForHits } from './render/hud'
+    19→    19→import { Renderer, RenderWorld } from './render/renderer'
+    20→    20→import { Inspect, runQA, InspectMode } from './debug/inspect'
+    21→    21→
+    22→    22→const ARENA_MIN = -60
+    23→    23→const ARENA_MAX = 2560
+    24→    24→
+    25→    25→/* ------------------------------------------------------------------ */
+    26→    26→
+    27→    27→class ComboTracker {
+    28→    28→  hits = 0
+    29→    29→  timer = 0
+    30→    30→  timerMax = 2.6
+    31→    31→  mult = 1
+    32→    32→  best = 0
+    33→    33→  bestRank = ''
+    34→    34→  rankUpT = 0
+    35→    35→  lastRank = ''
+    36→    36→
+    37→    37→  onHit(): void {
+    38→    38→    this.hits++
+    39→    39→    this.timer = this.timerMax
+    40→    40→    this.mult = Math.min(1 + Math.floor(this.hits / 5) * 0.5, 5)
+    41→    41→    if (this.hits > this.best) this.best = this.hits
+    42→    42→    const { rank } = rankForHits(this.hits)
+    43→    43→    if (rank && rank !== this.lastRank) {
+    44→    44→      this.lastRank = rank
+    45→    45→      if (rank.length > this.bestRank.length) this.bestRank = rank
+    46→    46→      this.rankUpT = 0.7
+    47→    47→    }
+    48→    48→  }
+    49→    49→
+    50→    50→  update(dt: number): void {
+    51→    51→    this.rankUpT = Math.max(0, this.rankUpT - dt)
+    52→    52→    if (this.hits > 0) {
+    53→    53→      this.timer -= dt
+    54→    54→      if (this.timer <= 0) {
+    55→    55→        this.hits = 0
+    56→    56→        this.mult = 1
+    57→    57→        this.lastRank = ''
+    58→    58→      }
+    59→    59→    }
+    60→    60→  }
+    61→    61→
+    62→    62→  reset(): void {
+    63→    63→    this.hits = 0
+    64→    64→    this.timer = 0
+    65→    65→    this.mult = 1
+    66→    66→    this.best = 0
+    67→    67→    this.bestRank = ''
+    68→    68→    this.rankUpT = 0
+    69→    69→    this.lastRank = ''
+    70→    70→  }
+    71→    71→}
+    72→    72→
+    73→    73→interface Banner {
+    74→    74→  title: string
+    75→    75→  sub: string
+    76→    76→  t: number
+    77→    77→  dur: number
+    78→    78→  color: string
+    79→    79→}
+    80→    80→
+    81→    81→interface ExecState {
+    82→    82→  enemy: Enemy
+    83→    83→  t: number
+    84→    84→  step: number
+    85→    85→}
+    86→    86→
+    87→    87→interface UltState {
+    88→    88→  t: number
+    89→    89→  step: number
+    90→    90→}
+    91→    91→
+    92→    92→/* ------------------------------------------------------------------ */
+    93→    93→
+    94→    94→export class Game {
+    95→    95→  private canvas: HTMLCanvasElement | null = null
+    96→    96→  private ctx: CanvasRenderingContext2D | null = null
+    97→    97→  private raf = 0
+    98→    98→  private lastFrame = 0
+    99→    99→  private cssW = 1280
+   100→   100→  private cssH = 720
+   101→   101→  private dpr = 1
+   102→   102→
+   103→   103→  phase: GamePhase = 'attract'
+   104→   104→  settings: GameSettings = { ...DEFAULT_SETTINGS }
+   105→   105→  unlocked: SwordId[] = ['katana']
+   106→   106→
+   107→   107→  input = new Input()
+   108→   108→  audio = new AudioEngine()
+   109→   109→  cam = new Camera()
+   110→   110→  fx = new FX()
+   111→   111→  bg = new CyberBackground('high')
+   112→   112→  /* ambient storm audio: a soft distant crackle each time the sky strikes */
+   113→   113→  private thunderCb = (): void => {
+   114→   114→    this.audio.play('lightning', { volume: 0.22 })
+   115→   115→  }
+   116→   116→  hud = new HUD()
+   117→   117→  private renderer = new Renderer()
+   118→   118→  player = new Player()
+   119→   119→  /** animation inspection lab (skeleton viz / contact sheets / QA) */
+   120→   120→  inspect: Inspect
+   121→   121→  /** QA harness mode: suppresses wave spawning + death→gameover so
+   122→   122→   * scripted sequences run in a controlled empty arena */
+   123→   123→  qaMode = false
+   124→   124→  enemies: Enemy[] = []
+   125→   125→  projectiles = new ProjectilePool()
+   126→   126→  waves: WaveDirector
+   127→   127→  combo = new ComboTracker()
+   128→   128→
+   129→   129→  time = 0
+   130→   130→  timeScale = 1
+   131→   131→  private slowmoT = 0
+   132→   132→  private slowmoScale = 1
+   133→   133→  private hitstopT = 0
+   134→   134→
+   135→   135→  private exec: ExecState | null = null
+   136→   136→  private ult: UltState | null = null
+   137→   137→  private banner: Banner | null = null
+   138→   138→
+   139→   139→  stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
+   140→   140→  private runTime = 0
+   141→   141→  private fps = 60
+   142→   142→
+   143→   143→  private listeners: ((e: GameEvent) => void)[] = []
+   144→   144→  private destroyed = false
+   145→   145→  private visibilityBound: (() => void) | null = null
+   146→   146→
+   147→   147→  constructor() {
+   148→   148→    this.waves = new WaveDirector({
+   149→   149→      spawnEnemy: (kind, x, scale) => this.spawnEnemy(kind, x, scale),
+   150→   150→      onWaveStart: (wave, boss) => this.onWaveStart(wave, boss),
+   151→   151→      onWaveClear: (wave) => this.onWaveClear(wave),
+   152→   152→      getPlayerX: () => this.player.x,
+   153→   153→    })
+   154→   154→    this.cam.setArena(ARENA_MIN, ARENA_MAX)
+   155→   155→    this.player.reset(1300)
+   156→   156→    this.cam.snapTo(1300, -150)
+   157→   157→  }
+   158→   158→
+   159→   159→  on(cb: (e: GameEvent) => void): () => void {
+   160→   160→    this.listeners.push(cb)
+   161→   161→    return () => {
+   162→   162→      const i = this.listeners.indexOf(cb)
+   163→   163→      if (i >= 0) this.listeners.splice(i, 1)
+   164→   164→    }
+   165→   165→  }
+   166→   166→
+   167→   167→  private emit(e: GameEvent): void {
+   168→   168→    for (const cb of this.listeners) cb(e)
+   169→   169→  }
+   170→   170→
+   171→   171→  private setPhase(p: GamePhase): void {
+   172→   172→    this.phase = p
+   173→   173→    this.emit({ type: 'phase', phase: p })
+   174→   174→  }
+   175→   175→
+   176→   176→  /* ------------------------------------------------------------------ */
+   177→   177→  /* lifecycle                                                            */
+   178→   178→  /* ------------------------------------------------------------------ */
+   179→   179→
+   180→   180→  mount(canvas: HTMLCanvasElement): void {
+   181→   181→    this.canvas = canvas
+   182→   182→    this.ctx = canvas.getContext('2d', { alpha: false })
+   183→   183→    this.input.attach()
+   184→   184→    this.resize()
+   185→   185→    this.visibilityBound = () => {
+   186→   186→      if (document.hidden && this.phase === 'playing') this.pause()
+   187→   187→    }
+   188→   188→    document.addEventListener('visibilitychange', this.visibilityBound)
+   189→   189→    this.lastFrame = performance.now()
+   190→   190→    this.raf = requestAnimationFrame(this.loop)
+   191→   191→    this.input.setEnabled(false)
+   192→   192→    this.bg.onThunder = this.thunderCb
+   193→   193→    // debug/testing handle (harmless in production)
+   194→   194→    ;(window as unknown as Record<string, unknown>).__sr = this
+   195→   195→    // ANIMATION INSPECTION LAB (spec §12): skeleton viz, contact sheets,
+   196→   196→    // state readout + scripted QA harness
+   197→   197→    this.inspect = new Inspect()
+   198→   198→    const srAny = window as unknown as Record<string, unknown>
+   199→   199→    srAny.__srInspect = {
+   200→   200→      setView: (m: InspectMode) => this.inspect.setMode(m),
+   201→   201→      toggleBones: () => this.inspect.toggleBones(),
+   202→   202→      get mode() { return this.inspect.mode },
+   203→   203→    }
+   204→   204→    srAny.__srQA = { run: () => runQA(this) }
+   205→   205→  }
+   206→   206→
+   207→   207→  destroy(): void {
+   208→   208→    this.destroyed = true
+   209→   209→    cancelAnimationFrame(this.raf)
+   210→   210→    this.input.detach()
+   211→   211→    if (this.visibilityBound) document.removeEventListener('visibilitychange', this.visibilityBound)
+   212→   212→    this.audio.stopMusic()
+   213→   213→  }
+   214→   214→
+   215→   215→  resize(): void {
+   216→   216→    if (!this.canvas) return
+   217→   217→    const parent = this.canvas.parentElement
+   218→   218→    const w = parent?.clientWidth ?? window.innerWidth
+   219→   219→    const h = parent?.clientHeight ?? window.innerHeight
+   220→   220→    this.cssW = Math.max(320, w)
+   221→   221→    this.cssH = Math.max(240, h)
+   222→   222→    this.dpr = Math.min(window.devicePixelRatio || 1, this.settings.quality === 'high' ? 2 : this.settings.quality === 'medium' ? 1.5 : 1)
+   223→   223→    this.canvas.width = Math.floor(this.cssW * this.dpr)
+   224→   224→    this.canvas.height = Math.floor(this.cssH * this.dpr)
+   225→   225→    this.canvas.style.width = `${this.cssW}px`
+   226→   226→    this.canvas.style.height = `${this.cssH}px`
+   227→   227→    this.cam.setViewport(this.cssW, this.cssH)
+   228→   228→    this.bg.resize(this.cssW, this.cssH)
+   229→   229→  }
+   230→   230→
+   231→   231→  applySettings(s: GameSettings): void {
+   232→   232→    const qualityChanged = s.quality !== this.settings.quality
+   233→   233→    this.settings = { ...s }
+   234→   234→    this.fx.setQuality(s.quality)
+   235→   235→    this.fx.setGore(s.gore)
+   236→   236→    this.cam.setShakeEnabled(s.shake, s.shakeIntensity)
+   237→   237→    this.audio.setSfxVolume(s.sfxVolume)
+   238→   238→    this.audio.setMusicVolume(s.musicVolume)
+   239→   239→    this.audio.setMuted(s.muted)
+   240→   240→    if (qualityChanged) {
+   241→   241→      this.bg = new CyberBackground(s.quality)
+   242→   242→      this.bg.onThunder = this.thunderCb
+   243→   243→      this.bg.resize(this.cssW, this.cssH)
+   244→   244→      this.resize()
+   245→   245→    }
+   246→   246→  }
+   247→   247→
+   248→   248→  setUnlocked(list: SwordId[]): void {
+   249→   249→    this.unlocked = list
+   250→   250→  }
+   251→   251→
+   252→   252→  /* ------------------------------------------------------------------ */
+   253→   253→  /* run control                                                          */
+   254→   254→  /* ------------------------------------------------------------------ */
+   255→   255→
+   256→   256→  startRun(swordId: SwordId): void {
+   257→   257→    this.audio.resume()
+   258→   258→    this.audio.startMusic()
+   259→   259→    this.audio.setMusicIntensity(0.55)
+   260→   260→    this.player.setSword(swordId)
+   261→   261→    this.player.reset(1300)
+   262→   262→    this.enemies.length = 0
+   263→   263→    this.projectiles.clear()
+   264→   264→    this.fx.clear()
+   265→   265→    this.hud.reset()
+   266→   266→    this.combo.reset()
+   267→   267→    this.waves.reset()
+   268→   268→    this.stats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
+   269→   269→    this.runTime = 0
+   270→   270→    this.time = 0
+   271→   271→    this.timeScale = 1
+   272→   272→    this.slowmoT = 0
+   273→   273→    this.hitstopT = 0
+   274→   274→    this.exec = null
+   275→   275→    this.ult = null
+   276→   276→    this.banner = null
+   277→   277→    this.cam.snapTo(this.player.x, -150)
+   278→   278→    this.cam.setZoom(1)
+   279→   279→    this.input.setEnabled(true)
+   280→   280→    this.setPhase('playing')
+   281→   281→    this.audio.play('uiConfirm')
+   282→   282→  }
+   283→   283→
+   284→   284→  pause(): void {
+   285→   285→    if (this.phase !== 'playing') return
+   286→   286→    this.setPhase('paused')
+   287→   287→    this.input.setEnabled(false)
+   288→   288→    this.audio.play('uiClick')
+   289→   289→    this.audio.setMusicIntensity(0.2)
+   290→   290→  }
+   291→   291→
+   292→   292→  resume(): void {
+   293→   293→    if (this.phase !== 'paused') return
+   294→   294→    this.setPhase('playing')
+   295→   295→    this.input.setEnabled(true)
+   296→   296→    this.lastFrame = performance.now()
+   297→   297→    this.audio.setMusicIntensity(0.55)
+   298→   298→    this.audio.play('uiConfirm')
+   299→   299→  }
+   300→   300→
+   301→   301→  quitToMenu(): void {
+   302→   302→    this.enemies.length = 0
+   303→   303→    this.projectiles.clear()
+   304→   304→    this.fx.clear()
+   305→   305→    this.waves.reset()
+   306→   306→    this.player.reset(1300)
+   307→   307→    this.combo.reset()
+   308→   308→    this.exec = null
+   309→   309→    this.ult = null
+   310→   310→    this.banner = null
+   311→   311→    this.timeScale = 1
+   312→   312→    this.hitstopT = 0
+   313→   313→    this.audio.stopMusic()
+   314→   314→    this.input.setEnabled(false)
+   315→   315→    this.setPhase('attract')
+   316→   316→    this.cam.snapTo(1300, -150)
+   317→   317→    this.cam.setZoom(0.95)
+   318→   318→  }
+   319→   319→
+   320→   320→  private gameOver(): void {
+   321→   321→    this.setPhase('gameover')
+   322→   322→    this.input.setEnabled(false)
+   323→   323→    this.audio.setMusicIntensity(0.1)
+   324→   324→    this.audio.play('deathHeavy', { volume: 0.9 })
+   325→   325→    this.addSlowmo(0.25, 2)
+   326→   326→    this.stats.wave = this.waves.wave
+   327→   327→    this.stats.maxCombo = this.combo.best
+   328→   328→    this.stats.bestRank = this.combo.bestRank || 'D'
+   329→   329→    this.stats.timeAlive = this.runTime
+   330→   330→    this.emit({ type: 'gameover', stats: { ...this.stats } })
+   331→   331→  }
+   332→   332→
+   333→   333→  /* ------------------------------------------------------------------ */
+   334→   334→  /* main loop                                                            */
+   335→   335→  /* ------------------------------------------------------------------ */
+   336→   336→
+   337→   337→  private loop = (now: number): void => {
+   338→   338→    if (this.destroyed) return
+   339→   339→    this.raf = requestAnimationFrame(this.loop)
+   340→   340→    let dtRaw = (now - this.lastFrame) / 1000
+   341→   341→    this.lastFrame = now
+   342→   342→    if (dtRaw > 0.05) dtRaw = 0.05
+   343→   343→    if (dtRaw <= 0) dtRaw = 0.0001
+   344→   344→    this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
+   345→   345→
+   346→   346→    const ctx = this.ctx
+   347→   347→    if (!ctx) return
+   348→   348→
+   349→   349→    if (this.phase === 'paused') {
+   350→   350→      // frozen frame, HUD still drawn
+   351→   351→    } else {
+   352→   352→      // --- timing: hitstop & slow-mo ---
+   353→   353→      let simDt = dtRaw
+   354→   354→      if (this.hitstopT > 0) {
+   355→   355→        this.hitstopT -= dtRaw
+   356→   356→        simDt = dtRaw * 0.05
+   357→   357→        this.timeScale = 0.05 // world consumers (blade impact deflection) must SEE the freeze
+   358→   358→      } else if (this.slowmoT > 0) {
+   359→   359→        this.slowmoT -= dtRaw
+   360→   360→        simDt = dtRaw * this.slowmoScale
+   361→   361→        this.timeScale = this.slowmoScale
+   362→   362→        if (this.slowmoT <= 0) this.timeScale = 1
+   363→   363→      } else {
+   364→   364→        this.timeScale = 1
+   365→   365→      }
+   366→   366→
+   367→   367→      // --- cinematics run on real time ---
+   368→   368→      this.updateCinematics(dtRaw)
+   369→   369→
+   370→   370→      // --- fixed-ish substeps for stable physics ---
+   371→   371→      let remaining = simDt
+   372→   372→      while (remaining > 1e-6) {
+   373→   373→        const stepDt = Math.min(remaining, 1 / 90)
+   374→   374→        this.step(stepDt)
+   375→   375→        remaining -= stepDt
+   376→   376→      }
+   377→   377→    }
+   378→   378→
+   379→   379→    // --- render ---
+   380→   380→    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+   381→   381→    const world: RenderWorld = {
+   382→   382→      cam: this.cam,
+   383→   383→      fx: this.fx,
+   384→   384→      bg: this.bg,
+   385→   385→      enemies: this.enemies,
+   386→   386→      player: this.player,
+   387→   387→      projectiles: this.projectiles,
+   388→   388→      hud: this.hud,
+   389→   389→      hudState: this.buildHudState(),
+   390→   390→      time: this.time,
+   391→   391→    }
+   392→   392→    this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
+   393→   393→    // inspection overlay (solo/sheet views + state readout)
+   394→   394→    this.inspect.draw(ctx, this, this.time)
+   395→   395→
+   396→   396→    this.input.endFrame(dtRaw)
+   397→   397→  }
+   398→   398→
+   399→   399→  private step(dt: number): void {
+   400→   400→    this.time += dt
+   401→   401→    this.worldRef.time = this.time
+   402→   402→    this.worldRef.timeScale = this.timeScale
+   403→   403→    this.worldRef.quality = this.settings.quality
+   404→   404→    this.worldRef.gore = this.settings.gore
+   405→   405→    PLAYER_X_REF.x = this.player.x
+   406→   406→    PLAYER_X_REF.y = this.player.y
+   407→   407→    PLAYER_POS.x = this.player.x
+   408→   408→    PLAYER_POS.y = this.player.y
+   409→   409→
+   410→   410→    if (this.phase === 'playing' || this.phase === 'gameover') {
+   411→   411→      if (this.phase === 'playing') {
+   412→   412→        this.handleMetaInput()
+   413→   413→      }
+   414→   414→      this.player.update(dt, this.worldRef)
+   415→   415→      for (const e of this.enemies) {
+   416→   416→        e.update(dt, this.worldRef)
+   417→   417→      }
+   418→   418→      // purge dead
+   419→   419→      for (let i = this.enemies.length - 1; i >= 0; i--) {
+   420→   420→        if (this.enemies[i].dead) this.enemies.splice(i, 1)
+   421→   421→      }
+   422→   422→      this.projectiles.update(dt, this.worldRef)
+   423→   423→
+   424→   424→      if (this.phase === 'playing') {
+   425→   425→        if (!this.qaMode) this.waves.update(dt, this.enemies.length)
+   426→   426→        this.combo.update(dt)
+   427→   427→        this.runTime += dt
+   428→   428→        this.stats.timeAlive = this.runTime
+   429→   429→        // death → game over
+   430→   430→        if (!this.qaMode && this.player.isDead && this.player.deadTime > 1.4) {
+   431→   431→          this.gameOver()
+   432→   432→        }
+   433→   433→      }
+   434→   434→    } else if (this.phase === 'attract') {
+   435→   435→      // idle hero breathing on the rooftop (framed below the title logo)
+   436→   436→      this.player.update(dt, this.worldRef)
+   437→   437→      this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
+   438→   438→    }
+   439→   439→
+   440→   440→    this.fx.update(dt)
+   441→   441→    this.bg.update(dt)               // living storm: rain, gusts, fog, lightning
+   442→   442→    this.updateCamera(dt)
+   443→   443→  }
+   444→   444→
+   445→   445→  private updateCamera(dt: number): void {
+   446→   446→    if (this.phase === 'playing' || this.phase === 'gameover') {
+   447→   447→      const p = this.player
+   448→   448→      let tx = p.x
+   449→   449→      let ty = p.y
+   450→   450→      let vx = p.vx
+   451→   451→      let vy = p.vy
+   452→   452→      // during execution / ult, focus the action
+   453→   453→      if (this.exec) {
+   454→   454→        tx = (p.x + this.exec.enemy.x) / 2
+   455→   455→        ty = (p.y + this.exec.enemy.y) / 2 - 30
+   456→   456→        vx = 0
+   457→   457→        vy = 0
+   458→   458→      }
+   459→   459→      this.cam.focus(tx, ty, vx, vy)
+   460→   460→      // dynamic zoom: pull back when many enemies, punch in during cinematics
+   461→   461→      let zoom = 1.04
+   462→   462→      const n = this.enemies.length
+   463→   463→      if (n > 10) zoom = 0.94
+   464→   464→      if (n > 18) zoom = 0.88
+   465→   465→      if (this.exec || this.ult) zoom = 1.3
+   466→   466→      this.cam.setZoom(zoom)
+   467→   467→    }
+   468→   468→    this.cam.update(dt)
+   469→   469→  }
+   470→   470→
+   471→   471→  private handleMetaInput(): void {
+   472→   472→    // pause
+   473→   473→    if (this.input.pressed('pause')) {
+   474→   474→      this.pause()
+   475→   475→      return
+   476→   476→    }
+   477→   477→    // sword switching
+   478→   478→    const swordIds: SwordId[] = ['katana', 'inferno', 'thunder', 'void', 'gravity', 'phantom']
+   479→   479→    const swordActions = ['sword1', 'sword2', 'sword3', 'sword4', 'sword5', 'sword6'] as const
+   480→   480→    for (let i = 0; i < 6; i++) {
+   481→   481→      if (this.input.pressed(swordActions[i])) {
+   482→   482→        this.trySwitchSword(swordIds[i])
+   483→   483→      }
+   484→   484→    }
+   485→   485→    if (this.input.pressed('cycleSword')) {
+   486→   486→      const idx = SWORD_ORDER.indexOf(this.player.sword.id)
+   487→   487→      for (let i = 1; i <= 6; i++) {
+   488→   488→        const next = SWORD_ORDER[(idx + i) % 6]
+   489→   489→        if (this.unlocked.includes(next)) {
+   490→   490→          this.trySwitchSword(next)
+   491→   491→          break
+   492→   492→        }
+   493→   493→      }
+   494→   494→    }
+   495→   495→    // ultimate
+   496→   496→    if (this.input.pressed('ult') && this.player.meter >= 100 && !this.ult && !this.exec) {
+   497→   497→      this.startUlt()
+   498→   498→    }
+   499→   499→    // execution
+   500→   500→    if (this.input.pressed('execute') && !this.exec && !this.ult) {
+   501→   501→      const target = this.findExecuteTarget()
+   502→   502→      if (target) this.startExecution(target)
+   503→   503→    }
+   504→   504→  }
+   505→   505→
+   506→   506→  trySwitchSword(id: SwordId): void {
+   507→   507→    if (!this.unlocked.includes(id)) return
+   508→   508→    if (this.player.sword.id === id) return
+   509→   509→    if (this.player.state === 'dead' || this.player.state === 'scripted') return
+   510→   510→    const colors = SWORDS[id].colors
+   511→   511→    this.player.setSword(id)
+   512→   512→    this.audio.play('swordSwitch')
+   513→   513→    this.fx.dissolve(this.player.x, this.player.y - 40, colors.core, colors.glow)
+   514→   514→    this.fx.burst(this.player.x, this.player.y - 50, 12, colors.glow, 260, 0.5, 'spark')
+   515→   515→    this.fx.text(this.player.x, this.player.y - 90, SWORDS[id].name, colors.accent, 13)
+   516→   516→  }
+   517→   517→
+   518→   518→  /* ------------------------------------------------------------------ */
+   519→   519→  /* waves                                                                */
+   520→   520→  /* ------------------------------------------------------------------ */
+   521→   521→
+   522→   522→  private spawnEnemy(kind: EnemyKind, x: number, waveScale: number): void {
+   523→   523→    if (this.enemies.length > 42) return
+   524→   524→    this.enemies.push(new Enemy(kind, x, waveScale))
+   525→   525→    // spawn fx: sky drop marker
+   526→   526→    this.fx.burst(x, -420, 6, '#8fb4c8', 120, 0.6, 'dot')
+   527→   527→    if (kind === 'boss') {
+   528→   528→      this.emit({ type: 'bossSpawn' })
+   529→   529→    }
+   530→   530→  }
+   531→   531→
+   532→   532→  private onWaveStart(wave: number, boss: boolean): void {
+   533→   533→    this.stats.wave = wave
+   534→   534→    this.cam.addTrauma(0.2)
+   535→   535→    if (boss) {
+   536→   536→      this.banner = { title: 'WARNING', sub: 'GEMINI MK-II DEPLOYED', t: 0, dur: 2.6, color: '#ff2a4a' }
+   537→   537→      this.audio.play('bossAlert', { volume: 0.8 })
+   538→   538→      this.fx.screenFlash('#ff2a4a', 0.22, 2.5)
+   539→   539→    } else {
+   540→   540→      this.banner = { title: `WAVE ${wave}`, sub: 'HOSTILES INBOUND', t: 0, dur: 2.2, color: '#ffae2e' }
+   541→   541→      this.audio.play('wave', { volume: 0.6 })
+   542→   542→    }
+   543→   543→    this.audio.setMusicIntensity(clamp(0.45 + wave * 0.04, 0.45, 1))
+   544→   544→    this.emit({ type: 'wave', wave, boss })
+   545→   545→  }
+   546→   546→
+   547→   547→  private onWaveClear(wave: number): void {
+   548→   548→    const bonus = 100 * wave
+   549→   549→    this.stats.score += bonus
+   550→   550→    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 18)
+   551→   551→    this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 25)
+   552→   552→    this.banner = { title: 'WAVE CLEAR', sub: `+${fmt(bonus)} BONUS — SYSTEMS RESTORED`, t: 0, dur: 2.2, color: '#46ffb4' }
+   553→   553→    this.audio.play('heal')
+   554→   554→    this.fx.burst(this.player.x, this.player.y - 50, 10, '#46ffb4', 200, 0.8, 'ember')
+   555→   555→  }
+   556→   556→
+   557→   557→  /* ------------------------------------------------------------------ */
+   558→   558→  /* combat resolution (WorldRef)                                         */
+   559→   559→  /* ------------------------------------------------------------------ */
+   560→   560→
+   561→   561→  private worldRef: WorldRef = {
+   562→   562→    fx: this.fx,
+   563→   563→    audio: this.audio,
+   564→   564→    cam: this.cam,
+   565→   565→    input: this.input,
+   566→   566→    enemies: this.enemies,
+   567→   567→    projectiles: this.projectiles,
+   568→   568→    time: 0,
+   569→   569→    timeScale: 1,
+   570→   570→    arenaMinX: ARENA_MIN,
+   571→   571→    arenaMaxX: ARENA_MAX,
+   572→   572→    quality: 'high',
+   573→   573→    gore: 'energy',
+   574→   574→    hitEnemy: (id, blade, atk) => this.hitEnemy(id, blade, atk),
+   575→   575→    enemyStrikePlayer: (dmg, dir, heavy, sourceX) => this.enemyStrikePlayer(dmg, dir, heavy, sourceX),
+   576→   576→    spawnProjectile: (p) => this.projectiles.spawn(p),
+   577→   577→    addHitstop: (t, zoom) => this.addHitstop(t, zoom),
+   578→   578→    addSlowmo: (scale, t) => this.addSlowmo(scale, t),
+   579→   579→    screenFlash: (color, alpha, t) => this.fx.screenFlash(color, alpha, 4),
+   580→   580→    onEnemyKilled: (e) => this.onEnemyKilled(e),
+   581→   581→  }
+   582→   582→
+   583→   583→  private hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: AttackRuntimeInfo): void {
+   584→   584→    const e = this.enemies.find((en) => en.id === enemyId)
+   585→   585→    if (!e || e.dead) return
+   586→   586→    const sword = this.player.sword
+   587→   587→    const dir = Math.sign(blade.tx - blade.bx) || this.player.face
+   588→   588→    const hx = (blade.bx + blade.tx) / 2
+   589→   589→    const hy = (blade.by + blade.ty) / 2
+   590→   590→    const ex = e.x
+   591→   591→    // impact FX at the blade's actual contact height, clamped to the visual
+   592→   592→    // body (head-top ≈ 88u … feet ≈ 10u) — sparks appear where the edge
+   593→   593→    // crossed the silhouette, not at a fixed belly point
+   594→   594→    const ey = clamp(hy, e.y - 86 * e.scale, e.y - 10 * e.scale)
+   595→   595→
+   596→   596→    // elite parry: occasionally deflects light strikes
+   597→   597→    if (e.kind === 'elite' && !atk.heavy && Math.random() < 0.16 && e.state !== 'stun' && e.state !== 'launched') {
+   598→   598→      this.audio.play('clang')
+   599→   599→      this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), true, '#ffffff', '#ff5c7a')
+   600→   600→      this.fx.sparks(ex, ey, -Math.PI / 2, 1.4, 12, '#ffffff', 420, 0.4)
+   601→   601→      this.addHitstop(0.05)
+   602→   602→      this.cam.addTrauma(0.15)
+   603→   603→      this.fx.text(ex, ey - 50, 'PARRY!', '#ff5c7a', 12)
+   604→   604→      return
+   605→   605→    }
+   606→   606→
+   607→   607→    const res = e.takeHit(atk, dir, this.player.x)
+   608→   608→
+   609→   609→    // combo & score
+   610→   610→    this.combo.onHit()
+   611→   611→    this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo.hits)
+   612→   612→    if (this.combo.rankUpT > 0.6) {
+   613→   613→      this.audio.play('rankup', { pitch: 1 + this.combo.hits * 0.002 })
+   614→   614→      this.emit({ type: 'rank', rank: this.combo.lastRank })
+   615→   615→    }
+   616→   616→    this.stats.score += Math.round(atk.dmg * this.combo.mult * 0.8)
+   617→   617→
+   618→   618→    switch (res) {
+   619→   619→      case 'killed': {
+   620→   620→        this.onEnemyKilled(e)
+   621→   621→        break
+   622→   622→      }
+   623→   623→      case 'blocked': {
+   624→   624→        this.audio.play('clang', { pitch: 0.9 })
+   625→   625→        this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), false, '#ffffff', '#46ffb4')
+   626→   626→        this.fx.text(ex, ey - 46, 'BLOCK', '#46ffb4', 11)
+   627→   627→        this.addHitstop(0.03)
+   628→   628→        this.cam.addTrauma(0.06)
+   629→   629→        break
+   630→   630→      }
+   631→   631→      case 'armored': {
+   632→   632→        this.audio.play('clang', { pitch: 0.6, volume: 0.8 })
+   633→   633→        this.fx.sparks(ex, ey, Math.atan2(ey - hy, ex - hx), 0.9, 8, '#ffae2e', 320, 0.35)
+   634→   634→        this.fx.text(ex, ey - 46, 'ARMOR', '#ffae2e', 11)
+   635→   635→        this.addHitstop(0.02)
+   636→   636→        break
+   637→   637→      }
+   638→   638→      default: {
+   639→   639→        // solid hit
+   640→   640→        this.audio.play(atk.heavy ? 'hitHeavy' : 'hit', {
+   641→   641→          volume: clamp(0.55 + atk.dmg * 0.01, 0.55, 1),
+   642→   642→          pitch: rand(0.94, 1.08),
+   643→   643→          intensity: clamp01(atk.dmg / 30),
+   644→   644→        })
+   645→   645→        this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), atk.heavy, sword.colors.glow, sword.colors.accent)
+   646→   646→        const dmgShown = Math.round(atk.dmg * (e.vulnerableT > 0 ? 2 : 1) * (e.kind === 'heavy' || e.kind === 'boss' ? 0.72 : 1))
+   647→   647→        this.fx.text(ex, ey - 46, `${dmgShown}`, atk.heavy ? sword.colors.accent : '#f4f9fc', atk.heavy ? 17 : 13)
+   648→   648→        // crash-zoom punch on heavies (Z-axis push-pull) + impact frames on
+   649→   649→        // the big connects — the anime kill-frame language
+   650→   650→        this.addHitstop(atk.hitstop, atk.heavy ? 0.09 : 0)
+   651→   651→        if (atk.heavy && atk.dmg >= 15) {
+   652→   652→          this.fx.impactFrame(ex, ey, sword.colors.glow)
+   653→   653→        } else if (atk.heavy) {
+   654→   654→          this.fx.chroma(0.45)
+   655→   655→        }
+   656→   656→        this.cam.addTrauma(atk.shake)
+   657→   657→        if (e.vulnerableT > 0) this.fx.text(ex, ey - 70, 'WEAK POINT', '#ffe14d', 11)
+   658→   658→        break
+   659→   659→      }
+   660→   660→    }
+   661→   661→  }
+   662→   662→
+   663→   663→  private onEnemyKilled(e: Enemy): void {
+   664→   664→    const sword = this.player.sword
+   665→   665→    const gore = this.settings.gore
+   666→   666→    this.stats.kills++
+   667→   667→    this.stats.score += Math.round(e.cfg.score * this.combo.mult)
+   668→   668→    e.dead = true
+   669→   669→
+   670→   670→    // death spectacle
+   671→   671→    if (e.kind === 'boss') {
+   672→   672→      this.bossDeath(e)
+   673→   673→      return
+   674→   674→    }
+   675→   675→    const heavyDeath = this.combo.hits % 10 === 0 || e.kind === 'elite' || e.kind === 'heavy'
+   676→   676→    if (heavyDeath) {
+   677→   677→      this.fx.dismember(e.x, e.y, Math.sign(e.x - this.player.x) || 1, e.cfg.style.body, gore === 'blood' ? '#c31432' : sword.colors.glow)
+   678→   678→      this.audio.play('deathHeavy', { volume: 0.8, pitch: e.kind === 'heavy' ? 0.7 : 1 })
+   679→   679→      this.fx.screenFlash(sword.colors.trail, 0.1, 4)
+   680→   680→      this.addHitstop(0.08, 0.08)
+   681→   681→      this.cam.addTrauma(0.3)
+   682→   682→    } else {
+   683→   683→      this.fx.dissolve(e.x, e.y - 30, e.cfg.style.body, gore === 'blood' ? '#c31432' : e.cfg.style.glow)
+   684→   684→      this.audio.play('death', { volume: 0.6, pitch: rand(0.9, 1.15) })
+   685→   685→      this.cam.addTrauma(0.12)
+   686→   686→    }
+   687→   687→    // zandatsu-style restore
+   688→   688→    const heal = 3
+   689→   689→    this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal)
+   690→   690→    this.player.meter = Math.min(100, this.player.meter + 4)
+   691→   691→    this.fx.text(e.x, e.y - 80, `+${heal}`, '#46ffb4', 11)
+   692→   692→  }
+   693→   693→
+   694→   694→  private bossDeath(e: Enemy): void {
+   695→   695→    this.audio.play('explosion', { volume: 1 })
+   696→   696→    this.audio.play('deathHeavy', { volume: 1, pitch: 0.6 })
+   697→   697→    this.addSlowmo(0.2, 1.6)
+   698→   698→    this.addHitstop(0.16, 0.15)
+   699→   699→    this.cam.addTrauma(1)
+   700→   700→    this.fx.impactFrame(e.x, e.y - 60, '#ffae2e')
+   701→   701→    this.fx.screenFlash('#ffffff', 0.5, 1.6)
+   702→   702→    for (let i = 0; i < 6; i++) {
+   703→   703→      const ex = e.x + rand(-90, 90)
+   704→   704→      const ey = e.y - rand(20, 160)
+   705→   705→      this.fx.burst(ex, ey, 16, '#ffae2e', 380, 0.8, 'spark')
+   706→   706→      this.fx.shockwave(ex, ey, 90, '#ffae2e', 0.5, 6)
+   707→   707→    }
+   708→   708→    this.fx.dismember(e.x, e.y, 1, e.cfg.style.body, '#ff2a4a')
+   709→   709→    this.fx.groundCrack(e.x, 0, 180)
+   710→   710→    this.stats.score += 2500
+   711→   711→    this.banner = { title: 'TARGET DESTROYED', sub: 'GEMINI MK-II ELIMINATED', t: 0, dur: 2.8, color: '#ffae2e' }
+   712→   712→  }
+   713→   713→
+   714→   714→  private enemyStrikePlayer(dmg: number, dir: number, heavy: boolean, sourceX: number): boolean {
+   715→   715→    if (this.phase !== 'playing') return false
+   716→   716→    if (this.player.parryWindowOpen) {
+   717→   717→      this.player.onParrySuccess(this.worldRef, sourceX, true)
+   718→   718→      return true
+   719→   719→    }
+   720→   720→    this.player.takeDamage(this.worldRef, dmg, dir, heavy)
+   721→   721→    return false
+   722→   722→  }
+   723→   723→
+   724→   724→  addHitstop(t: number, zoomPulse = 0): void {
+   725→   725→    this.hitstopT = Math.max(this.hitstopT, t)
+   726→   726→    if (zoomPulse > 0) this.cam.zoomPulse(zoomPulse)
+   727→   727→  }
+   728→   728→
+   729→   729→  addSlowmo(scale: number, t: number): void {
+   730→   730→    this.slowmoScale = scale
+   731→   731→    this.slowmoT = Math.max(this.slowmoT, t)
+   732→   732→    this.timeScale = scale
+   733→   733→  }
+   734→   734→
+   735→   735→  /* ------------------------------------------------------------------ */
+   736→   736→  /* execution finisher                                                   */
+   737→   737→  /* ------------------------------------------------------------------ */
+   738→   738→
+   739→   739→  private findExecuteTarget(): Enemy | null {
+   740→   740→    for (const e of this.enemies) {
+   741→   741→      if (e.dead || e.spawning || e.kind === 'boss') continue
+   742→   742→      if (e.hp > e.maxHp * 0.5) continue
+   743→   743→      if (e.state !== 'stun' && e.state !== 'launched' && e.state !== 'down') continue
+   744→   744→      if (Math.abs(e.x - this.player.x) < 170 && Math.abs(e.y - this.player.y) < 190) return e
+   745→   745→    }
+   746→   746→    return null
+   747→   747→  }
+   748→   748→
+   749→   749→  private startExecution(target: Enemy): void {
+   750→   750→    this.exec = { enemy: target, t: 0, step: 0 }
+   751→   751→    this.player.enterScripted()
+   752→   752→    this.player.face = (target.x > this.player.x ? 1 : -1) as 1 | -1
+   753→   753→    this.addSlowmo(0.16, 1.15)
+   754→   754→    this.audio.play('execute', { volume: 0.9 })
+   755→   755→    this.fx.screenFlash('#ffffff', 0.3, 2)
+   756→   756→    this.cam.zoomPulse(0.3)
+   757→   757→  }
+   758→   758→
+   759→   759→  private updateCinematics(dt: number): void {
+   760→   760→    if (this.banner) {
+   761→   761→      this.banner.t += dt
+   762→   762→      if (this.banner.t >= this.banner.dur) this.banner = null
+   763→   763→    }
+   764→   764→    if (this.exec) {
+   765→   765→      const ex = this.exec
+   766→   766→      ex.t += dt
+   767→   767→      const e = ex.enemy
+   768→   768→      const sword = this.player.sword
+   769→   769→      const midX = (this.player.x + e.x) / 2
+   770→   770→      const midY = (this.player.y + e.y) / 2 - 40
+   771→   771→      if (ex.step === 0 && ex.t >= 0.16) {
+   772→   772→        ex.step = 1
+   773→   773→        this.execSlash(midX, midY, sword.colors.trail, 0)
+   774→   774→        this.player.playClip(ATTACKS.l1.clip, 1.7)
+   775→   775→      } else if (ex.step === 1 && ex.t >= 0.38) {
+   776→   776→        ex.step = 2
+   777→   777→        this.execSlash(midX, midY, sword.colors.trail, 1)
+   778→   778→        this.player.playClip(ATTACKS.l2.clip, 1.7)
+   779→   779→      } else if (ex.step === 2 && ex.t >= 0.6) {
+   780→   780→        ex.step = 3
+   781→   781→        this.execSlash(midX, midY, sword.colors.accent, 2)
+   782→   782→        this.player.playClip(ATTACKS.l5.clip, 1.4)
+   783→   783→      } else if (ex.step === 3 && ex.t >= 0.82) {
+   784→   784→        ex.step = 4
+   785→   785→        // final blow
+   786→   786→        this.audio.play('explosion', { volume: 0.8 })
+   787→   787→        this.audio.play('deathHeavy', { volume: 1 })
+   788→   788→        this.fx.impactFrame(e.x, e.y - 40, sword.colors.accent) // the kill frame
+   789→   789→        this.fx.screenFlash('#ffffff', 0.4, 3)
+   790→   790→        this.fx.dismember(e.x, e.y, this.player.face, e.cfg.style.body, this.settings.gore === 'blood' ? '#c31432' : sword.colors.glow)
+   791→   791→        this.fx.shockwave(e.x, e.y - 30, 140, sword.colors.glow, 0.5, 8)
+   792→   792→        this.cam.addTrauma(0.6)
+   793→   793→        this.addHitstop(0.12, 0.12)
+   794→   794→        this.onEnemyKilled(e)
+   795→   795→        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 22)
+   796→   796→        this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 40)
+   797→   797→        this.player.meter = Math.min(100, this.player.meter + 18)
+   798→   798→        this.stats.score += Math.round(300 * this.combo.mult)
+   799→   799→        this.fx.text(e.x, e.y - 96, 'EXECUTED', '#ff2a4a', 16)
+   800→   800→        this.fx.text(e.x, e.y - 72, '+22 HP', '#46ffb4', 12)
+   801→   801→      } else if (ex.step === 4 && ex.t >= 1.15) {
+   802→   802→        this.player.exitScripted()
+   803→   803→        this.exec = null
+   804→   804→        this.timeScale = 1
+   805→   805→        this.slowmoT = 0
+   806→   806→      }
+   807→   807→    }
+   808→   808→    if (this.ult) {
+   809→   809→      const u = this.ult
+   810→   810→      u.t += dt
+   811→   811→      const sword = this.player.sword
+   812→   812→      if (u.t < 1.6 && u.t > u.step * 0.095) {
+   813→   813→        u.step++
+   814→   814→        // strike a random living enemy with sword-specific spectacle
+   815→   815→        const alive = this.enemies.filter((e) => !e.dead && !e.spawning)
+   816→   816→        if (alive.length > 0) {
+   817→   817→          const e = alive[(Math.random() * alive.length) | 0]
+   818→   818→          const ex = e.x
+   819→   819→          const ey = e.y - 48 * e.scale // torso height — ult slashes cross the chest
+   820→   820→          const ang = rand(Math.PI * 2)
+   821→   821→          switch (sword.id) {
+   822→   822→            case 'inferno':
+   823→   823→              this.fx.burst(ex, ey, 10, sword.colors.trail, 300, 0.6, 'ember')
+   824→   824→              break
+   825→   825→            case 'thunder':
+   826→   826→              this.fx.lightningArc(ex + rand(-80, 80), ey - 120, ex, ey, sword.colors.trail)
+   827→   827→              break
+   828→   828→            case 'void':
+   829→   829→              this.fx.burst(ex, ey, 8, sword.colors.core, 200, 0.5, 'shard')
+   830→   830→              break
+   831→   831→            case 'gravity':
+   832→   832→              this.fx.shockwave(ex, ey, 90, sword.colors.glow, 0.35, 5)
+   833→   833→              break
+   834→   834→            case 'phantom':
+   835→   835→              this.fx.afterimage(this.player.pose, ex - 60, this.player.hipY, 1, sword.colors.trail, 0.4, 1.32)
+   836→   836→              break
+   837→   837→            default:
+   838→   838→              break
+   839→   839→          }
+   840→   840→          this.fx.slashArc(ex, ey, ang, 2.6, 80, sword.colors.trail, sword.colors.trail2, 1.4)
+   841→   841→          this.fx.impact(ex, ey, ang, true, sword.colors.glow, sword.colors.accent)
+   842→   842→          this.hitEnemy(e.id, { bx: ex - 20, by: ey, tx: ex + 20, ty: ey }, {
+   843→   843→            id: 'ult', dmg: 13 * sword.stats.dmg, heavy: true, stagger: 0.4, kb: 140, kbY: 0,
+   844→   844→            launch: -240, juggle: -300, hitstop: 0.02, shake: 0.1, aoe: 0, breakGuard: true, kind: 'ability',
+   845→   845→          })
+   846→   846→          this.audio.play('swing', { pitch: rand(1.15, 1.4), volume: 0.7 })
+   847→   847→        }
+   848→   848→      }
+   849→   849→      if (u.step >= 16 && u.t >= 1.65 && u.step < 99) {
+   850→   850→        u.step = 99
+   851→   851→        // final detonation
+   852→   852→        this.audio.play('explosion', { volume: 1 })
+   853→   853→        this.fx.screenFlash('#ffffff', 0.55, 2)
+   854→   854→        this.fx.shockwave(this.player.x, 0, 900, sword.colors.glow, 0.8, 14)
+   855→   855→        this.cam.addTrauma(0.9)
+   856→   856→        this.addHitstop(0.14, 0.14)
+   857→   857→        for (const e of this.enemies) {
+   858→   858→          if (e.dead || e.spawning) continue
+   859→   859→          this.hitEnemy(e.id, { bx: e.x - 20, by: e.y - 30, tx: e.x + 20, ty: e.y - 30 }, {
+   860→   860→            id: 'ult', dmg: 30 * sword.stats.dmg, heavy: true, stagger: 0.6, kb: 300, kbY: 0,
+   861→   861→            launch: -380, juggle: -400, hitstop: 0.03, shake: 0.2, aoe: 0, breakGuard: true, kind: 'ability',
+   862→   862→          })
+   863→   863→        }
+   864→   864→        this.banner = { title: sword.ult.name, sub: 'OVERDRIVE COMPLETE', t: 0, dur: 1.8, color: sword.colors.accent }
+   865→   865→      }
+   866→   866→      if (u.t >= 2.1) {
+   867→   867→        this.player.exitScripted()
+   868→   868→        this.ult = null
+   869→   869→        this.timeScale = 1
+   870→   870→        this.slowmoT = 0
+   871→   871→      }
+   872→   872→    }
+   873→   873→  }
+   874→   874→
+   875→   875→  private execSlash(x: number, y: number, color: string, index: number): void {
+   876→   876→    const ang = -0.6 + index * 0.7
+   877→   877→    this.fx.slashArc(x, y, ang, 2.8, 110, color, '#ffffff', 1.6)
+   878→   878→    this.fx.impact(x, y, ang, true, color, '#ffffff')
+   879→   879→    this.audio.play('swingHeavy', { pitch: 1.2 + index * 0.15, volume: 0.9 })
+   880→   880→    this.cam.addTrauma(0.25)
+   881→   881→    this.addHitstop(0.05)
+   882→   882→  }
+   883→   883→
+   884→   884→  private startUlt(): void {
+   885→   885→    this.player.meter = 0
+   886→   886→    this.ult = { t: 0, step: 0 }
+   887→   887→    this.player.enterScripted()
+   888→   888→    this.addSlowmo(0.35, 2)
+   889→   889→    this.audio.play('energyFull', { volume: 1 })
+   890→   890→    this.audio.play('execute', { volume: 0.8, pitch: 0.9 })
+   891→   891→    this.fx.screenFlash(this.player.sword.colors.trail, 0.35, 2)
+   892→   892→    this.cam.zoomPulse(0.25)
+   893→   893→    this.banner = { title: this.player.sword.ult.name, sub: 'BLADE MODE ENGAGED', t: 0, dur: 1.6, color: this.player.sword.colors.accent }
+   894→   894→  }
+   895→   895→
+   896→   896→  /* ------------------------------------------------------------------ */
+   897→   897→  /* HUD state assembly                                                   */
+   898→   898→  /* ------------------------------------------------------------------ */
+   899→   899→
+   900→   900→  private buildHudState(): HudState {
+   901→   901→    const p = this.player
+   902→   902→    const boss = this.enemies.find((e) => e.kind === 'boss' && !e.dead)
+   903→   903→    let execPrompt: { x: number; y: number } | null = null
+   904→   904→    if (this.phase === 'playing' && !this.exec && !this.ult) {
+   905→   905→      const target = this.findExecuteTarget()
+   906→   906→      if (target) {
+   907→   907→        const zoom = this.cam.zoom
+   908→   908→        execPrompt = {
+   909→   909→          x: (target.x - this.cam.x - this.cam.offX) * zoom + this.cssW / 2,
+   910→   910→          y: (target.y - 120 - this.cam.y - this.cam.offY) * zoom + this.cssH / 2,
+   911→   911→        }
+   912→   912→      }
+   913→   913→    }
+   914→   914→    return {
+   915→   915→      hp: p.hp,
+   916→   916→      maxHp: p.maxHp,
+   917→   917→      energy: p.energy,
+   918→   918→      maxEnergy: p.maxEnergy,
+   919→   919→      meter: p.meter,
+   920→   920→      swordName: p.sword.name,
+   921→   921→      swordColor: p.sword.colors.accent,
+   922→   922→      abilityName: p.sword.ability.name,
+   923→   923→      abilityCost: p.sword.ability.cost,
+   924→   924→      combo: {
+   925→   925→        hits: this.combo.hits,
+   926→   926→        mult: this.combo.mult,
+   927→   927→        rank: this.combo.lastRank,
+   928→   928→        timer: this.combo.timer,
+   929→   929→        timerMax: this.combo.timerMax,
+   930→   930→        rankUpT: this.combo.rankUpT,
+   931→   931→        lastHitT: 0,
+   932→   932→      },
+   933→   933→      wave: Math.max(1, this.waves.wave),
+   934→   934→      enemiesLeft: this.enemies.filter((e) => !e.dead).length + this.waves.enemiesRemaining,
+   935→   935→      kills: this.stats.kills,
+   936→   936→      score: this.stats.score,
+   937→   937→      boss: boss ? { hp: boss.hp, maxHp: boss.maxHp, name: 'GEMINI MK-II' } : null,
+   938→   938→      banner: this.banner,
+   939→   939→      executePrompt: execPrompt,
+   940→   940→      ultReady: p.meter >= 100,
+   941→   941→      abilityReady: p.energy >= p.sword.ability.cost,
+   942→   942→      fps: this.fps,
+   943→   943→      showFps: this.settings.showFps,
+   944→   944→      runTime: this.runTime,
+   945→   945→      attract: this.phase === 'attract',
+   946→   946→    }
+   947→   947→  }
+   948→   948→
+   949→   949→  get isRunning(): boolean {
+   950→   950→    return this.phase === 'playing'
+   951→   951→  }
+   952→   952→
+   953→   953→  /** debug/testing helper */
+   954→   954→  debugSpawn(kind: EnemyKind, x: number): void {
+   955→   955→    this.enemies.push(new Enemy(kind, x, 1))
+   956→   956→  }
+   957→   957→}
+   958→   958→

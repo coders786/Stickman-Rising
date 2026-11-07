@@ -42,10 +42,18 @@ function mirrorLegs(src: PoseInput): PoseInput {
 /** STRIDE MIRROR for bipedal cycles: legs swap, the SWORD ARM (right)
  * keeps the exact same carry across both strides (a held weapon does not
  * teleport between arms / change carry mid-cycle), and the off-arm
- * negates its swing so the contralateral counter-phase survives. */
+ * negates its swing so the contralateral counter-phase survives.
+ * DEPTH channels mirror with the stride: pelvis/chest yaw negate (the
+ * opposite hip now drives), the off-arm's depth swing negates — while the
+ * sword-side channels (armRz, bladeYaw) carry unchanged, like the arm. */
 function mirrorStride(src: PoseInput): PoseInput {
   const out = mirrorLegs(src)
   if (src.shL !== undefined) out.shL = -src.shL
+  if (src.pelvisYaw !== undefined) out.pelvisYaw = -src.pelvisYaw
+  if (src.chestYaw !== undefined) out.chestYaw = -src.chestYaw
+  if (src.armLz !== undefined) out.armLz = -src.armLz
+  if (src.armRz !== undefined) out.armRz = src.armRz
+  if (src.bladeYaw !== undefined) out.bladeYaw = src.bladeYaw
   return out
 }
 
@@ -148,28 +156,34 @@ export const WALK_CLIP: Clip = makeClip('walk', [
  * stride mirror negates it); the sword trails in a deep down-back diagonal
  * (wrR ≡ −0.25 mod 2π → blade ≈ 144°: kissaki sweeping well behind the
  * heel, clearing the ground by ~15 local units even with the wrist-lag
- * sway — up-wound per the clips.ts winding convention). */
+ * sway — up-wound per the clips.ts winding convention).
+ * The pelvis SURGES forward through the cycle (rootX 2→7): the hips ride
+ * over the stance foot — the leg geometry is authored as diagonal struts,
+ * and the 3D channels twist the gait (pelvisYaw ±0.2, chest counter). */
 const RUN_Q: PoseInput[] = [
   { // CONTACT — lead heel strikes FAR forward, trail toe still down
-    rootX: 0, rootY: 0.6, rootRot: 0.34, spine: 0.05, head: -0.19,
+    rootX: 2, rootY: 0.6, rootRot: 0.34, spine: 0.05, head: -0.19,
     hipR: 0.88, kneeR: -0.08, footR: 0.24,
     hipL: -0.8, kneeL: -0.62, footL: -0.06,
     shR: 0.3, elR: -1.0, wrR: 6.03,
     shL: 0.7, elL: -1.05, wrL: -0.24,
+    pelvisYaw: 0.2, chestYaw: -0.14, armLz: 0.28,
   },
   { // LOADING — weight absorbs over the bending lead leg, big stride split
-    rootX: 0, rootY: 2.2, rootRot: 0.37, spine: 0.075, head: -0.26,
+    rootX: 4.5, rootY: 2.2, rootRot: 0.37, spine: 0.075, head: -0.26,
     hipR: 0.5, kneeR: -0.72, footR: 0.06,
     hipL: -0.95, kneeL: -0.3, footL: 0.02,
     shR: 0.55, elR: -1.05, wrR: 6.0,
     shL: 0.32, elL: -1.0, wrL: -0.2,
+    pelvisYaw: 0.06, chestYaw: -0.04, armLz: 0.1,
   },
   { // PUSH-OFF — lead leg drives back hard, trail knee punches through high
-    rootX: 0, rootY: 1.0, rootRot: 0.34, spine: 0.09, head: -0.3,
+    rootX: 7, rootY: 1.0, rootRot: 0.34, spine: 0.09, head: -0.3,
     hipR: -0.3, kneeR: -0.38, footR: -0.1,
     hipL: 0.52, kneeL: -1.32, footL: 0.2,
     shR: 0.72, elR: -0.95, wrR: 6.06,
     shL: 0.08, elL: -0.95, wrL: -0.16,
+    pelvisYaw: -0.18, chestYaw: 0.12, armLz: -0.26,
   },
 ]
 
@@ -192,43 +206,59 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
 /* ------------------------------- SPRINT ------------------------------ */
 
 /* Condition C — maximum-effort sprint. NOT a faster run: a different
- * mechanical system entirely (acceptance-review rework):
- *  · torso pitch ~30° (rootRot ≈ 0.52) — visibly deeper than the run's 0.3
- *  · COG swings 1.8 → 4.8 local (lowest at load absorb) — dropped hips
- *  · HEEL-TO-BUTT recovery: the swing shin folds past −1.6 rad under a
+ * mechanical system entirely. THE ICONIC FORWARD-DRIVE POSTURE is built
+ * from the ground up — every joint participates:
+ *  · PELVIS SURGES FORWARD (rootX 6→13 local): the hips ride over the
+ *    toes ahead of the planted feet; the legs solve as DIAGONAL struts
+ *    (stance leg compressed under the COG, trail leg fully extended) —
+ *    never vertical hangers under a pitched chest
+ *  · torso pitch ~32-37° (rootRot 0.56-0.64) + lumbar continuation
+ *  · COG swings 3.4 → 5.4 local (lowest at load absorb) — dropped hips
+ *  · HEEL-TO-BUTT recovery: the swing shin folds past −1.9 rad under a
  *    back-swing thigh — the heel physically approaches the glutes
- *  · KNEE PUNCH-THROUGH: hip swings to 1.3 rad (74°, thigh nearly
+ *  · KNEE PUNCH-THROUGH: hip swings to 1.25+ rad (thigh nearly
  *    horizontal) before the next overstriding toe-up contact
- *  · big bent-elbow arm drive, katana tucked back (sum ≈ 0.4 — the MGR
- *    Raiden sprint carry). Cadence ≈ 5.5 steps/s. */
+ *  · big bent-elbow arm drive with DEPTH: the off-arm punches forward
+ *    through +Z (armLz 0.42 — toward the camera), the sword arm trails
+ *    back through −Z — the arms scissor THROUGH depth, not just the plane
+ *  · katana tucked hard back (sum ≈ 0.4, bladeYaw −0.28: the steel
+ *    swings behind the torso plane — the MGR Raiden sprint carry)
+ *  · 3D gait twist: pelvisYaw ±0.26 with chest counter — the hips drive
+ *    the stride, the shoulders counter-rotate against them
+ * Cadence ≈ 5.5 steps/s. */
 const SPRINT_Q: PoseInput[] = [
   { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed)
-    rootRot: 0.52, rootY: 2.6, spine: 0.11, head: -0.5,
-    hipR: 1.18, kneeR: -0.08, footR: 0.34,
+    rootX: 6, rootRot: 0.56, rootY: 3.4, spine: 0.13, head: -0.5,
+    hipR: 1.18, kneeR: -0.3, footR: 0.34,
     hipL: -0.95, kneeL: -0.45, footL: -0.12,
-    shR: -0.42, elR: -0.7, wrR: 2.05,
+    shR: -0.45, elR: -0.55, wrR: 5.85,
     shL: 1.05, elL: -1.15,
+    pelvisYaw: 0.26, chestYaw: -0.18, armLz: 0.42, armRz: -0.3, bladeYaw: -0.26,
   },
   { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
-    rootRot: 0.55, rootY: 4.8, spine: 0.12, head: -0.52,
+    rootX: 9, rootRot: 0.6, rootY: 5.4, spine: 0.14, head: -0.52,
     hipR: 0.22, kneeR: -1.05, footR: 0.06,
-    hipL: -0.85, kneeL: -1.7, footL: 0.3,
-    shR: -0.3, elR: -0.6, wrR: 2.0,
+    hipL: -0.85, kneeL: -1.9, footL: 0.3,
+    shR: -0.35, elR: -0.5, wrR: 5.82,
     shL: 0.7, elL: -1.05,
+    pelvisYaw: 0.08, chestYaw: -0.05, armLz: 0.12, armRz: -0.22, bladeYaw: -0.22,
   },
   { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
-    rootRot: 0.52, rootY: 3.0, spine: 0.11, head: -0.5,
+    rootX: 13, rootRot: 0.58, rootY: 3.8, spine: 0.12, head: -0.5,
     hipR: -0.72, kneeR: -0.4, footR: -0.18,
-    hipL: 1.38, kneeL: -1.15, footL: 0.12,
-    shR: -0.26, elR: -0.55, wrR: 2.04,
+    hipL: 1.25, kneeL: -1.15, footL: 0.12,
+    shR: -0.3, elR: -0.45, wrR: 5.84,
     shL: 0.34, elL: -0.95,
+    pelvisYaw: -0.26, chestYaw: 0.18, armLz: -0.4, armRz: -0.1, bladeYaw: -0.18,
   },
-  { // FLIGHT — right leg recovery-curls; left reaches for the next strike
-    rootRot: 0.48, rootY: 1.8, spine: 0.1, head: -0.46,
-    hipR: -0.35, kneeR: -1.15, footR: -0.06,
-    hipL: 1.05, kneeL: -0.75, footL: 0.32,
-    shR: -0.36, elR: -0.66, wrR: 2.02,
+  { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
+    // sprinter lengthens in the air; a tucked flight reads as a crouch)
+    rootX: 10, rootRot: 0.54, rootY: 0.6, spine: 0.11, head: -0.46,
+    hipR: -0.5, kneeR: -0.75, footR: -0.1,
+    hipL: 1.1, kneeL: -0.5, footL: 0.32,
+    shR: -0.4, elR: -0.5, wrR: 5.83,
     shL: 0.88, elL: -1.1,
+    pelvisYaw: -0.1, chestYaw: 0.07, armLz: -0.15, armRz: -0.26, bladeYaw: -0.24,
   },
 ]
 

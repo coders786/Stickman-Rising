@@ -1,6 +1,5 @@
 /** STICKMAN RISING — sword definitions: six elemental blades + renderer. */
 
-import { SkelGeom, PLAYER_SPEC } from '../anim/skeleton'
 import { clamp, clamp01, rgba } from '../core/utils'
 
 export type SwordId = 'katana' | 'inferno' | 'void' | 'thunder' | 'gravity' | 'phantom'
@@ -153,7 +152,7 @@ export interface DrawSwordOpts {
   charge: number // 0..1 charge glow
   alpha?: number
   swingGlow?: number // extra energy right after a swing
-  /** 2.8D depth (−1..1): + = blade plane rotated TOWARD the camera →
+  /** 3D depth (−1..1): + = blade plane rotated TOWARD the camera →
    * procedural foreshortening (face opens up: wider silhouette, fatter
    * tsuba, huge kissaki flare). Thrusts (z≈0.85) read as spearing the lens. */
   z?: number
@@ -161,19 +160,24 @@ export interface DrawSwordOpts {
   lenScale?: number
 }
 
+/** Draws the weapon from EXPLICIT projected blade metrics (rig3d output):
+ * the grip point, the PROJECTED blade angle (what the eye sees after 3D
+ * yaw + perspective), the projected length, and the tip's normalized depth.
+ * Visual blade == hitbox blade: both consume the same projection. */
 export function drawSword(
   ctx: CanvasRenderingContext2D,
-  g: SkelGeom,
   sword: SwordDef,
   opts: DrawSwordOpts,
+  hx: number, hy: number, // grip (projected, character-local)
+  ang: number, // PROJECTED blade angle (rad)
+  len: number, // PROJECTED blade length (local units, incl. lenScale)
+  z: number, // tip depth −1..1 (+ = toward camera)
 ): void {
   const t = opts.time
   const charge = clamp01(opts.charge)
   const swing = clamp01(opts.swingGlow ?? 0)
-  const z = clamp(opts.z ?? 0, -1, 1) // + = toward camera
-  const hx = g.handR.x
-  const hy = g.handR.y
-  const a = g.bladeAngle
+  z = clamp(z, -1, 1) // + = toward camera
+  const a = ang
   const dx = Math.cos(a)
   const dy = Math.sin(a)
   // edge-side perpendicular: for a forward blade this points DOWN — the ha
@@ -182,8 +186,6 @@ export function drawSword(
   const ey = dx
   // REAL long-katana proportion: blade = PLAYER_SPEC.blade (~50% of body
   // height), tsuka ≈ 30% of the blade, motohaba→kissaki taper with sori.
-  // lenScale = anime hyper-scale during active frames (visual == hitbox).
-  const len = PLAYER_SPEC.blade * sword.stats.range * (opts.lenScale ?? 1)
   const tsuka = len * 0.3
   // 2.8D FORESHORTENING: blade pitched toward the camera presents its FACE
   // — the silhouette fattens with z (up to ×1.85), the fittings swell, the

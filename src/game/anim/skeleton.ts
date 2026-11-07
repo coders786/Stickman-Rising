@@ -241,7 +241,9 @@ export interface StickStyle {
 
 export const PLAYER_STYLE: StickStyle = {
   body: '#04060a',
-  dark: '#131b28', // back-limb depth shade — reads against the pure-black mass
+  dark: '#24334d', // back-limb depth shade — bright enough to READ against
+  // the pure-black mass at gameplay zoom (the old #131b28 vanished — the
+  // far/lead leg “disappeared” into the body blob in sprint contact)
   outline: '#2c3a50',
   glow: '#41f6ff',
   lineW: 5,

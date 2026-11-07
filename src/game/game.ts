@@ -136,6 +136,20 @@ export class Game {
   private ult: UltState | null = null
   private banner: Banner | null = null
 
+  /* ---- PERFORMANCE GOVERNOR (the "hangs when enemies appear" fix) ----
+   * Frame cost must NOT grow when the frame rate falls. Three defenses:
+   *   1. substeps are CAPPED (3 × 1/60) — a slow frame simulates at most
+   *      50ms of world, never 5× full-cost steps (the old death spiral:
+   *      raster slows → more substeps → slower → more substeps → freeze)
+   *   2. visual systems (weather, particles, camera) tick ONCE per frame,
+   *      not per substep — rain never integrates at 450Hz
+   *   3. render resolution (DPR) auto-scales to the measured frame rate */
+  private dprTarget = 1.25
+  private fpsAvg = 60
+  private govT = 0
+  private govCool = 0
+  private autoQuality = true
+
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
   private runTime = 0
   private fps = 60
@@ -219,13 +233,45 @@ export class Game {
     const h = parent?.clientHeight ?? window.innerHeight
     this.cssW = Math.max(320, w)
     this.cssH = Math.max(240, h)
-    this.dpr = Math.min(window.devicePixelRatio || 1, this.settings.quality === 'high' ? 2 : this.settings.quality === 'medium' ? 1.5 : 1)
+    const cap = this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    this.dpr = Math.min(this.dprTarget, cap)
     this.canvas.width = Math.floor(this.cssW * this.dpr)
     this.canvas.height = Math.floor(this.cssH * this.dpr)
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
     this.cam.setViewport(this.cssW, this.cssH)
     this.bg.resize(this.cssW, this.cssH)
+  }
+
+  /** resolution governor: every 0.8s of PLAYING, compare the damped frame
+   * rate against thresholds and step the render DPR down (or back up) with
+   * hysteresis. If DPR 1 still can't hold ~40fps, fall a quality tier
+   * (rain/mote/fog/mist/reflection density all scale with tier). */
+  private govern(dt: number): void {
+    if (!this.autoQuality || this.phase !== 'playing') return
+    this.govT += dt
+    this.govCool = Math.max(0, this.govCool - dt)
+    if (this.govT < 0.8) return
+    this.govT = 0
+    if (this.govCool > 0) return
+    const cap = this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    if (this.fpsAvg < 44 && this.dprTarget > 1) {
+      this.dprTarget = Math.max(1, this.dprTarget - 0.25)
+      this.govCool = 1.6
+      this.resize()
+    } else if (this.fpsAvg < 36 && this.dprTarget <= 1) {
+      // resolution floor reached and still drowning → drop a quality tier
+      const order: GameSettings['quality'][] = ['high', 'medium', 'low']
+      const i = order.indexOf(this.settings.quality)
+      if (i < order.length - 1) {
+        this.applySettings({ ...this.settings, quality: order[i + 1] })
+        this.govCool = 4
+      }
+    } else if (this.fpsAvg > 57 && this.dprTarget < cap) {
+      this.dprTarget = Math.min(cap, this.dprTarget + 0.25)
+      this.govCool = 3
+      this.resize()
+    }
   }
 
   applySettings(s: GameSettings): void {
@@ -342,6 +388,8 @@ export class Game {
     if (dtRaw > 0.05) dtRaw = 0.05
     if (dtRaw <= 0) dtRaw = 0.0001
     this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
+    this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 1.2, dtRaw)
+    this.govern(dtRaw)
 
     const ctx = this.ctx
     if (!ctx) return
@@ -367,13 +415,25 @@ export class Game {
       // --- cinematics run on real time ---
       this.updateCinematics(dtRaw)
 
-      // --- fixed-ish substeps for stable physics ---
+      // --- capped substeps for stable physics (NO death spiral: cost of a
+      // frame is bounded no matter how slow the machine runs) ---
       let remaining = simDt
-      while (remaining > 1e-6) {
-        const stepDt = Math.min(remaining, 1 / 90)
+      let substeps = 0
+      while (remaining > 1e-6 && substeps < 3) {
+        const stepDt = Math.min(remaining, 1 / 60)
         this.step(stepDt)
         remaining -= stepDt
+        substeps++
       }
+      if (remaining > 1e-6) {
+        // very slow frame: consume the backlog as one clamped catch-up tick
+        // so the world keeps roughly real-time without multiplying cost
+        this.step(Math.min(remaining, 0.05))
+      }
+      // --- visual systems tick ONCE per frame (never per substep) ---
+      this.fx.update(simDt)
+      this.bg.update(simDt)
+      this.updateCamera(simDt)
     }
 
     // --- render ---
@@ -436,10 +496,6 @@ export class Game {
       this.player.update(dt, this.worldRef)
       this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
     }
-
-    this.fx.update(dt)
-    this.bg.update(dt)               // living storm: rain, gusts, fog, lightning
-    this.updateCamera(dt)
   }
 
   private updateCamera(dt: number): void {

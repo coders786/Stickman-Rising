@@ -1,0 +1,1074 @@
+     1→/** STICKMAN RISING — enemies: 7 classes + boss mech.
+     2→ *
+     3→ * AI: orbit/approach with implicit attack tokens (max 3 engaged), telegraphed
+     4→ * strikes, ranged gunners, flying drones, blocking shields, armored heavies,
+     5→ * parrying elites, and a phased boss. Reactions: hitstun, knockback, launch,
+     6→ * juggle, knockdown, death.
+     7→ */
+     8→
+     9→import { makePose, Pose } from '../anim/pose'
+    10→import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
+    11→import { WorldRef } from '../core/types'
+    12→import { AttackRuntimeInfo } from '../combat/attacks'
+    13→import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
+    14→
+    15→export type EnemyKind = 'grunt' | 'assassin' | 'heavy' | 'shield' | 'gunner' | 'drone' | 'elite' | 'boss'
+    16→
+    17→export type EnemyState =
+    18→  | 'enter' | 'chase' | 'strafe' | 'windup' | 'strike' | 'recover'
+    19→  | 'stun' | 'launched' | 'down' | 'getup' | 'aim' | 'dive' | 'pattern'
+    20→
+    21→interface EnemyConfig {
+    22→  hp: number
+    23→  speed: number
+    24→  range: number
+    25→  dmg: number
+    26→  windup: number
+    27→  recover: number
+    28→  scale: number
+    29→  score: number
+    30→  orbit: number
+    31→  style: StickStyle
+    32→  weapon: 'machete' | 'dagger' | 'hammer' | 'shield' | 'rifle' | 'none' | 'sword' | 'bossblade'
+    33→  weaponColor: string
+    34→}
+    35→
+    36→const baseStyle = (body: string, dark: string, glow: string, lineW = 5): StickStyle => ({
+    37→  body, dark, outline: '#04060a', glow, lineW, headStyle: 'visor', armor: false,
+    38→})
+    39→
+    40→export const ENEMY_CONFIGS: Record<EnemyKind, EnemyConfig> = {
+    41→  grunt: {
+    42→    hp: 30, speed: 135, range: 68, dmg: 8, windup: 0.5, recover: 0.55,
+    43→    scale: 1.04, score: 50, orbit: 120,
+    44→    style: baseStyle('#c8ccd2', '#78818c', '#ff4646'),
+    45→    weapon: 'machete', weaponColor: '#d8dde3',
+    46→  },
+    47→  assassin: {
+    48→    hp: 22, speed: 255, range: 62, dmg: 6, windup: 0.26, recover: 0.3,
+    49→    scale: 0.94, score: 80, orbit: 150,
+    50→    style: baseStyle('#b6a8d8', '#6f5f96', '#c44dff'),
+    51→    weapon: 'dagger', weaponColor: '#e8ddff',
+    52→  },
+    53→  heavy: {
+    54→    hp: 105, speed: 72, range: 82, dmg: 18, windup: 0.78, recover: 0.9,
+    55→    scale: 1.32, score: 150, orbit: 130,
+    56→    style: { ...baseStyle('#d8b46a', '#8f7038', '#ffae2e', 7), armor: true, core: '#ffae2e' },
+    57→    weapon: 'hammer', weaponColor: '#ffd27a',
+    58→  },
+    59→  shield: {
+    60→    hp: 62, speed: 95, range: 72, dmg: 10, windup: 0.55, recover: 0.7,
+    61→    scale: 1.12, score: 120, orbit: 110,
+    62→    style: baseStyle('#9fd8b4', '#5f9678', '#46ffb4', 6),
+    63→    weapon: 'shield', weaponColor: '#46ffb4',
+    64→  },
+    65→  gunner: {
+    66→    hp: 26, speed: 115, range: 400, dmg: 5, windup: 0.5, recover: 0.9,
+    67→    scale: 1.0, score: 90, orbit: 380,
+    68→    style: baseStyle('#e8d8a0', '#96855a', '#ffe14d'),
+    69→    weapon: 'rifle', weaponColor: '#ffe14d',
+    70→  },
+    71→  drone: {
+    72→    hp: 20, speed: 165, range: 90, dmg: 9, windup: 0.45, recover: 0.6,
+    73→    scale: 0.9, score: 70, orbit: 170,
+    74→    style: { ...baseStyle('#a8d8e8', '#5f96a8', '#35f2ff', 4), headStyle: 'goggles' },
+    75→    weapon: 'none', weaponColor: '#35f2ff',
+    76→  },
+    77→  elite: {
+    78→    hp: 170, speed: 205, range: 74, dmg: 8, windup: 0.3, recover: 0.4,
+    79→    scale: 1.16, score: 400, orbit: 140,
+    80→    style: { ...baseStyle('#f0d8d8', '#965f6f', '#ff2a4a', 5.5), armor: true, core: '#ff2a4a' },
+    81→    weapon: 'sword', weaponColor: '#ff5c7a',
+    82→  },
+    83→  boss: {
+    84→    hp: 950, speed: 62, range: 150, dmg: 22, windup: 0.7, recover: 0.8,
+    85→    scale: 3.0, score: 2500, orbit: 200,
+    86→    style: { ...baseStyle('#c8d4e0', '#5f7183', '#ff2a4a', 9), armor: true, core: '#ff2a4a', headStyle: 'helm' },
+    87→    weapon: 'bossblade', weaponColor: '#ff5c7a',
+    88→  },
+    89→}
+    90→
+    91→let nextId = 1
+    92→
+    93→export class Enemy {
+    94→  id = nextId++
+    95→  kind: EnemyKind
+    96→  cfg: EnemyConfig
+    97→  x: number
+    98→  y = 0
+    99→  vx = 0
+   100→  vy = 0
+   101→  face: 1 | -1 = 1
+   102→  hp: number
+   103→  maxHp: number
+   104→  state: EnemyState = 'enter'
+   105→  stateT = 0
+   106→  dead = false
+   107→  spawning = true
+   108→  launched = false
+   109→  scale: number
+   110→  dmg: number
+   111→
+   112→  stunT = 0
+   113→  private attackCd = 0
+   114→  private walkPhase = 0
+   115→  private spinT = 0
+   116→  private flailT = 0
+   117→  hpBarT = 0
+   118→  flashT = 0
+   119→  private side: 1 | -1
+   120→  private sideT = 0
+   121→  private strikeHits = 0
+   122→  private burstLeft = 0
+   123→  private burstT = 0
+   124→  private blockHp = 3
+   125→  blockUp = false
+   126→  staggerMeter = 0
+   127→  private patternIdx = 0
+   128→  private patternStep = 0
+   129→  private patternT = 0
+   130→  vulnerableT = 0
+   131→
+   132→  pose: Pose = makePose()
+   133→  geom: SkelGeom = makeSkelGeom()
+   134→
+   135→  constructor(kind: EnemyKind, x: number, waveScale: number) {
+   136→    this.kind = kind
+   137→    this.cfg = ENEMY_CONFIGS[kind]
+   138→    this.x = x
+   139→    this.scale = this.cfg.scale
+   140→    this.hp = this.maxHp = Math.round(this.cfg.hp * waveScale)
+   141→    this.dmg = this.cfg.dmg * (1 + (waveScale - 1) * 0.5)
+   142→    this.side = Math.random() < 0.5 ? -1 : 1
+   143→    this.attackCd = rand(0.4, 1.2)
+   144→    if (kind === 'drone') this.y = -rand(130, 210)
+   145→    if (kind === 'boss') this.vulnerableT = 0
+   146→  }
+   147→
+   148→  get hipY(): number {
+   149→    return this.y - 47 * this.scale + this.pose[1] * this.scale
+   150→  }
+   151→
+   152→  /* ------------------------------------------------------------------ */
+   153→
+   154→  update(dt: number, w: WorldRef): void {
+   155→    this.stateT += dt
+   156→    this.attackCd -= dt
+   157→    this.hpBarT = Math.max(0, this.hpBarT - dt)
+   158→    this.flashT = Math.max(0, this.flashT - dt * 6)
+   159→    this.stunT = Math.max(0, this.stunT - dt)
+   160→    this.vulnerableT = Math.max(0, this.vulnerableT - dt)
+   161→    if (this.dead) return
+   162→
+   163→    const px = PLAYER_X_REF.x
+   164→    const py = PLAYER_X_REF.y
+   165→    const dx = px - this.x
+   166→    const adx = Math.abs(dx)
+   167→
+   168→    // boss runs its pattern brain instead of normal chase
+   169→    if (this.kind === 'boss' && (this.state === 'chase' || this.state === 'strafe')) {
+   170→      this.state = 'pattern'
+   171→      this.stateT = 0
+   172→      this.patternStep = 0
+   173→      this.patternT = 0
+   174→    }
+   175→
+   176→    switch (this.state) {
+   177→      case 'enter': {
+   178→        if (this.kind === 'drone') {
+   179→          this.spawning = false
+   180→          this.state = 'chase'
+   181→        } else {
+   182→          // drop pod landing
+   183→          if (this.stateT < 0.55) {
+   184→            this.y = -560 * (1 - this.stateT / 0.55)
+   185→          } else {
+   186→            this.y = 0
+   187→            this.spawning = false
+   188→            this.state = 'chase'
+   189→            w.fx.dust(this.x, 0, 8)
+   190→            w.cam.addTrauma(0.1)
+   191→          }
+   192→        }
+   193→        break
+   194→      }
+   195→      case 'chase':
+   196→      case 'strafe': {
+   197→        this.face = dx > 0 ? 1 : -1
+   198→        this.blockUp = this.kind === 'shield' && adx > 50
+   199→        this.sideT -= dt
+   200→        if (this.sideT <= 0) {
+   201→          this.sideT = rand(2.5, 5)
+   202→          if (Math.random() < 0.25) this.side = (-this.side) as 1 | -1
+   203→        }
+   204→        const targetSide = Math.sign(dx) === this.side ? this.side : -Math.sign(dx)
+   205→        const desired = px - targetSide * this.cfg.orbit
+   206→        const speed = this.cfg.speed
+   207→        // approach with natural accel
+   208→        const diff = desired - this.x
+   209→        this.vx = damp(this.vx, clamp(diff * 3, -speed, speed), 4, dt)
+   210→        // vertical hover for drones
+   211→        if (this.kind === 'drone') {
+   212→          const targetY = -150 + Math.sin(w.time * 2 + this.id) * 34
+   213→          this.y = damp(this.y, targetY, 2.2, dt)
+   214→          this.vy = 0
+   215→        }
+   216→        this.walkPhase += Math.abs(this.vx) * dt * 0.055
+   217→
+   218→        // attack decisions
+   219→        if (this.attackCd <= 0 && !this.spawning) {
+   220→          if (this.kind === 'gunner') {
+   221→            if (adx > 180 && adx < 520) {
+   222→              this.state = 'aim'
+   223→              this.stateT = 0
+   224→              this.burstLeft = 3
+   225→              this.burstT = 0
+   226→            } else if (adx <= 180) {
+   227→              // retreat
+   228→              this.vx = -Math.sign(dx) * this.cfg.speed
+   229→            }
+   230→          } else if (adx < this.cfg.range + 14 && Math.abs(this.y) < 60) {
+   231→            const engaged = this.countEngaged(w)
+   232→            const maxEngaged = this.kind === 'boss' ? 1 : 3
+   233→            if (engaged < maxEngaged) {
+   234→              this.state = 'windup'
+   235→              this.stateT = 0
+   236→              w.audio.play('telegraph', { volume: 0.4, pitch: this.kind === 'heavy' ? 0.6 : 1 })
+   237→            } else {
+   238→              this.attackCd = 0.3
+   239→            }
+   240→          } else if (this.kind === 'drone' && adx < 160 && Math.random() < 0.02) {
+   241→            this.state = 'dive'
+   242→            this.stateT = 0
+   243→            w.audio.play('telegraph', { volume: 0.35, pitch: 1.3 })
+   244→          }
+   245→        }
+   246→        // drone occasional orb shot
+   247→        if (this.kind === 'drone' && this.attackCd <= 0 && adx > 200) {
+   248→          this.attackCd = rand(1.6, 2.6)
+   249→          w.spawnProjectile({
+   250→            kind: 'orb', x: this.x, y: this.y - 10,
+   251→            vx: Math.sign(dx) * 260, vy: (py - 40 - this.y) * 1.4,
+   252→            dmg: 6, life: 3,
+   253→          })
+   254→        }
+   255→        break
+   256→      }
+   257→      case 'aim': {
+   258→        this.face = dx > 0 ? 1 : -1
+   259→        this.vx = damp(this.vx, 0, 6, dt)
+   260→        this.burstT -= dt
+   261→        if (this.burstT <= 0 && this.burstLeft > 0) {
+   262→          this.burstLeft--
+   263→          this.burstT = 0.14
+   264→          w.audio.play('gunshot', { volume: 0.5, pitch: rand(0.95, 1.1) })
+   265→          w.spawnProjectile({
+   266→            kind: 'bullet', x: this.x + this.face * 30, y: this.y - 44,
+   267→            vx: this.face * 900, vy: 0, dmg: this.dmg, life: 1.2,
+   268→          })
+   269→          w.fx.sparks(this.x + this.face * 30, this.y - 44, this.face > 0 ? 0 : Math.PI, 0.5, 4, '#ffe14d', 260, 0.2)
+   270→        }
+   271→        if (this.burstLeft <= 0 && this.burstT <= 0) {
+   272→          this.state = 'recover'
+   273→          this.stateT = 0
+   274→          this.attackCd = rand(1.6, 2.4)
+   275→        }
+   276→        break
+   277→      }
+   278→      case 'dive': {
+   279→        // drone dive attack
+   280→        const dir = Math.atan2(py - 40 - this.y, px - this.x)
+   281→        this.vx = Math.cos(dir) * 460
+   282→        this.vy = Math.sin(dir) * 460
+   283→        if (Math.hypot(px - this.x, py - this.y) < 60) {
+   284→          const dirFace = dx > 0 ? 1 : -1
+   285→          const res = w.enemyStrikePlayer(this.dmg, dirFace, false, this.x)
+   286→          if (res) {
+   287→            this.state = 'stun'
+   288→            this.stunT = 1.3
+   289→            this.stateT = 0
+   290→            this.vx = -dirFace * 260
+   291→            this.vy = -180
+   292→          }
+   293→        }
+   294→        if (this.y >= -6) {
+   295→          this.y = -rand(130, 200)
+   296→          this.state = 'recover'
+   297→          this.stateT = 0
+   298→        }
+   299→        if (this.stateT > 1.4) {
+   300→          this.state = 'chase'
+   301→          this.stateT = 0
+   302→        }
+   303→        break
+   304→      }
+   305→      case 'windup': {
+   306→        this.face = dx > 0 ? 1 : -1
+   307→        this.vx = damp(this.vx, 0, 8, dt)
+   308→        if (this.stateT >= this.cfg.windup) {
+   309→          this.state = 'strike'
+   310→          this.stateT = 0
+   311→          this.strikeHits = this.kind === 'assassin' ? 2 : this.kind === 'elite' ? 3 : 1
+   312→          this.vx = Math.sign(dx) * (this.kind === 'heavy' ? 180 : this.kind === 'boss' ? 220 : 340)
+   313→          w.audio.play('swing', { volume: 0.4, pitch: this.kind === 'heavy' ? 0.7 : 1.15 })
+   314→        }
+   315→        break
+   316→      }
+   317→      case 'strike': {
+   318→        const dir = dx > 0 ? 1 : -1
+   319→        // hit test against player (front circle)
+   320→        const reach = this.cfg.range * this.scale
+   321→        if (this.strikeHits > 0 && adx < reach && Math.abs(this.y - py) < 90) {
+   322→          const res = w.enemyStrikePlayer(this.dmg, dir, this.kind === 'heavy' || this.kind === 'boss', this.x)
+   323→          this.strikeHits = 0
+   324→          if (res) {
+   325→            // got parried → staggered
+   326→            this.state = 'stun'
+   327→            this.stunT = this.kind === 'boss' ? 0.9 : 1.5
+   328→            this.stateT = 0
+   329→            this.vx = -dir * 300
+   330→            break
+   331→          }
+   332→        }
+   333→        this.vx = damp(this.vx, 0, 3.5, dt)
+   334→        if (this.stateT > (this.kind === 'assassin' ? 0.16 : 0.26) && this.strikeHits > 1) {
+   335→          // quick follow-up strike (assassin/elite combos)
+   336→          this.stateT = 0
+   337→          this.strikeHits--
+   338→          this.vx = Math.sign(dx) * 300
+   339→          w.audio.play('swing', { volume: 0.35, pitch: 1.2 })
+   340→        } else if (this.stateT > 0.3) {
+   341→          this.state = 'recover'
+   342→          this.stateT = 0
+   343→          this.attackCd = this.kind === 'elite' ? rand(1.2, 2) : rand(0.8, 1.8)
+   344→        }
+   345→        break
+   346→      }
+   347→      case 'recover': {
+   348→        this.vx = damp(this.vx, 0, 5, dt)
+   349→        if (this.stateT >= this.cfg.recover) {
+   350→          this.state = 'chase'
+   351→          this.stateT = 0
+   352→        }
+   353→        break
+   354→      }
+   355→      case 'stun': {
+   356→        this.vx = damp(this.vx, 0, 4, dt)
+   357→        if (this.stunT <= 0) {
+   358→          this.state = 'chase'
+   359→          this.stateT = 0
+   360→          this.attackCd = 0.4
+   361→          if (this.kind === 'shield') this.blockHp = 3
+   362→        }
+   363→        break
+   364→      }
+   365→      case 'launched': {
+   366→        this.flailT += dt * 14
+   367→        this.spinT += dt * 3.2
+   368→        this.vy += 1350 * dt // juggle gravity (heavier than normal)
+   369→        if (this.vy > 0 && this.y >= -4) {
+   370→          this.state = 'down'
+   371→          this.stateT = 0
+   372→          this.y = 0
+   373→          this.vy = 0
+   374→          this.launched = false
+   375→          w.fx.dust(this.x, 0, 6)
+   376→          w.audio.play('land', { volume: 0.4, pitch: 0.7 })
+   377→        }
+   378→        break
+   379→      }
+   380→      case 'down': {
+   381→        this.vx = damp(this.vx, 0, 6, dt)
+   382→        if (this.stateT >= 0.85) {
+   383→          this.state = 'getup'
+   384→          this.stateT = 0
+   385→        }
+   386→        break
+   387→      }
+   388→      case 'getup': {
+   389→        if (this.stateT >= 0.45) {
+   390→          this.state = 'chase'
+   391→          this.stateT = 0
+   392→          this.attackCd = 0.6
+   393→        }
+   394→        break
+   395→      }
+   396→      case 'pattern': {
+   397→        this.updateBossPattern(dt, w, px, py)
+   398→        break
+   399→      }
+   400→    }
+   401→
+   402→    // physics
+   403→    if (this.state !== 'launched' && this.kind !== 'drone' || this.state === 'launched') {
+   404→      if (this.kind !== 'drone' && this.state !== 'dive') {
+   405→        this.vy += 1900 * dt
+   406→      }
+   407→    }
+   408→    if (this.kind === 'drone' && this.state !== 'launched') this.vy = 0
+   409→    this.x += this.vx * dt
+   410→    this.y += this.vy * dt
+   411→    if (this.kind !== 'drone' && this.state !== 'launched') {
+   412→      if (this.y > 0) {
+   413→        this.y = 0
+   414→        this.vy = 0
+   415→      }
+   416→    }
+   417→    this.x = clamp(this.x, w.arenaMinX + 16, w.arenaMaxX - 16)
+   418→
+   419→    // build + solve pose
+   420→    this.buildPose(dt, w.time)
+   421→    solveSkeleton(this.pose, ENEMY_SPEC, this.geom)
+   422→  }
+   423→
+   424→  private countEngaged(w: WorldRef): number {
+   425→    let n = 0
+   426→    for (const e of w.enemies) {
+   427→      if (e.dead || e.id === this.id) continue
+   428→      if (e.state === 'windup' || e.state === 'strike' || e.state === 'aim') n++
+   429→    }
+   430→    return n
+   431→  }
+   432→
+   433→  /* ------------------------------------------------------------------ */
+   434→  /* boss patterns                                                        */
+   435→  /* ------------------------------------------------------------------ */
+   436→
+   437→  private updateBossPattern(dt: number, w: WorldRef, px: number, _py: number): void {
+   438→    this.patternT += dt
+   439→    const dx = px - this.x
+   440→    this.face = dx > 0 ? 1 : -1
+   441→
+   442→    switch (this.patternStep) {
+   443→      case 0: { // approach + sweep
+   444→        this.vx = damp(this.vx, Math.sign(dx) * this.cfg.speed, 2, dt)
+   445→        if (Math.abs(dx) < 260 && this.patternT > 0.8) {
+   446→          this.patternStep = 1
+   447→          this.patternT = 0
+   448→          w.audio.play('telegraph', { pitch: 0.5, volume: 0.7 })
+   449→        }
+   450→        break
+   451→      }
+   452→      case 1: { // sweep windup
+   453→        this.vx = damp(this.vx, 0, 6, dt)
+   454→        if (this.patternT > 0.7) {
+   455→          this.patternStep = 2
+   456→          this.patternT = 0
+   457→          this.vx = Math.sign(dx) * 480
+   458→          w.audio.play('swingHeavy', { pitch: 0.55, volume: 0.9 })
+   459→          w.cam.addTrauma(0.3)
+   460→        }
+   461→        break
+   462→      }
+   463→      case 2: { // sweep strike
+   464→        if (this.patternT < 0.4 && Math.abs(dx) < 220) {
+   465→          w.enemyStrikePlayer(this.dmg, Math.sign(dx), true, this.x)
+   466→        }
+   467→        if (this.patternT > 0.5) {
+   468→          this.patternStep = 3
+   469→          this.patternT = 0
+   470→          this.patternIdx++
+   471→        }
+   472→        break
+   473→      }
+   474→      case 3: { // stomp (2 shockwaves)
+   475→        this.vx = 0
+   476→        if (this.patternT > 0.55 && this.patternIdx % 2 === 0) {
+   477→          // stomp
+   478→          w.audio.play('slam', { intensity: 1, pitch: 0.6 })
+   479→          w.fx.shockwave(this.x, 0, 240, '#ff2a4a', 0.6, 10)
+   480→          w.fx.groundCrack(this.x, 0, 140)
+   481→          w.cam.addTrauma(0.55)
+   482→          if (Math.abs(dx) < 250 && Math.abs(this.y) < 20) {
+   483→            w.enemyStrikePlayer(this.dmg * 0.8, Math.sign(dx), true, this.x)
+   484→          }
+   485→          this.patternStep = 4
+   486→          this.patternT = 0
+   487→        } else if (this.patternT > 0.55) {
+   488→          // missile volley instead
+   489→          for (let i = 0; i < 5; i++) {
+   490→            w.spawnProjectile({
+   491→              kind: 'missile', x: this.x + rand(-60, 60), y: this.y - 150,
+   492→              vx: rand(-120, 120), vy: -rand(60, 140),
+   493→              dmg: 10, life: 4, homing: 1.6,
+   494→            })
+   495→          }
+   496→          w.audio.play('explosion', { volume: 0.4, pitch: 1.4 })
+   497→          this.patternStep = 4
+   498→          this.patternT = 0
+   499→        }
+   500→        break
+   501→      }
+   502→      case 4: { // recover
+   503→        this.vx = damp(this.vx, 0, 4, dt)
+   504→        if (this.patternT > 1.1) {
+   505→          // enrage rush below 50% hp
+   506→          if (this.hp < this.maxHp * 0.5 && Math.random() < 0.4) {
+   507→            this.patternStep = 5
+   508→            this.patternT = 0
+   509→            w.audio.play('bossAlert', { volume: 0.4 })
+   510→          } else {
+   511→            this.patternStep = 0
+   512→            this.patternT = 0
+   513→          }
+   514→        }
+   515→        break
+   516→      }
+   517→      case 5: { // enrage rush
+   518→        if (this.patternT < 0.5) {
+   519→          this.vx = damp(this.vx, 0, 8, dt) // crouch telegraph
+   520→          if (this.patternT < 0.1) w.fx.sparks(this.x, 0, -Math.PI / 2, 1, 8, '#ff2a4a', 200)
+   521→        } else if (this.patternT < 1.2) {
+   522→          this.vx = Math.sign(dx || 1) * 620
+   523→          if (Math.abs(dx) < 190) {
+   524→            w.enemyStrikePlayer(this.dmg, Math.sign(dx), true, this.x)
+   525→          }
+   526→        } else {
+   527→          this.patternStep = 0
+   528→          this.patternT = 0
+   529→        }
+   530→        break
+   531→      }
+   532→    }
+   533→  }
+   534→
+   535→  /* ------------------------------------------------------------------ */
+   536→  /* reactions                                                            */
+   537→  /* ------------------------------------------------------------------ */
+   538→
+   539→  /** returns 'killed' | 'hit' | 'blocked' | 'armored' */
+   540→  takeHit(info: AttackRuntimeInfo, dir: number, fromX: number): 'killed' | 'hit' | 'blocked' | 'armored' {
+   541→    if (this.dead) return 'killed'
+   542→    this.hpBarT = 2
+   543→    this.flashT = 1
+   544→
+   545→    // shield block: frontal, guard intact, not guard-breaking
+   546→    if (
+   547→      this.kind === 'shield' && this.blockUp && this.state !== 'stun' &&
+   548→      !info.breakGuard && Math.sign(fromX - this.x) === this.face
+   549→    ) {
+   550→      this.blockHp -= info.heavy ? 2 : 1
+   551→      this.hp -= info.dmg * 0.12
+   552→      if (this.blockHp <= 0) {
+   553→        // guard break
+   554→        this.state = 'stun'
+   555→        this.stunT = 2.1
+   556→        this.stateT = 0
+   557→        this.blockUp = false
+   558→        this.vx = dir * 200
+   559→        return 'hit'
+   560→      }
+   561→      return 'blocked'
+   562→    }
+   563→
+   564→    // damage
+   565→    let dmg = info.dmg
+   566→    if (this.vulnerableT > 0) dmg *= 2
+   567→    if (this.kind === 'heavy' || this.kind === 'boss') dmg *= 0.72
+   568→    this.hp -= dmg
+   569→
+   570→    if (this.hp <= 0) {
+   571→      this.dead = true
+   572→      return 'killed'
+   573→    }
+   574→
+   575→    if (this.kind === 'boss') {
+   576→      this.staggerMeter += dmg
+   577→      if (this.staggerMeter >= 220) {
+   578→        this.staggerMeter = 0
+   579→        this.state = 'stun'
+   580→        this.stunT = 2.6
+   581→        this.vulnerableT = 3.2
+   582→        this.stateT = 0
+   583→      }
+   584→      return 'hit'
+   585→    }
+   586→
+   587→    // launched / juggled state
+   588→    if (this.state === 'launched' || this.launched) {
+   589→      this.launched = true
+   590→      this.state = 'launched'
+   591→      this.stateT = 0
+   592→      this.vy = info.juggle !== 0 ? info.juggle * 0.9 : info.launch * 0.6 - 160
+   593→      this.vx = dir * info.kb * 0.45
+   594→      return 'hit'
+   595→    }
+   596→
+   597→    // super-armor for heavy windup
+   598→    if (this.kind === 'heavy' && (this.state === 'windup' || this.state === 'strike') && !info.heavy && !info.launch && !info.breakGuard) {
+   599→      return 'armored'
+   600→    }
+   601→
+   602→    if (info.launch !== 0 && this.kind !== 'heavy') {
+   603→      this.launched = true
+   604→      this.state = 'launched'
+   605→      this.stateT = 0
+   606→      this.vy = info.launch
+   607→      this.vx = dir * info.kb * 0.5
+   608→      return 'hit'
+   609→    }
+   610→
+   611→    // normal hitstun
+   612→    this.state = 'stun'
+   613→    this.stunT = Math.max(0.18, info.stagger)
+   614→    this.stateT = 0
+   615→    this.vx = dir * (info.kb / (this.kind === 'heavy' ? 4 : 1))
+   616→    if (this.kind === 'drone' && info.launch === 0) {
+   617→      this.vy = -60
+   618→    }
+   619→    return 'hit'
+   620→  }
+   621→
+   622→  /* ------------------------------------------------------------------ */
+   623→  /* procedural animation                                                 */
+   624→  /* ------------------------------------------------------------------ */
+   625→
+   626→  private buildPose(dt: number, time: number): void {
+   627→    const p = this.pose
+   628→    // reset to baseline
+   629→    p[0] = 0
+   630→    p[1] = 0
+   631→    p[2] = 0.08
+   632→    p[3] = 0.05
+   633→    p[4] = -0.08
+   634→    p[5] = 0.24; p[6] = -0.12; p[7] = 0.1
+   635→    p[8] = -0.26; p[9] = -0.14; p[10] = 0.12
+   636→    p[11] = 0.3; p[12] = -0.45; p[13] = -0.1
+   637→    p[14] = 0.35; p[15] = -0.4; p[16] = 0.9
+   638→
+   639→    const speed = Math.abs(this.vx)
+   640→
+   641→    switch (this.state) {
+   642→      case 'chase':
+   643→      case 'strafe':
+   644→      case 'aim': {
+   645→        if (speed > 24) {
+   646→          const ph = this.walkPhase
+   647→          p[5] = Math.sin(ph) * 0.55
+   648→          p[6] = -0.2 - Math.max(0, -Math.sin(ph)) * 0.9
+   649→          p[8] = Math.sin(ph + Math.PI) * 0.55
+   650→          p[9] = -0.2 - Math.max(0, -Math.sin(ph + Math.PI)) * 0.9
+   651→          p[2] = 0.22
+   652→          p[1] = Math.abs(Math.sin(ph)) * 2.4 - 1.2
+   653→          // arms counter-swing (weapon arm steadier)
+   654→          p[11] = Math.sin(ph + Math.PI) * 0.4
+   655→          p[14] = 0.4 + Math.sin(ph) * 0.18
+   656→        } else {
+   657→          // idle sway
+   658→          p[1] = Math.sin(time * 2.2 + this.id) * 1.4
+   659→          p[14] = 0.35 + Math.sin(time * 2.2 + this.id) * 0.05
+   660→        }
+   661→        if (this.state === 'aim') {
+   662→          // rifle raised at player
+   663→          p[14] = 1.35
+   664→          p[15] = -0.15
+   665→          p[16] = -1.35 // blade angle ≈ forward
+   666→          p[11] = 1.1
+   667→          p[12] = -0.35
+   668→          p[2] = 0.05
+   669→        }
+   670→        if (this.kind === 'drone') {
+   671→          // hover pose: legs dangle, thruster bob
+   672→          p[1] = Math.sin(time * 5 + this.id) * 2
+   673→          p[5] = 0.35; p[6] = -0.7
+   674→          p[8] = 0.15; p[9] = -0.55
+   675→          p[14] = 0.6; p[15] = -0.7
+   676→          p[11] = -0.2; p[12] = -0.6
+   677→        }
+   678→        break
+   679→      }
+   680→      case 'windup': {
+   681→        const k = clamp01(this.stateT / this.cfg.windup)
+   682→        // coil back, weapon raised & glowing
+   683→        p[2] = -0.12 - k * 0.22
+   684→        p[14] = -1.5 - k * 0.9
+   685→        p[15] = -0.5
+   686→        p[16] = -0.4
+   687→        p[11] = 0.6 + k * 0.3
+   688→        p[5] = 0.4; p[8] = -0.5 - k * 0.15
+   689→        p[1] = k * 3
+   690→        break
+   691→      }
+   692→      case 'strike': {
+   693→        // weapon swept forward, lean in
+   694→        p[2] = 0.38
+   695→        p[14] = 1.45
+   696→        p[15] = -0.1
+   697→        p[16] = -0.15
+   698→        p[11] = -0.35
+   699→        p[5] = 0.6; p[6] = -0.35
+   700→        p[8] = -0.55
+   701→        break
+   702→      }
+   703→      case 'recover': {
+   704→        p[2] = 0.18
+   705→        p[14] = 0.8
+   706→        p[15] = -0.35
+   707→        break
+   708→      }
+   709→      case 'stun': {
+   710→        // slumped, dizzy
+   711→        p[2] = 0.42 + Math.sin(time * 6) * 0.04
+   712→        p[3] = 0.18
+   713→        p[4] = 0.22
+   714→        p[1] = 4
+   715→        p[14] = 0.15; p[15] = -0.15; p[16] = 0.3
+   716→        p[11] = -0.25; p[12] = -0.3
+   717→        p[5] = 0.5; p[6] = -0.65
+   718→        p[8] = -0.45; p[9] = -0.5
+   719→        break
+   720→      }
+   721→      case 'launched': {
+   722→        // spinning flail
+   723→        p[2] = this.spinT * 2.4 % (Math.PI * 2)
+   724→        p[5] = Math.sin(this.flailT) * 0.7
+   725→        p[8] = Math.sin(this.flailT + 2) * 0.7
+   726→        p[11] = Math.sin(this.flailT + 1) * 0.8
+   727→        p[14] = Math.sin(this.flailT + 3) * 0.8
+   728→        p[6] = -0.8; p[9] = -0.6
+   729→        break
+   730→      }
+   731→      case 'down': {
+   732→        // lying on the ground
+   733→        p[2] = 1.42
+   734→        p[1] = 34
+   735→        p[4] = -0.3
+   736→        p[5] = 0.9; p[6] = -0.3
+   737→        p[8] = -0.7; p[9] = -0.9
+   738→        p[11] = -1.2; p[14] = 1.0
+   739→        p[12] = -0.4; p[15] = -0.5
+   740→        break
+   741→      }
+   742→      case 'getup': {
+   743→        const k = clamp01(this.stateT / 0.45)
+   744→        // interpolate down → standing
+   745→        p[2] = 1.42 * (1 - k)
+   746→        p[1] = 34 * (1 - k)
+   747→        p[5] = 0.9 * (1 - k) + 0.24 * k
+   748→        p[8] = -0.7 * (1 - k) - 0.26 * k
+   749→        p[11] = -1.2 * (1 - k) + 0.3 * k
+   750→        p[14] = 1.0 * (1 - k) + 0.35 * k
+   751→        break
+   752→      }
+   753→      case 'dive': {
+   754→        p[2] = 0.7
+   755→        p[14] = 1.6; p[15] = -0.2; p[16] = -0.3
+   756→        p[5] = -0.5; p[8] = -0.3
+   757→        p[6] = -0.4; p[9] = -0.9
+   758→        break
+   759→      }
+   760→      case 'pattern': {
+   761→        if (this.patternStep === 1) {
+   762→          const k = clamp01(this.patternT / 0.7)
+   763→          p[2] = -0.1 - k * 0.25
+   764→          p[14] = -1.7 - k * 1.1
+   765→          p[15] = -0.4
+   766→          p[16] = -0.3
+   767→          p[11] = -0.9 - k * 0.5
+   768→          p[1] = k * 6
+   769→        } else if (this.patternStep === 2) {
+   770→          p[2] = 0.5
+   771→          p[14] = 1.5
+   772→          p[15] = -0.1
+   773→          p[16] = -0.1
+   774→          p[11] = 0.9
+   775→        } else if (this.patternStep === 3) {
+   776→          p[2] = 0.65
+   777→          p[14] = 2.9; p[15] = 0.3; p[16] = 0.2
+   778→          p[1] = 18
+   779→          p[5] = 0.9; p[8] = 0.7
+   780→          p[6] = -0.5; p[9] = -0.6
+   781→        } else if (this.patternStep === 5 && this.patternT < 0.5) {
+   782→          p[2] = 0.55
+   783→          p[1] = 14
+   784→          p[6] = -1.1; p[9] = -1.2
+   785→          p[14] = -1.2
+   786→        } else {
+   787→          p[2] = 0.15
+   788→          p[14] = 0.5
+   789→        }
+   790→        break
+   791→      }
+   792→      default:
+   793→        break
+   794→    }
+   795→    void dt
+   796→  }
+   797→
+   798→  /* ------------------------------------------------------------------ */
+   799→  /* rendering                                                            */
+   800→  /* ------------------------------------------------------------------ */
+   801→
+   802→  draw(ctx: CanvasRenderingContext2D, time: number): void {
+   803→    if (this.dead || this.spawning) return
+   804→    const s = this.scale
+   805→    const cfg = this.cfg
+   806→    ctx.save()
+   807→    ctx.translate(this.x, this.hipY)
+   808→    ctx.scale(this.face * s, s)
+   809→    drawStick(ctx, this.geom, cfg.style, {
+   810→      time,
+   811→      flash: this.flashT * 0.8,
+   812→      flashColor: '#ffffff',
+   813→    })
+   814→    this.drawWeapon(ctx, time)
+   815→    ctx.restore()
+   816→
+   817→    // telegraph indicator
+   818→    if (this.state === 'windup' || (this.state === 'pattern' && this.patternStep === 1)) {
+   819→      const k = clamp01(this.stateT / this.cfg.windup)
+   820→      ctx.save()
+   821→      ctx.globalCompositeOperation = 'lighter'
+   822→      ctx.strokeStyle = rgba('#ff2a4a', 0.7 + 0.3 * Math.sin(time * 26))
+   823→      ctx.lineWidth = 2
+   824→      const yy = this.hipY - 78 * s
+   825→      ctx.beginPath()
+   826→      ctx.moveTo(this.x - 7, yy - 10)
+   827→      ctx.lineTo(this.x + 7, yy + 2)
+   828→      ctx.moveTo(this.x + 7, yy - 10)
+   829→      ctx.lineTo(this.x - 7, yy + 2)
+   830→      ctx.stroke()
+   831→      // charge bar
+   832→      ctx.strokeStyle = rgba('#ff2a4a', 0.85)
+   833→      ctx.lineWidth = 3
+   834→      ctx.beginPath()
+   835→      ctx.moveTo(this.x - 14, yy + 10)
+   836→      ctx.lineTo(this.x - 14 + 28 * k, yy + 10)
+   837→      ctx.stroke()
+   838→      ctx.restore()
+   839→    }
+   840→
+   841→    // stun dizzy marks
+   842→    if (this.state === 'stun') {
+   843→      ctx.save()
+   844→      ctx.fillStyle = rgba('#ffe14d', 0.8)
+   845→      for (let i = 0; i < 3; i++) {
+   846→        const a = time * 4 + (i * Math.PI * 2) / 3
+   847→        ctx.beginPath()
+   848→        ctx.arc(this.x + Math.cos(a) * 16, this.hipY - 72 * s + Math.sin(a) * 5, 2.4, 0, Math.PI * 2)
+   849→        ctx.fill()
+   850→      }
+   851→      ctx.restore()
+   852→    }
+   853→
+   854→    // hp bar (small, above)
+   855→    if (this.hpBarT > 0 && this.hp < this.maxHp && this.kind !== 'boss') {
+   856→      const wBar = 46 * s
+   857→      const yBar = this.hipY - 74 * s
+   858→      const a = clamp01(this.hpBarT)
+   859→      ctx.save()
+   860→      ctx.globalAlpha = a
+   861→      ctx.fillStyle = 'rgba(4,6,10,0.8)'
+   862→      ctx.fillRect(this.x - wBar / 2, yBar, wBar, 5)
+   863→      const frac = clamp01(this.hp / this.maxHp)
+   864→      ctx.fillStyle = frac > 0.5 ? '#46ffb4' : frac > 0.25 ? '#ffe14d' : '#ff2a4a'
+   865→      ctx.fillRect(this.x - wBar / 2 + 1, yBar + 1, (wBar - 2) * frac, 3)
+   866→      ctx.restore()
+   867→    }
+   868→
+   869→    // boss vulnerable core indicator
+   870→    if (this.kind === 'boss' && this.vulnerableT > 0) {
+   871→      ctx.save()
+   872→      ctx.globalCompositeOperation = 'lighter'
+   873→      const pulse = 0.5 + 0.5 * Math.sin(time * 12)
+   874→      ctx.strokeStyle = rgba('#ffe14d', 0.5 + pulse * 0.5)
+   875→      ctx.lineWidth = 3
+   876→      ctx.beginPath()
+   877→      ctx.arc(this.x, this.hipY - 26, 30 + pulse * 8, 0, Math.PI * 2)
+   878→      ctx.stroke()
+   879→      ctx.restore()
+   880→    }
+   881→  }
+   882→
+   883→  private drawWeapon(ctx: CanvasRenderingContext2D, time: number): void {
+   884→    const g = this.geom
+   885→    const cfg = this.cfg
+   886→    const a = g.bladeAngle
+   887→    const dx = Math.cos(a)
+   888→    const dy = Math.sin(a)
+   889→    const hx = g.handR.x
+   890→    const hy = g.handR.y
+   891→    const telegraphing = this.state === 'windup' || (this.state === 'pattern' && this.patternStep === 1)
+   892→
+   893→    ctx.lineCap = 'round'
+   894→
+   895→    switch (cfg.weapon) {
+   896→      case 'machete': {
+   897→        const len = 30
+   898→        ctx.strokeStyle = '#10151c'
+   899→        ctx.lineWidth = 6
+   900→        line(ctx, hx, hy, dx, dy, len)
+   901→        ctx.strokeStyle = cfg.weaponColor
+   902→        ctx.lineWidth = 3
+   903→        line(ctx, hx, hy, dx, dy, len)
+   904→        break
+   905→      }
+   906→      case 'dagger': {
+   907→        ctx.strokeStyle = '#10151c'
+   908→        ctx.lineWidth = 5
+   909→        line(ctx, hx, hy, dx, dy, 20)
+   910→        ctx.strokeStyle = cfg.weaponColor
+   911→        ctx.lineWidth = 2.2
+   912→        line(ctx, hx, hy, dx, dy, 20)
+   913→        break
+   914→      }
+   915→      case 'hammer': {
+   916→        // shaft + heavy head
+   917→        ctx.strokeStyle = '#2a2018'
+   918→        ctx.lineWidth = 5
+   919→        line(ctx, hx, hy, dx, dy, 34)
+   920→        const ex = hx + dx * 34
+   921→        const ey = hy + dy * 34
+   922→        ctx.fillStyle = cfg.weaponColor
+   923→        ctx.strokeStyle = '#04060a'
+   924→        ctx.lineWidth = 1.5
+   925→        ctx.save()
+   926→        ctx.translate(ex, ey)
+   927→        ctx.rotate(a)
+   928→        ctx.fillRect(-7, -11, 14, 22)
+   929→        ctx.strokeRect(-7, -11, 14, 22)
+   930→        ctx.restore()
+   931→        break
+   932→      }
+   933→      case 'shield': {
+   934→        // rect shield on front arm
+   935→        const sx = g.handL.x
+   936→        const sy = g.handL.y
+   937→        ctx.save()
+   938→        ctx.translate(sx + 6, sy)
+   939→        ctx.fillStyle = '#1a2620'
+   940→        ctx.strokeStyle = cfg.weaponColor
+   941→        ctx.lineWidth = 2.5
+   942→        const bw = 13
+   943→        const bh = 34
+   944→        roundRect(ctx, -bw / 2, -bh / 2, bw, bh, 4)
+   945→        ctx.fill()
+   946→        ctx.stroke()
+   947→        if (this.blockUp) {
+   948→          ctx.globalCompositeOperation = 'lighter'
+   949→          ctx.strokeStyle = rgba(cfg.weaponColor, 0.35 + 0.2 * Math.sin(time * 8))
+   950→          ctx.lineWidth = 5
+   951→          roundRect(ctx, -bw / 2, -bh / 2, bw, bh, 4)
+   952→          ctx.stroke()
+   953→        }
+   954→        ctx.restore()
+   955→        break
+   956→      }
+   957→      case 'rifle': {
+   958→        ctx.strokeStyle = '#1a1f28'
+   959→        ctx.lineWidth = 5.5
+   960→        line(ctx, hx - dx * 10, hy - dy * 10, dx, dy, 34)
+   961→        ctx.strokeStyle = cfg.weaponColor
+   962→        ctx.lineWidth = 1.6
+   963→        line(ctx, hx, hy, dx, dy, 34)
+   964→        if (this.state === 'aim') {
+   965→          // muzzle glow
+   966→          ctx.globalCompositeOperation = 'lighter'
+   967→          ctx.fillStyle = rgba(cfg.weaponColor, 0.6 + 0.4 * Math.sin(time * 30))
+   968→          ctx.beginPath()
+   969→          ctx.arc(hx + dx * 34, hy + dy * 34, 3.5, 0, Math.PI * 2)
+   970→          ctx.fill()
+   971→        }
+   972→        break
+   973→      }
+   974→      case 'sword': {
+   975→        const len = 44
+   976→        ctx.globalCompositeOperation = 'lighter'
+   977→        ctx.strokeStyle = rgba(cfg.weaponColor, 0.3)
+   978→        ctx.lineWidth = 8
+   979→        line(ctx, hx, hy, dx, dy, len)
+   980→        ctx.globalCompositeOperation = 'source-over'
+   981→        ctx.strokeStyle = '#10151c'
+   982→        ctx.lineWidth = 5
+   983→        line(ctx, hx, hy, dx, dy, len)
+   984→        ctx.strokeStyle = cfg.weaponColor
+   985→        ctx.lineWidth = 2.4
+   986→        line(ctx, hx, hy, dx, dy, len)
+   987→        break
+   988→      }
+   989→      case 'bossblade': {
+   990→        const len = 92
+   991→        ctx.globalCompositeOperation = 'lighter'
+   992→        ctx.strokeStyle = rgba(cfg.weaponColor, 0.25 + (telegraphing ? 0.3 * Math.sin(time * 20) : 0))
+   993→        ctx.lineWidth = 14
+   994→        line(ctx, hx, hy, dx, dy, len)
+   995→        ctx.globalCompositeOperation = 'source-over'
+   996→        ctx.strokeStyle = '#10151c'
+   997→        ctx.lineWidth = 9
+   998→        line(ctx, hx, hy, dx, dy, len)
+   999→        ctx.strokeStyle = cfg.weaponColor
+  1000→        ctx.lineWidth = 4
+  1001→        line(ctx, hx, hy, dx, dy, len)
+  1002→        break
+  1003→      }
+  1004→      case 'none':
+  1005→      default: {
+  1006→        // drone: thruster flames under hips
+  1007→        ctx.globalCompositeOperation = 'lighter'
+  1008→        const f = 8 + Math.sin(time * 40 + this.id) * 4
+  1009→        ctx.fillStyle = rgba('#35f2ff', 0.55)
+  1010→        ctx.beginPath()
+  1011→        ctx.moveTo(this.pose[0] - 6, 6)
+  1012→        ctx.lineTo(this.pose[0] - 2, 6 + f)
+  1013→        ctx.lineTo(this.pose[0] + 2, 6 + f * 0.7)
+  1014→        ctx.closePath()
+  1015→        ctx.fill()
+  1016→        ctx.beginPath()
+  1017→        ctx.moveTo(this.pose[0] + 4, 6)
+  1018→        ctx.lineTo(this.pose[0] + 8, 6 + f * 0.8)
+  1019→        ctx.lineTo(this.pose[0] + 11, 6 + f * 0.5)
+  1020→        ctx.closePath()
+  1021→        ctx.fill()
+  1022→        ctx.globalCompositeOperation = 'source-over'
+  1023→        break
+  1024→      }
+  1025→    }
+  1026→
+  1027→    // telegraph weapon glow
+  1028→    if (telegraphing && cfg.weapon !== 'none' && cfg.weapon !== 'shield') {
+  1029→      ctx.globalCompositeOperation = 'lighter'
+  1030→      ctx.strokeStyle = rgba('#ff2a4a', 0.55 + 0.35 * Math.sin(time * 24))
+  1031→      ctx.lineWidth = 4
+  1032→      line(ctx, hx, hy, dx, dy, cfg.weapon === 'bossblade' ? 92 : 34)
+  1033→      ctx.globalCompositeOperation = 'source-over'
+  1034→    }
+  1035→  }
+  1036→}
+  1037→
+  1038→/* ------------------------------------------------------------------ */
+  1039→
+  1040→/** player position reference — set by Game each frame (avoids circular imports) */
+  1041→export const PLAYER_X_REF = { x: 400, y: 0 }
+  1042→
+  1043→const ENEMY_SPEC = {
+  1044→  torso: 32,
+  1045→  neck: 3.9,
+  1046→  headR: 8,
+  1047→  shoulderFwd: 2.7,
+  1048→  shoulderDrop: 2.8,
+  1049→  upperArm: 20,
+  1050→  foreArm: 18,
+  1051→  hand: 6,
+  1052→  thigh: 24,
+  1053→  shin: 22,
+  1054→  foot: 8,
+  1055→  blade: 40,
+  1056→}
+  1057→
+  1058→function line(ctx: CanvasRenderingContext2D, x: number, y: number, dx: number, dy: number, len: number): void {
+  1059→  ctx.beginPath()
+  1060→  ctx.moveTo(x - dx * 6, y - dy * 6)
+  1061→  ctx.lineTo(x + dx * len, y + dy * len)
+  1062→  ctx.stroke()
+  1063→}
+  1064→
+  1065→function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+  1066→  ctx.beginPath()
+  1067→  ctx.moveTo(x + r, y)
+  1068→  ctx.arcTo(x + w, y, x + w, y + h, r)
+  1069→  ctx.arcTo(x + w, y + h, x, y + h, r)
+  1070→  ctx.arcTo(x, y + h, x, y, r)
+  1071→  ctx.arcTo(x, y, x + w, y, r)
+  1072→  ctx.closePath()
+  1073→}
+  1074→
