@@ -146,7 +146,6 @@ export default function Home() {
       }
     })
     game.mount(canvas)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from the mounted external game system
     setGameInput(game.input)
 
     const ro = new ResizeObserver(() => game.resize())
