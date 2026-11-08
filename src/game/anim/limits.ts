@@ -55,21 +55,25 @@ const SPINE_FWD = 1.1 // dash acceleration posture peaks ~0.9+share
  * flexion convention (negative) BEFORE magnitude-clamping — a pose that
  * crossed the flexion side (positive elbow) snaps to the correct side at
  * minimum flexion rather than folding the joint backwards.
+ *
+ * SOFT REFLECTION (the elbow-pop fix): a channel that crossed sides
+ * keeps its flexion MAGNITUDE when reflected — a crossfade sweeping an
+ * elbow through zero now folds the same amount on the correct side
+ * instead of snapping to the 15° floor (the visible "elbow pops straight
+ * then refolds" transient). Genuine micro-positives still floor at the
+ * minimum flexion.
  */
 export function applyJointLimits(p: Pose): Pose {
-  // ---- elbows: sign-locked flexion ----
-  // positive elbow = the forearm folds the WRONG way (bird-knee). Snap it
-  // to the flexion side; a tiny positive value (≤8°) reads as "almost
-  // straight" and settles at the min-flexion floor instead.
+  // ---- elbows: sign-locked flexion (soft reflection) ----
   for (const ch of [CH.elL, CH.elR] as const) {
     p[ch] = p[ch] > 0
-      ? -EL_FLEX_MIN
+      ? -Math.max(EL_FLEX_MIN, Math.abs(p[ch]) * 0.92)
       : clamp(p[ch], -EL_FLEX_MAX, -EL_FLEX_MIN)
   }
-  // ---- knees: fold backward only, never locked ----
+  // ---- knees: fold backward only, never locked (soft reflection) ----
   for (const ch of [CH.kneeL, CH.kneeR] as const) {
     p[ch] = p[ch] > 0
-      ? -KNEE_FLEX_MIN
+      ? -Math.max(KNEE_FLEX_MIN, Math.abs(p[ch]) * 0.92)
       : clamp(p[ch], -KNEE_FLEX_MAX, -KNEE_FLEX_MIN)
   }
   // ---- shoulders: glenohumeral swing envelope ----

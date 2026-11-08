@@ -6,7 +6,7 @@ import { Animator } from '../anim/animator'
 import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
-import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
+import { FighterGeom, drawFighter3D, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
 import { applyJointLimits } from '../anim/limits'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
@@ -2503,30 +2503,37 @@ export class Player {
    * katana is actually swung). Blended over the authored off-arm channels
    * with a state-driven weight so running/dashing pumps stay authored.
    *
-   * ANATOMY CONTRACT (the inverted-elbow fix):
-   *  · GATED on swordDrawn — a sheathed katana parks its pommel at the
-   *    saya mouth; IK-ing the off hand onto it bowed the elbow across its
-   *    flexion side (the "one arm flips at idle" defect). Sheathed idle
-   *    belongs to the sword-home arm layer, not this one.
-   *  · ELBOW SIDE: the solve tries BOTH hinge configurations (elbow above
-   *    and below the shoulder→target line) and keeps the one matching the
-   *    rig's flexion convention — the elbow channel comes out NEGATIVE
-   *    (elbow bows up/back like the authored guard), never inverted.
-   *  · LIMITS: elbow flexion clamped to [0.26, 2.62] rad (15–150°) — the
-   *    hand never reaches by locking the joint straight. */
+   * ANATOMY CONTRACT v2 (the "draped straight off-arm" fix):
+   *  · 3D SOLVE: the IK runs in REAL 3D — target = pommel pulled into the
+   *    left shoulder's depth neighborhood (|Δz| ≤ 12), solved with
+   *    rig3d.ikArm3D (law of cosines in the target's own plane). The old
+   *    projected-2D solve ignored the 15-unit depth gap between the far
+   *    shoulder (z≈−7) and the grip (z≈+8), so the channels it wrote
+   *    re-projected to a nearly-straight arm draped across the torso —
+   *    the "one elbow looks broken at idle" defect.
+   *  · FLEXION FLOOR: grip elbows hold ≥35° flexion (el ≤ −0.61) — a
+   *    hand stacked on a tsuka is never a straight arm.
+   *  · DEPTH COHERENCE: the solve writes armLz AND foreLz (the forearm's
+   *    own elbow-pivot yaw) split like the sword-arc solver, so upper arm
+   *    and forearm fold through the SAME depth story.
+   *  · THREAT-DRIVEN WEIGHT: at standstill the grip weight tracks
+   *    enemyNearW — threat engaged = full two-hand chūdan grip; safe =
+   *    the arm hangs (the relax layer owns it). Sheathed = never. */
   private applyTwoHandGrip(dt: number): void {
     // desired grip weight by state
     let target = 0
     switch (this.state) {
       case 'move':
-        target = this.swordDrawn && this.grounded && Math.abs(this.vx) < 60 ? 1 : 0.1
+        if (!this.swordDrawn) target = 0
+        else if (Math.abs(this.vx) < 60) target = this.enemyNearW // threat = grip
+        else target = 0.1
         break
       case 'attack':
         target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
         break
       case 'charge':
       case 'parry':
-        target = 1
+        target = this.swordDrawn ? 1 : 0
         break
       case 'scripted':
         target = 0.5
@@ -2536,71 +2543,32 @@ export class Player {
     }
     this.twoHandW = damp(this.twoHandW, target, 11, dt)
     const w = this.twoHandW
-    if (w < 0.03) return
+    if (w < 0.03 || !this.swordDrawn) return
 
     const g = this.geom // last frame's solve — continuous, 1-frame stale
-    // tsuka butt (pommel end) — solved in 3D with the blade (rig3d)
-    const tx = g.pommel.x
-    const ty = g.pommel.y
-    // shoulder anchor = the LEFT glenohumeral joint (the off arm's true root)
-    const sx = g.shoulderL.x
-    const sy = g.shoulderL.y
+    // ---- 3D target: tsuka butt, pulled toward the far shoulder's depth ----
     const U = PLAYER_SPEC.upperArm
     const F = PLAYER_SPEC.foreArm
-    let dx = tx - sx
-    let dy = ty - sy
-    let d = Math.hypot(dx, dy)
-    // keep the target in the arm's reach annulus — a straight-arm reach is
-    // a dislocated read, and an inside-the-fold target inverts the hinge
-    const maxD = (U + F) * 0.93
-    const minD = (U + F) * 0.34
-    if (d > maxD) {
-      const k = maxD / d
-      dx *= k
-      dy *= k
-      d = maxD
-    } else if (d < minD) {
-      if (d < 1e-3) return
-      const k = minD / d
-      dx *= k
-      dy *= k
-      d = minD
-    }
-    // law of cosines: interior angles of the shoulder-elbow-target triangle
-    const cosB = clamp((U * U + d * d - F * F) / (2 * U * d), -1, 1)
-    const B = Math.acos(cosB)
-    const base = Math.atan2(dy, dx)
-    // BOTH hinge branches; score = elbow-channel sign (convention: flexion
-    // NEGATIVE). Prefer the branch that yields the authored side.
-    const solveBranch = (bend: number) => {
-      const upperAng = base + bend * B
-      const ex = sx + Math.cos(upperAng) * U
-      const ey = sy + Math.sin(upperAng) * U
-      const shIk = Math.atan2(ex - sx, ey - sy)
-      const elIk = Math.atan2(dx + sx - ex, dy + sy - ey) - shIk
-      return { shIk, elIk }
-    }
-    const a = solveBranch(1)
-    const b = solveBranch(-1)
-    // branch a bows the elbow one way, b the other; pick the elbow on the
-    // rig's flexion side (negative channel). If both are negative (rare,
-    // target nearly straight below), take the deeper flexion — reads as a
-    // settled grip rather than a locked arm.
-    let shIk: number
-    let elIk: number
-    if (a.elIk <= 0 && b.elIk > 0) {
-      ;({ shIk, elIk } = a)
-    } else if (b.elIk <= 0 && a.elIk > 0) {
-      ;({ shIk, elIk } = b)
-    } else {
-      ;({ shIk, elIk } = Math.abs(a.elIk) >= Math.abs(b.elIk) ? a : b)
-    }
-    // anatomical bound: 15°..150° flexion, flexion side only
-    elIk = clamp(elIk, -2.62, -0.26)
-    shIk = clamp(shIk, -1.05, 3.05)
+    const sx = g.shoulderL.x
+    const sy = g.shoulderL.y
+    const sz = g.shoulderL.z
+    let dx = g.pommel.x - sx
+    let dy = g.pommel.y - sy
+    let dz = clamp(g.pommel.z - sz, -12, 12) // depth clamp — no cross-body reach
+    const ik = ikArm3D(dx, dy, dz, U, F)
+    // anatomical grip band: 35°..150° flexion, flexion side only
+    const elIk = clamp(ik.el, -2.62, -0.61)
+    const shIk = clamp(ik.sh, -1.05, 3.05)
+    // depth split (mirror of the sword-arc solver): the shoulder plane
+    // carries ~58% of the reach yaw, the forearm's elbow-pivot the rest
+    const foreLead = clamp(ik.yaw * 0.42, -0.6, 0.6)
+    const armYaw = clamp(ik.yaw - foreLead, -1.35, 1.35)
+    const foreYaw = clamp(ik.yaw - armYaw, -0.65, 0.65)
     const p = this.pose
     p[CH.shL] += (shIk - p[CH.shL]) * w
     p[CH.elL] += (elIk - p[CH.elL]) * w
+    p[CH.armLz] += (armYaw - p[CH.armLz]) * w
+    p[CH.foreLz] += (foreYaw - p[CH.foreLz]) * w
   }
 
   private applyProcedural(dt: number): void {
@@ -2745,7 +2713,11 @@ export class Player {
         switch (this.loco) {
           case 'walk': carryYaw = -0.12; carryArm = -0.08; carryFore = -0.05; break
           case 'run': carryYaw = -0.28; carryArm = -0.2; carryFore = -0.12; break
-          case 'sprint': carryYaw = -0.34; carryArm = -0.3; carryFore = -0.22; break
+          // sprint: tucked hard back but SHALLOWER depth than before — the
+          // deep −0.3/−0.22 yaw pair foreshortened the chains until the
+          // projected elbow read ~150° straight (the "straight trailing
+          // sword arm" defect). The tuck lives in bladeYaw, not the arm.
+          case 'sprint': carryYaw = -0.3; carryArm = -0.16; carryFore = -0.1; break
           case 'combat': carryYaw = 0.06; carryArm = 0.1; carryFore = 0.05; break
           case 'backpedal': carryYaw = 0.04; carryArm = 0.06; carryFore = 0.03; break
           default: break
@@ -2852,21 +2824,34 @@ export class Player {
       if (this.surrounded) p[1] += wC * 1.2
     }
     // ---- SWORD RELAX/RAISE: safe → the katana lowers into a deep side
-    // carry (arm drops, wrist rotates the kissaki down-BACK ~139° so the
-    // tip sweeps behind the heels and clears the ground plane); threat →
+    // carry (arm drops, kissaki down-BACK ~139°, tip clearing the ground
+    // by ~14 local units — the old +4.33 offset measured proj −124..−142°:
+    // the blade rode UP over the shoulder instead of hanging); threat →
     // it rises back into the live guard (the blade "notices" enemies
     // before the player swings — emergent, damped, alive). The wrR offset
-    // is UP-WOUND (+4.33 ≡ −1.95 mod 2π) so the relax↔guard sweep passes
-    // through the UP hemisphere — the kissaki never dives through the
-    // floor mid-transition (clips.ts winding convention).
+    // is NEGATIVE-WOUND (−2.09): the guard→relax sum sweep 1.5 → −0.86
+    // rad carries the blade angle 4° → +139° THROUGH THE UP HEMISPHERE
+    // (tip over the shoulder for a beat, then settling down-back) —
+    // never through straight-down.
+    // THE OFF-ARM HANG (the drape fix): safe-idle arms HANG — shoulder
+    // back to vertical, soft ~30° elbow, hand beside the thigh/saya. The
+    // old layer only nudged shL while the grip IK chased the pommel with
+    // its old weight-1 target, producing a near-straight arm draped
+    // across the torso. Now: when relaxed the grip weight goes to 0
+    // (see applyTwoHandGrip) and this layer OWNS the hang.
     // (SHEATHED: skipped — no blade to relax; the pommel-rest layer below
     // owns the arms.)
     if (this.swordDrawn && this.state === 'move' && this.grounded && Math.abs(this.vx) < 60) {
       const relax = 1 - wC
       p[CH.shR] += relax * -0.35
       p[CH.elR] += relax * -0.05
-      p[CH.wrR] += relax * 4.33
-      p[CH.shL] += relax * -0.18
+      p[CH.wrR] += relax * -2.09
+      // the natural hang: upper arm vertical, elbow softly bent —
+      // NEVER a reach across the body
+      p[CH.shL] += (relax * (-0.02 - p[CH.shL])) * 0.6
+      p[CH.elL] += (relax * (-0.52 - p[CH.elL])) * 0.6
+      p[CH.armLz] += (relax * (0.06 - p[CH.armLz])) * 0.5
+      p[CH.foreLz] += (relax * (0.04 - p[CH.foreLz])) * 0.5
     }
 
     // ---- SWORD HOME ARM LAYER: while sheathed in grounded locomotion the
