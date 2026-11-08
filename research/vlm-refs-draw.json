@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# ARM MECHANICS EXTRACTION — what's usable vs. not\n\n**Honesty note first:** Only 2 of your 7 images contain usable arm data (the manga how-to figure, the tameshigiri cutter, and the nukitsuke instruction photo). The rest are weapon-portrait/equipment shots with **zero arms**. I've extracted everything measurable and flagged estimates.\n\n---\n\n## 1) READY/IDLE STANCE (only source: image 2, manga construction figure)\n\nSide-3/4 view, sword sheathed at left hip, right hand reaching to tsuka.\n\n| Joint | R ARM (sword hand) | L ARM (saya hand) |\n|---|---|---|\n| Shoulder swing (0° = hanging straight down, + = forward) | +55° (upper arm raised forward to reach across to hip) | +10° |\n| Shoulder abduction (out from torso) | ~15° | ~5° |\n| Elbow interior flexion | ~100° (forearm angles sharply inward/down toward grip) | ~150° (nearly straight, hand resting on saya/koiguchi) |\n| Wrist angle (neutral = 0°, + = dorsiflexed toward blade edge) | +20° (hand cocked to wrap tsuka) | ~0° |\n| Hand height | At hip level / top of saya (≈ navel height, same Y as belt knot) | On saya mouth (koiguchi), slightly forward of hip |\n| Lead hand | **RIGHT** (on tsuka, fingers visibly wrapping, thumb not locked) | Left trails, palm-down on scabbard |\n\n**Tip the figure itself gives:** the scabbard must angle forward-down from the hip (~30–40° below horizontal) so the draw arcs *around* the body, not through it — keep the left-hand/saya anchor fixed while the right hand travels.\n\n## 2) NUKITSUKE / DRAW (image 6 inset, plus image 5 follow-through)\n\n### Keyframe table — right arm, side view:\n\n| Phase | Shoulder swing | Elbow flexion | Wrist | Notes |\n|---|---|---|---|---|\n| 0. Grip rest | +55° | 100° | +20° | Left hand clamps saya forward |\n| 1. Saya pull-back (sayabiki) | +45° | 110° | +20° | LEFT arm pulls saya back −15°, torso rotates |\n| 2. Blade clears koiguchi | +70° | 130° | +40° | Right elbow extends outward; cut is horizontal, wrist cocked edge-up then snapping edge-down |\n| 3. Cut extends (kiritsuke) | +85–90° | 165° | 0° | Arm nearly fully extended at chest height, blade horizontal |\n| 4. Follow-through / chiburi (image 5) | +95° | 160° | −15° | Both hands stacked forward-low after the strike — see below |\n\n## 3) OFF-HAND / TWO-HANDED GRIP (image 5 = post-cut, image 6 = one-handed phase)\n\n| Phase | Left hand position |\n|---|---|\n| Sheathed | On saya, at koiguchi, palm down, elbow ~150° |\n| Mid-draw | Releases saya, moves forward to meet tsuka **only after blade clears** |\n| Two-handed (image 5) | Stacked: left hand at the **kashira (pommel end)**, right hand at fuchi/above tsuba; left pinky overhangs or cups kashira; wrists both near-neutral (±5°); hands at navel height, elbows flexed ~135°, pointing down-out |\n\n---\n\n## NOT USABLE (excluded per your instruction)\n- Images 1, 3, 4: blade/koshirae dimensions only — no arms (useful only if you later want grip length: tsuka ≈ 23–33 cm per the diagrams).\n- Image 7: arms occluded by wind-up pose; the leading arm shows shoulder ≈ +80°, elbow ~140° with weapon reversed-grip — usable only as a stylized dash reference.\n\n**Implementation constants:** elbow flexion range never drops below ~95° while sheathed; full extension (~165–170°) only during cut; left arm stays within +10° to +45° shoulder swing the entire sequence; all wrist rotation happens in phase 2→3, not before.",
+        "reasoning_content": "Only image 2 (figure pose) and 5, 6 show arms. Be honest about sparse data; estimate angles.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794159424,
+  "id": "202611090136386c467901da2a40d3",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611090136386c467901da2a40d3",
+  "usage": {
+    "completion_tokens": 995,
+    "completion_tokens_details": {
+      "reasoning_tokens": 26
+    },
+    "prompt_tokens": 21852,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 22847
+  }
+}

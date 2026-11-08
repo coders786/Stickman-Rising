@@ -107,33 +107,36 @@ export const IDLE_CLIP: Clip = makeClip('idle', [
  * the UP hemisphere — never through straight-down, which would drive the
  * kissaki through the floor for ~10 blend frames. */
 const WALK_Q: PoseInput[] = [
-  { // CONTACT-R — right heel strikes forward; left toe still planted
+  { // CONTACT-R — right heel strikes forward; left toe still planted.
+    // Off-arm elbow carries more flexion (VLM audit: near-straight swing
+    // read as stiff) and the sword carry rides a touch higher (wrR +0.15:
+    // the kissaki grazed the front shin at swing-through).
     rootRot: 0.07, rootY: 0.5, spine: 0.04, head: -0.08,
     hipR: 0.34, kneeR: -0.06, footR: 0.12,
     hipL: -0.26, kneeL: -0.34, footL: -0.04,
-    shR: 0.55, elR: -0.45, wrR: 5.15,
-    shL: -0.28, elL: -0.3,
+    shR: 0.55, elR: -0.45, wrR: 5.3,
+    shL: -0.28, elL: -0.42,
   },
   { // LOAD-R — weight accepts onto the bending right leg (double support)
     rootRot: 0.085, rootY: 1.1, spine: 0.05, head: -0.09,
     hipR: 0.14, kneeR: -0.32, footR: 0.08,
     hipL: -0.3, kneeL: -0.44, footL: -0.06,
-    shR: 0.57, elR: -0.45, wrR: 5.18,
-    shL: -0.05, elL: -0.4,
+    shR: 0.57, elR: -0.45, wrR: 5.33,
+    shL: -0.05, elL: -0.5,
   },
   { // PASSING — left knee lifts through; right leg extends under the hip
     rootRot: 0.075, rootY: 0.8, spine: 0.045, head: -0.08,
     hipR: -0.08, kneeR: -0.12, footR: 0.06,
     hipL: 0.12, kneeL: -0.62, footL: 0.1,
-    shR: 0.53, elR: -0.44, wrR: 5.12,
-    shL: 0.22, elL: -0.62,
+    shR: 0.53, elR: -0.44, wrR: 5.27,
+    shL: 0.22, elL: -0.68,
   },
   { // TOE-OFF-R — right calf pushes; left reaches for its contact
     rootRot: 0.08, rootY: 1.0, spine: 0.05, head: -0.09,
     hipR: -0.3, kneeR: -0.3, footR: -0.14,
     hipL: 0.3, kneeL: -0.12, footL: 0.12,
-    shR: 0.5, elR: -0.42, wrR: 5.1,
-    shL: 0.3, elL: -0.68,
+    shR: 0.5, elR: -0.42, wrR: 5.25,
+    shL: 0.3, elL: -0.72,
   },
 ]
 
@@ -167,11 +170,18 @@ export const WALK_CLIP: Clip = makeClip('walk', [
  * over the stance foot — the leg geometry is authored as diagonal struts,
  * and the 3D channels twist the gait (pelvisYaw ±0.2, chest counter). */
 const RUN_Q: PoseInput[] = [
-  { // CONTACT — lead heel strikes FAR forward, trail toe still down
+  { // CONTACT — lead heel strikes FAR forward, trail toe still down.
+    // ARM PUMP PHASE FIX: the sword arm now swings ANTI-phase to its own
+    // (right) leg — BACK at right-leg contact, FORWARD at right-leg
+    // push-off (in-phase with the left leg). The old authored values
+    // (0.3 → 0.55 → 0.72) only ever drifted forward: no back-swing phase,
+    // a frozen forward arm across the whole cycle (the "dead sword arm"
+    // read). Off-arm keeps the contralateral swing with a REAL back-swing
+    // extreme at push-off (shL −0.35, was a limp 0.08).
     rootX: 2, rootY: 0.6, rootRot: 0.21, spine: 0.05, head: -0.19,
     hipR: 0.88, kneeR: -0.08, footR: 0.24,
     hipL: -0.8, kneeL: -0.62, footL: -0.06,
-    shR: 0.3, elR: -1.0, wrR: 5.62,
+    shR: -0.15, elR: -1.0, wrR: 5.62,
     shL: 0.7, elL: -1.15, wrL: -0.24,
     pelvisYaw: 0.2, chestYaw: -0.14, armLz: 0.28, foreLz: 0.12,
   },
@@ -179,31 +189,39 @@ const RUN_Q: PoseInput[] = [
     rootX: 4.5, rootY: 2.2, rootRot: 0.24, spine: 0.075, head: -0.26,
     hipR: 0.5, kneeR: -0.72, footR: 0.06,
     hipL: -0.95, kneeL: -0.3, footL: 0.02,
-    shR: 0.55, elR: -1.05, wrR: 5.6,
+    shR: 0.1, elR: -1.02, wrR: 5.6,
     shL: 0.32, elL: -1.0, wrL: -0.2,
     pelvisYaw: 0.06, chestYaw: -0.04, armLz: 0.1, foreLz: 0.04,
   },
-  { // PUSH-OFF — lead leg drives back hard, trail knee punches through high
+  { // PUSH-OFF — lead leg drives back hard, trail knee punches through high.
+    // Right leg BACK → sword arm punches FORWARD (same-side anti-phase);
+    // left arm sweeps to its back-swing extreme
     rootX: 7, rootY: 1.0, rootRot: 0.21, spine: 0.09, head: -0.3,
     hipR: -0.3, kneeR: -0.38, footR: -0.1,
     hipL: 0.52, kneeL: -1.32, footL: 0.2,
-    shR: 0.72, elR: -0.95, wrR: 5.66,
-    shL: 0.08, elL: -0.95, wrL: -0.16,
+    shR: 0.6, elR: -1.05, wrR: 5.66,
+    shL: -0.35, elL: -0.95, wrL: -0.16,
     pelvisYaw: -0.18, chestYaw: 0.12, armLz: -0.26, foreLz: -0.12,
   },
 ]
 
 const RUN_DUR = 0.5
+/** stride-B sword-arm pump: the right arm completes ONE oscillation per
+ * full clip (its own leg's cycle) — carried forward at the LEFT-leg
+ * contact, swinging home to the back-swing by the next right contact. */
+const runB = (q: PoseInput, shR: number, elR: number): PoseInput => ({
+  ...mirrorStride(q), shR, elR,
+})
 const runFrames = [
   // stride A — right leg contact (0.0) → absorb (13%) → push (30%) → flight (50%)
   keyframe(0, RUN_Q[0], 'inQuad'),               // fall into contact
   keyframe(RUN_DUR * 0.13, RUN_Q[1], 'outQuad'), // absorb
   keyframe(RUN_DUR * 0.3, RUN_Q[2], 'inOutSine'), // drive
   // stride B — left leg contact: legs mirrored, off-arm counter-negated,
-  // sword arm keeps the SAME carry (a held weapon never swaps arms)
-  keyframe(RUN_DUR * 0.5, mirrorStride(RUN_Q[0]), 'outCubic'), // launch/reach
-  keyframe(RUN_DUR * 0.63, mirrorStride(RUN_Q[1]), 'inQuad'),
-  keyframe(RUN_DUR * 0.8, mirrorStride(RUN_Q[2]), 'outQuad'),
+  // sword arm rides its own pump (forward through L-contact, home by 1.0)
+  keyframe(RUN_DUR * 0.5, runB(RUN_Q[0], 0.5, -1.0), 'outCubic'), // launch/reach
+  keyframe(RUN_DUR * 0.63, runB(RUN_Q[1], 0.2, -1.0), 'inQuad'),
+  keyframe(RUN_DUR * 0.8, runB(RUN_Q[2], -0.1, -1.0), 'outQuad'),
   keyframe(RUN_DUR, RUN_Q[0], 'inOutSine'),
 ]
 
@@ -236,13 +254,18 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
  *    drive the stride, the shoulders counter-rotate against them
  * Cadence ≈ 5.5 steps/s. */
 const SPRINT_Q: PoseInput[] = [
-  { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed)
+  { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed).
+    // ARM DEPTH BUDGET: authored armLz trimmed ±0.42 → ±0.30 — the yaw
+    // stacked with the girdle inheritance + carry into a ~47%-depth
+    // forearm whose bent elbow projected to a straight stub ("dead arms
+    // at sprint"). The 3D scissor read survives at ±0.30; the silhouette
+    // survives too. The katana tuck lives in bladeYaw alone.
     rootX: 5, rootRot: 0.26, rootY: 3.4, spine: 0.09, head: -0.3,
     hipR: 1.18, kneeR: -0.3, footR: 0.34,
     hipL: -0.95, kneeL: -0.45, footL: -0.12,
     shR: -0.45, elR: -1.15, wrR: 6.45,
     shL: 1.05, elL: -1.25,
-    pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.42, armRz: -0.18, bladeYaw: -0.26,
+    pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.3, armRz: -0.08, bladeYaw: -0.26,
   },
   { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
     rootX: 7, rootRot: 0.28, rootY: 5.4, spine: 0.1, head: -0.32,
@@ -250,7 +273,7 @@ const SPRINT_Q: PoseInput[] = [
     hipL: -0.85, kneeL: -1.9, footL: 0.3,
     shR: -0.35, elR: -1.1, wrR: 6.42,
     shL: 0.7, elL: -1.15,
-    pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.12, armRz: -0.14, bladeYaw: -0.22,
+    pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.1, armRz: -0.06, bladeYaw: -0.22,
   },
   { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
     rootX: 10, rootRot: 0.27, rootY: 3.8, spine: 0.09, head: -0.3,
@@ -258,7 +281,7 @@ const SPRINT_Q: PoseInput[] = [
     hipL: 1.25, kneeL: -1.15, footL: 0.12,
     shR: -0.3, elR: -1.0, wrR: 6.4,
     shL: 0.34, elL: -1.05,
-    pelvisYaw: -0.26, chestYaw: 0.38, armLz: -0.4, armRz: -0.08, bladeYaw: -0.18,
+    pelvisYaw: -0.26, chestYaw: 0.38, armLz: -0.28, armRz: -0.04, bladeYaw: -0.18,
   },
   { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
     // sprinter lengthens in the air; a tucked flight reads as a crouch)
@@ -267,7 +290,7 @@ const SPRINT_Q: PoseInput[] = [
     hipL: 1.1, kneeL: -0.5, footL: 0.32,
     shR: -0.4, elR: -1.12, wrR: 6.43,
     shL: 0.88, elL: -1.2,
-    pelvisYaw: -0.1, chestYaw: 0.14, armLz: -0.15, armRz: -0.16, bladeYaw: -0.24,
+    pelvisYaw: -0.1, chestYaw: 0.14, armLz: -0.12, armRz: -0.07, bladeYaw: -0.24,
   },
 ]
 
@@ -622,44 +645,53 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     shR: 0.9, elR: -1.15, wrR: 3.9, // blade laid back along the scabbard line
     shL: -0.1, elL: -0.35, armLz: -0.3,
   }, 'inOutSine'),
-  keyframe(0.62, { // SLIDE — steel runs home to the kojiri
+  keyframe(0.62, { // SLIDE — steel runs home to the kojiri. The right
+    // fist rides the tsuka ~at the kashira line (IK: shR 0.8/elR −1.05
+    // keeps the hand at navel-forward height — the old shR −0.25 drag
+    // pulled the fist 25 units behind the saya mouth into the hip blob)
     rootRot: 0.08, rootY: 0.6, spine: 0.02, head: 0,
     hipR: 0.28, kneeR: -0.62, footR: 0.1,
     hipL: -0.3, kneeL: -0.58, footL: 0.12,
-    shR: -0.25, elR: -0.55, wrR: 4.9, // arm follows the blade in
+    shR: 0.8, elR: -1.05, wrR: 4.9, // hand follows the blade in, ON the grip
     shL: -0.15, elL: -0.3, armLz: -0.28,
   }, 'inOutCubic'),
-  keyframe(0.85, { // REST — fist settles on the pommel; the body quiet
+  keyframe(0.85, { // REST — fist settles on the pommel; the body quiet.
+    // IK-solved anatomical rest (matches the sheath home-arm layer):
+    // hand EXACTLY on the kashira 22 units forward of the hip, elbow
+    // interior ~124° — the samurai rest, never a backward-straight reach
     rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
     hipR: 0.3, kneeR: -0.58, footR: 0.1,
     hipL: -0.3, kneeL: -0.55, footL: 0.12,
-    shR: -0.32, elR: -0.42, wrR: 5.0, // hand on the tsuka at the hip
-    shL: 0.1, elL: -0.4, armLz: -0.15,
+    shR: 0.93, elR: -0.98, wrR: 5.0, // hand on the kashira at navel height
+    shL: 0.49, elL: -1.0, armLz: 0.2, // left hand on the saya mouth
   }, 'outCubic'),
 ])
 
 /** IAI — the draw. Fast, three beats: stillness → grip → EXPLOSION into guard. */
 export const DRAW_CLIP: Clip = makeClip('draw', [
-  keyframe(0, { // stillness — hand on the pommel (sheathed rest pose)
+  keyframe(0, { // stillness — hand on the pommel (sheathed rest pose,
+    // SAME anatomical rest as SHEATHE_CLIP's end: hand ON the kashira,
+    // elbow interior ~124°, iaido reference shoulder +55°)
     rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
     hipR: 0.3, kneeR: -0.58, footR: 0.1,
     hipL: -0.3, kneeL: -0.55, footL: 0.12,
-    shR: -0.32, elR: -0.42, wrR: 5.0,
-    shL: 0.1, elL: -0.4, armLz: -0.15,
+    shR: 0.93, elR: -0.98, wrR: 5.0,
+    shL: 0.49, elL: -1.0, armLz: 0.2,
   }, 'outQuad'),
-  keyframe(0.07, { // GRIP — the hand snaps onto the tsuka; hips coil back
+  keyframe(0.07, { // GRIP — the hand closes on the tsuka and lifts it out
+    // of the mouth (sayabiki: the LEFT arm pulls the saya back instead)
     rootRot: 0.02, rootY: 1.6, spine: 0.03, head: -0.14,
     hipR: 0.42, kneeR: -0.75, footR: 0.18,
     hipL: -0.36, kneeL: -0.7, footL: 0.1,
-    shR: -0.38, elR: -0.6, wrR: 4.85, // tsuka lifts out of the mouth
-    shL: -0.2, elL: -0.45, armLz: -0.3,
+    shR: 0.82, elR: -0.75, wrR: 4.85, // tsuka lifts out of the mouth
+    shL: 0.25, elL: -0.6, armLz: -0.3,
     pelvisYaw: -0.12,
   }, 'inQuad'),
   keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
     rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
     hipR: 0.6, kneeR: -1.05, footR: 0.26,
     hipL: -0.55, kneeL: -0.35, footL: -0.08,
-    shR: 1.55, elR: 0.05, wrR: 0.45, // edge flashing forward-up
+    shR: 1.55, elR: -0.3, wrR: 0.45, // edge flashing forward-up, elbow extending
     shL: 0.3, elL: -0.8, armLz: -0.1,
     pelvisYaw: 0.14, chestYaw: -0.08,
   }, 'outQuart'),

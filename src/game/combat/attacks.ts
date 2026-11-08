@@ -121,31 +121,36 @@ const l1: AttackDef = {
     keyframe(0, {
       ...GUARD,
       rootRot: 0.06,
-      shR: 0.2, elR: -0.3, wrR: -0.55, // hand resting on the saya mouth
+      // hand resting on the saya mouth — IK-solved onto the REAL mouth
+      // position (3,1 local): shR 0.31/elR −0.93 lands the fist exactly
+      // there; the blade lies back along the scabbard axis (sum ≈ −1.34 →
+      // blade ≈ 166° = the saya line). The old 0.2/−0.3 reached 15+ units
+      // behind the mouth with a near-straight elbow.
+      shR: 0.31, elR: -0.93, wrR: -0.72,
       shL: 0.35, elL: -0.6,
     }, 'outQuad'),
     keyframe(0.08, {
       rootRot: 0.1, rootY: 1.2,
-      shR: 0.22, elR: -0.32, wrR: -0.6, // grip tightens — stillness beat
+      shR: 0.31, elR: -0.93, wrR: -0.72, // grip tightens — stillness beat
       shL: 0.35, elL: -0.6,
     }, 'inOutSine'),
     // ignition: the blade clears the saya mouth, already moving
     keyframe(0.12, {
       rootRot: 0.18, rootY: 0.6,
       hipR: 0.38, kneeR: -0.45,
-      shR: 0.72, elR: -0.18, wrR: 0.02,
+      shR: 0.72, elR: -0.3, wrR: 0.02,
       shL: 0.45, elL: -0.8,
     }, 'outQuad'),
     keyframe(0.17, {
       rootRot: 0.32, spine: 0.12, head: -0.16, rootY: -0.5,
       hipR: 0.5, kneeR: -0.35, footR: 0.1,
       hipL: -0.55, kneeL: -0.28, footL: 0.14,
-      shR: 1.0, elR: -0.02, wrR: 0.62, // blade rips out level
+      shR: 1.0, elR: -0.3, wrR: 0.62, // blade rips out level, elbow stays flexion-side
       shL: 0.55, elL: -0.95,
     }, 'outCubic'),
     keyframe(0.26, {
       rootRot: 0.38, spine: 0.13, rootY: 0,
-      shR: 1.2, elR: 0.12, wrR: 0.3, // follow-through, arm extends
+      shR: 1.2, elR: -0.25, wrR: 0.3, // follow-through, arm extends (≤14° flexion floor)
       shL: 0.5, elL: -1.1,
     }, 'outCubic'),
     keyframe(0.44, GUARD, 'inOutCubic'),

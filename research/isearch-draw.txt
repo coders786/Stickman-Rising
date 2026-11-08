@@ -1,0 +1,68 @@
+🚀 Initializing Z-AI SDK...
+🔎 Searching images: "katana sword grip stances iaido drawing sword keyframe sequence side view"
+✅ Got 8 images
+{
+  "success": true,
+  "query": "katana sword grip stances iaido drawing sword keyframe sequence side view",
+  "count": 8,
+  "ranked": false,
+  "captioned_count": 0,
+  "results": [
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/7f6eb59d1f8e.jpg",
+      "caption": "",
+      "source": "Reliks",
+      "original_width": "1600px",
+      "original_height": "1063px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/687b066dcab0.jpg",
+      "caption": "",
+      "source": "Pinterest",
+      "original_width": "736px",
+      "original_height": "1733px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/80cc97429e99.png",
+      "caption": "",
+      "source": "Xingyu Sword",
+      "original_width": "2048px",
+      "original_height": "1152px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/c9bfa0617844.png",
+      "caption": "",
+      "source": "Xingyu Sword",
+      "original_width": "2848px",
+      "original_height": "1600px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/a902924bfe3a.jpg",
+      "caption": "",
+      "source": "Katana.store",
+      "original_width": "1760px",
+      "original_height": "880px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/f40b45a485d9.jpeg",
+      "caption": "",
+      "source": "Issuu",
+      "original_width": "1242px",
+      "original_height": "1756px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/6d46574533b0.jpeg",
+      "caption": "",
+      "source": "Issuu",
+      "original_width": "1242px",
+      "original_height": "1756px"
+    },
+    {
+      "original_url": "https://z-cdn.chatglm.cn/image-search-mcp/images-ppt/29d2541d5011.jpg",
+      "caption": "",
+      "source": "Shoty",
+      "original_width": "1200px",
+      "original_height": "675px"
+    }
+  ]
+}

@@ -221,10 +221,19 @@ export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bla
   // ---- ARMS (shoulder yaw inherits the girdle rotation; the forearm adds
   // its OWN elbow-pivot yaw — the pronation DOF that lets the hand lead
   // through depth while the elbow trails in another plane entirely) ----
+  // GIRDLE INHERITANCE CAP (the "dead arm" silhouette guard): the inherited
+  // fraction of the girdle yaw is bounded ±0.28 rad. Gait layers stacked
+  // authored arm yaw + carry + full inheritance to ~−0.44 total at sprint —
+  // the forearm's projected direction became ~47% depth, so a deeply bent
+  // elbow (interior 111°) PROJECTED to a straight horizontal stub. Attacks
+  // write their own armRz directly (the 3D-cut read, up to ±1.35) and are
+  // untouched by this cap; only the torso-twist inheritance is bounded.
+  const armYawInherit = clamp(girdleYaw, -0.62, 0.62) * 0.45
+  const foreYawInherit = clamp(girdleYaw, -0.62, 0.62) * 0.2
   solveArm(out.elbL, out.handL, shLx, shLy, shLz, pose[CH.shL], pose[CH.elL], spec,
-    pose[CH.armLz] + girdleYaw * 0.45, pose[CH.foreLz] + girdleYaw * 0.2, -CARRY_VALGUS)
+    pose[CH.armLz] + armYawInherit, pose[CH.foreLz] + foreYawInherit, -CARRY_VALGUS)
   solveArm(out.elbR, out.handR, shRx, shRy, shRz, pose[CH.shR], pose[CH.elR], spec,
-    pose[CH.armRz] + girdleYaw * 0.45, pose[CH.foreRz] + girdleYaw * 0.2, CARRY_VALGUS)
+    pose[CH.armRz] + armYawInherit, pose[CH.foreRz] + foreYawInherit, CARRY_VALGUS)
 
   // ---- PROJECT the core joints ----
   proj(out.hip, hipX, hipY, rootZ)
@@ -587,6 +596,23 @@ export function drawFighter3D(
     ctx.beginPath()
     ctx.arc(A.elb.x, A.elb.y, 3.9 * w, 0, Math.PI * 2)
     ctx.fill()
+    // FAR-ARM LIFT (the "invisible off arm" fix): the back-shade arm all
+    // but vanishes against the night background at gameplay contrast —
+    // its pump silhouette is HALF the run/sprint arm read. A whisper rim
+    // along the far arm's upper edge (below the main rim pass alpha, above
+    // nothing) keeps the limb readable without breaking the depth tone.
+    if (!opts.simple) {
+      ctx.save()
+      ctx.globalAlpha *= 0.34
+      ctx.strokeStyle = rim
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(A.sh.x, A.sh.y)
+      ctx.lineTo(A.elb.x, A.elb.y)
+      ctx.lineTo(A.hand.x, A.hand.y)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   // ---- 2. torso: pelvis basin → abdomen → ribcage → trapezius → NECK ----

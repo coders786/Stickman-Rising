@@ -1,0 +1,1188 @@
+     1→/** STICKMAN RISING — locomotion & reaction animation clips (keyframed).
+     2→ *
+     3→ * All poses are authored around the chūdan-no-kamae guard (NEUTRAL in
+     4→ * pose.ts): unspecified channels default INTO the guard, so every clip
+     5→ * blends guard→guard — the in-between continuity contract.
+     6→ *
+     7→ * LOCOMOTION LIBRARY — six genuinely distinct movement systems (each
+     8→ * authored from gait-cycle reference: contact / loading / passing /
+     9→ * push-off / flight phases per Williams' Animator's Survival Kit, with
+    10→ * stride, cadence, lean, COG height, knee-drive and arm mechanics that
+    11→ * differ per style — never a playback-rate rescale of one cycle):
+    12→ *
+    13→ *   WALK     relaxed civilian carry: upright, double-support stance,
+    14→ *            heel-to-toe roll, modest stride, sword hanging low
+    15→ *   RUN      5-phase gait, flight phase, counter arm pump, sword trail
+    16→ *   SPRINT   explosive: aggressive lean, deep COG, heel-to-butt recovery,
+    17→ *            knee punch-through, big arm drive, sword tucked back
+    18→ *   COMBAT   low quick shuffle, knees always flexed, live chūdan guard
+    19→ *   BACKPEDAL guarded retreat: toe-first back-steps, COG back, guard up
+    20→ *   BRAKE    one-shot hard stop: lean-back brace, dust, settle to guard
+    21→ */
+    22→
+    23→import { keyframe, makeClip, Clip } from './animator'
+    24→import { PoseInput } from './pose'
+    25→
+    26→/** swaps left/right LEG channels only — the arms keep their authored
+    27→ * channels (the sword stays in the right hand across both strides). */
+    28→function mirrorLegs(src: PoseInput): PoseInput {
+    29→  const out: PoseInput = { ...src }
+    30→  const pairs: [keyof PoseInput, keyof PoseInput][] = [
+    31→    ['hipL', 'hipR'], ['kneeL', 'kneeR'], ['footL', 'footR'],
+    32→  ]
+    33→  for (const [l, r] of pairs) {
+    34→    const lv = src[l]
+    35→    const rv = src[r]
+    36→    if (lv !== undefined) out[r] = lv
+    37→    if (rv !== undefined) out[l] = rv
+    38→  }
+    39→  return out
+    40→}
+    41→
+    42→/** STRIDE MIRROR for bipedal cycles: legs swap, the SWORD ARM (right)
+    43→ * keeps the exact same carry across both strides (a held weapon does not
+    44→ * teleport between arms / change carry mid-cycle), and the off-arm
+    45→ * negates its swing so the contralateral counter-phase survives.
+    46→ * DEPTH channels mirror with the stride: pelvis/chest yaw negate (the
+    47→ * opposite hip now drives), the off-arm's depth swing negates — while the
+    48→ * sword-side channels (armRz, bladeYaw) carry unchanged, like the arm. */
+    49→function mirrorStride(src: PoseInput): PoseInput {
+    50→  const out = mirrorLegs(src)
+    51→  if (src.shL !== undefined) out.shL = -src.shL
+    52→  if (src.pelvisYaw !== undefined) out.pelvisYaw = -src.pelvisYaw
+    53→  if (src.chestYaw !== undefined) out.chestYaw = -src.chestYaw
+    54→  if (src.armLz !== undefined) out.armLz = -src.armLz
+    55→  // the off FOREARM's own depth yaw negates WITH its upper arm — leaving
+    56→  // it un-mirrored desyncs the elbow's depth plane on stride B (the
+    57→  // "forearm flips against the upper arm" depth incoherence)
+    58→  if (src.foreLz !== undefined) out.foreLz = -src.foreLz
+    59→  if (src.armRz !== undefined) out.armRz = src.armRz
+    60→  if (src.bladeYaw !== undefined) out.bladeYaw = src.bladeYaw
+    61→  return out
+    62→}
+    63→
+    64→/* ------------------------------- IDLE ------------------------------- */
+    65→
+    66→/* Safe-idle breathing (NO threat): arms authored in GUARD space — the
+    67→ * relax layer (player.ts) drops the sword into the side carry and hangs
+    68→ * the off arm by the thigh when this clip plays, so the keys stay in the
+    69→ * continuity contract with every other clip (all blends pass through the
+    70→ * chūdan base). The two-hand grip read lives in COMBAT_IDLE_CLIP below. */
+    71→export const IDLE_CLIP: Clip = makeClip('idle', [
+    72→  keyframe(0, {}, 'inOutCubic'),
+    73→  keyframe(1.25, {
+    74→    rootY: -1.7, rootRot: 0.09, spine: 0.07, head: -0.12,
+    75→    shR: 0.82, elR: -0.55, wrR: 1.18,
+    76→    shL: 0.45, elL: -0.9, wrL: -0.3,
+    77→    hipR: 0.34, hipL: -0.31,
+    78→  }, 'inOutCubic'),
+    79→  keyframe(1.8, {
+    80→    rootY: -1.6, rootRot: 0.085, spine: 0.065, head: -0.11,
+    81→    shR: 0.81, elR: -0.56, wrR: 1.2,
+    82→    shL: 0.44, elL: -0.91, wrL: -0.31,
+    83→    hipR: 0.33, hipL: -0.31,
+    84→  }, 'inOutCubic'),
+    85→  keyframe(2.6, {
+    86→    rootY: -0.9, rootRot: 0.095, spine: 0.05, head: -0.09,
+    87→    shR: 0.78, elR: -0.58, wrR: 1.24,
+    88→    shL: 0.42, elL: -0.93, wrL: -0.32,
+    89→    hipR: 0.32, hipL: -0.3,
+    90→  }, 'inOutSine'),
+    91→  keyframe(3.6, {}, 'inOutSine'),
+    92→], true)
+    93→
+    94→/* ------------------------------- WALK -------------------------------- */
+    95→
+    96→/* Relaxed open-space walking (Condition A): upright posture, ~2 steps/s,
+    97→ * DOUBLE-SUPPORT stance (both feet grounded between strides — the walk
+    98→ * signature no other gait has), heel-to-toe roll, small stride, pelvis
+    99→ * settling over the support leg, arms swinging low and easy. The katana
+   100→ * carries in a steep down-BACK diagonal (wrR ≡ −0.95 mod 2π → blade ≈ 138°:
+   101→ * hand forward at the hip, kissaki sweeping behind the heel — the only
+   102→ * down-pointing orientation where a 56-unit blade clears the ground plane
+   103→ * from a hip-level hand).
+   104→ *
+   105→ * WINDING CONVENTION: locomotion carries are authored UP-WOUND (wrR + 2π
+   106→ * where needed) so every carry-to-carry crossfade sweeps the blade through
+   107→ * the UP hemisphere — never through straight-down, which would drive the
+   108→ * kissaki through the floor for ~10 blend frames. */
+   109→const WALK_Q: PoseInput[] = [
+   110→  { // CONTACT-R — right heel strikes forward; left toe still planted
+   111→    rootRot: 0.07, rootY: 0.5, spine: 0.04, head: -0.08,
+   112→    hipR: 0.34, kneeR: -0.06, footR: 0.12,
+   113→    hipL: -0.26, kneeL: -0.34, footL: -0.04,
+   114→    shR: 0.55, elR: -0.45, wrR: 5.15,
+   115→    shL: -0.28, elL: -0.3,
+   116→  },
+   117→  { // LOAD-R — weight accepts onto the bending right leg (double support)
+   118→    rootRot: 0.085, rootY: 1.1, spine: 0.05, head: -0.09,
+   119→    hipR: 0.14, kneeR: -0.32, footR: 0.08,
+   120→    hipL: -0.3, kneeL: -0.44, footL: -0.06,
+   121→    shR: 0.57, elR: -0.45, wrR: 5.18,
+   122→    shL: -0.05, elL: -0.4,
+   123→  },
+   124→  { // PASSING — left knee lifts through; right leg extends under the hip
+   125→    rootRot: 0.075, rootY: 0.8, spine: 0.045, head: -0.08,
+   126→    hipR: -0.08, kneeR: -0.12, footR: 0.06,
+   127→    hipL: 0.12, kneeL: -0.62, footL: 0.1,
+   128→    shR: 0.53, elR: -0.44, wrR: 5.12,
+   129→    shL: 0.22, elL: -0.62,
+   130→  },
+   131→  { // TOE-OFF-R — right calf pushes; left reaches for its contact
+   132→    rootRot: 0.08, rootY: 1.0, spine: 0.05, head: -0.09,
+   133→    hipR: -0.3, kneeR: -0.3, footR: -0.14,
+   134→    hipL: 0.3, kneeL: -0.12, footL: 0.12,
+   135→    shR: 0.5, elR: -0.42, wrR: 5.1,
+   136→    shL: 0.3, elL: -0.68,
+   137→  },
+   138→]
+   139→
+   140→const WALK_DUR = 1.0
+   141→export const WALK_CLIP: Clip = makeClip('walk', [
+   142→  keyframe(0, WALK_Q[0], 'outQuad'),
+   143→  keyframe(WALK_DUR * 0.12, WALK_Q[1], 'inOutCubic'),
+   144→  keyframe(WALK_DUR * 0.26, WALK_Q[2], 'inOutCubic'),
+   145→  keyframe(WALK_DUR * 0.4, WALK_Q[3], 'inOutSine'),
+   146→  keyframe(WALK_DUR * 0.5, mirrorStride(WALK_Q[0]), 'inQuad'),
+   147→  keyframe(WALK_DUR * 0.62, mirrorStride(WALK_Q[1]), 'inOutCubic'),
+   148→  keyframe(WALK_DUR * 0.76, mirrorStride(WALK_Q[2]), 'inOutCubic'),
+   149→  keyframe(WALK_DUR * 0.9, mirrorStride(WALK_Q[3]), 'inOutSine'),
+   150→  keyframe(WALK_DUR, WALK_Q[0], 'inOutCubic'),
+   151→], true)
+   152→
+   153→/* ------------------------------- RUN -------------------------------- */
+   154→
+   155→/* Five-phase gait (Williams, Animator's Survival Kit): CONTACT → LOADING
+   156→ * (absorb) → PUSH-OFF → FLIGHT → REACH, mirrored per stride. Every span is
+   157→ * eased — never linear: the fall INTO contact accelerates (inQuad), the
+   158→ * absorb decelerates (outQuad), the drive is smooth (inOutSine), the launch
+   159→ * explodes (outCubic). The hip bob is authored SMALL because the foot-ground
+   160→ * lock in player.ts derives hip height from the planted leg — real weight
+   161→ * transfer instead of a painted bob. Off-arm pumps in counter-phase (the
+   162→ * stride mirror negates it); the sword trails in a deep down-back diagonal
+   163→ * (wrR ≡ −0.25 mod 2π → blade ≈ 144°: kissaki sweeping well behind the
+   164→ * heel, clearing the ground by ~15 local units even with the wrist-lag
+   165→ * sway — up-wound per the clips.ts winding convention).
+   166→ * The pelvis SURGES forward through the cycle (rootX 2→7): the hips ride
+   167→ * over the stance foot — the leg geometry is authored as diagonal struts,
+   168→ * and the 3D channels twist the gait (pelvisYaw ±0.2, chest counter). */
+   169→const RUN_Q: PoseInput[] = [
+   170→  { // CONTACT — lead heel strikes FAR forward, trail toe still down
+   171→    rootX: 2, rootY: 0.6, rootRot: 0.21, spine: 0.05, head: -0.19,
+   172→    hipR: 0.88, kneeR: -0.08, footR: 0.24,
+   173→    hipL: -0.8, kneeL: -0.62, footL: -0.06,
+   174→    shR: 0.3, elR: -1.0, wrR: 5.62,
+   175→    shL: 0.7, elL: -1.15, wrL: -0.24,
+   176→    pelvisYaw: 0.2, chestYaw: -0.14, armLz: 0.28, foreLz: 0.12,
+   177→  },
+   178→  { // LOADING — weight absorbs over the bending lead leg, big stride split
+   179→    rootX: 4.5, rootY: 2.2, rootRot: 0.24, spine: 0.075, head: -0.26,
+   180→    hipR: 0.5, kneeR: -0.72, footR: 0.06,
+   181→    hipL: -0.95, kneeL: -0.3, footL: 0.02,
+   182→    shR: 0.55, elR: -1.05, wrR: 5.6,
+   183→    shL: 0.32, elL: -1.0, wrL: -0.2,
+   184→    pelvisYaw: 0.06, chestYaw: -0.04, armLz: 0.1, foreLz: 0.04,
+   185→  },
+   186→  { // PUSH-OFF — lead leg drives back hard, trail knee punches through high
+   187→    rootX: 7, rootY: 1.0, rootRot: 0.21, spine: 0.09, head: -0.3,
+   188→    hipR: -0.3, kneeR: -0.38, footR: -0.1,
+   189→    hipL: 0.52, kneeL: -1.32, footL: 0.2,
+   190→    shR: 0.72, elR: -0.95, wrR: 5.66,
+   191→    shL: 0.08, elL: -0.95, wrL: -0.16,
+   192→    pelvisYaw: -0.18, chestYaw: 0.12, armLz: -0.26, foreLz: -0.12,
+   193→  },
+   194→]
+   195→
+   196→const RUN_DUR = 0.5
+   197→const runFrames = [
+   198→  // stride A — right leg contact (0.0) → absorb (13%) → push (30%) → flight (50%)
+   199→  keyframe(0, RUN_Q[0], 'inQuad'),               // fall into contact
+   200→  keyframe(RUN_DUR * 0.13, RUN_Q[1], 'outQuad'), // absorb
+   201→  keyframe(RUN_DUR * 0.3, RUN_Q[2], 'inOutSine'), // drive
+   202→  // stride B — left leg contact: legs mirrored, off-arm counter-negated,
+   203→  // sword arm keeps the SAME carry (a held weapon never swaps arms)
+   204→  keyframe(RUN_DUR * 0.5, mirrorStride(RUN_Q[0]), 'outCubic'), // launch/reach
+   205→  keyframe(RUN_DUR * 0.63, mirrorStride(RUN_Q[1]), 'inQuad'),
+   206→  keyframe(RUN_DUR * 0.8, mirrorStride(RUN_Q[2]), 'outQuad'),
+   207→  keyframe(RUN_DUR, RUN_Q[0], 'inOutSine'),
+   208→]
+   209→
+   210→export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
+   211→
+   212→/* ------------------------------- SPRINT ------------------------------ */
+   213→
+   214→/* Condition C — maximum-effort sprint. NOT a faster run: a different
+   215→ * mechanical system entirely. THE MAX-VELOCITY POSTURE (research: elite
+   216→ * sprinters hold ~15–20° trunk lean at top speed — the 35°+ lean belongs
+   217→ * to ACCELERATION, which is what the DASH family owns now; sprint stays
+   218→ * tall so the two states read instantly apart):
+   219→ *  · torso pitch ~20–23° (rootRot 0.36–0.40) + lumbar continuation —
+   220→ *    clearly above run, clearly below dash
+   221→ *  · PELVIS SURGES FORWARD (rootX 5→10 local): the hips ride over the
+   222→ *    toes ahead of the planted feet; the legs solve as DIAGONAL struts
+   223→ *    (stance leg compressed under the COG, trail leg fully extended)
+   224→ *  · COG swings 3.4 → 5.4 local (lowest at load absorb) — dropped hips
+   225→ *  · HEEL-TO-BUTT recovery: the swing shin folds past −1.9 rad under a
+   226→ *    back-swing thigh — the heel physically approaches the glutes
+   227→ *  · KNEE PUNCH-THROUGH: hip swings to 1.25+ rad (thigh nearly
+   228→ *    horizontal) before the next overstriding toe-up contact
+   229→ *  · big bent-elbow arm drive with DEPTH: the off-arm punches forward
+   230→ *    through +Z (armLz 0.42 — toward the camera), the sword arm trails
+   231→ *    back through −Z — the arms scissor THROUGH depth, not just the plane
+   232→ *  · katana tucked hard back (sum ≈ 0.4, bladeYaw −0.28: the steel
+   233→ *    swings behind the torso plane — the MGR Raiden sprint carry)
+   234→ *  · 3D gait twist: pelvisYaw ±0.26 with chest counter ±0.38 (research:
+   235→ *    shoulder counter-rotation ≈ 2× pelvis at sprint cadence) — the hips
+   236→ *    drive the stride, the shoulders counter-rotate against them
+   237→ * Cadence ≈ 5.5 steps/s. */
+   238→const SPRINT_Q: PoseInput[] = [
+   239→  { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed)
+   240→    rootX: 5, rootRot: 0.26, rootY: 3.4, spine: 0.09, head: -0.3,
+   241→    hipR: 1.18, kneeR: -0.3, footR: 0.34,
+   242→    hipL: -0.95, kneeL: -0.45, footL: -0.12,
+   243→    shR: -0.45, elR: -1.15, wrR: 6.45,
+   244→    shL: 1.05, elL: -1.25,
+   245→    pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.42, armRz: -0.18, bladeYaw: -0.26,
+   246→  },
+   247→  { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
+   248→    rootX: 7, rootRot: 0.28, rootY: 5.4, spine: 0.1, head: -0.32,
+   249→    hipR: 0.22, kneeR: -1.05, footR: 0.06,
+   250→    hipL: -0.85, kneeL: -1.9, footL: 0.3,
+   251→    shR: -0.35, elR: -1.1, wrR: 6.42,
+   252→    shL: 0.7, elL: -1.15,
+   253→    pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.12, armRz: -0.14, bladeYaw: -0.22,
+   254→  },
+   255→  { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
+   256→    rootX: 10, rootRot: 0.27, rootY: 3.8, spine: 0.09, head: -0.3,
+   257→    hipR: -0.72, kneeR: -0.4, footR: -0.18,
+   258→    hipL: 1.25, kneeL: -1.15, footL: 0.12,
+   259→    shR: -0.3, elR: -1.0, wrR: 6.4,
+   260→    shL: 0.34, elL: -1.05,
+   261→    pelvisYaw: -0.26, chestYaw: 0.38, armLz: -0.4, armRz: -0.08, bladeYaw: -0.18,
+   262→  },
+   263→  { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
+   264→    // sprinter lengthens in the air; a tucked flight reads as a crouch)
+   265→    rootX: 8, rootRot: 0.25, rootY: 0.6, spine: 0.08, head: -0.28,
+   266→    hipR: -0.5, kneeR: -0.75, footR: -0.1,
+   267→    hipL: 1.1, kneeL: -0.5, footL: 0.32,
+   268→    shR: -0.4, elR: -1.12, wrR: 6.43,
+   269→    shL: 0.88, elL: -1.2,
+   270→    pelvisYaw: -0.1, chestYaw: 0.14, armLz: -0.15, armRz: -0.16, bladeYaw: -0.24,
+   271→  },
+   272→]
+   273→
+   274→const SPRINT_DUR = 0.36
+   275→const SPH = SPRINT_DUR / 2 // one stride
+   276→export const SPRINT_CLIP: Clip = makeClip('sprint', [
+   277→  // stride A — right contact → scissor → toe-off → flight
+   278→  keyframe(0, SPRINT_Q[0], 'inQuad'),
+   279→  keyframe(SPH * 0.28, SPRINT_Q[1], 'outQuad'),
+   280→  keyframe(SPH * 0.5, SPRINT_Q[2], 'inOutSine'),
+   281→  keyframe(SPH * 0.78, SPRINT_Q[3], 'outCubic'),
+   282→  // stride B — left contact (mirrored legs + counter-negated off-arm pump,
+   283→  // same tucked sword carry)
+   284→  keyframe(SPH, mirrorStride(SPRINT_Q[0]), 'inQuad'),
+   285→  keyframe(SPH + SPH * 0.28, mirrorStride(SPRINT_Q[1]), 'outQuad'),
+   286→  keyframe(SPH + SPH * 0.5, mirrorStride(SPRINT_Q[2]), 'inOutSine'),
+   287→  keyframe(SPH + SPH * 0.78, mirrorStride(SPRINT_Q[3]), 'outCubic'),
+   288→  keyframe(SPRINT_DUR, SPRINT_Q[0], 'inOutSine'),
+   289→], true)
+   290→
+   291→/* ------------------------------- COMBAT STEP ------------------------- */
+   292→
+   293→/* Condition B — combat-ready shuffle while enemies are near. COG lowered
+   294→ * (rootY ≈ 3.6), knees always flexed, torso coiled over the hips, short
+   295→ * quick steps (no flight phase), and the blade NEVER leaves the chūdan
+   296→ * guard: it stays level at the enemy's throat through the entire cycle.
+   297→ * The off-hand balances forward. This is how you circle a threat. */
+   298→const COMBAT_Q: PoseInput[] = [
+   299→  { // STEP-R — right foot plants forward under the guard
+   300→    rootRot: 0.18, rootY: 3.4, spine: 0.08, head: -0.14,
+   301→    hipR: 0.48, kneeR: -0.6, footR: 0.18,
+   302→    hipL: -0.38, kneeL: -0.52, footL: 0.12,
+   303→    shR: 0.8, elR: -0.5, wrR: 1.1,
+   304→    shL: 0.55, elL: -0.55, wrL: -0.3,
+   305→  },
+   306→  { // PASS — feet pass close under the hips, quick weight transfer
+   307→    rootRot: 0.19, rootY: 3.8, spine: 0.085, head: -0.14,
+   308→    hipR: 0.3, kneeR: -0.75, footR: 0.1,
+   309→    hipL: -0.1, kneeL: -0.7, footL: 0.1,
+   310→    shR: 0.82, elR: -0.5, wrR: 1.12,
+   311→    shL: 0.5, elL: -0.6, wrL: -0.28,
+   312→  },
+   313→]
+   314→
+   315→const COMBAT_DUR = 0.44
+   316→export const COMBAT_STEP_CLIP: Clip = makeClip('combatStep', [
+   317→  keyframe(0, COMBAT_Q[0], 'inOutCubic'),
+   318→  keyframe(COMBAT_DUR * 0.28, COMBAT_Q[1], 'inOutSine'),
+   319→  keyframe(COMBAT_DUR * 0.55, mirrorLegs(COMBAT_Q[0]), 'inOutCubic'),
+   320→  keyframe(COMBAT_DUR * 0.83, mirrorLegs(COMBAT_Q[1]), 'inOutSine'),
+   321→  keyframe(COMBAT_DUR, COMBAT_Q[0], 'inOutCubic'),
+   322→], true)
+   323→
+   324→/* ------------------------------- COMBAT IDLE ------------------------- */
+   325→
+   326→/* Condition B at REST — the ROOTED live guard. Standing still with a
+   327→ * threat engaged is NOT walking: the feet stay PLANTED while the weight
+   328→ * shifts between the stance legs (pelvis sway), the COG breathes, and the
+   329→ * kissaki drifts on a tiny figure around the threat's throat line — a
+   330→ * coiled spring that never steps. (The old selector fell back to the
+   331→ * combat SHUFFLE here — the player visibly marched in place while idle.) */
+   332→export const COMBAT_IDLE_CLIP: Clip = makeClip('combatIdle', [
+   333→  keyframe(0, {
+   334→    rootRot: 0.16, rootY: 3, spine: 0.07, head: -0.13,
+   335→    hipR: 0.4, kneeR: -0.68, footR: 0.14,
+   336→    hipL: -0.38, kneeL: -0.6, footL: 0.13,
+   337→    // TWO-HAND CHŪDAN GRIP (researched keyframes, ref-gen-chudan.png):
+   338→    // both hands stacked on the tsuka at chest height — the off arm
+   339→    // COMPACT (elbow ~76° flexion, upper arm against the ribs), the
+   340→    // sword elbow ~36°. The grip IK (player.ts) refines the live pommel
+   341→    // contact on top of these keys.
+   342→    shR: 0.72, elR: -0.62, wrR: 1.22,
+   343→    shL: 0.38, elL: -1.32, wrL: -0.55,
+   344→    pelvisYaw: 0.05,
+   345→  }, 'inOutSine'),
+   346→  keyframe(0.8, { // weight settles onto the rear leg; blade dips a breath
+   347→    rootRot: 0.15, rootY: 3.6, spine: 0.065, head: -0.15,
+   348→    kneeR: -0.6, kneeL: -0.66,
+   349→    shR: 0.68, elR: -0.66, wrR: 1.12,
+   350→    shL: 0.35, elL: -1.36,
+   351→    pelvisYaw: -0.06,
+   352→  }, 'inOutSine'),
+   353→  keyframe(1.6, { // weight rides forward; the kissaki re-centers on the line
+   354→    rootRot: 0.17, rootY: 3.1, spine: 0.07, head: -0.12,
+   355→    kneeR: -0.7, kneeL: -0.56,
+   356→    shR: 0.76, elR: -0.6, wrR: 1.3,
+   357→    shL: 0.4, elL: -1.3,
+   358→    pelvisYaw: 0.06,
+   359→  }, 'inOutSine'),
+   360→  keyframe(2.4, {
+   361→    rootRot: 0.16, rootY: 3.3, spine: 0.07, head: -0.13,
+   362→    kneeR: -0.66, kneeL: -0.6,
+   363→    shR: 0.72, elR: -0.63, wrR: 1.24,
+   364→    shL: 0.37, elL: -1.33,
+   365→    pelvisYaw: 0.02,
+   366→  }, 'inOutSine'),
+   367→  keyframe(3.2, {
+   368→    rootRot: 0.16, rootY: 3, spine: 0.07, head: -0.13,
+   369→    hipR: 0.4, kneeR: -0.68, footR: 0.14,
+   370→    hipL: -0.38, kneeL: -0.6, footL: 0.13,
+   371→    shR: 0.72, elR: -0.62, wrR: 1.22,
+   372→    shL: 0.38, elL: -1.32, wrL: -0.55,
+   373→    pelvisYaw: 0.05,
+   374→  }, 'inOutSine'),
+   375→], true)
+   376→
+   377→/* ------------------------------- BACKPEDAL --------------------------- */
+   378→
+   379→/* Guarded retreat — moving backward while still facing the threat. Legs
+   380→ * reach BACK toe-first (hip negative = leg back), knees stay bent and
+   381→ * loaded, COG sits back slightly (rootRot ≈ −0.05) but the guard NEVER
+   382→ * drops. Short quick steps, ~3.5 steps/s. */
+   383→const BACK_Q: PoseInput[] = [
+   384→  { // TOE-CONTACT-R — right toe reaches back, heel high
+   385→    rootRot: -0.05, rootY: 2.6, spine: 0.02, head: -0.05,
+   386→    hipR: -0.5, kneeR: -0.55, footR: 0.25,
+   387→    hipL: 0.3, kneeL: -0.5, footL: 0.1,
+   388→    shR: 0.85, elR: -0.5, wrR: 1.05,
+   389→    shL: 0.5, elL: -0.6, wrL: -0.3,
+   390→  },
+   391→  { // LOAD — weight accepts onto the rear leg, front foot lightens
+   392→    rootRot: -0.04, rootY: 3.0, spine: 0.025, head: -0.06,
+   393→    hipR: -0.25, kneeR: -0.8, footR: 0.12,
+   394→    hipL: 0.1, kneeL: -0.75, footL: 0.08,
+   395→    shR: 0.83, elR: -0.52, wrR: 1.08,
+   396→    shL: 0.48, elL: -0.62, wrL: -0.28,
+   397→  },
+   398→]
+   399→
+   400→const BACK_DUR = 0.56
+   401→export const BACKPEDAL_CLIP: Clip = makeClip('backpedal', [
+   402→  keyframe(0, BACK_Q[0], 'inOutCubic'),
+   403→  keyframe(BACK_DUR * 0.25, BACK_Q[1], 'inOutSine'),
+   404→  keyframe(BACK_DUR * 0.55, mirrorLegs(BACK_Q[0]), 'inOutCubic'),
+   405→  keyframe(BACK_DUR * 0.8, mirrorLegs(BACK_Q[1]), 'inOutSine'),
+   406→  keyframe(BACK_DUR, BACK_Q[0], 'inOutCubic'),
+   407→], true)
+   408→
+   409→/* ------------------------------- BRAKE ------------------------------- */
+   410→
+   411→/* One-shot hard stop from sprint/run (input reversal or release at speed):
+   412→ * the body pitches BACK over the braking leg, arms fly up for balance,
+   413→ * the sword swings up to counter the momentum — then settles into the
+   414→ * guard. Dust + skid FX fire from player.ts on the same trigger. */
+   415→export const BRAKE_CLIP: Clip = makeClip('brake', [
+   416→  keyframe(0, {
+   417→    rootRot: -0.18, rootY: 4.5, spine: -0.02, head: 0.1,
+   418→    hipR: 0.55, kneeR: -0.85, footR: 0.3,
+   419→    hipL: -0.35, kneeL: -0.6, footL: -0.05,
+   420→    shR: 0.5, elR: -0.6, wrR: 1.3,
+   421→    shL: 1.0, elL: -0.9,
+   422→  }, 'outQuad'),
+   423→  keyframe(0.12, {
+   424→    rootRot: 0.02, rootY: 3.4, spine: 0.03, head: -0.05,
+   425→    hipR: 0.4, kneeR: -0.7, footR: 0.2,
+   426→    hipL: -0.3, kneeL: -0.55, footL: 0.05,
+   427→    shR: 0.7, elR: -0.55, wrR: 1.2,
+   428→    shL: 0.7, elL: -0.7,
+   429→  }, 'inOutCubic'),
+   430→  keyframe(0.24, {
+   431→    rootRot: 0.1, rootY: 2.5, spine: 0.05, head: -0.1,
+   432→    hipR: 0.3, kneeR: -0.5, footR: 0.12,
+   433→    hipL: -0.28, kneeL: -0.45, footL: 0.1,
+   434→    shR: 0.8, elR: -0.5, wrR: 1.15,
+   435→    shL: 0.5, elL: -0.8,
+   436→  }, 'outCubic'),
+   437→])
+   438→
+   439→/* ------------------------------- JUMP / FALL / LAND ---------------- */
+   440→
+   441→/* THE AIRBORNE FAMILY — HANDS-ONLY choreography: both arms move as free
+   442→ * hands (momentum throws, balance spreads, the mid-air redirect slap) —
+   443→ * NO sword choreography, no wrist flourishes, no spin. The blade simply
+   444→ * rides the sword hand in a fixed neutral carry (wrR wound into the
+   445→ * locomotion family region ≈ 5.0–7.0) so it trails clear of the legs
+   446→ * through every pose, and the animator's shortest-path wrist crossfade
+   447→ * guarantees carry→carry blends never sweep the long way around.
+   448→ *
+   449→ * The family is CONDITIONED (player.ts doJump):
+   450→ *   · JUMP      the standing vertical — triple extension, hands thrown high
+   451→ *   · LEAP      initiated from a run: momentum long-jump, hands swept
+   452→ *               down-back, trail leg fully extended (Ninja Gaiden leap)
+   453→ *   · AIR JUMP  the mid-air redirect: coil → leg scissor + both hands
+   454→ *               SLAP down past the hips (the boost read) → fall spread
+   455→ *   · FALL      opens from the apex tuck — one continuous arc
+   456→ *   · LAND      deep squat absorb, both hands reaching down past the knees
+   457→ * Jump velocity (JUMP_V in player.ts) clears ≈ 2.5× hip height — a REAL
+   458→ * athletic jump. */
+   459→export const JUMP_CLIP: Clip = makeClip('jump', [
+   460→  keyframe(0, { // TAKEOFF — triple extension: BOTH HANDS thrown high
+   461→    rootRot: 0.3, rootY: -2, spine: 0.1, head: -0.24,
+   462→    hipR: 0.85, kneeR: -1.55, footR: 0.32,
+   463→    hipL: -0.55, kneeL: -0.25, footL: -0.1,
+   464→    shR: 2.75, elR: -0.25, wrR: 6.95,
+   465→    shL: 2.55, elL: -0.3,
+   466→    pelvisYaw: 0.08,
+   467→  }, 'outQuad'),
+   468→  keyframe(0.16, { // RISE — arms sweep out toward the balance spread
+   469→    rootRot: 0.18, rootY: -3, spine: 0.06, head: -0.18,
+   470→    hipR: 0.55, kneeR: -1.5, footR: 0.18,
+   471→    hipL: 0.32, kneeL: -1.05, footL: 0.22,
+   472→    shR: 2.15, elR: -0.2, wrR: 6.98,
+   473→    shL: 1.95, elL: -0.25, armLz: 0.45,
+   474→  }, 'outCubic'),
+   475→  keyframe(0.34, { // APEX — knees tuck high, hands level at the shoulders
+   476→    rootRot: 0.12, rootY: -3.6, spine: 0.05, head: -0.14,
+   477→    hipR: 0.6, kneeR: -1.9, footR: 0.1,
+   478→    hipL: 0.45, kneeL: -1.75, footL: 0.16,
+   479→    shR: 1.75, elR: -0.35, wrR: 7.02,
+   480→    shL: 1.6, elL: -0.4, armLz: 0.3,
+   481→  }, 'inOutCubic'),
+   482→])
+   483→
+   484→/** running leap — initiated from a run: the momentum long-jump. Torso
+   485→ * drives forward over the boarding leg, trail leg sweeps back to FULL
+   486→ * extension, both hands swept down-back (airfoil drag) then flaring wide
+   487→ * at the arc top. */
+   488→export const JUMP_LEAP_CLIP: Clip = makeClip('jumpLeap', [
+   489→  keyframe(0, { // BOARDING — momentum converts through the drive leg
+   490→    rootRot: 0.5, rootY: -1.5, spine: 0.14, head: -0.3,
+   491→    hipR: 1.0, kneeR: -0.9, footR: 0.28,
+   492→    hipL: -0.85, kneeL: -0.2, footL: -0.18,
+   493→    shR: -0.5, elR: -0.4, wrR: 5.05,
+   494→    shL: -0.35, elL: -0.5,
+   495→    pelvisYaw: 0.14, chestYaw: -0.08,
+   496→  }, 'outQuad'),
+   497→  keyframe(0.2, { // FLIGHT — the long horizontal body, hands flat down-back
+   498→    rootRot: 0.62, rootY: -2.6, spine: 0.12, head: -0.34,
+   499→    hipR: 1.25, kneeR: -0.5, footR: 0.3,
+   500→    hipL: -1.05, kneeL: -0.15, footL: -0.22,
+   501→    shR: -0.65, elR: -0.35, wrR: 5.1,
+   502→    shL: -0.5, elL: -0.45,
+   503→    pelvisYaw: 0.1, chestYaw: -0.06,
+   504→  }, 'outCubic'),
+   505→  keyframe(0.42, { // ARC TOP — hands flare wide, lead knee reaches for landing
+   506→    rootRot: 0.5, rootY: -3, spine: 0.1, head: -0.26,
+   507→    hipR: 0.9, kneeR: -0.85, footR: 0.2,
+   508→    hipL: -0.7, kneeL: -0.5, footL: -0.1,
+   509→    shR: 1.4, elR: -0.3, wrR: 5.4,
+   510→    shL: 1.2, elL: -0.4, armLz: 0.4,
+   511→  }, 'inOutCubic'),
+   512→])
+   513→
+   514→/** air jump (double jump) — the mid-air redirect: the body COILS, then the
+   515→ * legs scissor (lead kicks forward, trail stamps down = the boost) while
+   516→ * BOTH HANDS slap down past the hips — Ghost of Tsushima / DMC flip read
+   517→ * without the flip. */
+   518→export const AIR_JUMP_CLIP: Clip = makeClip('airJump', [
+   519→  keyframe(0, { // COIL — everything folds in the air
+   520→    rootRot: 0.16, rootY: -2.5, spine: 0.06, head: -0.14,
+   521→    hipR: 0.6, kneeR: -1.8, footR: 0.12,
+   522→    hipL: 0.45, kneeL: -1.65, footL: 0.16,
+   523→    shR: 2.3, elR: -0.3, wrR: 6.95,
+   524→    shL: 2.1, elL: -0.35,
+   525→  }, 'outQuad'),
+   526→  keyframe(0.12, { // BOOST — leg scissor + the two-hand DOWN-slap
+   527→    rootRot: 0.22, rootY: -2.8, spine: 0.08, head: -0.16,
+   528→    hipR: 1.05, kneeR: -0.45, footR: 0.25,
+   529→    hipL: -0.6, kneeL: -0.25, footL: -0.15,
+   530→    shR: 0.55, elR: -0.25, wrR: 6.4,
+   531→    shL: 0.4, elL: -0.3,
+   532→  }, 'outCubic'),
+   533→  keyframe(0.32, { // SETTLE — arms flare into the fall spread
+   534→    rootRot: 0.14, rootY: -3, spine: 0.05, head: -0.12,
+   535→    hipR: 0.75, kneeR: -1.15, footR: 0.18,
+   536→    hipL: -0.2, kneeL: -0.9, footL: 0.2,
+   537→    shR: 1.85, elR: -0.3, wrR: 6.85,
+   538→    shL: 1.7, elL: -0.35, armLz: 0.35,
+   539→  }, 'inOutCubic'),
+   540→])
+   541→
+   542→export const FALL_CLIP: Clip = makeClip('fall', [
+   543→  keyframe(0, { // opens FROM the apex tuck (continuity with the jump family)
+   544→    rootRot: 0.12, rootY: -3, spine: 0.06, head: -0.15,
+   545→    hipR: 0.55, kneeR: -1.7, footR: 0.14,
+   546→    hipL: 0.42, kneeL: -1.55, footL: 0.18,
+   547→    shR: 1.8, elR: -0.3, wrR: 6.9,
+   548→    shL: 1.65, elL: -0.35, armLz: 0.35,
+   549→  }, 'inOutCubic'),
+   550→  keyframe(0.4, { // DESCEND — hands spread WIDE, legs reaching for the ground
+   551→    rootRot: 0.16, rootY: -2.4, spine: 0.07, head: -0.12,
+   552→    hipR: 0.2, kneeR: -0.7, footR: 0.1,
+   553→    hipL: -0.32, kneeL: -0.6, footL: 0.18,
+   554→    shR: 1.95, elR: -0.2, wrR: 6.55,
+   555→    shL: 1.8, elL: -0.25, armLz: 0.5,
+   556→  }, 'inOutCubic'),
+   557→  keyframe(0.9, { // long-fall hold — slow leg cycle, hands riding the air
+   558→    rootRot: 0.13, rootY: -2.7, spine: 0.06, head: -0.12,
+   559→    hipR: 0.35, kneeR: -0.95, footR: 0.12,
+   560→    hipL: -0.12, kneeL: -0.8, footL: 0.16,
+   561→    shR: 1.85, elR: -0.25, wrR: 6.7,
+   562→    shL: 1.7, elL: -0.3, armLz: 0.4,
+   563→  }, 'inOutCubic'),
+   564→], true)
+   565→
+   566→export const LAND_CLIP: Clip = makeClip('land', [
+   567→  keyframe(0, { // IMPACT — deep squat, BOTH HANDS reach down past the knees
+   568→    rootY: 7, rootRot: 0.4, spine: 0.14, head: -0.22,
+   569→    hipR: 0.62, kneeR: -1.4, footR: 0.24,
+   570→    hipL: -0.5, kneeL: -1.3, footL: 0.18,
+   571→    shR: 0.85, elR: -0.35, wrR: 6.1,
+   572→    shL: 0.7, elL: -0.4, armLz: 0.2,
+   573→  }, 'outQuad'),
+   574→  keyframe(0.26, { // RECOVER — rise, hands settle back toward the carry
+   575→    rootY: 1.5, rootRot: 0.16, spine: 0.05, head: -0.1,
+   576→    hipR: 0.35, kneeR: -0.5, footR: 0.12,
+   577→    hipL: -0.3, kneeL: -0.45, footL: 0.1,
+   578→    shR: 1.15, elR: -0.4, wrR: 6.35,
+   579→    shL: 0.6, elL: -0.7,
+   580→  }, 'outCubic'),
+   581→])
+   582→
+   583→/* ------------------------------- SHEATHE / DRAW --------------------- */
+   584→
+   585→/* THE SWORD HOME — notō and iai, the two halves of the same ritual
+   586→ * (Sword of the Stranger final sheathe / every samurai film's ending):
+   587→ *
+   588→ *   SHEATHE  a deliberate one-shot: the blade sweeps up into a vertical
+   589→ *            carry, the left hand finds the saya mouth at the hip, the
+   590→ *            tsuka tips BACK to meet it, and the steel slides home along
+   591→ *            the scabbard line — ending with the right fist resting on
+   592→ *            the pommel. Quiet, weighted, final.
+   593→ *   DRAW     the explosive inverse: stillness → the grip snaps onto the
+   594→ *            tsuka → the steel RIPS out along the rising diagonal into
+   595→ *            chūdan guard, the saya hand snapping to the saya to pin it.
+   596→ *            Drawn FAST — the iai beat is 0.12s from stillness to edge.
+   597→ *
+   598→ * The player gates the visuals (swordDrawn): while sheathed the blade is
+   599→ * inside the saya (not drawn) and the right hand rides the pommel. */
+   600→
+   601→/** NOTŌ — sheathing. Slow, two-stage: present the blade → slide it home. */
+   602→export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
+   603→  keyframe(0, { // settle out of whatever came before (guard)
+   604→    rootRot: 0.12, rootY: 0, spine: 0.05, head: -0.08,
+   605→    hipR: 0.34, kneeR: -0.55, footR: 0.12,
+   606→    hipL: -0.31, kneeL: -0.5, footL: 0.12,
+   607→    shR: 0.85, elR: -0.5, wrR: 1.15,
+   608→    shL: 0.5, elL: -0.85,
+   609→  }, 'inOutCubic'),
+   610→  keyframe(0.22, { // PRESENT — blade rises to the vertical carry, gaze softens
+   611→    rootRot: 0.09, rootY: 0.5, spine: 0.03, head: -0.04,
+   612→    hipR: 0.3, kneeR: -0.6, footR: 0.1,
+   613→    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+   614→    shR: 1.45, elR: -0.75, wrR: 2.6, // blade up — kissaki over the shoulder
+   615→    shL: 0.25, elL: -0.5, // left hand drifts toward the saya mouth
+   616→    armLz: -0.2,
+   617→  }, 'inOutCubic'),
+   618→  keyframe(0.42, { // MEET — tsuka tips back to the saya mouth
+   619→    rootRot: 0.08, rootY: 0.8, spine: 0.02, head: -0.02,
+   620→    hipR: 0.28, kneeR: -0.65, footR: 0.1,
+   621→    hipL: -0.3, kneeL: -0.58, footL: 0.12,
+   622→    shR: 0.9, elR: -1.15, wrR: 3.9, // blade laid back along the scabbard line
+   623→    shL: -0.1, elL: -0.35, armLz: -0.3,
+   624→  }, 'inOutSine'),
+   625→  keyframe(0.62, { // SLIDE — steel runs home to the kojiri
+   626→    rootRot: 0.08, rootY: 0.6, spine: 0.02, head: 0,
+   627→    hipR: 0.28, kneeR: -0.62, footR: 0.1,
+   628→    hipL: -0.3, kneeL: -0.58, footL: 0.12,
+   629→    shR: -0.25, elR: -0.55, wrR: 4.9, // arm follows the blade in
+   630→    shL: -0.15, elL: -0.3, armLz: -0.28,
+   631→  }, 'inOutCubic'),
+   632→  keyframe(0.85, { // REST — fist settles on the pommel; the body quiet
+   633→    rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
+   634→    hipR: 0.3, kneeR: -0.58, footR: 0.1,
+   635→    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+   636→    shR: -0.32, elR: -0.42, wrR: 5.0, // hand on the tsuka at the hip
+   637→    shL: 0.1, elL: -0.4, armLz: -0.15,
+   638→  }, 'outCubic'),
+   639→])
+   640→
+   641→/** IAI — the draw. Fast, three beats: stillness → grip → EXPLOSION into guard. */
+   642→export const DRAW_CLIP: Clip = makeClip('draw', [
+   643→  keyframe(0, { // stillness — hand on the pommel (sheathed rest pose)
+   644→    rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
+   645→    hipR: 0.3, kneeR: -0.58, footR: 0.1,
+   646→    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+   647→    shR: -0.32, elR: -0.42, wrR: 5.0,
+   648→    shL: 0.1, elL: -0.4, armLz: -0.15,
+   649→  }, 'outQuad'),
+   650→  keyframe(0.07, { // GRIP — the hand snaps onto the tsuka; hips coil back
+   651→    rootRot: 0.02, rootY: 1.6, spine: 0.03, head: -0.14,
+   652→    hipR: 0.42, kneeR: -0.75, footR: 0.18,
+   653→    hipL: -0.36, kneeL: -0.7, footL: 0.1,
+   654→    shR: -0.38, elR: -0.6, wrR: 4.85, // tsuka lifts out of the mouth
+   655→    shL: -0.2, elL: -0.45, armLz: -0.3,
+   656→    pelvisYaw: -0.12,
+   657→  }, 'inQuad'),
+   658→  keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
+   659→    rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
+   660→    hipR: 0.6, kneeR: -1.05, footR: 0.26,
+   661→    hipL: -0.55, kneeL: -0.35, footL: -0.08,
+   662→    shR: 1.55, elR: 0.05, wrR: 0.45, // edge flashing forward-up
+   663→    shL: 0.3, elL: -0.8, armLz: -0.1,
+   664→    pelvisYaw: 0.14, chestYaw: -0.08,
+   665→  }, 'outQuart'),
+   666→  keyframe(0.3, { // SETTLE — chūdan guard, the breath after the draw
+   667→    rootRot: 0.1, rootY: 0, spine: 0.05, head: -0.1,
+   668→    hipR: 0.34, kneeR: -0.55, footR: 0.12,
+   669→    hipL: -0.31, kneeL: -0.5, footL: 0.12,
+   670→    shR: 0.85, elR: -0.5, wrR: 1.15,
+   671→    shL: 0.5, elL: -0.85,
+   672→  }, 'outCubic'),
+   673→])
+   674→
+   675→/* ------------------------------- DASH -------------------------------- */
+   676→
+   677→/* THE CONDITIONED DASH LIBRARY — nine genuinely distinct evasion/closing
+   678→ * systems. The variant is chosen by the CONDITIONED ACTIVATION SYSTEM
+   679→ * (combat/dash.ts: evaluateDash) from the situation at the input instant:
+   680→ * airborne · input-vs-facing · momentum at initiation · threat geometry
+   681→ * (pocket / hunt-range / surrounded) · chain count. Never one animation
+   682→ * played at different speeds.
+   683→ *
+   684→ * Authored from dash reference keyframes (movies / anime / AAA — VLM
+   685→ * lean research: launch 35–45°+, glide −15–20° held, catch overshoots
+   686→ * upright briefly, settle to guard; the launch accent may spike deeper
+   687→ * for single frames):
+   688→ *  · LAUNCH  the iai explosion from a standing start (Sword of the
+   689→ *            Stranger / MGR:R Raiden): weight crashes onto the push-off
+   690→ *            leg, then ONE full-extension stride — the power line runs
+   691→ *            rear toe → rear hip → shoulder → crown on a single ~45–52°
+   692→ *            diagonal (THE most-leaned state in the game — sprint owns
+   693→ *            max-velocity ~20°, dash owns acceleration ~45°+).
+   694→ *            Head counter-pitches: the eyes stay UP. Blade chambered back
+   695→ *            through depth (bladeYaw −0.5) — iai-ready for the through-cut.
+   696→ *  · CHAIN   the second chained dash: the MIRRORED stride of LAUNCH —
+   697→ *            dash-spam reads as alternating drives, not a loop.
+   698→ *  · CARRY   initiated from a run/sprint: NO re-coil — the run feeds the
+   699→ *            dash (momentum-matched entry, the shunshin / ninja run:
+   700→ *            torso deep, BOTH arms trailing back, legs mid-scissor).
+   701→ *  · HUNT    gap-closing an enemy 240–640 ahead (fencing drive / Sekiro
+   702→ *            chase): lower, longer, gaze LOCKED on the target — the head
+   703→ *            rides higher than the shoulders (the predator read).
+   704→ *  · PIERCE  an enemy INSIDE the pocket (<170): the fencing lunge
+   705→ *            silhouette — torso stays UPRIGHT, front knee at 90°, rear
+   706→ *            leg fully extended, blade on the LEVEL thrust line riding
+   707→ *            +Z through the body plane (Sekiro Shadowrush / Yasuo E).
+   708→ *  · RETREAT guarded retreat (fencing retreat / MGR dash-out): chest
+   709→ *            opens BACK, head counter-rotates forward — eyes never leave
+   710→ *            the threat; guard presented HIGH (deflection plane); rear
+   711→ *            leg reaches back as the landing strut.
+   712→ *  · VAULT   the vertical escape: crouch coil → full-extension rise with
+   713→ *            pointed toes, blade sweeping through a rising cut arc.
+   714→ *  · AIR     the horizontal air scissor: body pitched toward travel,
+   715→ *            legs scissor then tuck, arms balance wide.
+   716→ *  · CARVE   the surrounded breakaway (Nier:Automata evade): the body
+   717→ *            YAWS through the transverse plane — pelvis/chest counter-
+   718→ *            rotate while the blade sweeps a wide clearing arc and the
+   719→ *            whole silhouette rolls toward the exit vector.
+   720→ *
+   721→ * WINDING: locomotion-family carries are up-wound (wrR + 2π where needed)
+   722→ * so every carry-to-carry crossfade sweeps the UP hemisphere — never
+   723→ * through straight-down (the kissaki would dig the floor mid-blend). */
+   724→const DASH_LAUNCH_Q: PoseInput[] = [
+   725→  { // COIL — weight crashes onto the rear leg, hips coil away (counter-wind)
+   726→    rootX: -1, rootRot: 0.02, rootY: 8.5, spine: 0.02, head: -0.02,
+   727→    hipR: 0.55, kneeR: -0.35, footR: 0.3,
+   728→    hipL: -0.35, kneeL: -1.15, footL: 0.05,
+   729→    shR: -0.05, elR: -0.85, wrR: 5.15,
+   730→    shL: 0.35, elL: -1.05,
+   731→    pelvisYaw: -0.12, chestYaw: 0.1,
+   732→  },
+   733→  { // EXPLODE — the POWER LINE: rear toe→hip→shoulder→crown on one ~45°
+   734→    // diagonal; the deepest committed pitch in the locomotion set
+   735→    rootX: 8, rootRot: 0.78, rootY: 4.2, spine: 0.17, head: -0.55,
+   736→    hipR: 1.3, kneeR: -1.45, footR: 0.35,
+   737→    hipL: -1.15, kneeL: -0.12, footL: -0.22,
+   738→    shR: -0.5, elR: -0.4, wrR: 5.25,
+   739→    shL: 0.35, elL: -0.75,
+   740→    pelvisYaw: 0.16, chestYaw: -0.1,
+   741→    armLz: 0.25, armRz: -0.35, bladeYaw: -0.5,
+   742→  },
+   743→  { // GLIDE — hold the committed line (~38–40°); rear heel recovers toward
+   744→    // the butt
+   745→    rootX: 11, rootRot: 0.7, rootY: 3.6, spine: 0.16, head: -0.52,
+   746→    hipR: 1.05, kneeR: -0.7, footR: 0.3,
+   747→    hipL: -0.6, kneeL: -1.35, footL: 0.25,
+   748→    shR: -0.4, elR: -0.45, wrR: 5.3,
+   749→    shL: 0.3, elL: -0.7,
+   750→    pelvisYaw: 0.1, chestYaw: -0.06,
+   751→    armLz: 0.18, armRz: -0.3, bladeYaw: -0.42,
+   752→  },
+   753→  { // CATCH — lead foot brakes FAR forward; COG absorbs over the bending
+   754→    // leg — the pitch unwinds hard toward upright (the brake counter-lean)
+   755→    rootX: 8, rootRot: 0.36, rootY: 5.2, spine: 0.1, head: -0.3,
+   756→    hipR: 0.8, kneeR: -1.05, footR: 0.18,
+   757→    hipL: -0.75, kneeL: -0.5, footL: 0.1,
+   758→    shR: -0.1, elR: -0.5, wrR: 5.5,
+   759→    shL: 0.45, elL: -0.8,
+   760→    armRz: -0.18, bladeYaw: -0.26,
+   761→  },
+   762→  { // SETTLE — rise toward the guard, blade presenting forward
+   763→    rootX: 4.5, rootRot: 0.24, rootY: 3.2, spine: 0.06, head: -0.18,
+   764→    hipR: 0.45, kneeR: -0.7, footR: 0.14,
+   765→    hipL: -0.45, kneeL: -0.55, footL: 0.12,
+   766→    shR: 0.4, elR: -0.5, wrR: 5.75,
+   767→    shL: 0.5, elL: -0.85,
+   768→    armRz: -0.1, bladeYaw: -0.12,
+   769→  },
+   770→]
+   771→
+   772→export const DASH_LAUNCH_CLIP: Clip = makeClip('dashLaunch', [
+   773→  keyframe(0, DASH_LAUNCH_Q[0], 'outCubic'),
+   774→  keyframe(0.035, DASH_LAUNCH_Q[1], 'outQuad'),
+   775→  keyframe(0.11, DASH_LAUNCH_Q[2], 'outQuad'),
+   776→  keyframe(0.165, DASH_LAUNCH_Q[3], 'inOutCubic'),
+   777→  keyframe(0.24, DASH_LAUNCH_Q[4], 'inOutCubic'),
+   778→])
+   779→
+   780→/** chained second dash — the MIRRORED stride (left leg leads): dash-spam
+   781→ * reads as alternating drives. Sword arm keeps the same carry. */
+   782→export const DASH_CHAIN_CLIP: Clip = makeClip('dashChain', [
+   783→  keyframe(0, mirrorLegs(DASH_LAUNCH_Q[0]), 'outCubic'),
+   784→  keyframe(0.035, mirrorLegs(DASH_LAUNCH_Q[1]), 'outQuad'),
+   785→  keyframe(0.11, mirrorLegs(DASH_LAUNCH_Q[2]), 'outQuad'),
+   786→  keyframe(0.165, mirrorLegs(DASH_LAUNCH_Q[3]), 'inOutCubic'),
+   787→  keyframe(0.24, mirrorLegs(DASH_LAUNCH_Q[4]), 'inOutCubic'),
+   788→])
+   789→
+   790→const DASH_CARRY_Q: PoseInput[] = [
+   791→  { // STRIDE — enters MID-SCISSOR (momentum-matched: the run feeds the
+   792→    // dash; NO coil from standing). The shunshin: BOTH arms trail back,
+   793→    // torso driven DEEP (~46°) — the strongest sustained lean in the game,
+   794→    // clearly past the sprint's max-velocity posture.
+   795→    rootX: 9, rootRot: 0.8, rootY: 4.5, spine: 0.17, head: -0.6,
+   796→    hipR: 1.15, kneeR: -0.55, footR: 0.32,
+   797→    hipL: -0.8, kneeL: -1.6, footL: 0.28,
+   798→    shR: -0.55, elR: -0.35, wrR: 5.35,
+   799→    shL: -0.35, elL: -0.55,
+   800→    pelvisYaw: 0.14, chestYaw: -0.08,
+   801→    armLz: -0.3, armRz: -0.45, bladeYaw: -0.55,
+   802→  },
+   803→  { // SCISSOR PASS — the other knee punches through; arms stay trailing
+   804→    rootX: 11, rootRot: 0.76, rootY: 4, spine: 0.16, head: -0.58,
+   805→    hipR: 0.3, kneeR: -1.15, footR: 0.18,
+   806→    hipL: 0.9, kneeL: -0.9, footL: 0.3,
+   807→    shR: -0.5, elR: -0.38, wrR: 5.38,
+   808→    shL: -0.3, elL: -0.55,
+   809→    pelvisYaw: -0.06, chestYaw: 0.04,
+   810→    armLz: -0.28, armRz: -0.42, bladeYaw: -0.5,
+   811→  },
+   812→  { // CATCH — brake beat far forward, torso still committed
+   813→    rootX: 8.5, rootRot: 0.5, rootY: 5, spine: 0.12, head: -0.4,
+   814→    hipR: 0.85, kneeR: -1.0, footR: 0.2,
+   815→    hipL: -0.7, kneeL: -0.55, footL: 0.12,
+   816→    shR: -0.25, elR: -0.45, wrR: 5.45,
+   817→    shL: 0.0, elL: -0.65,
+   818→    armRz: -0.2, bladeYaw: -0.28,
+   819→  },
+   820→  { // SETTLE — momentum hands off into the run
+   821→    rootX: 5, rootRot: 0.3, rootY: 3.4, spine: 0.08, head: -0.24,
+   822→    hipR: 0.5, kneeR: -0.7, footR: 0.14,
+   823→    hipL: -0.4, kneeL: -0.58, footL: 0.12,
+   824→    shR: 0.2, elR: -0.5, wrR: 5.7,
+   825→    shL: 0.3, elL: -0.75,
+   826→    armRz: -0.1, bladeYaw: -0.15,
+   827→  },
+   828→]
+   829→
+   830→export const DASH_CARRY_CLIP: Clip = makeClip('dashCarry', [
+   831→  keyframe(0, DASH_CARRY_Q[0], 'outQuad'),
+   832→  keyframe(0.06, DASH_CARRY_Q[1], 'inOutSine'),
+   833→  keyframe(0.14, DASH_CARRY_Q[2], 'inOutCubic'),
+   834→  keyframe(0.21, DASH_CARRY_Q[3], 'inOutCubic'),
+   835→])
+   836→
+   837→const DASH_HUNT_Q: PoseInput[] = [
+   838→  { // WIND — a heartbeat of load (shorter than LAUNCH: the hunger is urgent)
+   839→    rootX: 0, rootRot: 0.06, rootY: 7.5, spine: 0.03, head: -0.04,
+   840→    hipR: 0.5, kneeR: -0.3, footR: 0.32,
+   841→    hipL: -0.3, kneeL: -1.05, footL: 0.05,
+   842→    shR: -0.1, elR: -0.8, wrR: 5.2,
+   843→    shL: 0.3, elL: -1.0,
+   844→    pelvisYaw: -0.1, chestYaw: 0.08,
+   845→  },
+   846→  { // THE DRIVE — maximum lunge silhouette (~47° pitch — the predator
+   847→    // read): stride split WIDE, hips LOW, gaze riding HIGH above the
+   848→    // shoulders — locked on prey
+   849→    rootX: 10, rootRot: 0.84, rootY: 5, spine: 0.18, head: -0.38,
+   850→    hipR: 1.4, kneeR: -0.6, footR: 0.34,
+   851→    hipL: -1.05, kneeL: -0.15, footL: -0.2,
+   852→    shR: -0.45, elR: -0.4, wrR: 5.25,
+   853→    shL: 0.25, elL: -0.7,
+   854→    pelvisYaw: 0.14, chestYaw: -0.1,
+   855→    armLz: 0.2, armRz: -0.4, bladeYaw: -0.55,
+   856→  },
+   857→  { // GLIDE — the wide split holds (~42°); the kissaki trains through depth
+   858→    rootX: 13, rootRot: 0.76, rootY: 4.6, spine: 0.17, head: -0.34,
+   859→    hipR: 1.2, kneeR: -0.75, footR: 0.32,
+   860→    hipL: -0.75, kneeL: -1.2, footL: 0.22,
+   861→    shR: -0.4, elR: -0.42, wrR: 5.3,
+   862→    shL: 0.2, elL: -0.68,
+   863→    pelvisYaw: 0.08, chestYaw: -0.06,
+   864→    armRz: -0.32, bladeYaw: -0.45,
+   865→  },
+   866→  { // CATCH — brake far forward; the blade is already rising to strike
+   867→    rootX: 9.5, rootRot: 0.46, rootY: 5.4, spine: 0.1, head: -0.3,
+   868→    hipR: 0.85, kneeR: -1.1, footR: 0.2,
+   869→    hipL: -0.8, kneeL: -0.5, footL: 0.1,
+   870→    shR: -0.05, elR: -0.5, wrR: 5.55,
+   871→    shL: 0.4, elL: -0.8,
+   872→    armRz: -0.16, bladeYaw: -0.22,
+   873→  },
+   874→  { // SETTLE — into strike range, blade at the mid line, coiled
+   875→    rootX: 5.5, rootRot: 0.26, rootY: 3.4, spine: 0.07, head: -0.2,
+   876→    hipR: 0.5, kneeR: -0.72, footR: 0.14,
+   877→    hipL: -0.42, kneeL: -0.58, footL: 0.12,
+   878→    shR: 0.45, elR: -0.5, wrR: 5.7,
+   879→    shL: 0.5, elL: -0.85,
+   880→    armRz: -0.08, bladeYaw: -0.1,
+   881→  },
+   882→]
+   883→
+   884→export const DASH_HUNT_CLIP: Clip = makeClip('dashHunt', [
+   885→  keyframe(0, DASH_HUNT_Q[0], 'outCubic'),
+   886→  keyframe(0.04, DASH_HUNT_Q[1], 'outQuad'),
+   887→  keyframe(0.13, DASH_HUNT_Q[2], 'outQuad'),
+   888→  keyframe(0.19, DASH_HUNT_Q[3], 'inOutCubic'),
+   889→  keyframe(0.27, DASH_HUNT_Q[4], 'inOutCubic'),
+   890→])
+   891→
+   892→const DASH_PIERCE_Q: PoseInput[] = [
+   893→  { // CHAMBER — compact: weight back, blade drawn to the hip, body small
+   894→    rootX: -2, rootRot: 0.1, rootY: 6.5, spine: 0.04, head: -0.08,
+   895→    hipR: 0.45, kneeR: -0.5, footR: 0.28,
+   896→    hipL: -0.3, kneeL: -1.25, footL: 0.05,
+   897→    shR: -0.15, elR: -1.2, wrR: 0.35,
+   898→    shL: 0.4, elL: -0.9,
+   899→    pelvisYaw: -0.1, chestYaw: 0.08,
+   900→  },
+   901→  { // THE LUNGE (fencing silhouette): torso UPRIGHT, front knee 90°, rear
+   902→    // leg fully extended, blade on the LEVEL thrust line reaching FAR —
+   903→    // the arm LOCKED OUT straight along the travel vector (throat height)
+   904→    rootX: 6, rootRot: 0.14, rootY: 5.5, spine: 0.03, head: -0.08,
+   905→    hipR: 0.85, kneeR: -1.55, footR: 0.15,
+   906→    hipL: -1.05, kneeL: -0.08, footL: -0.25,
+   907→    shR: 1.4, elR: 0.0, wrR: 0.3,
+   908→    shL: -0.7, elL: -0.35,
+   909→    pelvisYaw: 0.1, chestYaw: -0.06,
+   910→    bladeZ: 1.5,
+   911→  },
+   912→  { // PASS — riding through the target: the weapon slides +Z past the body
+   913→    // plane as the lunge extends under it; thrust line holds level
+   914→    rootX: 10, rootRot: 0.16, rootY: 5.2, spine: 0.03, head: -0.08,
+   915→    hipR: 0.8, kneeR: -1.5, footR: 0.14,
+   916→    hipL: -0.95, kneeL: -0.15, footL: -0.22,
+   917→    shR: 1.42, elR: 0.0, wrR: 0.28,
+   918→    shL: -0.75, elL: -0.3,
+   919→    pelvisYaw: 0.08, chestYaw: -0.05,
+   920→    bladeZ: 5,
+   921→  },
+   922→  { // RECOVER — pull the blade back through the line, rear leg steps under
+   923→    rootX: 8, rootRot: 0.2, rootY: 4.2, spine: 0.05, head: -0.1,
+   924→    hipR: 0.6, kneeR: -1.15, footR: 0.14,
+   925→    hipL: 0.2, kneeL: -0.9, footL: 0.1,
+   926→    shR: 0.95, elR: -0.55, wrR: 1.2,
+   927→    shL: 0.1, elL: -0.6,
+   928→    bladeZ: 2,
+   929→  },
+   930→  { // SETTLE — guard re-formed inside the new spacing
+   931→    rootX: 5, rootRot: 0.22, rootY: 3.2, spine: 0.06, head: -0.16,
+   932→    hipR: 0.45, kneeR: -0.7, footR: 0.14,
+   933→    hipL: -0.45, kneeL: -0.55, footL: 0.12,
+   934→    shR: 0.7, elR: -0.5, wrR: 1.3,
+   935→    shL: 0.5, elL: -0.85,
+   936→    bladeZ: 0.5,
+   937→  },
+   938→]
+   939→
+   940→export const DASH_PIERCE_CLIP: Clip = makeClip('dashPierce', [
+   941→  keyframe(0, DASH_PIERCE_Q[0], 'outCubic'),
+   942→  keyframe(0.05, DASH_PIERCE_Q[1], 'outQuad'),
+   943→  keyframe(0.12, DASH_PIERCE_Q[2], 'outQuad'),
+   944→  keyframe(0.18, DASH_PIERCE_Q[3], 'inOutCubic'),
+   945→  keyframe(0.26, DASH_PIERCE_Q[4], 'inOutCubic'),
+   946→])
+   947→
+   948→const DASH_RETREAT_Q: PoseInput[] = [
+   949→  { // PUSH-OFF — weight crashes onto the FRONT foot; chest opens BACK hard
+   950→    // while the head counter-rotates FORWARD — eyes never leave the threat
+   951→    // (the counter-pitch + chest yaw toward the enemy sell the read)
+   952→    rootX: -1, rootRot: -0.42, rootY: 5, spine: -0.1, head: 0.38,
+   953→    hipR: 0.55, kneeR: -1.25, footR: 0.2,
+   954→    hipL: -0.7, kneeL: -0.4, footL: 0.1,
+   955→    shR: 1.15, elR: -0.4, wrR: 1.5, // guard presented HIGH (deflection plane)
+   956→    shL: 0.9, elL: -0.75, wrL: -0.35,
+   957→    pelvisYaw: -0.14, chestYaw: 0.18,
+   958→  },
+   959→  { // DRIFT — body rides back flat; rear leg extends as the landing strut;
+   960→    // the head KEEPS tracking the threat over the opening chest
+   961→    rootX: -5, rootRot: -0.3, rootY: 3, spine: -0.06, head: 0.3,
+   962→    hipR: 0.35, kneeR: -1.1, footR: 0.18,
+   963→    hipL: -0.95, kneeL: -0.35, footL: 0.24,
+   964→    shR: 1.1, elR: -0.42, wrR: 1.45,
+   965→    shL: 0.75, elL: -0.8, wrL: -0.3,
+   966→    pelvisYaw: -0.1, chestYaw: 0.12,
+   967→  },
+   968→  { // BRAKE-CATCH — rear foot plants & loads; COG settles over it
+   969→    rootX: -6.5, rootRot: -0.12, rootY: 4, spine: 0.02, head: 0.04,
+   970→    hipR: 0.25, kneeR: -0.9, footR: 0.14,
+   971→    hipL: -0.55, kneeL: -0.85, footL: 0.16,
+   972→    shR: 1.0, elR: -0.45, wrR: 1.3,
+   973→    shL: 0.6, elL: -0.8, wrL: -0.3,
+   974→  },
+   975→  { // GUARD — re-formed, square to the threat, blade live
+   976→    rootX: -3, rootRot: 0.06, rootY: 2.6, spine: 0.05, head: -0.1,
+   977→    hipR: 0.34, kneeR: -0.6, footR: 0.12,
+   978→    hipL: -0.34, kneeL: -0.52, footL: 0.12,
+   979→    shR: 0.9, elR: -0.5, wrR: 1.2,
+   980→    shL: 0.5, elL: -0.82, wrL: -0.3,
+   981→  },
+   982→]
+   983→
+   984→export const DASH_RETREAT_CLIP: Clip = makeClip('dashRetreat', [
+   985→  keyframe(0, DASH_RETREAT_Q[0], 'outQuad'),
+   986→  keyframe(0.055, DASH_RETREAT_Q[1], 'inOutCubic'),
+   987→  keyframe(0.115, DASH_RETREAT_Q[2], 'inOutCubic'),
+   988→  keyframe(0.2, DASH_RETREAT_Q[3], 'outCubic'),
+   989→])
+   990→
+   991→export const DASH_VAULT_CLIP: Clip = makeClip('dashVault', [
+   992→  keyframe(0, { // DEEP coil — arms load back, blade drawn to the back carry
+   993→    rootRot: 0.14, rootY: 9, spine: 0.05, head: -0.1,
+   994→    hipR: 0.55, kneeR: -1.6, footR: 0.22,
+   995→    hipL: -0.45, kneeL: -1.55, footL: 0.2,
+   996→    shR: -0.2, elR: -0.7, wrR: 4.6,
+   997→    shL: -0.45, elL: -0.6,
+   998→  }, 'outQuad'),
+   999→  keyframe(0.05, { // FULL-EXTENSION RISE — toes pointed; the blade traces
+  1000→    // the rising cut arc through the vertical (sweep distributed: coil →
+  1001→    // vertical → high guard — never one windmill snap)
+  1002→    rootRot: 0.08, rootY: -3.5, spine: -0.02, head: -0.2,
+  1003→    hipR: -0.2, kneeR: -0.12, footR: 0.38,
+  1004→    hipL: 0.1, kneeL: -0.15, footL: 0.36,
+  1005→    shR: 2.0, elR: -0.15, wrR: 3.4,
+  1006→    shL: 1.5, elL: -0.35,
+  1007→    armRz: 0.1, bladeYaw: 0.1,
+  1008→  }, 'outQuad'),
+  1009→  keyframe(0.12, { // APEX — legs begin to fold; the arc completes into
+  1010→    // the high guard (kissaki up-forward)
+  1011→    rootRot: 0.1, rootY: -2, spine: 0.03, head: -0.16,
+  1012→    hipR: -0.05, kneeR: -0.55, footR: 0.26,
+  1013→    hipL: 0.18, kneeL: -0.5, footL: 0.24,
+  1014→    shR: 1.6, elR: -0.35, wrR: 1.35,
+  1015→    shL: 0.9, elL: -0.55,
+  1016→  }, 'inOutSine'),
+  1017→  keyframe(0.2, { // settle tuck toward the falling guard
+  1018→    rootRot: 0.12, rootY: -1, spine: 0.05, head: -0.14,
+  1019→    hipR: 0.05, kneeR: -0.75, footR: 0.2,
+  1020→    hipL: 0.2, kneeL: -0.65, footL: 0.18,
+  1021→    shR: 1.2, elR: -0.45, wrR: 1.3,
+  1022→    shL: 0.6, elL: -0.7,
+  1023→  }, 'inOutCubic'),
+  1024→])
+  1025→
+  1026→export const DASH_AIR_CLIP: Clip = makeClip('dashAir', [
+  1027→  keyframe(0, { // TUCK — knees up, torso toward travel; blade ALREADY
+  1028→    // chambered back through depth (the guard→chamber sweep happens in the
+  1029→    // entry crossfade — a wrist windmill inside the clip would strobe)
+  1030→    rootRot: 0.55, rootY: 0.5, spine: 0.12, head: -0.4,
+  1031→    hipR: 0.85, kneeR: -1.6, footR: -0.05,
+  1032→    hipL: 0.7, kneeL: -1.5, footL: 0.12,
+  1033→    shR: 0.35, elR: -0.4, wrR: 5.15,
+  1034→    shL: 0.75, elL: -0.5, armLz: 0.35,
+  1035→    armRz: -0.25, bladeYaw: -0.3,
+  1036→  }, 'outCubic'),
+  1037→  keyframe(0.08, { // SCISSOR — front knee punches, rear trails; chamber
+  1038→    // rides deeper through depth (the air-dash tell)
+  1039→    rootRot: 0.6, rootY: 1, spine: 0.13, head: -0.42,
+  1040→    hipR: 1.05, kneeR: -0.85, footR: 0.18,
+  1041→    hipL: -0.95, kneeL: -0.7, footL: 0.28,
+  1042→    shR: -0.35, elR: -0.4, wrR: 5.35,
+  1043→    shL: 0.7, elL: -0.5, armLz: 0.2,
+  1044→    armRz: -0.4, bladeYaw: -0.45,
+  1045→  }, 'outQuad'),
+  1046→  keyframe(0.2, { // settle tuck toward guard
+  1047→    rootRot: 0.32, rootY: 0, spine: 0.08, head: -0.24,
+  1048→    hipR: 0.35, kneeR: -1.2, footR: 0.1,
+  1049→    hipL: 0.3, kneeL: -1.1, footL: 0.12,
+  1050→    shR: 0.5, elR: -0.5, wrR: 5.6,
+  1051→    shL: 0.5, elL: -0.6, armLz: 0.1,
+  1052→    armRz: -0.18, bladeYaw: -0.2,
+  1053→  }, 'inOutCubic'),
+  1054→])
+  1055→
+  1056→const DASH_CARVE_Q: PoseInput[] = [
+  1057→  { // COIL LOW in the pocket — pelvis already pre-wound; blade starts
+  1058→    // rising out of the back-down carry (the sweep is distributed across
+  1059→    // THREE beats — a 260° windmill in one easing span would strobe)
+  1060→    rootX: -1, rootRot: 0.24, rootY: 7.5, spine: 0.1, head: -0.16,
+  1061→    hipR: 0.55, kneeR: -1.5, footR: 0.2,
+  1062→    hipL: -0.45, kneeL: -1.45, footL: 0.18,
+  1063→    shR: 0.65, elR: -0.45, wrR: 4.65,
+  1064→    shL: 0.7, elL: -0.9, wrL: -0.35,
+  1065→    pelvisYaw: 0.35, chestYaw: -0.22,
+  1066→  },
+  1067→  { // MID-SWEEP — the kissaki passes the vertical: blade UP, body already
+  1068→    // committing into the yaw
+  1069→    rootX: -2.2, rootRot: 0.06, rootY: 6, spine: 0.05, head: -0.04,
+  1070→    hipR: 0.4, kneeR: -1.3, footR: 0.19,
+  1071→    hipL: -0.48, kneeL: -1.2, footL: 0.17,
+  1072→    shR: 0.8, elR: -0.35, wrR: 3.05,
+  1073→    shL: 0.95, elL: -0.8, wrL: -0.28,
+  1074→    pelvisYaw: 0.85, chestYaw: -0.55,
+  1075→    armLz: 0.2,
+  1076→  },
+  1077→  { // THE CARVE — body yaws HARD through the transverse plane (Nier evade
+  1078→    // roll): pelvis/chest counter-rotate, silhouette rolls toward the exit,
+  1079→    // blade completing the wide clearing arc through depth
+  1080→    rootX: -3.5, rootRot: -0.18, rootY: 4.5, spine: -0.02, head: 0.12,
+  1081→    hipR: 0.25, kneeR: -1.15, footR: 0.18,
+  1082→    hipL: -0.5, kneeL: -0.95, footL: 0.16,
+  1083→    shR: 0.95, elR: -0.3, wrR: 0.75,
+  1084→    shL: 1.2, elL: -0.7, wrL: -0.2,
+  1085→    pelvisYaw: 1.35, chestYaw: -0.85,
+  1086→    hipRz: -0.3, armLz: 0.4, armRz: 0.15, bladeYaw: -0.7,
+  1087→  },
+  1088→  { // UNWIND — guard re-forming as the body exits the pocket
+  1089→    rootX: -5, rootRot: -0.04, rootY: 4, spine: 0.03, head: -0.06,
+  1090→    hipR: 0.25, kneeR: -0.85, footR: 0.15,
+  1091→    hipL: -0.5, kneeL: -0.8, footL: 0.15,
+  1092→    shR: 0.85, elR: -0.5, wrR: 1.1,
+  1093→    shL: 0.6, elL: -0.8, wrL: -0.28,
+  1094→    pelvisYaw: 0.5, chestYaw: -0.3,
+  1095→  },
+  1096→  { // GUARD — out, square, blade live
+  1097→    rootX: -2, rootRot: 0.08, rootY: 2.6, spine: 0.05, head: -0.1,
+  1098→    hipR: 0.34, kneeR: -0.6, footR: 0.12,
+  1099→    hipL: -0.34, kneeL: -0.52, footL: 0.12,
+  1100→    shR: 0.85, elR: -0.5, wrR: 1.15,
+  1101→    shL: 0.5, elL: -0.82, wrL: -0.3,
+  1102→  },
+  1103→]
+  1104→
+  1105→export const DASH_CARVE_CLIP: Clip = makeClip('dashCarve', [
+  1106→  keyframe(0, DASH_CARVE_Q[0], 'inOutSine'),
+  1107→  keyframe(0.05, DASH_CARVE_Q[1], 'inOutSine'),
+  1108→  keyframe(0.13, DASH_CARVE_Q[2], 'inOutSine'),
+  1109→  keyframe(0.19, DASH_CARVE_Q[3], 'inOutCubic'),
+  1110→  keyframe(0.27, DASH_CARVE_Q[4], 'outCubic'),
+  1111→])
+  1112→
+  1113→
+  1114→/* ------------------------------- PARRY / HURT / CHARGE -------------- */
+  1115→
+  1116→/* Parry: the blade snaps up into a high deflection plane (sum ≈ 2.3 —
+  1117→ * edge angled to slip the incoming blow sideways, like a real uke-nagashi
+  1118→ * receiving parry). */
+  1119→export const PARRY_CLIP: Clip = makeClip('parry', [
+  1120→  keyframe(0, {
+  1121→    rootRot: -0.2, spine: -0.06, head: -0.02, rootY: 2,
+  1122→    hipR: 0.35, kneeR: -0.65, footR: 0.15,
+  1123→    hipL: -0.4, kneeL: -0.55, footL: 0.1,
+  1124→    shR: 1.75, elR: -0.8, wrR: 1.35,
+  1125→    shL: 1.2, elL: -0.85, wrL: -0.3,
+  1126→  }, 'outCubic'),
+  1127→  keyframe(0.3, {
+  1128→    rootRot: -0.16, spine: -0.04, head: -0.04, rootY: 1.5,
+  1129→    shR: 1.7, elR: -0.8, wrR: 1.4,
+  1130→    shL: 1.15, elL: -0.85, wrL: -0.28,
+  1131→  }, 'outQuad'),
+  1132→])
+  1133→
+  1134→export const HURT_CLIP: Clip = makeClip('hurt', [
+  1135→  keyframe(0, {
+  1136→    rootRot: -0.32, spine: -0.12, head: -0.28, rootY: 2,
+  1137→    hipR: 0.15, kneeR: -0.7, footR: 0.1,
+  1138→    hipL: -0.5, kneeL: -0.45, footL: 0.15,
+  1139→    shR: 0.2, elR: -0.6, wrR: 1.5,
+  1140→    shL: -0.55, elL: -0.6,
+  1141→  }, 'outBack'),
+  1142→  keyframe(0.34, {
+  1143→    rootRot: -0.04, spine: 0.02, head: -0.1, rootY: 0.5,
+  1144→    shR: 0.7, elR: -0.5, wrR: 1.2,
+  1145→    shL: 0.15, elL: -0.45,
+  1146→  }, 'outCubic'),
+  1147→])
+  1148→
+  1149→/* Charge: the blade held high in a trembling jōdan gather (sum ≈ 3.0 —
+  1150→ * blade UP) while energy condenses on the edge. */
+  1151→export const CHARGE_CLIP: Clip = makeClip('charge', [
+  1152→  keyframe(0, {
+  1153→    rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
+  1154→    hipR: 0.55, kneeR: -1.15, footR: 0.2,
+  1155→    hipL: -0.45, kneeL: -1.05, footL: 0.15,
+  1156→    shR: 2.6, elR: 0.15, wrR: 0.25,
+  1157→    shL: 1.85, elL: -0.5, wrL: -0.2,
+  1158→  }, 'linear'),
+  1159→  keyframe(0.3, {
+  1160→    rootY: 6.9, rootRot: 0.36, spine: 0.11, head: -0.2,
+  1161→    hipR: 0.58, kneeR: -1.2, footR: 0.2,
+  1162→    hipL: -0.42, kneeL: -1.0, footL: 0.15,
+  1163→    shR: 2.65, elR: 0.15, wrR: 0.2,
+  1164→    shL: 1.9, elL: -0.5, wrL: -0.22,
+  1165→  }, 'linear'),
+  1166→  keyframe(0.6, {
+  1167→    rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
+  1168→    hipR: 0.55, kneeR: -1.15, footR: 0.2,
+  1169→    hipL: -0.45, kneeL: -1.05, footL: 0.15,
+  1170→    shR: 2.6, elR: 0.15, wrR: 0.25,
+  1171→    shL: 1.85, elL: -0.5, wrL: -0.2,
+  1172→  }, 'linear'),
+  1173→], true)
+  1174→
+  1175→/* ------------------------------- EXECUTE IDLE POSE ------------------ */
+  1176→
+  1177→/* Execution stance: the blade hanging low behind (sum ≈ -0.1 — a relaxed
+  1178→ * otōshi-yō wrist position) while the target is pinned. */
+  1179→export const EXECUTE_POSE_CLIP: Clip = makeClip('execPose', [
+  1180→  keyframe(0, {
+  1181→    rootRot: 0.1, spine: 0.06, head: -0.12, rootY: 0,
+  1182→    hipR: 0.3, kneeR: -0.55, footR: 0.15,
+  1183→    hipL: -0.35, kneeL: -0.5, footL: 0.12,
+  1184→    shR: 0.75, elR: 0.15, wrR: -1.0,
+  1185→    shL: 0.25, elL: -0.4,
+  1186→  }, 'outCubic'),
+  1187→])
+  1188→

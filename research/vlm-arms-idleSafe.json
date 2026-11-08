@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Frame-by-Frame Arm & Elbow Audit\n\n## FRAME 1 — Top-Left\n\n**Sword-side (right, near camera):**\n- Trace: shoulder joint (~x265, y145) → elbow (~x308, y190) → hand (~x310, y228).\n- Elbow interior angle: **~155–160°**. Forearm hangs down and slightly back from elbow — anatomically correct fold (flexion, forearm forward/down of upper arm).\n- ✅ PASS.\n\n**Off-side (left, far side, thin stroke):**\n- Trace: shoulder (~x270, y145) → elbow (~x278, y195) → hand near hip (~x272, y225).\n- Angle: **~165°**, correct flexion direction.\n- ✅ PASS.\n\n**Defects:** None. Both arms consistent; mirrored pose is symmetric and sane.\n\n---\n\n## FRAME 2 — Top-Right\n\n- Nearly identical to Frame 1 (subtle breathing drift, arm drops ~4px).\n- Sword-side elbow: **~158°**, correct direction.\n- Off-side elbow: **~167°**, correct direction.\n- ✅ PASS on both arms. No dislocation, no crossing through torso silhouette.\n\n---\n\n## FRAME 3 — Bottom-Left ⚠️ MAJOR DEFECTS\n\n**Sword-side (right):**\n- Trace: shoulder (~x272, y505) → elbow collapses to **(~x268, y595)** — i.e., the elbow has dropped to **pelvis/waist height, BELOW the hand joint**. Hand label sits at (~x280, y592), fused with the \"pelvis/handle\" label cluster.\n- Elbow interior angle: **~35–45°**, forearm folded fully back UP toward the hip. The fold direction itself is flexion, but the magnitude is a hyper-flexed collapse — the forearm doubles back through the torso volume; the hand visually intersects the pelvis silhouette at (~x278, y590).\n- ❌ FLAG: forearm passes THROUGH the torso; hand/elbow/pelvis joints stacked on the same 3–4 px patch — reads as dislocated.\n\n**Off-side (left, thin):**\n- Trace: shoulder (~x275, y500) → elbow (~x270, y590) → hand at pelvis (~x275, y592).\n- Angle: **~30°**, forearm inverted against the body — the arm has essentially vanished into the hip silhouette.\n- ❌ FLAG: both arms collapsed to the same point; there is no readable separation between near/far arm, so the far arm appears merged/disconnected.\n\n**Location:** the joint cluster at approximately (x265–285, y585–600), bottom-left panel, where \"hand / pelvis\" labels collide.\n\n---\n\n## FRAME 4 — Bottom-Right ⚠️ WORST FRAME\n\n**Sword-side (right):**\n- Shoulder (~x815, y510) → elbow **(~x808, y592)** at pelvis height → hand at (~x820, y588). Elbow is effectively at the same height as the hand, angle **~170–175° but pointing BACKWARD**: the forearm extends rearward from the elbow, i.e., the elbow bends the WRONG way — hyperextension past 170° with the joint locked behind the hand.\n- ❌ FLAG: elbow hyperextension / inverted forearm; hand joint renders inside the pelvis blob at (~x818, y590).\n- Also: elbow joint (~x808, y592) sits below the pelvis joint (~x830, y590) — the arm chain dips into the hip socket, which no safe-idle katana low-guard should do.\n\n**Off-side (left):**\n- Collapses to the same pelvis cluster; angle unreadable (<30°), forearm folded through the hip silhouette.\n- ❌ FLAG: arm effectively deleted into the torso — asymmetric only in that BOTH arms are broken here, in different ways (near arm hyperextended backward, far arm hyper-flexed inward).\n\n**Location:** defect cluster at (x800–835, y585–600) in the bottom-right panel.\n\n---\n\n## SUMMARY TABLE\n\n| Frame | Sword arm | Off arm | Verdict |\n|---|---|---|---|\n| TL | 158° ✅ | 167° ✅ | CLEAN |\n| TR | 158° ✅ | 167° ✅ | CLEAN |\n| BL | ~40° hyper-flexed, hand in pelvis ❌ | ~30°, merged ❌ | BROKEN |\n| BR | ~172° backward bend ❌ | collapsed ❌ | BROKEN |\n\n**Root-cause diagnosis:** the bottom-row keyframes lost the IK/FK constraint on the hand→pelvis target — the hand joint snapped to the pelvis locator, dragging both elbows into degenerate solutions (one hyper-flexed, one hyperextended). Fix by re-parenting the hand IK to the katana handle, not the pelvis, and clamping elbow flexion to the 90–170° range.",
+        "reasoning_content": "Analyze frames. Frames 1 & 2 (top): sword arm hangs down with elbow ~150-160°, fine. Bottom frames: arm collapsed — hand near pelvis, elbow near waist — forearm folded sharply, elbow possibly above/at shoulder? Bottom-right especially: elbow at ~waist/pelvis, hand near pelvis — extremely acute elbow angle ~40°, forearm doubled back. Also bottom frames elbow joint label overlaps hand/pelvis. Off-side arm: thin line running shoulder->elbow->knee-ish? In top frames off-side arm runs down near hip with elbow near hip ~160°, fine. Bottom-left: off-side elbow at pelvis too, hand label at pelvis, angle ~35°. Bottom-right: hand/elbow at pelvis, forearm tucked backward. Flag defects mainly in bottom two frames.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794159188,
+  "id": "2026110901323654c277f5f31c46b6",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "2026110901323654c277f5f31c46b6",
+  "usage": {
+    "completion_tokens": 1267,
+    "completion_tokens_details": {
+      "reasoning_tokens": 174
+    },
+    "prompt_tokens": 1288,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2555
+  }
+}

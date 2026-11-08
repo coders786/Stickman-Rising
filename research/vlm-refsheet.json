@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Stick-Figure Samurai Arm Pose Keyframes (2D Side-View Rig)\n\nConvention: Shoulder angle measured from vertical-down (0° = arm hanging straight down, positive = forward swing toward blade direction). Wrist: 0° = neutral with forearm, positive = flexed toward palm.\n\n| Panel | Sword-arm shoulder (° from vertical-down) | Sword-arm elbow interior angle (°) | Sword-arm wrist (°) | Off-arm shoulder (°) | Off-arm elbow interior (°) | Off-arm wrist (°) | Hand pos. rel. to hip | Generated anatomical error | Corrected value |\n|---|---|---|---|---|---|---|---|---|---|\n| 1 | 30 | 55 | −10 (slight extension, grip line) | 35 | 60 | 0 | Both hands ~5 cm anterior of hip, sword hip-level across navel | None — two-handed draw stance reads correctly | n/a |\n| 2 | 45 | 70 | 0 | 40 | 65 | 0 | Sword hand ~8 cm anterior of hip; off-hand at hip level | Left hand grips tang/blade area behind tsuba (hand passes through guard) | Shift grip to handle: off-hand wrist +15, hand 5 cm forward |\n| 3 | 85 | 165 (near straight) | 5 | −20 (behind torso) | 150 | 10 | Sword hand ~25 cm anterior of hip at chest height; off-hand trailing behind hip | Right elbow bends *backward* (hyperextension, joint points posteriorly) | Interior angle 100°, elbow pointing down-back; shoulder 75 |\n| 4 | 15 | 75 | 0 | 0 | 90 | 0 | Sword hand at hip, thumb-forward on handle; off-hand on hip crest | Sword passes through the torso at waist level (blade pierces hip) | Raise sword line +10 cm: shoulder 25, hand 8 cm anterior of hip |\n| 5 | 40 | 65 | 0 | −10 | 85 | 0 | Sword hand ~10 cm anterior of hip; off-hand near hip holding sheath | Elbow of sword arm points backward while forearm points forward — inverted elbow | Interior angle 55° with elbow pointing down; shoulder 55 |\n| 6 | 70 | 140 | 0 | −15 | 80 | 10 | Sword hand ~30 cm anterior of hip, chest height; off-hand tucked behind hip | Left arm foreshortened into torso — shoulder dislocated/hidden; blade tip clipped at frame edge | Off-arm shoulder −5, elbow 95°, hand 10 cm posterior of hip; shift sword arm shoulder 65 |\n\n**Notes for rigging:**\n- Panels 1, 2, 5 are hilt-draw/iaijutsu frames — keep both wrists near 0° and hands within 10 cm of the hip center.\n- Panels 3 and 6 are strike/reach extremes — the most common AI artifacts (backward elbows, limb-through-torso) occur here; the corrected values above restore valid IK chains.\n- Panel 4's blade-through-hip should be fixed by offsetting the sword parent bone upward rather than re-bending the arm.",
+        "reasoning_content": "Provide table with estimated angles, note errors.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794159515,
+  "id": "20261109013817ad22ec5283694b29",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261109013817ad22ec5283694b29",
+  "usage": {
+    "completion_tokens": 712,
+    "completion_tokens_details": {
+      "reasoning_tokens": 9
+    },
+    "prompt_tokens": 1487,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2199
+  }
+}

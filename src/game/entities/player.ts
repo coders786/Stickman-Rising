@@ -6,7 +6,7 @@ import { Animator } from '../anim/animator'
 import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
-import { FighterGeom, drawFighter3D, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
+import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
 import { applyJointLimits } from '../anim/limits'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
@@ -2712,12 +2712,15 @@ export class Player {
       if (this.state === 'move' && this.grounded) {
         switch (this.loco) {
           case 'walk': carryYaw = -0.12; carryArm = -0.08; carryFore = -0.05; break
-          case 'run': carryYaw = -0.28; carryArm = -0.2; carryFore = -0.12; break
-          // sprint: tucked hard back but SHALLOWER depth than before — the
-          // deep −0.3/−0.22 yaw pair foreshortened the chains until the
-          // projected elbow read ~150° straight (the "straight trailing
-          // sword arm" defect). The tuck lives in bladeYaw, not the arm.
-          case 'sprint': carryYaw = -0.3; carryArm = -0.16; carryFore = -0.1; break
+          case 'run': carryYaw = -0.28; carryArm = -0.14; carryFore = -0.08; break
+          // sprint: tucked hard back but the tuck lives in BLADE YAW only —
+          // the old arm-yaw pair (−0.16/−0.1 on top of authored −0.18)
+          // stacked with the girdle inheritance to ~−0.39 total: the
+          // forearm's projected direction became ~47% depth, so a deeply
+          // BENT elbow (interior ~111°) projected to a straight horizontal
+          // stub behind the hip — the "dead sword arm" read. Arm yaw stays
+          // shallow; bladeYaw −0.3 carries the whole Raiden tuck alone.
+          case 'sprint': carryYaw = -0.3; carryArm = -0.06; carryFore = -0.04; break
           case 'combat': carryYaw = 0.06; carryArm = 0.1; carryFore = 0.05; break
           case 'backpedal': carryYaw = 0.04; carryArm = 0.06; carryFore = 0.03; break
           default: break
@@ -2843,8 +2846,14 @@ export class Player {
     // owns the arms.)
     if (this.swordDrawn && this.state === 'move' && this.grounded && Math.abs(this.vx) < 60) {
       const relax = 1 - wC
-      p[CH.shR] += relax * -0.35
-      p[CH.elR] += relax * -0.05
+      // THE BENT-CARRY READ (reference panel 1 conformance): a relaxed sword
+      // carry holds ~53° elbow flexion (interior ~127°) with the hand at
+      // hip-front — "low carry WITH control", not a limp straight arm. The
+      // old −0.05 elbow nudge left the arm near-straight (~150°) and passive
+      // (the "dead arm at idle" read); the deeper bend also carries the hand
+      // to (10, 1) local — in front of the hip, kissaki sweeping down-back.
+      p[CH.shR] += relax * -0.25
+      p[CH.elR] += relax * -0.35
       p[CH.wrR] += relax * -2.09
       // the natural hang: upper arm vertical, elbow softly bent —
       // NEVER a reach across the body
@@ -2861,6 +2870,23 @@ export class Player {
     // as a frozen, lifeless arm (the sword arm must pump with the gait).
     // Airborne = the hands-only jump family (authored clips); the ritual
     // clips own the arms while active. Damped weight → smooth transitions.
+    //
+    // THE DYNAMIC KASHIRA WELD (two stacked fixes):
+    //  1. The old static targets (shR −0.34, elR −0.46) reached BACKWARD
+    //     behind the hip with a near-straight elbow — the fist floated 34
+    //     units from the drawn pommel and read as a dislocated elbow jammed
+    //     into the pelvis (the idle catastrophe). The kashira renders ~22
+    //     units FORWARD of the hip (tsuka continues the saya axis out of
+    //     the mouth at ~14° above horizontal — iaido rest: shoulder ~+55°,
+    //     elbow interior ~115-125°, hand at navel height).
+    //  2. Static channel targets still drifted 2-3 units off the hilt
+    //     through breathing sway, and the up-wound carry wrist oriented the
+    //     FIST backward off the tsuka axis (the renderer orients fists on
+    //     the blade-angle sum). The right arm is now IK-solved onto the
+    //     LIVE kashira point every frame — the same pelvis-pitch formula
+    //     the saya renderer uses — with the wrist rotated onto the saya
+    //     axis: the fist stays GLUED to the hilt through sway, and reads
+    //     like a hand actually holding the tsuka.
     {
       const paceFade = 1 - clamp01((Math.abs(this.vx) - 110) / 90)
       const sheathTarget = !this.swordDrawn && this.state === 'move'
@@ -2868,15 +2894,39 @@ export class Player {
       this.sheathW = damp(this.sheathW, sheathTarget, 9, dt)
       if (this.sheathW > 0.02) {
         const k = this.sheathW
-        // right arm → the pommel rest at the hip
-        p[CH.shR] += (-0.34 - p[CH.shR]) * k
-        p[CH.elR] += (-0.46 - p[CH.elR]) * k
-        p[CH.wrR] += (5.0 - p[CH.wrR]) * k
-        p[CH.armRz] += (0.08 - p[CH.armRz]) * k
-        // left hand steadies the saya mouth (softer pull — keeps gait life)
-        p[CH.shL] += (0.12 - p[CH.shL]) * k * 0.75
-        p[CH.elL] += (-0.5 - p[CH.elL]) * k * 0.75
-        p[CH.armLz] += (-0.18 - p[CH.armLz]) * k * 0.75
+        // the saya geometry (local space — mirror of the draw path)
+        const pelvisPitch = p[CH.rootRot] + p[CH.spine] * 0.35
+        const sayAng = 0.24 + pelvisPitch * 0.6
+        const tl = PLAYER_SPEC.blade * 0.36
+        const mx = p[CH.rootX] + 3
+        const my = p[CH.rootY] + 1
+        const kx = mx + Math.cos(sayAng) * tl
+        const ky = my - Math.sin(sayAng) * tl
+        // right arm → LIVE kashira IK (geom is last frame's solve, unprojected)
+        {
+          const g = this.geom
+          const sS = FOCUS / (FOCUS - g.shoulderR.z)
+          const sx = g.shoulderR.x / sS
+          const sy = g.shoulderR.y / sS
+          const ik = ikArm3D(
+            kx - sx, ky - sy, clamp(-g.shoulderR.z, -10, 10),
+            PLAYER_SPEC.upperArm, PLAYER_SPEC.foreArm,
+          )
+          const elIk = clamp(ik.el, -2.62, -0.61)
+          const shIk = clamp(ik.sh, -1.05, 3.05)
+          p[CH.shR] += (shIk - p[CH.shR]) * k
+          p[CH.elR] += (elIk - p[CH.elR]) * k
+          p[CH.armRz] += (clamp(ik.yaw, -0.45, 0.45) - p[CH.armRz]) * k
+          // wrist: the fist axis rides the SAYA axis (blade angle = −sayAng)
+          // — the fist reads as wrapping the tsuka, never pointing backward
+          p[CH.wrR] += (Math.PI / 2 + sayAng - shIk - elIk - p[CH.wrR]) * k
+        }
+        // left hand steadies the saya mouth — static near-mouth targets at
+        // 0.8 weight (the far arm is depth-occluded; a full cross-body IK
+        // onto the mouth would yaw the arm ~72° through the torso)
+        p[CH.shL] += (0.45 - p[CH.shL]) * k * 0.8
+        p[CH.elL] += (-0.95 - p[CH.elL]) * k * 0.8
+        p[CH.armLz] += (0.2 - p[CH.armLz]) * k * 0.8
       }
     }
 
@@ -3054,55 +3104,23 @@ export class Player {
       ctx.lineTo(hp.x - 5.5, hp.y + 0.8)
       ctx.stroke()
       // kojiri: FILLED metal cap on the saya mouth (a bare accent ring read
-      // as a floating rig artifact at gameplay zoom — cap the tube properly)
+      // as a floating rig artifact at gameplay zoom — cap the tube properly).
+      // Accent kept DIM (0.32) — the kojiri ring must never compete with the
+      // bright tsuba at the mouth: two equal rings flipped the katana's
+      // read at a glance (VLM: "the far back ring could be misread as the
+      // pommel") — the forward hilt owns the bright metal.
       ctx.fillStyle = '#0d1219'
       ctx.beginPath()
       ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.6)
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.32)
       ctx.beginPath()
       ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
       ctx.stroke()
-      // SHEATHED: the tsuka rides IN the saya — the grip continues the
-      // scabbard axis out of the mouth, tsuba seated at the opening
-      // (kashira cap at the far end). The classic sheathed-katana read.
-      if (!this.swordDrawn) {
-        const mx = hp.x + 3
-        const my = hp.y + 1
-        const tl = PLAYER_SPEC.blade * 0.36
-        const kx = mx + Math.cos(ang) * tl
-        const ky = my - Math.sin(ang) * tl
-        // grip
-        ctx.strokeStyle = '#141a23'
-        ctx.lineWidth = 3.6
-        ctx.lineCap = 'round'
-        ctx.beginPath()
-        ctx.moveTo(mx, my)
-        ctx.lineTo(kx, ky)
-        ctx.stroke()
-        // wrap glint along the top edge
-        ctx.strokeStyle = rgba(this.sword.colors.accent, 0.55)
-        ctx.lineWidth = 1.1
-        ctx.beginPath()
-        ctx.moveTo(mx + Math.cos(ang) * 2, my - Math.sin(ang) * 2 - 1.2)
-        ctx.lineTo(kx, ky - 1.2)
-        ctx.stroke()
-        // kashira (pommel cap)
-        ctx.fillStyle = '#1c2733'
-        ctx.beginPath()
-        ctx.arc(kx, ky, 2.4, 0, Math.PI * 2)
-        ctx.fill()
-        // tsuba (guard) seated at the mouth
-        ctx.fillStyle = '#33465c'
-        ctx.beginPath()
-        ctx.arc(mx, my, 2.8, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = rgba(this.sword.colors.accent, 0.7)
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(mx, my, 2.8, 0, Math.PI * 2)
-        ctx.stroke()
-      }
+      // SHEATHED tsuka stub: moved to a FRONT pass (after the body) — the
+      // grip pokes out FORWARD of the hip silhouette at navel height, and
+      // the old behind-body draw swallowed it into the black pelvis blob
+      // ("the hand rests on nothing" read). See the front pass below.
     }
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
@@ -3118,6 +3136,59 @@ export class Player {
         a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
       },
     })
+    // ---- SHEATHED TSUKA — FRONT PASS (the readable hilt): the grip
+    // continues the saya axis out of the mouth, tsuba seated at the
+    // opening, kashira cap at the far end where the resting fist welds
+    // (the sheath IK layer targets exactly that point). Brighter tones
+    // + accent rings than the saya body so the hilt READS against the
+    // dark scene and the black body — "hand resting on the sheathed
+    // katana" is the single most-held pose in the game; it cannot be a
+    // whisper-dark stroke.
+    if (!this.swordDrawn) {
+      const hp = this.geom.hip
+      const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
+      const ang = 0.24 + pelvisPitch * 0.6
+      const mx = hp.x + 3
+      const my = hp.y + 1
+      const tl = PLAYER_SPEC.blade * 0.36
+      const kx = mx + Math.cos(ang) * tl
+      const ky = my - Math.sin(ang) * tl
+      // grip body
+      ctx.strokeStyle = '#1d2735'
+      ctx.lineWidth = 3.8
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(mx, my)
+      ctx.lineTo(kx, ky)
+      ctx.stroke()
+      // wrap glint along the top edge (ito wrap catching the key light)
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.8)
+      ctx.lineWidth = 1.4
+      ctx.beginPath()
+      ctx.moveTo(mx + Math.cos(ang) * 2.5, my - Math.sin(ang) * 2.5 - 1.4)
+      ctx.lineTo(kx - Math.cos(ang) * 1.5, ky - Math.sin(ang) * 1.5 - 1.4)
+      ctx.stroke()
+      // kashira (pommel cap) — the fist welds HERE
+      ctx.fillStyle = '#2a3949'
+      ctx.beginPath()
+      ctx.arc(kx, ky, 2.6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.85)
+      ctx.lineWidth = 1.1
+      ctx.beginPath()
+      ctx.arc(kx, ky, 2.6, 0, Math.PI * 2)
+      ctx.stroke()
+      // tsuba (guard) seated at the mouth
+      ctx.fillStyle = '#3b5069'
+      ctx.beginPath()
+      ctx.arc(mx, my, 3.1, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.8)
+      ctx.lineWidth = 1.3
+      ctx.beginPath()
+      ctx.arc(mx, my, 3.1, 0, Math.PI * 2)
+      ctx.stroke()
+    }
     // THE 3D BLADE: projected metrics from the rig — grip, projected angle
     // (after yaw + perspective), projected length, tip depth. Visual blade
     // == hitbox blade (updateBladeWorld consumes the same numbers).

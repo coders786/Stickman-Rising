@@ -130,3 +130,51 @@ Attack swings, iai draws, parries: authored keyframes + the sword-arc
 The physics layer blends OUT (physW → 0) during any attack state and
 blends back over 90 ms on exit, preserving the momentum handoff via
 post-attack velocity seeding (the existing `postAttackT` layer).
+
+---
+
+## 7. ARM ANATOMY RESEARCH → CONSTRAINT TABLE (this run's findings)
+
+**Research sources:** iaido/nukitsuke reference sheets (image-search, VLM
+keyframe extraction) + generated stick-samurai reference sheets + live QA
+telemetry with projected-elbow chain metrics (`research/qa-arms.js`).
+
+**Verified targets (sagittal channels, degrees; interior = joint angle):**
+
+| Pose | shR | elR (interior) | wrR | shL | elL (interior) | Notes |
+|---|---|---|---|---|---|---|
+| Sheathed pommel rest | +55° | −68° (112°) | saya-axis | +28° | −57° (123°) | IK onto LIVE kashira (22,−4 local); wrist axis = saya axis |
+| Chūdan guard (drawn) | +41° | −36° (144°) | +66° | +52° | −77° (123°) | two-hand grip IK onto pommel (3D solve) |
+| Relaxed idle carry | +26° | −33° (147°) | low-back diag | +10° | −37° (143°) | relax layer owns it |
+| Run pump (contact) | −9° | −57° (123°) | trailing carry | +21° | −56° (124°) | same-side anti-phase to own leg |
+| Run pump (push-off) | +32° | −60° (120°) | trailing carry | −30° | −64° (116°) | off-arm back-swing extreme |
+| Sprint (contact) | −20° | −62° (118°) | tucked | +53° | −72° (108°) | depth budget ±0.30 rad max |
+| Walk carry | +31° | −25° (155°) | raised +0.15 | ±22° | −25..−40° | blade clears shin by ≥8u |
+
+**Physics-plan consequences (L2/L4 above, when executed):**
+- Elbow bend-side constraint: the projected 2-bone chain must keep the
+  elbow on the flexion side (cross product sign, `chain()` in qa-arms.js)
+  — becomes a `BendSide` constraint, not a clamp.
+- Depth-yaw budget: total upper-arm yaw (authored + girdle inheritance +
+  carry) must satisfy |yaw| ≤ 0.35 + 0.45·flexion(elbow) — a near-straight
+  arm with deep yaw projects to a straight stub ("dead arm" read).
+  Currently guarded by clamping girdle inheritance ±0.28 rad; the physics
+  version is an angular limit on the shoulder-yaw DOF driven by elbow
+  flexion state.
+- The sheath/draw rituals and the pommel rest become POINT targets (hand
+  welded to kashira/koiguchi as contact points with friction) instead of
+  channel seeks — the `bridge.ts` pose⇄point conversion already has the
+  live precedent in `applyTwoHandGrip` + the sheath kashira IK weld.
+- Arm pump phase: same-side arm swings anti-phase to its own leg (verif:
+  run shR −9°@R-contact → +32°@R-push-off). In L4 this falls out of the
+  angular-momentum counter-rotation for free — no authored timing needed.
+
+## 8. WHAT WAS APPLIED KINEMATICALLY THIS RUN (not deferred)
+
+- Sheath home-arm layer: dynamic kashira IK weld + saya-axis wrist
+  (player.ts) — replaces the backward-reach static targets.
+- SHEATHE_CLIP / DRAW_CLIP / l1 chamber: IK-corrected rest poses.
+- RUN_CLIP: full-cycle sword-arm pump (was forward-drift only).
+- SPRINT_Q/WALK_Q: authored depth yaw trimmed; walk carry raised.
+- rig3d solveFighter3D: girdle-yaw arm inheritance capped ±0.28 rad.
+- Sheathed tsuka: front-pass render with readable accents + dim kojiri.

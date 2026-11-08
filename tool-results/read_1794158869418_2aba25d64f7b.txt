@@ -1,0 +1,702 @@
+     1→'use client'
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from 'react'
+     4→import { Game } from '@/game/game'
+     5→import { SWORDS, SWORD_ORDER, SwordId } from '@/game/combat/swords'
+     6→import { DEFAULT_SETTINGS, GameSettings, RunStats } from '@/game/core/types'
+     7→import { Input as GameInput, Action } from '@/game/core/input'
+     8→import { Button } from '@/components/ui/button'
+     9→import { Card, CardContent } from '@/components/ui/card'
+    10→import { Input as TextInput } from '@/components/ui/input'
+    11→import { Slider } from '@/components/ui/slider'
+    12→import { Switch } from '@/components/ui/switch'
+    13→import { Badge } from '@/components/ui/badge'
+    14→import { ScrollArea } from '@/components/ui/scroll-area'
+    15→import { Separator } from '@/components/ui/separator'
+    16→import { fmt } from '@/game/core/utils'
+    17→import { Swords, Trophy, Play, Settings as SettingsIcon, BookOpen, ChevronRight, RotateCcw, Home as HomeIcon, Send, Pause } from 'lucide-react'
+    18→
+    19→/* ------------------------------------------------------------------ */
+    20→
+    21→type Screen = 'title' | 'arsenal' | 'howto' | 'scores' | 'settings' | 'playing' | 'paused' | 'gameover'
+    22→
+    23→interface SaveData {
+    24→  totalKills: number
+    25→  best: number
+    26→  unlocked: SwordId[]
+    27→}
+    28→
+    29→interface ScoreRow {
+    30→  id: string
+    31→  name: string
+    32→  score: number
+    33→  wave: number
+    34→  maxCombo: number
+    35→  kills: number
+    36→  sword: string
+    37→}
+    38→
+    39→const SAVE_KEY = 'sr_save_v1'
+    40→const SETTINGS_KEY = 'sr_settings_v1'
+    41→const NAME_KEY = 'sr_name_v1'
+    42→
+    43→function loadSave(): SaveData {
+    44→  if (typeof window === 'undefined') return { totalKills: 0, best: 0, unlocked: ['katana'] }
+    45→  try {
+    46→    const raw = window.localStorage.getItem(SAVE_KEY)
+    47→    if (raw) {
+    48→      const parsed = JSON.parse(raw) as SaveData
+    49→      if (!parsed.unlocked?.includes('katana')) parsed.unlocked.unshift('katana')
+    50→      return parsed
+    51→    }
+    52→  } catch { /* ignore */ }
+    53→  return { totalKills: 0, best: 0, unlocked: ['katana'] }
+    54→}
+    55→
+    56→function loadSettings(): GameSettings {
+    57→  if (typeof window === 'undefined') return { ...DEFAULT_SETTINGS }
+    58→  try {
+    59→    const raw = window.localStorage.getItem(SETTINGS_KEY)
+    60→    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GameSettings>) }
+    61→  } catch { /* ignore */ }
+    62→  const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
+    63→  return { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : 'high' }
+    64→}
+    65→
+    66→/* ================================================================== */
+    67→
+    68→export default function Home() {
+    69→  const canvasRef = useRef<HTMLCanvasElement>(null)
+    70→  const wrapRef = useRef<HTMLDivElement>(null)
+    71→  const gameRef = useRef<Game | null>(null)
+    72→  const saveRef = useRef<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
+    73→
+    74→  const [screen, setScreen] = useState<Screen>('title')
+    75→  const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
+    76→  const [stats, setStats] = useState<RunStats | null>(null)
+    77→  /* persisted state starts from SSR-safe defaults; real values load in a
+    78→   * mount effect below so server HTML === first client render (no
+    79→   * hydration mismatch badge) */
+    80→  const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
+    81→  const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
+    82→  const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
+    83→  const [scores, setScores] = useState<ScoreRow[]>([])
+    84→  const [name, setName] = useState('')
+    85→  const [submitted, setSubmitted] = useState(false)
+    86→  const [newUnlocks, setNewUnlocks] = useState<SwordId[]>([])
+    87→  const [touchMode, setTouchMode] = useState(false)
+    88→  const [gameInput, setGameInput] = useState<GameInput | null>(null)
+    89→
+    90→  /* hydrate persisted values AFTER mount (SSR-safe pattern). Batched into a
+    91→   * rAF callback: asynchronous by design, so no cascading renders and no
+    92→   * flash of default content before the first paint. */
+    93→  useEffect(() => {
+    94→    const id = requestAnimationFrame(() => {
+    95→      const s = loadSave()
+    96→      setSave(s)
+    97→      setSelectedSword(s.unlocked[s.unlocked.length - 1] ?? 'katana')
+    98→      setSettings(loadSettings())
+    99→      setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
+   100→      try {
+   101→        setName(window.localStorage.getItem(NAME_KEY) ?? '')
+   102→      } catch { /* ignore */ }
+   103→    })
+   104→    return () => cancelAnimationFrame(id)
+   105→  }, [])
+   106→
+   107→  /* ---------------- game mount ---------------- */
+   108→
+   109→  useEffect(() => {
+   110→    const canvas = canvasRef.current
+   111→    if (!canvas) return
+   112→    const game = new Game()
+   113→    gameRef.current = game
+   114→    game.applySettings(loadSettings())
+   115→    game.setUnlocked(loadSave().unlocked)
+   116→    const off = game.on((e) => {
+   117→      if (e.type === 'gameover') {
+   118→        setStats(e.stats)
+   119→        setScreen('gameover')
+   120→        setSubmitted(false)
+   121→        // persist progress + unlocks
+   122→        const prev = saveRef.current
+   123→        const totalKills = prev.totalKills + e.stats.kills
+   124→        const best = Math.max(prev.best, e.stats.score)
+   125→        const unlocked = [...prev.unlocked]
+   126→        const fresh: SwordId[] = []
+   127→        for (const id of SWORD_ORDER) {
+   128→          if (!unlocked.includes(id) && totalKills >= SWORDS[id].unlockKills) {
+   129→            unlocked.push(id)
+   130→            fresh.push(id)
+   131→          }
+   132→        }
+   133→        const next = { totalKills, best, unlocked }
+   134→        saveRef.current = next
+   135→        setSave(next)
+   136→        try {
+   137→          window.localStorage.setItem(SAVE_KEY, JSON.stringify(next))
+   138→        } catch { /* ignore */ }
+   139→        if (fresh.length) {
+   140→          setNewUnlocks(fresh)
+   141→          setSelectedSword(fresh[fresh.length - 1])
+   142→        }
+   143→      } else if (e.type === 'phase') {
+   144→        if (e.phase === 'paused') setScreen('paused')
+   145→        if (e.phase === 'playing') setScreen('playing')
+   146→      }
+   147→    })
+   148→    game.mount(canvas)
+   149→    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from the mounted external game system
+   150→    setGameInput(game.input)
+   151→
+   152→    const ro = new ResizeObserver(() => game.resize())
+   153→    if (wrapRef.current) ro.observe(wrapRef.current)
+   154→    return () => {
+   155→      ro.disconnect()
+   156→      off()
+   157→      game.destroy()
+   158→      gameRef.current = null
+   159→    }
+   160→  }, [])
+   161→
+   162→  /* ---------------- settings persistence ---------------- */
+   163→
+   164→  useEffect(() => {
+   165→    const game = gameRef.current
+   166→    if (!game) return
+   167→    game.applySettings(settings)
+   168→    try {
+   169→      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+   170→    } catch { /* ignore */ }
+   171→  }, [settings])
+   172→
+   173→  useEffect(() => {
+   174→    gameRef.current?.setUnlocked(save.unlocked)
+   175→    saveRef.current = save
+   176→  }, [save.unlocked, save])
+   177→
+   178→  /* ---------------- pause hotkey when game input disabled ---------------- */
+   179→
+   180→  useEffect(() => {
+   181→    const onKey = (e: KeyboardEvent) => {
+   182→      const t = e.target as HTMLElement | null
+   183→      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+   184→      if (e.code === 'Escape' || e.code === 'KeyP') {
+   185→        if (screen === 'paused') {
+   186→          gameRef.current?.resume()
+   187→        } else if (screen === 'playing') {
+   188→          gameRef.current?.pause()
+   189→        }
+   190→      }
+   191→    }
+   192→    window.addEventListener('keydown', onKey)
+   193→    return () => window.removeEventListener('keydown', onKey)
+   194→  }, [screen])
+   195→
+   196→  /* ---------------- actions ---------------- */
+   197→
+   198→  const refreshScores = useCallback(async () => {
+   199→    try {
+   200→      const res = await fetch('/api/scores', { cache: 'no-store' })
+   201→      if (res.ok) setScores((await res.json()) as ScoreRow[])
+   202→    } catch { /* offline */ }
+   203→  }, [])
+   204→
+   205→  useEffect(() => {
+   206→    if (screen !== 'scores') return
+   207→    let cancelled = false
+   208→    fetch('/api/scores', { cache: 'no-store' })
+   209→      .then((r) => (r.ok ? r.json() : []))
+   210→      .then((rows) => {
+   211→        if (!cancelled) setScores(rows as ScoreRow[])
+   212→      })
+   213→      .catch(() => { /* offline */ })
+   214→    return () => {
+   215→      cancelled = true
+   216→    }
+   217→  }, [screen])
+   218→
+   219→  const startGame = useCallback((sword: SwordId) => {
+   220→    setNewUnlocks([])
+   221→    gameRef.current?.startRun(sword)
+   222→    setScreen('playing')
+   223→  }, [])
+   224→
+   225→  const submitScore = useCallback(async () => {
+   226→    if (!stats || submitted) return
+   227→    const finalName = name.trim() || 'ANON'
+   228→    try {
+   229→      window.localStorage.setItem(NAME_KEY, finalName)
+   230→    } catch { /* ignore */ }
+   231→    setSubmitted(true)
+   232→    try {
+   233→      await fetch('/api/scores', {
+   234→        method: 'POST',
+   235→        headers: { 'Content-Type': 'application/json' },
+   236→        body: JSON.stringify({
+   237→          name: finalName,
+   238→          score: Math.round(stats.score),
+   239→          wave: stats.wave,
+   240→          maxCombo: stats.maxCombo,
+   241→          kills: stats.kills,
+   242→          sword: selectedSword,
+   243→        }),
+   244→      })
+   245→      await refreshScores()
+   246→    } catch { /* offline */ }
+   247→  }, [stats, name, submitted, selectedSword, refreshScores])
+   248→
+   249→  const menuBtn = 'h-12 px-8 font-black tracking-[0.25em] text-sm'
+   250→
+   251→  /* ================================================================== */
+   252→
+   253→  return (
+   254→    <div ref={wrapRef} className="relative w-screen h-[100dvh] overflow-hidden bg-black select-none">
+   255→      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-label="Stickman Rising game canvas" />
+   256→
+   257→      {/* ------------ touch controls ------------ */}
+   258→      {screen === 'playing' && touchMode && gameInput && <TouchLayer input={gameInput} onPause={() => gameRef.current?.pause()} />}
+   259→
+   260→      {/* ------------ TITLE ------------ */}
+   261→      {screen === 'title' && (
+   262→        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/60 via-black/25 to-black/70 px-4">
+   263→          <div className="animate-pulse text-[10px] font-bold tracking-[0.6em] text-red-400/90">DASH &amp; SLASH PROTOCOL</div>
+   264→          <h1 className="mt-2 text-center font-black leading-none tracking-tight text-white drop-shadow-[0_0_25px_rgba(255,42,74,0.35)]">
+   265→            <span className="block text-4xl sm:text-6xl">STICKMAN</span>
+   266→            <span className="block text-6xl sm:text-9xl text-red-500">RISING</span>
+   267→          </h1>
+   268→          <div className="mt-4 h-[3px] w-56 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
+   269→          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+   270→            <Button
+   271→              size="lg"
+   272→              className={`${menuBtn} bg-red-600 text-white hover:bg-red-500`}
+   273→              onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}
+   274→            >
+   275→              <Play className="mr-2 h-4 w-4" /> ENGAGE
+   276→            </Button>
+   277→            <Button size="lg" variant="outline" className={`${menuBtn} border-zinc-700 bg-black/50 text-zinc-200 hover:bg-zinc-900 hover:text-white`} onClick={(e) => { e.currentTarget.blur(); setScreen('arsenal') }}>
+   278→              <Swords className="mr-2 h-4 w-4" /> ARSENAL
+   279→            </Button>
+   280→          </div>
+   281→          <div className="mt-4 flex gap-2">
+   282→            <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('howto') }}><BookOpen className="mr-2 h-4 w-4" /> HOW TO PLAY</Button>
+   283→            <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('scores') }}><Trophy className="mr-2 h-4 w-4" /> LEADERBOARD</Button>
+   284→            <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setSettingsFrom('title'); setScreen('settings') }}><SettingsIcon className="mr-2 h-4 w-4" /> SETTINGS</Button>
+   285→          </div>
+   286→          <div className="mt-8 flex items-center gap-4 text-[11px] font-mono text-zinc-500">
+   287→            <span>BEST {fmt(save.best)}</span>
+   288→            <span className="h-3 w-px bg-zinc-800" />
+   289→            <span>TOTAL KILLS {fmt(save.totalKills)}</span>
+   290→            <span className="h-3 w-px bg-zinc-800" />
+   291→            <span className="text-red-400/80">{SWORDS[selectedSword].name}</span>
+   292→          </div>
+   293→        </div>
+   294→      )}
+   295→
+   296→      {/* ------------ ARSENAL ------------ */}
+   297→      {screen === 'arsenal' && (
+   298→        <div className="absolute inset-0 flex flex-col bg-black/85 px-4 py-6 sm:px-10">
+   299→          <div className="flex items-center gap-3">
+   300→            <h2 className="text-2xl font-black tracking-widest text-white">ARSENAL</h2>
+   301→            <span className="text-[10px] font-mono text-zinc-500">TOTAL KILLS {fmt(save.totalKills)}</span>
+   302→          </div>
+   303→          <ScrollArea className="mt-4 min-h-0 flex-1">
+   304→            <div className="grid grid-cols-1 gap-3 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+   305→              {SWORD_ORDER.map((id) => {
+   306→                const sw = SWORDS[id]
+   307→                const unlocked = save.unlocked.includes(id)
+   308→                const selected = selectedSword === id
+   309→                return (
+   310→                  <button
+   311→                    key={id}
+   312→                    type="button"
+   313→                    disabled={!unlocked}
+   314→                    onClick={(e) => { e.currentTarget.blur(); if (unlocked) setSelectedSword(id) }}
+   315→                    className={`relative overflow-hidden rounded-lg border p-4 text-left transition-all ${selected ? 'border-red-500 bg-red-950/40' : 'border-zinc-800 bg-zinc-950/80 hover:border-zinc-600'} ${unlocked ? '' : 'opacity-60'}`}
+   316→                  >
+   317→                    <div className="flex items-center justify-between">
+   318→                      <span className="font-black tracking-wider" style={{ color: sw.colors.accent }}>{sw.name}</span>
+   319→                      {selected && <Badge className="bg-red-600 text-white">EQUIPPED</Badge>}
+   320→                    </div>
+   321→                    <div className="mt-0.5 text-[9px] font-mono tracking-[0.25em] text-zinc-500">{sw.title}</div>
+   322→                    <p className="mt-2 text-xs leading-relaxed text-zinc-400">{sw.desc}</p>
+   323→                    <div className="mt-3 space-y-1.5">
+   324→                      <StatBar label="PWR" v={sw.stats.dmg / 1.4} color={sw.colors.accent} />
+   325→                      <StatBar label="SPD" v={sw.stats.spd / 1.25} color={sw.colors.accent} />
+   326→                      <StatBar label="RNG" v={(sw.stats.range - 0.9) / 0.2} color={sw.colors.accent} />
+   327→                    </div>
+   328→                    <div className="mt-3 text-[10px] font-mono leading-relaxed text-zinc-500">
+   329→                      <span style={{ color: sw.colors.glow }}>[U]</span> {sw.ability.name} — {sw.ability.desc}
+   330→                      <br />
+   331→                      <span style={{ color: sw.colors.glow }}>[I]</span> {sw.ult.name}
+   332→                    </div>
+   333→                    {!unlocked && (
+   334→                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
+   335→                        <span className="text-xs font-black tracking-widest text-zinc-300">LOCKED</span>
+   336→                        <span className="mt-1 text-[10px] font-mono text-zinc-500">REQUIRES {fmt(sw.unlockKills)} TOTAL KILLS</span>
+   337→                      </div>
+   338→                    )}
+   339→                  </button>
+   340→                )
+   341→              })}
+   342→            </div>
+   343→          </ScrollArea>
+   344→          <div className="mt-3 flex justify-between">
+   345→            <Button variant="outline" className="border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('title') }}>BACK</Button>
+   346→            <Button className="bg-red-600 px-10 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
+   347→              ENGAGE <ChevronRight className="ml-1 h-4 w-4" />
+   348→            </Button>
+   349→          </div>
+   350→        </div>
+   351→      )}
+   352→
+   353→      {/* ------------ HOW TO PLAY ------------ */}
+   354→      {screen === 'howto' && (
+   355→        <div className="absolute inset-0 flex flex-col bg-black/85 px-6 py-6 sm:px-16">
+   356→          <h2 className="text-2xl font-black tracking-widest text-white">HOW TO PLAY</h2>
+   357→          <ScrollArea className="mt-4 min-h-0 flex-1">
+   358→            <div className="grid grid-cols-1 gap-6 pb-4 lg:grid-cols-2">
+   359→              <div>
+   360→                <h3 className="mb-2 text-xs font-black tracking-[0.3em] text-red-400">CONTROLS</h3>
+   361→                <table className="w-full text-xs">
+   362→                  <tbody className="[&_td]:py-1.5 [&_td:first-child]:w-32 [&_td:first-child]:font-mono [&_td:first-child]:text-red-300 [&_td:last-child]:text-zinc-400">
+   363→                    <tr><td>A / D</td><td>Move</td></tr>
+   364→                    <tr><td>SPACE</td><td>Jump / double jump</td></tr>
+   365→                    <tr><td>J</td><td>Light attack (chain up to 5)</td></tr>
+   366→                    <tr><td>K</td><td>Heavy attack — hold to CHARGE</td></tr>
+   367→                    <tr><td>L / SHIFT</td><td>Dash (8 directions, cancels anything)</td></tr>
+   368→                    <tr><td>DASH + J / K</td><td>Dash slash / piercing fang</td></tr>
+   369→                    <tr><td>W + J</td><td>Launcher — sends foes skyward</td></tr>
+   370→                    <tr><td>S + J</td><td>Cyclone spin</td></tr>
+   371→                    <tr><td>AIR J / K</td><td>Air combos / dive / meteor slam</td></tr>
+   372→                    <tr><td>O</td><td>Parry — then J for a riposte</td></tr>
+   373→                    <tr><td>U</td><td>Sword ability (costs energy)</td></tr>
+   374→                    <tr><td>I</td><td>Ultimate when the blade meter is full</td></tr>
+   375→                    <tr><td>E</td><td>Execute staggered enemies — restores HP</td></tr>
+   376→                    <tr><td>1 - 6 / TAB</td><td>Switch blades</td></tr>
+   377→                    <tr><td>P / ESC</td><td>Pause</td></tr>
+   378→                  </tbody>
+   379→                </table>
+   380→              </div>
+   381→              <div>
+   382→                <h3 className="mb-2 text-xs font-black tracking-[0.3em] text-red-400">FIELD MANUAL</h3>
+   383→                <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed text-zinc-400">
+   384→                  <li>Never stop moving. Dash through enemies — dash cancels every attack.</li>
+   385→                  <li>Light attacks chain: press J in rhythm for five escalating slashes.</li>
+   386→                  <li>Launch with W+J, then chase into the air with jump + air slashes for juggles.</li>
+   387→                  <li>Hold K to charge an Overload Slash — each blade charges differently.</li>
+   388→                  <li>A gold ! means an attack is coming. Parry with O right as it lands, then punish.</li>
+   389→                  <li>Gunners fire tracer rounds — a perfect parry reflects them back.</li>
+   390→                  <li>Shields block frontal hits. Break them with heavy or charged slashes.</li>
+   391→                  <li>Executions (E) on staggered foes restore health and energy. Stay aggressive.</li>
+   392→                  <li>Kills charge the blade meter. At full charge, unleash [I] and watch the arena burn.</li>
+   393→                </ul>
+   394→              </div>
+   395→            </div>
+   396→          </ScrollArea>
+   397→          <Button variant="outline" className="mt-3 self-start border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('title') }}>BACK</Button>
+   398→        </div>
+   399→      )}
+   400→
+   401→      {/* ------------ LEADERBOARD ------------ */}
+   402→      {screen === 'scores' && (
+   403→        <div className="absolute inset-0 flex flex-col bg-black/85 px-6 py-6 sm:px-16">
+   404→          <div className="flex items-center gap-3">
+   405→            <Trophy className="h-5 w-5 text-amber-400" />
+   406→            <h2 className="text-2xl font-black tracking-widest text-white">LEADERBOARD</h2>
+   407→          </div>
+   408→          <ScrollArea className="mt-4 min-h-0 flex-1">
+   409→            <table className="w-full text-xs">
+   410→              <thead>
+   411→                <tr className="border-b border-zinc-800 text-left text-[10px] font-black tracking-[0.2em] text-zinc-500">
+   412→                  <th className="py-2">#</th>
+   413→                  <th>OPERATIVE</th>
+   414→                  <th>SCORE</th>
+   415→                  <th>WAVE</th>
+   416→                  <th>COMBO</th>
+   417→                  <th>KILLS</th>
+   418→                  <th>BLADE</th>
+   419→                </tr>
+   420→              </thead>
+   421→              <tbody className="[&_td]:py-2 [&_tr]:border-b [&_tr]:border-zinc-900">
+   422→                {scores.length === 0 && (
+   423→                  <tr><td colSpan={7} className="py-8 text-center font-mono text-zinc-600">NO RECORDS YET — BE THE FIRST</td></tr>
+   424→                )}
+   425→                {scores.map((r, i) => (
+   426→                  <tr key={r.id} className={i === 0 ? 'text-amber-300' : 'text-zinc-300'}>
+   427→                    <td className="font-mono">{String(i + 1).padStart(2, '0')}</td>
+   428→                    <td className="font-black tracking-wider">{r.name}</td>
+   429→                    <td className="font-mono text-red-400">{fmt(r.score)}</td>
+   430→                    <td className="font-mono">{r.wave}</td>
+   431→                    <td className="font-mono">{r.maxCombo}</td>
+   432→                    <td className="font-mono">{r.kills}</td>
+   433→                    <td className="font-mono text-zinc-500">{r.sword.toUpperCase()}</td>
+   434→                  </tr>
+   435→                ))}
+   436→              </tbody>
+   437→            </table>
+   438→          </ScrollArea>
+   439→          <Button variant="outline" className="mt-3 self-start border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('title') }}>BACK</Button>
+   440→        </div>
+   441→      )}
+   442→
+   443→      {/* ------------ SETTINGS ------------ */}
+   444→      {screen === 'settings' && (
+   445→        <div className="absolute inset-0 flex flex-col bg-black/85 px-6 py-6 sm:px-16">
+   446→          <div className="flex items-center gap-3">
+   447→            <SettingsIcon className="h-5 w-5 text-zinc-400" />
+   448→            <h2 className="text-2xl font-black tracking-widest text-white">SETTINGS</h2>
+   449→          </div>
+   450→          <ScrollArea className="mt-4 min-h-0 flex-1">
+   451→            <div className="max-w-xl space-y-6 pb-4">
+   452→              <div>
+   453→                <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
+   454→                <div className="flex gap-2">
+   455→                  {(['low', 'medium', 'high'] as const).map((q) => (
+   456→                    <Button
+   457→                      key={q}
+   458→                      variant="outline"
+   459→                      className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`}
+   460→                      onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
+   461→                    >{q.toUpperCase()}</Button>
+   462→                  ))}
+   463→                </div>
+   464→              </div>
+   465→              <div className="flex items-center justify-between">
+   466→                <div>
+   467→                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SCREEN SHAKE</div>
+   468→                  <div className="text-[10px] text-zinc-600">Impact trauma on the camera</div>
+   469→                </div>
+   470→                <div className="flex items-center gap-4">
+   471→                  <Slider className="w-36" value={[settings.shakeIntensity]} min={0.2} max={1.5} step={0.1} onValueChange={(v) => setSettings((s) => ({ ...s, shakeIntensity: v[0] ?? 1 }))} />
+   472→                  <Switch checked={settings.shake} onCheckedChange={(v) => setSettings((s) => ({ ...s, shake: v }))} />
+   473→                </div>
+   474→              </div>
+   475→              <Separator className="bg-zinc-900" />
+   476→              <div className="space-y-4">
+   477→                <div className="flex items-center justify-between">
+   478→                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SFX VOLUME</div>
+   479→                  <Slider className="w-44" value={[settings.sfxVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, sfxVolume: v[0] ?? 0.8 }))} />
+   480→                </div>
+   481→                <div className="flex items-center justify-between">
+   482→                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUSIC VOLUME</div>
+   483→                  <Slider className="w-44" value={[settings.musicVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, musicVolume: v[0] ?? 0.55 }))} />
+   484→                </div>
+   485→                <div className="flex items-center justify-between">
+   486→                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUTE ALL</div>
+   487→                  <Switch checked={settings.muted} onCheckedChange={(v) => setSettings((s) => ({ ...s, muted: v }))} />
+   488→                </div>
+   489→              </div>
+   490→              <Separator className="bg-zinc-900" />
+   491→              <div className="flex items-center justify-between">
+   492→                <div>
+   493→                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">IMPACT STYLE</div>
+   494→                  <div className="text-[10px] text-zinc-600">Enemy death particles</div>
+   495→                </div>
+   496→                <div className="flex gap-2">
+   497→                  <Button variant="outline" className={`font-black tracking-widest ${settings.gore === 'energy' ? 'border-cyan-500 bg-cyan-950/50 text-cyan-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, gore: 'energy' })) }}>ENERGY</Button>
+   498→                  <Button variant="outline" className={`font-black tracking-widest ${settings.gore === 'blood' ? 'border-red-500 bg-red-950/50 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, gore: 'blood' })) }}>BLOOD</Button>
+   499→                </div>
+   500→              </div>
+   501→              <div className="flex items-center justify-between">
+   502→                <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SHOW FPS</div>
+   503→                <Switch checked={settings.showFps} onCheckedChange={(v) => setSettings((s) => ({ ...s, showFps: v }))} />
+   504→              </div>
+   505→            </div>
+   506→          </ScrollArea>
+   507→          <Button variant="outline" className="mt-3 self-start border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen(settingsFrom === 'paused' ? 'paused' : 'title') }}>BACK</Button>
+   508→        </div>
+   509→      )}
+   510→
+   511→      {/* ------------ PAUSED ------------ */}
+   512→      {screen === 'paused' && (
+   513→        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 px-4">
+   514→          <div className="text-[10px] font-bold tracking-[0.6em] text-zinc-500">SYSTEM SUSPENDED</div>
+   515→          <h2 className="mt-1 text-5xl font-black tracking-widest text-white">PAUSED</h2>
+   516→          <div className="mt-8 flex flex-col gap-3">
+   517→            <Button size="lg" className="bg-red-600 px-16 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.resume() }}>RESUME</Button>
+   518→            <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setSettingsFrom('paused'); setScreen('settings') }}>SETTINGS</Button>
+   519→            <Button size="lg" variant="outline" className="border-zinc-800 bg-black/60 font-black tracking-[0.25em] text-zinc-500 hover:text-red-400" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.quitToMenu(); setScreen('title') }}>ABORT MISSION</Button>
+   520→          </div>
+   521→        </div>
+   522→      )}
+   523→
+   524→      {/* ------------ GAME OVER ------------ */}
+   525→      {screen === 'gameover' && stats && (
+   526→        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/85 via-red-950/30 to-black/90 px-4">
+   527→          <div className="text-[10px] font-bold tracking-[0.6em] text-red-400">CONNECTION LOST</div>
+   528→          <h2 className="mt-1 text-center text-5xl font-black tracking-widest text-red-500 drop-shadow-[0_0_20px_rgba(255,42,74,0.4)]">YOU HAVE FALLEN</h2>
+   529→
+   530→          {newUnlocks.length > 0 && (
+   531→            <div className="mt-4 border border-amber-500/60 bg-amber-950/40 px-6 py-2 text-center">
+   532→              <div className="text-[10px] font-black tracking-[0.3em] text-amber-400">NEW BLADE UNLOCKED</div>
+   533→              <div className="text-sm font-black tracking-widest text-amber-200">{newUnlocks.map((id) => SWORDS[id].name).join(' / ')}</div>
+   534→            </div>
+   535→          )}
+   536→
+   537→          <div className="mt-6 grid grid-cols-3 gap-x-10 gap-y-4 sm:grid-cols-6">
+   538→            <Stat label="SCORE" value={fmt(stats.score)} accent />
+   539→            <Stat label="WAVE" value={`${stats.wave}`} />
+   540→            <Stat label="MAX COMBO" value={`${stats.maxCombo}`} />
+   541→            <Stat label="KILLS" value={`${stats.kills}`} />
+   542→            <Stat label="TIME" value={`${Math.floor(stats.timeAlive / 60)}:${String(Math.floor(stats.timeAlive % 60)).padStart(2, '0')}`} />
+   543→            <Stat label="RANK" value={stats.bestRank} accent />
+   544→          </div>
+   545→
+   546→          <div className="mt-8 flex items-center gap-3">
+   547→            <TextInput
+   548→              value={name}
+   549→              onChange={(e) => setName(e.target.value.slice(0, 16))}
+   550→              placeholder="OPERATIVE NAME"
+   551→              className="h-11 w-48 border-zinc-700 bg-black/70 font-mono tracking-widest text-zinc-200 placeholder:text-zinc-600"
+   552→              maxLength={16}
+   553→            />
+   554→            <Button className="h-11 bg-red-600 font-black tracking-widest text-white hover:bg-red-500" disabled={submitted} onClick={(e) => { e.currentTarget.blur(); void submitScore() }}>
+   555→              <Send className="mr-2 h-4 w-4" /> {submitted ? 'SUBMITTED' : 'SUBMIT'}
+   556→            </Button>
+   557→          </div>
+   558→
+   559→          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+   560→            <Button size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
+   561→              <RotateCcw className="mr-2 h-4 w-4" /> RETRY
+   562→            </Button>
+   563→            <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('arsenal') }}>
+   564→              <Swords className="mr-2 h-4 w-4" /> ARSENAL
+   565→            </Button>
+   566→            <Button size="lg" variant="outline" className="border-zinc-800 bg-black/60 font-black tracking-[0.25em] text-zinc-500 hover:text-white" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.quitToMenu(); setScreen('title') }}>
+   567→              <HomeIcon className="mr-2 h-4 w-4" /> MENU
+   568→            </Button>
+   569→          </div>
+   570→        </div>
+   571→      )}
+   572→    </div>
+   573→  )
+   574→}
+   575→
+   576→/* ================================================================== */
+   577→
+   578→function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+   579→  return (
+   580→    <div className="text-center">
+   581→      <div className="text-[9px] font-black tracking-[0.3em] text-zinc-500">{label}</div>
+   582→      <div className={`mt-0.5 font-black tracking-wider ${accent ? 'text-red-400' : 'text-zinc-200'}`}>{value}</div>
+   583→    </div>
+   584→  )
+   585→}
+   586→
+   587→function StatBar({ label, v, color }: { label: string; v: number; color: string }) {
+   588→  const pct = Math.max(0.08, Math.min(1, v)) * 100
+   589→  return (
+   590→    <div className="flex items-center gap-2">
+   591→      <span className="w-7 text-[9px] font-mono text-zinc-600">{label}</span>
+   592→      <div className="h-1.5 flex-1 overflow-hidden rounded bg-zinc-900">
+   593→        <div className="h-full rounded" style={{ width: `${pct}%`, background: color }} />
+   594→      </div>
+   595→    </div>
+   596→  )
+   597→}
+   598→
+   599→/* ================================================================== */
+   600→/* touch controls                                                       */
+   601→/* ================================================================== */
+   602→
+   603→function TouchLayer({ input, onPause }: { input: GameInput; onPause: () => void }) {
+   604→  return (
+   605→    <>
+   606→      <button
+   607→        type="button"
+   608→        aria-label="Pause"
+   609→        className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded border border-zinc-700 bg-black/60 text-zinc-300"
+   610→        onClick={(e) => { e.currentTarget.blur(); onPause() }}
+   611→      >
+   612→        <Pause className="h-5 w-5" />
+   613→      </button>
+   614→      <Joystick input={input} />
+   615→      <div className="absolute bottom-5 right-4 z-20 grid grid-cols-3 gap-2.5">
+   616→        <TouchBtn input={input} action="parry" label="PARRY" small />
+   617→        <TouchBtn input={input} action="ability" label="SPEC" small />
+   618→        <TouchBtn input={input} action="ult" label="ULT" small />
+   619→        <TouchBtn input={input} action="light" label="SLASH" />
+   620→        <TouchBtn input={input} action="heavy" label="HEAVY" />
+   621→        <TouchBtn input={input} action="dash" label="DASH" />
+   622→        <div />
+   623→        <TouchBtn input={input} action="jump" label="JUMP" />
+   624→        <TouchBtn input={input} action="execute" label="EXEC" small />
+   625→      </div>
+   626→    </>
+   627→  )
+   628→}
+   629→
+   630→function TouchBtn({ input, action, label, small }: { input: GameInput; action: Action; label: string; small?: boolean }) {
+   631→  const cls = small
+   632→    ? 'h-14 w-14 text-[9px]'
+   633→    : 'h-[4.5rem] w-[4.5rem] text-[10px]'
+   634→  return (
+   635→    <button
+   636→      type="button"
+   637→      aria-label={label}
+   638→      className={`${cls} touch-none select-none rounded-full border border-zinc-600/80 bg-black/55 font-black tracking-widest text-zinc-200 backdrop-blur-sm active:border-red-500 active:bg-red-950/70 active:text-red-200`}
+   639→      onPointerDown={(e) => { e.preventDefault(); input.setVirtual(action, true) }}
+   640→      onPointerUp={() => input.setVirtual(action, false)}
+   641→      onPointerLeave={() => input.setVirtual(action, false)}
+   642→      onPointerCancel={() => input.setVirtual(action, false)}
+   643→      onContextMenu={(e) => e.preventDefault()}
+   644→    >
+   645→      {label}
+   646→    </button>
+   647→  )
+   648→}
+   649→
+   650→function Joystick({ input }: { input: GameInput }) {
+   651→  const ref = useRef<HTMLDivElement>(null)
+   652→  const [knob, setKnob] = useState({ x: 0, y: 0 })
+   653→  const activeId = useRef<number | null>(null)
+   654→
+   655→  const handle = (e: React.PointerEvent) => {
+   656→    const el = ref.current
+   657→    if (!el) return
+   658→    const rect = el.getBoundingClientRect()
+   659→    const cx = rect.left + rect.width / 2
+   660→    const cy = rect.top + rect.height / 2
+   661→    let dx = (e.clientX - cx) / (rect.width / 2)
+   662→    let dy = (e.clientY - cy) / (rect.height / 2)
+   663→    const len = Math.hypot(dx, dy)
+   664→    if (len > 1) {
+   665→      dx /= len
+   666→      dy /= len
+   667→    }
+   668→    input.setVirtualAxis(dx, dy)
+   669→    setKnob({ x: dx * (rect.width / 2 - 22), y: dy * (rect.height / 2 - 22) })
+   670→  }
+   671→
+   672→  const release = () => {
+   673→    activeId.current = null
+   674→    input.setVirtualAxis(0, 0)
+   675→    setKnob({ x: 0, y: 0 })
+   676→  }
+   677→
+   678→  return (
+   679→    <div
+   680→      ref={ref}
+   681→      className="absolute bottom-6 left-5 z-20 h-32 w-32 touch-none rounded-full border border-zinc-700/70 bg-black/40 backdrop-blur-sm"
+   682→      onPointerDown={(e) => {
+   683→        e.preventDefault()
+   684→        activeId.current = e.pointerId
+   685→        ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+   686→        handle(e)
+   687→      }}
+   688→      onPointerMove={(e) => {
+   689→        if (activeId.current === e.pointerId) handle(e)
+   690→      }}
+   691→      onPointerUp={release}
+   692→      onPointerCancel={release}
+   693→      onContextMenu={(e) => e.preventDefault()}
+   694→    >
+   695→      <div
+   696→        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-500 bg-zinc-800/90"
+   697→        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
+   698→      />
+   699→    </div>
+   700→  )
+   701→}
+   702→
