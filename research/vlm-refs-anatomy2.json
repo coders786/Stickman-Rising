@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "I need to flag something first: **this image is not a character anatomy reference sheet.** It's a screenshot of a web browser showing a chat app (Z.ai) with a game preview panel running a 2D stick-figure action game. There are no annotation arrows, rotation-limit indicators, or proportion guides anywhere in the image.\n\nThat said, I can describe the character that *is* visible, with the caveat that it's a small, mid-animation screenshot (~100px tall figure), so precision is limited:\n\n**1) Pose/stance (the white stick figure, center-right, mid-air):**\nThe character appears airborne or mid-dash, body tilted roughly 30–45° toward the lower-right (travel direction). Legs are splayed in a dynamic run/jump stride — one leg extended forward-down, the trailing leg bent behind. This is a mid-motion frame, not a neutral reference pose.\n\n**2) Arms:**\nThe figure is too small to reliably determine elbow bend direction. One arm trails behind the torso (up-left), the other is less distinct. No hands are rendered — it's a pure stick/line figure with a circular head (with an inner circle, suggesting a target/ring highlight).\n\n**3) Legs:**\nFront leg extended forward and down, roughly straight or slightly bent; rear leg flexed with the knee trailing. Knee bend direction can't be confirmed at this resolution.\n\n**4) Torso:** Leaning forward (toward direction of travel), consistent with a dash/attack motion. There's a sword-like white blade shape near the lower body, suggesting a slash animation.\n\n**5) Neck:** Not modeled — the head circle attaches directly to a single-line torso.\n\n**6) Annotations:** None. The only overlaid circles are game effects (a target reticle/ring on the torso area), not anatomy guides.\n\n**7) Proportions:** Standard stick-figure proportions — head is oversized (~1/4 of body height), limbs and torso are roughly equal-length line segments. Not usable as a proportion reference.\n\nIf you intended to attach an actual anatomy reference image, it looks like the wrong file was uploaded — you've shared a screenshot of your game-dev chat session (showing the \"fix the arm and elbow\" bug report conversation). If you'd like, upload the real reference sheet and I'll give you the full joint-by-joint breakdown, including elbow/knee bend directions and rotation limits.",
+        "reasoning_content": "The image is a screenshot of a chat app, not an anatomy reference. There's a stick figure in the game preview. I should honestly describe what's visible.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794149997,
+  "id": "2026110822594566e17c48b60f4f6d",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "2026110822594566e17c48b60f4f6d",
+  "usage": {
+    "completion_tokens": 535,
+    "completion_tokens_details": {
+      "reasoning_tokens": 33
+    },
+    "prompt_tokens": 2831,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3366
+  }
+}

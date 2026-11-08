@@ -312,7 +312,10 @@ export class SwordArcSolver {
       let ty = hy - c.shoulderY
       let tz = hz - c.shoulderZ
       const d = Math.hypot(tx, ty, tz) || 1e-4
-      const want = ARM_REACH * clamp(0.34 + ext * 0.62, 0.34, 0.965)
+      // 0.93 ceiling: full-reach targets solve the elbow to ~169° interior
+      // — the locked-straight "past 170°" elbow. The surrender is invisible;
+      // the dislocation read was not.
+      const want = ARM_REACH * clamp(0.32 + ext * 0.61, 0.32, 0.93)
       const k = Math.min(1, want / d)
       tx *= k
       ty *= k
@@ -450,7 +453,7 @@ export class SwordArcSolver {
       const ry = hy - c.shoulderY
       const rz = hz - c.shoulderZ
       const rr = Math.hypot(rx, ry, rz) || 1e-4
-      const rc = clamp(rr, ARM_REACH * 0.34, ARM_REACH * 0.965)
+      const rc = clamp(rr, ARM_REACH * 0.32, ARM_REACH * 0.93)
       hx = c.shoulderX + (rx / rr) * rc
       hy = c.shoulderY + (ry / rr) * rc
       hz = c.shoulderZ + (rz / rr) * rc

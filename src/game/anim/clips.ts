@@ -162,7 +162,7 @@ export const WALK_CLIP: Clip = makeClip('walk', [
  * and the 3D channels twist the gait (pelvisYaw ±0.2, chest counter). */
 const RUN_Q: PoseInput[] = [
   { // CONTACT — lead heel strikes FAR forward, trail toe still down
-    rootX: 2, rootY: 0.6, rootRot: 0.34, spine: 0.05, head: -0.19,
+    rootX: 2, rootY: 0.6, rootRot: 0.21, spine: 0.05, head: -0.19,
     hipR: 0.88, kneeR: -0.08, footR: 0.24,
     hipL: -0.8, kneeL: -0.62, footL: -0.06,
     shR: 0.3, elR: -1.0, wrR: 6.19,
@@ -170,7 +170,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.2, chestYaw: -0.14, armLz: 0.28,
   },
   { // LOADING — weight absorbs over the bending lead leg, big stride split
-    rootX: 4.5, rootY: 2.2, rootRot: 0.37, spine: 0.075, head: -0.26,
+    rootX: 4.5, rootY: 2.2, rootRot: 0.24, spine: 0.075, head: -0.26,
     hipR: 0.5, kneeR: -0.72, footR: 0.06,
     hipL: -0.95, kneeL: -0.3, footL: 0.02,
     shR: 0.55, elR: -1.05, wrR: 6.16,
@@ -178,7 +178,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.06, chestYaw: -0.04, armLz: 0.1,
   },
   { // PUSH-OFF — lead leg drives back hard, trail knee punches through high
-    rootX: 7, rootY: 1.0, rootRot: 0.34, spine: 0.09, head: -0.3,
+    rootX: 7, rootY: 1.0, rootRot: 0.21, spine: 0.09, head: -0.3,
     hipR: -0.3, kneeR: -0.38, footR: -0.1,
     hipL: 0.52, kneeL: -1.32, footL: 0.2,
     shR: 0.72, elR: -0.95, wrR: 6.22,
@@ -231,7 +231,7 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
  * Cadence ≈ 5.5 steps/s. */
 const SPRINT_Q: PoseInput[] = [
   { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed)
-    rootX: 5, rootRot: 0.36, rootY: 3.4, spine: 0.09, head: -0.3,
+    rootX: 5, rootRot: 0.26, rootY: 3.4, spine: 0.09, head: -0.3,
     hipR: 1.18, kneeR: -0.3, footR: 0.34,
     hipL: -0.95, kneeL: -0.45, footL: -0.12,
     shR: -0.45, elR: -0.55, wrR: 5.85,
@@ -239,7 +239,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.42, armRz: -0.3, bladeYaw: -0.26,
   },
   { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
-    rootX: 7, rootRot: 0.39, rootY: 5.4, spine: 0.1, head: -0.32,
+    rootX: 7, rootRot: 0.28, rootY: 5.4, spine: 0.1, head: -0.32,
     hipR: 0.22, kneeR: -1.05, footR: 0.06,
     hipL: -0.85, kneeL: -1.9, footL: 0.3,
     shR: -0.35, elR: -0.5, wrR: 5.82,
@@ -247,7 +247,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.12, armRz: -0.22, bladeYaw: -0.22,
   },
   { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
-    rootX: 10, rootRot: 0.38, rootY: 3.8, spine: 0.09, head: -0.3,
+    rootX: 10, rootRot: 0.27, rootY: 3.8, spine: 0.09, head: -0.3,
     hipR: -0.72, kneeR: -0.4, footR: -0.18,
     hipL: 1.25, kneeL: -1.15, footL: 0.12,
     shR: -0.3, elR: -0.45, wrR: 5.84,
@@ -256,7 +256,7 @@ const SPRINT_Q: PoseInput[] = [
   },
   { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
     // sprinter lengthens in the air; a tucked flight reads as a crouch)
-    rootX: 8, rootRot: 0.35, rootY: 0.6, spine: 0.08, head: -0.28,
+    rootX: 8, rootRot: 0.25, rootY: 0.6, spine: 0.08, head: -0.28,
     hipR: -0.5, kneeR: -0.75, footR: -0.1,
     hipL: 1.1, kneeL: -0.5, footL: 0.32,
     shR: -0.4, elR: -0.5, wrR: 5.83,

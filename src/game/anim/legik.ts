@@ -128,6 +128,16 @@ export interface GaitTuning {
   lift: number
 }
 
+/** PLANT ENVELOPE — the farthest a footfall may anchor from the femoral
+ * head at the moment of plant (world px). ~0.71× the player's stance-leg
+ * reach: a plant inside this ring always leaves the hip a load-bearing
+ * diagonal strut (hip ≥ ~45px above the floor); a plant outside it is a
+ * gait-planner prediction artifact (decelerating strides: the predicted
+ * hip travels farther than friction allows) and used to collapse the
+ * pelvis onto the ankle line with both knees locked. The consumer-side
+ * guard lives in player.updateFootLock; this is the producer-side one. */
+const PLANT_ENVELOPE = 46
+
 export const PLAYER_GAIT: Record<string, GaitTuning> = {
   walk:      { duty: 0.62, stride: 68,  cadMin: 0.9, cadMax: 2.4, clearance: 9,  stepAhead: 19,  lift: 6 },
   run:       { duty: 0.40, stride: 98,  cadMin: 2.6, cadMax: 4.6, clearance: 17, stepAhead: 27,  lift: 10 },
@@ -258,14 +268,16 @@ export class GaitPlanner {
     sole: number, side: 1 | -1,
   ): void {
     // ---- wrap: a leg that was swinging and just crossed into stance
-    // plants at its predicted landing spot
+    // plants at its predicted landing spot — clamped into the plant
+    // envelope around the CURRENT femoral position (prediction artifacts
+    // at deceleration planted feet beyond the leg's reach: the collapse)
     if (leg.swinging && p < tune.duty) {
       leg.swinging = false
       if (leg.anchor !== leg.land) {
-        leg.anchor = leg.land
+        leg.anchor = clamp(leg.land, x - PLANT_ENVELOPE, x + PLANT_ENVELOPE)
         this.footfall = true
         this.footfalls++
-        this.footfallX = leg.land
+        this.footfallX = leg.anchor
       }
     }
     if (this.standing) {

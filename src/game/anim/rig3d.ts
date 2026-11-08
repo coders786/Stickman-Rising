@@ -170,13 +170,19 @@ export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bla
   out.torsoAngle = t2
 
   // ---- neck + skull (head counter-yaws a fraction — eyes stay on target) ----
+  // THE READABLE NECK: the skull seats headR·1.05 above the atlas (the
+  // jaw still overhangs the column's front-top — anatomy) and the column
+  // itself is long enough that a clean band of neck shows between the
+  // trapezius slopes and the skull at gameplay zoom. The old 0.9·headR
+  // seating buried the column inside the head ellipse — "no neck, the
+  // arms feel connected to the neck".
   const ha = t2 + head
   const headYaw = girdleYaw * 0.22
   const neckX = chestX + Math.sin(ha) * spec.neck + Math.sin(headYaw) * 0.8
   const neckY = chestY - Math.cos(ha) * spec.neck
   const neckZ = chestZ + Math.sin(headYaw) * 1.6
-  const headX = neckX + Math.sin(ha) * spec.headR * 0.9 + Math.sin(headYaw) * 1.4
-  const headY = neckY - Math.cos(ha) * spec.headR * 0.9
+  const headX = neckX + Math.sin(ha) * spec.headR * 1.05 + Math.sin(headYaw) * 1.4
+  const headY = neckY - Math.cos(ha) * spec.headR * 1.05
   const headZ = neckZ + Math.sin(headYaw) * 2.2
 
   // ---- SHOULDER GIRDLE: offsets rotated by girdleYaw around the spine ----
@@ -312,7 +318,14 @@ function solveArm(
 
 /** Solve arm channels for a 3D hand target (character-local, relative to
  * the shoulder). Returns swing/elbow/yaw channel values; elbow bends
- * anatomically (down/back). Used by the 3D sword-arc solver. */
+ * anatomically (down/back). Used by the 3D sword-arc solver.
+ *
+ * ANATOMICAL CLAMPS: the target is clamped to [0.30, 0.93] of the arm's
+ * full length and the solved elbow holds ≥15° flexion — a hand at 0.985×
+ * reach solved the joint to ~169° interior (a locked-straight "dislocated"
+ * elbow: "no human turns his elbow past 170°"), and a fully-folded target
+ * inverted the hinge. The 7% reach surrender is invisible at gameplay
+ * zoom; the straight-arm read was not. */
 export function ikArm3D(
   tx: number, ty: number, tz: number, // target rel. shoulder
   upper: number, fore: number,
@@ -321,8 +334,9 @@ export function ikArm3D(
   const dy = ty
   const dz = tz
   const d = Math.hypot(dx, dy, dz) || 1e-4
-  const r = Math.min(d, (upper + fore) * 0.985)
-  const reach = r / (upper + fore)
+  const armLen = upper + fore
+  const r = clamp(d, armLen * 0.3, armLen * 0.93)
+  const reach = r / armLen
   // planar projection onto (radial-horizontal, vertical)
   const rh = Math.hypot(dx, dz)
   const yaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
@@ -331,9 +345,10 @@ export function ikArm3D(
   const B = Math.acos(cosB)
   const base = Math.atan2(rh, dy) // angle from straight-down toward the target
   const sh = base + B
-  // elbow angle: forearm vs upper arm in the same plane
+  // elbow angle: forearm vs upper arm in the same plane — flexion side
+  // (negative channel) only, 15°..150° interior band
   const cosE = clamp((upper * upper + fore * fore - r * r) / (2 * upper * fore), -1, 1)
-  const el = -(Math.PI - Math.acos(cosE))
+  const el = clamp(-(Math.PI - Math.acos(cosE)), -2.62, -0.26)
   return { sh, el, yaw, reach }
 }
 
@@ -605,26 +620,34 @@ export function drawFighter3D(
     ctx.closePath()
     ctx.fill()
   }
-  // THE VISIBLE NECK — in the back-plane shade (the same depth tone as the
-  // far limbs): a real column rising from between the trapezius slopes to
-  // the skull base. Anatomy: the chin overhangs the column's front-top in
-  // profile (the skull seats on the atlas BEHIND the jaw) — the head pass
-  // draws over the top of this column, and the jaw crease below marks the
-  // separation.
-  fillTaper3(ctx, g.chest, g.neckTop, 5.0, 3.6, back)
-  if (!opts.simple) {
-    // rear cervical line — a whisper of rim so the column keeps its spine
+  // THE VISIBLE NECK — the column that makes the head READ as separate
+  // structure. Three readability layers (the old single dark fill was
+  // invisible against the night background — "no neck, arms attached to
+  // the neck"):
+  //   1. MID-TONE fill — between the black torso and the rim steel, so the
+  //      column separates from BOTH the body mass and the dark sky;
+  //   2. BOTH-EDGE rim strokes — the same halo language as the front
+  //      limbs: a bright outline down each side of the column;
+  //   3. the trapezius slopes below and the jaw crease above frame it.
+  {
     const ndx = g.neckTop.x - g.chest.x
     const ndy = g.neckTop.y - g.chest.y
     const nl = Math.hypot(ndx, ndy) || 1
     const px = -ndy / nl
     const py = ndx / nl
-    ctx.strokeStyle = rgba(rim, 0.42)
-    ctx.lineWidth = 1.1
-    ctx.beginPath()
-    ctx.moveTo(g.chest.x - px * 4.4, g.chest.y - py * 4.4)
-    ctx.lineTo(g.neckTop.x - px * 3.0, g.neckTop.y - py * 3.0)
-    ctx.stroke()
+    const neckCol = mixHex(back, black, 0.42)
+    fillTaper3(ctx, g.chest, g.neckTop, 5.4, 4.0, neckCol)
+    if (!opts.simple) {
+      // both cervical edges — the outline that reads at gameplay zoom
+      ctx.strokeStyle = rgba(rim, 0.55)
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(g.chest.x - px * 4.8, g.chest.y - py * 4.8)
+      ctx.lineTo(g.neckTop.x - px * 3.4, g.neckTop.y - py * 3.4)
+      ctx.moveTo(g.chest.x + px * 4.8, g.chest.y + py * 4.8)
+      ctx.lineTo(g.neckTop.x + px * 3.4, g.neckTop.y + py * 3.4)
+      ctx.stroke()
+    }
   }
 
   // ---- 3. FRONT limbs (over the torso) with SEPARATION HALO ----

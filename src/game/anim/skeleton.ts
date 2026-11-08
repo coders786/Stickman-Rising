@@ -64,7 +64,10 @@ export interface SkelSpec {
  */
 export const PLAYER_SPEC: SkelSpec = {
   torso: 37,
-  neck: 7.2,
+  // neck column: stylized-long on purpose — a real 0.35-head neck reads as
+  // FUSED at gameplay zoom ("no neck — arms feel connected to the neck");
+  // 0.65 head keeps a clean visible band between trapezius and skull
+  neck: 10.4,
   headR: 8.8,
   shoulderFwd: 3.2,
   shoulderDrop: 3.3,

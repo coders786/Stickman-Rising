@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# QA Report — Stick-Figure Samurai Rig Check\n\n## Image 1 (idle)\n- **ARMS:** One arm clearly inverted — the front arm bends with the elbow pointing backward/down and forearm folding forward, opposite the rear arm's bend. They do NOT mirror anatomically. Attachment point is ambiguous — arms appear to originate near the upper torso/neck cluster rather than distinct shoulders. The free-swinging rear arm (with the ring/tail element) hangs low, detaching visually from the shoulder line.\n- **POSTURE:** Torso lean looks close to ~5°, acceptable. Height is OK — not collapsed.\n- **LEGS:** Legs are largely obscured under the sword sheath/glow; can't confirm knee direction. Feet appear to touch ground.\n- **SHADOW:** Shadow sits under the character, roughly centered. OK.\n- **VERDICT: FAIL** — inverted elbow on one arm + questionable shoulder attachment; legs unverifyable due to weapon occlusion.\n\n## Image 2 (sword-drawn guard)\n- **ARMS:** Front (sword) arm bends correctly toward the body. Rear arm is hard to read but appears to fold the wrong way — elbow forward with forearm sweeping back behind the torso. Attachment looks closer to the neck/chin area than the shoulders; the head overlaps the arm origin.\n- **POSTURE:** Slight forward lean, reasonable for a guard stance. Standing height fine.\n- **LEGS:** Stance is compressed; front knee bend reads correct, rear leg is hidden behind the sheath. One foot clearly grounded.\n- **SHADOW:** Centered under feet. OK.\n- **VERDICT: FAIL (marginal)** — rear arm elbow inverted and shoulder anchor sits too high/neck-adjacent.\n\n## Image 3 (running)\n- **ARMS:** The sword arm is fixed mid-swing and reads correctly; the rear arm trails behind with a plausible bend. No obvious inversion. Attachment near shoulder line, though slightly high.\n- **POSTURE:** Forward lean present, roughly in the 10–15° range — good for a run. Full standing height.\n- **LEGS:** Running pose visible; knee of the trailing leg bends backward correctly, front leg partially occluded by the sword. At least one foot in contact/approaching ground.\n- **SHADOW:** Centered beneath the character. OK.\n- **VERDICT: PASS** — best frame of the set; pose and rig read correctly.\n\n## Image 4 (stopped)\n- **ARMS:** Both arms bend in consistent, anatomically-correct directions; rear arm settles naturally behind. Attached at shoulder height.\n- **POSTURE:** Upright with slight forward lean (~5–10°), appropriate for a stopping/deceleration frame. Height normal.\n- **LEGS:** Knees bend backward correctly on the visible front leg; one foot grounded.\n- **SHADOW:** Directly under feet, correct.\n- **VERDICT: PASS** — clean settle pose, no rig defects visible.\n\n## Summary\n| Image | Verdict | Reason |\n|---|---|---|\n| 1 idle | FAIL | Inverted elbow, arms anchored near neck, legs occluded |\n| 2 guard | FAIL | Rear arm elbow inverted, high shoulder anchor |\n| 3 running | PASS | Correct lean, knees, shadow |\n| 4 stopped | PASS | All checks pass |\n\n**Recommendation:** Fix the IK/elbow-solve direction for the off-hand arm and lower the arm anchor from neck to shoulder joints — the defect appears consistently on frames 1–2.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794151214,
+  "id": "202611082319506108fce263c948b5",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082319506108fce263c948b5",
+  "usage": {
+    "completion_tokens": 745,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 4077,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 4822
+  }
+}

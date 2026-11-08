@@ -8,6 +8,7 @@ import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
+import { applyJointLimits } from '../anim/limits'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -620,6 +621,11 @@ export class Player {
     })
     this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
     this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
+    // ANATOMICAL LIMITS: the last writer before the solve. Clips, additive
+    // layers, crossfades and every IK all pass through the same human ROM
+    // gate — elbows never cross their flexion side, knees never fold
+    // forward, shoulders stay in the glenohumeral envelope.
+    applyJointLimits(this.pose)
     // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
     solveFighter3D(
       this.pose, PLAYER_SPEC, this.geom,
@@ -2200,7 +2206,22 @@ export class Player {
    * — real weight acceptance); the authored rootY bob now reads exactly
    * once (the old flight-branch double-counted it away). For non-gait
    * grounded poses the lowest FK foot still pins the sole exactly; airborne
-   * → nominal hip height (physics owns y). */
+   * → nominal hip height (physics owns y).
+   *
+   * THE STANCE-LEG CONTRACT (the collapse fix — "no knee suspension"):
+   * The leg-geometry bound `bound = f.y − vert(dx)` is only meaningful
+   * while the planted foot is INSIDE the leg's reach annulus. A foot that
+   * plants beyond horizontal reach (fast-stop strides: the old planner
+   * predicted landings up to 110px ahead) drives vert → 0 → bound → ankle
+   * height → the pelvis crashed to the floor with both knees locked
+   * straight (hipY −65 → −7). Two guards now hold:
+   *   1. dx is clamped into the reachable envelope before the sqrt — a
+   *      stance foot can never claim a hip below 0.72·HIP_H (a deep but
+   *      ALIVE lunge, never a collapse).
+   *   2. femurT is bounded to [0.74, 1.0]·HIP_H in gait states — the hips
+   *      neither stand on locked knees nor sink into a squat while
+   *      locomoting. (Deep authored crouches — dash/land squats — go
+   *      through the FK pin branch, which is untouched.) */
   private updateFootLock(dt: number): void {
     const g = this.geom
     const rootY = this.pose[CH.rootY]
@@ -2211,6 +2232,10 @@ export class Player {
       const l1 = PLAYER_SPEC.thigh * SCALE
       const l2 = PLAYER_SPEC.shin * SCALE
       const reach = (l1 + l2) * 0.999
+      // the stance foot's horizontal offset is bounded to the reachable
+      // envelope: beyond it the leg cannot push the hip ANY lower, so the
+      // bound saturates instead of collapsing to ankle height
+      const dxMax = reach * 0.72
       let bound = -Infinity
       const feet: { x: number; y: number; fx: number }[] = [
         { x: this.gait.footL.x, y: this.gait.footL.y, fx: this.x + this.face * SCALE * g.hipPtL.x },
@@ -2218,14 +2243,23 @@ export class Player {
       ]
       for (const f of feet) {
         if (f.y > -0.5) continue // swing foot target — not load-bearing
-        const dx = Math.abs(f.x - f.fx)
-        const vert = Math.sqrt(Math.max(0, reach * reach - dx * dx))
+        const dx = clamp(Math.abs(f.x - f.fx), 0, dxMax)
+        const vert = Math.sqrt(reach * reach - dx * dx)
         bound = Math.max(bound, f.y - vert)
       }
       // nominal effective femur height: hips at HIP_H, rootY bob applies once
       const nominal = -HIP_H + SCALE * rootY
       let femurT = Math.max(nominal, isFinite(bound) ? bound : nominal)
-      femurT = Math.max(femurT, -HIP_H * 1.16) // crouch floor
+      // hip band (y-down: more-negative = taller):
+      //   Math.max  — hips never ride ABOVE straight-leg height (stilt read)
+      //   Math.min  — hips never SINK below 74% leg height while locomoting
+      // (the old "crouch floor" Math.max(femurT, −1.16·HIP_H) never bound
+      // the collapse, which arrived from ABOVE: femurT → −4.4 → hips on
+      // the floor with locked knees. These two clamps are direction-checked
+      // against the y-down sign convention: a stand (−66.9) passes both
+      // untouched; a collapse (−4.4) is floored to −47.9.)
+      femurT = Math.max(femurT, -HIP_H * 1.0)
+      femurT = Math.min(femurT, -HIP_H * 0.74)
       // footLock ↔ hipY: effective femur = hipY + SCALE·hipPt.y = femurT
       target = SCALE * g.hipPtR.y - femurT
     } else if (this.grounded && this.state !== 'dead') {
@@ -2240,7 +2274,9 @@ export class Player {
       // it against the geom's own rootY, killing the clip bob outright)
       target = HIP_H
     }
-    // k=24: tracks a 0.3s stride with ~2px residual — crisp, never mushy
+    // critically-damped tracking (k=24): follows a 0.3s stride with ~2px
+    // residual, and because the target itself is now bounded, the spring
+    // can never be flung by a degenerate bound again
     this.footLock = damp(this.footLock, target, 24, dt)
   }
 
@@ -2465,13 +2501,25 @@ export class Player {
   /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
    * (te-no-uchi: left hand at the pommel, right near the guard — how a
    * katana is actually swung). Blended over the authored off-arm channels
-   * with a state-driven weight so running/dashing pumps stay authored. */
+   * with a state-driven weight so running/dashing pumps stay authored.
+   *
+   * ANATOMY CONTRACT (the inverted-elbow fix):
+   *  · GATED on swordDrawn — a sheathed katana parks its pommel at the
+   *    saya mouth; IK-ing the off hand onto it bowed the elbow across its
+   *    flexion side (the "one arm flips at idle" defect). Sheathed idle
+   *    belongs to the sword-home arm layer, not this one.
+   *  · ELBOW SIDE: the solve tries BOTH hinge configurations (elbow above
+   *    and below the shoulder→target line) and keeps the one matching the
+   *    rig's flexion convention — the elbow channel comes out NEGATIVE
+   *    (elbow bows up/back like the authored guard), never inverted.
+   *  · LIMITS: elbow flexion clamped to [0.26, 2.62] rad (15–150°) — the
+   *    hand never reaches by locking the joint straight. */
   private applyTwoHandGrip(dt: number): void {
     // desired grip weight by state
     let target = 0
     switch (this.state) {
       case 'move':
-        target = this.grounded && Math.abs(this.vx) < 60 ? 1 : 0.1
+        target = this.swordDrawn && this.grounded && Math.abs(this.vx) < 60 ? 1 : 0.1
         break
       case 'attack':
         target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
@@ -2502,25 +2550,54 @@ export class Player {
     let dx = tx - sx
     let dy = ty - sy
     let d = Math.hypot(dx, dy)
-    const maxD = (U + F) * 0.98
+    // keep the target in the arm's reach annulus — a straight-arm reach is
+    // a dislocated read, and an inside-the-fold target inverts the hinge
+    const maxD = (U + F) * 0.93
+    const minD = (U + F) * 0.34
     if (d > maxD) {
       const k = maxD / d
       dx *= k
       dy *= k
       d = maxD
+    } else if (d < minD) {
+      if (d < 1e-3) return
+      const k = minD / d
+      dx *= k
+      dy *= k
+      d = minD
     }
-    if (d < 2) return
     // law of cosines: interior angles of the shoulder-elbow-target triangle
     const cosB = clamp((U * U + d * d - F * F) / (2 * U * d), -1, 1)
     const B = Math.acos(cosB)
     const base = Math.atan2(dy, dx)
-    // elbow bends DOWN (anatomical) → rotate the upper arm below the line
-    const upperAng = base + B
-    const ex = sx + Math.cos(upperAng) * U
-    const ey = sy + Math.sin(upperAng) * U
-    // convert elbow/hand to the channel convention (from straight-down, +fwd)
-    const shIk = Math.atan2(ex - sx, ey - sy)
-    const elIk = Math.atan2(tx - ex, ty - ey) - shIk
+    // BOTH hinge branches; score = elbow-channel sign (convention: flexion
+    // NEGATIVE). Prefer the branch that yields the authored side.
+    const solveBranch = (bend: number) => {
+      const upperAng = base + bend * B
+      const ex = sx + Math.cos(upperAng) * U
+      const ey = sy + Math.sin(upperAng) * U
+      const shIk = Math.atan2(ex - sx, ey - sy)
+      const elIk = Math.atan2(dx + sx - ex, dy + sy - ey) - shIk
+      return { shIk, elIk }
+    }
+    const a = solveBranch(1)
+    const b = solveBranch(-1)
+    // branch a bows the elbow one way, b the other; pick the elbow on the
+    // rig's flexion side (negative channel). If both are negative (rare,
+    // target nearly straight below), take the deeper flexion — reads as a
+    // settled grip rather than a locked arm.
+    let shIk: number
+    let elIk: number
+    if (a.elIk <= 0 && b.elIk > 0) {
+      ;({ shIk, elIk } = a)
+    } else if (b.elIk <= 0 && a.elIk > 0) {
+      ;({ shIk, elIk } = b)
+    } else {
+      ;({ shIk, elIk } = Math.abs(a.elIk) >= Math.abs(b.elIk) ? a : b)
+    }
+    // anatomical bound: 15°..150° flexion, flexion side only
+    elIk = clamp(elIk, -2.62, -0.26)
+    shIk = clamp(shIk, -1.05, 3.05)
     const p = this.pose
     p[CH.shL] += (shIk - p[CH.shL]) * w
     p[CH.elL] += (elIk - p[CH.elL]) * w
@@ -2535,7 +2612,6 @@ export class Player {
     // ---- previous-frame awareness: smoothed acceleration lean ----
     const accel = (this.vx - this.prevVx) / Math.max(dt, 1e-4)
     this.prevVx = this.vx
-    this.accelSm = damp(this.accelSm, accel, 14, dt)
 
     /* ---- THE TIERED LEAN SYSTEM (VLM/biomechanics research) ----------
      * Trunk lean is a FUNCTION OF ACCELERATION, not raw speed (Kugler &
@@ -2549,14 +2625,31 @@ export class Player {
      *                  clips — acceleration posture, 45°+ authored)
      * The speed term is normalized by the SPRINT ceiling (not MOVE_MAX)
      * so run ≈ 0.73 and sprint 1.0 no longer clamp to the same lean —
-     * the old bug that made sprint read exactly as leaned as dash. */
+     * the old bug that made sprint read exactly as leaned as dash.
+     *
+     * THE STOP FIX: braking (accel opposing travel) is NOT a license to
+     * lean backward — a real stop lowers the COG over the stride and rides
+     * a shallow 2–4° back-pitch. The old /3200 gain on a −3500px/s² stop
+     * spike produced a −9.2° back-lean that LINGERED (k=14 decay) after
+     * the body had already stopped — the "leans too much when I stop"
+     * defect. Now: braking lean is gain-limited to ±0.05 rad and decays
+     * fast (k=26) once the speed is gone; the spent momentum sinks into
+     * the knees instead (rootY), which reads as weight, not stiffness. */
     const capFor: Record<string, number> = {
       walk: 0.06, run: 0.1, sprint: 0.15, combat: 0.05, backpedal: 0.045, idle: 0.03,
     }
     const cap = capFor[this.loco] ?? 0.08
     const speedLean = clamp((this.vx * this.face) / SPRINT_MAX, -1, 1)
-    const accelLean = clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+    const braking = this.accelSm * this.face < 0
+    const accelCap = braking ? 0.05 : 0.12
+    const accelLean = clamp(this.accelSm * this.face / (braking ? 6800 : 3600), -accelCap, accelCap)
+    // smoothing: braking settles fast (k=26) — the reverse pitch must
+    // vanish WITH the speed, never linger over a stopped body
+    this.accelSm = damp(this.accelSm, accel, braking ? 26 : 14, dt)
     const lean = speedLean * cap + accelLean
+    // brake COG dip: the deceleration sinks into the knees (weight),
+    // replacing most of the old backward lean
+    const brakeDip = braking ? clamp(-this.accelSm * this.face / 4200, 0, 1.6) : 0
 
     /* ---- DASH LEAN (replaces the old hard exemption): a damped additive
      * driven by the dash's own velocity envelope — NOT the raw accel
@@ -2590,6 +2683,10 @@ export class Player {
       p[CH.kneeL] -= l * 0.2
       p[CH.footR] += l * 0.18
       p[CH.rootY] += Math.abs(l) * 2.2
+      // braking weight acceptance: the stop sinks into the knees
+      p[CH.rootY] += brakeDip
+      p[CH.kneeR] -= brakeDip * 0.22
+      p[CH.kneeL] -= brakeDip * 0.16
       // head counter-pitches to keep the eyes on the horizon (the sprint
       // tell: body flat, gaze level — MGR:R Raiden's forward drive;
       // research: cervical extension ≈ trunk lean − a few degrees)
@@ -2775,11 +2872,14 @@ export class Player {
     // ---- SWORD HOME ARM LAYER: while sheathed in grounded locomotion the
     // right fist rides the tsuka pommel and the left steadies the saya
     // mouth — the samurai walk (Ghost of Tsushima exploration read).
+    // Fades OUT above walking pace: a pinned pommel-rest at full run read
+    // as a frozen, lifeless arm (the sword arm must pump with the gait).
     // Airborne = the hands-only jump family (authored clips); the ritual
     // clips own the arms while active. Damped weight → smooth transitions.
     {
+      const paceFade = 1 - clamp01((Math.abs(this.vx) - 110) / 90)
       const sheathTarget = !this.swordDrawn && this.state === 'move'
-        && this.grounded && !this.sheathAct ? 1 : 0
+        && this.grounded && !this.sheathAct ? paceFade : 0
       this.sheathW = damp(this.sheathW, sheathTarget, 9, dt)
       if (this.sheathW > 0.02) {
         const k = this.sheathW

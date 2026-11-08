@@ -56,14 +56,23 @@ const MOON: KeyLight = {
 
 /** Blend the ambient moonlight with a lightning strobe.
  * @param li   storm intensity 0..1 (bg.lightningI())
- * @param az   strike azimuth −1..1 (bg.lightningAz(); shadows lean OPPOSITE) */
+ * @param az   strike azimuth −1..1 (bg.lightningAz(); shadows lean OPPOSITE)
+ *
+ * CONTINUOUS AZIMUTH (the shadow-shift fix): the old bolt direction was a
+ * BINARY flip (`az ≥ 0 ? −0.92 : +0.92`) — two strobes on opposite sides
+ * of the sky teleported the whole projected shadow silhouette across the
+ * feet between frames: the "shadow shifts / slides" defect. The bolt
+ * direction now interpolates CONTINUOUSLY through az, and the strobe
+ * elevation floors at 0.42 rad so raking shadows stay on screen instead
+ * of flying 3× the body height to the side. */
 export function keyLightFromStorm(li: number, az: number): KeyLight {
   const k = clamp01(li)
   if (k <= 0.001) return { ...MOON }
-  const boltDir = az >= 0 ? -0.92 : 0.92
+  // continuous: az −1 (bolt left) → shadows lean right (+), az +1 → left
+  const boltDir = -0.92 * clamp(az, -1, 1)
   return {
     dirX: lerp(MOON.dirX, boltDir, k),
-    elev: lerp(MOON.elev, 0.3, k),       // low bolts throw LONG raking shadows
+    elev: lerp(MOON.elev, 0.42, k),      // raking but groundable shadows
     hard: lerp(MOON.hard, 1, k),
     i: MOON.i + k * 0.75,
     color: '#010307',
