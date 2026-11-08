@@ -1,7 +1,15 @@
 /** STICKMAN RISING — animator: clip sampling with crossfade blending. */
 
-import { CH_COUNT, makePose, Pose, PoseInput } from './pose'
+import { CH, CH_COUNT, makePose, Pose, PoseInput } from './pose'
 import { EASES, EaseFn, clamp01 } from '../core/utils'
+
+const TAU = Math.PI * 2
+
+/** nearest angle-equivalent of `from` to `to` (adds whole turns only). */
+function unwrapNear(from: number, to: number): number {
+  const d = to - from
+  return from + Math.round(d / TAU) * TAU
+}
 
 export interface Keyframe {
   t: number
@@ -117,6 +125,17 @@ export class Animator {
     this.stepRate = opts.stepRate ?? 0
     this.stepAcc = 0
     sampleClip(clip, 0, this.targetPose)
+    // WRIST SHORTEST-PATH CROSSFADE: wrist channels are raw floats so
+    // within-clip spins can wind past ±π. But a CROSSFADE between two clips
+    // living in different winding regions (attack guard ≈ −0.8…1.2 rad vs
+    // the up-wound locomotion/dash carries ≈ 5.15…6.06 rad) interpolates
+    // linearly — sweeping the blade a FULL TURN the long way through the
+    // floor: the "sword spins when dashing" artifact. Snap the frozen
+    // snapshot to the nearest equivalent turn of the incoming clip's first
+    // frame so every clip-to-clip blend takes the short arc. Within-clip
+    // authored sweeps are untouched (visual angle mod 2π is preserved).
+    this.fromPose[CH.wrR] = unwrapNear(this.fromPose[CH.wrR], this.targetPose[CH.wrR])
+    this.fromPose[CH.wrL] = unwrapNear(this.fromPose[CH.wrL], this.targetPose[CH.wrL])
   }
 
   /** returns true when a non-looping clip finished this frame */

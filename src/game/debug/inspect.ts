@@ -332,7 +332,7 @@ export async function runQA(game: Game): Promise<void> {
     // release every virtual input left held by prior console driving —
     // stale held buttons contaminate the whole scripted sequence
     input.setVirtualAxis(0, 0)
-    for (const a of ['left', 'right', 'up', 'down', 'light', 'heavy', 'dash', 'jump', 'parry', 'ability', 'ult', 'execute'] as const) {
+    for (const a of ['left', 'right', 'up', 'down', 'light', 'heavy', 'dash', 'jump', 'parry', 'ability', 'ult', 'execute', 'sheathe'] as const) {
       input.setVirtual(a, false)
     }
     p.reset(400)
@@ -670,6 +670,110 @@ export async function runQA(game: Game): Promise<void> {
       pass: p.grounded && p.y === 0 && lockErr < 1.5 && lockBand,
       detail: `hipY=${p.hipY.toFixed(1)} footLock=${(priv.footLock ?? 0).toFixed(1)} err=${lockErr.toFixed(2)}`,
     })
+
+    // ---- 9. THE JUMP OVERHAUL: height + conditioned variants ----
+    // (a) standing jump: hands-only vertical — apex must clear ~2.2× hip
+    // height (the old −840 hop peaked ≈ −123; the new −950 ≈ −155)
+    {
+      let peakY = 0
+      input.setVirtual('jump', true)
+      await sleep(50)
+      input.setVirtual('jump', false)
+      for (let i = 0; i < 40; i++) {
+        await sleep(16)
+        peakY = Math.min(peakY, p.y)
+        if (p.grounded && i > 10) break
+      }
+      checks.push({
+        name: 'jump: standing apex clears 2.2× hip height',
+        pass: peakY < -140,
+        detail: `peakY=${peakY.toFixed(0)} (expect < -140)`,
+      })
+      // (b) double jump: press again MID-AIR — the air redirect stacks a
+      // second rise on top of the first
+      {
+        let peak2 = 0
+        input.setVirtual('jump', true)
+        await sleep(60)
+        input.setVirtual('jump', false)
+        await sleep(240) // rise partway (~apex of the first jump)
+        input.setVirtual('jump', true)
+        await sleep(60)
+        input.setVirtual('jump', false)
+        for (let i = 0; i < 40; i++) {
+          await sleep(16)
+          peak2 = Math.min(peak2, p.y)
+          if (p.grounded && i > 10) break
+        }
+        await sleep(400) // land + settle
+        checks.push({
+          name: 'jump: air jump stacks a second rise',
+          pass: peak2 < -170,
+          detail: `peak2=${peak2.toFixed(0)} (expect < -170)`,
+        })
+      }
+      // (c) running leap: momentum converts — the leap clip + carry-over
+      {
+        input.setVirtualAxis(1, 0)
+        await sleep(1000) // build to full run
+        const runVx = Math.abs(p.vx)
+        input.setVirtual('jump', true)
+        await sleep(50)
+        input.setVirtual('jump', false)
+        const leapClip = (p as unknown as { animator: { getClip(): { name: string } | null } })
+          .animator.getClip()?.name
+        await sleep(500)
+        input.setVirtualAxis(0, 0)
+        await sleep(300)
+        checks.push({
+          name: 'jump: run converts into the LEAP (conditioned)',
+          pass: runVx > 300 && leapClip === 'jumpLeap',
+          detail: `runVx=${runVx.toFixed(0)} clip=${leapClip}`,
+        })
+      }
+    }
+
+    // ---- 10. THE SWORD HOME: sheathe / draw system ----
+    // (a) manual sheathe (Q) → steel home after the ritual
+    {
+      input.setVirtual('sheathe', true)
+      await sleep(60)
+      input.setVirtual('sheathe', false)
+      await sleep(1000) // ritual (0.85s) completes
+      const sheathed = !p.swordDrawn
+      // (b) manual draw (Q again) → steel back out
+      input.setVirtual('sheathe', true)
+      await sleep(60)
+      input.setVirtual('sheathe', false)
+      await sleep(500) // draw (0.3s) completes
+      const drawnBack = p.swordDrawn
+      // (c) iai snap-draw: sheathe, then LIGHT → blade out instantly + attack
+      input.setVirtual('sheathe', true)
+      await sleep(60)
+      input.setVirtual('sheathe', false)
+      await sleep(1000)
+      input.setVirtual('light', true)
+      await sleep(80)
+      input.setVirtual('light', false)
+      const snapDrawn = p.swordDrawn
+      const attacking = p.state === 'attack'
+      await sleep(600)
+      checks.push({
+        name: 'sheathe: manual sheathe → steel home',
+        pass: sheathed,
+        detail: `swordDrawn after ritual=${!sheathed}`,
+      })
+      checks.push({
+        name: 'sheathe: manual draw → steel out',
+        pass: drawnBack,
+        detail: `swordDrawn=${drawnBack}`,
+      })
+      checks.push({
+        name: 'sheathe: light input → iai snap-draw + attack',
+        pass: snapDrawn && attacking,
+        detail: `drawn=${snapDrawn} state=${attacking ? 'attack' : 'other'}`,
+      })
+    }
 
     // ---- cleanup: restore the real game ----
     game.qaMode = false

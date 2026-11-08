@@ -52,6 +52,14 @@ interface Afterimage {
   age: number; life: number
   color: string
   scale: number
+  /** 0 = classic neon ghost (ability echoes); 1 = SHADOW silhouette with
+   * rim light — the dash read: solid dark body + backlight leaking around
+   * the trailing edge (drawn in drawSilhouettes, NOT the additive pass) */
+  style: 0 | 1
+  /** world-space travel dir X at capture (rim offset direction) */
+  dirX: number
+  /** rim highlight color (shadow style) */
+  rim: string
 }
 
 interface Ring {
@@ -104,6 +112,29 @@ interface ImpactFrame {
   seed: number
 }
 
+/** HDR MOTION LINE — one clean velocity streak replacing the old particle
+ * speed-streak train: a gradient smear along the travel vector with a
+ * white-hot core and a leading glint. Deep contrast (transparent tail →
+ * near-opaque head), additive — reads like bloom, not confetti. */
+interface MotionLine {
+  active: boolean
+  x: number; y: number
+  dx: number; dy: number // unit travel vector
+  len: number
+  age: number; life: number
+  color: string
+}
+
+/** GROUND SHADOW SMEAR — the dark streak a dash leaves on the floor:
+ * shadow-language grounding (a stretched contact ellipse fading under the
+ * travel path), drawn UNDER the entities in source-over. */
+interface ShadowSmear {
+  active: boolean
+  x: number
+  w: number
+  age: number; life: number
+}
+
 /* ------------------------------------------------------------------ */
 
 const MAX_PARTICLES = 1500
@@ -127,6 +158,12 @@ export class FX {
   private debris: Debris[] = []
   private dFree: Debris[] = []
   private impactFrames: ImpactFrame[] = []
+  /** HDR velocity streaks (dash) */
+  private lines: MotionLine[] = []
+  private lFree: MotionLine[] = []
+  /** ground shadow smears (dash) */
+  private smears: ShadowSmear[] = []
+  private smFree: ShadowSmear[] = []
 
   /** chromatic aberration intensity (0..1) — edge lens strain on dashes
    * and heavy impacts; decays every update */
@@ -149,14 +186,29 @@ export class FX {
   }
 
   clear(): void {
-    for (const p of this.particles) p.active = false
-    for (const t of this.trails) t.active = false
-    for (const a of this.afterimages) a.active = false
-    for (const r of this.rings) r.active = false
-    for (const c of this.cracks) c.active = false
-    for (const t of this.texts) t.active = false
-    for (const d of this.debris) d.active = false
+    // POOL LAW: every live entry returns to its free list exactly once;
+    // the live arrays empty completely (no stranded corpses — clear() used
+    // to deactivate in place, permanently leaking the slot AND the object)
+    for (const p of this.particles) { p.active = false; this.pFree.push(p) }
+    this.particles.length = 0
+    for (const t of this.trails) { t.active = false; this.tFree.push(t) }
+    this.trails.length = 0
+    for (const a of this.afterimages) { a.active = false; this.aFree.push(a) }
+    this.afterimages.length = 0
+    for (const r of this.rings) { r.active = false; this.rFree.push(r) }
+    this.rings.length = 0
+    for (const c of this.cracks) { c.active = false; this.cFree.push(c) }
+    this.cracks.length = 0
+    for (const t of this.texts) { t.active = false; this.txtFree.push(t) }
+    this.texts.length = 0
+    for (const d of this.debris) { d.active = false; this.dFree.push(d) }
+    this.debris.length = 0
+    for (const l of this.lines) { l.active = false; this.lFree.push(l) }
+    this.lines.length = 0
+    for (const s of this.smears) { s.active = false; this.smFree.push(s) }
+    this.smears.length = 0
     for (const i of this.impactFrames) i.active = false
+    this.impactFrames.length = 0
     this.flashAlpha = 0
     this.caIntensity = 0
   }
@@ -467,6 +519,7 @@ export class FX {
     if (this.afterimages.length > 40) return
     const a = this.aFree.pop() ?? {
       active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
+      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff',
     }
     a.active = true
     a.pose.set(pose)
@@ -475,7 +528,58 @@ export class FX {
     a.age = 0; a.life = life
     a.color = color
     a.scale = scale
+    a.style = 0
     this.afterimages.push(a)
+  }
+
+  /** SHADOW-SILHOUETTE dash ghost: the body captured as a dark figure with
+   * a backlit rim leaking around the trailing edge — replaces the old neon
+   * ghost + particle clutter on dashes (shadows & light, not confetti). */
+  shadowGhost(pose: Pose, x: number, y: number, face: number, dirX: number, rim: string, life = 0.3, scale = 1): void {
+    if (this.afterimages.length > 40) return
+    const a = this.aFree.pop() ?? {
+      active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
+      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff',
+    }
+    a.active = true
+    a.pose.set(pose)
+    a.x = x; a.y = y
+    a.face = face
+    a.age = 0; a.life = life
+    a.color = '#03060c'
+    a.scale = scale
+    a.style = 1
+    a.dirX = dirX >= 0 ? 1 : -1
+    a.rim = rim
+    this.afterimages.push(a)
+  }
+
+  /* ---------------- HDR motion line / ground shadow smear ---------------- */
+
+  /** ONE clean velocity streak along the travel vector (replaces the old
+   * 6–10 particle speed-streak train). */
+  motionLine(x: number, y: number, dx: number, dy: number, len: number, life: number, color: string): void {
+    const l = this.lFree.pop() ?? {
+      active: false, x: 0, y: 0, dx: 0, dy: 0, len: 0, age: 0, life: 0.25, color: '#fff',
+    }
+    l.active = true
+    const m = Math.hypot(dx, dy) || 1
+    l.x = x; l.y = y
+    l.dx = dx / m; l.dy = dy / m
+    l.len = len
+    l.age = 0; l.life = life
+    l.color = color
+    this.lines.push(l)
+  }
+
+  /** dark contact streak on the ground under a dash path */
+  shadowSmear(x: number, w: number, life = 0.5): void {
+    const s = this.smFree.pop() ?? { active: false, x: 0, w: 0, age: 0, life: 0.5 }
+    s.active = true
+    s.x = x
+    s.w = w
+    s.age = 0; s.life = life
+    this.smears.push(s)
   }
 
   /* ---------------- slash trails ---------------- */
@@ -538,6 +642,13 @@ export class FX {
 
   /* ---------------- update ---------------- */
 
+  /** THE POOL LAW (fixed): an expired entry is SPLICED out of its live
+   * array and pushed to the free list exactly ONCE. The old pattern
+   * (active=false + push-to-free, no splice) left corpses in the live
+   * arrays aging forever, re-pushing to the free list EVERY FRAME, and
+   * duplicating objects on every recycle — after ~6 dashes the
+   * afterimages array crossed its >40 cap and ALL dash ghosts silently
+   * died; particles hit MAX_PARTICLES the same way mid-run. */
   update(dt: number): void {
     // particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -546,6 +657,7 @@ export class FX {
       p.age += dt
       if (p.age >= p.life) {
         p.active = false
+        this.particles.splice(i, 1)
         this.pFree.push(p)
         continue
       }
@@ -564,6 +676,7 @@ export class FX {
         t.age += dt
         if (t.age >= t.life) {
           t.active = false
+          this.trails.splice(i, 1)
           this.tFree.push(t)
         }
       }
@@ -571,37 +684,46 @@ export class FX {
     // afterimages
     for (let i = this.afterimages.length - 1; i >= 0; i--) {
       const a = this.afterimages[i]
+      if (!a.active) continue
       a.age += dt
       if (a.age >= a.life) {
         a.active = false
+        this.afterimages.splice(i, 1)
         this.aFree.push(a)
       }
     }
     // rings
     for (let i = this.rings.length - 1; i >= 0; i--) {
       const r = this.rings[i]
+      if (!r.active) continue
       r.age += dt
       if (r.age >= r.life) {
         r.active = false
+        this.rings.splice(i, 1)
         this.rFree.push(r)
       }
     }
     // cracks
     for (let i = this.cracks.length - 1; i >= 0; i--) {
       const c = this.cracks[i]
+      if (!c.active) continue
       c.age += dt
       if (c.age >= c.life) {
         c.active = false
+        this.cracks.splice(i, 1)
         this.cFree.push(c)
       }
     }
     // texts
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const t = this.texts[i]
+      if (!t.active) continue
       t.age += dt
       if (t.age >= t.life) {
         t.active = false
+        this.texts.splice(i, 1)
         this.txtFree.push(t)
+        continue
       }
       t.vy += 320 * dt
       t.x += t.vx * dt
@@ -610,9 +732,11 @@ export class FX {
     // debris
     for (let i = this.debris.length - 1; i >= 0; i--) {
       const d = this.debris[i]
+      if (!d.active) continue
       d.age += dt
       if (d.age >= d.life) {
         d.active = false
+        this.debris.splice(i, 1)
         this.dFree.push(d)
         continue
       }
@@ -646,13 +770,49 @@ export class FX {
         this.impactFrames.splice(i, 1)
       }
     }
+    // HDR motion lines
+    for (let i = this.lines.length - 1; i >= 0; i--) {
+      const l = this.lines[i]
+      if (!l.active) continue
+      l.age += dt
+      if (l.age >= l.life) {
+        l.active = false
+        this.lines.splice(i, 1)
+        this.lFree.push(l)
+      }
+    }
+    // ground shadow smears
+    for (let i = this.smears.length - 1; i >= 0; i--) {
+      const s = this.smears[i]
+      if (!s.active) continue
+      s.age += dt
+      if (s.age >= s.life) {
+        s.active = false
+        this.smears.splice(i, 1)
+        this.smFree.push(s)
+      }
+    }
   }
 
   /* ---------------- draw passes ---------------- */
 
-  /** ground layer: cracks + debris + afterimages (under entities) */
+  /** ground layer: cracks + debris + shadow smears (under entities) */
   drawUnder(ctx: CanvasRenderingContext2D): void {
     ctx.save()
+    // shadow smears — the dash's dark trail on the floor
+    for (const s of this.smears) {
+      if (!s.active) continue
+      const k = 1 - s.age / s.life
+      ctx.fillStyle = rgba('#010308', 0.32 * k)
+      ctx.beginPath()
+      ctx.ellipse(s.x, 3.5, s.w * (0.62 + 0.38 * k), 5 * k + 1.6, 0, 0, TAU)
+      ctx.fill()
+      // dense contact core
+      ctx.fillStyle = rgba('#010308', 0.3 * k)
+      ctx.beginPath()
+      ctx.ellipse(s.x, 3.5, s.w * 0.34, 2.8 * k + 1.1, 0, 0, TAU)
+      ctx.fill()
+    }
     // cracks
     for (const c of this.cracks) {
       if (!c.active) continue
@@ -681,13 +841,67 @@ export class FX {
     ctx.restore()
   }
 
-  /** additive layer: afterimages, trails, particles, rings */
+  /** SHADOW SILHOUETTES — the dash afterimage pass: solid dark figures
+   * (source-over, so they genuinely DARKEN the scene like cast shadows)
+   * with a backlit rim leaking around the trailing edge (additive crescent).
+   * Drawn AFTER the entities, BEFORE the additive layer — the player runs
+   * ahead of their own shadow trail. */
+  drawSilhouettes(ctx: CanvasRenderingContext2D): void {
+    let any = false
+    for (const a of this.afterimages) {
+      if (a.active && a.style === 1) { any = true; break }
+    }
+    if (!any) return
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const a of this.afterimages) {
+      if (!a.active || a.style !== 1) continue
+      const k = 1 - a.age / a.life
+      ctx.save()
+      ctx.translate(a.x, a.y)
+      ctx.scale(a.face * a.scale, a.scale)
+      aiPose.set(a.pose)
+      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
+      // shadow body — solid dark, source-over (a real cast shadow)
+      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+        ghost: '#02050b',
+        ghostAlpha: 0.44 * k,
+      })
+      // backlight rim — the bright crescent on the trailing edge: the same
+      // silhouette offset opposite the travel vector (local x mirrors by
+      // face; world px → local units via the transform scale)
+      const rimLocal = (-a.dirX * a.face * 2.3) / a.scale
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.save()
+      ctx.translate(rimLocal, 0)
+      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+        ghost: a.rim,
+        ghostAlpha: 0.2 * k,
+      })
+      ctx.restore()
+      // white-hot inner rim (HDR layering: saturated rim + white core)
+      ctx.save()
+      ctx.translate(rimLocal * 0.5, 0)
+      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+        ghost: '#f4fbff',
+        ghostAlpha: 0.1 * k,
+      })
+      ctx.restore()
+      ctx.restore()
+    }
+    ctx.restore()
+  }
+
+  /** additive layer: afterimages, trails, motion lines, particles, rings */
   drawAdditive(ctx: CanvasRenderingContext2D, time: number): void {
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
 
-    // afterimages (ghost stickmen)
+    // afterimages (ghost stickmen) — style 0 only; shadow silhouettes live
+    // in drawSilhouettes (they must darken, not add)
     for (const a of this.afterimages) {
+      if (!a.active || a.style !== 0) continue
       const k = 1 - a.age / a.life
       ctx.save()
       ctx.translate(a.x, a.y)
@@ -707,6 +921,42 @@ export class FX {
       if (!t.active || t.count < 2) continue
       const fade = t.emitting ? 1 : 1 - t.age / t.life
       drawTrail(ctx, t, fade)
+    }
+
+    // HDR motion lines — one clean streak per dash (not a particle train)
+    for (const l of this.lines) {
+      if (!l.active) continue
+      const k = 1 - l.age / l.life
+      const grow = 0.35 + 0.65 * (1 - k) // tail recedes as it dies
+      const tx = l.x - l.dx * l.len * grow
+      const ty = l.y - l.dy * l.len * grow
+      // wide soft bloom band
+      const g1 = ctx.createLinearGradient(tx, ty, l.x, l.y)
+      g1.addColorStop(0, rgba(l.color, 0))
+      g1.addColorStop(0.72, rgba(l.color, 0.38 * k))
+      g1.addColorStop(1, rgba(l.color, 0.9 * k))
+      ctx.strokeStyle = g1
+      ctx.lineWidth = 4.6
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(tx, ty)
+      ctx.lineTo(l.x, l.y)
+      ctx.stroke()
+      // white-hot core (the HDR read: saturated band + near-white center)
+      const g2 = ctx.createLinearGradient(tx, ty, l.x, l.y)
+      g2.addColorStop(0, rgba('#ffffff', 0))
+      g2.addColorStop(1, rgba('#ffffff', 0.75 * k))
+      ctx.strokeStyle = g2
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(tx, ty)
+      ctx.lineTo(l.x, l.y)
+      ctx.stroke()
+      // leading glint — the launch-point spark
+      ctx.fillStyle = rgba('#ffffff', 0.85 * k)
+      ctx.beginPath()
+      ctx.arc(l.x, l.y, 2.1, 0, TAU)
+      ctx.fill()
     }
 
     // particles

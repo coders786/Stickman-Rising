@@ -424,76 +424,236 @@ export const BRAKE_CLIP: Clip = makeClip('brake', [
 
 /* ------------------------------- JUMP / FALL / LAND ---------------- */
 
-/* TAKEOFF → RISE → APEX TUCK (athletic jump reference): the trail leg
- * drives back to full extension (the push), the lead knee punches high,
- * both arms thrown for momentum — the sword arm carries the blade INTO a
- * rising guard. The apex TUCK folds the knees under the high guard; FALL
- * opens FROM that same tuck, so the whole airborne family is one arc
- * (takeoff → rise → tuck → unfold → reach) with no pose cliff between
- * clips. Jump velocity (JUMP_V in player.ts) is tuned so apex ≈ 1.9× hip
- * height — a REAL jump, not a hop. */
+/* THE AIRBORNE FAMILY — HANDS-ONLY choreography: both arms move as free
+ * hands (momentum throws, balance spreads, the mid-air redirect slap) —
+ * NO sword choreography, no wrist flourishes, no spin. The blade simply
+ * rides the sword hand in a fixed neutral carry (wrR wound into the
+ * locomotion family region ≈ 5.0–7.0) so it trails clear of the legs
+ * through every pose, and the animator's shortest-path wrist crossfade
+ * guarantees carry→carry blends never sweep the long way around.
+ *
+ * The family is CONDITIONED (player.ts doJump):
+ *   · JUMP      the standing vertical — triple extension, hands thrown high
+ *   · LEAP      initiated from a run: momentum long-jump, hands swept
+ *               down-back, trail leg fully extended (Ninja Gaiden leap)
+ *   · AIR JUMP  the mid-air redirect: coil → leg scissor + both hands
+ *               SLAP down past the hips (the boost read) → fall spread
+ *   · FALL      opens from the apex tuck — one continuous arc
+ *   · LAND      deep squat absorb, both hands reaching down past the knees
+ * Jump velocity (JUMP_V in player.ts) clears ≈ 2.5× hip height — a REAL
+ * athletic jump. */
 export const JUMP_CLIP: Clip = makeClip('jump', [
-  keyframe(0, { // TAKEOFF — full extension: trail leg drives back, lead knee up
-    rootRot: 0.24, rootY: -1, spine: 0.08, head: -0.2,
-    hipR: 0.75, kneeR: -1.5, footR: 0.3,
-    hipL: -0.65, kneeL: -0.28, footL: -0.15,
-    shR: 1.35, elR: -0.35, wrR: 0.95,
-    shL: -0.55, elL: -0.3,
-    pelvisYaw: 0.1,
+  keyframe(0, { // TAKEOFF — triple extension: BOTH HANDS thrown high
+    rootRot: 0.3, rootY: -2, spine: 0.1, head: -0.24,
+    hipR: 0.85, kneeR: -1.55, footR: 0.32,
+    hipL: -0.55, kneeL: -0.25, footL: -0.1,
+    shR: 2.75, elR: -0.25, wrR: 6.95,
+    shL: 2.55, elL: -0.3,
+    pelvisYaw: 0.08,
   }, 'outQuad'),
-  keyframe(0.13, { // RISE — legs exchange: lead knee PUNCHES up, trail folds
-    rootRot: 0.2, rootY: -2.5, spine: 0.07, head: -0.18,
-    hipR: 0.65, kneeR: -1.3, footR: 0.24,
-    hipL: 0.3, kneeL: -0.95, footL: 0.2,
-    shR: 1.1, elR: -0.45, wrR: 1.15,
-    shL: 0.1, elL: -0.5,
+  keyframe(0.16, { // RISE — arms sweep out toward the balance spread
+    rootRot: 0.18, rootY: -3, spine: 0.06, head: -0.18,
+    hipR: 0.55, kneeR: -1.5, footR: 0.18,
+    hipL: 0.32, kneeL: -1.05, footL: 0.22,
+    shR: 2.15, elR: -0.2, wrR: 6.98,
+    shL: 1.95, elL: -0.25, armLz: 0.45,
   }, 'outCubic'),
-  keyframe(0.3, { // APEX TUCK — knees folded HIGH under the high guard
-    rootRot: 0.14, rootY: -3.2, spine: 0.06, head: -0.16,
-    hipR: 0.55, kneeR: -1.85, footR: 0.1,
-    hipL: 0.42, kneeL: -1.7, footL: 0.16,
-    shR: 1.35, elR: -0.55, wrR: 1.25,
-    shL: 0.5, elL: -0.6,
+  keyframe(0.34, { // APEX — knees tuck high, hands level at the shoulders
+    rootRot: 0.12, rootY: -3.6, spine: 0.05, head: -0.14,
+    hipR: 0.6, kneeR: -1.9, footR: 0.1,
+    hipL: 0.45, kneeL: -1.75, footL: 0.16,
+    shR: 1.75, elR: -0.35, wrR: 7.02,
+    shL: 1.6, elL: -0.4, armLz: 0.3,
+  }, 'inOutCubic'),
+])
+
+/** running leap — initiated from a run: the momentum long-jump. Torso
+ * drives forward over the boarding leg, trail leg sweeps back to FULL
+ * extension, both hands swept down-back (airfoil drag) then flaring wide
+ * at the arc top. */
+export const JUMP_LEAP_CLIP: Clip = makeClip('jumpLeap', [
+  keyframe(0, { // BOARDING — momentum converts through the drive leg
+    rootRot: 0.5, rootY: -1.5, spine: 0.14, head: -0.3,
+    hipR: 1.0, kneeR: -0.9, footR: 0.28,
+    hipL: -0.85, kneeL: -0.2, footL: -0.18,
+    shR: -0.5, elR: -0.4, wrR: 5.05,
+    shL: -0.35, elL: -0.5,
+    pelvisYaw: 0.14, chestYaw: -0.08,
+  }, 'outQuad'),
+  keyframe(0.2, { // FLIGHT — the long horizontal body, hands flat down-back
+    rootRot: 0.62, rootY: -2.6, spine: 0.12, head: -0.34,
+    hipR: 1.25, kneeR: -0.5, footR: 0.3,
+    hipL: -1.05, kneeL: -0.15, footL: -0.22,
+    shR: -0.65, elR: -0.35, wrR: 5.1,
+    shL: -0.5, elL: -0.45,
+    pelvisYaw: 0.1, chestYaw: -0.06,
+  }, 'outCubic'),
+  keyframe(0.42, { // ARC TOP — hands flare wide, lead knee reaches for landing
+    rootRot: 0.5, rootY: -3, spine: 0.1, head: -0.26,
+    hipR: 0.9, kneeR: -0.85, footR: 0.2,
+    hipL: -0.7, kneeL: -0.5, footL: -0.1,
+    shR: 1.4, elR: -0.3, wrR: 5.4,
+    shL: 1.2, elL: -0.4, armLz: 0.4,
+  }, 'inOutCubic'),
+])
+
+/** air jump (double jump) — the mid-air redirect: the body COILS, then the
+ * legs scissor (lead kicks forward, trail stamps down = the boost) while
+ * BOTH HANDS slap down past the hips — Ghost of Tsushima / DMC flip read
+ * without the flip. */
+export const AIR_JUMP_CLIP: Clip = makeClip('airJump', [
+  keyframe(0, { // COIL — everything folds in the air
+    rootRot: 0.16, rootY: -2.5, spine: 0.06, head: -0.14,
+    hipR: 0.6, kneeR: -1.8, footR: 0.12,
+    hipL: 0.45, kneeL: -1.65, footL: 0.16,
+    shR: 2.3, elR: -0.3, wrR: 6.95,
+    shL: 2.1, elL: -0.35,
+  }, 'outQuad'),
+  keyframe(0.12, { // BOOST — leg scissor + the two-hand DOWN-slap
+    rootRot: 0.22, rootY: -2.8, spine: 0.08, head: -0.16,
+    hipR: 1.05, kneeR: -0.45, footR: 0.25,
+    hipL: -0.6, kneeL: -0.25, footL: -0.15,
+    shR: 0.55, elR: -0.25, wrR: 6.4,
+    shL: 0.4, elL: -0.3,
+  }, 'outCubic'),
+  keyframe(0.32, { // SETTLE — arms flare into the fall spread
+    rootRot: 0.14, rootY: -3, spine: 0.05, head: -0.12,
+    hipR: 0.75, kneeR: -1.15, footR: 0.18,
+    hipL: -0.2, kneeL: -0.9, footL: 0.2,
+    shR: 1.85, elR: -0.3, wrR: 6.85,
+    shL: 1.7, elL: -0.35, armLz: 0.35,
   }, 'inOutCubic'),
 ])
 
 export const FALL_CLIP: Clip = makeClip('fall', [
-  keyframe(0, { // opens FROM the apex tuck (continuity with JUMP_CLIP)
+  keyframe(0, { // opens FROM the apex tuck (continuity with the jump family)
     rootRot: 0.12, rootY: -3, spine: 0.06, head: -0.15,
-    hipR: 0.5, kneeR: -1.65, footR: 0.15,
-    hipL: 0.38, kneeL: -1.5, footL: 0.2,
-    shR: 1.3, elR: -0.5, wrR: 1.25,
-    shL: 0.5, elL: -0.55,
+    hipR: 0.55, kneeR: -1.7, footR: 0.14,
+    hipL: 0.42, kneeL: -1.55, footL: 0.18,
+    shR: 1.8, elR: -0.3, wrR: 6.9,
+    shL: 1.65, elL: -0.35, armLz: 0.35,
   }, 'inOutCubic'),
-  keyframe(0.4, { // DESCEND — legs unfold, rear reaching for the ground
-    rootRot: 0.16, rootY: -2.5, spine: 0.07, head: -0.14,
-    hipR: 0.15, kneeR: -0.75, footR: 0.1,
-    hipL: -0.3, kneeL: -0.65, footL: 0.2,
-    shR: 0.75, elR: -0.5, wrR: 1.3,
-    shL: 0.55, elL: -0.55, armLz: 0.25,
+  keyframe(0.4, { // DESCEND — hands spread WIDE, legs reaching for the ground
+    rootRot: 0.16, rootY: -2.4, spine: 0.07, head: -0.12,
+    hipR: 0.2, kneeR: -0.7, footR: 0.1,
+    hipL: -0.32, kneeL: -0.6, footL: 0.18,
+    shR: 1.95, elR: -0.2, wrR: 6.55,
+    shL: 1.8, elL: -0.25, armLz: 0.5,
   }, 'inOutCubic'),
-  keyframe(0.9, { // long-fall hold — slow leg cycle, arms wide for balance
-    rootRot: 0.13, rootY: -2.8, spine: 0.06, head: -0.14,
-    hipR: 0.3, kneeR: -0.95, footR: 0.12,
-    hipL: -0.1, kneeL: -0.8, footL: 0.18,
-    shR: 0.95, elR: -0.5, wrR: 1.2,
-    shL: 0.4, elL: -0.5, armLz: 0.15,
+  keyframe(0.9, { // long-fall hold — slow leg cycle, hands riding the air
+    rootRot: 0.13, rootY: -2.7, spine: 0.06, head: -0.12,
+    hipR: 0.35, kneeR: -0.95, footR: 0.12,
+    hipL: -0.12, kneeL: -0.8, footL: 0.16,
+    shR: 1.85, elR: -0.25, wrR: 6.7,
+    shL: 1.7, elL: -0.3, armLz: 0.4,
   }, 'inOutCubic'),
 ], true)
 
 export const LAND_CLIP: Clip = makeClip('land', [
-  keyframe(0, {
-    rootY: 7, rootRot: 0.38, spine: 0.12, head: -0.2,
-    hipR: 0.6, kneeR: -1.35, footR: 0.25,
-    hipL: -0.5, kneeL: -1.25, footL: 0.2,
-    shR: 0.4, elR: -0.7, wrR: 1.45,
-    shL: 0.5, elL: -0.8,
+  keyframe(0, { // IMPACT — deep squat, BOTH HANDS reach down past the knees
+    rootY: 7, rootRot: 0.4, spine: 0.14, head: -0.22,
+    hipR: 0.62, kneeR: -1.4, footR: 0.24,
+    hipL: -0.5, kneeL: -1.3, footL: 0.18,
+    shR: 0.85, elR: -0.35, wrR: 6.1,
+    shL: 0.7, elL: -0.4, armLz: 0.2,
   }, 'outQuad'),
-  keyframe(0.26, {
+  keyframe(0.26, { // RECOVER — rise, hands settle back toward the carry
     rootY: 1.5, rootRot: 0.16, spine: 0.05, head: -0.1,
     hipR: 0.35, kneeR: -0.5, footR: 0.12,
     hipL: -0.3, kneeL: -0.45, footL: 0.1,
-    shR: 0.75, elR: -0.55, wrR: 1.2,
+    shR: 1.15, elR: -0.4, wrR: 6.35,
+    shL: 0.6, elL: -0.7,
+  }, 'outCubic'),
+])
+
+/* ------------------------------- SHEATHE / DRAW --------------------- */
+
+/* THE SWORD HOME — notō and iai, the two halves of the same ritual
+ * (Sword of the Stranger final sheathe / every samurai film's ending):
+ *
+ *   SHEATHE  a deliberate one-shot: the blade sweeps up into a vertical
+ *            carry, the left hand finds the saya mouth at the hip, the
+ *            tsuka tips BACK to meet it, and the steel slides home along
+ *            the scabbard line — ending with the right fist resting on
+ *            the pommel. Quiet, weighted, final.
+ *   DRAW     the explosive inverse: stillness → the grip snaps onto the
+ *            tsuka → the steel RIPS out along the rising diagonal into
+ *            chūdan guard, the saya hand snapping to the saya to pin it.
+ *            Drawn FAST — the iai beat is 0.12s from stillness to edge.
+ *
+ * The player gates the visuals (swordDrawn): while sheathed the blade is
+ * inside the saya (not drawn) and the right hand rides the pommel. */
+
+/** NOTŌ — sheathing. Slow, two-stage: present the blade → slide it home. */
+export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
+  keyframe(0, { // settle out of whatever came before (guard)
+    rootRot: 0.12, rootY: 0, spine: 0.05, head: -0.08,
+    hipR: 0.34, kneeR: -0.55, footR: 0.12,
+    hipL: -0.31, kneeL: -0.5, footL: 0.12,
+    shR: 0.85, elR: -0.5, wrR: 1.15,
+    shL: 0.5, elL: -0.85,
+  }, 'inOutCubic'),
+  keyframe(0.22, { // PRESENT — blade rises to the vertical carry, gaze softens
+    rootRot: 0.09, rootY: 0.5, spine: 0.03, head: -0.04,
+    hipR: 0.3, kneeR: -0.6, footR: 0.1,
+    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+    shR: 1.45, elR: -0.75, wrR: 2.6, // blade up — kissaki over the shoulder
+    shL: 0.25, elL: -0.5, // left hand drifts toward the saya mouth
+    armLz: -0.2,
+  }, 'inOutCubic'),
+  keyframe(0.42, { // MEET — tsuka tips back to the saya mouth
+    rootRot: 0.08, rootY: 0.8, spine: 0.02, head: -0.02,
+    hipR: 0.28, kneeR: -0.65, footR: 0.1,
+    hipL: -0.3, kneeL: -0.58, footL: 0.12,
+    shR: 0.9, elR: -1.15, wrR: 3.9, // blade laid back along the scabbard line
+    shL: -0.1, elL: -0.35, armLz: -0.3,
+  }, 'inOutSine'),
+  keyframe(0.62, { // SLIDE — steel runs home to the kojiri
+    rootRot: 0.08, rootY: 0.6, spine: 0.02, head: 0,
+    hipR: 0.28, kneeR: -0.62, footR: 0.1,
+    hipL: -0.3, kneeL: -0.58, footL: 0.12,
+    shR: -0.25, elR: -0.55, wrR: 4.9, // arm follows the blade in
+    shL: -0.15, elL: -0.3, armLz: -0.28,
+  }, 'inOutCubic'),
+  keyframe(0.85, { // REST — fist settles on the pommel; the body quiet
+    rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
+    hipR: 0.3, kneeR: -0.58, footR: 0.1,
+    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+    shR: -0.32, elR: -0.42, wrR: 5.0, // hand on the tsuka at the hip
+    shL: 0.1, elL: -0.4, armLz: -0.15,
+  }, 'outCubic'),
+])
+
+/** IAI — the draw. Fast, three beats: stillness → grip → EXPLOSION into guard. */
+export const DRAW_CLIP: Clip = makeClip('draw', [
+  keyframe(0, { // stillness — hand on the pommel (sheathed rest pose)
+    rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
+    hipR: 0.3, kneeR: -0.58, footR: 0.1,
+    hipL: -0.3, kneeL: -0.55, footL: 0.12,
+    shR: -0.32, elR: -0.42, wrR: 5.0,
+    shL: 0.1, elL: -0.4, armLz: -0.15,
+  }, 'outQuad'),
+  keyframe(0.07, { // GRIP — the hand snaps onto the tsuka; hips coil back
+    rootRot: 0.02, rootY: 1.6, spine: 0.03, head: -0.14,
+    hipR: 0.42, kneeR: -0.75, footR: 0.18,
+    hipL: -0.36, kneeL: -0.7, footL: 0.1,
+    shR: -0.38, elR: -0.6, wrR: 4.85, // tsuka lifts out of the mouth
+    shL: -0.2, elL: -0.45, armLz: -0.3,
+    pelvisYaw: -0.12,
+  }, 'inQuad'),
+  keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
+    rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
+    hipR: 0.6, kneeR: -1.05, footR: 0.26,
+    hipL: -0.55, kneeL: -0.35, footL: -0.08,
+    shR: 1.55, elR: 0.05, wrR: 0.45, // edge flashing forward-up
+    shL: 0.3, elL: -0.8, armLz: -0.1,
+    pelvisYaw: 0.14, chestYaw: -0.08,
+  }, 'outQuart'),
+  keyframe(0.3, { // SETTLE — chūdan guard, the breath after the draw
+    rootRot: 0.1, rootY: 0, spine: 0.05, head: -0.1,
+    hipR: 0.34, kneeR: -0.55, footR: 0.12,
+    hipL: -0.31, kneeL: -0.5, footL: 0.12,
+    shR: 0.85, elR: -0.5, wrR: 1.15,
     shL: 0.5, elL: -0.85,
   }, 'outCubic'),
 ])

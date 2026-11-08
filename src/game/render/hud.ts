@@ -435,7 +435,7 @@ export class HUD {
     ctx.font = `10px ${MONO}`
     ctx.fillStyle = 'rgba(200,215,225,0.95)'
     ctx.fillText(
-      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   1-6 SWORDS',
+      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   1-6 SWORDS',
       w / 2,
       h - 16,
     )

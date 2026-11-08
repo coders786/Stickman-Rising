@@ -1,0 +1,1024 @@
+     1→     1→/** STICKMAN RISING — the FX engine.
+     2→     2→ *
+     3→     3→ * Everything spectacular lives here: slash-trail ribbons that follow the real
+     4→     4→ * blade trajectory, dash afterimages, impact sparks, shockwave rings, ground
+     5→     5→ * cracks, damage numbers, dismemberment debris, lightning arcs, screen flash.
+     6→     6→ * All pooled — zero allocations during combat.
+     7→     7→ */
+     8→     8→
+     9→     9→import { makePose, Pose } from '../anim/pose'
+    10→    10→import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+    11→    11→import { rgba, rand, clamp01, TAU } from '../core/utils'
+    12→    12→import type { QualityLevel } from '../core/types'
+    13→    13→
+    14→    14→/* ------------------------------------------------------------------ */
+    15→    15→
+    16→    16→interface Particle {
+    17→    17→  active: boolean
+    18→    18→  x: number; y: number
+    19→    19→  vx: number; vy: number
+    20→    20→  age: number; life: number
+    21→    21→  size: number
+    22→    22→  color: string
+    23→    23→  type: PType
+    24→    24→  grav: number
+    25→    25→  drag: number
+    26→    26→  rot: number; vrot: number
+    27→    27→  /** for 'arc' type: precomputed bolt polyline (x,y pairs) */
+    28→    28→  pts: number[] | null
+    29→    29→}
+    30→    30→
+    31→    31→type PType = 'spark' | 'dot' | 'ember' | 'smoke' | 'streak' | 'arc' | 'shard'
+    32→    32→
+    33→    33→export interface Trail {
+    34→    34→  active: boolean
+    35→    35→  pts: Float32Array // ring buffer: [bx,by,tx,ty] * N
+    36→    36→  head: number
+    37→    37→  count: number
+    38→    38→  N: number
+    39→    39→  age: number
+    40→    40→  life: number
+    41→    41→  color: string
+    42→    42→  color2: string
+    43→    43→  width: number
+    44→    44→  emitting: boolean
+    45→    45→}
+    46→    46→
+    47→    47→interface Afterimage {
+    48→    48→  active: boolean
+    49→    49→  pose: Pose
+    50→    50→  x: number; y: number
+    51→    51→  face: number
+    52→    52→  age: number; life: number
+    53→    53→  color: string
+    54→    54→  scale: number
+    55→    55→}
+    56→    56→
+    57→    57→interface Ring {
+    58→    58→  active: boolean
+    59→    59→  x: number; y: number
+    60→    60→  r0: number; r1: number
+    61→    61→  age: number; life: number
+    62→    62→  color: string
+    63→    63→  width: number
+    64→    64→  squash: number
+    65→    65→}
+    66→    66→
+    67→    67→interface Crack {
+    68→    68→  active: boolean
+    69→    69→  x: number; y: number
+    70→    70→  pts: number[]
+    71→    71→  age: number; life: number
+    72→    72→  color: string
+    73→    73→}
+    74→    74→
+    75→    75→interface DmgText {
+    76→    76→  active: boolean
+    77→    77→  x: number; y: number
+    78→    78→  vx: number; vy: number
+    79→    79→  str: string
+    80→    80→  color: string
+    81→    81→  size: number
+    82→    82→  age: number; life: number
+    83→    83→}
+    84→    84→
+    85→    85→interface Debris {
+    86→    86→  active: boolean
+    87→    87→  x: number; y: number
+    88→    88→  vx: number; vy: number
+    89→    89→  rot: number; vrot: number
+    90→    90→  len: number
+    91→    91→  color: string
+    92→    92→  age: number; life: number
+    93→    93→}
+    94→    94→
+    95→    95→/** MANGA IMPACT FRAME: a 2-4 frame monochrome inversion beat — hard white
+    96→    96→ * flash + black radial spikes punching out of the impact point + a thin
+    97→    97→ * accent ring. The classic anime "kill frame" (Berserk / Afro Samurai
+    98→    98→ * language) reserved for heavy connects, parries, and executions. */
+    99→    99→interface ImpactFrame {
+   100→   100→  active: boolean
+   101→   101→  x: number; y: number
+   102→   102→  age: number; life: number
+   103→   103→  color: string
+   104→   104→  seed: number
+   105→   105→}
+   106→   106→
+   107→   107→/* ------------------------------------------------------------------ */
+   108→   108→
+   109→   109→const MAX_PARTICLES = 1500
+   110→   110→const TRAIL_N = 26
+   111→   111→const scrashGeom: SkelGeom = makeSkelGeom()
+   112→   112→const aiPose = makePose()
+   113→   113→
+   114→   114→export class FX {
+   115→   115→  private particles: Particle[] = []
+   116→   116→  private pFree: Particle[] = []
+   117→   117→  private trails: Trail[] = []
+   118→   118→  private tFree: Trail[] = []
+   119→   119→  private afterimages: Afterimage[] = []
+   120→   120→  private aFree: Afterimage[] = []
+   121→   121→  private rings: Ring[] = []
+   122→   122→  private rFree: Ring[] = []
+   123→   123→  private cracks: Crack[] = []
+   124→   124→  private cFree: Crack[] = []
+   125→   125→  private texts: DmgText[] = []
+   126→   126→  private txtFree: DmgText[] = []
+   127→   127→  private debris: Debris[] = []
+   128→   128→  private dFree: Debris[] = []
+   129→   129→  private impactFrames: ImpactFrame[] = []
+   130→   130→
+   131→   131→  /** chromatic aberration intensity (0..1) — edge lens strain on dashes
+   132→   132→   * and heavy impacts; decays every update */
+   133→   133→  caIntensity = 0
+   134→   134→
+   135→   135→  /** screen flash */
+   136→   136→  flashColor = '#ffffff'
+   137→   137→  flashAlpha = 0
+   138→   138→  private flashDecay = 3
+   139→   139→
+   140→   140→  private qualityScale = 1
+   141→   141→  private gore: 'energy' | 'blood' = 'energy'
+   142→   142→
+   143→   143→  setQuality(q: QualityLevel): void {
+   144→   144→    this.qualityScale = q === 'high' ? 1 : q === 'medium' ? 0.65 : 0.38
+   145→   145→  }
+   146→   146→
+   147→   147→  setGore(g: 'energy' | 'blood'): void {
+   148→   148→    this.gore = g
+   149→   149→  }
+   150→   150→
+   151→   151→  clear(): void {
+   152→   152→    for (const p of this.particles) p.active = false
+   153→   153→    for (const t of this.trails) t.active = false
+   154→   154→    for (const a of this.afterimages) a.active = false
+   155→   155→    for (const r of this.rings) r.active = false
+   156→   156→    for (const c of this.cracks) c.active = false
+   157→   157→    for (const t of this.texts) t.active = false
+   158→   158→    for (const d of this.debris) d.active = false
+   159→   159→    for (const i of this.impactFrames) i.active = false
+   160→   160→    this.flashAlpha = 0
+   161→   161→    this.caIntensity = 0
+   162→   162→  }
+   163→   163→
+   164→   164→  /* ---------------- particles ---------------- */
+   165→   165→
+   166→   166→  private nextParticle(): Particle | null {
+   167→   167→    let p = this.pFree.pop()
+   168→   168→    if (!p) {
+   169→   169→      if (this.particles.length >= MAX_PARTICLES) return null
+   170→   170→      p = {
+   171→   171→        active: false, x: 0, y: 0, vx: 0, vy: 0, age: 0, life: 1,
+   172→   172→        size: 2, color: '#fff', type: 'dot', grav: 0, drag: 0,
+   173→   173→        rot: 0, vrot: 0, pts: null,
+   174→   174→      }
+   175→   175→      this.particles.push(p)
+   176→   176→    }
+   177→   177→    p.active = true
+   178→   178→    return p
+   179→   179→  }
+   180→   180→
+   181→   181→  private scaleCount(n: number): number {
+   182→   182→    return Math.max(1, Math.round(n * this.qualityScale))
+   183→   183→  }
+   184→   184→
+   185→   185→  /** directional spark cone */
+   186→   186→  sparks(x: number, y: number, dir: number, spread: number, count: number, color: string, speed = 320, life = 0.4): void {
+   187→   187→    const n = this.scaleCount(count)
+   188→   188→    for (let i = 0; i < n; i++) {
+   189→   189→      const p = this.nextParticle()
+   190→   190→      if (!p) return
+   191→   191→      const a = dir + rand(-spread, spread)
+   192→   192→      const sp = speed * rand(0.45, 1.25)
+   193→   193→      p.x = x; p.y = y
+   194→   194→      p.vx = Math.cos(a) * sp
+   195→   195→      p.vy = Math.sin(a) * sp
+   196→   196→      p.age = 0; p.life = life * rand(0.6, 1.3)
+   197→   197→      p.size = rand(1.4, 3.2)
+   198→   198→      p.color = color
+   199→   199→      p.type = 'spark'
+   200→   200→      p.grav = 640
+   201→   201→      p.drag = 2.4
+   202→   202→      p.rot = 0; p.vrot = 0; p.pts = null
+   203→   203→    }
+   204→   204→  }
+   205→   205→
+   206→   206→  /** radial burst */
+   207→   207→  burst(x: number, y: number, count: number, color: string, speed = 260, life = 0.5, type: PType = 'dot'): void {
+   208→   208→    const n = this.scaleCount(count)
+   209→   209→    for (let i = 0; i < n; i++) {
+   210→   210→      const p = this.nextParticle()
+   211→   211→      if (!p) return
+   212→   212→      const a = rand(TAU)
+   213→   213→      const sp = speed * rand(0.3, 1.2)
+   214→   214→      p.x = x; p.y = y
+   215→   215→      p.vx = Math.cos(a) * sp
+   216→   216→      p.vy = Math.sin(a) * sp
+   217→   217→      p.age = 0; p.life = life * rand(0.7, 1.4)
+   218→   218→      p.size = rand(1.6, 3.6)
+   219→   219→      p.color = color
+   220→   220→      p.type = type
+   221→   221→      p.grav = type === 'ember' ? -160 : 420
+   222→   222→      p.drag = 2.8
+   223→   223→      p.rot = 0; p.vrot = 0; p.pts = null
+   224→   224→    }
+   225→   225→  }
+   226→   226→
+   227→   227→  /** rising embers / element motes */
+   228→   228→  embers(x: number, y: number, count: number, color: string, spread = 40): void {
+   229→   229→    const n = this.scaleCount(count)
+   230→   230→    for (let i = 0; i < n; i++) {
+   231→   231→      const p = this.nextParticle()
+   232→   232→      if (!p) return
+   233→   233→      p.x = x + rand(-spread, spread)
+   234→   234→      p.y = y + rand(-spread, spread) * 0.6
+   235→   235→      p.vx = rand(-24, 24)
+   236→   236→      p.vy = rand(-90, -30)
+   237→   237→      p.age = 0; p.life = rand(0.5, 1.1)
+   238→   238→      p.size = rand(1.2, 2.6)
+   239→   239→      p.color = color
+   240→   240→      p.type = 'ember'
+   241→   241→      p.grav = -60
+   242→   242→      p.drag = 0.6
+   243→   243→      p.rot = 0; p.vrot = 0; p.pts = null
+   244→   244→    }
+   245→   245→  }
+   246→   246→
+   247→   247→  /** smoke / dust puff */
+   248→   248→  dust(x: number, y: number, count: number, color = '#3a4756', up = -60): void {
+   249→   249→    const n = this.scaleCount(count)
+   250→   250→    for (let i = 0; i < n; i++) {
+   251→   251→      const p = this.nextParticle()
+   252→   252→      if (!p) return
+   253→   253→      const a = rand(Math.PI) + Math.PI // upper half
+   254→   254→      const sp = rand(30, 130)
+   255→   255→      p.x = x + rand(-14, 14)
+   256→   256→      p.y = y + rand(-4, 4)
+   257→   257→      p.vx = Math.cos(a) * sp
+   258→   258→      p.vy = Math.sin(a) * sp * 0.6 + up
+   259→   259→      p.age = 0; p.life = rand(0.4, 0.9)
+   260→   260→      p.size = rand(3, 7)
+   261→   261→      p.color = color
+   262→   262→      p.type = 'smoke'
+   263→   263→      p.grav = -20
+   264→   264→      p.drag = 3
+   265→   265→      p.rot = 0; p.vrot = 0; p.pts = null
+   266→   266→    }
+   267→   267→  }
+   268→   268→
+   269→   269→  /** horizontal speed streaks (dashes) */
+   270→   270→  speedStreaks(x: number, y: number, dx: number, count: number, color: string): void {
+   271→   271→    const n = this.scaleCount(count)
+   272→   272→    for (let i = 0; i < n; i++) {
+   273→   273→      const p = this.nextParticle()
+   274→   274→      if (!p) return
+   275→   275→      p.x = x + rand(-26, 26)
+   276→   276→      p.y = y + rand(-46, 6)
+   277→   277→      p.vx = dx * rand(0.4, 1.1)
+   278→   278→      p.vy = 0
+   279→   279→      p.age = 0; p.life = rand(0.14, 0.3)
+   280→   280→      p.size = rand(8, 26)
+   281→   281→      p.color = color
+   282→   282→      p.type = 'streak'
+   283→   283→      p.grav = 0; p.drag = 0.5
+   284→   284→      p.rot = 0; p.vrot = 0; p.pts = null
+   285→   285→    }
+   286→   286→  }
+   287→   287→
+   288→   288→  /** jagged lightning bolt between two points */
+   289→   289→  lightningArc(x0: number, y0: number, x1: number, y1: number, color: string, segments = 6): void {
+   290→   290→    const p = this.nextParticle()
+   291→   291→    if (!p) return
+   292→   292→    const pts: number[] = [x0, y0]
+   293→   293→    for (let i = 1; i < segments; i++) {
+   294→   294→      const t = i / segments
+   295→   295→      const jitter = 14 * (1 - Math.abs(t - 0.5) * 2 + 0.2)
+   296→   296→      pts.push(
+   297→   297→        x0 + (x1 - x0) * t + rand(-jitter, jitter),
+   298→   298→        y0 + (y1 - y0) * t + rand(-jitter, jitter),
+   299→   299→      )
+   300→   300→    }
+   301→   301→    pts.push(x1, y1)
+   302→   302→    p.x = x0; p.y = y0
+   303→   303→    p.vx = 0; p.vy = 0
+   304→   304→    p.age = 0; p.life = 0.22
+   305→   305→    p.size = 2.4
+   306→   306→    p.color = color
+   307→   307→    p.type = 'arc'
+   308→   308→    p.grav = 0; p.drag = 0
+   309→   309→    p.rot = 0; p.vrot = 0
+   310→   310→    p.pts = pts
+   311→   311→    // spark burst at both ends
+   312→   312→    this.sparks(x1, y1, Math.atan2(y1 - y0, x1 - x0), 0.7, 5, color, 240, 0.3)
+   313→   313→  }
+   314→   314→
+   315→   315→  /** impact flash + directional sparks + micro ring */
+   316→   316→  impact(x: number, y: number, dir: number, heavy: boolean, color: string, accent: string): void {
+   317→   317→    this.sparks(x, y, dir, heavy ? 0.9 : 0.6, heavy ? 16 : 9, color, heavy ? 480 : 340, heavy ? 0.55 : 0.35)
+   318→   318→    this.sparks(x, y, dir, 0.4, heavy ? 6 : 3, '#ffffff', heavy ? 620 : 420, 0.2)
+   319→   319→    const r = this.nextRing()
+   320→   320→    if (r) {
+   321→   321→      r.x = x; r.y = y
+   322→   322→      r.r0 = heavy ? 8 : 5
+   323→   323→      r.r1 = heavy ? 78 : 40
+   324→   324→      r.age = 0; r.life = heavy ? 0.3 : 0.2
+   325→   325→      r.color = heavy ? color : accent
+   326→   326→      r.width = heavy ? 5 : 3
+   327→   327→      r.squash = 1
+   328→   328→    }
+   329→   329→    if (heavy) {
+   330→   330→      this.burst(x, y, 8, accent, 200, 0.4, 'shard')
+   331→   331→    }
+   332→   332→  }
+   333→   333→
+   334→   334→  /** dismemberment: spinning limb debris + gore burst */
+   335→   335→  dismember(x: number, y: number, dir: number, bodyColor: string, accent: string): void {
+   336→   336→    const gore = this.gore === 'blood'
+   337→   337→    const n = this.scaleCount(6)
+   338→   338→    for (let i = 0; i < n; i++) {
+   339→   339→      const d = this.dFree.pop() ?? {
+   340→   340→        active: false, x: 0, y: 0, vx: 0, vy: 0, rot: 0, vrot: 0, len: 10, color: '#fff', age: 0, life: 1,
+   341→   341→      }
+   342→   342→      d.active = true
+   343→   343→      d.x = x; d.y = y - rand(0, 40)
+   344→   344→      const a = dir + rand(-0.9, 0.9)
+   345→   345→      const sp = rand(220, 560)
+   346→   346→      d.vx = Math.cos(a) * sp
+   347→   347→      d.vy = -rand(120, 420)
+   348→   348→      d.rot = rand(TAU)
+   349→   349→      d.vrot = rand(-16, 16)
+   350→   350→      d.len = rand(9, 22)
+   351→   351→      d.color = i % 3 === 0 ? accent : bodyColor
+   352→   352→      d.age = 0; d.life = rand(1.2, 2.2)
+   353→   353→      this.debris.push(d)
+   354→   354→    }
+   355→   355→    this.burst(x, y - 20, gore ? 18 : 14, gore ? '#c31432' : accent, 380, 0.7, gore ? 'dot' : 'spark')
+   356→   356→    if (!gore) this.burst(x, y - 20, 10, '#ffffff', 300, 0.4, 'spark')
+   357→   357→  }
+   358→   358→
+   359→   359→  /** enemy death dissolve */
+   360→   360→  dissolve(x: number, y: number, color: string, accent: string): void {
+   361→   361→    this.burst(x, y - 30, 16, color, 260, 0.6, 'ember')
+   362→   362→    this.burst(x, y - 30, 10, accent, 320, 0.45, 'spark')
+   363→   363→    const r = this.nextRing()
+   364→   364→    if (r) {
+   365→   365→      r.x = x; r.y = y - 30
+   366→   366→      r.r0 = 6; r.r1 = 60
+   367→   367→      r.age = 0; r.life = 0.34
+   368→   368→      r.color = accent
+   369→   369→      r.width = 4
+   370→   370→      r.squash = 1
+   371→   371→    }
+   372→   372→  }
+   373→   373→
+   374→   374→  /* ---------------- shockwaves / cracks / text ---------------- */
+   375→   375→
+   376→   376→  private nextRing(): Ring | null {
+   377→   377→    let r = this.rFree.pop()
+   378→   378→    if (!r) {
+   379→   379→      r = { active: false, x: 0, y: 0, r0: 0, r1: 0, age: 0, life: 1, color: '#fff', width: 3, squash: 1 }
+   380→   380→      this.rings.push(r)
+   381→   381→    }
+   382→   382→    r.active = true
+   383→   383→    return r
+   384→   384→  }
+   385→   385→
+   386→   386→  shockwave(x: number, y: number, radius: number, color: string, life = 0.42, width = 6): void {
+   387→   387→    const r = this.nextRing()
+   388→   388→    if (!r) return
+   389→   389→    r.x = x; r.y = y
+   390→   390→    r.r0 = 10; r.r1 = radius
+   391→   391→    r.age = 0; r.life = life
+   392→   392→    r.color = color
+   393→   393→    r.width = width
+   394→   394→    r.squash = 0.32 // ground ring
+   395→   395→    // debris flecks
+   396→   396→    this.sparks(x, y - 4, -Math.PI / 2, 1.2, 10, color, 300, 0.5)
+   397→   397→    this.dust(x, y, 10)
+   398→   398→  }
+   399→   399→
+   400→   400→  groundCrack(x: number, y: number, size: number, color = '#0b0f14'): void {
+   401→   401→    const c = this.cFree.pop() ?? {
+   402→   402→      active: false, x: 0, y: 0, pts: [] as number[], age: 0, life: 1, color: '#0b0f14',
+   403→   403→    }
+   404→   404→    c.active = true
+   405→   405→    c.x = x; c.y = y
+   406→   406→    c.age = 0; c.life = 5
+   407→   407→    c.color = color
+   408→   408→    const pts: number[] = [0, 0]
+   409→   409→    const branches = 3
+   410→   410→    for (let b = 0; b < branches; b++) {
+   411→   411→      let a = rand(TAU)
+   412→   412→      if (b === 0) a = 0
+   413→   413→      if (b === 1) a = Math.PI
+   414→   414→      let px = 0, py = 0
+   415→   415→      const segs = 3
+   416→   416→      for (let s = 0; s < segs; s++) {
+   417→   417→        a += rand(-0.5, 0.5)
+   418→   418→        px += Math.cos(a) * size * rand(0.24, 0.4)
+   419→   419→        py += Math.sin(a) * size * rand(0.08, 0.16)
+   420→   420→        pts.push(px, py)
+   421→   421→      }
+   422→   422→    }
+   423→   423→    c.pts = pts
+   424→   424→    this.cracks.push(c)
+   425→   425→  }
+   426→   426→
+   427→   427→  text(x: number, y: number, str: string, color: string, size = 15): void {
+   428→   428→    if (this.texts.length > 60) return
+   429→   429→    const t = this.txtFree.pop() ?? {
+   430→   430→      active: false, x: 0, y: 0, vx: 0, vy: 0, str: '', color: '#fff', size: 15, age: 0, life: 1,
+   431→   431→    }
+   432→   432→    t.active = true
+   433→   433→    t.x = x + rand(-6, 6); t.y = y
+   434→   434→    t.vx = rand(-30, 30)
+   435→   435→    t.vy = rand(-150, -100)
+   436→   436→    t.str = str
+   437→   437→    t.color = color
+   438→   438→    t.size = size
+   439→   439→    t.age = 0; t.life = 0.85
+   440→   440→    this.texts.push(t)
+   441→   441→  }
+   442→   442→
+   443→   443→  screenFlash(color: string, alpha: number, decay = 3): void {
+   444→   444→    this.flashColor = color
+   445→   445→    this.flashAlpha = Math.max(this.flashAlpha, alpha)
+   446→   446→    this.flashDecay = decay
+   447→   447→  }
+   448→   448→
+   449→   449→  /** register chromatic lens strain (dash launches, heavy connects) */
+   450→   450→  chroma(intensity: number): void {
+   451→   451→    this.caIntensity = Math.max(this.caIntensity, Math.min(1, intensity))
+   452→   452→  }
+   453→   453→
+   454→   454→  /** the anime impact frame: white inversion + black radial spikes */
+   455→   455→  impactFrame(x: number, y: number, color: string): void {
+   456→   456→    if (this.impactFrames.length > 3) return
+   457→   457→    this.impactFrames.push({
+   458→   458→      active: true, x, y, age: 0, life: 0.11, color, seed: rand(TAU),
+   459→   459→    })
+   460→   460→    this.screenFlash('#ffffff', 0.85, 9)
+   461→   461→    this.chroma(0.7)
+   462→   462→  }
+   463→   463→
+   464→   464→  /* ---------------- afterimages ---------------- */
+   465→   465→
+   466→   466→  afterimage(pose: Pose, x: number, y: number, face: number, color: string, life = 0.34, scale = 1): void {
+   467→   467→    if (this.afterimages.length > 40) return
+   468→   468→    const a = this.aFree.pop() ?? {
+   469→   469→      active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
+   470→   470→    }
+   471→   471→    a.active = true
+   472→   472→    a.pose.set(pose)
+   473→   473→    a.x = x; a.y = y
+   474→   474→    a.face = face
+   475→   475→    a.age = 0; a.life = life
+   476→   476→    a.color = color
+   477→   477→    a.scale = scale
+   478→   478→    this.afterimages.push(a)
+   479→   479→  }
+   480→   480→
+   481→   481→  /* ---------------- slash trails ---------------- */
+   482→   482→
+   483→   483→  startTrail(color: string, color2: string, width: number): Trail {
+   484→   484→    let t = this.tFree.pop()
+   485→   485→    if (!t) {
+   486→   486→      t = {
+   487→   487→        active: false,
+   488→   488→        pts: new Float32Array(TRAIL_N * 4),
+   489→   489→        head: 0, count: 0, N: TRAIL_N,
+   490→   490→        age: 0, life: 0.3,
+   491→   491→        color, color2, width,
+   492→   492→        emitting: true,
+   493→   493→      }
+   494→   494→      this.trails.push(t)
+   495→   495→    }
+   496→   496→    t.active = true
+   497→   497→    t.head = 0
+   498→   498→    t.count = 0
+   499→   499→    t.age = 0
+   500→   500→    t.life = 0.3
+   501→   501→    t.color = color
+   502→   502→    t.color2 = color2
+   503→   503→    t.width = width
+   504→   504→    t.emitting = true
+   505→   505→    return t
+   506→   506→  }
+   507→   507→
+   508→   508→  pushTrail(t: Trail, bx: number, by: number, tx: number, ty: number): void {
+   509→   509→    const i = t.head * 4
+   510→   510→    t.pts[i] = bx
+   511→   511→    t.pts[i + 1] = by
+   512→   512→    t.pts[i + 2] = tx
+   513→   513→    t.pts[i + 3] = ty
+   514→   514→    t.head = (t.head + 1) % t.N
+   515→   515→    if (t.count < t.N) t.count++
+   516→   516→  }
+   517→   517→
+   518→   518→  /** stop emitting; ribbon fades out */
+   519→   519→  endTrail(t: Trail, life = 0.22): void {
+   520→   520→    t.emitting = false
+   521→   521→    t.age = 0
+   522→   522→    t.life = life
+   523→   523→  }
+   524→   524→
+   525→   525→  /** a standalone slash arc (ability echoes, cinematic slashes) */
+   526→   526→  slashArc(x: number, y: number, angle: number, spread: number, radius: number, color: string, color2: string, width = 1): void {
+   527→   527→    const t = this.startTrail(color, color2, width)
+   528→   528→    t.life = 0.3
+   529→   529→    t.emitting = false
+   530→   530→    t.age = 0
+   531→   531→    const steps = 9
+   532→   532→    for (let i = 0; i <= steps; i++) {
+   533→   533→      const a = angle - spread / 2 + (spread * i) / steps
+   534→   534→      const r0 = radius * 0.25
+   535→   535→      pushPolar(t, x, y, a, r0, radius)
+   536→   536→    }
+   537→   537→  }
+   538→   538→
+   539→   539→  /* ---------------- update ---------------- */
+   540→   540→
+   541→   541→  update(dt: number): void {
+   542→   542→    // particles
+   543→   543→    for (let i = this.particles.length - 1; i >= 0; i--) {
+   544→   544→      const p = this.particles[i]
+   545→   545→      if (!p.active) continue
+   546→   546→      p.age += dt
+   547→   547→      if (p.age >= p.life) {
+   548→   548→        p.active = false
+   549→   549→        this.pFree.push(p)
+   550→   550→        continue
+   551→   551→      }
+   552→   552→      p.vy += p.grav * dt
+   553→   553→      const dr = 1 - p.drag * dt
+   554→   554→      p.vx *= dr > 0 ? dr : 0
+   555→   555→      p.vy *= dr > 0 ? dr : 0
+   556→   556→      p.x += p.vx * dt
+   557→   557→      p.y += p.vy * dt
+   558→   558→    }
+   559→   559→    // trails
+   560→   560→    for (let i = this.trails.length - 1; i >= 0; i--) {
+   561→   561→      const t = this.trails[i]
+   562→   562→      if (!t.active) continue
+   563→   563→      if (!t.emitting) {
+   564→   564→        t.age += dt
+   565→   565→        if (t.age >= t.life) {
+   566→   566→          t.active = false
+   567→   567→          this.tFree.push(t)
+   568→   568→        }
+   569→   569→      }
+   570→   570→    }
+   571→   571→    // afterimages
+   572→   572→    for (let i = this.afterimages.length - 1; i >= 0; i--) {
+   573→   573→      const a = this.afterimages[i]
+   574→   574→      a.age += dt
+   575→   575→      if (a.age >= a.life) {
+   576→   576→        a.active = false
+   577→   577→        this.aFree.push(a)
+   578→   578→      }
+   579→   579→    }
+   580→   580→    // rings
+   581→   581→    for (let i = this.rings.length - 1; i >= 0; i--) {
+   582→   582→      const r = this.rings[i]
+   583→   583→      r.age += dt
+   584→   584→      if (r.age >= r.life) {
+   585→   585→        r.active = false
+   586→   586→        this.rFree.push(r)
+   587→   587→      }
+   588→   588→    }
+   589→   589→    // cracks
+   590→   590→    for (let i = this.cracks.length - 1; i >= 0; i--) {
+   591→   591→      const c = this.cracks[i]
+   592→   592→      c.age += dt
+   593→   593→      if (c.age >= c.life) {
+   594→   594→        c.active = false
+   595→   595→        this.cFree.push(c)
+   596→   596→      }
+   597→   597→    }
+   598→   598→    // texts
+   599→   599→    for (let i = this.texts.length - 1; i >= 0; i--) {
+   600→   600→      const t = this.texts[i]
+   601→   601→      t.age += dt
+   602→   602→      if (t.age >= t.life) {
+   603→   603→        t.active = false
+   604→   604→        this.txtFree.push(t)
+   605→   605→      }
+   606→   606→      t.vy += 320 * dt
+   607→   607→      t.x += t.vx * dt
+   608→   608→      t.y += t.vy * dt
+   609→   609→    }
+   610→   610→    // debris
+   611→   611→    for (let i = this.debris.length - 1; i >= 0; i--) {
+   612→   612→      const d = this.debris[i]
+   613→   613→      d.age += dt
+   614→   614→      if (d.age >= d.life) {
+   615→   615→        d.active = false
+   616→   616→        this.dFree.push(d)
+   617→   617→        continue
+   618→   618→      }
+   619→   619→      d.vy += 900 * dt
+   620→   620→      d.x += d.vx * dt
+   621→   621→      d.y += d.vy * dt
+   622→   622→      d.rot += d.vrot * dt
+   623→   623→      if (d.y > 0) {
+   624→   624→        d.y = 0
+   625→   625→        d.vy *= -0.42
+   626→   626→        d.vx *= 0.6
+   627→   627→        d.vrot *= 0.5
+   628→   628→        if (Math.abs(d.vy) < 40) d.vy = 0
+   629→   629→      }
+   630→   630→    }
+   631→   631→    // flash
+   632→   632→    if (this.flashAlpha > 0) {
+   633→   633→      this.flashAlpha -= this.flashDecay * dt
+   634→   634→      if (this.flashAlpha < 0) this.flashAlpha = 0
+   635→   635→    }
+   636→   636→    // chromatic strain decay
+   637→   637→    if (this.caIntensity > 0) {
+   638→   638→      this.caIntensity = Math.max(0, this.caIntensity - dt * 3.4)
+   639→   639→    }
+   640→   640→    // impact frames
+   641→   641→    for (let i = this.impactFrames.length - 1; i >= 0; i--) {
+   642→   642→      const f = this.impactFrames[i]
+   643→   643→      f.age += dt
+   644→   644→      if (f.age >= f.life) {
+   645→   645→        f.active = false
+   646→   646→        this.impactFrames.splice(i, 1)
+   647→   647→      }
+   648→   648→    }
+   649→   649→  }
+   650→   650→
+   651→   651→  /* ---------------- draw passes ---------------- */
+   652→   652→
+   653→   653→  /** ground layer: cracks + debris + afterimages (under entities) */
+   654→   654→  drawUnder(ctx: CanvasRenderingContext2D): void {
+   655→   655→    ctx.save()
+   656→   656→    // cracks
+   657→   657→    for (const c of this.cracks) {
+   658→   658→      if (!c.active) continue
+   659→   659→      const a = 1 - c.age / c.life
+   660→   660→      ctx.strokeStyle = rgba('#000000', a * 0.5)
+   661→   661→      ctx.lineWidth = 3
+   662→   662→      drawCrack(ctx, c)
+   663→   663→      ctx.strokeStyle = rgba('#39505f', a * 0.4)
+   664→   664→      ctx.lineWidth = 1.2
+   665→   665→      drawCrack(ctx, c)
+   666→   666→    }
+   667→   667→    // debris
+   668→   668→    ctx.lineCap = 'round'
+   669→   669→    for (const d of this.debris) {
+   670→   670→      if (!d.active) continue
+   671→   671→      const a = 1 - d.age / d.life
+   672→   672→      ctx.strokeStyle = rgba(d.color, a)
+   673→   673→      ctx.lineWidth = 3.4
+   674→   674→      const c = Math.cos(d.rot) * d.len / 2
+   675→   675→      const s = Math.sin(d.rot) * d.len / 2
+   676→   676→      ctx.beginPath()
+   677→   677→      ctx.moveTo(d.x - c, d.y - s)
+   678→   678→      ctx.lineTo(d.x + c, d.y + s)
+   679→   679→      ctx.stroke()
+   680→   680→    }
+   681→   681→    ctx.restore()
+   682→   682→  }
+   683→   683→
+   684→   684→  /** additive layer: afterimages, trails, particles, rings */
+   685→   685→  drawAdditive(ctx: CanvasRenderingContext2D, time: number): void {
+   686→   686→    ctx.save()
+   687→   687→    ctx.globalCompositeOperation = 'lighter'
+   688→   688→
+   689→   689→    // afterimages (ghost stickmen)
+   690→   690→    for (const a of this.afterimages) {
+   691→   691→      const k = 1 - a.age / a.life
+   692→   692→      ctx.save()
+   693→   693→      ctx.translate(a.x, a.y)
+   694→   694→      ctx.scale(a.face * a.scale, a.scale)
+   695→   695→      aiPose.set(a.pose)
+   696→   696→      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
+   697→   697→      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+   698→   698→        ghost: a.color,
+   699→   699→        ghostAlpha: k * 0.5,
+   700→   700→        time,
+   701→   701→      })
+   702→   702→      ctx.restore()
+   703→   703→    }
+   704→   704→
+   705→   705→    // slash trail ribbons
+   706→   706→    for (const t of this.trails) {
+   707→   707→      if (!t.active || t.count < 2) continue
+   708→   708→      const fade = t.emitting ? 1 : 1 - t.age / t.life
+   709→   709→      drawTrail(ctx, t, fade)
+   710→   710→    }
+   711→   711→
+   712→   712→    // particles
+   713→   713→    for (const p of this.particles) {
+   714→   714→      if (!p.active) continue
+   715→   715→      const k = 1 - p.age / p.life
+   716→   716→      switch (p.type) {
+   717→   717→        case 'spark': {
+   718→   718→          ctx.strokeStyle = rgba(p.color, k)
+   719→   719→          ctx.lineWidth = p.size * 0.8
+   720→   720→          ctx.beginPath()
+   721→   721→          ctx.moveTo(p.x, p.y)
+   722→   722→          ctx.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03)
+   723→   723→          ctx.stroke()
+   724→   724→          break
+   725→   725→        }
+   726→   726→        case 'streak': {
+   727→   727→          ctx.strokeStyle = rgba(p.color, k * 0.5)
+   728→   728→          ctx.lineWidth = 1.6
+   729→   729→          ctx.beginPath()
+   730→   730→          ctx.moveTo(p.x, p.y)
+   731→   731→          ctx.lineTo(p.x - p.vx * 0.08, p.y)
+   732→   732→          ctx.stroke()
+   733→   733→          break
+   734→   734→        }
+   735→   735→        case 'ember': {
+   736→   736→          const fl = 0.6 + 0.4 * Math.sin(p.age * 30 + p.x)
+   737→   737→          ctx.fillStyle = rgba(p.color, k * fl)
+   738→   738→          ctx.beginPath()
+   739→   739→          ctx.arc(p.x, p.y, p.size * (0.7 + k * 0.5), 0, TAU)
+   740→   740→          ctx.fill()
+   741→   741→          break
+   742→   742→        }
+   743→   743→        case 'smoke': {
+   744→   744→          ctx.fillStyle = rgba(p.color, k * 0.24)
+   745→   745→          ctx.beginPath()
+   746→   746→          ctx.arc(p.x, p.y, p.size * (1.6 - k * 0.6), 0, TAU)
+   747→   747→          ctx.fill()
+   748→   748→          break
+   749→   749→        }
+   750→   750→        case 'shard': {
+   751→   751→          ctx.strokeStyle = rgba(p.color, k)
+   752→   752→          ctx.lineWidth = 2
+   753→   753→          ctx.save()
+   754→   754→          ctx.translate(p.x, p.y)
+   755→   755→          ctx.rotate(p.age * 9)
+   756→   756→          ctx.beginPath()
+   757→   757→          ctx.moveTo(-p.size, 0)
+   758→   758→          ctx.lineTo(p.size, 0)
+   759→   759→          ctx.stroke()
+   760→   760→          ctx.restore()
+   761→   761→          break
+   762→   762→        }
+   763→   763→        case 'arc': {
+   764→   764→          if (p.pts) {
+   765→   765→            const fl = k * (0.7 + 0.3 * Math.sin(time * 60 + p.x))
+   766→   766→            ctx.strokeStyle = rgba(p.color, fl)
+   767→   767→            ctx.lineWidth = p.size
+   768→   768→            ctx.beginPath()
+   769→   769→            ctx.moveTo(p.pts[0], p.pts[1])
+   770→   770→            for (let i = 2; i < p.pts.length; i += 2) {
+   771→   771→              ctx.lineTo(p.pts[i], p.pts[i + 1])
+   772→   772→            }
+   773→   773→            ctx.stroke()
+   774→   774→            ctx.strokeStyle = rgba('#ffffff', fl * 0.8)
+   775→   775→            ctx.lineWidth = 1
+   776→   776→            ctx.stroke()
+   777→   777→          }
+   778→   778→          break
+   779→   779→        }
+   780→   780→        default: {
+   781→   781→          ctx.fillStyle = rgba(p.color, k)
+   782→   782→          ctx.beginPath()
+   783→   783→          ctx.arc(p.x, p.y, p.size, 0, TAU)
+   784→   784→          ctx.fill()
+   785→   785→        }
+   786→   786→      }
+   787→   787→    }
+   788→   788→
+   789→   789→    // rings
+   790→   790→    for (const r of this.rings) {
+   791→   791→      if (!r.active) continue
+   792→   792→      const k = 1 - r.age / r.life
+   793→   793→      const rr = r.r0 + (r.r1 - r.r0) * (1 - k * k)
+   794→   794→      ctx.strokeStyle = rgba(r.color, k * 0.9)
+   795→   795→      ctx.lineWidth = r.width * k + 0.5
+   796→   796→      ctx.beginPath()
+   797→   797→      ctx.ellipse(r.x, r.y, rr, rr * r.squash, 0, 0, TAU)
+   798→   798→      ctx.stroke()
+   799→   799→      ctx.strokeStyle = rgba('#ffffff', k * 0.5)
+   800→   800→      ctx.lineWidth = 1.2
+   801→   801→      ctx.beginPath()
+   802→   802→      ctx.ellipse(r.x, r.y, rr * 0.92, rr * 0.92 * r.squash, 0, 0, TAU)
+   803→   803→      ctx.stroke()
+   804→   804→    }
+   805→   805→
+   806→   806→    // damage numbers (crisp, non-additive, on top of the glow layers)
+   807→   807→    ctx.globalCompositeOperation = 'source-over'
+   808→   808→    ctx.textAlign = 'center'
+   809→   809→    for (const t of this.texts) {
+   810→   810→      if (!t.active) continue
+   811→   811→      const k = 1 - t.age / t.life
+   812→   812→      const pop = t.age < 0.09 ? 1 + (0.09 - t.age) * 4 : 1
+   813→   813→      ctx.save()
+   814→   814→      ctx.translate(t.x, t.y)
+   815→   815→      ctx.scale(pop, pop)
+   816→   816→      ctx.font = `900 ${t.size}px "Arial Black", Arial, sans-serif`
+   817→   817→      ctx.lineWidth = 3
+   818→   818→      ctx.strokeStyle = rgba('#04060a', Math.min(1, k * 1.4))
+   819→   819→      ctx.strokeText(t.str, 0, 0)
+   820→   820→      ctx.fillStyle = rgba(t.color, Math.min(1, k * 1.6))
+   821→   821→      ctx.fillText(t.str, 0, 0)
+   822→   822→      ctx.restore()
+   823→   823→    }
+   824→   824→
+   825→   825→    ctx.restore()
+   826→   826→  }
+   827→   827→
+   828→   828→  /** screen-space flash overlay */
+   829→   829→  drawFlash(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+   830→   830→    if (this.flashAlpha <= 0.01) return
+   831→   831→    ctx.save()
+   832→   832→    ctx.fillStyle = rgba(this.flashColor, clamp01(this.flashAlpha))
+   833→   833→    ctx.fillRect(0, 0, w, h)
+   834→   834→    ctx.restore()
+   835→   835→  }
+   836→   836→
+   837→   837→  /** MANGA IMPACT FRAME pass — draw AFTER the additive layer so the black
+   838→   838→   * spikes punch through the glow: white core → black wedges → accent ring.
+   839→   839→   * Called by the renderer in world space. */
+   840→   840→  drawImpactFrames(ctx: CanvasRenderingContext2D): void {
+   841→   841→    for (const f of this.impactFrames) {
+   842→   842→      if (!f.active) continue
+   843→   843→      const k = 1 - f.age / f.life
+   844→   844→      // white inversion core
+   845→   845→      ctx.save()
+   846→   846→      ctx.globalCompositeOperation = 'lighter'
+   847→   847→      ctx.fillStyle = rgba('#ffffff', 0.9 * k)
+   848→   848→      ctx.beginPath()
+   849→   849→      ctx.arc(f.x, f.y, 34 + (1 - k) * 26, 0, TAU)
+   850→   850→      ctx.fill()
+   851→   851→      ctx.restore()
+   852→   852→      // black radial spikes — alternating long/short, jittered by seed
+   853→   853→      ctx.save()
+   854→   854→      ctx.fillStyle = rgba('#04060a', 0.96 * k)
+   855→   855→      const spikes = 13
+   856→   856→      for (let i = 0; i < spikes; i++) {
+   857→   857→        const base = f.seed + (i / spikes) * TAU
+   858→   858→        const long = i % 2 === 0
+   859→   859→        const r0 = 26 * k + 8
+   860→   860→        const r1 = (long ? 250 : 140) * (0.55 + 0.45 * k)
+   861→   861→        const halfW = (long ? 0.055 : 0.03) * (0.6 + 0.4 * k)
+   862→   862→        ctx.beginPath()
+   863→   863→        ctx.moveTo(f.x + Math.cos(base - halfW) * r0, f.y + Math.sin(base - halfW) * r0)
+   864→   864→        ctx.lineTo(f.x + Math.cos(base) * r1, f.y + Math.sin(base) * r1)
+   865→   865→        ctx.lineTo(f.x + Math.cos(base + halfW) * r0, f.y + Math.sin(base + halfW) * r0)
+   866→   866→        ctx.closePath()
+   867→   867→        ctx.fill()
+   868→   868→      }
+   869→   869→      // thin accent ring at the shock front
+   870→   870→      ctx.strokeStyle = rgba(f.color, 0.85 * k)
+   871→   871→      ctx.lineWidth = 2.6
+   872→   872→      ctx.beginPath()
+   873→   873→      ctx.arc(f.x, f.y, 46 + (1 - k) * 90, 0, TAU)
+   874→   874→      ctx.stroke()
+   875→   875→      ctx.restore()
+   876→   876→    }
+   877→   877→  }
+   878→   878→}
+   879→   879→
+   880→   880→/* ------------------------------------------------------------------ */
+   881→   881→/* helpers                                                              */
+   882→   882→/* ------------------------------------------------------------------ */
+   883→   883→
+   884→   884→function pushPolar(t: Trail, x: number, y: number, a: number, r0: number, r1: number): void {
+   885→   885→  const i = t.head * 4
+   886→   886→  t.pts[i] = x + Math.cos(a) * r0
+   887→   887→  t.pts[i + 1] = y + Math.sin(a) * r0
+   888→   888→  t.pts[i + 2] = x + Math.cos(a) * r1
+   889→   889→  t.pts[i + 3] = y + Math.sin(a) * r1
+   890→   890→  t.head = (t.head + 1) % t.N
+   891→   891→  if (t.count < t.N) t.count++
+   892→   892→}
+   893→   893→
+   894→   894→const segA: number[] = [0, 0, 0, 0]
+   895→   895→const segB: number[] = [0, 0, 0, 0]
+   896→   896→
+   897→   897→function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void {
+   898→   898→  const n = t.count
+   899→   899→  const pts = t.pts
+   900→   900→  // render oldest → newest
+   901→   901→  const start = (t.head - n + t.N + t.N) % t.N
+   902→   902→
+   903→   903→  const seg = (idx: number, out: number[]): void => {
+   904→   904→    const i = ((start + idx) % t.N) * 4
+   905→   905→    out[0] = pts[i]; out[1] = pts[i + 1]; out[2] = pts[i + 2]; out[3] = pts[i + 3]
+   906→   906→  }
+   907→   907→
+   908→   908→  // ---- wide soft halo + mid core ribbon ----
+   909→   909→  for (let layer = 0; layer < 2; layer++) {
+   910→   910→    const wide = layer === 0
+   911→   911→    const color = wide ? t.color2 : t.color
+   912→   912→    const baseAlpha = wide ? 0.3 : 0.55
+   913→   913→    for (let i = 0; i < n - 1; i++) {
+   914→   914→      seg(i, segA)
+   915→   915→      seg(i + 1, segB)
+   916→   916→      const headBias = i / Math.max(1, n - 1)
+   917→   917→      const alpha = baseAlpha * fade * (0.35 + 0.65 * headBias)
+   918→   918→      ctx.fillStyle = rgba(color, alpha)
+   919→   919→      // quad between consecutive blade segments
+   920→   920→      ctx.beginPath()
+   921→   921→      ctx.moveTo(segA[0], segA[1])
+   922→   922→      ctx.lineTo(segA[2], segA[3])
+   923→   923→      ctx.lineTo(segB[2], segB[3])
+   924→   924→      ctx.lineTo(segB[0], segB[1])
+   925→   925→      ctx.closePath()
+   926→   926→      ctx.fill()
+   927→   927→    }
+   928→   928→  }
+   929→   929→
+   930→   930→  // ---- hot inner core: thin near-white strip hugging the blade path ----
+   931→   931→  // (strided every 2nd segment — plasma-line look at half the fill cost)
+   932→   932→  for (let i = 0; i < n - 1; i += 2) {
+   933→   933→    seg(i, segA)
+   934→   934→    seg(Math.min(i + 1, n - 1), segB)
+   935→   935→    const headBias = i / Math.max(1, n - 1)
+   936→   936→    const alpha = 0.5 * fade * (0.3 + 0.7 * headBias)
+   937→   937→    // inset both blade endpoints 45% toward the tip → thin strip near the edge
+   938→   938→    const ax = segA[0] + (segA[2] - segA[0]) * 0.55
+   939→   939→    const ay = segA[1] + (segA[3] - segA[1]) * 0.55
+   940→   940→    const bx = segB[0] + (segB[2] - segB[0]) * 0.55
+   941→   941→    const by = segB[1] + (segB[3] - segB[1]) * 0.55
+   942→   942→    ctx.fillStyle = rgba('#ffffff', alpha)
+   943→   943→    ctx.beginPath()
+   944→   944→    ctx.moveTo(ax, ay)
+   945→   945→    ctx.lineTo(segA[2], segA[3])
+   946→   946→    ctx.lineTo(segB[2], segB[3])
+   947→   947→    ctx.lineTo(bx, by)
+   948→   948→    ctx.closePath()
+   949→   949→    ctx.fill()
+   950→   950→  }
+   951→   951→
+   952→   952→  // ---- layered cutting edges along the tip path ----
+   953→   953→  if (n >= 2) {
+   954→   954→    ctx.beginPath()
+   955→   955→    seg(0, segA)
+   956→   956→    ctx.moveTo(segA[2], segA[3])
+   957→   957→    for (let i = 1; i < n; i++) {
+   958→   958→      seg(i, segA)
+   959→   959→      ctx.lineTo(segA[2], segA[3])
+   960→   960→    }
+   961→   961→    // soft colored edge under a hot white edge → layered "energy blade" look
+   962→   962→    ctx.strokeStyle = rgba(t.color2, 0.34 * fade)
+   963→   963→    ctx.lineWidth = 3.2 * t.width
+   964→   964→    ctx.stroke()
+   965→   965→    ctx.strokeStyle = rgba('#ffffff', 0.55 * fade)
+   966→   966→    ctx.lineWidth = 1.5 * t.width
+   967→   967→    ctx.stroke()
+   968→   968→  }
+   969→   969→
+   970→   970→  // ---- tip glint + motion-blur streaks (only while the swing is live) ----
+   971→   971→  if (t.emitting && n >= 3) {
+   972→   972→    seg(n - 1, segA)
+   973→   973→    seg(n - 2, segB)
+   974→   974→    const dx = segA[2] - segB[2]
+   975→   975→    const dy = segA[3] - segB[3]
+   976→   976→    const spd = Math.sqrt(dx * dx + dy * dy)
+   977→   977→    if (spd > 3) {
+   978→   978→      const ix = 1 / spd
+   979→   979→      const nx = -dy * ix // perpendicular
+   980→   980→      const ny = dx * ix
+   981→   981→      const glint = Math.min(1, spd / 26) * fade
+   982→   982→      // 4-point star flare at the newest tip
+   983→   983→      const gx = segA[2]
+   984→   984→      const gy = segA[3]
+   985→   985→      const g1 = 4 + t.width * 2.4
+   986→   986→      const g2 = g1 * 0.42
+   987→   987→      ctx.strokeStyle = rgba('#ffffff', 0.75 * glint)
+   988→   988→      ctx.lineWidth = 1.1
+   989→   989→      ctx.beginPath()
+   990→   990→      ctx.moveTo(gx - g1, gy)
+   991→   991→      ctx.lineTo(gx + g1, gy)
+   992→   992→      ctx.moveTo(gx, gy - g1)
+   993→   993→      ctx.lineTo(gx, gy + g1)
+   994→   994→      ctx.moveTo(gx - g2 * nx, gy - g2 * ny)
+   995→   995→      ctx.lineTo(gx + g2 * nx, gy + g2 * ny)
+   996→   996→      ctx.stroke()
+   997→   997→      ctx.fillStyle = rgba(t.color, 0.9 * glint)
+   998→   998→      ctx.beginPath()
+   999→   999→      ctx.arc(gx, gy, 1.4 + t.width * 0.7, 0, TAU)
+  1000→  1000→      ctx.fill()
+  1001→  1001→      // two faint speed streaks trailing behind the tip
+  1002→  1002→      ctx.strokeStyle = rgba(t.color2, 0.3 * glint)
+  1003→  1003→      ctx.lineWidth = 1
+  1004→  1004→      const off = 2.6 + t.width
+  1005→  1005→      ctx.beginPath()
+  1006→  1006→      ctx.moveTo(gx - nx * off, gy - ny * off)
+  1007→  1007→      ctx.lineTo(gx - dx * 2.4 - nx * off, gy - dy * 2.4 - ny * off)
+  1008→  1008→      ctx.moveTo(gx + nx * off, gy + ny * off)
+  1009→  1009→      ctx.lineTo(gx - dx * 2.4 + nx * off, gy - dy * 2.4 + ny * off)
+  1010→  1010→      ctx.stroke()
+  1011→  1011→    }
+  1012→  1012→  }
+  1013→  1013→}
+  1014→  1014→
+  1015→  1015→function drawCrack(ctx: CanvasRenderingContext2D, c: Crack): void {
+  1016→  1016→  if (c.pts.length < 4) return
+  1017→  1017→  ctx.beginPath()
+  1018→  1018→  ctx.moveTo(c.x + c.pts[0], c.y + c.pts[1])
+  1019→  1019→  for (let i = 2; i < c.pts.length; i += 2) {
+  1020→  1020→    ctx.lineTo(c.x + c.pts[i], c.y + c.pts[i + 1])
+  1021→  1021→  }
+  1022→  1022→  ctx.stroke()
+  1023→  1023→}
+  1024→  1024→

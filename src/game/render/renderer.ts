@@ -96,7 +96,13 @@ export class Renderer {
     // projectiles
     projectiles.draw(ctx, time)
 
-    // additive FX (trails, particles, rings, afterimages)
+    // SHADOW SILHOUETTES — dash afterimages as dark figures with backlit
+    // rims (source-over: they genuinely darken like cast shadows), between
+    // the entities and the additive FX so the player runs ahead of their
+    // own shadow trail
+    fx.drawSilhouettes(ctx)
+
+    // additive FX (trails, HDR motion lines, particles, rings, ghosts)
     fx.drawAdditive(ctx, time)
 
     // MANGA IMPACT FRAMES — black spikes punch through the glow layer
