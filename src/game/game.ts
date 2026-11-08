@@ -279,6 +279,7 @@ export class Game {
     this.settings = { ...s }
     this.fx.setQuality(s.quality)
     this.fx.setGore(s.gore)
+    this.renderer.setQuality(s.quality) // grain cadence follows the tier
     this.cam.setShakeEnabled(s.shake, s.shakeIntensity)
     this.audio.setSfxVolume(s.sfxVolume)
     this.audio.setMusicVolume(s.musicVolume)

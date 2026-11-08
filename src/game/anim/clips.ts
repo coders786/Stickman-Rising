@@ -441,40 +441,221 @@ export const LAND_CLIP: Clip = makeClip('land', [
   }, 'outCubic'),
 ])
 
-/* ------------------------------- DASH ------------------------------- */
+/* ------------------------------- DASH -------------------------------- */
 
-export const DASH_CLIP: Clip = makeClip('dash', [
-  keyframe(0, {
-    rootRot: 0.5, rootY: 3, spine: 0.1, head: -0.38,
-    hipR: 0.9, kneeR: -1.1, footR: 0.15,
-    hipL: -0.85, kneeL: -0.65, footL: 0.2,
-    shR: 0.3, elR: -0.5, wrR: 1.5,
-    shL: 0.75, elL: -0.55,
-  }, 'outCubic'),
-  keyframe(0.18, {
-    rootRot: 0.62, rootY: 4, spine: 0.12, head: -0.44,
-    hipR: 1.05, kneeR: -0.9, footR: 0.1,
-    hipL: -0.95, kneeL: -0.8, footL: 0.25,
-    shR: 0.25, elR: -0.45, wrR: 1.55,
-    shL: 0.85, elL: -0.5,
+/* THE DASH LIBRARY — six genuinely distinct evasion/closing systems, one
+ * per tactical situation (never one animation played at different speeds):
+ *
+ *   FORWARD  the aggressive lunge: coil → flight extension → settle.
+ *            Pelvis surges over the striding legs, rear heel kicks to the
+ *            butt, katana chambered back through depth (bladeYaw −0.5,
+ *            the MGR Raiden dash carry) — iai-ready for the through-cut.
+ *   FORWARD2 the chained second dash: the MIRRORED stride (other leg
+ *            leads) so dash-spam reads as alternating drives, not a loop.
+ *   BACK     the guarded retreat: weight loads the front foot, chest
+ *            pitches BACK while the head counter-rotates to keep the eyes
+ *            on the threat, sword NEVER leaves the guard plane, the rear
+ *            leg reaches back as the landing strut and brakes the drift.
+ *   UP       the vertical escape: crouch coil → full-extension rise with
+ *            pointed toes, blade sweeping high.
+ *   AIR      the horizontal air scissor: body pitched toward travel,
+ *            legs scissor then tuck, arms balance wide.
+ *   ESCAPE   the surrounded breakaway: a depth-carve — pelvis and chest
+ *            yaw through the transverse plane while the blade sweeps a
+ *            wide clearing arc, carving the body out of the pocket.
+ *
+ * WINDING: locomotion-family carries are up-wound (wrR + 2π where needed)
+ * so every carry-to-carry crossfade sweeps the UP hemisphere — never
+ * through straight-down (the kissaki would dig the floor mid-blend). */
+const DASH_FWD_Q: PoseInput[] = [
+  { // LAUNCH COIL — pelvis drops, rear leg loaded to full extension
+    rootX: 2, rootRot: 0.52, rootY: 5.5, spine: 0.12, head: -0.38,
+    hipR: 0.95, kneeR: -1.15, footR: 0.2,
+    hipL: -1.0, kneeL: -0.4, footL: -0.18,
+    shR: -0.25, elR: -0.5, wrR: 5.45,
+    shL: 0.9, elL: -1.0, wrL: -0.35,
+    pelvisYaw: 0.18, chestYaw: -0.12, armLz: 0.32,
+  },
+  { // FLIGHT — full extension: stride split, pelvis surged, heel-to-butt
+    rootX: 8, rootRot: 0.64, rootY: 4, spine: 0.14, head: -0.46,
+    hipR: 1.2, kneeR: -0.5, footR: 0.26,
+    hipL: -0.55, kneeL: -1.45, footL: 0.28,
+    shR: -0.35, elR: -0.45, wrR: 5.35,
+    shL: 0.55, elL: -0.9, wrL: -0.25,
+    pelvisYaw: 0.1, chestYaw: -0.06,
+    armLz: 0.18, armRz: -0.42, bladeYaw: -0.5,
+  },
+  { // CATCH — front foot reaches far, COG absorbing over the bending leg
+    rootX: 10, rootRot: 0.56, rootY: 5, spine: 0.12, head: -0.42,
+    hipR: 0.75, kneeR: -0.95, footR: 0.16,
+    hipL: -0.85, kneeL: -0.75, footL: 0.1,
+    shR: -0.1, elR: -0.5, wrR: 5.5,
+    shL: 0.5, elL: -0.85, wrL: -0.3,
+    pelvisYaw: 0.08, chestYaw: -0.05, armRz: -0.28, bladeYaw: -0.34,
+  },
+  { // SETTLE — square toward the guard, sword rising to chūdan
+    rootX: 6, rootRot: 0.32, rootY: 3.4, spine: 0.08, head: -0.2,
+    hipR: 0.45, kneeR: -0.65, footR: 0.14,
+    hipL: -0.4, kneeL: -0.55, footL: 0.12,
+    shR: 0.5, elR: -0.45, wrR: 5.7,
+    shL: 0.5, elL: -0.8, wrL: -0.3,
+    armRz: -0.14, bladeYaw: -0.18,
+  },
+]
+
+export const DASH_FWD_CLIP: Clip = makeClip('dashFwd', [
+  keyframe(0, DASH_FWD_Q[0], 'outCubic'),
+  keyframe(0.05, DASH_FWD_Q[1], 'outQuad'),
+  keyframe(0.12, DASH_FWD_Q[2], 'inOutCubic'),
+  keyframe(0.22, DASH_FWD_Q[3], 'inOutCubic'),
+])
+
+/** chained second dash — the MIRRORED stride (left leg leads): dash-spam
+ * reads as alternating drives. Sword arm keeps the same carry. */
+export const DASH_FWD2_CLIP: Clip = makeClip('dashFwd2', [
+  keyframe(0, mirrorLegs(DASH_FWD_Q[0]), 'outCubic'),
+  keyframe(0.05, mirrorLegs(DASH_FWD_Q[1]), 'outQuad'),
+  keyframe(0.12, mirrorLegs(DASH_FWD_Q[2]), 'inOutCubic'),
+  keyframe(0.22, mirrorLegs(DASH_FWD_Q[3]), 'inOutCubic'),
+])
+
+const DASH_BACK_Q: PoseInput[] = [
+  { // PUSH-OFF — weight loads the FRONT foot, chest opens BACK
+    rootX: -2, rootRot: -0.3, rootY: 4.5, spine: -0.06, head: 0.2,
+    hipR: 0.5, kneeR: -1.2, footR: 0.22,
+    hipL: -0.6, kneeL: -0.45, footL: 0.1,
+    shR: 0.95, elR: -0.5, wrR: 1.2,  // guard NEVER leaves the threat
+    shL: 0.8, elL: -0.9, wrL: -0.35,
+    pelvisYaw: -0.12, chestYaw: 0.1,
+  },
+  { // DRIFT — body rides back flat, rear leg reaches as landing strut
+    rootX: -5, rootRot: -0.2, rootY: 2.6, spine: -0.04, head: 0.14,
+    hipR: 0.3, kneeR: -1.35, footR: 0.18,
+    hipL: -0.75, kneeL: -0.55, footL: 0.24,
+    shR: 0.9, elR: -0.5, wrR: 1.15,
+    shL: 0.65, elL: -0.85, wrL: -0.3,
+    pelvisYaw: -0.08, chestYaw: 0.06,
+  },
+  { // BRAKE-CATCH — rear foot plants & loads, COG settles over it
+    rootX: -6, rootRot: -0.06, rootY: 3.6, spine: 0.02, head: -0.02,
+    hipR: 0.15, kneeR: -0.8, footR: 0.14,
+    hipL: -0.45, kneeL: -0.85, footL: 0.16,
+    shR: 0.85, elR: -0.5, wrR: 1.18,
+    shL: 0.55, elL: -0.8, wrL: -0.3,
+  },
+  { // GUARD — re-formed, eyes never left the enemy
+    rootX: -3, rootRot: 0.08, rootY: 2.4, spine: 0.05, head: -0.1,
+    hipR: 0.34, kneeR: -0.6, footR: 0.12,
+    hipL: -0.34, kneeL: -0.52, footL: 0.12,
+    shR: 0.85, elR: -0.5, wrR: 1.15,
+    shL: 0.5, elL: -0.82, wrL: -0.3,
+  },
+]
+
+export const DASH_BACK_CLIP: Clip = makeClip('dashBack', [
+  keyframe(0, DASH_BACK_Q[0], 'outQuad'),
+  keyframe(0.06, DASH_BACK_Q[1], 'inOutCubic'),
+  keyframe(0.13, DASH_BACK_Q[2], 'inOutCubic'),
+  keyframe(0.2, DASH_BACK_Q[3], 'outCubic'),
+])
+
+export const DASH_UP_CLIP: Clip = makeClip('dashUp', [
+  keyframe(0, { // deep crouch coil, blade pulled to the hip
+    rootRot: 0.18, rootY: 7.5, spine: 0.08, head: -0.14,
+    hipR: 0.6, kneeR: -1.5, footR: 0.24,
+    hipL: -0.5, kneeL: -1.45, footL: 0.22,
+    shR: 0.3, elR: -0.6, wrR: 5.3,
+    shL: 0.4, elL: -0.8, wrL: -0.35,
   }, 'outQuad'),
+  keyframe(0.06, { // full extension rising, toes pointed, blade sweeps UP
+    rootRot: 0.1, rootY: -2.5, spine: 0.04, head: -0.18,
+    hipR: -0.15, kneeR: -0.25, footR: 0.34,
+    hipL: 0.12, kneeL: -0.2, footL: 0.32,
+    shR: 1.9, elR: -0.25, wrR: 0.85,
+    shL: 1.2, elL: -0.6, wrL: -0.2,
+  }, 'outCubic'),
+  keyframe(0.13, { // apex — legs begin to fold, guard rising
+    rootRot: 0.12, rootY: -1.5, spine: 0.05, head: -0.14,
+    hipR: -0.1, kneeR: -0.6, footR: 0.22,
+    hipL: 0.15, kneeL: -0.55, footL: 0.2,
+    shR: 1.5, elR: -0.4, wrR: 1.05,
+    shL: 0.8, elL: -0.7, wrL: -0.25,
+  }, 'inOutCubic'),
+  keyframe(0.2, {
+    rootRot: 0.12, rootY: -1, spine: 0.05, head: -0.12,
+    hipR: -0.15, kneeR: -0.7, footR: 0.18,
+    hipL: 0.2, kneeL: -0.6, footL: 0.16,
+    shR: 1.0, elR: -0.5, wrR: 1.2,
+    shL: 0.5, elL: -0.8, wrL: -0.3,
+  }, 'inOutCubic'),
 ])
 
 export const DASH_AIR_CLIP: Clip = makeClip('dashAir', [
-  keyframe(0, {
-    rootRot: 0.45, rootY: 0, spine: 0.1, head: -0.35,
-    hipR: 0.9, kneeR: -1.6, footR: -0.1,
-    hipL: 0.7, kneeL: -1.5, footL: 0.1,
-    shR: 0.4, elR: -0.4, wrR: 1.4,
-    shL: 0.6, elL: -0.5,
+  keyframe(0, { // tuck — knees up, torso toward travel
+    rootRot: 0.48, rootY: 0.5, spine: 0.12, head: -0.36,
+    hipR: 0.9, kneeR: -1.55, footR: -0.05,
+    hipL: 0.75, kneeL: -1.5, footL: 0.12,
+    shR: 0.35, elR: -0.4, wrR: 1.4,
+    shL: 0.55, elL: -0.5, wrL: -0.3,
   }, 'outCubic'),
-  keyframe(0.2, {
-    rootRot: 0.55, rootY: 1, spine: 0.12, head: -0.4,
-    hipR: 1.0, kneeR: -1.5, footR: -0.1,
-    hipL: 0.8, kneeL: -1.4, footL: 0.1,
-    shR: 0.35, elR: -0.35, wrR: 1.45,
-    shL: 0.7, elL: -0.45,
+  keyframe(0.08, { // scissor — front knee punches, rear trails
+    rootRot: 0.56, rootY: 1, spine: 0.13, head: -0.4,
+    hipR: 1.0, kneeR: -0.9, footR: 0.18,
+    hipL: -0.9, kneeL: -0.75, footL: 0.24,
+    shR: 0.3, elR: -0.4, wrR: 5.4,
+    shL: 0.7, elL: -0.5, wrL: -0.25,
+    armRz: -0.35, bladeYaw: -0.4,
   }, 'outQuad'),
+  keyframe(0.2, { // settle tuck toward guard
+    rootRot: 0.3, rootY: 0, spine: 0.08, head: -0.22,
+    hipR: 0.35, kneeR: -1.2, footR: 0.1,
+    hipL: 0.3, kneeL: -1.1, footL: 0.12,
+    shR: 0.6, elR: -0.5, wrR: 5.6,
+    shL: 0.5, elL: -0.6, wrL: -0.3,
+    armRz: -0.18, bladeYaw: -0.2,
+  }, 'inOutCubic'),
+])
+
+const DASH_ESC_Q: PoseInput[] = [
+  { // COIL LOW in the pocket, pelvis already winding
+    rootX: -1, rootRot: 0.2, rootY: 6.5, spine: 0.1, head: -0.16,
+    hipR: 0.55, kneeR: -1.4, footR: 0.2,
+    hipL: -0.45, kneeL: -1.35, footL: 0.18,
+    shR: 0.6, elR: -0.55, wrR: 5.4,
+    shL: 0.7, elL: -0.9, wrL: -0.35,
+    pelvisYaw: 0.3, chestYaw: -0.2,
+  },
+  { // THE CARVE — body yaws through depth, blade sweeps the clearing arc
+    rootX: -4, rootRot: -0.12, rootY: 4.2, spine: -0.02, head: 0.1,
+    hipR: 0.2, kneeR: -1.1, footR: 0.18,
+    hipL: -0.55, kneeL: -0.9, footL: 0.16,
+    shR: 0.8, elR: -0.35, wrR: 0.6,
+    shL: 1.1, elL: -0.7, wrL: -0.2,
+    pelvisYaw: 1.05, chestYaw: -0.75,
+    hipRz: -0.25, armRz: 0.3, bladeYaw: -0.6,
+  },
+  { // UNWIND — guard re-forming as the body exits the pocket
+    rootX: -5, rootRot: -0.02, rootY: 3.8, spine: 0.03, head: -0.06,
+    hipR: 0.25, kneeR: -0.85, footR: 0.15,
+    hipL: -0.5, kneeL: -0.8, footL: 0.15,
+    shR: 0.85, elR: -0.5, wrR: 1.1,
+    shL: 0.6, elL: -0.8, wrL: -0.28,
+    pelvisYaw: 0.4, chestYaw: -0.25,
+  },
+  { // GUARD — out, square, blade live
+    rootX: -2, rootRot: 0.08, rootY: 2.4, spine: 0.05, head: -0.1,
+    hipR: 0.34, kneeR: -0.6, footR: 0.12,
+    hipL: -0.34, kneeL: -0.52, footL: 0.12,
+    shR: 0.85, elR: -0.5, wrR: 1.15,
+    shL: 0.5, elL: -0.82, wrL: -0.3,
+  },
+]
+
+export const DASH_ESCAPE_CLIP: Clip = makeClip('dashEscape', [
+  keyframe(0, DASH_ESC_Q[0], 'outQuad'),
+  keyframe(0.08, DASH_ESC_Q[1], 'inOutCubic'),
+  keyframe(0.15, DASH_ESC_Q[2], 'inOutCubic'),
+  keyframe(0.24, DASH_ESC_Q[3], 'outCubic'),
 ])
 
 /* ------------------------------- PARRY / HURT / CHARGE -------------- */

@@ -70,8 +70,9 @@ export class Inspect {
     const lines = [
       `INSPECT: ${this.mode}${this.showBones ? ' +bones' : ''}`,
       `state=${p.state}  loco=${p.loco}  locoT=${Number(priv.locoT ?? 0).toFixed(2)}s`,
+      `dash=${p.dashVariant}${p.dashHandoff ? ' (handoff)' : ''}  cd=${Number(priv.dashCd ?? 0).toFixed(2)}  rec=${Number(priv.dashRecharge ?? 0).toFixed(2)}`,
       `vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(0)}  grounded=${p.grounded}  face=${p.face}`,
-      `enemyW=${p.enemyNearW.toFixed(2)}  threat=${p.hasThreat ? 'yes' : 'no'}`,
+      `enemyW=${p.enemyNearW.toFixed(2)}  threat=${p.hasThreat ? 'yes' : 'no'}  surrounded=${Boolean(priv.surrounded)}`,
       `postAtk=${Number(priv.postAttackT ?? 0).toFixed(2)}  turn=${Number(priv.turnT ?? 0).toFixed(2)}`,
       `footLock=${Number(priv.footLock ?? 0).toFixed(1)}  hipY=${p.hipY.toFixed(1)}`,
     ]
@@ -396,7 +397,8 @@ export async function runQA(game: Game): Promise<void> {
     const { Enemy } = await import('../entities/enemy')
     const foe = new Enemy('grunt', p.x + 240, 1)
     foe.spawning = false
-    foe.stunT = 999 // frozen: formation awareness without interference
+    foe.state = 'stun' // stun STATE + huge timer = truly frozen (stunT alone
+    foe.stunT = 999   // does nothing from 'enter' — the foe chased & hit us)
     game.enemies.push(foe)
     input.setVirtualAxis(0.5, 0)
     await sleep(800)
@@ -420,6 +422,114 @@ export async function runQA(game: Game): Promise<void> {
       pass: backMode === 'backpedal' && backFace === 1,
       detail: `loco=${backMode} face=${backFace}`,
     })
+
+    // ---- 5b. THE DASH SYSTEM (six situational variants) ----
+    // (a) forward dash: variant + displacement + momentum handoff
+    {
+      const x0 = p.x
+      input.setVirtualAxis(1, 0) // HOLD the direction → handoff at exit
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const midVariant = p.dashVariant
+      const midState = p.state
+      input.setVirtual('dash', false)
+      // poll for the exit frame — sample the handed-off velocity exactly at
+      // the dash→move transition (before locomotion friction bleeds it)
+      let tailVx = 0
+      for (let i = 0; i < 30; i++) {
+        await sleep(16)
+        if (p.state === 'move') { tailVx = Math.abs(p.vx); break }
+      }
+      await sleep(250) // dash (0.16s) + exit bleed
+      const dx = p.x - x0
+      input.setVirtualAxis(0, 0)
+      await sleep(400)
+      checks.push({
+        name: 'dash: forward variant lunges',
+        pass: midVariant === 'forward' && midState === 'dash' && dx > 90,
+        detail: `variant=${midVariant} state=${midState} dx=${dx.toFixed(0)}`,
+      })
+      checks.push({
+        name: 'dash: momentum handoff (no dead stop)',
+        pass: tailVx > 300 && p.dashHandoff,
+        detail: `vx@exit=${tailVx.toFixed(0)} handoff=${p.dashHandoff}`,
+      })
+    }
+    // (b) backdash: variant + FACE HOLDS toward the threat (guard retreat)
+    {
+      const x0 = p.x
+      const faceBefore = p.face
+      input.setVirtualAxis(-1, 0)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const backVariant = p.dashVariant
+      input.setVirtual('dash', false)
+      await sleep(250)
+      const dx = p.x - x0
+      const faceAfter = p.face
+      input.setVirtualAxis(0, 0)
+      await sleep(400)
+      checks.push({
+        name: 'dash: backdash evades with guard held',
+        pass: backVariant === 'back' && dx < -60 && faceAfter === faceBefore,
+        detail: `variant=${backVariant} dx=${dx.toFixed(0)} face ${faceBefore}→${faceAfter}`,
+      })
+    }
+    // (c) chained second dash mirrors the stride + recharge gates spam
+    {
+      input.setVirtualAxis(1, 0)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      input.setVirtual('dash', false)
+      await sleep(280) // first dash ends (consec → 1)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const chainVariant = p.dashVariant // second dash → mirrored stride
+      input.setVirtual('dash', false)
+      await sleep(150)
+      // second dash fired consec=2 → recharge window must be active
+      const privP = p as unknown as { dashRecharge: number }
+      const recharging = privP.dashRecharge > 0
+      input.setVirtualAxis(0, 0)
+      await sleep(500)
+      checks.push({
+        name: 'dash: chain mirrors stride, recharge gates',
+        pass: chainVariant === 'forward2' && recharging,
+        detail: `variant=${chainVariant} recharge=${recharging}`,
+      })
+    }
+    // (d) escape variant: surrounded pocket converts the retreat into the carve
+    {
+      const { Enemy: EnemyCtor } = await import('../entities/enemy')
+      // fresh SYMMETRIC formation around the CURRENT position (the earlier
+      // tests moved the player — stale foe placement breaks the pocket read)
+      game.enemies.length = 0
+      const foeA = new EnemyCtor('grunt', p.x + 220, 1)
+      const foeB = new EnemyCtor('grunt', p.x - 220, 1)
+      for (const f of [foeA, foeB]) { f.spawning = false; f.state = 'stun'; f.stunT = 999 }
+      game.enemies.push(foeA, foeB)
+      await sleep(500) // scanEnemies hysteresis: surrounded flag settles
+      input.setVirtualAxis(-1, 0)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const escVariant = p.dashVariant
+      input.setVirtual('dash', false)
+      input.setVirtualAxis(0, 0)
+      await sleep(350)
+      // restore a fresh target in strike range for section 6
+      game.enemies.length = 0
+      const foe6 = new EnemyCtor('grunt', p.x + 150, 1)
+      foe6.spawning = false
+      foe6.state = 'stun'
+      foe6.stunT = 999
+      game.enemies.push(foe6)
+      await sleep(300)
+      checks.push({
+        name: 'dash: surrounded retreat becomes escape carve',
+        pass: escVariant === 'escape',
+        detail: `variant=${escVariant}`,
+      })
+    }
 
     // ---- 6. combat attacks land (the golden path) ----
     const comboBefore = (game as unknown as { combo?: { hits: number } }).combo?.hits ?? 0

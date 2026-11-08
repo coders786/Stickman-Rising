@@ -68,11 +68,29 @@ export class HUD {
   private bannerShake = 0
   private lowHpPulse = 0
 
+  /* VITALS CHROME CACHE: the static bar furniture (skewed panel backs,
+  * segment ticks, borders, EN label, sword chip frame) is pre-rendered
+  * once into an offscreen plate and blitted per frame. The live version
+  * redrew ~15 skewed fillRects + 10 strokes + a fresh gradient EVERY
+  * frame — 2-4.6ms/frame on software raster (second-largest cost after
+  * the grain). Only the dynamic fills + text remain live. */
+  private vitalsPlate: HTMLCanvasElement | null = null
+  private vitalsKey = ''
+  private hpGrad: CanvasGradient | null = null
+  private hpGradW = 0
+  /* low-HP red vignette: baked plate (see drawLowHpVignette) */
+  private lowHpPlate: HTMLCanvasElement | null = null
+  private lowHpW = 0
+  private lowHpH = 0
+
   reset(): void {
     this.hpDisplay = 100
     this.comboPop = 0
     this.rankFlash = 0
     this.lastHits = 0
+    this.vitalsPlate = null
+    this.vitalsKey = ''
+    this.lowHpPlate = null
   }
 
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState, dt: number): void {
@@ -114,72 +132,98 @@ export class HUD {
     const y = 18
     const hpW = Math.min(300, w * 0.34)
 
-    // HP
     const hpFrac = clamp01(s.hp / s.maxHp)
     const dispFrac = clamp01(this.hpDisplay / s.maxHp)
+    const sy = y + 24 + 15 + (s.ultReady ? 34 : 18)
+
+    // ---- static chrome: one cached blit (rebuilds on layout change) ----
+    const key = `${Math.round(w)}|${Math.round(hpW)}|${s.ultReady ? 1 : 0}`
+    if (!this.vitalsPlate || this.vitalsKey !== key) {
+      const ey = y + 24
+      const uy = ey + 15
+      const enW = hpW * 0.72
+      const ultW = hpW * 0.5
+      const c = document.createElement('canvas')
+      // plate covers the full left panel down to the sword chip + ability line
+      c.width = Math.max(2, Math.ceil(Math.min(w, x + 210)))
+      c.height = Math.max(2, Math.ceil(sy + 40))
+      const g2 = c.getContext('2d')
+      if (g2) {
+        // HP bar back + ticks + border (skewed — the parallelogram style)
+        g2.save()
+        g2.transform(1, 0, -0.22, 1, 12, 0)
+        g2.fillStyle = 'rgba(6,9,14,0.85)'
+        g2.fillRect(x, y, hpW, 16)
+        g2.strokeStyle = 'rgba(4,6,10,0.7)'
+        g2.lineWidth = 2
+        for (let i = 1; i < 10; i++) {
+          const tx = x + (hpW / 10) * i
+          g2.beginPath()
+          g2.moveTo(tx, y)
+          g2.lineTo(tx, y + 16)
+          g2.stroke()
+        }
+        g2.strokeStyle = 'rgba(230,240,245,0.35)'
+        g2.lineWidth = 1
+        g2.strokeRect(x, y, hpW, 16)
+        // Energy back + border + label
+        g2.fillStyle = 'rgba(6,9,14,0.85)'
+        g2.fillRect(x, ey, enW, 9)
+        g2.strokeStyle = 'rgba(230,240,245,0.25)'
+        g2.lineWidth = 1
+        g2.strokeRect(x, ey, enW, 9)
+        // Ult back
+        g2.fillStyle = 'rgba(6,9,14,0.85)'
+        g2.fillRect(x, uy, ultW, 6)
+        g2.restore()
+        // EN label
+        g2.fillStyle = 'rgba(160,200,215,0.8)'
+        g2.font = `9px ${MONO}`
+        g2.fillText('EN', x + 4, ey + 7)
+        // sword chip frame
+        g2.fillStyle = 'rgba(6,9,14,0.8)'
+        g2.fillRect(x, sy, 172, 22)
+      }
+      this.vitalsPlate = c
+      this.vitalsKey = key
+    }
+    if (this.vitalsPlate) ctx.drawImage(this.vitalsPlate, 0, 0)
+
+    // ---- dynamic fills (2 rects each, straight) ----
     ctx.save()
     ctx.transform(1, 0, -0.22, 1, 12, 0) // skew
-    // back
-    ctx.fillStyle = 'rgba(6,9,14,0.85)'
-    ctx.fillRect(x, y, hpW, 16)
-    // trailing damage (white)
+    // trailing damage (white ghost)
     ctx.fillStyle = 'rgba(255,235,235,0.55)'
     ctx.fillRect(x, y, hpW * dispFrac, 16)
-    // hp gradient
-    const g = ctx.createLinearGradient(x, y, x + hpW, y)
-    g.addColorStop(0, '#ff2a4a')
-    g.addColorStop(1, '#ff6a5e')
-    ctx.fillStyle = g
-    ctx.fillRect(x, y, hpW * hpFrac, 16)
-    // segment ticks
-    ctx.strokeStyle = 'rgba(4,6,10,0.7)'
-    ctx.lineWidth = 2
-    for (let i = 1; i < 10; i++) {
-      const tx = x + (hpW / 10) * i
-      ctx.beginPath()
-      ctx.moveTo(tx, y)
-      ctx.lineTo(tx, y + 16)
-      ctx.stroke()
+    // hp gradient fill (gradient object cached per width)
+    if (!this.hpGrad || this.hpGradW !== hpW) {
+      const g = ctx.createLinearGradient(x, y, x + hpW, y)
+      g.addColorStop(0, '#ff2a4a')
+      g.addColorStop(1, '#ff6a5e')
+      this.hpGrad = g
+      this.hpGradW = hpW
     }
-    ctx.strokeStyle = 'rgba(230,240,245,0.35)'
-    ctx.lineWidth = 1
-    ctx.strokeRect(x, y, hpW, 16)
+    ctx.fillStyle = this.hpGrad
+    ctx.fillRect(x, y, hpW * hpFrac, 16)
+    // energy fill
+    const ey = y + 24
+    const enW = hpW * 0.72
+    const enFrac = clamp01(s.energy / s.maxEnergy)
+    ctx.fillStyle = s.abilityReady ? '#35f2ff' : 'rgba(53,242,255,0.45)'
+    ctx.fillRect(x, ey, enW * enFrac, 9)
+    // ult fill
+    const uy = ey + 15
+    const ultW = hpW * 0.5
+    const ultFrac = clamp01(s.meter / 100)
+    ctx.fillStyle = s.ultReady ? '#ff2d95' : 'rgba(255,45,149,0.5)'
+    ctx.fillRect(x, uy, ultW * ultFrac, 6)
     ctx.restore()
 
+    // ---- live text ----
     ctx.font = `10px ${MONO}`
     ctx.fillStyle = 'rgba(200,215,225,0.85)'
     ctx.textAlign = 'left'
     ctx.fillText(`HP ${Math.ceil(s.hp)}`, x + 8, y + 11)
-
-    // Energy
-    const ey = y + 24
-    const enW = hpW * 0.72
-    const enFrac = clamp01(s.energy / s.maxEnergy)
-    ctx.save()
-    ctx.transform(1, 0, -0.22, 1, 12, 0)
-    ctx.fillStyle = 'rgba(6,9,14,0.85)'
-    ctx.fillRect(x, ey, enW, 9)
-    ctx.fillStyle = s.abilityReady ? '#35f2ff' : 'rgba(53,242,255,0.45)'
-    ctx.fillRect(x, ey, enW * enFrac, 9)
-    ctx.strokeStyle = 'rgba(230,240,245,0.25)'
-    ctx.lineWidth = 1
-    ctx.strokeRect(x, ey, enW, 9)
-    ctx.restore()
-    ctx.fillStyle = 'rgba(160,200,215,0.8)'
-    ctx.font = `9px ${MONO}`
-    ctx.fillText('EN', x + 4, ey + 7)
-
-    // Ult meter
-    const uy = ey + 15
-    const ultW = hpW * 0.5
-    const ultFrac = clamp01(s.meter / 100)
-    ctx.save()
-    ctx.transform(1, 0, -0.22, 1, 12, 0)
-    ctx.fillStyle = 'rgba(6,9,14,0.85)'
-    ctx.fillRect(x, uy, ultW, 6)
-    ctx.fillStyle = s.ultReady ? '#ff2d95' : 'rgba(255,45,149,0.5)'
-    ctx.fillRect(x, uy, ultW * ultFrac, 6)
-    ctx.restore()
 
     if (s.ultReady) {
       const pulse = 0.6 + 0.4 * Math.sin(this.lowHpPulse * 8)
@@ -188,10 +232,7 @@ export class HUD {
       ctx.fillText('BLADE MODE READY  [I]', x + 4, uy + 22)
     }
 
-    // sword chip
-    const sy = uy + (s.ultReady ? 34 : 18)
-    ctx.fillStyle = 'rgba(6,9,14,0.8)'
-    ctx.fillRect(x, sy, 172, 22)
+    // sword chip: color edge + name (chip bg lives on the plate)
     ctx.fillStyle = s.swordColor
     ctx.fillRect(x, sy, 4, 22)
     ctx.fillStyle = 'rgba(235,240,245,0.95)'
@@ -407,11 +448,30 @@ export class HUD {
     const intensity = (0.32 - frac) / 0.32
     const pulse = 0.55 + 0.45 * Math.sin(this.lowHpPulse * 5)
     const a = intensity * pulse * 0.5
-    const g = ctx.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)
-    g.addColorStop(0, 'rgba(200,10,40,0)')
-    g.addColorStop(1, rgba('#c80e28', a))
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, w, h)
+    // baked red-edge plate (rebuilt only on resize) — the live radial
+    // gradient + full-screen fill cost ~10-15ms/frame on software raster,
+    // exactly when the player is hurt and combat is hottest
+    if (!this.lowHpPlate || this.lowHpW !== w || this.lowHpH !== h) {
+      const c = document.createElement('canvas')
+      c.width = Math.max(2, Math.floor(w))
+      c.height = Math.max(2, Math.floor(h))
+      const g = c.getContext('2d')
+      if (g) {
+        const rg = g.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)
+        rg.addColorStop(0, 'rgba(200,10,40,0)')
+        rg.addColorStop(1, 'rgba(200,14,40,1)')
+        g.fillStyle = rg
+        g.fillRect(0, 0, w, h)
+      }
+      this.lowHpPlate = c
+      this.lowHpW = w
+      this.lowHpH = h
+    }
+    if (!this.lowHpPlate) return
+    ctx.save()
+    ctx.globalAlpha = a
+    ctx.drawImage(this.lowHpPlate, 0, 0, w, h)
+    ctx.restore()
   }
 }
 
