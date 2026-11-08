@@ -22,7 +22,10 @@ import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
 import { sampleClip } from '../anim/animator'
 import {
-  WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, BACKPEDAL_CLIP, IDLE_CLIP,
+  WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, COMBAT_IDLE_CLIP,
+  BACKPEDAL_CLIP, IDLE_CLIP, JUMP_CLIP,
+  DASH_LAUNCH_CLIP, DASH_CARRY_CLIP, DASH_HUNT_CLIP, DASH_PIERCE_CLIP,
+  DASH_RETREAT_CLIP, DASH_CARVE_CLIP,
 } from '../anim/clips'
 
 const PSCALE = 2.4 // solo-view zoom
@@ -218,9 +221,17 @@ export class Inspect {
       ['WALK', WALK_CLIP],
       ['RUN', RUN_CLIP],
       ['SPRINT', SPRINT_CLIP],
-      ['COMBAT', COMBAT_STEP_CLIP],
+      ['COMBAT STEP', COMBAT_STEP_CLIP],
+      ['COMBAT-IDLE (rooted guard)', COMBAT_IDLE_CLIP],
       ['BACKPEDAL', BACKPEDAL_CLIP],
       ['IDLE', IDLE_CLIP],
+      ['JUMP', JUMP_CLIP],
+      ['DASH LAUNCH (iai)', DASH_LAUNCH_CLIP],
+      ['DASH CARRY (shunshin)', DASH_CARRY_CLIP],
+      ['DASH HUNT (gap-close)', DASH_HUNT_CLIP],
+      ['DASH PIERCE (lunge)', DASH_PIERCE_CLIP],
+      ['DASH RETREAT (guard)', DASH_RETREAT_CLIP],
+      ['DASH CARVE (breakaway)', DASH_CARVE_CLIP],
     ]
     const dpr = window.devicePixelRatio || 1
     const w = ctx.canvas.width / dpr
@@ -423,9 +434,15 @@ export async function runQA(game: Game): Promise<void> {
       detail: `loco=${backMode} face=${backFace}`,
     })
 
-    // ---- 5b. THE DASH SYSTEM (six situational variants) ----
-    // (a) forward dash: variant + displacement + momentum handoff
+    // ---- 5b. THE CONDITIONED DASH SYSTEM ----
+    // One movement, nine authored animations: the variant must follow the
+    // CONDITIONS at the input instant (momentum, threat geometry, chain).
+    // (a) LAUNCH: stationary + no threat → the iai explosion
     {
+      game.enemies.length = 0
+      p.reset(400)
+      input.setVirtualAxis(0, 0)
+      await sleep(500)
       const x0 = p.x
       input.setVirtualAxis(1, 0) // HOLD the direction → handoff at exit
       input.setVirtual('dash', true)
@@ -440,13 +457,13 @@ export async function runQA(game: Game): Promise<void> {
         await sleep(16)
         if (p.state === 'move') { tailVx = Math.abs(p.vx); break }
       }
-      await sleep(250) // dash (0.16s) + exit bleed
+      await sleep(250) // dash (0.17s) + exit bleed
       const dx = p.x - x0
       input.setVirtualAxis(0, 0)
       await sleep(400)
       checks.push({
-        name: 'dash: forward variant lunges',
-        pass: midVariant === 'forward' && midState === 'dash' && dx > 90,
+        name: 'dash: stationary forward → LAUNCH (iai)',
+        pass: midVariant === 'launch' && midState === 'dash' && dx > 90,
         detail: `variant=${midVariant} state=${midState} dx=${dx.toFixed(0)}`,
       })
       checks.push({
@@ -455,33 +472,102 @@ export async function runQA(game: Game): Promise<void> {
         detail: `vx@exit=${tailVx.toFixed(0)} handoff=${p.dashHandoff}`,
       })
     }
-    // (b) backdash: variant + FACE HOLDS toward the threat (guard retreat)
+    // (b) CARRY: dash initiated from a run → the momentum-matched shunshin
+    // (no re-coil from standing — the run feeds the dash)
     {
-      const x0 = p.x
-      const faceBefore = p.face
-      input.setVirtualAxis(-1, 0)
+      game.enemies.length = 0
+      input.setVirtualAxis(0, 0)
+      await sleep(650) // chain window + recharge fully expired
+      input.setVirtualAxis(1, 0)
+      await sleep(1000) // build to full run speed (350)
+      const runVx = Math.abs(p.vx)
       input.setVirtual('dash', true)
       await sleep(50)
-      const backVariant = p.dashVariant
+      const carryVariant = p.dashVariant
       input.setVirtual('dash', false)
-      await sleep(250)
-      const dx = p.x - x0
-      const faceAfter = p.face
       input.setVirtualAxis(0, 0)
       await sleep(400)
       checks.push({
-        name: 'dash: backdash evades with guard held',
-        pass: backVariant === 'back' && dx < -60 && faceAfter === faceBefore,
-        detail: `variant=${backVariant} dx=${dx.toFixed(0)} face ${faceBefore}→${faceAfter}`,
+        name: 'dash: from a run → CARRY (momentum-matched)',
+        pass: carryVariant === 'carry' && runVx > 300,
+        detail: `variant=${carryVariant} runVx=${runVx.toFixed(0)}`,
       })
     }
-    // (c) chained second dash mirrors the stride + recharge gates spam
+    // (c) HUNT: enemy in the gap-close band ahead (240–640) → the hungry
+    // lunge with locked gaze
     {
+      game.enemies.length = 0
+      input.setVirtualAxis(0, 0)
+      await sleep(500)
+      const { Enemy: EnemyCtor } = await import('../entities/enemy')
+      const foe = new EnemyCtor('grunt', p.x + 320, 1)
+      foe.spawning = false
+      foe.state = 'stun'
+      foe.stunT = 999
+      game.enemies.push(foe)
+      await sleep(400) // scanEnemies settles the proximity read
+      input.setVirtualAxis(1, 0)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const huntVariant = p.dashVariant
+      input.setVirtual('dash', false)
+      await sleep(300)
+      input.setVirtualAxis(0, 0)
+      await sleep(400)
+      checks.push({
+        name: 'dash: enemy at gap-close range → HUNT',
+        pass: huntVariant === 'hunt',
+        detail: `variant=${huntVariant}`,
+      })
+      // (d) PIERCE: the hunt carried us INTO the pocket (<170 ahead) →
+      // the next forward dash pierces THROUGH the body
+      foe.x = p.x + 140
+      await sleep(150)
+      input.setVirtualAxis(1, 0)
+      input.setVirtual('dash', true)
+      await sleep(50)
+      const pierceVariant = p.dashVariant
+      input.setVirtual('dash', false)
+      await sleep(300)
+      input.setVirtualAxis(0, 0)
+      await sleep(400)
+      checks.push({
+        name: 'dash: enemy inside the pocket → PIERCE (pass-through)',
+        pass: pierceVariant === 'pierce',
+        detail: `variant=${pierceVariant}`,
+      })
+      // (e) RETREAT: backdash keeps the guard on the threat — face HOLDS
+      {
+        const x0 = p.x
+        const faceBefore = p.face
+        input.setVirtualAxis(-1, 0)
+        input.setVirtual('dash', true)
+        await sleep(50)
+        const backVariant = p.dashVariant
+        input.setVirtual('dash', false)
+        await sleep(250)
+        const dx = p.x - x0
+        const faceAfter = p.face
+        input.setVirtualAxis(0, 0)
+        await sleep(400)
+        checks.push({
+          name: 'dash: backdash → RETREAT with guard held',
+          pass: backVariant === 'retreat' && dx < -60 && faceAfter === faceBefore,
+          detail: `variant=${backVariant} dx=${dx.toFixed(0)} face ${faceBefore}→${faceAfter}`,
+        })
+      }
+    }
+    // (f) CHAIN: the second dash within the chain window mirrors the
+    // stride + recharge gates the spam
+    {
+      game.enemies.length = 0
+      input.setVirtualAxis(0, 0)
+      await sleep(650)
       input.setVirtualAxis(1, 0)
       input.setVirtual('dash', true)
       await sleep(50)
       input.setVirtual('dash', false)
-      await sleep(280) // first dash ends (consec → 1)
+      await sleep(280) // first dash ends (consec → 1), chain window open
       input.setVirtual('dash', true)
       await sleep(50)
       const chainVariant = p.dashVariant // second dash → mirrored stride
@@ -494,11 +580,12 @@ export async function runQA(game: Game): Promise<void> {
       await sleep(500)
       checks.push({
         name: 'dash: chain mirrors stride, recharge gates',
-        pass: chainVariant === 'forward2' && recharging,
+        pass: chainVariant === 'chain' && recharging,
         detail: `variant=${chainVariant} recharge=${recharging}`,
       })
     }
-    // (d) escape variant: surrounded pocket converts the retreat into the carve
+    // (g) CARVE: surrounded pocket converts the retreat into the
+    // depth-carve breakaway
     {
       const { Enemy: EnemyCtor } = await import('../entities/enemy')
       // fresh SYMMETRIC formation around the CURRENT position (the earlier
@@ -525,9 +612,23 @@ export async function runQA(game: Game): Promise<void> {
       game.enemies.push(foe6)
       await sleep(300)
       checks.push({
-        name: 'dash: surrounded retreat becomes escape carve',
-        pass: escVariant === 'escape',
+        name: 'dash: surrounded retreat becomes CARVE',
+        pass: escVariant === 'carve',
         detail: `variant=${escVariant}`,
+      })
+    }
+    // (h) THE IDLE FIX: standing still with a threat engaged is the ROOTED
+    // combat idle — planted feet, weight shifts; NEVER the stepping shuffle
+    {
+      input.setVirtualAxis(0, 0)
+      await sleep(1100) // settle + dwell hysteresis
+      const idleMode = p.loco
+      const idleClip = (p as unknown as { animator: { getClip(): { name: string } | null } })
+        .animator.getClip()?.name
+      checks.push({
+        name: 'idle: rooted combat guard while stationary near threat',
+        pass: idleMode === 'combatIdle' && idleClip === 'combatIdle',
+        detail: `loco=${idleMode} clip=${idleClip}`,
       })
     }
 

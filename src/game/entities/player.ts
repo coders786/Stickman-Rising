@@ -8,12 +8,14 @@ import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import {
-  BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_STEP_CLIP, DASH_AIR_CLIP,
-  DASH_BACK_CLIP, DASH_ESCAPE_CLIP, DASH_FWD_CLIP, DASH_FWD2_CLIP, DASH_UP_CLIP,
-  FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP,
-  SPRINT_CLIP, WALK_CLIP,
+  BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
+  FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP,
+  PARRY_CLIP, RUN_CLIP, SPRINT_CLIP, WALK_CLIP,
 } from '../anim/clips'
 import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
+import {
+  DashVariant, DashVariantCfg, DASH_SPEED, DASH_VARIANTS, dashEnvelope, evaluateDash,
+} from '../combat/dash'
 import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
 import { Trail } from '../fx/fx'
 import { WorldRef } from '../core/types'
@@ -55,11 +57,13 @@ export type PlayerState =
  * from: speed, direction relative to facing, sprint latch, enemy formation
  * (proximity weight + surrounded), and previous mode (dwell hysteresis). */
 export type LocoMode =
-  | 'idle'        // grounded, slow — guard breathing (or relaxed when safe)
+  | 'idle'        // grounded, slow, safe — relaxed breathing carry
+  | 'combatIdle'  // grounded, slow, THREAT ENGAGED — rooted live guard
+                 // (planted feet, weight shifts; NEVER a stepping loop)
   | 'walk'        // Condition A: relaxed open-space carry
   | 'run'         // conventional run
   | 'sprint'      // Condition C: explosive double-tap dash-run
-  | 'combat'      // Condition B: enemy near — low quick shuffle, live guard
+  | 'combat'      // Condition B (moving): low quick shuffle, live guard
   | 'backpedal'   // retreating while facing the threat — guard up
   | 'brake'       // one-shot hard stop (input reversal at speed)
 
@@ -124,28 +128,13 @@ const GRAV_APEX = 2.2
 const GRAV_RISE = 1.35
 const GRAV_FALL = 3.5
 const TERMINAL_VY = 1650
-const JUMP_V = -700
-const AIR_JUMP_V = -620
-const DASH_SPEED = 980
-const DASH_TIME = 0.15
+/** JUMP HEIGHT: -840 with the shaped gravity clears ~125px ≈ 1.9× hip
+ * height — a REAL athletic jump (the old -700 cleared ~1.2×, a hop). The
+ * double jump gets its own slightly softer figure. */
+const JUMP_V = -840
+const AIR_JUMP_V = -700
 const DASH_CD = 0.1
 const DASH_RECHARGE = 0.32
-
-/** Dash variants — one genuinely distinct evasion/closing system per
- * tactical situation (never one animation at different speeds). Selected
- * from input direction vs facing + airborne + enemy formation (surrounded
- * / proximity / gap-closing distance). */
-export type DashVariant = 'forward' | 'forward2' | 'back' | 'up' | 'air' | 'escape'
-
-/** per-variant tuning: duration (s), speed multiplier, i-frame seconds */
-const DASH_VARIANT_CFG: Record<DashVariant, { dur: number; spd: number; iframes: number }> = {
-  forward: { dur: 0.16, spd: 1, iframes: 0.12 },
-  forward2: { dur: 0.15, spd: 1.06, iframes: 0.12 },
-  back: { dur: 0.14, spd: 0.92, iframes: 0.12 },
-  up: { dur: 0.17, spd: 0.8, iframes: 0.13 },
-  air: { dur: 0.15, spd: 1, iframes: 0.1 },
-  escape: { dur: 0.18, spd: 0.96, iframes: 0.16 },
-}
 
 interface ActionState {
   def: AttackDef
@@ -247,8 +236,10 @@ export class Player {
   private landSpring = 0
 
   private dashT = 0
-  private dashDur = DASH_TIME
+  private dashDur = DASH_VARIANTS.launch.dur
   private dashSpd = DASH_SPEED
+  /** active variant config (clip + tuning) — set on startDash */
+  private dashCfg: DashVariantCfg = DASH_VARIANTS.launch
   private dashCd = 0
   private dashConsec = 0
   /** chain window: dashes within this span of the last one link into a
@@ -260,7 +251,7 @@ export class Player {
   private dashDx = 1
   private dashDy = 0
   /** current dash variant — public for the inspection lab + QA harness */
-  dashVariant: DashVariant = 'forward'
+  dashVariant: DashVariant = 'launch'
   /** true while the exit of this dash handed momentum to locomotion (QA) */
   dashHandoff = false
   private airDashUsed = false
@@ -406,10 +397,11 @@ export class Player {
     this.gaitYawAmp = 0
     this.carryYaw = 0
     this.carryArmZ = 0
-    this.dashVariant = 'forward'
+    this.dashVariant = 'launch'
+    this.dashCfg = DASH_VARIANTS.launch
     this.dashHandoff = false
     this.dashT = 0
-    this.dashDur = DASH_TIME
+    this.dashDur = DASH_VARIANTS.launch.dur
     this.dashSpd = DASH_SPEED
     this.dashConsec = 0
     this.dashChainT = 0
@@ -667,14 +659,20 @@ export class Player {
 
   /** Select the locomotion mode with dwell hysteresis (no flicker): a mode
    * must be held ≥0.1s before another can take over (except brake/turn
-   * interrupts). Priority: brake > sprint latch > combat (enemy near) >
-   * backpedal (retreating vs facing) > run > walk > idle. */
+   * interrupts). Priority: brake > sprint latch > combat (moving, enemy
+   * near) > backpedal (retreating vs facing) > run > walk > combatIdle
+   * (threat engaged, standing) > idle (safe, standing).
+   *
+   * THE IDLE FIX: standing still with a threat engaged is combatIdle — a
+   * ROOTED guard (planted feet, weight shifts). The old selector returned
+   * the combat SHUFFLE here, so the player visibly marched in place while
+   * "idle". Stepping only happens when actually moving. */
   private pickLoco(speed: number, ax: number): LocoMode {
     const fwd = this.vx * this.face
     if (this.braking) return 'brake'
     if (!this.grounded) return this.loco // airborne handled by clips, not modes
     if (speed < 36) {
-      return this.enemyNearW > 0.5 || this.surrounded ? 'combat' : 'idle'
+      return this.enemyNearW > 0.5 || this.surrounded ? 'combatIdle' : 'idle'
     }
     // retreating while a threat is engaged → guarded backpedal
     if (fwd < -60 && this.enemyNearW > 0.4) return 'backpedal'
@@ -807,6 +805,9 @@ export class Player {
           case 'combat':
             this.animator.play(COMBAT_STEP_CLIP, { blend: 0.16, speed: clamp(speed / 260, 0.7, 1.7) })
             break
+          case 'combatIdle':
+            this.animator.play(COMBAT_IDLE_CLIP, { blend: 0.18 })
+            break
           case 'backpedal':
             this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: clamp(speed / 240, 0.7, 1.6) })
             break
@@ -898,7 +899,9 @@ export class Player {
   }
 
   /* ------------------------------------------------------------------ */
-  /* dash — six situational variants (see DASH_VARIANT_CFG + clips.ts)   */
+  /* dash — the CONDITIONED ACTIVATION SYSTEM                            */
+  /* (variant resolution + tuning live in combat/dash.ts; clips.ts       */
+  /*  authors the nine reference silhouettes)                            */
   /* ------------------------------------------------------------------ */
 
   private canDash(): boolean {
@@ -907,24 +910,31 @@ export class Player {
     return true
   }
 
-  /** Variant selection: input direction vs facing, airborne, and the enemy
-   * formation. Backdash keeps the body facing the threat (guard retreat);
-   * a neutral/up dash while SURROUNDED becomes the depth-carve breakaway;
-   * the second chained forward dash mirrors the stride so spam reads as
-   * alternating drives. */
-  private pickDashVariant(dx: number, dy: number): DashVariant {
-    if (!this.grounded) return 'air'
-    const horiz = Math.abs(dx)
-    const dot = dx * this.face // −1 = input directly opposes facing
-    const pocket = this.surrounded && this.enemyNearW > 0.5
-    // vertical escape: near-zero horizontal intent with strong UP input
-    if (horiz < 0.4 && dy < -0.5) return pocket ? 'escape' : 'up'
-    // backdash family: input opposes the facing
-    if (dot < -0.35) return pocket ? 'escape' : 'back'
-    // neutral dash inside the pocket → carve out
-    if (pocket && horiz < 0.4) return 'escape'
-    // forward family — the chained second dash mirrors the lead leg
-    return this.dashConsec >= 1 ? 'forward2' : 'forward'
+  /** CONDITIONED VARIANT RESOLUTION: snapshot the full tactical context at
+   * the input instant — airborne, input-vs-facing, momentum, threat
+   * geometry (nearest live enemy AHEAD of the dash vector: pocket <170 /
+   * hunt band 240–640), surrounded flag, chain count — and hand it to the
+   * pure evaluator (combat/dash.ts). Different conditions activate
+   * genuinely different animations of the same movement. */
+  private pickDashVariant(w: WorldRef, dx: number, dy: number): DashVariant {
+    const dirX = Math.sign(dx || this.face)
+    let aheadD = Infinity
+    for (const e of w.enemies) {
+      if (e.dead || e.spawning) continue
+      const d = Math.abs(e.x - this.x)
+      if (Math.sign(e.x - this.x) === dirX && d < aheadD) aheadD = d
+    }
+    const hasAhead = aheadD !== Infinity
+    return evaluateDash({
+      grounded: this.grounded,
+      dx, dy, face: this.face,
+      speed: Math.abs(this.vx),
+      pocketTarget: hasAhead && aheadD < 170,
+      huntTarget: hasAhead && aheadD > 240 && aheadD < 640,
+      surrounded: this.surrounded,
+      enemyNearW: this.enemyNearW,
+      chain: this.dashConsec,
+    })
   }
 
   startDash(w: WorldRef, ax: number, ay: number): void {
@@ -936,15 +946,19 @@ export class Player {
     dx /= len
     dy /= len
 
-    // ---- situational variant ----
-    const variant = this.pickDashVariant(dx, dy)
+    // ---- conditioned variant + its tuned config ----
+    const variant = this.pickDashVariant(w, dx, dy)
     this.dashVariant = variant
-    const cfg = DASH_VARIANT_CFG[variant]
+    const cfg = DASH_VARIANTS[variant]
+    this.dashCfg = cfg
 
-    // facing rules: forward/air dashes follow travel; retreats keep the
-    // guard trained on the threat (the MGR dash-in / dash-out rhythm —
+    // facing rules: forward-family/air dashes follow travel; retreats keep
+    // the guard trained on the threat (the MGR dash-in / dash-out rhythm —
     // attack after a backdash lunges back toward the enemy)
-    if ((variant === 'forward' || variant === 'forward2' || variant === 'air') && dx !== 0) {
+    const forwardFamily = variant === 'launch' || variant === 'chain'
+      || variant === 'carry' || variant === 'hunt' || variant === 'pierce'
+      || variant === 'air'
+    if (forwardFamily && dx !== 0) {
       if (dx > 0 !== (this.face > 0)) {
         // carve the flip: the body unwinds through the 180° pivot
         this.turnT = 1
@@ -953,20 +967,11 @@ export class Player {
       this.face = dx > 0 ? 1 : -1
     }
 
-    // ---- adaptive tuning: gap-closer hunger + evade generosity ----
-    let spdMul = cfg.spd
+    // ---- adaptive generosity: retreating with an enemy INSIDE melee
+    // range earns a wider dodge window (on top of the variant's own) ----
     let iframes = cfg.iframes
-    if (variant === 'forward' || variant === 'forward2') {
-      const tgt = this.nearestEnemy(w, 700)
-      if (tgt) {
-        const toward = Math.sign(tgt.x - this.x) === Math.sign(dx || this.face)
-        const dist = Math.abs(tgt.x - this.x)
-        if (toward && dist > 240 && dist < 640) spdMul *= 1.12 // hungry gap-close
-      }
-    } else {
-      // retreating with an enemy INSIDE melee range → wider dodge window
-      const tgt = this.nearestEnemy(w, 170)
-      if (tgt) iframes += 0.04
+    if (variant === 'retreat' || variant === 'carve') {
+      if (this.nearestEnemy(w, 170)) iframes += 0.04
     }
 
     this.dashDx = dx
@@ -974,7 +979,7 @@ export class Player {
     this.state = 'dash'
     this.dashDur = cfg.dur
     this.dashT = cfg.dur
-    this.dashSpd = DASH_SPEED * spdMul
+    this.dashSpd = DASH_SPEED * cfg.spd
     this.dashCd = DASH_CD
     this.dashConsec++
     this.dashChainT = 0.45 // dashes within 0.45s link into a chain
@@ -987,63 +992,54 @@ export class Player {
     this.vx = dx * this.dashSpd
     this.vy = dy * this.dashSpd * (this.grounded && dy < -0.4 ? 0.55 : 1)
 
-    // ---- clip + presentation per variant ----
+    // ---- clip + presentation per variant (entry blend is momentum-
+    // matched: carry blends longer because the run already matches) ----
     const colors = this.sword.colors
-    const chain = variant === 'forward2'
-    const clip = variant === 'forward' ? DASH_FWD_CLIP
-      : variant === 'forward2' ? DASH_FWD2_CLIP
-        : variant === 'back' ? DASH_BACK_CLIP
-          : variant === 'up' ? DASH_UP_CLIP
-            : variant === 'escape' ? DASH_ESCAPE_CLIP
-              : DASH_AIR_CLIP
-    this.animator.play(clip, { blend: 0.045, speed: chain ? 1.15 : 1 })
+    this.animator.play(cfg.clip, { blend: cfg.blend, speed: variant === 'chain' ? 1.12 : 1 })
 
-    const pitch = variant === 'back' ? rand(1.12, 1.26)
-      : variant === 'up' ? rand(1.18, 1.3)
-        : variant === 'escape' ? rand(0.82, 0.92)
-          : variant === 'air' ? rand(1.05, 1.15)
-            : rand(0.95, 1.1)
-    w.audio.play('dash', { pitch })
+    w.audio.play('dash', { pitch: rand(cfg.pitch[0], cfg.pitch[1]) })
 
     // launch FX per variant: streaks follow the TRUE velocity vector
-    if (variant === 'forward' || variant === 'forward2' || variant === 'air') {
-      w.fx.speedStreaks(this.x, this.y - 40, dx * this.dashSpd * 0.9, chain ? 9 : 6, rgba(colors.trail, 1))
-      w.fx.dust(this.x - this.face * 14, this.grounded ? 0 : this.y, chain ? 7 : 5)
-    } else if (variant === 'back') {
+    if (forwardFamily) {
+      const streakN = variant === 'hunt' ? 10 : variant === 'chain' ? 9 : 6
+      w.fx.speedStreaks(this.x, this.y - 40, dx * this.dashSpd * 0.9, streakN, rgba(colors.trail, 1))
+      w.fx.dust(this.x - this.face * 14, this.grounded ? 0 : this.y, variant === 'chain' ? 7 : 5)
+      if (variant === 'pierce') {
+        // the thrust line: a narrow forward spark fan along the blade path
+        w.fx.burst(this.x + this.face * 30, this.y - 46, 6, colors.trail, 300, 0.3, 'spark')
+      }
+    } else if (variant === 'retreat') {
       // skid scrape at the push-off foot + a short streak train
       w.fx.speedStreaks(this.x, this.y - 40, dx * this.dashSpd * 0.55, 4, rgba(colors.trail, 0.85))
       w.fx.dust(this.x + this.face * 10, 0, 6)
-    } else if (variant === 'up') {
+    } else if (variant === 'vault') {
       w.fx.burst(this.x, 0, 8, '#9fb4c4', 150, 0.35, 'dot')
       w.fx.dust(this.x, 0, 6)
-    } else if (variant === 'escape') {
+    } else if (variant === 'carve') {
       // the carve: a ring + spark fan sells the depth twist
       w.fx.shockwave(this.x, this.y - 46, 54, colors.glow, 0.22, 4)
       w.fx.burst(this.x, this.y - 46, 10, colors.trail, 240, 0.4, 'spark')
       w.fx.dust(this.x, 0, 6)
     }
 
-    // lens strain scales with aggression; the escape hits hardest
-    w.fx.chroma(variant === 'escape' ? 0.55 : chain ? 0.5 : 0.35)
-    w.cam.addTrauma(variant === 'escape' ? 0.1 : variant === 'back' ? 0.03 : 0.06)
+    // lens strain + camera bite scale with aggression
+    w.fx.chroma(cfg.chroma)
+    w.cam.addTrauma(cfg.trauma)
   }
 
   private updateDash(dt: number, w: WorldRef): void {
     this.dashT -= dt
-    // afterimages — denser on the aggressive variants
+    // afterimages — spacing tuned per variant (denser on the aggressive)
     this.afterimgTimer -= dt
-    const imgRate = this.dashVariant === 'escape' ? 0.02
-      : this.dashVariant === 'forward2' ? 0.022
-        : this.dashVariant === 'forward' ? 0.026 : 0.034
     if (this.afterimgTimer <= 0) {
-      this.afterimgTimer = imgRate
+      this.afterimgTimer = this.dashCfg.ghost
       w.fx.afterimage(this.pose, this.x, this.hipY, this.face, this.sword.colors.trail, 0.3, SCALE)
     }
-    // velocity envelope: quadratic bleed 1.00 → 0.62 across the dash —
-    // a fast launch that decays gently into the exit (no linear drag, no
-    // dead stop; the final handoff below carries the rest)
+    // velocity envelope (combat/dash.ts): entry burst → sustain plateau →
+    // quadratic tail bleed. Hunt/pierce HOLD full speed through the mid
+    // dash (the hunger); launch bleeds immediately into the exit handoff.
     const k = 1 - this.dashT / this.dashDur
-    const sp = this.dashSpd * (1 - 0.38 * k * k)
+    const sp = this.dashSpd * dashEnvelope(k, this.dashCfg.sustain)
     this.vx = this.dashDx * sp
     this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)
 
@@ -1069,13 +1065,13 @@ export class Player {
       this.dashEndedAt = w.time
       // retreat family: commit the facing toward the threat through the
       // recovery beat (see retreatLockT — the guard never turns its back)
-      if (this.dashVariant === 'back' || this.dashVariant === 'escape' || this.dashVariant === 'up') {
+      if (this.dashVariant === 'retreat' || this.dashVariant === 'carve' || this.dashVariant === 'vault') {
         this.retreatLockT = 0.45
       }
       // ---- MOMENTUM EXIT (the smoothness law): never a dead stop ----
       const ax = input.axisX()
       const dirHeld = Math.sign(ax) === Math.sign(this.dashDx) && Math.abs(ax) > 0.25
-      const retreat = this.dashVariant === 'back' || this.dashVariant === 'escape'
+      const retreat = this.dashVariant === 'retreat' || this.dashVariant === 'carve'
       if (this.grounded) {
         if (dirHeld && Math.abs(this.dashDx) > 0.35) {
           // HANDOFF: dash speed decays into locomotion. The forward lunge
@@ -2122,7 +2118,14 @@ export class Player {
     // dorsi-flexes to brake, the COG drops as the body commits. A body
     // that leans only from the chest reads as a puppet; a body that leans
     // from the ground up reads as an athlete.
-    if (this.state !== 'dead') {
+    //
+    // DASH EXEMPTION (the smoothness law): the dash clips AUTHOR their own
+    // pitch per variant — and the velocity step at dash entry/exit spiked
+    // accelSm to its clamp, snapping this additive lean against the pose
+    // for several frames (the "dash fights itself" jitter). During dash
+    // the authored silhouette wins; the lean re-engages through the exit
+    // handoff as locomotion takes the momentum back.
+    if (this.state !== 'dead' && this.state !== 'dash') {
       p[CH.rootRot] += lean * 0.6
       p[CH.spine] += lean * 0.22
       p[CH.rootX] += lean * 7 // pelvis surge: hips ride forward over the stance
@@ -2192,11 +2195,14 @@ export class Player {
         }
       } else if (this.state === 'dash') {
         switch (this.dashVariant) {
-          case 'forward': case 'forward2': carryYaw = -0.42; carryArm = -0.3; break
+          case 'launch': case 'chain': carryYaw = -0.42; carryArm = -0.3; break
+          case 'carry': carryYaw = -0.46; carryArm = -0.34; break
+          case 'hunt': carryYaw = -0.45; carryArm = -0.3; break
           case 'air': carryYaw = -0.3; carryArm = -0.24; break
-          case 'up': carryYaw = 0.02; carryArm = 0.04; break
-          case 'back': carryYaw = 0.1; carryArm = 0.08; break
-          case 'escape': carryYaw = -0.12; carryArm = 0.06; break
+          case 'pierce': carryYaw = 0; carryArm = 0; break // clip owns the thrust line
+          case 'vault': carryYaw = 0.02; carryArm = 0.04; break
+          case 'retreat': carryYaw = 0.1; carryArm = 0.08; break
+          case 'carve': carryYaw = -0.12; carryArm = 0.06; break
         }
       }
       this.carryYaw = damp(this.carryYaw, carryYaw, 6, dt)
@@ -2217,16 +2223,18 @@ export class Player {
     // yaw on the forward lunge: the hips square into the travel vector.
     if (this.state === 'dash') {
       const k = 1 - this.dashT / this.dashDur
-      if (this.dashVariant === 'escape') {
+      if (this.dashVariant === 'carve') {
         const spin = Math.sin(clamp01(k) * Math.PI) * 0.38
         p[CH.pelvisYaw] += spin
         p[CH.chestYaw] += spin * 0.6
-      } else if (this.dashVariant === 'up') {
+      } else if (this.dashVariant === 'vault') {
         p[CH.head] -= 0.12 * Math.sin(clamp01(k) * Math.PI)
-      } else if (this.dashVariant === 'forward' || this.dashVariant === 'forward2') {
+      } else if (this.dashVariant === 'launch' || this.dashVariant === 'chain'
+        || this.dashVariant === 'carry' || this.dashVariant === 'hunt'
+        || this.dashVariant === 'pierce') {
         // pelvis squares into the dash vector (diagonal dashes yaw the hips)
         p[CH.pelvisYaw] += this.dashDy * 0.22
-      } else if (this.dashVariant === 'back') {
+      } else if (this.dashVariant === 'retreat') {
         // the guarded retreat: hips open slightly against travel, chest
         // counter-rotates to keep the guard presentation toward the threat
         p[CH.pelvisYaw] -= this.dashDy * 0.16
