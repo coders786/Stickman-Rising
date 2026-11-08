@@ -60,6 +60,8 @@ interface Afterimage {
   dirX: number
   /** rim highlight color (shadow style) */
   rim: string
+  /** starting body alpha (per-ghost darkness — research: successively darker) */
+  a0: number
 }
 
 interface Ring {
@@ -519,7 +521,7 @@ export class FX {
     if (this.afterimages.length > 40) return
     const a = this.aFree.pop() ?? {
       active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
-      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff',
+      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff', a0: 0.44,
     }
     a.active = true
     a.pose.set(pose)
@@ -534,12 +536,13 @@ export class FX {
 
   /** SHADOW-SILHOUETTE dash ghost: the body captured as a dark figure with
    * a backlit rim leaking around the trailing edge — replaces the old neon
-   * ghost + particle clutter on dashes (shadows & light, not confetti). */
-  shadowGhost(pose: Pose, x: number, y: number, face: number, dirX: number, rim: string, life = 0.3, scale = 1): void {
+   * ghost + particle clutter on dashes (shadows & light, not confetti).
+   * a0 = starting body darkness (0.5 → 0.24 down the trail: each ghost successively darker — HDR value layering). */
+  shadowGhost(pose: Pose, x: number, y: number, face: number, dirX: number, rim: string, life = 0.3, scale = 1, a0 = 0.44): void {
     if (this.afterimages.length > 40) return
     const a = this.aFree.pop() ?? {
       active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
-      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff',
+      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff', a0: 0.44,
     }
     a.active = true
     a.pose.set(pose)
@@ -551,6 +554,7 @@ export class FX {
     a.style = 1
     a.dirX = dirX >= 0 ? 1 : -1
     a.rim = rim
+    a.a0 = a0
     this.afterimages.push(a)
   }
 
@@ -866,7 +870,7 @@ export class FX {
       // shadow body — solid dark, source-over (a real cast shadow)
       drawStick(ctx, scrashGeom, PLAYER_STYLE, {
         ghost: '#02050b',
-        ghostAlpha: 0.44 * k,
+        ghostAlpha: (a.a0 ?? 0.44) * k,
       })
       // backlight rim — the bright crescent on the trailing edge: the same
       // silhouette offset opposite the travel vector (local x mirrors by

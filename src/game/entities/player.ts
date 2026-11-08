@@ -136,6 +136,10 @@ const JUMP_V = -950
 const AIR_JUMP_V = -820
 const DASH_CD = 0.1
 const DASH_RECHARGE = 0.32
+/** dash ghost beats: fire times as fractions of dash duration (research:
+ * cap 3, exponential spacing) + the per-ghost starting darkness */
+const DASH_GHOST_BEATS = [0.18, 0.5, 0.85]
+const DASH_GHOST_A0 = [0.5, 0.36, 0.24]
 
 interface ActionState {
   def: AttackDef
@@ -257,7 +261,11 @@ export class Player {
   dashHandoff = false
   private airDashUsed = false
   private jumpsUsed = 0
-  private afterimgTimer = 0
+  /** THREE-BEAT GHOST SCHEDULE (research-capped): afterimages fire at dash
+   * progress 0.18 / 0.5 / 0.85 — spacing WIDENS through the dash (the gaps
+   * read as acceleration), each successively darker. Replaces the old
+   * uniform 6–8-ghost cadence (visual clutter). */
+  private dashGhostIdx = 0
   /** when the last dash ended — the momentum tail window feeds the
    * dash-strike conversion (attacking on dash momentum = through-cut) */
   private dashEndedAt = -10
@@ -1166,6 +1174,7 @@ export class Player {
     this.state = 'dash'
     this.dashDur = cfg.dur
     this.dashT = cfg.dur
+    this.dashGhostIdx = 0
     this.dashSpd = DASH_SPEED * cfg.spd
     this.dashCd = DASH_CD
     this.dashConsec++
@@ -1200,7 +1209,7 @@ export class Player {
         dx, dy, lineLen, 0.26, colors.core,
       )
       if (this.grounded) {
-        w.fx.shadowSmear(this.x + dx * reach * 0.42, reach * 0.34, 0.5)
+        w.fx.shadowSmear(this.x + dx * reach * 0.42, reach * 0.34, 0.4)
       }
     }
 
@@ -1211,18 +1220,23 @@ export class Player {
 
   private updateDash(dt: number, w: WorldRef): void {
     this.dashT -= dt
+    const k = 1 - this.dashT / this.dashDur
     // SHADOW-SILHOUETTE afterimages — the dark ghost trail with the backlit
-    // rim (replaces the old neon ghosts + speed-streak clutter). Spacing
-    // tuned per variant (denser on the aggressive).
-    this.afterimgTimer -= dt
-    if (this.afterimgTimer <= 0) {
-      this.afterimgTimer = this.dashCfg.ghost
-      w.fx.shadowGhost(this.pose, this.x, this.hipY, this.face, this.dashDx, this.sword.colors.core, 0.32, SCALE)
+    // rim. THREE beats only (research cap), fired as dash-progress fractions
+    // [0.18, 0.5, 0.85]: spacing widens down the trail (acceleration read)
+    // and each ghost starts DARKER (a0 0.5 → 0.36 → 0.24) with a shorter
+    // life — a clean cut to nothing at the exit instead of a fading cloud.
+    while (this.dashGhostIdx < 3 && k >= DASH_GHOST_BEATS[this.dashGhostIdx]) {
+      const gi = this.dashGhostIdx
+      w.fx.shadowGhost(
+        this.pose, this.x, this.hipY, this.face, this.dashDx,
+        this.sword.colors.core, 0.3 - gi * 0.05, SCALE, DASH_GHOST_A0[gi],
+      )
+      this.dashGhostIdx++
     }
     // velocity envelope (combat/dash.ts): entry burst → sustain plateau →
     // quadratic tail bleed. Hunt/pierce HOLD full speed through the mid
     // dash (the hunger); launch bleeds immediately into the exit handoff.
-    const k = 1 - this.dashT / this.dashDur
     const sp = this.dashSpd * dashEnvelope(k, this.dashCfg.sustain)
     this.vx = this.dashDx * sp
     this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)

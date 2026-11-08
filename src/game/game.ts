@@ -144,10 +144,22 @@ export class Game {
    *   2. visual systems (weather, particles, camera) tick ONCE per frame,
    *      not per substep — rain never integrates at 450Hz
    *   3. render resolution (DPR) auto-scales to the measured frame rate */
-  private dprTarget = 1.25
+  private dprTarget = 1
+  /** session resolution ceiling — pinned DOWN the moment a raise proves
+   * unstable. Without this, the governor's raise-on-calm path gambles
+   * repeatedly: calm 60fps → raise DPR → next wave spawns → frame-cost
+   * cliff → seconds of 20fps → slow drop → calm → raise again… the exact
+   * "it hangs when the enemies appear" report. */
+  private dprCeil = 1.5
   private fpsAvg = 60
   private govT = 0
   private govCool = 0
+  /** wall clock (rAF seconds) — governor memory, immune to run resets */
+  private wall = 0
+  private lastDropAt = -60
+  private lastRaiseAt = -60
+  /** consecutive over-budget frames (the cliff detector's run counter) */
+  private overRun = 0
   private autoQuality = true
 
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
@@ -254,10 +266,14 @@ export class Game {
     if (this.govT < 0.8) return
     this.govT = 0
     if (this.govCool > 0) return
-    const cap = this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    const cap = Math.min(
+      this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
+      this.dprCeil,
+    )
     if (this.fpsAvg < 44 && this.dprTarget > 1) {
       this.dprTarget = Math.max(1, this.dprTarget - 0.25)
-      this.govCool = 1.6
+      this.lastDropAt = this.wall
+      this.govCool = 0.8
       this.resize()
     } else if (this.fpsAvg < 36 && this.dprTarget <= 1) {
       // resolution floor reached and still drowning → drop a quality tier
@@ -267,11 +283,46 @@ export class Game {
         this.applySettings({ ...this.settings, quality: order[i + 1] })
         this.govCool = 4
       }
-    } else if (this.fpsAvg > 57 && this.dprTarget < cap) {
+    } else if (
+      this.fpsAvg > 57
+      && this.dprTarget < cap
+      && this.wall - this.lastDropAt > 12 // respect every drop for 12s
+      && this.wall - this.lastRaiseAt > 3 // one raise at a time
+      && this.enemies.length < 3          // never raise into a wave
+    ) {
       this.dprTarget = Math.min(cap, this.dprTarget + 0.25)
+      this.lastRaiseAt = this.wall
       this.govCool = 3
       this.resize()
     }
+  }
+
+  /** CLIFF DETECTOR — the hang killer. rAF is vsync-quantized (16.7 /
+   * 33.3 / 49.9ms steps), so the damped fpsAvg reacts sluggishly: by the
+   * time the 0.8s polling cadence notices, the player has already eaten
+   * 2–5 seconds of 20fps. A real cliff instead shows as a RUN of frames at
+   * ≥1.5× the 60Hz budget — react within ~0.15s by stepping the render DPR
+   * down immediately. If the cliff lands within 6s of a raise, that raise
+   * proved the level unstable on this display: pin the session ceiling at
+   * the pre-raise DPR so the governor stops gambling on it. */
+  private detectCliff(dtRaw: number): void {
+    if (this.phase === 'paused' || document.visibilityState !== 'visible') {
+      this.overRun = 0
+      return
+    }
+    if (dtRaw > 0.025) this.overRun++
+    else if (dtRaw < 0.019) this.overRun = 0
+    if (this.overRun < 8) return
+    this.overRun = 0
+    if (this.dprTarget <= 1) return
+    if (this.wall - this.lastRaiseAt < 6) {
+      // the recent raise was the cause → pin the ceiling at the pre-raise level
+      this.dprCeil = Math.max(1, this.dprTarget - 0.25)
+    }
+    this.dprTarget = Math.max(1, this.dprTarget - 0.25)
+    this.lastDropAt = this.wall
+    this.govCool = Math.max(this.govCool, 1)
+    this.resize()
   }
 
   applySettings(s: GameSettings): void {
@@ -390,7 +441,9 @@ export class Game {
     if (dtRaw <= 0) dtRaw = 0.0001
     this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
     this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 1.2, dtRaw)
+    this.wall = now / 1000
     this.govern(dtRaw)
+    this.detectCliff(dtRaw)
 
     const ctx = this.ctx
     if (!ctx) return
@@ -423,6 +476,16 @@ export class Game {
       while (remaining > 1e-6 && substeps < 3) {
         const stepDt = Math.min(remaining, 1 / 60)
         this.step(stepDt)
+        // EDGE LIFETIME = ONE SUBSTEP. pressed()/released() edges must be
+        // visible to exactly ONE simulation step: clearing them only once
+        // per RENDERED frame let a single jump press fire doJump in BOTH
+        // substeps of a slow frame (jump then airJump in the same frame —
+        // the −950 impulse was stomped to −820 mid-rise and the leap clip
+        // was overwritten by airJump). Input events can only arrive BETWEEN
+        // rAF callbacks, so no press is ever missed; presses that land while
+        // a state ignores them are still caught by the combo BUFFER, which
+        // is pressTime-based and deliberately spans substeps and frames.
+        this.input.endFrame(stepDt)
         remaining -= stepDt
         substeps++
       }
@@ -430,6 +493,7 @@ export class Game {
         // very slow frame: consume the backlog as one clamped catch-up tick
         // so the world keeps roughly real-time without multiplying cost
         this.step(Math.min(remaining, 0.05))
+        this.input.endFrame(0.05)
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
       this.fx.update(simDt)

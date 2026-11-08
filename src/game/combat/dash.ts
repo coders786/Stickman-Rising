@@ -113,8 +113,6 @@ export interface DashVariantCfg {
   /** velocity envelope: fraction of the dash held at full speed before the
    *  quadratic tail bleed (hunt/pierce sustain; launch bleeds immediately) */
   sustain: number
-  /** afterimage spacing (s) — denser on aggressive variants */
-  ghost: number
   /** audio pitch band [lo, hi] */
   pitch: [number, number]
   /** camera trauma on entry */
@@ -130,39 +128,39 @@ export const DASH_SPEED = 980
 export const DASH_VARIANTS: Record<DashVariant, DashVariantCfg> = {
   launch: {
     clip: DASH_LAUNCH_CLIP, dur: 0.17, spd: 1.0, iframes: 0.12, blend: 0.035,
-    sustain: 0, ghost: 0.026, pitch: [0.95, 1.1], trauma: 0.06, chroma: 0.35,
+    sustain: 0, pitch: [0.95, 1.1], trauma: 0.06, chroma: 0.35,
   },
   chain: {
     clip: DASH_CHAIN_CLIP, dur: 0.16, spd: 1.06, iframes: 0.12, blend: 0.035,
-    sustain: 0, ghost: 0.022, pitch: [1.0, 1.12], trauma: 0.06, chroma: 0.5,
+    sustain: 0, pitch: [1.0, 1.12], trauma: 0.06, chroma: 0.5,
   },
   carry: {
     clip: DASH_CARRY_CLIP, dur: 0.19, spd: 1.08, iframes: 0.11, blend: 0.09,
-    sustain: 0.3, ghost: 0.03, pitch: [1.0, 1.12], trauma: 0.05, chroma: 0.35,
+    sustain: 0.3, pitch: [1.0, 1.12], trauma: 0.05, chroma: 0.35,
   },
   hunt: {
     clip: DASH_HUNT_CLIP, dur: 0.21, spd: 1.16, iframes: 0.13, blend: 0.04,
-    sustain: 0.55, ghost: 0.024, pitch: [0.88, 0.98], trauma: 0.07, chroma: 0.45,
+    sustain: 0.55, pitch: [0.88, 0.98], trauma: 0.07, chroma: 0.45,
   },
   pierce: {
     clip: DASH_PIERCE_CLIP, dur: 0.18, spd: 1.1, iframes: 0.14, blend: 0.035,
-    sustain: 0.5, ghost: 0.024, pitch: [0.92, 1.0], trauma: 0.07, chroma: 0.5,
+    sustain: 0.5, pitch: [0.92, 1.0], trauma: 0.07, chroma: 0.5,
   },
   retreat: {
     clip: DASH_RETREAT_CLIP, dur: 0.15, spd: 0.92, iframes: 0.12, blend: 0.05,
-    sustain: 0, ghost: 0.034, pitch: [1.12, 1.26], trauma: 0.03, chroma: 0.35,
+    sustain: 0, pitch: [1.12, 1.26], trauma: 0.03, chroma: 0.35,
   },
   vault: {
     clip: DASH_VAULT_CLIP, dur: 0.18, spd: 0.8, iframes: 0.13, blend: 0.05,
-    sustain: 0, ghost: 0.034, pitch: [1.18, 1.3], trauma: 0.04, chroma: 0.35,
+    sustain: 0, pitch: [1.18, 1.3], trauma: 0.04, chroma: 0.35,
   },
   carve: {
     clip: DASH_CARVE_CLIP, dur: 0.2, spd: 0.96, iframes: 0.16, blend: 0.055,
-    sustain: 0.15, ghost: 0.02, pitch: [0.82, 0.92], trauma: 0.1, chroma: 0.55,
+    sustain: 0.15, pitch: [0.82, 0.92], trauma: 0.1, chroma: 0.55,
   },
   air: {
     clip: DASH_AIR_CLIP, dur: 0.15, spd: 1.0, iframes: 0.1, blend: 0.06,
-    sustain: 0, ghost: 0.034, pitch: [1.05, 1.15], trauma: 0.04, chroma: 0.35,
+    sustain: 0, pitch: [1.05, 1.15], trauma: 0.04, chroma: 0.35,
   },
 }
 
