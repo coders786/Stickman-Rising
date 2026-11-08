@@ -12,6 +12,7 @@ import { CyberBackground } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
+import { KeyLight, keyLightFromStorm } from './lighting'
 
 export interface RenderWorld {
   cam: Camera
@@ -68,17 +69,31 @@ export class Renderer {
     // snaps brighter whenever lightning strobes it
     this.drawReflections(ctx, world, viewHalfW)
 
-    // entity shadows (stretch + lean with the lightning key light)
+    // ---- LIGHTING ENGINE: one dynamic key light (moon ↔ storm strobes)
+    // drives PROJECTED SKELETON SHADOWS for every entity: each solved joint
+    // (and the blade) casts along the light rays onto the ground plane —
+    // the shadow deforms with the pose, stretches away from bolts, detaches
+    // and fades when airborne, and carries contact-AO cores under the
+    // legik-planted feet. Replaces the static blob ellipses. ----
     const li = bg.lightningI()
     const az = bg.lightningAz()
-    drawShadow(ctx, player.x, 0, 1.1, 0.4, li, az)
-    // BLADE SELF-SHADOW: the raised steel casts its own slanted ground
-    // streak — grounds the 3D weapon in the scene (2.8D read)
-    drawBladeShadow(ctx, player)
+    const light: KeyLight = keyLightFromStorm(li, az)
+    player.drawShadow(ctx, light)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      drawShadow(ctx, e.x, 0, e.scale, e.kind === 'drone' ? 0.22 : 0.32, li, az)
+      e.drawShadow(ctx, light)
+    }
+
+    // STROBE RIM: light the casters — every figure's bolt-facing edge
+    // catches the flash (flickering with the ~15Hz restrike cadence)
+    const strobeK = clamp01(li) * (0.78 + 0.22 * Math.sin(time * 43))
+    player.strobeLight = light
+    player.strobeK = strobeK
+    for (const e of enemies) {
+      if (e.dead || e.spawning) continue
+      e.strobeLight = light
+      e.strobeK = strobeK
     }
 
     // ground decals + debris
@@ -230,7 +245,9 @@ export class Renderer {
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world
     const li = bg.lightningI()
-    const a = 0.20 + li * 0.3                  // flashes make the mirror snap bright
+    // the mirror still snaps brighter on strobes, but gently — the CAST
+    // shadow (stretching away from the bolt) owns the directional read
+    const a = 0.20 + li * 0.16
     ctx.save()
     ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
     ctx.globalAlpha = a
@@ -263,52 +280,4 @@ export class Renderer {
     ctx.globalAlpha = 1
     ctx.drawImage(this.reflFade, cam.x - viewHalfW, 0, viewHalfW * 2, 195)
   }
-}
-
-function drawShadow(
-  ctx: CanvasRenderingContext2D,
-  x: number, groundY: number, scale: number, alpha: number,
-  li = 0, az = 0,
-): void {
-  /* lightning acts as a hard key light: shadows stretch away from the bolt,
-   * tighten vertically, and gain an AO-ish contact core so nothing floats */
-  const stretch = 1 + li * 1.5
-  const sx = x - az * li * 26 * scale
-  const a = alpha * (1 + li * 0.5)
-  ctx.save()
-  ctx.fillStyle = rgba('#020409', a > 0.75 ? 0.75 : a)
-  ctx.beginPath()
-  ctx.ellipse(sx, groundY + 3, 26 * scale * stretch, 6.5 * scale * (1 - li * 0.25), 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = rgba('#010307', a * 0.85)
-  ctx.beginPath()
-  ctx.ellipse(x, groundY + 3, 14 * scale, 4.2 * scale, 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
-/** BLADE SELF-SHADOW: the 3D weapon casts its own directional shadow onto
- * the ground plane — a soft slanted streak from the player's feet toward
- * the kissaki's ground projection. Stronger the higher the blade is held
- * (a raised jōdan blade throws a long shadow; a grounded blade barely
- * registers). Grounds the sword in the scene's lighting model. */
-function drawBladeShadow(ctx: CanvasRenderingContext2D, p: Player): void {
-  if (p.isDead) return
-  const b = p.blade
-  const lift = clamp01(-b.ty / 110) // 0 at ground level → 1 overhead
-  const a = 0.08 + lift * 0.14
-  ctx.save()
-  ctx.strokeStyle = rgba('#010307', a)
-  ctx.lineCap = 'round'
-  ctx.lineWidth = 3.5 + lift * 2.5
-  ctx.beginPath()
-  ctx.moveTo(p.x, 3)
-  ctx.quadraticCurveTo((p.x + b.tx) / 2, 9, b.tx, 3)
-  ctx.stroke()
-  // kissaki contact dot — the tip's ground projection
-  ctx.fillStyle = rgba('#010307', a * 0.9)
-  ctx.beginPath()
-  ctx.ellipse(b.tx, 3, 5, 2.2, 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
 }

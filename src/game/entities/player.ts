@@ -7,6 +7,8 @@ import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
+import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
+import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -309,6 +311,20 @@ export class Player {
    * lock) — no floating, no digging, real weight transfer for every pose. */
   private footLock = HIP_H
 
+  /* ---- GROUND-CONTACT GAIT (legik): a real gait planner + 2-bone leg IK
+   * owns the legs during grounded locomotion — stance feet world-LOCKED
+   * exactly on the ground line, swing feet on clearance arcs. This is the
+   * fix for the floating far/offside leg in every animation. */
+  private gait = new GaitPlanner()
+  /** gait authority weight (0 = FK clip legs, 1 = IK planner legs) */
+  private gaitW = 0
+  private ikOut: LegIKOut = { kx: 0, ky: 0, ax: 0, ay: 0, clamped: false }
+  private toeScratch = { x: 0, y: 0 }
+  /** sole clearance of the visual foot wedge (local units) */
+  private static readonly SOLE = 3.4
+  /** sole clearance in world px */
+  private static readonly SOLE_W = 3.4 * SCALE
+
   /* ---- BLADE DYNAMICS: rotational inertia of the katana. The tip lags
    * the arm's angular acceleration and whips through on release — a
    * physically-motivated furi-otoshi accent layered under the keyframes. */
@@ -610,7 +626,9 @@ export class Player {
       PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
       this.swingScale,
     )
+    this.updateGait(dt, w)             // ground-contact foot planner (legik)
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
+    this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
     this.updateBladeWorld()
     this.updateSwingScale(dt)
   }
@@ -618,6 +636,9 @@ export class Player {
   private onLand(w: WorldRef): void {
     w.audio.play('land', { volume: 0.5 })
     w.fx.dust(this.x, 0, 7)
+    // re-seed the gait anchors under the landing position — the squash
+    // parks both feet flat through the absorb, then stepping resumes
+    this.gait.reseed(this.x, this.face)
     // slam impact while attacking
     const a = this.action
     if (a && a.def.slamImpact && !a.impactDone) {
@@ -837,24 +858,30 @@ export class Player {
         if (this.animator.isDone() || speed < 90) this.braking = false
       } else {
         this.setLoco(this.pickLoco(speed, ax))
+        // GAIT-CADENCE SYNC: clip playback speed follows the legik planner's
+        // step cadence (velocity ÷ stride) so the authored torso bob + arm
+        // pump land on the SAME beat as the IK-planted feet — the stride
+        // length itself derives from velocity, so planted feet never skate.
+        const cad = Math.max(0.001, this.gait.cadence)
+        const cadSpeed = (dur: number) => clamp(cad * dur / 2, 0.5, 2.4)
         switch (this.loco) {
           case 'walk':
-            this.animator.play(WALK_CLIP, { blend: 0.18, speed: clamp(speed / 210, 0.7, 1.35) })
+            this.animator.play(WALK_CLIP, { blend: 0.18, speed: cadSpeed(1.0) })
             break
           case 'run':
-            this.animator.play(RUN_CLIP, { blend: 0.12, speed: clamp(speed / MOVE_MAX, 0.8, 1.5) })
+            this.animator.play(RUN_CLIP, { blend: 0.12, speed: cadSpeed(0.5) })
             break
           case 'sprint':
-            this.animator.play(SPRINT_CLIP, { blend: 0.1, speed: clamp(speed / SPRINT_MAX, 0.85, 1.25) })
+            this.animator.play(SPRINT_CLIP, { blend: 0.1, speed: cadSpeed(0.36) })
             break
           case 'combat':
-            this.animator.play(COMBAT_STEP_CLIP, { blend: 0.16, speed: clamp(speed / 260, 0.7, 1.7) })
+            this.animator.play(COMBAT_STEP_CLIP, { blend: 0.16, speed: cadSpeed(0.44) })
             break
           case 'combatIdle':
             this.animator.play(COMBAT_IDLE_CLIP, { blend: 0.18 })
             break
           case 'backpedal':
-            this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: clamp(speed / 240, 0.7, 1.6) })
+            this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: cadSpeed(0.56) })
             break
           default:
             this.animator.play(IDLE_CLIP, { blend: 0.16 })
@@ -2148,33 +2175,155 @@ export class Player {
   /* procedural layers: weight, blade physics, two-handed grip            */
   /* ------------------------------------------------------------------ */
 
-  /** FOOT-GROUND LOCK — the hip sits at the planted foot's extension. This
-   * is the weight system: idle bent knees no longer float (measured 9.5px
-   * gap), lunges/crouches stay exactly grounded, landing squashes through
-   * the leg bend instead of sinking into the floor. Airborne → nominal
-   * hip height (physics owns y). */
+  /** updateGait — drive the legik GaitPlanner. Engaged for grounded
+   * locomotion (move state, not braking, not in the sheathe ritual); every
+   * other state (attacks, dashes, air, hurt) parks the planner so the FK
+   * clip legs apply, with only the plant-snap/clamp pass fixing contact. */
+  private updateGait(dt: number, w: WorldRef): void {
+    const active = this.state === 'move' && this.grounded && !this.braking && !this.sheathAct
+    const tune = PLAYER_GAIT[this.loco] ?? PLAYER_GAIT.idle
+    const speed = Math.abs(this.vx)
+    // femoral midpoint in world space (geom solved this frame)
+    const hipX = this.x + this.face * SCALE * this.geom.hip.x
+    this.gait.update(hipX, this.vx, this.face, speed, tune, dt, active, Player.SOLE_W, this.grounded)
+    // authority blend: in over ~90ms, out over ~180ms (hands off gently)
+    this.gaitW = damp(this.gaitW, active ? 1 : 0, active ? 18 : 8, dt)
+    // footfall feedback: a whisper of dust at real heel strikes (run+ only)
+    if (this.gait.footfall && speed > 230) {
+      w.fx.dust(this.gait.footfallX, 0, 2)
+    }
+  }
+
+  /** FOOT-GROUND LOCK — the pelvis-height authority. With the gait active
+   * the hip sits at the AUTHORED nominal height minus whatever the most-
+   * extended planted leg allows (diagonal struts at contact drop the hips
+   * — real weight acceptance); the authored rootY bob now reads exactly
+   * once (the old flight-branch double-counted it away). For non-gait
+   * grounded poses the lowest FK foot still pins the sole exactly; airborne
+   * → nominal hip height (physics owns y). */
   private updateFootLock(dt: number): void {
     const g = this.geom
-    // lowest contact point: ankles AND toes (a pointed trailing toe grazes
-    // the ground at toe-off — real gait), plus the sole half-width so the
-    // visual foot bottom kisses the line, not the ankle joint center
-    const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y) + 2.4
-    const support = lowContact * SCALE
-    const groundedPose = this.grounded && this.state !== 'dead'
+    const rootY = this.pose[CH.rootY]
     let target: number
-    if (groundedPose && support >= HIP_H * 0.86) {
-      // SUPPORT phase — the lowest foot is load-bearing (within 14% of full
-      // leg extension): pin the hip so the sole EXACTLY contacts. This is
-      // the weight: no float, no dig, crouches stay crouched.
-      target = support
+    if (this.gaitW > 0.5 && this.gait.hasPlanted && this.grounded) {
+      // GAIT: femur target height = authored nominal, limited by the
+      // planted leg geometry (the pelvis can't outrun its own stance leg)
+      const l1 = PLAYER_SPEC.thigh * SCALE
+      const l2 = PLAYER_SPEC.shin * SCALE
+      const reach = (l1 + l2) * 0.999
+      let bound = -Infinity
+      const feet: { x: number; y: number; fx: number }[] = [
+        { x: this.gait.footL.x, y: this.gait.footL.y, fx: this.x + this.face * SCALE * g.hipPtL.x },
+        { x: this.gait.footR.x, y: this.gait.footR.y, fx: this.x + this.face * SCALE * g.hipPtR.x },
+      ]
+      for (const f of feet) {
+        if (f.y > -0.5) continue // swing foot target — not load-bearing
+        const dx = Math.abs(f.x - f.fx)
+        const vert = Math.sqrt(Math.max(0, reach * reach - dx * dx))
+        bound = Math.max(bound, f.y - vert)
+      }
+      // nominal effective femur height: hips at HIP_H, rootY bob applies once
+      const nominal = -HIP_H + SCALE * rootY
+      let femurT = Math.max(nominal, isFinite(bound) ? bound : nominal)
+      femurT = Math.max(femurT, -HIP_H * 1.16) // crouch floor
+      // footLock ↔ hipY: effective femur = hipY + SCALE·hipPt.y = femurT
+      target = SCALE * g.hipPtR.y - femurT
+    } else if (this.grounded && this.state !== 'dead') {
+      // FK stance pin: lowest ankle/toe owns the hip (captures lunges,
+      // squats, attacks — anything with an extended leg near the floor)
+      const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y) + 2.4
+      const support = lowContact * SCALE
+      target = support >= HIP_H * 0.72 && support <= HIP_H * 1.2 ? support : HIP_H
     } else {
-      // FLIGHT (both feet swinging/tucked mid-stride) or airborne: physics
-      // owns height — honor the clip's authored bob instead of dragging the
-      // hip down to a tucked toe (which inverted the run's natural bounce)
-      target = HIP_H + this.pose[1] * SCALE
+      // AIR: physics owns height; the authored rootY bob shows through the
+      // geom exactly once (footLock constant — the old +rootY term canceled
+      // it against the geom's own rootY, killing the clip bob outright)
+      target = HIP_H
     }
     // k=24: tracks a 0.3s stride with ~2px residual — crisp, never mushy
     this.footLock = damp(this.footLock, target, 24, dt)
+  }
+
+  /** GROUND IK — the leg writer. Two passes:
+   *  1. GAIT pass (weight gaitW): re-solve both legs from the femoral heads
+   *     to the planner's ankle targets — stance feet land EXACTLY on the
+   *     ground line at their world-locked anchors, swing feet ride the arc.
+   *     Knee always bends forward (anatomy). Toes from the gait pitch
+   *     (heel-strike → flat → toe-off).
+   *  2. PLANT pass (non-gait grounded states — attacks, dashes, brake,
+   *     land): any leg that is EXTENDED and near the floor gets snapped by
+   *     IK to exact sole contact at its authored x (stance feet never
+   *     hover); any toe below the floor gets clamped up (the floor is
+   *     solid). Airborne legs stay pure FK. */
+  private applyGroundIK(dt: number): void {
+    void dt
+    const g = this.geom
+    const l1 = PLAYER_SPEC.thigh
+    const l2 = PLAYER_SPEC.shin
+    const legLen = l1 + l2
+    const w = this.gaitW
+    this.snapContacts.length = 0
+
+    if (w > 0.01) {
+      const legs: [FootPlan, typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
+        [this.gait.footL, g.hipPtL, g.kneeL, g.ankleL, g.toeL],
+        [this.gait.footR, g.hipPtR, g.kneeR, g.ankleR, g.toeR],
+      ]
+      for (const [fp, hipPt, knee, ankle, toe] of legs) {
+        // world target → local (facing) space
+        const tx = (fp.x - this.x) / (this.face * SCALE)
+        const ty = (fp.y - this.hipY) / SCALE
+        solveLegIK(hipPt.x, hipPt.y, tx, ty, l1, l2, 1, this.ikOut)
+        knee.x += (this.ikOut.kx - knee.x) * w
+        knee.y += (this.ikOut.ky - knee.y) * w
+        ankle.x += (this.ikOut.ax - ankle.x) * w
+        ankle.y += (this.ikOut.ay - ankle.y) * w
+        toeFromPitch(ankle.x, ankle.y, fp.pitch, PLAYER_SPEC.foot, this.toeScratch)
+        // the floor is solid: a plantarflexed toe-off toe never digs below it
+        const groundLy = (-1.2 - this.hipY) / SCALE
+        if (this.toeScratch.y > groundLy) this.toeScratch.y = groundLy
+        toe.x += (this.toeScratch.x - toe.x) * w
+        toe.y += (this.toeScratch.y - toe.y) * w
+      }
+    }
+
+    // PLANT pass — exact contact for non-gait grounded stances + floor clamp
+    if (w < 0.99 && this.grounded && this.state !== 'dead') {
+      const legs: [typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
+        [g.hipPtL, g.kneeL, g.ankleL, g.toeL],
+        [g.hipPtR, g.kneeR, g.ankleR, g.toeR],
+      ]
+      const iw = 1 - w // authority complement
+      for (const [hipPt, knee, ankle, toe] of legs) {
+        const ankleWy = this.hipY + SCALE * ankle.y
+        const toeWy = this.hipY + SCALE * toe.y
+        const extended = ankle.y > legLen * 0.52
+        // capture band: sole within ~12px of the line, or already below it
+        const nearGround = ankleWy > -12 && toeWy < 6
+        if (extended && nearGround) {
+          // snap: keep the authored stance x, pin the sole exactly
+          const ty = (-Player.SOLE_W - this.hipY) / SCALE
+          solveLegIK(hipPt.x, hipPt.y, ankle.x, ty, l1, l2, 1, this.ikOut)
+          knee.x += (this.ikOut.kx - knee.x) * iw
+          knee.y += (this.ikOut.ky - knee.y) * iw
+          ankle.x += (this.ikOut.ax - ankle.x) * iw
+          ankle.y += (this.ikOut.ay - ankle.y) * iw
+          // flat toe forward
+          toeFromPitch(ankle.x, ankle.y, 0.12, PLAYER_SPEC.foot, this.toeScratch)
+          toe.x += (this.toeScratch.x - toe.x) * iw
+          toe.y += (this.toeScratch.y - toe.y) * iw
+          // register the exact contact point for the shadow AO core
+          if (iw > 0.5) this.snapContacts.push(this.x + this.face * SCALE * ankle.x)
+        } else {
+          // floor clamp — the ground is solid: toes never render below it
+          const groundLy = (-1.2 - this.hipY) / SCALE
+          if (toe.y > groundLy) toe.y = groundLy
+          if (extended && ankle.y > (-Player.SOLE_W + 2 - this.hipY) / SCALE) {
+            ankle.y = (-Player.SOLE_W + 2 - this.hipY) / SCALE
+          }
+        }
+      }
+    }
   }
 
   /** BLADE DYNAMICS — rotational inertia of the katana as a spring-damper
@@ -2714,6 +2863,67 @@ export class Player {
   /* render                                                               */
   /* ------------------------------------------------------------------ */
 
+  /* ---- LIGHTING ENGINE: projected-skeleton cast shadow ----
+   * Every solved joint (and the blade) projects along the key light onto
+   * the ground plane — the shadow deforms with the pose, stretches when
+   * the storm strobes, detaches + fades when airborne, and carries tight
+   * contact-AO cores under the legik-planted feet. */
+  private shChains: number[][] = [[], [], [], [], []]
+  private shHead = { x: 0, y: 0, r: 0 }
+  private shBlade = { x0: 0, y0: 0, x1: 0, y1: 0 }
+  private shFig: ShadowFigure = { chains: this.shChains, head: this.shHead, blade: this.shBlade }
+  /* strobe rim state — set by the renderer each frame from the key light */
+  strobeLight: KeyLight | null = null
+  strobeK = 0
+  private rimChains: number[][] = [[], [], [], [], []]
+  /** contact-AO anchors from the plant-snap pass (non-gait stances:
+   * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
+  private snapContacts: number[] = []
+
+  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight): void {
+    if (this.state === 'dead' && this.deadT > 2.6) return
+    const g = this.geom
+    const f = this.face * SCALE
+    const hy = this.hipY
+    const W = (j: { x: number; y: number }, out: number[]) => {
+      out.push(this.x + f * j.x, hy + SCALE * j.y)
+    }
+    // chains: legs (hip→knee→ankle→toe), torso, arms (shoulder→elbow→hand)
+    const chains = this.shChains
+    chains[0].length = 0
+    W(g.hipPtL, chains[0]); W(g.kneeL, chains[0]); W(g.ankleL, chains[0]); W(g.toeL, chains[0])
+    chains[1].length = 0
+    W(g.hipPtR, chains[1]); W(g.kneeR, chains[1]); W(g.ankleR, chains[1]); W(g.toeR, chains[1])
+    chains[2].length = 0
+    W(g.hip, chains[2]); W(g.waist, chains[2]); W(g.chest, chains[2]); W(g.neckTop, chains[2])
+    chains[3].length = 0
+    W(g.shoulderL, chains[3]); W(g.elbL, chains[3]); W(g.handL, chains[3])
+    chains[4].length = 0
+    W(g.shoulderR, chains[4]); W(g.elbR, chains[4]); W(g.handR, chains[4])
+    // head + blade
+    this.shHead.x = this.x + f * g.headC.x
+    this.shHead.y = hy + SCALE * g.headC.y
+    this.shHead.r = 9.4 * SCALE
+    this.shBlade.x0 = this.x + f * g.grip.x; this.shBlade.y0 = hy + SCALE * g.grip.y
+    this.shBlade.x1 = this.x + f * g.tip.x; this.shBlade.y1 = hy + SCALE * g.tip.y
+    // contact AO: the legik planted anchors (exact ground-contact points)
+    // PLUS any plant-snap contacts from non-gait stances (dash/attacks/brake)
+    const contacts: number[] = []
+    if (this.grounded) {
+      if (this.gaitW > 0.5) {
+        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
+        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
+        if (contacts.length) contacts.push(this.x + f * g.hip.x)
+      }
+      for (const c of this.snapContacts) contacts.push(c)
+      if (!contacts.length && this.gaitW > 0.5) contacts.push(this.x + f * g.hip.x)
+    }
+    drawCastShadow(ctx, this.shFig, light, {
+      alpha: 0.58, width: 6.4, passes: 3, scale: SCALE,
+      height: this.y, contacts,
+    })
+  }
+
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted'
@@ -2924,6 +3134,31 @@ export class Player {
       ctx.beginPath()
       ctx.arc(this.x, this.hipY - 16, r, 0, Math.PI * 2)
       ctx.stroke()
+      ctx.restore()
+    }
+
+    // ---- STROBE RIM LIGHT (lighting engine): the bolt that casts the
+    // shadow also lights the caster — an additive edge pass on the lit
+    // side of the silhouette, flickering with the restrike cadence. ----
+    if (this.strobeLight && this.strobeK > 0.04) {
+      const g = this.geom
+      ctx.save()
+      ctx.translate(this.x, this.hipY)
+      ctx.scale(this.face * SCALE, SCALE)
+      const rc = this.rimChains
+      const L = (j: { x: number; y: number }, out: number[]) => { out.push(j.x, j.y) }
+      rc[0].length = 0
+      L(g.hipPtL, rc[0]); L(g.kneeL, rc[0]); L(g.ankleL, rc[0])
+      rc[1].length = 0
+      L(g.hipPtR, rc[1]); L(g.kneeR, rc[1]); L(g.ankleR, rc[1])
+      rc[2].length = 0
+      L(g.hip, rc[2]); L(g.waist, rc[2]); L(g.chest, rc[2]); L(g.neckTop, rc[2])
+      rc[3].length = 0
+      L(g.shoulderL, rc[3]); L(g.elbL, rc[3]); L(g.handL, rc[3])
+      rc[4].length = 0
+      L(g.shoulderR, rc[4]); L(g.elbR, rc[4]); L(g.handR, rc[4])
+      drawStrobeRim(ctx, this.strobeLight, this.strobeK * alpha, rc,
+        { x: g.headC.x, y: g.headC.y, r: 9.2 }, this.face, 5)
       ctx.restore()
     }
   }

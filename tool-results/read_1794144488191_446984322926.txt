@@ -1,0 +1,859 @@
+     1→/** STICKMAN RISING — skeleton solver + articulated stickman renderer.
+     2→ *
+     3→ * Solves joint positions from a Pose, then renders a layered, readable,
+     4→ * cybernetic stickman: dark outline pass → back limbs → torso → front limbs →
+     5→ * joints/head/armor. Supports ghost mode (afterimages) and hit-flash overlays.
+     6→ */
+     7→
+     8→import { Pose } from './pose'
+     9→import { clamp01, rgba } from '../core/utils'
+    10→
+    11→export interface Vec2 {
+    12→  x: number
+    13→  y: number
+    14→}
+    15→
+    16→export interface SkelSpec {
+    17→  torso: number
+    18→  /** visible neck column: shoulder-line (C7) → skull base (atlas) */
+    19→  neck: number
+    20→  headR: number
+    21→  /** glenohumeral joint forward of the spine-top, along the torso frame */
+    22→  shoulderFwd: number
+    23→  /** glenohumeral joint below the shoulder line, along the torso frame */
+    24→  shoulderDrop: number
+    25→  upperArm: number
+    26→  foreArm: number
+    27→  hand: number
+    28→  thigh: number
+    29→  shin: number
+    30→  foot: number
+    31→  blade: number
+    32→}
+    33→
+    34→/** ANATOMICAL PROPORTION SYSTEM — 8-head canon adapted to a silhouette
+    35→ * fighter (H ≈ 104 local units ≈ 137px at SCALE 1.32). Every joint offset
+    36→ * below derives from this table; nothing is placed by eye:
+    37→ *
+    38→ *   region            fraction    local units
+    39→ *   ──────────────────────────────────────────────
+    40→ *   skull height      1.28 head   17.6 (r 8.8 — stylized readability)
+    41→ *   neck column       0.55 head    7.2 (C7 → skull base — stylized long
+    42→ *                                    so the column READS at silhouette
+    43→ *                                    scale: a real 0.35-head neck reads
+    44→ *                                    as fused at gameplay zoom)
+    45→ *   hip→shoulder line 0.355 H     37   (waist split 0.57/0.43)
+    46→ *   femur head offset             ±~2  (front hip +1.7, rear −2.1)
+    47→ *   glenohumeral jt   0.031 H      3.2 fwd × 3.3 drop (near shoulder)
+    48→ *   humerus           0.212 H      22
+    49→ *   forearm           0.160 H     16.6 (humerus:forearm = 1.33:1 — the
+    50→ *                                      Drillis–Contini intermembral ratio,
+    51→ *                                      upper end: joint caps + bent-arm
+    52→ *                                      foreshortening eat ~10% of the
+    53→ *                                      perceived humerus at render time)
+    54→ *   hand              0.062 H     6.5
+    55→ *   femur             0.24 H      25
+    56→ *   tibia             0.23 H      24   (femur:tibia = 1.04:1 ✓)
+    57→ *   foot length       0.10 H      10
+    58→ *   blade 56 ≈ 54% of height + tsuka ≈ 70% — legit long-katana read
+    59→ *
+    60→ * Leg chain 49 keeps HIP_H = 64 world EXACTLY stable (ground contact,
+    61→ * foot-lock and hitbox heights all depend on it). The arm chain 38.6 keeps
+    62→ * ~96% of the legacy reach envelope while restoring the true humerus:
+    63→ * forearm ratio (1.1:1 read as a gorilla forearm at silhouette scale).
+    64→ */
+    65→export const PLAYER_SPEC: SkelSpec = {
+    66→  torso: 37,
+    67→  neck: 7.2,
+    68→  headR: 8.8,
+    69→  shoulderFwd: 3.2,
+    70→  shoulderDrop: 3.3,
+    71→  upperArm: 22,
+    72→  foreArm: 16.6,
+    73→  hand: 6.5,
+    74→  thigh: 25,
+    75→  shin: 24,
+    76→  foot: 10,
+    77→  blade: 56,
+    78→}
+    79→
+    80→export interface SkelGeom {
+    81→  hip: Vec2
+    82→  /** femur head, front leg (near side) */
+    83→  hipPtR: Vec2
+    84→  /** femur head, back leg (far side) */
+    85→  hipPtL: Vec2
+    86→  waist: Vec2
+    87→  chest: Vec2
+    88→  /** skull base (atlas joint) — top of the neck column */
+    89→  neckTop: Vec2
+    90→  headC: Vec2
+    91→  headAng: number
+    92→  /** glenohumeral joints — THE arm roots (anatomical) */
+    93→  shoulderR: Vec2
+    94→  shoulderL: Vec2
+    95→  kneeL: Vec2
+    96→  ankleL: Vec2
+    97→  toeL: Vec2
+    98→  kneeR: Vec2
+    99→  ankleR: Vec2
+   100→  toeR: Vec2
+   101→  elbL: Vec2
+   102→  handL: Vec2
+   103→  elbR: Vec2
+   104→  handR: Vec2
+   105→  bladeAngle: number // absolute angle of blade from hand, radians (0 = +X)
+   106→  torsoAngle: number
+   107→}
+   108→
+   109→export function makeSkelGeom(): SkelGeom {
+   110→  const z = (): Vec2 => ({ x: 0, y: 0 })
+   111→  return {
+   112→    hip: z(), hipPtR: z(), hipPtL: z(), waist: z(), chest: z(), neckTop: z(),
+   113→    headC: z(), headAng: 0, shoulderR: z(), shoulderL: z(),
+   114→    kneeL: z(), ankleL: z(), toeL: z(),
+   115→    kneeR: z(), ankleR: z(), toeR: z(),
+   116→    elbL: z(), handL: z(), elbR: z(), handR: z(),
+   117→    bladeAngle: 0, torsoAngle: 0,
+   118→  }
+   119→}
+   120→
+   121→/** Solve joint positions. Reuses `out`.
+   122→ *
+   123→ * SPINE CHAIN (four articulated regions, parented in order):
+   124→ *   hip → waist (pelvis/abdomen, 57% along `rot`) → chest (ribcage +
+   125→ *   shoulder line, 43% along `rot + spine`) → neck column (along the head
+   126→ *   channel) → skull. The waist joint makes the torso BEND instead of
+   127→ *   shear — the lumbar and thoracic curves separate.
+   128→ *
+   129→ * SHOULDER GIRDLE (the arms-from-the-neck fix): the glenohumeral joints
+   130→ * solve as chest + (shoulderFwd, shoulderDrop) in the chest's frame —
+   131→ * below the shoulder line and slightly anterior, like a real skeleton.
+   132→ * The far shoulder sits behind and lower (2.8D depth read). Arms chain
+   133→ * from THESE, never from the spine top.
+   134→ *
+   135→ * LEGS chain from offset femur-head joints (front hip slightly anterior,
+   136→ * rear hip behind) — the pelvis reads as a real basin, and stride scissor
+   137→ * from two distinct roots. */
+   138→export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGeom {
+   139→  const rot = pose[2]
+   140→  const spine = pose[3]
+   141→  const head = pose[4]
+   142→
+   143→  // spine: hip → waist → chest
+   144→  out.hip.x = pose[0]
+   145→  out.hip.y = pose[1]
+   146→  const t1 = rot
+   147→  out.waist.x = out.hip.x + Math.sin(t1) * spec.torso * 0.57
+   148→  out.waist.y = out.hip.y - Math.cos(t1) * spec.torso * 0.57
+   149→  const t2 = rot + spine
+   150→  out.chest.x = out.waist.x + Math.sin(t2) * spec.torso * 0.43
+   151→  out.chest.y = out.waist.y - Math.cos(t2) * spec.torso * 0.43
+   152→  out.torsoAngle = t2
+   153→
+   154→  // neck column + skull — a REAL neck: full spec.neck of visible column
+   155→  // between the shoulder line and the skull base
+   156→  const ha = t2 + head
+   157→  out.neckTop.x = out.chest.x + Math.sin(ha) * spec.neck
+   158→  out.neckTop.y = out.chest.y - Math.cos(ha) * spec.neck
+   159→  out.headC.x = out.neckTop.x + Math.sin(ha) * spec.headR * 0.9
+   160→  out.headC.y = out.neckTop.y - Math.cos(ha) * spec.headR * 0.9
+   161→  out.headAng = ha
+   162→
+   163→  // ---- SHOULDER GIRDLE: the arm roots ----
+   164→  // fwd(t) = (cos t, sin t); down-along-torso = (−sin t, cos t)
+   165→  const sf = spec.shoulderFwd
+   166→  const sd = spec.shoulderDrop
+   167→  out.shoulderR.x = out.chest.x + Math.cos(t2) * sf - Math.sin(t2) * sd
+   168→  out.shoulderR.y = out.chest.y + Math.sin(t2) * sf + Math.cos(t2) * sd
+   169→  const sfL = -sf * 0.62
+   170→  const sdL = sd * 1.18
+   171→  out.shoulderL.x = out.chest.x + Math.cos(t2) * sfL - Math.sin(t2) * sdL
+   172→  out.shoulderL.y = out.chest.y + Math.sin(t2) * sfL + Math.cos(t2) * sdL
+   173→
+   174→  // ---- femur heads ----
+   175→  out.hipPtR.x = out.hip.x + Math.cos(t1) * 1.7
+   176→  out.hipPtR.y = out.hip.y + Math.sin(t1) * 1.7
+   177→  out.hipPtL.x = out.hip.x + Math.cos(t1) * -2.1
+   178→  out.hipPtL.y = out.hip.y + Math.sin(t1) * -2.1
+   179→
+   180→  // legs (angle from straight-down, positive = forward)
+   181→  const hl = pose[5]
+   182→  const kl = pose[6]
+   183→  const fl = pose[7]
+   184→  out.kneeL.x = out.hipPtL.x + Math.sin(hl) * spec.thigh
+   185→  out.kneeL.y = out.hipPtL.y + Math.cos(hl) * spec.thigh
+   186→  const al = hl + kl
+   187→  out.ankleL.x = out.kneeL.x + Math.sin(al) * spec.shin
+   188→  out.ankleL.y = out.kneeL.y + Math.cos(al) * spec.shin
+   189→  // foot roll (Williams, Animator's Survival Kit): the toe defaults to FLAT
+   190→  // on the ground line; the foot channel is heel/toe flex (±) with a whisper
+   191→  // of shin influence so airborne tucks still point. Authoring foot angles
+   192→  // relative to the shin pointed the toe nearly straight down, planting
+   193→  // ~12px of rigid foot below the ground in every grounded pose.
+   194→  const tl = Math.PI / 2 + al * 0.35 + fl * 0.5
+   195→  out.toeL.x = out.ankleL.x + Math.sin(tl) * spec.foot
+   196→  out.toeL.y = out.ankleL.y + Math.cos(tl) * spec.foot
+   197→
+   198→  const hr = pose[8]
+   199→  const kr = pose[9]
+   200→  const fr = pose[10]
+   201→  out.kneeR.x = out.hipPtR.x + Math.sin(hr) * spec.thigh
+   202→  out.kneeR.y = out.hipPtR.y + Math.cos(hr) * spec.thigh
+   203→  const ar = hr + kr
+   204→  out.ankleR.x = out.kneeR.x + Math.sin(ar) * spec.shin
+   205→  out.ankleR.y = out.kneeR.y + Math.cos(ar) * spec.shin
+   206→  const tr = Math.PI / 2 + ar * 0.35 + fr * 0.5
+   207→  out.toeR.x = out.ankleR.x + Math.sin(tr) * spec.foot
+   208→  out.toeR.y = out.ankleR.y + Math.cos(tr) * spec.foot
+   209→
+   210→  // arms — FROM THE SHOULDERS (angle from straight-down, positive = forward)
+   211→  const sl = pose[11]
+   212→  const el = pose[12]
+   213→  out.elbL.x = out.shoulderL.x + Math.sin(sl) * spec.upperArm
+   214→  out.elbL.y = out.shoulderL.y + Math.cos(sl) * spec.upperArm
+   215→  const wl = sl + el
+   216→  out.handL.x = out.elbL.x + Math.sin(wl) * spec.foreArm
+   217→  out.handL.y = out.elbL.y + Math.cos(wl) * spec.foreArm
+   218→
+   219→  const sr = pose[14]
+   220→  const er = pose[15]
+   221→  out.elbR.x = out.shoulderR.x + Math.sin(sr) * spec.upperArm
+   222→  out.elbR.y = out.shoulderR.y + Math.cos(sr) * spec.upperArm
+   223→  const wr = sr + er
+   224→  out.handR.x = out.elbR.x + Math.sin(wr) * spec.foreArm
+   225→  out.handR.y = out.elbR.y + Math.cos(wr) * spec.foreArm
+   226→
+   227→  // blade: forearm direction rotated by wrist. forearm angle-from-+X = π/2 − (shR+elR);
+   228→  // positive wrist swings the tip toward facing (+X).
+   229→  out.bladeAngle = Math.PI / 2 - wr - pose[16]
+   230→  return out
+   231→}
+   232→
+   233→/* ------------------------------------------------------------------ */
+   234→/* Rendering                                                           */
+   235→/* ------------------------------------------------------------------ */
+   236→
+   237→export interface StickStyle {
+   238→  body: string
+   239→  dark: string
+   240→  outline: string
+   241→  glow: string
+   242→  lineW: number
+   243→  headStyle: 'visor' | 'goggles' | 'drone' | 'helm' | 'grunt'
+   244→  armor: boolean
+   245→  core?: string
+   246→  visorAlpha?: number
+   247→  /** full black silhouette humanoid (player remodel): filled capsules,
+   248→   * tapered torso, glowing eyes — Limbo/INSIDE readability language */
+   249→  silhouette?: boolean
+   250→}
+   251→
+   252→export const PLAYER_STYLE: StickStyle = {
+   253→  body: '#04060a',
+   254→  dark: '#24334d', // back-limb depth shade — bright enough to READ against
+   255→  // the pure-black mass at gameplay zoom (the old #131b28 vanished — the
+   256→  // far/lead leg “disappeared” into the body blob in sprint contact)
+   257→  outline: '#2c3a50',
+   258→  glow: '#41f6ff',
+   259→  lineW: 5,
+   260→  headStyle: 'visor',
+   261→  armor: false,
+   262→  silhouette: true,
+   263→}
+   264→
+   265→export interface DrawOpts {
+   266→  alpha?: number
+   267→  time?: number
+   268→  flash?: number
+   269→  flashColor?: string
+   270→  /** ghost/afterimage mode: single flat color, no detail */
+   271→  ghost?: string
+   272→  ghostAlpha?: number
+   273→  /** skip outline+details (perf for far enemies) */
+   274→  simple?: boolean
+   275→  /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
+   276→   * the swinging/charging edge illuminates the body that carries it */
+   277→  edgeLight?: { color: string; a: number }
+   278→}
+   279→
+   280→function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, cx: number, cy: number): void {
+   281→  ctx.beginPath()
+   282→  ctx.moveTo(ax, ay)
+   283→  ctx.lineTo(bx, by)
+   284→  ctx.lineTo(cx, cy)
+   285→  ctx.stroke()
+   286→}
+   287→
+   288→/** Fills a foot wedge (ankle → toe) with heel/toe widths. */
+   289→function fillFoot(
+   290→  ctx: CanvasRenderingContext2D,
+   291→  ax: number, ay: number, bx: number, by: number,
+   292→  color: string,
+   293→  alpha = 1,
+   294→): void {
+   295→  const dx = bx - ax
+   296→  const dy = by - ay
+   297→  const len = Math.hypot(dx, dy) || 1
+   298→  const nx = -dy / len
+   299→  const ny = dx / len
+   300→  ctx.save()
+   301→  ctx.globalAlpha *= alpha
+   302→  ctx.fillStyle = color
+   303→  ctx.beginPath()
+   304→  ctx.moveTo(ax + nx * 3.4, ay + ny * 3.4)
+   305→  ctx.lineTo(bx + nx * 2.5, by + ny * 2.5)
+   306→  ctx.lineTo(bx - nx * 2.5, by - ny * 2.5)
+   307→  ctx.lineTo(ax - nx * 3.4, ay - ny * 3.4)
+   308→  ctx.closePath()
+   309→  ctx.fill()
+   310→  ctx.beginPath()
+   311→  ctx.arc(ax, ay, 3.4, 0, Math.PI * 2)
+   312→  ctx.fill()
+   313→  ctx.beginPath()
+   314→  ctx.arc(bx, by, 2.3, 0, Math.PI * 2)
+   315→  ctx.fill()
+   316→  ctx.restore()
+   317→}
+   318→
+   319→/**
+   320→ * Draws the stickman. The ctx is expected to be pre-translated to the hip
+   321→ * position, flipped horizontally for facing, and scaled — geom is local space.
+   322→ */
+   323→export function drawStick(
+   324→  ctx: CanvasRenderingContext2D,
+   325→  g: SkelGeom,
+   326→  style: StickStyle,
+   327→  opts: DrawOpts = {},
+   328→): void {
+   329→  const alpha = opts.alpha ?? 1
+   330→  if (alpha <= 0.01) return
+   331→  const t = opts.time ?? 0
+   332→  const ghost = opts.ghost
+   333→  const lineW = style.lineW
+   334→
+   335→  ctx.save()
+   336→  ctx.globalAlpha *= alpha
+   337→  ctx.lineCap = 'round'
+   338→  ctx.lineJoin = 'round'
+   339→
+   340→  if (ghost) {
+   341→    // ---- afterimage pass: flat, cheap, gorgeous ----
+   342→    ctx.strokeStyle = ghost
+   343→    ctx.lineWidth = lineW
+   344→    const ga = opts.ghostAlpha ?? 1
+   345→    ctx.globalAlpha *= ga
+   346→    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+   347→    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+   348→    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+   349→    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+   350→    // feet + spine THROUGH the neck to the skull: the ghost reads as a
+   351→    // full connected figure (the old ghost stopped the spine at the chest,
+   352→    // so the stroked head circle floated above the body — "floating head";
+   353→    // the line now pierces the ring to its far edge so head + neck weld)
+   354→    ctx.beginPath()
+   355→    ctx.moveTo(g.ankleL.x, g.ankleL.y)
+   356→    ctx.lineTo(g.toeL.x, g.toeL.y)
+   357→    ctx.moveTo(g.ankleR.x, g.ankleR.y)
+   358→    ctx.lineTo(g.toeR.x, g.toeR.y)
+   359→    ctx.stroke()
+   360→    ctx.beginPath()
+   361→    ctx.moveTo(g.hip.x, g.hip.y)
+   362→    ctx.lineTo(g.waist.x, g.waist.y)
+   363→    ctx.lineTo(g.chest.x, g.chest.y)
+   364→    ctx.lineTo(g.neckTop.x, g.neckTop.y)
+   365→    ctx.lineTo(g.headC.x, g.headC.y)
+   366→    // extend THROUGH the skull ring (one headR past the center along the
+   367→    // neck axis) — the line reaches the ring's far edge: welded, not
+   368→    // dangling inside the circle
+   369→    {
+   370→      const hdx = g.headC.x - g.neckTop.x
+   371→      const hdy = g.headC.y - g.neckTop.y
+   372→      const hl = Math.hypot(hdx, hdy) || 1
+   373→      const hr = style === PLAYER_STYLE ? 8.8 : 8
+   374→      ctx.lineTo(g.headC.x + (hdx / hl) * hr, g.headC.y + (hdy / hl) * hr)
+   375→    }
+   376→    ctx.stroke()
+   377→    ctx.beginPath()
+   378→    ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.8 : 8, 0, Math.PI * 2)
+   379→    ctx.stroke()
+   380→    ctx.restore()
+   381→    return
+   382→  }
+   383→
+   384→  // ---- full-black humanoid silhouette (player) ----
+   385→  if (style.silhouette) {
+   386→    drawSilhouette(ctx, g, style, opts, t, lineW)
+   387→    ctx.restore()
+   388→    return
+   389→  }
+   390→
+   391→  // ---- 1. outline pass (readability against the neon city) ----
+   392→  if (!opts.simple) {
+   393→    ctx.strokeStyle = style.outline
+   394→    ctx.lineWidth = lineW + 3.6
+   395→    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+   396→    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+   397→    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+   398→    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+   399→    ctx.beginPath()
+   400→    ctx.moveTo(g.hip.x, g.hip.y)
+   401→    ctx.lineTo(g.waist.x, g.waist.y)
+   402→    ctx.lineTo(g.chest.x, g.chest.y)
+   403→    ctx.stroke()
+   404→  }
+   405→
+   406→  // ---- 2. back limbs ----
+   407→  ctx.strokeStyle = style.dark
+   408→  ctx.lineWidth = lineW
+   409→  limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+   410→  ctx.strokeStyle = rgba(style.dark, 0.82)
+   411→  limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+   412→
+   413→  // ---- 3. torso (thicker, armored core) ----
+   414→  ctx.strokeStyle = style.body
+   415→  ctx.lineWidth = lineW * 1.42
+   416→  ctx.beginPath()
+   417→  ctx.moveTo(g.hip.x, g.hip.y)
+   418→  ctx.lineTo(g.waist.x, g.waist.y)
+   419→  ctx.lineTo(g.chest.x, g.chest.y)
+   420→  ctx.stroke()
+   421→
+   422→  // ---- 4. front limbs ----
+   423→  ctx.strokeStyle = style.body
+   424→  ctx.lineWidth = lineW
+   425→  limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+   426→  limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+   427→
+   428→  // ---- 5. feet ----
+   429→  ctx.strokeStyle = style.body
+   430→  ctx.lineWidth = lineW * 0.72
+   431→  ctx.beginPath()
+   432→  ctx.moveTo(g.ankleR.x, g.ankleR.y)
+   433→  ctx.lineTo(g.toeR.x, g.toeR.y)
+   434→  ctx.moveTo(g.ankleL.x, g.ankleL.y)
+   435→  ctx.lineTo(g.toeL.x, g.toeL.y)
+   436→  ctx.stroke()
+   437→
+   438→  // ---- 6. mechanical joints ----
+   439→  const jr = lineW * 0.52
+   440→  ctx.fillStyle = style.outline
+   441→  for (const j of [g.kneeL, g.kneeR, g.elbL, g.elbR]) {
+   442→    ctx.beginPath()
+   443→    ctx.arc(j.x, j.y, jr + 1.2, 0, Math.PI * 2)
+   444→    ctx.fill()
+   445→  }
+   446→  ctx.fillStyle = style.dark
+   447→  for (const j of [g.kneeL, g.kneeR, g.elbL, g.elbR]) {
+   448→    ctx.beginPath()
+   449→    ctx.arc(j.x, j.y, jr, 0, Math.PI * 2)
+   450→    ctx.fill()
+   451→  }
+   452→  if (!opts.simple) {
+   453→    ctx.fillStyle = rgba(style.glow, 0.85)
+   454→    for (const j of [g.kneeR, g.elbR]) {
+   455→      ctx.beginPath()
+   456→      ctx.arc(j.x, j.y, jr * 0.42, 0, Math.PI * 2)
+   457→      ctx.fill()
+   458→    }
+   459→  }
+   460→
+   461→  // ---- 7. head ----
+   462→  const hr = 8.8
+   463→  ctx.fillStyle = style.outline
+   464→  ctx.beginPath()
+   465→  ctx.arc(g.headC.x, g.headC.y, hr + 1.4, 0, Math.PI * 2)
+   466→  ctx.fill()
+   467→  ctx.fillStyle = style.dark
+   468→  ctx.beginPath()
+   469→  ctx.arc(g.headC.x, g.headC.y, hr, 0, Math.PI * 2)
+   470→  ctx.fill()
+   471→  // visor slit (facing side) — glowing
+   472→  const va = style.visorAlpha ?? 1
+   473→  const vx = g.headC.x + Math.cos(g.headAng) * 0
+   474→  const vy = g.headC.y
+   475→  const flick = 0.85 + 0.15 * Math.sin(t * 11.3)
+   476→  ctx.strokeStyle = rgba(style.glow, va * flick)
+   477→  ctx.lineWidth = 2.6
+   478→  ctx.beginPath()
+   479→  ctx.moveTo(vx + 1.5, vy - 3.1)
+   480→  ctx.lineTo(vx + hr - 0.6, vy - 2.2)
+   481→  ctx.stroke()
+   482→  if (!opts.simple) {
+   483→    // helmet crest
+   484→    ctx.strokeStyle = rgba(style.body, 0.9)
+   485→    ctx.lineWidth = 2.2
+   486→    ctx.beginPath()
+   487→    ctx.moveTo(g.headC.x - 4.5, g.headC.y - hr + 0.8)
+   488→    ctx.lineTo(g.headC.x - 2.5, g.headC.y - hr - 3.4)
+   489→    ctx.stroke()
+   490→  }
+   491→
+   492→  // ---- 8. cybernetic armor (player / elite / heavy) ----
+   493→  if (style.armor && !opts.simple) {
+   494→    const ca = Math.sin(t * 6.2) * 0.5 + 0.5
+   495→    // shoulder pauldron on sword arm
+   496→    const shx = g.chest.x
+   497→    const shy = g.chest.y
+   498→    ctx.fillStyle = rgba(style.body, 0.94)
+   499→    ctx.strokeStyle = style.outline
+   500→    ctx.lineWidth = 1.4
+   501→    ctx.beginPath()
+   502→    ctx.moveTo(shx - 2, shy - 3.4)
+   503→    ctx.lineTo(shx + 9.5, shy - 5.6)
+   504→    ctx.lineTo(shx + 11.5, shy + 2.2)
+   505→    ctx.lineTo(shx - 1, shy + 3.4)
+   506→    ctx.closePath()
+   507→    ctx.fill()
+   508→    ctx.stroke()
+   509→    // chest core (pulsing energy)
+   510→    if (style.core) {
+   511→      const cxp = (g.hip.x + g.chest.x) * 0.5
+   512→      const cyp = (g.hip.y + g.chest.y) * 0.5
+   513→      ctx.fillStyle = rgba(style.core, 0.55 + ca * 0.4)
+   514→      ctx.beginPath()
+   515→      ctx.arc(cxp, cyp, 3.1 + ca * 0.9, 0, Math.PI * 2)
+   516→      ctx.fill()
+   517→      ctx.strokeStyle = rgba(style.core, 0.9)
+   518→      ctx.lineWidth = 1
+   519→      ctx.beginPath()
+   520→      ctx.arc(cxp, cyp, 5.6 + ca * 1.4, 0, Math.PI * 2)
+   521→      ctx.stroke()
+   522→    }
+   523→    // thigh plate on front leg
+   524→    ctx.strokeStyle = rgba(style.body, 0.85)
+   525→    ctx.lineWidth = lineW * 0.5
+   526→    ctx.beginPath()
+   527→    ctx.moveTo((g.hip.x + g.kneeR.x) / 2, (g.hip.y + g.kneeR.y) / 2)
+   528→    ctx.lineTo((g.hip.x + g.kneeR.x) / 2 + 1.2, (g.hip.y + g.kneeR.y) / 2 - 2.6)
+   529→    ctx.stroke()
+   530→  }
+   531→
+   532→  // ---- 9. hit flash overlay ----
+   533→  const flash = clamp01(opts.flash ?? 0)
+   534→  if (flash > 0.02) {
+   535→    ctx.strokeStyle = rgba(opts.flashColor ?? '#ffffff', flash)
+   536→    ctx.lineWidth = lineW
+   537→    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+   538→    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+   539→    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+   540→    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+   541→    ctx.lineWidth = lineW * 1.4
+   542→    ctx.beginPath()
+   543→    ctx.moveTo(g.hip.x, g.hip.y)
+   544→    ctx.lineTo(g.waist.x, g.waist.y)
+   545→    ctx.lineTo(g.chest.x, g.chest.y)
+   546→    ctx.stroke()
+   547→  }
+   548→
+   549→  ctx.restore()
+   550→}
+   551→
+   552→/* ------------------------------------------------------------------ */
+   553→/* Full-black humanoid silhouette (player remodel)                      */
+   554→/* ------------------------------------------------------------------ */
+   555→
+   556→/** Fist: a short capsule perpendicular to the grip axis — knuckles read. */
+   557→function fillFist(
+   558→  ctx: CanvasRenderingContext2D,
+   559→  x: number, y: number,
+   560→  ax: number, ay: number, // grip axis (unit)
+   561→  size: number,
+   562→  color: string,
+   563→  alpha = 1,
+   564→): void {
+   565→  // perpendicular of grip axis
+   566→  const px = -ay
+   567→  const py = ax
+   568→  ctx.save()
+   569→  ctx.globalAlpha *= alpha
+   570→  ctx.fillStyle = color
+   571→  ctx.beginPath()
+   572→  ctx.moveTo(x + px * size, y + py * size)
+   573→  ctx.lineTo(x + ax * size * 0.55 + px * size * 0.8, y + ay * size * 0.55 + py * size * 0.8)
+   574→  ctx.lineTo(x + ax * size * 0.55 - px * size * 0.8, y + ay * size * 0.55 - py * size * 0.8)
+   575→  ctx.lineTo(x - px * size, y - py * size)
+   576→  ctx.closePath()
+   577→  ctx.fill()
+   578→  ctx.beginPath()
+   579→  ctx.arc(x, y, size * 0.92, 0, Math.PI * 2)
+   580→  ctx.fill()
+   581→  ctx.restore()
+   582→}
+   583→
+   584→/** Rounded wedge between two points with per-end widths — torso/lats. */
+   585→function fillTaper(
+   586→  ctx: CanvasRenderingContext2D,
+   587→  ax: number, ay: number, bx: number, by: number,
+   588→  wa: number, wb: number,
+   589→  color: string,
+   590→  alpha = 1,
+   591→): void {
+   592→  const dx = bx - ax
+   593→  const dy = by - ay
+   594→  const len = Math.hypot(dx, dy) || 1
+   595→  const nx = -dy / len
+   596→  const ny = dx / len
+   597→  ctx.save()
+   598→  ctx.globalAlpha *= alpha
+   599→  ctx.fillStyle = color
+   600→  ctx.beginPath()
+   601→  ctx.moveTo(ax + nx * wa, ay + ny * wa)
+   602→  ctx.lineTo(bx + nx * wb, by + ny * wb)
+   603→  ctx.lineTo(bx - nx * wb, by - ny * wb)
+   604→  ctx.lineTo(ax - nx * wa, ay - ny * wa)
+   605→  ctx.closePath()
+   606→  ctx.fill()
+   607→  ctx.beginPath()
+   608→  ctx.arc(ax, ay, wa, 0, Math.PI * 2)
+   609→  ctx.fill()
+   610→  ctx.beginPath()
+   611→  ctx.arc(bx, by, wb, 0, Math.PI * 2)
+   612→  ctx.fill()
+   613→  ctx.restore()
+   614→}
+   615→
+   616→/**
+   617→ * Limbo/INSIDE-style silhouette, modeled on the articulated skeleton:
+   618→ * pelvis basin → abdominal taper → ribcage flare → trapezius → neck column
+   619→ * → skull; deltoid caps AT the glenohumeral joints; arms chain shoulder →
+   620→ * elbow → fist. Draw order back-to-front: rim → back limbs → torso → front
+   621→ * limbs → hands/feet → head → eyes → hit flash. Local space, ctx pre-flipped.
+   622→ */
+   623→function drawSilhouette(
+   624→  ctx: CanvasRenderingContext2D,
+   625→  g: SkelGeom,
+   626→  style: StickStyle,
+   627→  opts: DrawOpts,
+   628→  t: number,
+   629→  lineW: number,
+   630→): void {
+   631→  const black = style.body
+   632→  const rim = style.outline
+   633→  // back-limb depth shade: still silhouette-dark, but separable from the
+   634→  // pure-black mass (the old 82%-alpha-black vanished against the torso)
+   635→  const back = style.dark !== black ? style.dark : rgba(black, 0.82)
+   636→
+   637→  // ---- 0. rim pass (separates pure black from the night city) ----
+   638→  if (!opts.simple) {
+   639→    ctx.save()
+   640→    ctx.globalAlpha *= 0.78
+   641→    ctx.strokeStyle = rim
+   642→    ctx.lineWidth = lineW + 3.6
+   643→    ctx.lineCap = 'round'
+   644→    ctx.lineJoin = 'round'
+   645→    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+   646→    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+   647→    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+   648→    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+   649→    ctx.lineWidth = (lineW + 3.6) * 1.5
+   650→    ctx.beginPath()
+   651→    ctx.moveTo(g.hip.x, g.hip.y)
+   652→    ctx.lineTo(g.waist.x, g.waist.y)
+   653→    ctx.lineTo(g.chest.x, g.chest.y)
+   654→    ctx.lineTo(g.neckTop.x, g.neckTop.y)
+   655→    ctx.stroke()
+   656→    ctx.restore()
+   657→  }
+   658→
+   659→  // ---- 1. back limbs (recessed — depth cue), with anatomy ----
+   660→  // back leg from the far femur head: thigh (quad mass) → calf taper
+   661→  fillTaper(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, 5.8, 4.3, back)
+   662→  fillTaper(ctx, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y, 4.0, 2.8, back)
+   663→  fillFoot(ctx, g.ankleL.x, g.ankleL.y, g.toeL.x, g.toeL.y, back)
+   664→  // knee cap (back) — centers the joint inside the calf silhouette
+   665→  ctx.fillStyle = back
+   666→  ctx.beginPath()
+   667→  ctx.arc(g.kneeL.x, g.kneeL.y, 4.2, 0, Math.PI * 2)
+   668→  ctx.fill()
+   669→  // rear deltoid cap — the back arm's root reads at the far shoulder
+   670→  ctx.beginPath()
+   671→  ctx.arc(g.shoulderL.x, g.shoulderL.y, 4.6, 0, Math.PI * 2)
+   672→  ctx.fill()
+   673→  // back arm: triceps taper + forearm, from the far glenohumeral joint
+   674→  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 4.9, 3.1, back)
+   675→  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 2.9, 1.8, back)
+   676→
+   677→  // ---- 2. torso: pelvis basin + abdomen + ribcage + trapezius + neck ----
+   678→  // pelvis: WIDE at the hip (iliac crest), tapering hard to the waist —
+   679→  // strong region contrast so the pelvis reads as a basin
+   680→  fillTaper(ctx, g.hip.x, g.hip.y, g.waist.x, g.waist.y, 9.6, 6.6, black)
+   681→  // abdomen → ribcage: narrow at the navel, flaring WIDE at the chest —
+   682→  // the V-taper of the latissimus into the ribcage
+   683→  fillTaper(ctx, g.waist.x, g.waist.y, g.chest.x, g.chest.y, 6.6, 10.4, black)
+   684→  // trapezius: the shoulder girdle — slopes from the skull base out to BOTH
+   685→  // deltoid caps (near + far). This polygon is what ties arms to shoulders.
+   686→  {
+   687→    const ndx = g.neckTop.x - g.chest.x
+   688→    const ndy = g.neckTop.y - g.chest.y
+   689→    const nl = Math.hypot(ndx, ndy) || 1
+   690→    const px = -ndy / nl
+   691→    const py = ndx / nl
+   692→    ctx.save()
+   693→    ctx.fillStyle = black
+   694→    ctx.beginPath()
+   695→    ctx.moveTo(g.neckTop.x + px * 3.4, g.neckTop.y + py * 3.4)
+   696→    ctx.lineTo(g.neckTop.x - px * 3.4, g.neckTop.y - py * 3.4)
+   697→    // out to the FAR shoulder cap (behind + lower — 2.8D depth read)
+   698→    ctx.lineTo(g.shoulderL.x + px * 4.8, g.shoulderL.y + py * 4.8)
+   699→    ctx.lineTo(g.shoulderL.x - px * 3.4, g.shoulderL.y - py * 3.4)
+   700→    // through the shoulder line to the NEAR shoulder cap
+   701→    ctx.lineTo(g.shoulderR.x - px * 5.2, g.shoulderR.y - py * 5.2)
+   702→    ctx.lineTo(g.shoulderR.x + px * 5.8, g.shoulderR.y + py * 5.8)
+   703→    ctx.closePath()
+   704→    ctx.fill()
+   705→    ctx.restore()
+   706→  }
+   707→  // neck column: chest (shoulder line) up to the skull base — a real neck,
+   708→  // wide at the base (sternocleidomastoid + trap roots) tapering to atlas
+   709→  fillTaper(ctx, g.chest.x, g.chest.y, g.neckTop.x, g.neckTop.y, 4.6, 3.3, black)
+   710→
+   711→  // ---- 3. front limbs (solid black, anatomical) ----
+   712→  // front leg from the near femur head: quad → knee → calf
+   713→  fillTaper(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, 6.5, 4.7, black)
+   714→  fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 2.9, black)
+   715→  fillFoot(ctx, g.ankleR.x, g.ankleR.y, g.toeR.x, g.toeR.y, black)
+   716→  // knee cap — centers the joint in the front calf silhouette
+   717→  ctx.fillStyle = black
+   718→  ctx.beginPath()
+   719→  ctx.arc(g.kneeR.x, g.kneeR.y, 4.6, 0, Math.PI * 2)
+   720→  ctx.fill()
+   721→  // deltoid cap ON the glenohumeral joint — the arm reads from the shoulder
+   722→  ctx.beginPath()
+   723→  ctx.arc(g.shoulderR.x, g.shoulderR.y, 5.7, 0, Math.PI * 2)
+   724→  ctx.fill()
+   725→  // bicep → forearm taper (anatomical: deltoid .055H → elbow .035H →
+   726→  // wrist .020H — the forearm tapers STEEPER than the humerus)
+   727→  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 5.7, 3.6, black)
+   728→  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.4, 2.1, black)
+   729→  // elbow sphere (silhouette joint)
+   730→  ctx.beginPath()
+   731→  ctx.arc(g.elbR.x, g.elbR.y, 3.7, 0, Math.PI * 2)
+   732→  ctx.fill()
+   733→
+   734→  // ---- 4. hands: fists oriented on the blade axis (grip anatomy) ----
+   735→  const bax = Math.cos(g.bladeAngle)
+   736→  const bay = Math.sin(g.bladeAngle)
+   737→  // off-hand fist (rear grip — back shade, under the sword hand)
+   738→  fillFist(ctx, g.handL.x, g.handL.y, bax, bay, 2.9, back)
+   739→  // sword hand — big knuckle fist across the tsuka
+   740→  fillFist(ctx, g.handR.x, g.handR.y, bax, bay, 3.4, black)
+   741→  // grip readability: a whisper of rim on the sword fist so the grip reads
+   742→  // against the black mass (playtest note: hands vanished at gameplay zoom)
+   743→  if (!opts.simple) {
+   744→    ctx.save()
+   745→    ctx.strokeStyle = rgba(rim, 0.55)
+   746→    ctx.lineWidth = 1.2
+   747→    ctx.beginPath()
+   748→    ctx.arc(g.handR.x, g.handR.y, 3.6, -1.2, 0.9)
+   749→    ctx.stroke()
+   750→    ctx.restore()
+   751→  }
+   752→
+   753→  // ---- 4.5 BLADE-CAST RIM LIGHT (2.8D dynamic lighting): the glowing
+   754→  // edge lights the sword-side of the body — arm, torso leading edge,
+   755→  // front thigh. An additive whisper that separates the carrier from the
+   756→  // night and sells the blade as a real 3D light source in the scene. ----
+   757→  const el = opts.edgeLight
+   758→  if (el && el.a > 0.03) {
+   759→    ctx.save()
+   760→    ctx.globalCompositeOperation = 'lighter'
+   761→    ctx.lineCap = 'round'
+   762→    ctx.strokeStyle = rgba(el.color, Math.min(0.85, el.a))
+   763→    ctx.lineWidth = 2
+   764→    // sword arm chain (shoulder → elbow → hand) — closest to the source
+   765→    ctx.beginPath()
+   766→    ctx.moveTo(g.shoulderR.x, g.shoulderR.y)
+   767→    ctx.lineTo(g.elbR.x, g.elbR.y)
+   768→    ctx.lineTo(g.handR.x, g.handR.y)
+   769→    ctx.stroke()
+   770→    // torso leading edge (the lit side of the ribcage)
+   771→    ctx.beginPath()
+   772→    ctx.moveTo(g.hip.x + 5.2, g.hip.y - 1)
+   773→    ctx.quadraticCurveTo(g.waist.x + 6.5, g.waist.y - 1, g.chest.x + 8.2, g.chest.y + 1.5)
+   774→    ctx.stroke()
+   775→    // front thigh quad — the forward leg catches the spill
+   776→    ctx.beginPath()
+   777→    ctx.moveTo(g.hipPtR.x + 4.4, g.hipPtR.y + 1)
+   778→    ctx.lineTo(g.kneeR.x + 3.4, g.kneeR.y - 1)
+   779→    ctx.stroke()
+   780→    // off-hand knuckles kiss the light when gripping the tsuka
+   781→    ctx.lineWidth = 1.4
+   782→    ctx.beginPath()
+   783→    ctx.arc(g.handL.x, g.handL.y, 2.6, 0, Math.PI * 2)
+   784→    ctx.stroke()
+   785→    ctx.restore()
+   786→  }
+   787→
+   788→  // ---- 5. head: skull dome + jaw taper + swept hood crest ----
+   789→  ctx.save()
+   790→  ctx.fillStyle = black
+   791→  // skull — egg tilted with headAng (slightly taller than wide)
+   792→  ctx.translate(g.headC.x, g.headC.y)
+   793→  ctx.rotate(g.headAng * 0.35)
+   794→  ctx.beginPath()
+   795→  ctx.ellipse(0, -0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
+   796→  ctx.fill()
+   797→  // jaw taper — chin mass forward-low (reads as a jaw, not a ball)
+   798→  ctx.beginPath()
+   799→  ctx.moveTo(2.6, 5.6)
+   800→  ctx.quadraticCurveTo(1.2, 8.6, -1.8, 8.2)
+   801→  ctx.quadraticCurveTo(-4.2, 7.6, -4.6, 4.4)
+   802→  ctx.closePath()
+   803→  ctx.fill()
+   804→  // hood/kabuto crest — swept back over the crown
+   805→  ctx.beginPath()
+   806→  ctx.moveTo(-2.0, -8.2)
+   807→  ctx.quadraticCurveTo(-7.5, -12.6, -12.6, -9.4)
+   808→  ctx.quadraticCurveTo(-8.8, -6.4, -5.2, -5.2)
+   809→  ctx.closePath()
+   810→  ctx.fill()
+   811→  ctx.restore()
+   812→  // rim arc on the back of the skull — the one lit edge of the head
+   813→  if (!opts.simple) {
+   814→    ctx.save()
+   815→    ctx.strokeStyle = rgba(rim, 0.5)
+   816→    ctx.lineWidth = 1.6
+   817→    ctx.beginPath()
+   818→    ctx.arc(g.headC.x - 1.5, g.headC.y - 0.5, 8.6, Math.PI * 0.62, Math.PI * 1.32)
+   819→    ctx.stroke()
+   820→    ctx.restore()
+   821→  }
+   822→
+   823→  // ---- 6. glowing eyes (the only light on the body) ----
+   824→  if (!opts.simple) {
+   825→    const blink = 0.85 + 0.15 * Math.sin(t * 3.1)
+   826→    ctx.save()
+   827→    ctx.globalCompositeOperation = 'lighter'
+   828→    ctx.fillStyle = rgba(style.glow, 0.95 * blink)
+   829→    // two eye slits on the forward face, angled with intent
+   830→    ctx.beginPath()
+   831→    ctx.ellipse(g.headC.x + 3.4, g.headC.y - 1.4, 2.0, 1.15, -0.18, 0, Math.PI * 2)
+   832→    ctx.fill()
+   833→    ctx.beginPath()
+   834→    ctx.ellipse(g.headC.x + 6.4, g.headC.y - 2.2, 1.25, 0.9, -0.18, 0, Math.PI * 2)
+   835→    ctx.fill()
+   836→    ctx.restore()
+   837→  }
+   838→
+   839→  // ---- 7. hit flash overlay (whole body flashes) ----
+   840→  const flash = clamp01(opts.flash ?? 0)
+   841→  if (flash > 0.02) {
+   842→    const fc = opts.flashColor ?? '#ffffff'
+   843→    fillTaper(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, 6.5, 4.7, fc, flash)
+   844→    fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 2.9, fc, flash)
+   845→    fillTaper(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, 5.8, 4.3, fc, flash * 0.8)
+   846→    fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 4.9, 3.6, fc, flash)
+   847→    fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.5, 2.6, fc, flash)
+   848→    fillTaper(ctx, g.waist.x, g.waist.y, g.chest.x, g.chest.y, 6.6, 10.4, fc, flash)
+   849→    fillTaper(ctx, g.hip.x, g.hip.y, g.waist.x, g.waist.y, 9.6, 6.6, fc, flash)
+   850→    ctx.fillStyle = fc
+   851→    ctx.save()
+   852→    ctx.globalAlpha *= flash
+   853→    ctx.beginPath()
+   854→    ctx.ellipse(g.headC.x, g.headC.y - 0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
+   855→    ctx.fill()
+   856→    ctx.restore()
+   857→  }
+   858→}
+   859→

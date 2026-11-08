@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Image 1 (DASH):** Yes — there's a distinct dark contact shadow/core directly under the planted front foot of the dashing player, anchoring the lunge to the platform. It reads as a grounded, darker blob right beneath the foot with a slightly softer trailing smudge behind it.\n\n**Image 2 (JUMP apex):** Yes — there's a detached, faded shadow on the platform below the airborne player. It's a small, soft-edged dark blob near the player's horizontal position but clearly separated from the character, and it looks smaller/softer than the contact shadow seen in Image 1, consistent with being airborne.\n\n**Foot glitches:** None obvious in either. In Image 1 the trailing legs overlap naturally with motion-blur streaks, and the planted foot sits cleanly on the surface. In Image 2 the tucked legs are clear of the ground with the expected gap, and no floating/clipping feet are visible in either frame.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794147282,
+  "id": "202611082214367a6529590a3b4bbf",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082214367a6529590a3b4bbf",
+  "usage": {
+    "completion_tokens": 200,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2298,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 2498
+  }
+}

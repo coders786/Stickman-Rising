@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**Character appearance:**\n- A black/very dark navy articulated humanoid silhouette — a stickman-style figure built from distinct limbs (head, torso, upper/lower arms, thighs, shins) with visible joints rather than a single solid shape.\n- The head has a small topknot/bun, and a single horizontal **cyan glowing eye visor/streak** across the face.\n- Subtle blue-grey tone variation on some segments (legs, torso panels) giving a slight two-tone layered look, but overall the body reads as near-black.\n- The figure is in a walking/striding pose, holding a **long katana** in a low grip behind/beside it — the sword has a pale steel blade with a distinct **gold/yellow circular ring tsuba (guard)** at the hilt end.\n\n**Ground shadow:**\n- Yes — there is a soft, dark **blob/elliptical shadow** on the rooftop walkway directly beneath the feet. It's a blurred pooled darkness, not an articulated figure-shaped shadow.\n- Additionally, the walkway surface is glossy/reflective: below the floor line you can see a faint **mirrored reflection** of the character and the sword's gold ring, which is a reflection effect rather than a shadow.\n\n**Rim lighting:**\n- There is **no bright rim lighting** on the character — the silhouette stays flat black against the dark background. The only luminous accents are the cyan eye glow and the pale sword blade/ring.\n- Indirect \"rim\" definition comes from contrast: slightly lighter blue-grey edges on limb segments and the reflective floor catching the figure, rather than an explicit light-colored outline. The scene overall is very dark, with tiny ambient dots (orange/cyan embers/lights) floating in the background.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794146924,
+  "id": "202611082208306de6eb0a3e6a4bac",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082208306de6eb0a3e6a4bac",
+  "usage": {
+    "completion_tokens": 371,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 1149,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1520
+  }
+}
