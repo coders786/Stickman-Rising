@@ -50,5 +50,13 @@ test
 prompt
 
 server.log
+
+# local runtime state (recreate with: bun run db:generate && bun run db:push)
+/db/*.db
+/db/*.db-journal
+
+# prisma generated client (regenerated via: bun run db:generate)
+/src/generated/
+
 # Skills directory
 /skills/
