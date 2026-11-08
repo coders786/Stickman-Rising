@@ -10,6 +10,7 @@ import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
 import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
+import { LightningSystem, RayOpts, RayWorld } from './lightning'
 
 /* ------------------------------------------------------------------ */
 
@@ -147,6 +148,10 @@ const aiPose = makePose()
 export class FX {
   private particles: Particle[] = []
   private pFree: Particle[] = []
+  /** THE RAY-TRACED LIGHTNING ENGINE (fx/lightning.ts) — bolts that
+   *  reflect off enemies/ground with real mirror laws, lose energy per
+   *  bounce, restrike their jag and render as halo/mid/core channels. */
+  lightning = new LightningSystem()
   private trails: Trail[] = []
   private tFree: Trail[] = []
   private afterimages: Afterimage[] = []
@@ -211,6 +216,8 @@ export class FX {
     this.smears.length = 0
     for (const i of this.impactFrames) i.active = false
     this.impactFrames.length = 0
+    // lightning bolts die with the world (pool slots recycle in update)
+    this.lightning.clear()
     this.flashAlpha = 0
     this.caIntensity = 0
   }
@@ -339,31 +346,28 @@ export class FX {
     }
   }
 
-  /** jagged lightning bolt between two points */
+  /** jagged lightning bolt between two points — thin wrapper over the
+   * ray-traced renderer (decorative arc, no reflectors) */
   lightningArc(x0: number, y0: number, x1: number, y1: number, color: string, segments = 6): void {
-    const p = this.nextParticle()
-    if (!p) return
-    const pts: number[] = [x0, y0]
-    for (let i = 1; i < segments; i++) {
-      const t = i / segments
-      const jitter = 14 * (1 - Math.abs(t - 0.5) * 2 + 0.2)
-      pts.push(
-        x0 + (x1 - x0) * t + rand(-jitter, jitter),
-        y0 + (y1 - y0) * t + rand(-jitter, jitter),
-      )
-    }
-    pts.push(x1, y1)
-    p.x = x0; p.y = y0
-    p.vx = 0; p.vy = 0
-    p.age = 0; p.life = 0.22
-    p.size = 2.4
-    p.color = color
-    p.type = 'arc'
-    p.grav = 0; p.drag = 0
-    p.rot = 0; p.vrot = 0
-    p.pts = pts
+    void segments
+    this.lightning.arc(x0, y0, x1, y1, color)
     // spark burst at both ends
     this.sparks(x1, y1, Math.atan2(y1 - y0, x1 - x0), 0.7, 5, color, 240, 0.3)
+  }
+
+  /** RAY-TRACED LIGHTNING: cast a reflecting bolt into the world. The
+   * ray bounces off enemy bodies (damage per impact, scaled by remaining
+   * energy) and the wet ground, chains with intent (reflection candidates
+   * are scored against the next live target), and dies on energy/bounce
+   * budget — every bounce stamps a white-hot contact node. */
+  lightningCast(w: RayWorld, x: number, y: number, dx: number, dy: number, opts: RayOpts): void {
+    this.lightning.cast(w, x, y, dx, dy, opts)
+  }
+
+  /** TESLA CRAWL: micro-arcs snapping along the blade steel while the
+   * thunder sword charges — grip → monouchi, restriking at ~15Hz */
+  lightningCrawl(bx: number, by: number, tx: number, ty: number, color: string): void {
+    this.lightning.crawl(bx, by, tx, ty, color)
   }
 
   /** impact flash + directional sparks + micro ring */
@@ -654,6 +658,8 @@ export class FX {
    * afterimages array crossed its >40 cap and ALL dash ghosts silently
    * died; particles hit MAX_PARTICLES the same way mid-run. */
   update(dt: number): void {
+    // ray-traced lightning (restrike timers + lifetimes)
+    this.lightning.update(dt)
     // particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i]
@@ -901,6 +907,11 @@ export class FX {
   drawAdditive(ctx: CanvasRenderingContext2D, time: number): void {
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
+
+    // RAY-TRACED LIGHTNING — halo/mid/core channels + bounce nodes +
+    // branches, restriking at ~15Hz (drawn under the sparks so the node
+    // impact bursts ride ON the channel)
+    this.lightning.draw(ctx, time)
 
     // afterimages (ghost stickmen) — style 0 only; shadow silhouettes live
     // in drawSilhouettes (they must darken, not add)

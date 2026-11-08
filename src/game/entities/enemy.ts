@@ -156,6 +156,8 @@ export class Enemy {
     this.attackCd -= dt
     this.hpBarT = Math.max(0, this.hpBarT - dt)
     this.flashT = Math.max(0, this.flashT - dt * 6)
+    // lightning illumination fade (lingers ~0.45s — the channel afterglow)
+    if (this.litT > 0) this.litT = Math.max(0, this.litT - dt * 2.2)
     this.stunT = Math.max(0, this.stunT - dt)
     this.vulnerableT = Math.max(0, this.vulnerableT - dt)
     if (this.dead) return
@@ -799,6 +801,18 @@ export class Enemy {
   /* rendering                                                            */
   /* ------------------------------------------------------------------ */
 
+  /** RAY-TRACED LIGHTNING illumination: while litT > 0 the silhouette
+   * re-draws additively in the bolt color — struck bodies GLOW where the
+   * channel touched them (the "ray-traced" read: light on geometry). */
+  litT = 0
+  litColor = '#41f6ff'
+
+  /** called by the lightning engine on every bounce contact */
+  lightningLit(color: string, t: number): void {
+    this.litColor = color
+    this.litT = Math.max(this.litT, t)
+  }
+
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     if (this.dead || this.spawning) return
     const s = this.scale
@@ -812,6 +826,22 @@ export class Enemy {
       flashColor: '#ffffff',
     })
     this.drawWeapon(ctx, time)
+    // LIGHTNING RIM: the bolt's channel lights the body it struck. A true
+    // RIM, not a tint: the ghost re-pass draws ~7% scaled up, so the color
+    // peeks out AROUND the silhouette (edge light), flickering with the
+    // channel's ~15Hz restrike cadence
+    if (this.litT > 0.02) {
+      const k = clamp01(this.litT) * (0.8 + 0.2 * Math.sin(time * 47))
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.scale(1.075, 1.075)
+      drawStick(ctx, this.geom, cfg.style, {
+        ghost: this.litColor,
+        ghostAlpha: 0.85 * k,
+        time,
+      })
+      ctx.restore()
+    }
     ctx.restore()
 
     // telegraph indicator

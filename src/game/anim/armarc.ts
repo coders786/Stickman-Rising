@@ -326,13 +326,22 @@ export class SwordArcSolver {
       let armYaw = ik.yaw
       while (armYaw - y > Math.PI) armYaw -= Math.PI * 2
       while (y - armYaw > Math.PI) armYaw += Math.PI * 2
-      armYaw = clamp(armYaw, -1.35, 1.35)
+      // FOREARM-LEAD SPLIT: the hand leads through depth while the elbow
+      // trails in its own plane (shoulder internal rotation + pronation —
+      // the horizontal-cut read). The shoulder plane carries ~58% of the
+      // cut's depth yaw (clamped ±77° anatomically), the forearm's
+      // elbow-pivot yaw carries the rest — TOTAL stays = ik.yaw so the
+      // hand still lands exactly on the IK target.
+      const foreLead = clamp(ik.yaw * 0.42, -0.6, 0.6)
+      armYaw = clamp(armYaw - foreLead, -1.35, 1.35)
+      const foreYaw = clamp(ik.yaw - armYaw, -0.65, 0.65)
       // wrist closes the chain onto the swept pitch a
       const wrIk = Math.PI / 2 - a - ik.sh - ik.el
       p[CH.shR] += (ik.sh - p[CH.shR]) * w
       p[CH.elR] += (ik.el - p[CH.elR]) * w
       p[CH.wrR] += (wrIk - p[CH.wrR]) * w
       p[CH.armRz] += (armYaw - p[CH.armRz]) * w
+      p[CH.foreRz] += (foreYaw - p[CH.foreRz]) * w
       // the blade's own yaw channel takes the trajectory yaw
       p[CH.bladeYaw] += (y - p[CH.bladeYaw]) * w
 

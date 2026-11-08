@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**QA Frame Report**\n\n**(1) Trunk lean ranking — PASS**\n- Dash apex (img 2): ~35–40° forward — deepest lean ✔\n- Sprint (img 3): ~20–25° ✔\n- Run (img 1): ~10–15°, near-upright ✔\n- Ranking dash > sprint > run holds.\n\n**(2) Upper arm:forearm ratio — PASS**\nImg 2 (best read, white skeleton): upper arm ≈30–34 px vs forearm ≈24–26 px → ~1.25–1.35x. Reads ≈1.3x as intended. Img 3 consistent; img 1 arms mostly occluded by sheath/blade, can't verify — re-capture with arm swung clear.\n\n**(3) Elbow bends / reach — PASS with note**\n- Dash (img 2): trailing arm elbow ~90–100°, lead arm ~60–70°; hands land near hip/shoulder reach envelope. Readable.\n- Sprint (img 3): front arm elbow ~80°, hand extends believably past knee line. Readable.\n- Run (img 1): arms folded into torso silhouette; elbows technically bent (~90°) but not readable — silhouette merge issue, not proportion issue.\n\n**(4) Limb artifacts**\n- Img 2: dash afterimage (ghost skeleton) is intentional but the two torsos overlap — trailing ghost's leg reads as a 3rd limb on the lead figure at a glance. Consider alpha < 40% or 1-frame offset.\n- Img 3: foot contact — trailing leg's foot floats ~10–15 px above ground line at extension; rear foot clips the parry ring VFX slightly.\n- Img 1: sword sheath pommel ring intersects rear hip; no skeletal break.\n- No joint dislocations, no inverted knees/elbows, no limb-length pops across the three frames.\n\n**Verdict:** Ship-ready on proportions and lean; fix ghost-limb readability (img 2) and sprint foot float (img 3) before final.",
+        "reasoning_content": "Give terse QA estimates.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794141471,
+  "id": "20261108203737a5751f36c9e14ffe",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108203737a5751f36c9e14ffe",
+  "usage": {
+    "completion_tokens": 446,
+    "completion_tokens_details": {
+      "reasoning_tokens": 5
+    },
+    "prompt_tokens": 3018,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3464
+  }
+}

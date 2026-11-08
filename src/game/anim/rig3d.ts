@@ -124,6 +124,13 @@ function limbDir(swing: number, yaw: number, out: { x: number; y: number; z: num
 
 const dirScratch = { x: 0, y: 0, z: 0 }
 
+/** FOREARM CARRYING ANGLE (valgus): the anatomically extended forearm
+ * rides ~10–15° LATERAL of the humerus line. In the side-view rig this
+ * reads as a small constant forearm-yaw bias that fades as the elbow
+ * flexes (the angle collapses in flexion) — keeps two-handed katana grips
+ * from reading as one rigid broomstick. */
+const CARRY_VALGUS = 0.17
+
 /**
  * Solve the full articulated fighter. The classic 2D channels drive the
  * sagittal plane; the depth channels rotate girdles/limbs out of it.
@@ -173,19 +180,23 @@ export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bla
   const headZ = neckZ + Math.sin(headYaw) * 2.2
 
   // ---- SHOULDER GIRDLE: offsets rotated by girdleYaw around the spine ----
+  // Biacromial half-width ±0.10H (Drillis–Contini): shZ 8 gives the girdle
+  // a REAL coronal depth spread — the projected shoulder line visibly
+  // foreshortens as the chest yaws (THE transverse-plane torso read).
   const sf = spec.shoulderFwd
   const sd = spec.shoulderDrop
-  const shZ = 4.6
+  const shZ = 8
   // near shoulder (sword side): (sf, sd, +shZ) rotated
   const shRx = chestX + sf * cgi + shZ * sgi
   const shRy = chestY + sd
   const shRz = chestZ - sf * sgi + shZ * cgi
-  // far shoulder: (−sf·0.62, sd·1.18, −shZ) rotated
+  // far shoulder: (−sf·0.62, sd·1.18, −shZ·0.92) rotated — slightly narrower
+  // far socket (the thoracic cage occludes the far clavicle)
   const sfL = -sf * 0.62
   const sdL = sd * 1.18
-  const shLx = chestX + sfL * cgi - shZ * sgi
+  const shLx = chestX + sfL * cgi - shZ * 0.92 * sgi
   const shLy = chestY + sdL
-  const shLz = chestZ - sfL * sgi - shZ * cgi
+  const shLz = chestZ - sfL * sgi - shZ * 0.92 * cgi
 
   // ---- FEMUR HEADS: sockets rotated by pelvisYaw ----
   const fhR = 2.3
@@ -201,9 +212,13 @@ export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bla
   solveLeg(out.kneeL, out.ankleL, out.toeL, hpLx, hpLy, hpLz, pose[CH.hipL], pose[CH.kneeL], pose[CH.footL], spec, pose[CH.hipLz] - pelvisYaw * 0.35)
   solveLeg(out.kneeR, out.ankleR, out.toeR, hpRx, hpRy, hpRz, pose[CH.hipR], pose[CH.kneeR], pose[CH.footR], spec, pose[CH.hipRz] + pelvisYaw * 0.35)
 
-  // ---- ARMS (shoulder yaw inherits the girdle rotation) ----
-  solveArm(out.elbL, out.handL, shLx, shLy, shLz, pose[CH.shL], pose[CH.elL], spec, pose[CH.armLz] + girdleYaw * 0.45)
-  solveArm(out.elbR, out.handR, shRx, shRy, shRz, pose[CH.shR], pose[CH.elR], spec, pose[CH.armRz] + girdleYaw * 0.45)
+  // ---- ARMS (shoulder yaw inherits the girdle rotation; the forearm adds
+  // its OWN elbow-pivot yaw — the pronation DOF that lets the hand lead
+  // through depth while the elbow trails in another plane entirely) ----
+  solveArm(out.elbL, out.handL, shLx, shLy, shLz, pose[CH.shL], pose[CH.elL], spec,
+    pose[CH.armLz] + girdleYaw * 0.45, pose[CH.foreLz] + girdleYaw * 0.2, -CARRY_VALGUS)
+  solveArm(out.elbR, out.handR, shRx, shRy, shRz, pose[CH.shR], pose[CH.elR], spec,
+    pose[CH.armRz] + girdleYaw * 0.45, pose[CH.foreRz] + girdleYaw * 0.2, CARRY_VALGUS)
 
   // ---- PROJECT the core joints ----
   proj(out.hip, hipX, hipY, rootZ)
@@ -267,17 +282,23 @@ function solveLeg(
   proj(toe, tx, ty, tz)
 }
 
+/** The arm solver — now genuinely 3-segment in depth:
+ * upper arm in the shoulder's yaw plane, forearm in its OWN plane
+ * (shoulder yaw + forearm yaw + valgus bias that decays with flexion). */
 function solveArm(
   elb: J3, hand: J3,
   sx: number, sy: number, sz: number,
   shC: number, elC: number,
-  spec: SkelSpec, yaw: number,
+  spec: SkelSpec, yaw: number, foreYaw: number, valgus: number,
 ): void {
   limbDir(shC, yaw, dirScratch)
   const ex = sx + dirScratch.x * spec.upperArm
   const ey = sy + dirScratch.y * spec.upperArm
   const ez = sz + dirScratch.z * spec.upperArm
-  limbDir(shC + elC, yaw, dirScratch)
+  // carrying angle fades to zero as the elbow flexes past ~60°
+  const flex = clamp01(1 - Math.abs(elC) / 1.05)
+  const fYaw = yaw + foreYaw + valgus * flex
+  limbDir(shC + elC, fYaw, dirScratch)
   const hx = ex + dirScratch.x * spec.foreArm
   const hy = ey + dirScratch.y * spec.foreArm
   const hz = ez + dirScratch.z * spec.foreArm
@@ -490,6 +511,8 @@ export function drawFighter3D(
   }
 
   // ---- 1. FAR limbs (back shade, slightly thinned by depth) ----
+  // Arm widths follow the anatomical taper (fractions of H):
+  // deltoid .055 → elbow .035 → wrist .020, ×0.88 far-side shading.
   const farK = 0.9
   fillTaper3(ctx, farLeg.hip, farLeg.knee, 5.8 * farK * wf(farLeg.z), 4.3 * farK * wf(farLeg.z), back)
   fillTaper3(ctx, farLeg.knee, farLeg.ankle, 4.0 * farK * wf(farLeg.z), 2.8 * farK * wf(farLeg.z), back)
@@ -499,10 +522,10 @@ export function drawFighter3D(
   ctx.arc(farLeg.knee.x, farLeg.knee.y, 4.2 * wf(farLeg.z), 0, Math.PI * 2)
   ctx.fill()
   ctx.beginPath()
-  ctx.arc(farArm.sh.x, farArm.sh.y, 4.6 * wf(farArm.z), 0, Math.PI * 2)
+  ctx.arc(farArm.sh.x, farArm.sh.y, 5.0 * wf(farArm.z), 0, Math.PI * 2)
   ctx.fill()
-  fillTaper3(ctx, farArm.sh, farArm.elb, 4.4 * farK * wf(farArm.z), 3.3 * farK * wf(farArm.z), back)
-  fillTaper3(ctx, farArm.elb, farArm.hand, 3.2 * farK * wf(farArm.z), 2.5 * farK * wf(farArm.z), back)
+  fillTaper3(ctx, farArm.sh, farArm.elb, 4.9 * farK * wf(farArm.z), 3.1 * farK * wf(farArm.z), back)
+  fillTaper3(ctx, farArm.elb, farArm.hand, 2.9 * farK * wf(farArm.z), 1.8 * farK * wf(farArm.z), back)
 
   // ---- 2. torso: pelvis basin → abdomen → ribcage → trapezius → neck ----
   fillTaper3(ctx, g.hip, g.waist, 9.6 * wf(zTorso), 6.6 * wf(zTorso), black)
@@ -539,12 +562,12 @@ export function drawFighter3D(
   ctx.fill()
   const ak = wf(nearArm.z) * nearK
   ctx.beginPath()
-  ctx.arc(nearArm.sh.x, nearArm.sh.y, 5.7 * ak, 0, Math.PI * 2)
+  ctx.arc(nearArm.sh.x, nearArm.sh.y, 5.9 * ak, 0, Math.PI * 2)
   ctx.fill()
-  fillTaper3(ctx, nearArm.sh, nearArm.elb, 4.9 * ak, 3.6 * ak, black)
-  fillTaper3(ctx, nearArm.elb, nearArm.hand, 3.5 * ak, 2.6 * ak, black)
+  fillTaper3(ctx, nearArm.sh, nearArm.elb, 5.7 * ak, 3.6 * ak, black)
+  fillTaper3(ctx, nearArm.elb, nearArm.hand, 3.4 * ak, 2.1 * ak, black)
   ctx.beginPath()
-  ctx.arc(nearArm.elb.x, nearArm.elb.y, 3.7 * ak, 0, Math.PI * 2)
+  ctx.arc(nearArm.elb.x, nearArm.elb.y, 3.9 * ak, 0, Math.PI * 2)
   ctx.fill()
   // near-limb readability: a whisper of rim along the near arm + leg
   // silhouettes so they separate from the pure-black torso mass (playtest:

@@ -7,6 +7,7 @@ import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
+import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
   DRAW_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, JUMP_LEAP_CLIP, LAND_CLIP,
@@ -221,6 +222,8 @@ export class Player {
   /** smoothed acceleration → anticipatory lean (previous-frame awareness) */
   private accelSm = 0
   private prevVx = 0
+  /** damped dash lean weight (velocity-envelope driven — see applyProcedural) */
+  private dashLeanS = 0
   /** damped head-aim toward the threat (alive even while retreating) */
   private headTrackW = 0
   /** wall-clock seconds (input rhythm: double-tap sprint detection) */
@@ -335,6 +338,9 @@ export class Player {
   private carryYaw = 0
   /** damped sword-arm depth carry */
   private carryArmZ = 0
+  /** damped sword-FOREARM depth carry (elbow-pivot yaw — the steel folds
+   * deeper than the shoulder can yaw) */
+  private carryForeZ = 0
 
   /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
    * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
@@ -417,6 +423,7 @@ export class Player {
     this.gaitYawAmp = 0
     this.carryYaw = 0
     this.carryArmZ = 0
+    this.carryForeZ = 0
     this.dashVariant = 'launch'
     this.dashCfg = DASH_VARIANTS.launch
     this.dashHandoff = false
@@ -1618,9 +1625,33 @@ export class Player {
       case 'inferno':
         w.fx.embers(ex, ey, 5, c.accent, 18)
         break
-      case 'thunder':
-        if (Math.random() < 0.3) w.fx.lightningArc(ex, ey, ex + rand(-40, 40), ey + rand(-30, 30), c.trail)
+      case 'thunder': {
+        // RAY-TRACED DISCHARGE: the steel dumps its charge into the wound —
+        // the bolt leaps from the contact point along the blade axis, then
+        // REFLECTS off the struck body (mirror law about the hit normal)
+        // onto the next target, skating the wet ground between hops.
+        // Energy decays 40% per body; width + damage ride the energy.
+        if (Math.random() < 0.4) {
+          const bdx = this.blade.tx - this.blade.bx
+          const bdy = this.blade.ty - this.blade.by
+          const bl = Math.hypot(bdx, bdy) || 1
+          w.fx.lightningCast(
+            { enemies: w.enemies, minX: w.arenaMinX, maxX: w.arenaMaxX },
+            ex, ey,
+            bdx / bl + rand(-0.25, 0.25), bdy / bl + rand(-0.25, 0.25),
+            {
+              color: c.trail, energy: 0.85, bounces: 2, dmg: 7,
+              width: 2.2, maxLen: 380,
+              hit: (e, d) => {
+                if (e.id !== undefined) {
+                  this.dealAbilityDamage(w, e as unknown as EnemyLike, d, 0.02, 60, -40)
+                }
+              },
+            },
+          )
+        }
         break
+      }
       case 'void':
         w.fx.burst(ex, ey, 4, c.core, 120, 0.4, 'shard')
         break
@@ -1684,6 +1715,25 @@ export class Player {
     this.parryT = 0.12
     this.parryActive = 0
     this.flashT = 0.6
+    // LIGHTNING PARRY (thunder): the incoming strike's kinetic line
+    // reflects off the blade plane (mirror law about the steel's normal)
+    // and discharges back down the reflected ray — parries RETURN fire
+    if (this.sword.id === 'thunder' && this.swordDrawn) {
+      const inDx = Math.sign(this.x - sourceX) || 1
+      const r = reflectOffSegment(inDx, 0.08, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+      w.fx.lightningCast(
+        { enemies: w.enemies, minX: w.arenaMinX, maxX: w.arenaMaxX },
+        this.blade.tx, this.blade.ty, r.dx, r.dy,
+        {
+          color: colors.trail, energy: 0.9, bounces: 2, dmg: 12, width: 2.6, maxLen: 420,
+          hit: (e, d) => {
+            if (e.id !== undefined) {
+              this.dealAbilityDamage(w, e as unknown as EnemyLike, d, 0.1, 90, -60)
+            }
+          },
+        },
+      )
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -1712,6 +1762,11 @@ export class Player {
     if (this.chargeReady && Math.random() < 0.5) {
       const c = this.sword.colors
       w.fx.embers(this.blade.tx, this.blade.ty, 2, c.glow, 10)
+      // THUNDER: tesla-crawl — micro-arcs snapping grip→monouchi along the
+      // steel (~15Hz pair cadence — a crackling capacitor, not a laser show)
+      if (this.sword.id === 'thunder' && Math.random() < 0.55) {
+        w.fx.lightningCrawl(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, c.trail)
+      }
     }
     if (this.grounded) this.vx = 0
 
@@ -1858,23 +1913,30 @@ export class Player {
         break
       }
       case 'thunder': {
-        // THUNDER RUSH — instant dash + chain lightning
+        // THUNDER RUSH — instant dash + RAY-TRACED chain lightning: the
+        // traveled line electrifies AND a discharge ray reflects
+        // body→body through the pack with intent (each reflection
+        // candidate is scored against the next live target)
         this.enterScripted()
+        const startX = this.x
         this.x = clamp(this.x + this.face * 300, w.arenaMinX + 30, w.arenaMaxX - 30)
         w.audio.play('lightning', { intensity: 1 })
         w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.4, SCALE)
         w.fx.speedStreaks(this.x, this.y - 40, this.face * 900, 10, rgba(c.trail, 1))
-        // chain to nearest enemies
-        const chain = this.collectNearest(w, 5, 360)
-        let px = this.x
-        let py = this.y - 55
-        for (const e of chain) {
-          w.fx.lightningArc(px, py, e.x, e.y - 40, c.trail)
-          w.fx.burst(e.x, e.y - 40, 6, c.accent, 200, 0.4, 'spark')
-          this.dealAbilityDamage(w, e, 24, 0.35, 160, -180)
-          px = e.x
-          py = e.y - 40
-        }
+        const rw = { enemies: w.enemies, minX: w.arenaMinX, maxX: w.arenaMaxX }
+        // the path itself rides a bolt (no damage — pure line)
+        w.fx.lightningCast(rw, startX, this.y - 55, this.face, 0, {
+          color: c.trail, energy: 1, bounces: 1, width: 3, maxLen: 340,
+        })
+        // the discharge from the exit blade: bounces through the pack
+        w.fx.lightningCast(rw, this.x + this.face * 30, this.y - 55, this.face, -0.15, {
+          color: c.trail, energy: 1, bounces: 4, dmg: 24, width: 3.2, maxLen: 480,
+          hit: (e, d) => {
+            if (e.id === undefined) return
+            this.dealAbilityDamage(w, e as unknown as EnemyLike, d, 0.35, 160, -180)
+            w.fx.burst(e.x, e.y - 40, 6, c.accent, 200, 0.4, 'spark')
+          },
+        })
         w.cam.addTrauma(0.4)
         w.addHitstop(0.08)
         this.exitScriptedSoon = 0.35
@@ -2322,8 +2384,39 @@ export class Player {
     const accel = (this.vx - this.prevVx) / Math.max(dt, 1e-4)
     this.prevVx = this.vx
     this.accelSm = damp(this.accelSm, accel, 14, dt)
-    const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
-    const lean = speedLean * 0.14 + clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+
+    /* ---- THE TIERED LEAN SYSTEM (VLM/biomechanics research) ----------
+     * Trunk lean is a FUNCTION OF ACCELERATION, not raw speed (Kugler &
+     * Janshen: lean ≈ atan(a/g)) — and the tiers are hard-separated so
+     * each locomotion state owns a distinct posture band:
+     *   walk  3–7°    (0.06 rad cap)
+     *   run   ~10°    (0.10 rad cap)
+     *   sprint ~15°   (0.15 rad cap — max-VELOCITY posture: research says
+     *                  elite sprinters hold only 15–20° at top speed)
+     *   dash  +12.6°  (a damped additive on the already-deep authored
+     *                  clips — acceleration posture, 45°+ authored)
+     * The speed term is normalized by the SPRINT ceiling (not MOVE_MAX)
+     * so run ≈ 0.73 and sprint 1.0 no longer clamp to the same lean —
+     * the old bug that made sprint read exactly as leaned as dash. */
+    const capFor: Record<string, number> = {
+      walk: 0.06, run: 0.1, sprint: 0.15, combat: 0.05, backpedal: 0.045, idle: 0.03,
+    }
+    const cap = capFor[this.loco] ?? 0.08
+    const speedLean = clamp((this.vx * this.face) / SPRINT_MAX, -1, 1)
+    const accelLean = clamp(this.accelSm * this.face / 3200, -0.16, 0.16)
+    const lean = speedLean * cap + accelLean
+
+    /* ---- DASH LEAN (replaces the old hard exemption): a damped additive
+     * driven by the dash's own velocity envelope — NOT the raw accel
+     * spike (that was the "dash fights itself" jitter source). Ramps in
+     * over ~80ms, decays out through the catch/settle beats as the
+     * envelope falls, and hands off smoothly to the locomotion lean at
+     * exit — the authored silhouette still owns the peak shape, this
+     * layer owns the entry surge + exit continuity. */
+    const dashVelFrac = clamp(Math.abs(this.vx) / DASH_SPEED, 0, 1)
+    const dashTarget = this.state === 'dash' ? dashVelFrac * dashVelFrac * 0.22 : 0
+    this.dashLeanS = damp(this.dashLeanS, dashTarget, 10, dt)
+    const dashLean = this.dashLeanS * (this.face * Math.sign(this.vx || this.face * 1) > 0 ? 1 : -0.5)
 
     // ---- FULL-BODY LEAN (THE "torso-only bend" fix): the forward pitch
     // is distributed through the ENTIRE articulation — and crucially the
@@ -2334,26 +2427,21 @@ export class Player {
     // dorsi-flexes to brake, the COG drops as the body commits. A body
     // that leans only from the chest reads as a puppet; a body that leans
     // from the ground up reads as an athlete.
-    //
-    // DASH EXEMPTION (the smoothness law): the dash clips AUTHOR their own
-    // pitch per variant — and the velocity step at dash entry/exit spiked
-    // accelSm to its clamp, snapping this additive lean against the pose
-    // for several frames (the "dash fights itself" jitter). During dash
-    // the authored silhouette wins; the lean re-engages through the exit
-    // handoff as locomotion takes the momentum back.
-    if (this.state !== 'dead' && this.state !== 'dash') {
-      p[CH.rootRot] += lean * 0.6
-      p[CH.spine] += lean * 0.22
-      p[CH.rootX] += lean * 7 // pelvis surge: hips ride forward over the stance
-      p[CH.hipR] += lean * 0.5
-      p[CH.hipL] -= lean * 0.38
-      p[CH.kneeR] -= lean * 0.3
-      p[CH.kneeL] -= lean * 0.2
-      p[CH.footR] += lean * 0.18
-      p[CH.rootY] += Math.abs(lean) * 2.2
+    if (this.state !== 'dead') {
+      const l = this.state === 'dash' ? dashLean : lean
+      p[CH.rootRot] += l * 0.6
+      p[CH.spine] += l * 0.22
+      p[CH.rootX] += l * 7 // pelvis surge: hips ride forward over the stance
+      p[CH.hipR] += l * 0.5
+      p[CH.hipL] -= l * 0.38
+      p[CH.kneeR] -= l * 0.3
+      p[CH.kneeL] -= l * 0.2
+      p[CH.footR] += l * 0.18
+      p[CH.rootY] += Math.abs(l) * 2.2
       // head counter-pitches to keep the eyes on the horizon (the sprint
-      // tell: body flat, gaze level — MGR:R Raiden's forward drive)
-      p[CH.head] -= lean * 0.35
+      // tell: body flat, gaze level — MGR:R Raiden's forward drive;
+      // research: cervical extension ≈ trunk lean − a few degrees)
+      p[CH.head] -= l * 0.35
     }
 
     // vertical pitch while airborne
@@ -2375,15 +2463,18 @@ export class Player {
       let amp = 0
       let cAmp = 0
       switch (this.loco) {
-        case 'walk': amp = 0.13; cAmp = 0.11; break
-        case 'run': amp = 0.21; cAmp = 0.15; break
-        case 'sprint': amp = 0.27; cAmp = 0.21; break
-        case 'combat': case 'backpedal': amp = 0.05; cAmp = 0.06; break
+        // research (gait biomechanics): pelvis transverse rotation at sprint
+        // 12–18°, shoulder counter-rotation 25–40° — the chest counter is
+        // ~1.3× pelvis at walk and approaches ~2× at sprint cadence
+        case 'walk': amp = 0.12; cAmp = 1.3; break
+        case 'run': amp = 0.21; cAmp = 1.55; break
+        case 'sprint': amp = 0.3; cAmp = 1.85; break
+        case 'combat': case 'backpedal': amp = 0.05; cAmp = 1.2; break
         default: break
       }
       this.gaitYawAmp = damp(this.gaitYawAmp, amp, 8, dt)
       p[CH.pelvisYaw] += sway * this.gaitYawAmp
-      p[CH.chestYaw] += -sway * this.gaitYawAmp * (cAmp / 0.13) * 0.9
+      p[CH.chestYaw] += -sway * this.gaitYawAmp * cAmp
     } else {
       this.gaitYawAmp = damp(this.gaitYawAmp, 0, 8, dt)
     }
@@ -2400,32 +2491,38 @@ export class Player {
     {
       let carryYaw = 0
       let carryArm = 0
+      let carryFore = 0
       if (this.state === 'move' && this.grounded) {
         switch (this.loco) {
-          case 'walk': carryYaw = -0.12; carryArm = -0.08; break
-          case 'run': carryYaw = -0.28; carryArm = -0.2; break
-          case 'sprint': carryYaw = -0.34; carryArm = -0.3; break
-          case 'combat': carryYaw = 0.06; carryArm = 0.1; break
-          case 'backpedal': carryYaw = 0.04; carryArm = 0.06; break
+          case 'walk': carryYaw = -0.12; carryArm = -0.08; carryFore = -0.05; break
+          case 'run': carryYaw = -0.28; carryArm = -0.2; carryFore = -0.12; break
+          case 'sprint': carryYaw = -0.34; carryArm = -0.3; carryFore = -0.22; break
+          case 'combat': carryYaw = 0.06; carryArm = 0.1; carryFore = 0.05; break
+          case 'backpedal': carryYaw = 0.04; carryArm = 0.06; carryFore = 0.03; break
           default: break
         }
       } else if (this.state === 'dash') {
         switch (this.dashVariant) {
-          case 'launch': case 'chain': carryYaw = -0.42; carryArm = -0.3; break
-          case 'carry': carryYaw = -0.46; carryArm = -0.34; break
-          case 'hunt': carryYaw = -0.45; carryArm = -0.3; break
-          case 'air': carryYaw = -0.3; carryArm = -0.24; break
-          case 'pierce': carryYaw = 0; carryArm = 0; break // clip owns the thrust line
-          case 'vault': carryYaw = 0.02; carryArm = 0.04; break
-          case 'retreat': carryYaw = 0.1; carryArm = 0.08; break
-          case 'carve': carryYaw = -0.12; carryArm = 0.06; break
+          case 'launch': case 'chain': carryYaw = -0.42; carryArm = -0.3; carryFore = -0.26; break
+          case 'carry': carryYaw = -0.46; carryArm = -0.34; carryFore = -0.3; break
+          case 'hunt': carryYaw = -0.45; carryArm = -0.3; carryFore = -0.26; break
+          case 'air': carryYaw = -0.3; carryArm = -0.24; carryFore = -0.18; break
+          case 'pierce': carryYaw = 0; carryArm = 0; carryFore = 0; break // clip owns the thrust line
+          case 'vault': carryYaw = 0.02; carryArm = 0.04; carryFore = 0.02; break
+          case 'retreat': carryYaw = 0.1; carryArm = 0.08; carryFore = 0.05; break
+          case 'carve': carryYaw = -0.12; carryArm = 0.06; carryFore = -0.08; break
         }
       }
       this.carryYaw = damp(this.carryYaw, carryYaw, 6, dt)
       this.carryArmZ = damp(this.carryArmZ, carryArm, 6, dt)
+      this.carryForeZ = damp(this.carryForeZ, carryFore, 6, dt)
       if (this.state !== 'attack') {
         p[CH.bladeYaw] += this.carryYaw
         p[CH.armRz] += this.carryArmZ
+        // the forearm folds DEEPER than the shoulder can yaw — the elbow
+        // trails in its own plane while the grip tucks past the hip
+        // (the forearm's elbow-pivot DOF doing real carrying work)
+        p[CH.foreRz] += this.carryForeZ
       }
     }
 

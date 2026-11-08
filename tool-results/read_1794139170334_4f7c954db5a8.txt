@@ -1,0 +1,683 @@
+     1→     1→/** STICKMAN RISING — THE 3D FIGHTER RIG (rig3d).
+     2→     2→ *
+     3→     3→ * ── AXIS CONVENTION (the single source of truth) ──────────────────────
+     4→     4→ *  Character-local space, RIGHT-handed, mirrored by the draw transform:
+     5→     5→ *    +X  = facing direction (horizontal, gameplay plane)
+     6→     6→ *    +Y  = DOWN (canvas vertical; feet at ≈ +49 local units)
+     7→     7→ *    +Z  = TOWARD THE CAMERA (out of the gameplay plane)
+     8→     8→ *  Yaw ψ rotates around the vertical (+Y) axis and is applied as
+     9→     9→ *    x' = x·cosψ + z·sinψ ;  z' = −x·sinψ + z·cosψ
+    10→    10→ *  POSITIVE yaw swings a segment toward the camera / advances the NEAR
+    11→    11→ *  side forward. All three axes carry meaning:
+    12→    12→ *    X — gameplay reach, stride, weight transfer
+    13→    13→ *    Y — height, COG, gravity, ground contact
+    14→    14→ *    Z — depth articulation: shoulder counter-rotation, hip swivel, blade
+    15→    15→ *        trajectories that pass near↔far, thrusts that spear the lens
+    16→    16→ *
+    17→    17→ * ── PROJECTION ─────────────────────────────────────────────────────────
+    18→    18→ *  A mild perspective (focal F = 620 local units) projects the 3D joints
+    19→    19→ *  onto the gameplay plane:  s = F/(F − z);  px = x·s;  py = y·s.
+    20→    20→ *  Limb widths and weapon lengths scale by the same factor, and draw order
+    21→    21→ *  + shading follow depth — rotation reads as foreshortening, near limbs
+    22→    22→ *  widen/brighten, far limbs thin/darken, the blade visibly recedes and
+    23→    23→ *  pierces. The gameplay plane itself sits at z = 0 (enemies, hitboxes,
+    24→    24→ *  ground): a z=0 segment projects 1:1, so 2D gameplay logic is unchanged
+    25→    25→ *  and the VISIBLE blade IS the hitbox (both are the projected segment).
+    26→    26→ *
+    27→    27→ * ── SOLVE ──────────────────────────────────────────────────────────────
+    28→    28→ *  solveFighter3D extends the classic channel solve with the depth
+    29→    29→ *  channels (pose.ts 17–25):
+    30→    30→ *    pelvisYaw  — rotates the femur-head sockets; near leg advances
+    31→    31→ *    chestYaw   — rotates the shoulder girdle on top of the pelvis
+    32→    32→ *                 fraction (shoulder↔hip COUNTER-rotation, the 3D torso
+    33→    33→ *                 twist read)
+    34→    34→ *    hipLz/hipRz, armLz/armRz — per-limb yaw DOFs
+    35→    35→ *    bladeYaw   — blade tip toward/away from camera (out-of-plane cuts)
+    36→    36→ *    bladeZ     — grip translated along Z (thrust depth travel)
+    37→    37→ */
+    38→    38→
+    39→    39→import { CH, Pose } from './pose'
+    40→    40→import { SkelSpec, StickStyle } from './skeleton'
+    41→    41→import { clamp, clamp01, rgba } from '../core/utils'
+    42→    42→
+    43→    43→/** perspective focal length in character-local units */
+    44→    44→export const FOCUS = 620
+    45→    45→
+    46→    46→/** a solved joint: px/py = PROJECTED position, z = depth (local units) */
+    47→    47→export interface J3 {
+    48→    48→  x: number
+    49→    49→  y: number
+    50→    50→  z: number
+    51→    51→}
+    52→    52→
+    53→    53→export interface FighterGeom {
+    54→    54→  hip: J3
+    55→    55→  hipPtR: J3
+    56→    56→  hipPtL: J3
+    57→    57→  waist: J3
+    58→    58→  chest: J3
+    59→    59→  neckTop: J3
+    60→    60→  headC: J3
+    61→    61→  headAng: number
+    62→    62→  shoulderR: J3
+    63→    63→  shoulderL: J3
+    64→    64→  kneeL: J3
+    65→    65→  ankleL: J3
+    66→    66→  toeL: J3
+    67→    67→  kneeR: J3
+    68→    68→  ankleR: J3
+    69→    69→  toeR: J3
+    70→    70→  elbL: J3
+    71→    71→  handL: J3
+    72→    72→  elbR: J3
+    73→    73→  handR: J3
+    74→    74→  /** the weapon grip (hand translated by bladeZ along +Z) */
+    75→    75→  grip: J3
+    76→    76→  /** kissaki tip — full 3D (pitch from channel sum, yaw from bladeYaw) */
+    77→    77→  tip: J3
+    78→    78→  /** tsuka butt (pommel) — off-hand IK target */
+    79→    79→  pommel: J3
+    80→    80→  /** blade pitch in the sagittal plane (π/2 − channel sum — IK compatible) */
+    81→    81→  bladeAngle: number
+    82→    82→  /** blade yaw (depth plane rotation) */
+    83→    83→  bladeYaw: number
+    84→    84→  /** PROJECTED blade angle + length (what the eye and the hitbox see) */
+    85→    85→  bladeProjAngle: number
+    86→    86→  bladeProjLen: number
+    87→    87→  /** normalized tip depth (−1..1): + = kissaki at the lens */
+    88→    88→  bladeTipZ: number
+    89→    89→  torsoAngle: number
+    90→    90→  /** total girdle yaw (pelvis fraction + chest counter) — render/readout */
+    91→    91→  girdleYaw: number
+    92→    92→  pelvisYaw: number
+    93→    93→}
+    94→    94→
+    95→    95→const j = (): J3 => ({ x: 0, y: 0, z: 0 })
+    96→    96→
+    97→    97→export function makeFighterGeom(): FighterGeom {
+    98→    98→  return {
+    99→    99→    hip: j(), hipPtR: j(), hipPtL: j(), waist: j(), chest: j(), neckTop: j(),
+   100→   100→    headC: j(), headAng: 0, shoulderR: j(), shoulderL: j(),
+   101→   101→    kneeL: j(), ankleL: j(), toeL: j(), kneeR: j(), ankleR: j(), toeR: j(),
+   102→   102→    elbL: j(), handL: j(), elbR: j(), handR: j(),
+   103→   103→    grip: j(), tip: j(), pommel: j(),
+   104→   104→    bladeAngle: 0, bladeYaw: 0, bladeProjAngle: 0, bladeProjLen: 0, bladeTipZ: 0,
+   105→   105→    torsoAngle: 0, girdleYaw: 0, pelvisYaw: 0,
+   106→   106→  }
+   107→   107→}
+   108→   108→
+   109→   109→/** project: 3D local → (screen-plane local, depth scale kept in z) */
+   110→   110→function proj(o: J3, x: number, y: number, z: number): void {
+   111→   111→  const s = FOCUS / (FOCUS - z)
+   112→   112→  o.x = x * s
+   113→   113→  o.y = y * s
+   114→   114→  o.z = z
+   115→   115→}
+   116→   116→
+   117→   117→/** limb direction from swing + yaw (see convention above) */
+   118→   118→function limbDir(swing: number, yaw: number, out: { x: number; y: number; z: number }): void {
+   119→   119→  const ss = Math.sin(swing)
+   120→   120→  out.x = ss * Math.cos(yaw)
+   121→   121→  out.y = Math.cos(swing)
+   122→   122→  out.z = ss * Math.sin(yaw)
+   123→   123→}
+   124→   124→
+   125→   125→const dirScratch = { x: 0, y: 0, z: 0 }
+   126→   126→
+   127→   127→/**
+   128→   128→ * Solve the full articulated fighter. The classic 2D channels drive the
+   129→   129→ * sagittal plane; the depth channels rotate girdles/limbs out of it.
+   130→   130→ * Output is fully PROJECTED (x, y) with depth in z.
+   131→   131→ */
+   132→   132→export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bladeLen: number, swingScale = 1): FighterGeom {
+   133→   133→  const rot = pose[CH.rootRot]
+   134→   134→  const spine = pose[CH.spine]
+   135→   135→  const head = pose[CH.head]
+   136→   136→  const rootZ = pose[CH.rootZ]
+   137→   137→  const pelvisYaw = pose[CH.pelvisYaw]
+   138→   138→  const chestYaw = pose[CH.chestYaw]
+   139→   139→  const girdleYaw = pelvisYaw * 0.35 + chestYaw
+   140→   140→  out.pelvisYaw = pelvisYaw
+   141→   141→  out.girdleYaw = girdleYaw
+   142→   142→
+   143→   143→  const cpsi = Math.cos(pelvisYaw)
+   144→   144→  const spsi = Math.sin(pelvisYaw)
+   145→   145→  const cgi = Math.cos(girdleYaw)
+   146→   146→  const sgi = Math.sin(girdleYaw)
+   147→   147→
+   148→   148→  // ---- SPINE: hip → waist → chest, with the rotation bow ----
+   149→   149→  const hipX = pose[CH.rootX]
+   150→   150→  const hipY = pose[CH.rootY]
+   151→   151→  const t1 = rot
+   152→   152→  const t2 = rot + spine
+   153→   153→  // lumbar: carries a fraction of the pelvis yaw (the twist starts low)
+   154→   154→  const waistBow = Math.sin(pelvisYaw) * 1.5
+   155→   155→  const waistX = hipX + Math.sin(t1) * spec.torso * 0.57 + waistBow * 0.4
+   156→   156→  const waistY = hipY - Math.cos(t1) * spec.torso * 0.57
+   157→   157→  const waistZ = rootZ + Math.sin(pelvisYaw) * 1.2
+   158→   158→  // thoracic: bows INTO the chest rotation (counter-rotation lean read)
+   159→   159→  const chestBow = Math.sin(girdleYaw) * 1.6
+   160→   160→  const chestX = waistX + Math.sin(t2) * spec.torso * 0.43 + chestBow * 0.5
+   161→   161→  const chestY = waistY - Math.cos(t2) * spec.torso * 0.43
+   162→   162→  const chestZ = waistZ + Math.sin(girdleYaw) * 1.1
+   163→   163→  out.torsoAngle = t2
+   164→   164→
+   165→   165→  // ---- neck + skull (head counter-yaws a fraction — eyes stay on target) ----
+   166→   166→  const ha = t2 + head
+   167→   167→  const headYaw = girdleYaw * 0.22
+   168→   168→  const neckX = chestX + Math.sin(ha) * spec.neck + Math.sin(headYaw) * 0.8
+   169→   169→  const neckY = chestY - Math.cos(ha) * spec.neck
+   170→   170→  const neckZ = chestZ + Math.sin(headYaw) * 1.6
+   171→   171→  const headX = neckX + Math.sin(ha) * spec.headR * 0.9 + Math.sin(headYaw) * 1.4
+   172→   172→  const headY = neckY - Math.cos(ha) * spec.headR * 0.9
+   173→   173→  const headZ = neckZ + Math.sin(headYaw) * 2.2
+   174→   174→
+   175→   175→  // ---- SHOULDER GIRDLE: offsets rotated by girdleYaw around the spine ----
+   176→   176→  const sf = spec.shoulderFwd
+   177→   177→  const sd = spec.shoulderDrop
+   178→   178→  const shZ = 4.6
+   179→   179→  // near shoulder (sword side): (sf, sd, +shZ) rotated
+   180→   180→  const shRx = chestX + sf * cgi + shZ * sgi
+   181→   181→  const shRy = chestY + sd
+   182→   182→  const shRz = chestZ - sf * sgi + shZ * cgi
+   183→   183→  // far shoulder: (−sf·0.62, sd·1.18, −shZ) rotated
+   184→   184→  const sfL = -sf * 0.62
+   185→   185→  const sdL = sd * 1.18
+   186→   186→  const shLx = chestX + sfL * cgi - shZ * sgi
+   187→   187→  const shLy = chestY + sdL
+   188→   188→  const shLz = chestZ - sfL * sgi - shZ * cgi
+   189→   189→
+   190→   190→  // ---- FEMUR HEADS: sockets rotated by pelvisYaw ----
+   191→   191→  const fhR = 2.3
+   192→   192→  const fhL = -2.3
+   193→   193→  const hpRx = hipX + 1.7 * cpsi + fhR * spsi
+   194→   194→  const hpRy = hipY
+   195→   195→  const hpRz = rootZ - 1.7 * spsi + fhR * cpsi
+   196→   196→  const hpLx = hipX - 2.1 * cpsi + fhL * spsi
+   197→   197→  const hpLy = hipY
+   198→   198→  const hpLz = rootZ + 2.1 * spsi + fhL * cpsi
+   199→   199→
+   200→   200→  // ---- LEGS (per-leg yaw inherits a pelvis fraction — hip swivel read) ----
+   201→   201→  solveLeg(out.kneeL, out.ankleL, out.toeL, hpLx, hpLy, hpLz, pose[CH.hipL], pose[CH.kneeL], pose[CH.footL], spec, pose[CH.hipLz] - pelvisYaw * 0.35)
+   202→   202→  solveLeg(out.kneeR, out.ankleR, out.toeR, hpRx, hpRy, hpRz, pose[CH.hipR], pose[CH.kneeR], pose[CH.footR], spec, pose[CH.hipRz] + pelvisYaw * 0.35)
+   203→   203→
+   204→   204→  // ---- ARMS (shoulder yaw inherits the girdle rotation) ----
+   205→   205→  solveArm(out.elbL, out.handL, shLx, shLy, shLz, pose[CH.shL], pose[CH.elL], spec, pose[CH.armLz] + girdleYaw * 0.45)
+   206→   206→  solveArm(out.elbR, out.handR, shRx, shRy, shRz, pose[CH.shR], pose[CH.elR], spec, pose[CH.armRz] + girdleYaw * 0.45)
+   207→   207→
+   208→   208→  // ---- PROJECT the core joints ----
+   209→   209→  proj(out.hip, hipX, hipY, rootZ)
+   210→   210→  proj(out.waist, waistX, waistY, waistZ)
+   211→   211→  proj(out.chest, chestX, chestY, chestZ)
+   212→   212→  proj(out.neckTop, neckX, neckY, neckZ)
+   213→   213→  proj(out.headC, headX, headY, headZ)
+   214→   214→  out.headAng = ha
+   215→   215→  proj(out.shoulderR, shRx, shRy, shRz)
+   216→   216→  proj(out.shoulderL, shLx, shLy, shLz)
+   217→   217→  proj(out.hipPtR, hpRx, hpRy, hpRz)
+   218→   218→  proj(out.hipPtL, hpLx, hpLy, hpLz)
+   219→   219→
+   220→   220→  // ---- WEAPON: pitch from channel sum, yaw from bladeYaw, grip from bladeZ ----
+   221→   221→  const sum = pose[CH.shR] + pose[CH.elR] + pose[CH.wrR]
+   222→   222→  out.bladeAngle = Math.PI / 2 - sum
+   223→   223→  out.bladeYaw = pose[CH.bladeYaw]
+   224→   224→  const gripZ = pose[CH.bladeZ]
+   225→   225→  const gx = out.handR.x / (FOCUS / (FOCUS - out.handR.z)) // unproject hand x
+   226→   226→  const gy = out.handR.y / (FOCUS / (FOCUS - out.handR.z))
+   227→   227→  proj(out.grip, gx, gy, out.handR.z + gripZ)
+   228→   228→  // blade 3D direction: sagittal pitch rotated by yaw
+   229→   229→  const ca = Math.cos(out.bladeAngle)
+   230→   230→  const sa = Math.sin(out.bladeAngle)
+   231→   231→  const byaw = out.bladeYaw
+   232→   232→  const dx = ca * Math.cos(byaw)
+   233→   233→  const dy = sa
+   234→   234→  const dz = ca * Math.sin(byaw)
+   235→   235→  const len = bladeLen * swingScale
+   236→   236→  proj(out.tip, gx + dx * len, gy + dy * len, out.handR.z + gripZ + dz * len)
+   237→   237→  proj(out.pommel, gx - dx * len * 0.3, gy - dy * len * 0.3, out.handR.z + gripZ - dz * len * 0.3)
+   238→   238→  // projected blade metrics (what the eye + hitbox consume)
+   239→   239→  out.bladeProjAngle = Math.atan2(out.tip.y - out.grip.y, out.tip.x - out.grip.x)
+   240→   240→  out.bladeProjLen = Math.hypot(out.tip.x - out.grip.x, out.tip.y - out.grip.y)
+   241→   241→  out.bladeTipZ = clamp(out.tip.z / 60, -1, 1)
+   242→   242→  return out
+   243→   243→}
+   244→   244→
+   245→   245→function solveLeg(
+   246→   246→  knee: J3, ankle: J3, toe: J3,
+   247→   247→  hx: number, hy: number, hz: number,
+   248→   248→  hipC: number, kneeC: number, footC: number,
+   249→   249→  spec: SkelSpec, yaw: number,
+   250→   250→): void {
+   251→   251→  limbDir(hipC, yaw, dirScratch)
+   252→   252→  const kx = hx + dirScratch.x * spec.thigh
+   253→   253→  const ky = hy + dirScratch.y * spec.thigh
+   254→   254→  const kz = hz + dirScratch.z * spec.thigh
+   255→   255→  limbDir(hipC + kneeC, yaw, dirScratch)
+   256→   256→  const ax = kx + dirScratch.x * spec.shin
+   257→   257→  const ay = ky + dirScratch.y * spec.shin
+   258→   258→  const az = kz + dirScratch.z * spec.shin
+   259→   259→  // foot: heel/toe flex in the leg's yaw plane (blended toward sagittal)
+   260→   260→  const tf = Math.PI / 2 + (hipC + kneeC) * 0.35 + footC * 0.5
+   261→   261→  limbDir(tf, yaw * 0.7, dirScratch)
+   262→   262→  const tx = ax + dirScratch.x * spec.foot
+   263→   263→  const ty = ay + dirScratch.y * spec.foot
+   264→   264→  const tz = az + dirScratch.z * spec.foot
+   265→   265→  proj(knee, kx, ky, kz)
+   266→   266→  proj(ankle, ax, ay, az)
+   267→   267→  proj(toe, tx, ty, tz)
+   268→   268→}
+   269→   269→
+   270→   270→function solveArm(
+   271→   271→  elb: J3, hand: J3,
+   272→   272→  sx: number, sy: number, sz: number,
+   273→   273→  shC: number, elC: number,
+   274→   274→  spec: SkelSpec, yaw: number,
+   275→   275→): void {
+   276→   276→  limbDir(shC, yaw, dirScratch)
+   277→   277→  const ex = sx + dirScratch.x * spec.upperArm
+   278→   278→  const ey = sy + dirScratch.y * spec.upperArm
+   279→   279→  const ez = sz + dirScratch.z * spec.upperArm
+   280→   280→  limbDir(shC + elC, yaw, dirScratch)
+   281→   281→  const hx = ex + dirScratch.x * spec.foreArm
+   282→   282→  const hy = ey + dirScratch.y * spec.foreArm
+   283→   283→  const hz = ez + dirScratch.z * spec.foreArm
+   284→   284→  proj(elb, ex, ey, ez)
+   285→   285→  proj(hand, hx, hy, hz)
+   286→   286→}
+   287→   287→
+   288→   288→/* ------------------------------------------------------------------ */
+   289→   289→/* 3D ARM IK — solves (sh, el, yaw) so the hand reaches a 3D target    */
+   290→   290→/* ------------------------------------------------------------------ */
+   291→   291→
+   292→   292→/** Solve arm channels for a 3D hand target (character-local, relative to
+   293→   293→ * the shoulder). Returns swing/elbow/yaw channel values; elbow bends
+   294→   294→ * anatomically (down/back). Used by the 3D sword-arc solver. */
+   295→   295→export function ikArm3D(
+   296→   296→  tx: number, ty: number, tz: number, // target rel. shoulder
+   297→   297→  upper: number, fore: number,
+   298→   298→): { sh: number; el: number; yaw: number; reach: number } {
+   299→   299→  const dx = tx
+   300→   300→  const dy = ty
+   301→   301→  const dz = tz
+   302→   302→  const d = Math.hypot(dx, dy, dz) || 1e-4
+   303→   303→  const r = Math.min(d, (upper + fore) * 0.985)
+   304→   304→  const reach = r / (upper + fore)
+   305→   305→  // planar projection onto (radial-horizontal, vertical)
+   306→   306→  const rh = Math.hypot(dx, dz)
+   307→   307→  const yaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
+   308→   308→  // law of cosines in the sagittal-style plane
+   309→   309→  const cosB = clamp((upper * upper + r * r - fore * fore) / (2 * upper * r), -1, 1)
+   310→   310→  const B = Math.acos(cosB)
+   311→   311→  const base = Math.atan2(rh, dy) // angle from straight-down toward the target
+   312→   312→  const sh = base + B
+   313→   313→  // elbow angle: forearm vs upper arm in the same plane
+   314→   314→  const cosE = clamp((upper * upper + fore * fore - r * r) / (2 * upper * fore), -1, 1)
+   315→   315→  const el = -(Math.PI - Math.acos(cosE))
+   316→   316→  return { sh, el, yaw, reach }
+   317→   317→}
+   318→   318→
+   319→   319→/* ------------------------------------------------------------------ */
+   320→   320→/* DEPTH-SHADED FIGHTER RENDERER                                       */
+   321→   321→/* ------------------------------------------------------------------ */
+   322→   322→
+   323→   323→export interface FighterDrawOpts {
+   324→   324→  alpha?: number
+   325→   325→  time?: number
+   326→   326→  flash?: number
+   327→   327→  flashColor?: string
+   328→   328→  simple?: boolean
+   329→   329→  edgeLight?: { color: string; a: number }
+   330→   330→}
+   331→   331→
+   332→   332→/** width scale from depth: near limbs thicken, far limbs thin */
+   333→   333→function zScale(z: number): number {
+   334→   334→  return FOCUS / (FOCUS - clamp(z, -90, 90))
+   335→   335→}
+   336→   336→
+   337→   337→function fillTaper3(
+   338→   338→  ctx: CanvasRenderingContext2D,
+   339→   339→  a: J3, b: J3,
+   340→   340→  wa: number, wb: number,
+   341→   341→  color: string,
+   342→   342→  alpha = 1,
+   343→   343→): void {
+   344→   344→  const dx = b.x - a.x
+   345→   345→  const dy = b.y - a.y
+   346→   346→  const len = Math.hypot(dx, dy) || 1
+   347→   347→  const nx = -dy / len
+   348→   348→  const ny = dx / len
+   349→   349→  ctx.save()
+   350→   350→  ctx.globalAlpha *= alpha
+   351→   351→  ctx.fillStyle = color
+   352→   352→  ctx.beginPath()
+   353→   353→  ctx.moveTo(a.x + nx * wa, a.y + ny * wa)
+   354→   354→  ctx.lineTo(b.x + nx * wb, b.y + ny * wb)
+   355→   355→  ctx.lineTo(b.x - nx * wb, b.y - ny * wb)
+   356→   356→  ctx.lineTo(a.x - nx * wa, a.y - ny * wa)
+   357→   357→  ctx.closePath()
+   358→   358→  ctx.fill()
+   359→   359→  ctx.beginPath()
+   360→   360→  ctx.arc(a.x, a.y, wa, 0, Math.PI * 2)
+   361→   361→  ctx.fill()
+   362→   362→  ctx.beginPath()
+   363→   363→  ctx.arc(b.x, b.y, wb, 0, Math.PI * 2)
+   364→   364→  ctx.fill()
+   365→   365→  ctx.restore()
+   366→   366→}
+   367→   367→
+   368→   368→function fillFoot3(
+   369→   369→  ctx: CanvasRenderingContext2D,
+   370→   370→  a: J3, b: J3,
+   371→   371→  color: string,
+   372→   372→  alpha = 1,
+   373→   373→): void {
+   374→   374→  const dx = b.x - a.x
+   375→   375→  const dy = b.y - a.y
+   376→   376→  const len = Math.hypot(dx, dy) || 1
+   377→   377→  const nx = -dy / len
+   378→   378→  const ny = dx / len
+   379→   379→  ctx.save()
+   380→   380→  ctx.globalAlpha *= alpha
+   381→   381→  ctx.fillStyle = color
+   382→   382→  ctx.beginPath()
+   383→   383→  ctx.moveTo(a.x + nx * 3.4, a.y + ny * 3.4)
+   384→   384→  ctx.lineTo(b.x + nx * 2.5, b.y + ny * 2.5)
+   385→   385→  ctx.lineTo(b.x - nx * 2.5, b.y - ny * 2.5)
+   386→   386→  ctx.lineTo(a.x - nx * 3.4, a.y - ny * 3.4)
+   387→   387→  ctx.closePath()
+   388→   388→  ctx.fill()
+   389→   389→  ctx.beginPath()
+   390→   390→  ctx.arc(a.x, a.y, 3.4, 0, Math.PI * 2)
+   391→   391→  ctx.fill()
+   392→   392→  ctx.beginPath()
+   393→   393→  ctx.arc(b.x, b.y, 2.3, 0, Math.PI * 2)
+   394→   394→  ctx.fill()
+   395→   395→  ctx.restore()
+   396→   396→}
+   397→   397→
+   398→   398→function fillFist3(
+   399→   399→  ctx: CanvasRenderingContext2D,
+   400→   400→  p: J3,
+   401→   401→  ax: number, ay: number, // projected grip axis (unit)
+   402→   402→  size: number,
+   403→   403→  color: string,
+   404→   404→  alpha = 1,
+   405→   405→): void {
+   406→   406→  const px = -ay
+   407→   407→  const py = ax
+   408→   408→  ctx.save()
+   409→   409→  ctx.globalAlpha *= alpha
+   410→   410→  ctx.fillStyle = color
+   411→   411→  ctx.beginPath()
+   412→   412→  ctx.moveTo(p.x + px * size, p.y + py * size)
+   413→   413→  ctx.lineTo(p.x + ax * size * 0.55 + px * size * 0.8, p.y + ay * size * 0.55 + py * size * 0.8)
+   414→   414→  ctx.lineTo(p.x + ax * size * 0.55 - px * size * 0.8, p.y + ay * size * 0.55 - py * size * 0.8)
+   415→   415→  ctx.lineTo(p.x - px * size, p.y - py * size)
+   416→   416→  ctx.closePath()
+   417→   417→  ctx.fill()
+   418→   418→  ctx.beginPath()
+   419→   419→  ctx.arc(p.x, p.y, size * 0.92, 0, Math.PI * 2)
+   420→   420→  ctx.fill()
+   421→   421→  ctx.restore()
+   422→   422→}
+   423→   423→
+   424→   424→const LIMB = 5 // lineW base
+   425→   425→
+   426→   426→/**
+   427→   427→ * Draws the fighter in full 3D depth language, same silhouette style as
+   428→   428→ * the classic renderer: rim → FAR limbs (back shade, thin) → torso → NEAR
+   429→   429→ * limbs (black, full width) → fists → head → flash. Near/far is decided
+   430→   430→ * PER LIMB from solved depth — when the torso twists or the hips swivel,
+   431→   431→ * limbs cross the depth axis and swap shading dynamically.
+   432→   432→ */
+   433→   433→export function drawFighter3D(
+   434→   434→  ctx: CanvasRenderingContext2D,
+   435→   435→  g: FighterGeom,
+   436→   436→  style: StickStyle,
+   437→   437→  opts: FighterDrawOpts = {},
+   438→   438→): void {
+   439→   439→  const alpha = opts.alpha ?? 1
+   440→   440→  if (alpha <= 0.01) return
+   441→   441→  const t = opts.time ?? 0
+   442→   442→  const black = style.body
+   443→   443→  const rim = style.outline
+   444→   444→  const back = style.dark !== black ? style.dark : rgba(black, 0.82)
+   445→   445→  const lineW = style.lineW
+   446→   446→
+   447→   447→  // ---- depth sort keys (mid-joint means) ----
+   448→   448→  const zTorso = (g.hip.z + g.waist.z + g.chest.z) / 3
+   449→   449→  const zLegR = (g.hipPtR.z + g.kneeR.z + g.ankleR.z) / 3
+   450→   450→  const zLegL = (g.hipPtL.z + g.kneeL.z + g.ankleL.z) / 3
+   451→   451→  const zArmR = (g.shoulderR.z + g.elbR.z + g.handR.z) / 3
+   452→   452→  const zArmL = (g.shoulderL.z + g.elbL.z + g.handL.z) / 3
+   453→   453→  const legNear = zLegR >= zLegL ? 'R' : 'L'
+   454→   454→  const armNear = zArmR >= zArmL ? 'R' : 'L'
+   455→   455→  const farLeg = legNear === 'R' ? { hip: g.hipPtL, knee: g.kneeL, ankle: g.ankleL, toe: g.toeL, z: zLegL } : { hip: g.hipPtR, knee: g.kneeR, ankle: g.ankleR, toe: g.toeR, z: zLegR }
+   456→   456→  const nearLeg = legNear === 'R' ? { hip: g.hipPtR, knee: g.kneeR, ankle: g.ankleR, toe: g.toeR, z: zLegR } : { hip: g.hipPtL, knee: g.kneeL, ankle: g.ankleL, toe: g.toeL, z: zLegL }
+   457→   457→  const farArm = armNear === 'R' ? { sh: g.shoulderL, elb: g.elbL, hand: g.handL, z: zArmL } : { sh: g.shoulderR, elb: g.elbR, hand: g.handR, z: zArmR }
+   458→   458→  const nearArm = armNear === 'R' ? { sh: g.shoulderR, elb: g.elbR, hand: g.handR, z: zArmR } : { sh: g.shoulderL, elb: g.elbL, hand: g.handL, z: zArmL }
+   459→   459→  const farIsSword = armNear === 'R' // far arm carries the off hand
+   460→   460→
+   461→   461→  // width factors from depth
+   462→   462→  const wf = (z: number) => zScale(z)
+   463→   463→  const nearK = 1 + Math.max(0, zTorso) * 0.004
+   464→   464→
+   465→   465→  ctx.save()
+   466→   466→  ctx.globalAlpha *= alpha
+   467→   467→  ctx.lineCap = 'round'
+   468→   468→  ctx.lineJoin = 'round'
+   469→   469→
+   470→   470→  // ---- 0. rim pass ----
+   471→   471→  if (!opts.simple) {
+   472→   472→    ctx.save()
+   473→   473→    ctx.globalAlpha *= 0.78
+   474→   474→    ctx.strokeStyle = rim
+   475→   475→    ctx.lineWidth = lineW + 3.6
+   476→   476→    ctx.beginPath()
+   477→   477→    ctx.moveTo(farLeg.hip.x, farLeg.hip.y); ctx.lineTo(farLeg.knee.x, farLeg.knee.y); ctx.lineTo(farLeg.ankle.x, farLeg.ankle.y)
+   478→   478→    ctx.moveTo(nearLeg.hip.x, nearLeg.hip.y); ctx.lineTo(nearLeg.knee.x, nearLeg.knee.y); ctx.lineTo(nearLeg.ankle.x, nearLeg.ankle.y)
+   479→   479→    ctx.moveTo(farArm.sh.x, farArm.sh.y); ctx.lineTo(farArm.elb.x, farArm.elb.y); ctx.lineTo(farArm.hand.x, farArm.hand.y)
+   480→   480→    ctx.moveTo(nearArm.sh.x, nearArm.sh.y); ctx.lineTo(nearArm.elb.x, nearArm.elb.y); ctx.lineTo(nearArm.hand.x, nearArm.hand.y)
+   481→   481→    ctx.stroke()
+   482→   482→    ctx.lineWidth = (lineW + 3.6) * 1.5
+   483→   483→    ctx.beginPath()
+   484→   484→    ctx.moveTo(g.hip.x, g.hip.y)
+   485→   485→    ctx.lineTo(g.waist.x, g.waist.y)
+   486→   486→    ctx.lineTo(g.chest.x, g.chest.y)
+   487→   487→    ctx.lineTo(g.neckTop.x, g.neckTop.y)
+   488→   488→    ctx.stroke()
+   489→   489→    ctx.restore()
+   490→   490→  }
+   491→   491→
+   492→   492→  // ---- 1. FAR limbs (back shade, slightly thinned by depth) ----
+   493→   493→  const farK = 0.9
+   494→   494→  fillTaper3(ctx, farLeg.hip, farLeg.knee, 5.8 * farK * wf(farLeg.z), 4.3 * farK * wf(farLeg.z), back)
+   495→   495→  fillTaper3(ctx, farLeg.knee, farLeg.ankle, 4.0 * farK * wf(farLeg.z), 2.8 * farK * wf(farLeg.z), back)
+   496→   496→  fillFoot3(ctx, farLeg.ankle, farLeg.toe, back)
+   497→   497→  ctx.fillStyle = back
+   498→   498→  ctx.beginPath()
+   499→   499→  ctx.arc(farLeg.knee.x, farLeg.knee.y, 4.2 * wf(farLeg.z), 0, Math.PI * 2)
+   500→   500→  ctx.fill()
+   501→   501→  ctx.beginPath()
+   502→   502→  ctx.arc(farArm.sh.x, farArm.sh.y, 4.6 * wf(farArm.z), 0, Math.PI * 2)
+   503→   503→  ctx.fill()
+   504→   504→  fillTaper3(ctx, farArm.sh, farArm.elb, 4.4 * farK * wf(farArm.z), 3.3 * farK * wf(farArm.z), back)
+   505→   505→  fillTaper3(ctx, farArm.elb, farArm.hand, 3.2 * farK * wf(farArm.z), 2.5 * farK * wf(farArm.z), back)
+   506→   506→
+   507→   507→  // ---- 2. torso: pelvis basin → abdomen → ribcage → trapezius → neck ----
+   508→   508→  fillTaper3(ctx, g.hip, g.waist, 9.6 * wf(zTorso), 6.6 * wf(zTorso), black)
+   509→   509→  fillTaper3(ctx, g.waist, g.chest, 6.6 * wf(zTorso), 10.4 * wf(zTorso), black)
+   510→   510→  // trapezius: skull base out to BOTH deltoid caps — the projected
+   511→   511→  // shoulder line foreshortens as the girdle yaws (THE 3D torso read)
+   512→   512→  {
+   513→   513→    const ndx = g.neckTop.x - g.chest.x
+   514→   514→    const ndy = g.neckTop.y - g.chest.y
+   515→   515→    const nl = Math.hypot(ndx, ndy) || 1
+   516→   516→    const px = -ndy / nl
+   517→   517→    const py = ndx / nl
+   518→   518→    ctx.fillStyle = black
+   519→   519→    ctx.beginPath()
+   520→   520→    ctx.moveTo(g.neckTop.x + px * 3.4, g.neckTop.y + py * 3.4)
+   521→   521→    ctx.lineTo(g.neckTop.x - px * 3.4, g.neckTop.y - py * 3.4)
+   522→   522→    ctx.lineTo(g.shoulderL.x + px * 4.8, g.shoulderL.y + py * 4.8)
+   523→   523→    ctx.lineTo(g.shoulderL.x - px * 3.4, g.shoulderL.y - py * 3.4)
+   524→   524→    ctx.lineTo(g.shoulderR.x - px * 5.2, g.shoulderR.y - py * 5.2)
+   525→   525→    ctx.lineTo(g.shoulderR.x + px * 5.8, g.shoulderR.y + py * 5.8)
+   526→   526→    ctx.closePath()
+   527→   527→    ctx.fill()
+   528→   528→  }
+   529→   529→  fillTaper3(ctx, g.chest, g.neckTop, 4.6, 3.3, black)
+   530→   530→
+   531→   531→  // ---- 3. NEAR limbs (solid black, depth-widened) ----
+   532→   532→  const nk = wf(nearLeg.z) * nearK
+   533→   533→  fillTaper3(ctx, nearLeg.hip, nearLeg.knee, 6.5 * nk, 4.7 * nk, black)
+   534→   534→  fillTaper3(ctx, nearLeg.knee, nearLeg.ankle, 4.4 * nk, 2.9 * nk, black)
+   535→   535→  fillFoot3(ctx, nearLeg.ankle, nearLeg.toe, black)
+   536→   536→  ctx.fillStyle = black
+   537→   537→  ctx.beginPath()
+   538→   538→  ctx.arc(nearLeg.knee.x, nearLeg.knee.y, 4.6 * nk, 0, Math.PI * 2)
+   539→   539→  ctx.fill()
+   540→   540→  const ak = wf(nearArm.z) * nearK
+   541→   541→  ctx.beginPath()
+   542→   542→  ctx.arc(nearArm.sh.x, nearArm.sh.y, 5.7 * ak, 0, Math.PI * 2)
+   543→   543→  ctx.fill()
+   544→   544→  fillTaper3(ctx, nearArm.sh, nearArm.elb, 4.9 * ak, 3.6 * ak, black)
+   545→   545→  fillTaper3(ctx, nearArm.elb, nearArm.hand, 3.5 * ak, 2.6 * ak, black)
+   546→   546→  ctx.beginPath()
+   547→   547→  ctx.arc(nearArm.elb.x, nearArm.elb.y, 3.7 * ak, 0, Math.PI * 2)
+   548→   548→  ctx.fill()
+   549→   549→  // near-limb readability: a whisper of rim along the near arm + leg
+   550→   550→  // silhouettes so they separate from the pure-black torso mass (playtest:
+   551→   551→  // black-on-black limbs "absorb" at gameplay zoom and read as missing)
+   552→   552→  if (!opts.simple) {
+   553→   553→    ctx.save()
+   554→   554→    ctx.strokeStyle = rgba(rim, 0.34)
+   555→   555→    ctx.lineWidth = 1.1
+   556→   556→    ctx.beginPath()
+   557→   557→    ctx.moveTo(nearArm.sh.x - 2.6, nearArm.sh.y - 0.8)
+   558→   558→    ctx.lineTo(nearArm.elb.x - 2.1, nearArm.elb.y - 0.8)
+   559→   559→    ctx.lineTo(nearArm.hand.x - 1.6, nearArm.hand.y - 0.4)
+   560→   560→    ctx.stroke()
+   561→   561→    ctx.beginPath()
+   562→   562→    ctx.moveTo(nearLeg.hip.x + 2.4, nearLeg.hip.y + 0.6)
+   563→   563→    ctx.lineTo(nearLeg.knee.x + 2.1, nearLeg.knee.y + 0.2)
+   564→   564→    ctx.stroke()
+   565→   565→    ctx.restore()
+   566→   566→  }
+   567→   567→
+   568→   568→  // ---- 4. fists on the projected blade axis ----
+   569→   569→  const bax = Math.cos(g.bladeProjAngle)
+   570→   570→  const bay = Math.sin(g.bladeProjAngle)
+   571→   571→  // off-hand fist (rear grip when the sword arm is near)
+   572→   572→  fillFist3(ctx, g.handL, bax, bay, 2.9, farIsSword ? back : black)
+   573→   573→  // sword fist — ON the grip (follows bladeZ thrust travel)
+   574→   574→  fillFist3(ctx, g.grip, bax, bay, 3.4 * wf(g.grip.z), black)
+   575→   575→  if (!opts.simple) {
+   576→   576→    ctx.save()
+   577→   577→    ctx.strokeStyle = rgba(rim, 0.55)
+   578→   578→    ctx.lineWidth = 1.2
+   579→   579→    ctx.beginPath()
+   580→   580→    ctx.arc(g.grip.x, g.grip.y, 3.6 * wf(g.grip.z), -1.2, 0.9)
+   581→   581→    ctx.stroke()
+   582→   582→    ctx.restore()
+   583→   583→  }
+   584→   584→
+   585→   585→  // ---- 4.5 BLADE-CAST RIM LIGHT ----
+   586→   586→  const el = opts.edgeLight
+   587→   587→  if (el && el.a > 0.03) {
+   588→   588→    ctx.save()
+   589→   589→    ctx.globalCompositeOperation = 'lighter'
+   590→   590→    ctx.lineCap = 'round'
+   591→   591→    ctx.strokeStyle = rgba(el.color, Math.min(0.85, el.a))
+   592→   592→    ctx.lineWidth = 2
+   593→   593→    // sword arm chain — whichever side it's on
+   594→   594→    ctx.beginPath()
+   595→   595→    ctx.moveTo(g.shoulderR.x, g.shoulderR.y)
+   596→   596→    ctx.lineTo(g.elbR.x, g.elbR.y)
+   597→   597→    ctx.lineTo(g.grip.x, g.grip.y)
+   598→   598→    ctx.stroke()
+   599→   599→    ctx.beginPath()
+   600→   600→    ctx.moveTo(g.hip.x + 5.2, g.hip.y - 1)
+   601→   601→    ctx.quadraticCurveTo(g.waist.x + 6.5, g.waist.y - 1, g.chest.x + 8.2, g.chest.y + 1.5)
+   602→   602→    ctx.stroke()
+   603→   603→    ctx.beginPath()
+   604→   604→    ctx.moveTo(g.hipPtR.x + 4.4, g.hipPtR.y + 1)
+   605→   605→    ctx.lineTo(g.kneeR.x + 3.4, g.kneeR.y - 1)
+   606→   606→    ctx.stroke()
+   607→   607→    ctx.lineWidth = 1.4
+   608→   608→    ctx.beginPath()
+   609→   609→    ctx.arc(g.handL.x, g.handL.y, 2.6, 0, Math.PI * 2)
+   610→   610→    ctx.stroke()
+   611→   611→    ctx.restore()
+   612→   612→  }
+   613→   613→
+   614→   614→  // ---- 5. head ----
+   615→   615→  ctx.save()
+   616→   616→  ctx.fillStyle = black
+   617→   617→  ctx.translate(g.headC.x, g.headC.y)
+   618→   618→  ctx.rotate(g.headAng * 0.35)
+   619→   619→  ctx.beginPath()
+   620→   620→  ctx.ellipse(0, -0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
+   621→   621→  ctx.fill()
+   622→   622→  ctx.beginPath()
+   623→   623→  ctx.moveTo(2.6, 5.6)
+   624→   624→  ctx.quadraticCurveTo(1.2, 8.6, -1.8, 8.2)
+   625→   625→  ctx.quadraticCurveTo(-4.2, 7.6, -4.6, 4.4)
+   626→   626→  ctx.closePath()
+   627→   627→  ctx.fill()
+   628→   628→  ctx.beginPath()
+   629→   629→  ctx.moveTo(-2.0, -8.2)
+   630→   630→  ctx.quadraticCurveTo(-7.5, -12.6, -12.6, -9.4)
+   631→   631→  ctx.quadraticCurveTo(-8.8, -6.4, -5.2, -5.2)
+   632→   632→  ctx.closePath()
+   633→   633→  ctx.fill()
+   634→   634→  ctx.restore()
+   635→   635→  if (!opts.simple) {
+   636→   636→    ctx.save()
+   637→   637→    ctx.strokeStyle = rgba(rim, 0.5)
+   638→   638→    ctx.lineWidth = 1.6
+   639→   639→    ctx.beginPath()
+   640→   640→    ctx.arc(g.headC.x - 1.5, g.headC.y - 0.5, 8.6, Math.PI * 0.62, Math.PI * 1.32)
+   641→   641→    ctx.stroke()
+   642→   642→    ctx.restore()
+   643→   643→  }
+   644→   644→
+   645→   645→  // ---- 6. glowing eyes ----
+   646→   646→  if (!opts.simple) {
+   647→   647→    const blink = 0.85 + 0.15 * Math.sin(t * 3.1)
+   648→   648→    ctx.save()
+   649→   649→    ctx.globalCompositeOperation = 'lighter'
+   650→   650→    ctx.fillStyle = rgba(style.glow, 0.95 * blink)
+   651→   651→    ctx.beginPath()
+   652→   652→    ctx.ellipse(g.headC.x + 3.4, g.headC.y - 1.4, 2.0, 1.15, -0.18, 0, Math.PI * 2)
+   653→   653→    ctx.fill()
+   654→   654→    ctx.beginPath()
+   655→   655→    ctx.ellipse(g.headC.x + 6.4, g.headC.y - 2.2, 1.25, 0.9, -0.18, 0, Math.PI * 2)
+   656→   656→    ctx.fill()
+   657→   657→    ctx.restore()
+   658→   658→  }
+   659→   659→
+   660→   660→  // ---- 7. hit flash ----
+   661→   661→  const flash = clamp01(opts.flash ?? 0)
+   662→   662→  if (flash > 0.02) {
+   663→   663→    const fc = opts.flashColor ?? '#ffffff'
+   664→   664→    fillTaper3(ctx, nearLeg.hip, nearLeg.knee, 6.5 * nk, 4.7 * nk, fc, flash)
+   665→   665→    fillTaper3(ctx, nearLeg.knee, nearLeg.ankle, 4.4 * nk, 2.9 * nk, fc, flash)
+   666→   666→    fillTaper3(ctx, farLeg.hip, farLeg.knee, 5.8, 4.3, fc, flash * 0.8)
+   667→   667→    fillTaper3(ctx, nearArm.sh, nearArm.elb, 4.9 * ak, 3.6 * ak, fc, flash)
+   668→   668→    fillTaper3(ctx, nearArm.elb, nearArm.hand, 3.5 * ak, 2.6 * ak, fc, flash)
+   669→   669→    fillTaper3(ctx, g.waist, g.chest, 6.6, 10.4, fc, flash)
+   670→   670→    fillTaper3(ctx, g.hip, g.waist, 9.6, 6.6, fc, flash)
+   671→   671→    ctx.fillStyle = fc
+   672→   672→    ctx.save()
+   673→   673→    ctx.globalAlpha *= flash
+   674→   674→    ctx.beginPath()
+   675→   675→    ctx.ellipse(g.headC.x, g.headC.y - 0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
+   676→   676→    ctx.fill()
+   677→   677→    ctx.restore()
+   678→   678→  }
+   679→   679→
+   680→   680→  ctx.restore()
+   681→   681→  void LIMB
+   682→   682→}
+   683→   683→

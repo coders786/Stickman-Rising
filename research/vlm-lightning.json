@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Electric Arc Rendering Rules — Compact Constants\n\n## 1. Channel Geometry\n\n```\nSEGMENT_LEN        = 0.02–0.05 × boltLength   // per-jag step; short bolts use fewer, longer segs\nJITTER_ANGLE       = ±25–40° off current direction (random walk)\nBIAS               = pull back toward target ~10–20% per segment (keeps arc progressing)\nJAG_SCALE          = midpoint-displacement: offset = ±(4–10% of segment length), halve per recursion depth 4–5\nBRANCH_PROB        = 0.05–0.10 per segment (main channel)\nBRANCH_START       = prefer upper/mid 60% of bolt; fewer near tip\nBRANCH_ANGLE       = 20–50° from parent direction\nBRANCH_LENGTH      = 0.3–0.7 × remaining parent length\nBRANCH_DEPTH       = 1–2 sub-branches max; sub-branch width/alpha ×0.5\nBRANCH_DECAY       = branches taper: width ×0.8 per segment, often end in faded stub\nTOUCHDOWN_FORK     = near ground, 2–4 near-final forks spreading 15–35°\n```\n\n## 2. Color Layering (draw outer→inner)\n\n```\nL1 HALO    width 6–10× core; color #3355AA / #4466BB; alpha 0.15–0.25; blur 8–16px\nL2 MID     width 2.5–3.5× core; color #88AAFF; alpha 0.4–0.6; blur 3–5px\nL3 CORE    width 1.5–3px (screen-scale); color #FFFFFF (hot, slightly blue #EEF4FF); alpha 0.95–1.0\nL4 GLINT   optional 1px pure white overshoot on branch tips; alpha 0.8\nBRANCHES   same palette, alpha ×0.6, width ×0.5\nAMBIENT    screen flash: whole-canvas fill #AABBDD alpha 0.03–0.08 per strike\n```\n\n## 3. Temporal Behavior\n\n```\nLIFETIME_MAIN     = 120–250 ms visible; brightest first 40–60 ms then decay (alpha *= 0.85/frame)\nRESTRIKE          = 1–3 restrikes, 60–150 ms apart, ~30% same channel reused (rerender geometry, keep skeleton)\nFLICKER           = per-frame alpha jitter ±15–25% while alive\nSTROBE            = branch channels flicker independently (random on/off at ~30 Hz, duty 0.5–0.8)\nAFTERGLOW         = faint halo persists 200–400 ms after core dies (alpha 0.1→0)\nLEADER_PHASE      (optional) dim thin version (alpha 0.3, width ×0.5) grows toward target over 80–150 ms before full-brightness return stroke\n```\n\n## 4. Bouncing/Reflected Arcs vs Straight Arcs\n\n```\nSTRAIGHT BOLT:\n  - dominant vertical/diagonal direction, one strong main channel\n  - jitter is local; overall path reads as a single descent\nBOUNCING ARC (energy traveling between points / chain like the node-link path):\n  - channel = polyline of anchor nodes; each leg is its own mini-bolt\n  - legs are SHORTER + straighter: jitter ±10–15° only, seg len 0.05–0.1 × leg length\n  - uniform width along leg (no taper), no ground forks\n  - bright POINT node at each bounce/contact (radial glow: white core r=2-3px, halo r=10-18px alpha 0.3)\n  - direction change at nodes is sharp (60–150°), never curved\n  - color: same core/halo, but halo alpha ×0.7 (lower energy than sky bolt)\n```\n\n## Quick pseudo-structure\n```\ngenBolt(a,b): walk a→b in SEGMENT_LEN steps, jitter angle, bias to b;\n  at each step maybe branch(). Draw [halo, mid, core] passes;\n  animate: flash-in → flicker decay → restrike regen (reuse skeleton 30%).\n```",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794139504,
+  "id": "202611082004383e7cf3b15c994633",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082004383e7cf3b15c994633",
+  "usage": {
+    "completion_tokens": 943,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 2513,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3456
+  }
+}

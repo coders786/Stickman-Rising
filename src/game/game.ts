@@ -943,9 +943,28 @@ export class Game {
             case 'inferno':
               this.fx.burst(ex, ey, 10, sword.colors.trail, 300, 0.6, 'ember')
               break
-            case 'thunder':
-              this.fx.lightningArc(ex + rand(-80, 80), ey - 120, ex, ey, sword.colors.trail)
+            case 'thunder': {
+              // SKY-STRIKE: the bolt falls from the storm onto the target,
+              // then RAY-TRACES onward — reflections hopping body→ground→
+              // body with intent, small chain damage on each contact
+              this.fx.lightningCast(
+                { enemies: this.enemies, minX: ARENA_MIN, maxX: ARENA_MAX },
+                ex + rand(-30, 30), ey - 280, rand(-0.12, 0.12), 1,
+                {
+                  color: sword.colors.trail, energy: 1, bounces: 2, dmg: 6,
+                  width: 3, maxLen: 640,
+                  hit: (re, d) => {
+                    if (re.id === undefined || re.id === e.id) return
+                    this.hitEnemy(re.id, { bx: re.x - 12, by: re.y - 40, tx: re.x + 12, ty: re.y - 40 }, {
+                      id: 'ultchain', dmg: d * sword.stats.dmg, heavy: false, stagger: 0.15,
+                      kb: 60, kbY: 0, launch: 0, juggle: 0, hitstop: 0.01, shake: 0.05,
+                      aoe: 0, breakGuard: true, kind: 'ability',
+                    })
+                  },
+                },
+              )
               break
+            }
             case 'void':
               this.fx.burst(ex, ey, 8, sword.colors.core, 200, 0.5, 'shard')
               break

@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "## Rig Constants — Arm Module (fractions of body height H)\n\n### 1. Segment lengths (Drillis–Contini anthropometry)\n\n| Constant | Value | Note |\n|---|---|---|\n| Humerus length (shoulder→elbow) | **0.186 H** | acromion to elbow axis |\n| Forearm length (elbow→wrist) | **0.146 H** | elbow axis to wrist crease |\n| Hand length | 0.108 H | wrist→fingertip |\n| **Humerus : forearm** | **≈ 1.27 : 1** (0.186/0.146) | |\n| **Humerus : total arm (h+fa)** | **≈ 0.56** ; forearm ≈ 0.44 | |\n\nNote the forearm image shows the radius/ulna with a slight lateral offset and wide distal end — the forearm bone is ~0.78× humerus, not 1:1.\n\n### 2. Shoulder girdle placement (GH joint offset)\n\n| Constant | Value |\n|---|---|\n| GH joint vertical position | **≈ 0.81 H** from floor (≈ 0.19 H below vertex; ~1.5 head-heights down from top) |\n| GH joint lateral offset from spine midline | **≈ 0.10 H** per side (≈ 1.0 head-width, ~0.09–0.11 H typical) |\n| Clavicle contribution | clavicle ≈ 0.15 H long, horizontal strut from sternum; scapula adds posterior offset ≈ 0.02–0.03 H behind mid-coronal plane |\n| Resulting GH joint depth | slightly anterior of mid-torso, ≈ 0.01–0.02 H forward |\n\nFor a 2D rig: anchor shoulder at (±0.10 H, 0.81 H), with clavicle as a short fixed (non-animated) strut — scapula motion can be faked with 1–2° shrug on the shoulder parent.\n\n### 3. Elbow geometry\n\n| Constant | Value |\n|---|---|\n| **Carrying angle** (forearm vs. upper arm, extended, anatomical position) | **≈ 10–15° valgus** (female ~13–16°, male ~6–10°); use **10°** as rig default, reduce toward 0° as elbow flexes |\n| **Pronation/supination rotation axis** | **Longitudinal axis of the forearm** (radius pivots around ulna) — NOT the elbow hinge axis. In-rig: twist channel around the forearm bone's own long axis, origin at elbow, max effect at wrist |\n| Pronation range | **0–80°** (functional ~75°) |\n| Supination range | **0–90°** (functional ~85°) |\n| Total pron/sup arc | ≈ 170° |\n\n### 4. Joint DOFs and practical ranges\n\n| Joint | DOF | Axis | Range |\n|---|---|---|---|\n| **Shoulder (GH, ball joint)** | 3 | Flexion/extension | 180° flex / 60° ext |\n| | | Abduction/adduction | 180° abd / 45° add (can't cross body past ~45° without torso lean) |\n| | | Internal/external rotation | 70° int / 90° ext (arm at side); ~90/90 with arm abducted |\n| **Elbow** | 2 (hinge + pivot) | Flexion/extension (hinge) | **0–145°** flex (never hyperextends; clamp at −5°) |\n| | | Pronation/supination (pivot, forearm long axis) | 80° / 90° |\n| Wrist | 2 | Flex/ext 80/70°, deviation 30/20° | optional for stickman |\n\n### 5. Width taper (limb silhouette, fractions of H)\n\n| Station | Width (fraction of H) | Relative to deltoid |\n|---|---|---|\n| Deltoid/max circumference | **0.055–0.06 H** | 1.00 |\n| Mid-humerus (biceps) | ≈ 0.045 H | 0.78 |\n| Elbow | ≈ 0.035 H | 0.60 |\n| Mid-forearm | ≈ 0.03 H | 0.52 |\n| Wrist | **≈ 0.020 H** | **≈ 0.35** |\n\nTaper is roughly linear from deltoid to elbow, then steeper forearm→wrist. In the humerus image: proximal epiphysis (head+tubercles) ≈ 2.5× shaft width; distal epiphysis ≈ 1.7× shaft width — so draw bulges at both elbow-adjacent ends of the upper arm.\n\n### Suggested rig code block\n```\nSHOULDER_POS   = (±0.10H, 0.81H)\nUPPER_ARM_LEN  = 0.186H\nFOREARM_LEN    = 0.146H\nCARRYING_ANGLE = 10° (decays to 0° at full flexion)\nSHOULDER_DOF   = 3 (flex/ext ±180/60, abd/add 180/45, rot int/ext 70/90)\nELBOW_DOF      = 2 (hinge 0–145°, twist ±85° about forearm long axis)\nWIDTH_PROFILE  = [1.00, 0.78, 0.60, 0.52, 0.35] @ deltoid/mid-upper/elbow/mid-fore/wrist (×0.055H)\n```\n\nCaveat: the reference images are qualitative bone/muscle plates; numeric constants come from standard anthropometric tables (Drillis & Contini 1966; AAOS ROM norms), which are the accepted sources for these values.",
+        "reasoning_content": "Provide table with standard anthropometric values (Drillis & Contini).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794139419,
+  "id": "202611082002582b72a63b48d044c8",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082002582b72a63b48d044c8",
+  "usage": {
+    "completion_tokens": 1328,
+    "completion_tokens_details": {
+      "reasoning_tokens": 14
+    },
+    "prompt_tokens": 9324,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 10652
+  }
+}

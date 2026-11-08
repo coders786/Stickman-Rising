@@ -42,15 +42,22 @@ export interface SkelSpec {
  *   hip→shoulder line 0.355 H     37   (waist split 0.57/0.43)
  *   femur head offset             ±~2  (front hip +1.7, rear −2.1)
  *   glenohumeral jt   0.031 H      3.2 fwd × 3.3 drop (near shoulder)
- *   humerus           0.20 H      21
- *   forearm           0.18 H      19   (humerus:forearm = 1.1:1 ✓)
+ *   humerus           0.212 H      22
+ *   forearm           0.160 H     16.6 (humerus:forearm = 1.33:1 — the
+ *                                      Drillis–Contini intermembral ratio,
+ *                                      upper end: joint caps + bent-arm
+ *                                      foreshortening eat ~10% of the
+ *                                      perceived humerus at render time)
+ *   hand              0.062 H     6.5
  *   femur             0.24 H      25
  *   tibia             0.23 H      24   (femur:tibia = 1.04:1 ✓)
  *   foot length       0.10 H      10
  *   blade 56 ≈ 54% of height + tsuka ≈ 70% — legit long-katana read
  *
  * Leg chain 49 keeps HIP_H = 64 world EXACTLY stable (ground contact,
- * foot-lock and hitbox heights all depend on it).
+ * foot-lock and hitbox heights all depend on it). The arm chain 38.6 keeps
+ * ~96% of the legacy reach envelope while restoring the true humerus:
+ * forearm ratio (1.1:1 read as a gorilla forearm at silhouette scale).
  */
 export const PLAYER_SPEC: SkelSpec = {
   torso: 37,
@@ -58,8 +65,8 @@ export const PLAYER_SPEC: SkelSpec = {
   headR: 8.8,
   shoulderFwd: 3.2,
   shoulderDrop: 3.3,
-  upperArm: 21,
-  foreArm: 19,
+  upperArm: 22,
+  foreArm: 16.6,
   hand: 6.5,
   thigh: 25,
   shin: 24,
@@ -639,8 +646,8 @@ function drawSilhouette(
   ctx.arc(g.shoulderL.x, g.shoulderL.y, 4.6, 0, Math.PI * 2)
   ctx.fill()
   // back arm: triceps taper + forearm, from the far glenohumeral joint
-  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 4.4, 3.3, back)
-  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 3.2, 2.5, back)
+  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 4.9, 3.1, back)
+  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 2.9, 1.8, back)
 
   // ---- 2. torso: pelvis basin + abdomen + ribcage + trapezius + neck ----
   // pelvis: WIDE at the hip (iliac crest), tapering hard to the waist —
@@ -690,9 +697,10 @@ function drawSilhouette(
   ctx.beginPath()
   ctx.arc(g.shoulderR.x, g.shoulderR.y, 5.7, 0, Math.PI * 2)
   ctx.fill()
-  // bicep → forearm taper
-  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 4.9, 3.6, black)
-  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.5, 2.6, black)
+  // bicep → forearm taper (anatomical: deltoid .055H → elbow .035H →
+  // wrist .020H — the forearm tapers STEEPER than the humerus)
+  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 5.7, 3.6, black)
+  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.4, 2.1, black)
   // elbow sphere (silhouette joint)
   ctx.beginPath()
   ctx.arc(g.elbR.x, g.elbR.y, 3.7, 0, Math.PI * 2)

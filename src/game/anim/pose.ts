@@ -14,12 +14,17 @@
  *   +Z = TOWARD THE CAMERA (out of the gameplay plane)
  * Yaw channels rotate a limb/girdle around the vertical (Y) axis:
  *   positive yaw swings the limb/segment TOWARD the camera (+Z).
- * Channels 17–25 are appended AFTER the classic 2D set so every existing
+ * FOREARM YAW (foreLz/foreRz) is the elbow's own depth DOF — the forearm
+ * rotates OUT of the upper arm's yaw plane around the elbow (the rig read
+ * of shoulder internal rotation + forearm pronation: the elbow stays back
+ * while the hand & blade lead through depth — anatomy: the forearm's pivot
+ * axis is its own long axis, origin at the elbow).
+ * Channels 17–27 are appended AFTER the classic 2D set so every existing
  * keyframe, clip, and enemy pose stays bit-compatible (they simply read as
  * depth-zero until authored otherwise).
  */
 
-export const CH_COUNT = 26
+export const CH_COUNT = 28
 
 export const CH = {
   rootX: 0,
@@ -56,6 +61,13 @@ export const CH = {
   bladeYaw: 24,
   /** grip depth offset: translates the whole weapon along +Z (thrust paths) */
   bladeZ: 25,
+  /* ---- forearm yaw (elbow pivot): the forearm's own depth rotation,
+   * INDEPENDENT of the upper-arm plane — pronation / shoulder-internal-
+   * rotation read. + swings the hand toward the camera. */
+  /** far/off forearm yaw: + = off-hand swings toward the camera */
+  foreLz: 26,
+  /** near/sword forearm yaw: + = sword hand swings toward the camera */
+  foreRz: 27,
 } as const
 
 export type ChannelKey = keyof typeof CH
@@ -84,7 +96,9 @@ const NEUTRAL_SRC: PoseInput = {
   shR: 0.85,
   elR: -0.5,
   wrR: 1.15,
-  // 3D depth channels: the guard is square-on (0 depth articulation)
+  // 3D depth channels: the guard is square-on (0 depth articulation) apart
+  // from the anatomical carrying angle (~10° valgus: the extended forearm
+  // rides slightly toward the camera off the humerus line)
   rootZ: 0,
   pelvisYaw: 0,
   chestYaw: 0,
@@ -94,6 +108,8 @@ const NEUTRAL_SRC: PoseInput = {
   armRz: 0,
   bladeYaw: 0,
   bladeZ: 0,
+  foreLz: -0.04,
+  foreRz: 0.1,
 }
 
 export const NEUTRAL: Pose = (() => {

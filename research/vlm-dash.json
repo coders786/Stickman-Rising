@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# LEAN RULES — Anime/Game Dash (extracted from refs)\n\n## 1) Torso pitch (spine forward lean, degrees from vertical)\n- **Dash start / launch frame:** −35° to −45° (spike; body Z equivalent of −30 to −45)\n- **Glide / top-speed dash:** −15° to −20° sustained lean\n- **Catch / brake:** +5° to −10°, briefly overshoot to +10° upright (counter-lean) at skid, settle to 0° rest\n- Recovery interpolation: ~0.025–0.027s per pose step (matches motion param on rig sheet)\n\n## 2) Silhouette rules\n- **Power line:** single readable curve rear toe → hip → crown. At launch the line is ~45° diagonal; keep hip and neck offset ≤ 5% of canvas height off that axis\n- **Head counter-pitch:** head lifts opposite torso. Torso −30° ⇒ head/nod −30° relative (net head pitch ≈ 0–5° up). Eyes stay level so face reads to camera\n- **Arm trailing:** rear arm extends ~150–170° at shoulder (near-straight, as in the Alphonse pose), trailing arm palm-back; lead arm punches forward at ~90–110° elbow bend\n- Body Z tilt ±10° for style variance; keep Y-rotation ≤10° so silhouette stays 2D-readable (per rig grid: tilt Z −30 only for launch accent frames)\n\n## 3) Dash lean vs sprint lean\n- **Sprint:** lean 8–15°, oscillates ±5° per stride, head slightly forward, constant ground contact\n- **Dash:** launch lean 35–45° (2–3× sprint), held or decaying over glide, both feet can leave ground (airborne 1–2 frames), lean decays monotonically toward brake, not cyclic\n- Dash accent frames permit exaggeration beyond sprint cap (tilt Z to −30 in one frame only, snap back to −10 range)\n\n## 4) Keyframe beats (total ~240–320 ms dash loop)\n| Beat | ms | Pose |\n|---|---|---|\n| 0 Anticipation | 0 | crouch, torso −20°, weight on rear foot |\n| 1 LAUNCH | 40–50 | torso −40°, rear toe fully extended, power line taut, head nod −30° |\n| 2 Glide hold | 80–100 | torso −15–20°, airborne, arm trail max |\n| 3 Catch/brake | 140–160 | lead foot plant, torso → −5°/+10° overshoot, skid 1–2 frames |\n| 4 Settle | 200–240 | 0° rest, secondary motion (cape/hair, 0.021–0.027s lag layers) |\n\n**Rig tuning notes:** primary lean = body Z; accent-only frame = tilt Z −30; counter-pitch = nod Y −30; yaw lock = body Y ±10; per-layer motion lag 0.021–0.027 s for secondary follow-through.",
+        "reasoning_content": "Provide compact numeric rig rules from the Alphonse dash pose and rig param grid (Z ±10, tilt -30, Y ±10, nod -30).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794139470,
+  "id": "20261108200411dd1da4b19d2647be",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108200411dd1da4b19d2647be",
+  "usage": {
+    "completion_tokens": 720,
+    "completion_tokens_details": {
+      "reasoning_tokens": 33
+    },
+    "prompt_tokens": 2386,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3106
+  }
+}

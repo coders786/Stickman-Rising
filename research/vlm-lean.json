@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "## Caveat\nThe three attached images are anatomical illustrations and a clinic marketing banner — they contain **no quantitative data**. The numbers below are compiled from standard biomechanics literature (Novacheck 1998; Weyand 2000; Cavanagh;acceleration studies e.g. Nagahara 2014; Kugler & Janshen 2009). Use as rig-tuning starting points, not measured ground truth.\n\n## Rig-Tuning Table\n\n| Parameter | Walk | Jog | Max sprint | Initial accel (0–10 m) |\n|---|---|---|---|---|\n| Whole-body/trunk lean from vertical | ~3–5° | ~5–10° | ~15–20° (elite) | 35–45° first steps, decaying ~5°/step |\n| Hip flexion contribution to lean | dominant (~60%) | dominant | dominant | dominant (~70%+) |\n| Ankle (plantarflexor) contribution | ~20–25% | ~20% | ~10–15% | minimal |\n| Spine/extra lumbar+thoracic flexion | ~1–3° | ~3–5° | ~5–8° (mostly thoracic) | 5–10° |\n| Head/gaze counter-pitch (extension to keep gaze horizontal) | ~2–4° | ~4–6° | ~8–12° down-gaze acceptable; cervical extension ~5–8° | ~10–15° extension |\n| Pelvis transverse rotation (total amplitude) | ~8–12° | ~10–15° | ~12–18° | ~15–20° |\n| Shoulder-arm counter-rotation | ~10–15° | ~15–20° | ~25–40° (elbow fixed ~90°, arm swing ~±30–45° sagittal) | ~30–45° |\n| Pelvis:shoulder counter-rotation ratio | ~1:1.2 | ~1:1.4 | ~1:2 | ~1:2 |\n\n## Timing Rules (% of gait cycle)\n\n| Phase | Walk | Run/Jog | Sprint | Accel |\n|---|---|---|---|---|\n| Stance (contact) | ~60–62% | ~35–40% | ~22–30% | ~35–45% |\n| Absorption (contact→mid-stance) | ~15–20% of cycle | ~12–15% | ~8–10% | ~12% |\n| Drive/push-off | ~20–25% | ~15–20% | ~10–12% | ~20–25% |\n| Flight | 0 (double support) | ~25–30% | ~35–40% | ~20–30% |\n| Swing | ~38–40% | ~60–65% | ~70–78% | ~55–65% |\n| Stride frequency | ~1.7–2 Hz | ~2.5–3 Hz | ~4.5–5 Hz (step) | 4–4.5 Hz early, rising |\n\n## Lean-source rule of thumb (Kugler & Janshen)\nBody lean (COM-to-ankle, not trunk) ≈ atan(a/g); trunk aligns to it primarily via **hip flexion**, with ankle contribution shrinking as speed rises. Rig: rotate root, distribute remaining lean hip-spine 4:1.\n\n## Head/gaze rule\nCervical extension ≈ trunk lean angle minus ~2–5°; eyes stay locked on horizon or target. In sprint, allow slight gaze drop at foot contact (~1–2 m ahead).\n\n**Key rig tuning knobs:** speed → lean ∝ acceleration not velocity; stance share shrinks from 60% to ~25%; shoulder counter-rotation grows faster than pelvis; hamstring images (biceps femoris) matter for the late-swing \"hip extension + knee flexion\" snap at ~70–80% of swing phase.",
+        "reasoning_content": "Images are generic anatomy/gait marketing, not data sources. Provide literature-based numbers with caveat.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794139451,
+  "id": "2026110820035066a5132b55d04197",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "2026110820035066a5132b55d04197",
+  "usage": {
+    "completion_tokens": 876,
+    "completion_tokens_details": {
+      "reasoning_tokens": 19
+    },
+    "prompt_tokens": 3939,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 4815
+  }
+}

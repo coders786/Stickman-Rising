@@ -206,13 +206,15 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
 /* ------------------------------- SPRINT ------------------------------ */
 
 /* Condition C — maximum-effort sprint. NOT a faster run: a different
- * mechanical system entirely. THE ICONIC FORWARD-DRIVE POSTURE is built
- * from the ground up — every joint participates:
- *  · PELVIS SURGES FORWARD (rootX 6→13 local): the hips ride over the
+ * mechanical system entirely. THE MAX-VELOCITY POSTURE (research: elite
+ * sprinters hold ~15–20° trunk lean at top speed — the 35°+ lean belongs
+ * to ACCELERATION, which is what the DASH family owns now; sprint stays
+ * tall so the two states read instantly apart):
+ *  · torso pitch ~20–23° (rootRot 0.36–0.40) + lumbar continuation —
+ *    clearly above run, clearly below dash
+ *  · PELVIS SURGES FORWARD (rootX 5→10 local): the hips ride over the
  *    toes ahead of the planted feet; the legs solve as DIAGONAL struts
- *    (stance leg compressed under the COG, trail leg fully extended) —
- *    never vertical hangers under a pitched chest
- *  · torso pitch ~32-37° (rootRot 0.56-0.64) + lumbar continuation
+ *    (stance leg compressed under the COG, trail leg fully extended)
  *  · COG swings 3.4 → 5.4 local (lowest at load absorb) — dropped hips
  *  · HEEL-TO-BUTT recovery: the swing shin folds past −1.9 rad under a
  *    back-swing thigh — the heel physically approaches the glutes
@@ -223,42 +225,43 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
  *    back through −Z — the arms scissor THROUGH depth, not just the plane
  *  · katana tucked hard back (sum ≈ 0.4, bladeYaw −0.28: the steel
  *    swings behind the torso plane — the MGR Raiden sprint carry)
- *  · 3D gait twist: pelvisYaw ±0.26 with chest counter — the hips drive
- *    the stride, the shoulders counter-rotate against them
+ *  · 3D gait twist: pelvisYaw ±0.26 with chest counter ±0.38 (research:
+ *    shoulder counter-rotation ≈ 2× pelvis at sprint cadence) — the hips
+ *    drive the stride, the shoulders counter-rotate against them
  * Cadence ≈ 5.5 steps/s. */
 const SPRINT_Q: PoseInput[] = [
   { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed)
-    rootX: 6, rootRot: 0.56, rootY: 3.4, spine: 0.13, head: -0.5,
+    rootX: 5, rootRot: 0.36, rootY: 3.4, spine: 0.09, head: -0.3,
     hipR: 1.18, kneeR: -0.3, footR: 0.34,
     hipL: -0.95, kneeL: -0.45, footL: -0.12,
     shR: -0.45, elR: -0.55, wrR: 5.85,
     shL: 1.05, elL: -1.15,
-    pelvisYaw: 0.26, chestYaw: -0.18, armLz: 0.42, armRz: -0.3, bladeYaw: -0.26,
+    pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.42, armRz: -0.3, bladeYaw: -0.26,
   },
   { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
-    rootX: 9, rootRot: 0.6, rootY: 5.4, spine: 0.14, head: -0.52,
+    rootX: 7, rootRot: 0.39, rootY: 5.4, spine: 0.1, head: -0.32,
     hipR: 0.22, kneeR: -1.05, footR: 0.06,
     hipL: -0.85, kneeL: -1.9, footL: 0.3,
     shR: -0.35, elR: -0.5, wrR: 5.82,
     shL: 0.7, elL: -1.05,
-    pelvisYaw: 0.08, chestYaw: -0.05, armLz: 0.12, armRz: -0.22, bladeYaw: -0.22,
+    pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.12, armRz: -0.22, bladeYaw: -0.22,
   },
   { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
-    rootX: 13, rootRot: 0.58, rootY: 3.8, spine: 0.12, head: -0.5,
+    rootX: 10, rootRot: 0.38, rootY: 3.8, spine: 0.09, head: -0.3,
     hipR: -0.72, kneeR: -0.4, footR: -0.18,
     hipL: 1.25, kneeL: -1.15, footL: 0.12,
     shR: -0.3, elR: -0.45, wrR: 5.84,
     shL: 0.34, elL: -0.95,
-    pelvisYaw: -0.26, chestYaw: 0.18, armLz: -0.4, armRz: -0.1, bladeYaw: -0.18,
+    pelvisYaw: -0.26, chestYaw: 0.38, armLz: -0.4, armRz: -0.1, bladeYaw: -0.18,
   },
   { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
     // sprinter lengthens in the air; a tucked flight reads as a crouch)
-    rootX: 10, rootRot: 0.54, rootY: 0.6, spine: 0.11, head: -0.46,
+    rootX: 8, rootRot: 0.35, rootY: 0.6, spine: 0.08, head: -0.28,
     hipR: -0.5, kneeR: -0.75, footR: -0.1,
     hipL: 1.1, kneeL: -0.5, footL: 0.32,
     shR: -0.4, elR: -0.5, wrR: 5.83,
     shL: 0.88, elL: -1.1,
-    pelvisYaw: -0.1, chestYaw: 0.07, armLz: -0.15, armRz: -0.26, bladeYaw: -0.24,
+    pelvisYaw: -0.1, chestYaw: 0.14, armLz: -0.15, armRz: -0.26, bladeYaw: -0.24,
   },
 ]
 
@@ -667,11 +670,16 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
  * (pocket / hunt-range / surrounded) · chain count. Never one animation
  * played at different speeds.
  *
- * Authored from dash reference keyframes (movies / anime / AAA):
+ * Authored from dash reference keyframes (movies / anime / AAA — VLM
+ * lean research: launch 35–45°+, glide −15–20° held, catch overshoots
+ * upright briefly, settle to guard; the launch accent may spike deeper
+ * for single frames):
  *  · LAUNCH  the iai explosion from a standing start (Sword of the
  *            Stranger / MGR:R Raiden): weight crashes onto the push-off
  *            leg, then ONE full-extension stride — the power line runs
- *            rear toe → rear hip → shoulder → crown on a single diagonal.
+ *            rear toe → rear hip → shoulder → crown on a single ~45–52°
+ *            diagonal (THE most-leaned state in the game — sprint owns
+ *            max-velocity ~20°, dash owns acceleration ~45°+).
  *            Head counter-pitches: the eyes stay UP. Blade chambered back
  *            through depth (bladeYaw −0.5) — iai-ready for the through-cut.
  *  · CHAIN   the second chained dash: the MIRRORED stride of LAUNCH —
@@ -711,8 +719,9 @@ const DASH_LAUNCH_Q: PoseInput[] = [
     shL: 0.35, elL: -1.05,
     pelvisYaw: -0.12, chestYaw: 0.1,
   },
-  { // EXPLODE — the POWER LINE: rear toe→hip→shoulder→crown on one diagonal
-    rootX: 7, rootRot: 0.68, rootY: 4.2, spine: 0.16, head: -0.52,
+  { // EXPLODE — the POWER LINE: rear toe→hip→shoulder→crown on one ~45°
+    // diagonal; the deepest committed pitch in the locomotion set
+    rootX: 8, rootRot: 0.78, rootY: 4.2, spine: 0.17, head: -0.55,
     hipR: 1.3, kneeR: -1.45, footR: 0.35,
     hipL: -1.15, kneeL: -0.12, footL: -0.22,
     shR: -0.5, elR: -0.4, wrR: 5.25,
@@ -720,8 +729,9 @@ const DASH_LAUNCH_Q: PoseInput[] = [
     pelvisYaw: 0.16, chestYaw: -0.1,
     armLz: 0.25, armRz: -0.35, bladeYaw: -0.5,
   },
-  { // GLIDE — hold the line; rear heel recovers toward the butt
-    rootX: 9.5, rootRot: 0.62, rootY: 3.6, spine: 0.15, head: -0.5,
+  { // GLIDE — hold the committed line (~38–40°); rear heel recovers toward
+    // the butt
+    rootX: 11, rootRot: 0.7, rootY: 3.6, spine: 0.16, head: -0.52,
     hipR: 1.05, kneeR: -0.7, footR: 0.3,
     hipL: -0.6, kneeL: -1.35, footL: 0.25,
     shR: -0.4, elR: -0.45, wrR: 5.3,
@@ -729,8 +739,9 @@ const DASH_LAUNCH_Q: PoseInput[] = [
     pelvisYaw: 0.1, chestYaw: -0.06,
     armLz: 0.18, armRz: -0.3, bladeYaw: -0.42,
   },
-  { // CATCH — lead foot brakes FAR forward; COG absorbs over the bending leg
-    rootX: 8, rootRot: 0.42, rootY: 5.2, spine: 0.1, head: -0.35,
+  { // CATCH — lead foot brakes FAR forward; COG absorbs over the bending
+    // leg — the pitch unwinds hard toward upright (the brake counter-lean)
+    rootX: 8, rootRot: 0.36, rootY: 5.2, spine: 0.1, head: -0.3,
     hipR: 0.8, kneeR: -1.05, footR: 0.18,
     hipL: -0.75, kneeL: -0.5, footL: 0.1,
     shR: -0.1, elR: -0.5, wrR: 5.5,
@@ -768,8 +779,9 @@ export const DASH_CHAIN_CLIP: Clip = makeClip('dashChain', [
 const DASH_CARRY_Q: PoseInput[] = [
   { // STRIDE — enters MID-SCISSOR (momentum-matched: the run feeds the
     // dash; NO coil from standing). The shunshin: BOTH arms trail back,
-    // torso deep, gaze level.
-    rootX: 8, rootRot: 0.72, rootY: 4.5, spine: 0.16, head: -0.58,
+    // torso driven DEEP (~46°) — the strongest sustained lean in the game,
+    // clearly past the sprint's max-velocity posture.
+    rootX: 9, rootRot: 0.8, rootY: 4.5, spine: 0.17, head: -0.6,
     hipR: 1.15, kneeR: -0.55, footR: 0.32,
     hipL: -0.8, kneeL: -1.6, footL: 0.28,
     shR: -0.55, elR: -0.35, wrR: 5.35,
@@ -778,7 +790,7 @@ const DASH_CARRY_Q: PoseInput[] = [
     armLz: -0.3, armRz: -0.45, bladeYaw: -0.55,
   },
   { // SCISSOR PASS — the other knee punches through; arms stay trailing
-    rootX: 10, rootRot: 0.7, rootY: 4, spine: 0.15, head: -0.56,
+    rootX: 11, rootRot: 0.76, rootY: 4, spine: 0.16, head: -0.58,
     hipR: 0.3, kneeR: -1.15, footR: 0.18,
     hipL: 0.9, kneeL: -0.9, footL: 0.3,
     shR: -0.5, elR: -0.38, wrR: 5.38,
@@ -820,9 +832,10 @@ const DASH_HUNT_Q: PoseInput[] = [
     shL: 0.3, elL: -1.0,
     pelvisYaw: -0.1, chestYaw: 0.08,
   },
-  { // THE DRIVE — maximum lunge silhouette: stride split WIDE, hips LOW,
-    // gaze riding HIGH above the shoulders — the predator locked on prey
-    rootX: 9, rootRot: 0.75, rootY: 5, spine: 0.18, head: -0.32,
+  { // THE DRIVE — maximum lunge silhouette (~47° pitch — the predator
+    // read): stride split WIDE, hips LOW, gaze riding HIGH above the
+    // shoulders — locked on prey
+    rootX: 10, rootRot: 0.84, rootY: 5, spine: 0.18, head: -0.38,
     hipR: 1.4, kneeR: -0.6, footR: 0.34,
     hipL: -1.05, kneeL: -0.15, footL: -0.2,
     shR: -0.45, elR: -0.4, wrR: 5.25,
@@ -830,8 +843,8 @@ const DASH_HUNT_Q: PoseInput[] = [
     pelvisYaw: 0.14, chestYaw: -0.1,
     armLz: 0.2, armRz: -0.4, bladeYaw: -0.55,
   },
-  { // GLIDE — the wide split holds; the kissaki trains through depth
-    rootX: 12, rootRot: 0.7, rootY: 4.6, spine: 0.16, head: -0.3,
+  { // GLIDE — the wide split holds (~42°); the kissaki trains through depth
+    rootX: 13, rootRot: 0.76, rootY: 4.6, spine: 0.17, head: -0.34,
     hipR: 1.2, kneeR: -0.75, footR: 0.32,
     hipL: -0.75, kneeL: -1.2, footL: 0.22,
     shR: -0.4, elR: -0.42, wrR: 5.3,
