@@ -117,7 +117,7 @@ export class Game {
   private renderer = new Renderer()
   player = new Player()
   /** animation inspection lab (skeleton viz / contact sheets / QA) */
-  inspect: Inspect
+  inspect!: Inspect
   /** QA harness mode: suppresses wave spawning + death→gameover so
    * scripted sequences run in a controlled empty arena */
   qaMode = false
@@ -222,10 +222,11 @@ export class Game {
     // state readout + scripted QA harness
     this.inspect = new Inspect()
     const srAny = window as unknown as Record<string, unknown>
+    const self = this
     srAny.__srInspect = {
-      setView: (m: InspectMode) => this.inspect.setMode(m),
-      toggleBones: () => this.inspect.toggleBones(),
-      get mode() { return this.inspect.mode },
+      setView: (m: InspectMode) => self.inspect.setMode(m),
+      toggleBones: () => self.inspect.toggleBones(),
+      get mode() { return self.inspect.mode },
     }
     srAny.__srQA = { run: () => runQA(this) }
   }

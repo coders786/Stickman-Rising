@@ -348,7 +348,9 @@ export function ikArm3D(
   const reach = r / armLen
   // planar projection onto (radial-horizontal, vertical)
   const rh = Math.hypot(dx, dz)
-  const yaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
+  const rawYaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
+  // martial constraint: tuck elbows close to ribcage, prevent outward abduction
+  const yaw = clamp(rawYaw, -0.65, 0.65)
   // law of cosines in the sagittal-style plane
   const cosB = clamp((upper * upper + r * r - fore * fore) / (2 * upper * r), -1, 1)
   const B = Math.acos(cosB)
@@ -372,6 +374,8 @@ export interface FighterDrawOpts {
   flashColor?: string
   simple?: boolean
   edgeLight?: { color: string; a: number }
+  scarfNodes?: ReadonlyArray<{ x: number; y: number }>
+  scarfColor?: string
 }
 
 /** width scale from depth: near limbs thicken, far limbs thin */
@@ -482,6 +486,94 @@ function fillFist3(
 
 const LIMB = 5 // lineW base
 
+/** Render flowing cloth ribbon for scarf/tassets */
+function drawScarfRibbon(
+  ctx: CanvasRenderingContext2D,
+  nodes: ReadonlyArray<{ x: number; y: number }>,
+  color: string,
+  rim: string,
+): void {
+  if (nodes.length < 2) return
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  // Outer subtle rim stroke
+  ctx.strokeStyle = rgba(rim, 0.4)
+  ctx.lineWidth = 4.6
+  ctx.beginPath()
+  ctx.moveTo(nodes[0].x, nodes[0].y)
+  for (let i = 1; i < nodes.length; i++) {
+    const xc = (nodes[i - 1].x + nodes[i].x) / 2
+    const yc = (nodes[i - 1].y + nodes[i].y) / 2
+    ctx.quadraticCurveTo(nodes[i - 1].x, nodes[i - 1].y, xc, yc)
+  }
+  const last = nodes[nodes.length - 1]
+  ctx.lineTo(last.x, last.y)
+  ctx.stroke()
+
+  // Inner ribbon with tapering width
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const u = i / (nodes.length - 1)
+    const w = lerp(3.8, 1.6, u)
+    ctx.strokeStyle = color
+    ctx.lineWidth = w
+    ctx.beginPath()
+    ctx.moveTo(nodes[i].x, nodes[i].y)
+    ctx.lineTo(nodes[i + 1].x, nodes[i + 1].y)
+    ctx.stroke()
+  }
+
+  // Collar knot at node 0
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(nodes[0].x, nodes[0].y, 3.2, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Render modular forearm bracer */
+function drawBracer(
+  ctx: CanvasRenderingContext2D,
+  elb: J3, hand: J3,
+  w: number,
+  col: string,
+  rim: string,
+): void {
+  const dx = hand.x - elb.x
+  const dy = hand.y - elb.y
+  const b1: J3 = { x: elb.x + dx * 0.42, y: elb.y + dy * 0.42, z: elb.z }
+  const b2: J3 = { x: elb.x + dx * 0.88, y: elb.y + dy * 0.88, z: hand.z }
+  fillTaper3(ctx, b1, b2, 3.8 * w, 2.5 * w, col)
+  ctx.strokeStyle = rgba(rim, 0.42)
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.moveTo(b1.x, b1.y)
+  ctx.lineTo(b2.x, b2.y)
+  ctx.stroke()
+}
+
+/** Render modular shin wraps (kyahan) */
+function drawLegWrap(
+  ctx: CanvasRenderingContext2D,
+  knee: J3, ankle: J3,
+  w: number,
+  col: string,
+  rim: string,
+): void {
+  const dx = ankle.x - knee.x
+  const dy = ankle.y - knee.y
+  const s1: J3 = { x: knee.x + dx * 0.32, y: knee.y + dy * 0.32, z: knee.z }
+  const s2: J3 = { x: knee.x + dx * 0.84, y: knee.y + dy * 0.84, z: ankle.z }
+  fillTaper3(ctx, s1, s2, 4.4 * w, 3.0 * w, col)
+  ctx.strokeStyle = rgba(rim, 0.38)
+  ctx.lineWidth = 0.95
+  ctx.beginPath()
+  ctx.moveTo(s1.x, s1.y)
+  ctx.lineTo(s2.x, s2.y)
+  ctx.stroke()
+}
+
 /**
  * Draws the fighter in full 3D depth language, same silhouette style as
  * the classic renderer: rim → BEHIND limbs (depth shade) → torso + NECK →
@@ -570,6 +662,11 @@ export function drawFighter3D(
     ctx.restore()
   }
 
+  // ---- 0.5 Scarf trail pass (behind torso) ----
+  if (opts.scarfNodes && style.scarf !== false) {
+    drawScarfRibbon(ctx, opts.scarfNodes, opts.scarfColor ?? style.scarfColor ?? '#e63946', rim)
+  }
+
   // ---- 1. BEHIND limbs (depth-shaded, full proportion parity: same base
   // widths as the front side — deltoid .055H → elbow .035H → wrist .020H —
   // only the TONE and a 4% width whisper mark the depth) ----
@@ -578,6 +675,9 @@ export function drawFighter3D(
     const w = wf(L.z) * L.k
     fillTaper3(ctx, L.hip, L.knee, 6.5 * w, 4.7 * w, L.col)
     fillTaper3(ctx, L.knee, L.ankle, 4.4 * w, 2.9 * w, L.col)
+    if (style.legWraps !== false) {
+      drawLegWrap(ctx, L.knee, L.ankle, w, style.legWrapColor ?? '#141d2d', rim)
+    }
     fillFoot3(ctx, L.ankle, L.toe, L.col, 1, L.k * wf(L.z))
     ctx.fillStyle = L.col
     ctx.beginPath()
@@ -593,6 +693,9 @@ export function drawFighter3D(
     ctx.fill()
     fillTaper3(ctx, A.sh, A.elb, 5.7 * w, 3.6 * w, A.col)
     fillTaper3(ctx, A.elb, A.hand, 3.4 * w, 2.1 * w, A.col)
+    if (style.bracers !== false) {
+      drawBracer(ctx, A.elb, A.hand, w, style.bracerColor ?? '#1d2a44', rim)
+    }
     ctx.beginPath()
     ctx.arc(A.elb.x, A.elb.y, 3.9 * w, 0, Math.PI * 2)
     ctx.fill()
@@ -693,6 +796,9 @@ export function drawFighter3D(
     }
     fillTaper3(ctx, L.hip, L.knee, 6.5 * w, 4.7 * w, L.col)
     fillTaper3(ctx, L.knee, L.ankle, 4.4 * w, 2.9 * w, L.col)
+    if (style.legWraps !== false) {
+      drawLegWrap(ctx, L.knee, L.ankle, w, style.legWrapColor ?? '#141d2d', rim)
+    }
     fillFoot3(ctx, L.ankle, L.toe, L.col, 1, L.k * wf(L.z) * nearK)
     ctx.fillStyle = L.col
     ctx.beginPath()
@@ -713,6 +819,9 @@ export function drawFighter3D(
     ctx.fill()
     fillTaper3(ctx, A.sh, A.elb, 5.7 * w, 3.6 * w, A.col)
     fillTaper3(ctx, A.elb, A.hand, 3.4 * w, 2.1 * w, A.col)
+    if (style.bracers !== false) {
+      drawBracer(ctx, A.elb, A.hand, w, style.bracerColor ?? '#1d2a44', rim)
+    }
     ctx.beginPath()
     ctx.arc(A.elb.x, A.elb.y, 3.9 * w, 0, Math.PI * 2)
     ctx.fill()
@@ -799,56 +908,65 @@ export function drawFighter3D(
     ctx.restore()
   }
 
-  // ---- 5. head ----
+  // ---- 5. head (athletic Shadow Ronin profile) ----
   ctx.save()
   ctx.fillStyle = black
   ctx.translate(g.headC.x, g.headC.y)
   ctx.rotate(g.headAng * 0.35)
+  // sleek cranial dome
   ctx.beginPath()
-  ctx.ellipse(0, -0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
+  ctx.ellipse(0, -0.6, 7.5, 8.0, 0, 0, Math.PI * 2)
   ctx.fill()
+  // clean angled martial cowl / jawline (replaces zombie chin protrusion)
   ctx.beginPath()
-  ctx.moveTo(2.6, 5.6)
-  ctx.quadraticCurveTo(1.2, 8.6, -1.8, 8.2)
-  ctx.quadraticCurveTo(-4.2, 7.6, -4.6, 4.4)
+  ctx.moveTo(2.4, 2.2)
+  ctx.quadraticCurveTo(1.4, 5.8, -0.6, 6.2)
+  ctx.quadraticCurveTo(-3.0, 5.8, -4.0, 2.8)
   ctx.closePath()
   ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(-2.0, -8.2)
-  ctx.quadraticCurveTo(-7.5, -12.6, -12.6, -9.4)
-  ctx.quadraticCurveTo(-8.8, -6.4, -5.2, -5.2)
-  ctx.closePath()
-  ctx.fill()
+  // Ronin Topknot / Hair Ribbon (modular)
+  if (style.topknot !== false) {
+    ctx.fillStyle = style.topknotColor ?? black
+    ctx.beginPath()
+    ctx.arc(-2.4, -7.6, 2.2, 0, Math.PI * 2)
+    ctx.fill()
+    const ribbonFlutter = Math.sin(t * 7.5) * 1.4
+    ctx.strokeStyle = style.scarfColor ?? '#e63946'
+    ctx.lineWidth = 1.6
+    ctx.beginPath()
+    ctx.moveTo(-2.4, -7.6)
+    ctx.quadraticCurveTo(-6.0, -9.0 + ribbonFlutter, -10.5, -6.8 + ribbonFlutter * 1.2)
+    ctx.moveTo(-2.4, -6.8)
+    ctx.quadraticCurveTo(-6.5, -7.8 - ribbonFlutter, -9.5, -4.8 - ribbonFlutter * 0.8)
+    ctx.stroke()
+  }
   ctx.restore()
   if (!opts.simple) {
     ctx.save()
-    ctx.strokeStyle = rgba(rim, 0.5)
-    ctx.lineWidth = 1.6
+    ctx.strokeStyle = rgba(rim, 0.48)
+    ctx.lineWidth = 1.4
+    // skull rim outline
     ctx.beginPath()
-    ctx.arc(g.headC.x - 1.5, g.headC.y - 0.5, 8.6, Math.PI * 0.62, Math.PI * 1.32)
+    ctx.arc(g.headC.x - 1.2, g.headC.y - 0.5, 7.8, Math.PI * 0.65, Math.PI * 1.35)
     ctx.stroke()
-    // jaw line — the chin edge that separates skull from the neck column
-    // (anatomy: the mandible overhangs the cervical column's front in
-    // profile; this crease is what makes the neck read as NECK)
-    ctx.strokeStyle = rgba(rim, 0.5)
-    ctx.lineWidth = 1.3
+    // clean martial jawline crease
     ctx.beginPath()
-    ctx.arc(g.headC.x + 0.6, g.headC.y - 0.5, 8.3, Math.PI * 0.08, Math.PI * 0.52)
+    ctx.arc(g.headC.x + 0.4, g.headC.y - 0.4, 7.4, Math.PI * 0.12, Math.PI * 0.48)
     ctx.stroke()
     ctx.restore()
   }
 
-  // ---- 6. glowing eyes ----
+  // ---- 6. glowing visor slit ----
   if (!opts.simple) {
-    const blink = 0.85 + 0.15 * Math.sin(t * 3.1)
+    const blink = 0.88 + 0.12 * Math.sin(t * 3.1)
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
     ctx.fillStyle = rgba(style.glow, 0.95 * blink)
     ctx.beginPath()
-    ctx.ellipse(g.headC.x + 3.4, g.headC.y - 1.4, 2.0, 1.15, -0.18, 0, Math.PI * 2)
+    ctx.ellipse(g.headC.x + 2.8, g.headC.y - 1.2, 2.2, 1.0, -0.12, 0, Math.PI * 2)
     ctx.fill()
     ctx.beginPath()
-    ctx.ellipse(g.headC.x + 6.4, g.headC.y - 2.2, 1.25, 0.9, -0.18, 0, Math.PI * 2)
+    ctx.ellipse(g.headC.x + 5.2, g.headC.y - 1.8, 1.4, 0.8, -0.12, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }

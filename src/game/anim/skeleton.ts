@@ -63,17 +63,14 @@ export interface SkelSpec {
  * forearm ratio (1.1:1 read as a gorilla forearm at silhouette scale).
  */
 export const PLAYER_SPEC: SkelSpec = {
-  torso: 37,
-  // neck column: stylized-long on purpose — a real 0.35-head neck reads as
-  // FUSED at gameplay zoom ("no neck — arms feel connected to the neck");
-  // 0.65 head keeps a clean visible band between trapezius and skull
-  neck: 10.4,
-  headR: 8.8,
-  shoulderFwd: 3.2,
-  shoulderDrop: 3.3,
-  upperArm: 22,
-  foreArm: 16.6,
-  hand: 6.5,
+  torso: 36,
+  neck: 4.8,
+  headR: 8.0,
+  shoulderFwd: 1.2,
+  shoulderDrop: 1.8,
+  upperArm: 21,
+  foreArm: 17,
+  hand: 6.2,
   thigh: 25,
   shin: 24,
   foot: 10,
@@ -250,19 +247,40 @@ export interface StickStyle {
   /** full black silhouette humanoid (player remodel): filled capsules,
    * tapered torso, glowing eyes — Limbo/INSIDE readability language */
   silhouette?: boolean
+  scarf?: boolean
+  scarfColor?: string
+  topknot?: boolean
+  topknotColor?: string
+  bracers?: boolean
+  bracerColor?: string
+  sashColor?: string
+  mask?: boolean
+  maskColor?: string
+  legWraps?: boolean
+  legWrapColor?: string
+  sayaStyle?: string
+  katanaStyle?: string
 }
 
 export const PLAYER_STYLE: StickStyle = {
   body: '#04060a',
   dark: '#24334d', // back-limb depth shade — bright enough to READ against
-  // the pure-black mass at gameplay zoom (the old #131b28 vanished — the
-  // far/lead leg “disappeared” into the body blob in sprint contact)
   outline: '#2c3a50',
   glow: '#41f6ff',
   lineW: 5,
   headStyle: 'visor',
   armor: false,
   silhouette: true,
+  scarf: true,
+  scarfColor: '#e63946', // vibrant ronin crimson scarf
+  topknot: true,
+  topknotColor: '#04060a',
+  bracers: true,
+  bracerColor: '#1d2a44',
+  sashColor: '#1a2332',
+  mask: true,
+  legWraps: true,
+  legWrapColor: '#141d2d',
 }
 
 export interface DrawOpts {
@@ -373,12 +391,12 @@ export function drawStick(
       const hdx = g.headC.x - g.neckTop.x
       const hdy = g.headC.y - g.neckTop.y
       const hl = Math.hypot(hdx, hdy) || 1
-      const hr = style === PLAYER_STYLE ? 8.8 : 8
+      const hr = style === PLAYER_STYLE ? 8.0 : 8
       ctx.lineTo(g.headC.x + (hdx / hl) * hr, g.headC.y + (hdy / hl) * hr)
     }
     ctx.stroke()
     ctx.beginPath()
-    ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.8 : 8, 0, Math.PI * 2)
+    ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.0 : 8, 0, Math.PI * 2)
     ctx.stroke()
     ctx.restore()
     return
@@ -462,7 +480,7 @@ export function drawStick(
   }
 
   // ---- 7. head ----
-  const hr = 8.8
+  const hr = 8.0
   ctx.fillStyle = style.outline
   ctx.beginPath()
   ctx.arc(g.headC.x, g.headC.y, hr + 1.4, 0, Math.PI * 2)

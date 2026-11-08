@@ -13,8 +13,9 @@ import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
-  DRAW_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, JUMP_LEAP_CLIP, LAND_CLIP,
-  PARRY_CLIP, RUN_CLIP, SHEATHE_CLIP, SPRINT_CLIP, WALK_CLIP,
+  DRAW_CLIP, FALL_CLIP, FLOURISH_HILT_SPIN_CLIP, FLOURISH_SCARF_ADJUST_CLIP,
+  FLOURISH_STANCE_SETTLE_CLIP, FLOURISH_TSUBA_POP_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP,
+  JUMP_LEAP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP, SHEATHE_CLIP, SPRINT_CLIP, WALK_CLIP,
 } from '../anim/clips'
 import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
 import {
@@ -292,14 +293,30 @@ export class Player {
 
   /* ---- SWORD HOME (notō / iai): the sheath system. swordDrawn=false →
    * the steel rides inside the saya, locomotion arms are HANDS-ONLY, and
-   * any combat input snaps it back out with the iai flash. */
-  swordDrawn = true
+   * any combat input snaps it back out with the iai flash. Defaults to
+   * sheathed Iai / Battōjutsu mode. */
+  swordDrawn = false
   /** the active one-shot sheath/draw ritual (runs inside state 'move') */
   private sheathAct: { t: number; dur: number; mode: 'sheathe' | 'draw' } | null = null
   /** seconds of standing peace (no threat, no combat) — feeds auto-sheathe */
   private peaceT = 0
   /** damped weight of the sheathed pommel-rest arm layer */
   private sheathW = 0
+
+  /* ---- IDLE FLOURISHES & SCARF SIMULATION ---- */
+  private standstillT = 0
+  private lastFlourish = -1
+  private isFlourishActive = false
+  private flourishDur = 0
+  private flourishT = 0
+
+  private scarfSimNodes = [
+    { x: 0, y: 0, ox: 0, oy: 0 },
+    { x: -5, y: 3, ox: -5, oy: 3 },
+    { x: -11, y: 8, ox: -11, oy: 8 },
+    { x: -18, y: 14, ox: -18, oy: 14 },
+    { x: -26, y: 20, ox: -26, oy: 20 },
+  ]
 
   private chargeT = 0
   charging = false
@@ -455,10 +472,12 @@ export class Player {
     this.dashRecharge = 0
     this.dashCd = 0
     this.retreatLockT = 0
-    this.swordDrawn = true
+    this.swordDrawn = false
     this.sheathAct = null
     this.peaceT = 0
     this.sheathW = 0
+    this.standstillT = 0
+    this.isFlourishActive = false
     this.animator.play(IDLE_CLIP, { blend: 0.05 })
   }
 
@@ -637,6 +656,7 @@ export class Player {
     this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
     this.updateBladeWorld()
     this.updateSwingScale(dt)
+    this.updateScarf(dt, w.time)
   }
 
   private onLand(w: WorldRef): void {
@@ -890,7 +910,40 @@ export class Player {
             this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: cadSpeed(0.56) })
             break
           default:
-            this.animator.play(IDLE_CLIP, { blend: 0.16 })
+            if (speed < 12 && Math.abs(ax) < 0.05 && !this.hasThreat) {
+              this.standstillT += dt
+              if (this.isFlourishActive) {
+                this.flourishT += dt
+                if (this.flourishT >= this.flourishDur || this.animator.isDone()) {
+                  this.isFlourishActive = false
+                  this.standstillT = 0
+                  this.animator.play(IDLE_CLIP, { blend: 0.18 })
+                }
+              } else if (this.standstillT > 2.6 && !this.swordDrawn) {
+                const flourishes = [
+                  { clip: FLOURISH_TSUBA_POP_CLIP, dur: 0.95 },
+                  { clip: FLOURISH_HILT_SPIN_CLIP, dur: 1.1 },
+                  { clip: FLOURISH_SCARF_ADJUST_CLIP, dur: 1.3 },
+                  { clip: FLOURISH_STANCE_SETTLE_CLIP, dur: 1.0 },
+                ]
+                let idx = Math.floor(Math.random() * flourishes.length)
+                if (idx === this.lastFlourish) idx = (idx + 1) % flourishes.length
+                this.lastFlourish = idx
+                const fl = flourishes[idx]
+                this.isFlourishActive = true
+                this.flourishDur = fl.dur
+                this.flourishT = 0
+                this.animator.play(fl.clip, { blend: 0.16 })
+              } else if (!this.isFlourishActive) {
+                this.animator.play(IDLE_CLIP, { blend: 0.16 })
+              }
+            } else {
+              if (this.isFlourishActive) {
+                this.isFlourishActive = false
+              }
+              this.standstillT = 0
+              this.animator.play(IDLE_CLIP, { blend: 0.16 })
+            }
         }
       }
     } else if (this.vy < -60) {
@@ -910,11 +963,10 @@ export class Player {
     if (this.tryCombatInputs(w, ax, ay)) return
 
     // ---- AUTO-SHEATHE (the quiet beat): grounded, no threat, standing
-    // still with the blade out for 3.5s → the samurai-film ending. Any
-    // movement or threat resets the dwell. ----
-    if (this.swordDrawn && this.grounded && !this.hasThreat && Math.abs(this.vx) < 24) {
+    // still with the blade out for 1.2s → crisp martial notō sheathing. ----
+    if (this.swordDrawn && this.grounded && !this.hasThreat && Math.abs(this.vx) < 32) {
       this.peaceT += dt
-      if (this.peaceT > 3.5) this.startSheath(w)
+      if (this.peaceT > 1.2) this.startSheath(w)
     } else {
       this.peaceT = 0
     }
@@ -2520,30 +2572,30 @@ export class Player {
    *    enemyNearW — threat engaged = full two-hand chūdan grip; safe =
    *    the arm hangs (the relax layer owns it). Sheathed = never. */
   private applyTwoHandGrip(dt: number): void {
-    // desired grip weight by state
+    // desired grip weight by state — strictly eliminates floating zombie arms
     let target = 0
     switch (this.state) {
       case 'move':
-        if (!this.swordDrawn) target = 0
-        else if (Math.abs(this.vx) < 60) target = this.enemyNearW // threat = grip
-        else target = 0.1
+        if (!this.swordDrawn || this.isFlourishActive) target = 0
+        else if (Math.abs(this.vx) < 40) target = Math.min(0.2, this.enemyNearW * 0.2)
+        else target = 0
         break
       case 'attack':
         target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
         break
       case 'charge':
       case 'parry':
-        target = this.swordDrawn ? 1 : 0
+        target = this.swordDrawn ? 0.85 : 0
         break
       case 'scripted':
-        target = 0.5
+        target = 0.4
         break
       default:
         target = 0
     }
     this.twoHandW = damp(this.twoHandW, target, 11, dt)
     const w = this.twoHandW
-    if (w < 0.03 || !this.swordDrawn) return
+    if (w < 0.03 || !this.swordDrawn || this.isFlourishActive) return
 
     const g = this.geom // last frame's solve — continuous, 1-frame stale
     // ---- 3D target: tsuka butt, pulled toward the far shoulder's depth ----
@@ -2642,23 +2694,22 @@ export class Player {
     // from the ground up reads as an athlete.
     if (this.state !== 'dead') {
       const l = this.state === 'dash' ? dashLean : lean
-      p[CH.rootRot] += l * 0.6
-      p[CH.spine] += l * 0.22
-      p[CH.rootX] += l * 7 // pelvis surge: hips ride forward over the stance
-      p[CH.hipR] += l * 0.5
-      p[CH.hipL] -= l * 0.38
-      p[CH.kneeR] -= l * 0.3
-      p[CH.kneeL] -= l * 0.2
-      p[CH.footR] += l * 0.18
-      p[CH.rootY] += Math.abs(l) * 2.2
-      // braking weight acceptance: the stop sinks into the knees
+      // Martial upright alignment: subtle core tilt without zombie slouch
+      p[CH.rootRot] += l * 0.14
+      p[CH.spine] += l * 0.06
+      p[CH.rootX] += l * 1.2
+      p[CH.hipR] += l * 0.22
+      p[CH.hipL] -= l * 0.18
+      p[CH.kneeR] -= l * 0.12
+      p[CH.kneeL] -= l * 0.08
+      p[CH.footR] += l * 0.08
+      p[CH.rootY] += Math.abs(l) * 1.0
+      // braking weight acceptance: the stop sinks cleanly into knees
       p[CH.rootY] += brakeDip
       p[CH.kneeR] -= brakeDip * 0.22
       p[CH.kneeL] -= brakeDip * 0.16
-      // head counter-pitches to keep the eyes on the horizon (the sprint
-      // tell: body flat, gaze level — MGR:R Raiden's forward drive;
-      // research: cervical extension ≈ trunk lean − a few degrees)
-      p[CH.head] -= l * 0.35
+      // head stays level on horizon
+      p[CH.head] -= l * 0.12
     }
 
     // vertical pitch while airborne
@@ -2890,7 +2941,7 @@ export class Player {
     {
       const paceFade = 1 - clamp01((Math.abs(this.vx) - 110) / 90)
       const sheathTarget = !this.swordDrawn && this.state === 'move'
-        && this.grounded && !this.sheathAct ? paceFade : 0
+        && this.grounded && !this.sheathAct && !this.isFlourishActive ? paceFade : 0
       this.sheathW = damp(this.sheathW, sheathTarget, 9, dt)
       if (this.sheathW > 0.02) {
         const k = this.sheathW
@@ -2921,12 +2972,10 @@ export class Player {
           // — the fist reads as wrapping the tsuka, never pointing backward
           p[CH.wrR] += (Math.PI / 2 + sayAng - shIk - elIk - p[CH.wrR]) * k
         }
-        // left hand steadies the saya mouth — static near-mouth targets at
-        // 0.8 weight (the far arm is depth-occluded; a full cross-body IK
-        // onto the mouth would yaw the arm ~72° through the torso)
-        p[CH.shL] += (0.45 - p[CH.shL]) * k * 0.8
-        p[CH.elL] += (-0.95 - p[CH.elL]) * k * 0.8
-        p[CH.armLz] += (0.2 - p[CH.armLz]) * k * 0.8
+        // left hand steadies the saya mouth — natural tucked martial arm
+        p[CH.shL] += (0.08 - p[CH.shL]) * k * 0.8
+        p[CH.elL] += (-0.55 - p[CH.elL]) * k * 0.8
+        p[CH.armLz] += (-0.05 - p[CH.armLz]) * k * 0.8
       }
     }
 
@@ -3059,6 +3108,40 @@ export class Player {
     })
   }
 
+  private updateScarf(dt: number, time: number): void {
+    const collarX = (this.geom.chest.x + this.geom.neckTop.x) * 0.5
+    const collarY = (this.geom.chest.y + this.geom.neckTop.y) * 0.5
+    const nodes = this.scarfSimNodes
+    nodes[0].x = collarX
+    nodes[0].y = collarY
+    nodes[0].ox = collarX
+    nodes[0].oy = collarY
+
+    // Movement response in character-local space
+    const relVx = -(this.vx / SCALE) * this.face
+    const relVy = -(this.vy / SCALE)
+    const wind = Math.sin(time * 6.5) * 0.4
+
+    for (let i = 1; i < nodes.length; i++) {
+      const n = nodes[i]
+      const vx = (n.x - n.ox) * 0.82 + relVx * 0.05 + wind * (i * 0.25)
+      const vy = (n.y - n.oy) * 0.82 + relVy * 0.04 + 0.35
+      n.ox = n.x
+      n.oy = n.y
+      n.x += vx
+      n.y += vy
+
+      const p = nodes[i - 1]
+      const dx = n.x - p.x
+      const dy = n.y - p.y
+      const dist = Math.hypot(dx, dy) || 1e-4
+      const segLen = 5.2
+      const diff = (dist - segLen) / dist
+      n.x -= dx * diff * 0.85
+      n.y -= dy * diff * 0.85
+    }
+  }
+
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted'
@@ -3135,6 +3218,7 @@ export class Player {
         color: this.sword.colors.glow,
         a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
       },
+      scarfNodes: this.scarfSimNodes,
     })
     // ---- SHEATHED TSUKA — FRONT PASS (the readable hilt): the grip
     // continues the saya axis out of the mouth, tsuba seated at the

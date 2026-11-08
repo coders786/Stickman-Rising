@@ -2,7 +2,12 @@
  * compute the worst per-frame channel delta at 60fps given the ease's
  * first-frame concentration. Flags snaps (> 0.72 rad, > 14 px root). */
 import { ATTACKS } from '../src/game/combat/attacks'
-import { IDLE_CLIP, RUN_CLIP, JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_CLIP, DASH_AIR_CLIP, PARRY_CLIP, HURT_CLIP, CHARGE_CLIP } from '../src/game/anim/clips'
+import {
+  IDLE_CLIP, WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
+  JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_LAUNCH_CLIP, DASH_AIR_CLIP, PARRY_CLIP,
+  HURT_CLIP, CHARGE_CLIP, FLOURISH_TSUBA_POP_CLIP, FLOURISH_HILT_SPIN_CLIP,
+  FLOURISH_SCARF_ADJUST_CLIP, FLOURISH_STANCE_SETTLE_CLIP,
+} from '../src/game/anim/clips'
 
 const firstFrameFrac = (ease: string, frames: number): number => {
   if (frames < 1) return 1
@@ -54,7 +59,12 @@ function checkClip(clip: { name: string; frames: { t: number; p: Float32Array; e
 
 const all: string[] = []
 for (const def of Object.values(ATTACKS)) all.push(...checkClip(def.clip as never, 'ATK'))
-for (const c of [IDLE_CLIP, RUN_CLIP, JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_CLIP, DASH_AIR_CLIP, PARRY_CLIP, HURT_CLIP, CHARGE_CLIP]) {
+for (const c of [
+  IDLE_CLIP, WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
+  JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_LAUNCH_CLIP, DASH_AIR_CLIP, PARRY_CLIP,
+  HURT_CLIP, CHARGE_CLIP, FLOURISH_TSUBA_POP_CLIP, FLOURISH_HILT_SPIN_CLIP,
+  FLOURISH_SCARF_ADJUST_CLIP, FLOURISH_STANCE_SETTLE_CLIP,
+]) {
   all.push(...checkClip(c as never, 'LOC'))
 }
 if (all.length === 0) {
