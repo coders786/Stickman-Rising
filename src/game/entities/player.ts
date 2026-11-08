@@ -140,7 +140,10 @@ const DASH_RECHARGE = 0.32
 /** dash ghost beats: fire times as fractions of dash duration (research:
  * cap 3, exponential spacing) + the per-ghost starting darkness */
 const DASH_GHOST_BEATS = [0.18, 0.5, 0.85]
-const DASH_GHOST_A0 = [0.5, 0.36, 0.24]
+// first ghost toned 0.5 → 0.38: it fires closest to the live body and the
+// half-dark overlay + rim double-draw swallowed the SOLID figure's own
+// anatomy at the dash apex (limbs/joints became unreadable under the trail)
+const DASH_GHOST_A0 = [0.38, 0.34, 0.24]
 
 interface ActionState {
   def: AttackDef

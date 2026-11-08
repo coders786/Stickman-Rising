@@ -38,7 +38,10 @@ export interface SkelSpec {
  *   region            fraction    local units
  *   ──────────────────────────────────────────────
  *   skull height      1.28 head   17.6 (r 8.8 — stylized readability)
- *   neck column       0.35 head    4.6 (C7 → skull base)
+ *   neck column       0.55 head    7.2 (C7 → skull base — stylized long
+ *                                    so the column READS at silhouette
+ *                                    scale: a real 0.35-head neck reads
+ *                                    as fused at gameplay zoom)
  *   hip→shoulder line 0.355 H     37   (waist split 0.57/0.43)
  *   femur head offset             ±~2  (front hip +1.7, rear −2.1)
  *   glenohumeral jt   0.031 H      3.2 fwd × 3.3 drop (near shoulder)
@@ -61,7 +64,7 @@ export interface SkelSpec {
  */
 export const PLAYER_SPEC: SkelSpec = {
   torso: 37,
-  neck: 5.6,
+  neck: 7.2,
   headR: 8.8,
   shoulderFwd: 3.2,
   shoulderDrop: 3.3,
@@ -337,17 +340,39 @@ export function drawStick(
   if (ghost) {
     // ---- afterimage pass: flat, cheap, gorgeous ----
     ctx.strokeStyle = ghost
-    ctx.lineWidth = lineW * 0.85
+    ctx.lineWidth = lineW
     const ga = opts.ghostAlpha ?? 1
     ctx.globalAlpha *= ga
     limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
     limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
     limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
     limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    // feet + spine THROUGH the neck to the skull: the ghost reads as a
+    // full connected figure (the old ghost stopped the spine at the chest,
+    // so the stroked head circle floated above the body — "floating head";
+    // the line now pierces the ring to its far edge so head + neck weld)
+    ctx.beginPath()
+    ctx.moveTo(g.ankleL.x, g.ankleL.y)
+    ctx.lineTo(g.toeL.x, g.toeL.y)
+    ctx.moveTo(g.ankleR.x, g.ankleR.y)
+    ctx.lineTo(g.toeR.x, g.toeR.y)
+    ctx.stroke()
     ctx.beginPath()
     ctx.moveTo(g.hip.x, g.hip.y)
     ctx.lineTo(g.waist.x, g.waist.y)
     ctx.lineTo(g.chest.x, g.chest.y)
+    ctx.lineTo(g.neckTop.x, g.neckTop.y)
+    ctx.lineTo(g.headC.x, g.headC.y)
+    // extend THROUGH the skull ring (one headR past the center along the
+    // neck axis) — the line reaches the ring's far edge: welded, not
+    // dangling inside the circle
+    {
+      const hdx = g.headC.x - g.neckTop.x
+      const hdy = g.headC.y - g.neckTop.y
+      const hl = Math.hypot(hdx, hdy) || 1
+      const hr = style === PLAYER_STYLE ? 8.8 : 8
+      ctx.lineTo(g.headC.x + (hdx / hl) * hr, g.headC.y + (hdy / hl) * hr)
+    }
     ctx.stroke()
     ctx.beginPath()
     ctx.arc(g.headC.x, g.headC.y, style === PLAYER_STYLE ? 8.8 : 8, 0, Math.PI * 2)

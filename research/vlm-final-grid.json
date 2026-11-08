@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "## Tile-by-tile anatomy QA\n\n**Row 1**\n\n**Tile 1 — Idle:** (a) Neck column visible, head sits on torso ✔ (b) Arms rooted at shoulder mass below head ✔ (c) Slight knee bend reads as a joint ✔ (d) Legs near-symmetric, matching proportions ✔ (e) Upright relaxed stance, katana held low — plausible ✔ → **PASS**\n\n**Tile 2 — Walk A:** (a) Neck connected ✔ (b) Shoulders intact, arm swings forward ✔ (c) Elbow and forward knee flex clearly ✔ (d) Back leg trailing, similar segment lengths ✔ (e) Classic contact pose, plausible ✔ → **PASS**\n\n**Tile 3 — Walk B:** (a) Neck visible ✔ (b) Arms rooted correctly ✔ (c) Joints read, front leg bent ✔ (d) Back leg matches ✔ (e) Mid-stride passing pose, plausible ✔ → **PASS**\n\n**Tile 4 — Run A:** (a) Neck connected ✔ (b) Shoulder/arm ok ✔ (c) Knees articulate ✔ (d) Trailing back leg slightly stylized/elongated but within run exaggeration ✔ (e) Airborne-leaning run pose plausible ✔ → **PASS**\n\n**Row 2**\n\n**Tile 5 — Run B:** (a) Neck fine ✔ (b) Arms fine ✔ (c) Joints read ✔ (d) Back leg kick-up proportionate ✔ (e) Plausible run alternate ✔ → **PASS**\n\n**Tile 6 — Sprint A:** (a) Neck ✔ (b) Shoulders ✔ (c) Deep knee/elbow flex ✔ (d) Back leg extended, proportionate ✔ (e) Strong forward lean, plausible sprint ✔ → **PASS**\n\n**Tile 7 — Sprint B:** (a) Neck ✔ (b) Arms ✔ (c) Joints ✔ (d) Legs match ✔ (e) Full-stride sprint, plausible ✔ → **PASS**\n\n**Tile 8 — Dash:** (a) Neck column present but partially obscured by ghost/motion trails ❌ (b) Shoulder anchor hard to read through the white ghost overlay — arm origin ambiguous ❌ (c) Joint articulation lost in double-outline ghosting; limbs read as thin white sticks without clear elbow/knee breaks ❌ (d) Ghost duplicate legs run parallel to solid legs, making back-leg proportion unverifiable/visually duplicated ❌ (e) Pose directionally plausible but the trail/duplicate silhouette breaks single-figure readability ❌ → **FAIL**\n\n## Verdicts\n\n| State | Verdict |\n|---|---|\n| Idle | PASS |\n| Walk A | PASS |\n| Walk B | PASS |\n| Run A | PASS |\n| Run B | PASS |\n| Sprint A | PASS |\n| Sprint B | PASS |\n| Dash | **FAIL** |\n\n**Failing tiles & why:** Tile 8 (dash) only — (a) neck/shoulder connection obscured by ghost trail, (b) arm root ambiguous, (c) no readable elbow/knee joints due to double-outline ghosting, (d) duplicated ghost legs make back-leg proportion indeterminate, (e) reads as two overlapping figures rather than one dashing figure.\n\n## Overall grade: **8/10**\n\n7 of 8 states have clean, connected, well-proportioned rigs with readable joints. One point lost for the dash state's ghost overlay destroying limb readability; fixing the trail opacity/separation would bring it to 9–10.",
+        "reasoning_content": "Judge 8 tiles. Row2 tile4 (dash) shows white ghost figure with doubled outlines — anatomy issues. Give verdicts.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794144059,
+  "id": "20261108212036d04597bed03c4f83",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108212036d04597bed03c4f83",
+  "usage": {
+    "completion_tokens": 756,
+    "completion_tokens_details": {
+      "reasoning_tokens": 27
+    },
+    "prompt_tokens": 5432,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 6188
+  }
+}

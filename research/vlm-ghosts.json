@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Dash Afterimage Ghosts — Anatomical Breakdown\n\nThere are **three ghost figures** trailing left of the solid player character, fading in opacity the further back they are. All are drawn as thin grey/translucent stick-figure lines in a low running/dashing crouch pose.\n\n## 1) Head connection\n\n- Each ghost has a **head circle that is NOT a filled head — it's an open ring outline** with the spine/neck line terminating *inside* the ring, stopping short of touching it. The neck line approaches the circle but there's a visible gap at the top — the head ring reads as **floating/detached**, encircling the neck tip rather than attaching to it.\n- The oldest (leftmost, faintest) ghost has the largest gap — its neck line ends well below the ring, making the head look fully disconnected.\n- This matches the player character's own design (open ring head with the neck line ending inside it), so it's intentional styling, but on the ghosts it reads as broken.\n\n## 2) Legs\n\n- The legs are the **most broken part**. In the two newer ghosts, you can trace a hip→knee→ankle chain, but the segments **overshoot or undershoot the joints** — line ends visibly extend past where the knee should pivot, and other joints show gaps where thigh and shin segments don't meet.\n- The leftmost ghost's trailing leg is a **long, nearly horizontal line with no visible knee joint at all**, and its front leg is a separate bent segment that **doesn't connect cleanly at the hip** — there's a floating stub near the hip area.\n- A small **detached line segment floats below/beside the ghosts near the platform** (around the trailing foot region of the middle ghost), clearly disconnected from any joint.\n\n## 3) Feet\n\n- **No feet are drawn.** Leg lines terminate as bare cut ends. There are rounded nub-like tips on a couple of segments (e.g., the raised front foot of the nearest ghost), but these are just line caps, not feet shapes. The solid player, by contrast, has a distinct foot silhouette — the ghosts strip this away.\n\n## 4) Arms & torso\n\n- The spine/lean line is continuous on all three ghosts (the one solid part), but **arms are broken**: the nearest ghost's forward arm is a floating bent segment that doesn't anchor at the shoulder; on the leftmost ghost the arm is barely a detached angled stroke.\n\n## Overall verdict\n\nThe ghosts read as **broken stick assemblies, not complete silhouettes**. What survives: the spine and general crouched-dash pose, which carries the motion. What's broken: **detached/encircling head rings, joint gaps and overshooting segments in both legs, no feet, and floating arm/hand-off segments**. The further back the ghost, the more connections dissolve — the oldest one is nearly an abstract of disconnected strokes, while the newest is only missing feet and clean joint welds. This degradation is clearly a deliberate fading-echo effect, but anatomically each ghost is an incomplete skeleton rather than a coherent human outline.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794143883,
+  "id": "20261108211748ca973376d4684dda",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261108211748ca973376d4684dda",
+  "usage": {
+    "completion_tokens": 658,
+    "completion_tokens_details": {
+      "reasoning_tokens": 657
+    },
+    "prompt_tokens": 3049,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3707
+  }
+}

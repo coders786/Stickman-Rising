@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# Animation QA Breakdown — Player Character (\"Inferno Blade\" Rig)\n\n## 1) Arm Attachment & Neck — MAJOR RIGGING FAILURE\nThere is **no visible neck**. The head is essentially fused to, or overlapping, the torso mass — the small cyan visor sits directly on top of the body silhouette around y≈540–560 with zero gap or neck column.\n\nWorse, the **arms do not appear to originate from a shoulder line below the head**. In frames 1 and 2, the arm/sword assembly appears to sprout from the **upper chest/collar region right where the neck should be** — the arm pivot is roughly level with the chin. The lead arm holding the sword emerges from the head/jaw area rather than a lateral shoulder joint. It reads like the shoulder anchor point is bound to the head or neck transform, so the whole arm swings from the skull.\n\n## 2) Arm Proportions & Bending\n- The sword arm is a single tapered wedge (orange/white blade highlight at ~x1300–1410, y590–690) with **no discernible elbow joint** — the forearm is either missing or collapsed into the blade sprite.\n- In frame 2, the sword-arm points straight down-forward at ~45° with a hinge at the wrist that bends past a plausible range; the secondary arm (thin dark line trailing behind at y≈600–630) extends backward at a nearly flat angle, creating a **hyperextension that a human shoulder can't achieve**.\n- Upper-arm:forearm ratio is unreadable, which itself is the bug — forearm length appears to be near zero.\n\n## 3) Legs — GLITCHING BACK LEG\n- **Back leg**: rendered as a dark/shadowed limb with a different visual weight than the front leg. In frame 1 it kicks far back (~x1270–1310, y640–690) with a boot flaring at an unnatural trailing angle, then in frame 2 it snaps under the hip — the position jump between frames exceeds a plausible stride phase, reading as a **pose-pop/tweening glitch** rather than a walk cycle.\n- **Front leg**: over-long relative to torso (leg ≈ 1.5× torso height), knee bends at a degree inconsistent with the back leg's phase — both legs appear near-full extension or fully collapsed with no mid-stride in-between, i.e., **contact poses only, no passing poses**.\n- No hip joint is visible; legs emerge from a single ambiguous pelvic blob.\n\n## 4) Torso Proportions\nTorso is a featureless wedge: **no chest/waist/hip differentiation**. It's wider at the top (shoulder/collar area where the arms misattach) and tapers to the hips, inverting the natural silhouette. Torso:leg ratio is roughly 1:1.8 — legs are dramatically over-scaled, or the torso is undersized.\n\n## 5) Overall Pose Verdict\n**Not a natural human pose.** It reads as a procedurally-generated stick rig with:\n- Head-anchored arm IK (shoulder pivot at jaw height)\n- Zero neck separation\n- Missing elbow articulation\n- Back-leg position popping between keyframes\n- Inverted torso taper and exaggerated leg length\n\nCompare with the enemy stick figures (frames 2–3): their joints (head circle, red eye, visible limb segments) articulate coherently. The player rig lacks that articulation — it's the clearest indication the player skeleton's joint offsets are misconfigured, likely shoulder pivot bound to the head bone and forearm bone length set to ~0.\n\n**Priority fixes**: detach arm anchor from head, add neck offset (~6–8px), define elbow joint, and clamp back-leg swing angle per walk-cycle phase.",
+        "reasoning_content": "Analyze the dark stick-figure combat renders. Be honest about visibility limits and describe the rigging issues.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794142314,
+  "id": "202611082051218e081c25597f4c84",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "202611082051218e081c25597f4c84",
+  "usage": {
+    "completion_tokens": 827,
+    "completion_tokens_details": {
+      "reasoning_tokens": 21
+    },
+    "prompt_tokens": 8262,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 9089
+  }
+}

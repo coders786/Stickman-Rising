@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "## Analysis\n\n**Critical finding: There is no fighter character visible in any of the four frames.**\n\nWhat I actually see across all four sequential frames:\n\n1. **Background only**: A dark rainy night scene — distant window lights (orange/teal), diagonal rain streaks, a light gray rooftop/ledge band, and dark structural cross-bracing below.\n\n2. **No player figure**: No black silhouette, no cyan visor, no katana, no dash pose, no leg/arm anatomy — nothing.\n\n3. **No ghost trail**: No afterimages, motion echoes, or cyan-tinted duplicates anywhere in frame. The only faint elements are ambiguous dark marks along the rooftop band (frame 1–3), which appear to be static environmental details (vents/antennas), not a character or trail.\n\n4. **No forward displacement**: Since there's no lead element and no trailing ghosts, there is no leading/trailing relationship to verify.\n\n### Checklist results\n\n| Check | Result |\n|---|---|\n| 1) Solid player leads, ghosts trail behind | ❌ Fail — no player, no ghosts |\n| 2) Anatomy reads correctly in motion | ❌ Fail — nothing to evaluate |\n| 3) Trail reads as speed, not glitch | ❌ Fail — trail absent entirely |\n\n## Grade: **1/10** (fail)\n\nThe dash-in-motion cannot be scored because the subject is entirely missing — every frame captured the empty background. This looks like the player character failed to render, spawned off-screen, or was composited out of the capture. Recommendation: re-capture with the fighter actually on-screen and mid-dash before any animation-quality evaluation is possible.",
+        "reasoning_content": "No character visible in any frame.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794144207,
+  "id": "2026110821231375f46774937f4711",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "2026110821231375f46774937f4711",
+  "usage": {
+    "completion_tokens": 356,
+    "completion_tokens_details": {
+      "reasoning_tokens": 7
+    },
+    "prompt_tokens": 3595,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3951
+  }
+}
