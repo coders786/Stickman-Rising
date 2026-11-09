@@ -52,6 +52,9 @@ function segmentProfile(a: Point, hinge: Point, b: Point, radii: number[]): Surf
  * Pure #000 body, including face. Short hair, no tied tail, no glow details. */
 /** Shared production palm/finger shape, also used for isolated design studies. */
 export function drawArticulatedHand(ctx:CanvasRenderingContext2D,color:string,open:number):void{
+// Match the palm/finger silhouette to the six-unit hand in PLAYER_SPEC;
+// keep the wrist origin fixed so weapon grips and arm lengths do not move.
+ctx.save();ctx.scale(1.12,1.12)
 ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-.7,-1)
 ctx.quadraticCurveTo(.8,-1.9,2.2,-1.3);ctx.lineTo(2.7,.5)
 ctx.quadraticCurveTo(1.5,1.8,-.8,1);ctx.closePath();ctx.fill()
@@ -74,6 +77,7 @@ for(let i=0;i<4;i++){
 ctx.beginPath();ctx.moveTo(-.1,-1)
 ctx.quadraticCurveTo(1.4,-2.2-open*.45,2.1+open,-.35-open*1.8)
 ctx.stroke();
+ctx.restore()
 }
 
 function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts:FighterDrawOpts):void {

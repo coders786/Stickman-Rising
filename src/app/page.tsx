@@ -85,10 +85,15 @@ export default function Home() {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const game = new Game()
+    let game: Game
+    try {
+      game = new Game()
+    } catch (error) {
+      console.error('Game construction failed', error)
+      setGameError('Unable to start the game. Reload to try again; saved progress is retained.')
+      return
+    }
     gameRef.current = game
-    game.applySettings(loadSettings())
-    game.setUnlocked(loadSave().unlocked)
     const off = game.on((e) => {
       if (e.type === 'error') {
         setGameError('The game encountered an unexpected error. Reload to try again; saved progress is retained.')
@@ -124,6 +129,8 @@ export default function Home() {
       }
     })
     try {
+      game.applySettings(loadSettings())
+      game.setUnlocked(loadSave().unlocked)
       game.mount(canvas)
       setGameInput(game.input)
     } catch (error) {
@@ -232,10 +239,12 @@ export default function Home() {
           sword: runSword,
         }),
       })
-      if (!response.ok) throw new Error('Score submission failed')
+      if (response.status === 409) throw new Error('This run was already submitted with different details. Retry with the original name.')
+      if (response.status === 429) throw new Error('Too many score submissions. Please wait and try again.')
+      if (!response.ok) throw new Error('Score was not confirmed. Check your connection and try again.')
       if (run === runRef.current) setSubmitted(true)
-    } catch {
-      if (run === runRef.current) setSubmitError('Score was not confirmed. Check your connection and try again.')
+    } catch (error) {
+      if (run === runRef.current) setSubmitError(error instanceof Error ? error.message : 'Score was not confirmed. Check your connection and try again.')
     } finally {
       submittingRef.current = false
       setSubmitting(false)
@@ -364,7 +373,7 @@ export default function Home() {
                     <tr><td>Q</td><td>Draw / sheathe — choose sword or empty-hand combat</td></tr>
                     <tr><td>J</td><td>Light chain — fists sheathed, cuts drawn</td></tr>
                     <tr><td>K</td><td>Heavy attack — hold to CHARGE</td></tr>
-                    <tr><td>L / SHIFT</td><td>Momentum dash — thrust, coast, brake; cancels attacks</td></tr>
+                    <tr><td>L / SHIFT</td><td>Tap and release to dash; hold until ready, then release for power dash</td></tr>
                     <tr><td>DASH + J / K</td><td>Dash palm sheathed / sword strike drawn</td></tr>
                     <tr><td>W + J</td><td>Launcher — sends foes skyward</td></tr>
                     <tr><td>S + J</td><td>Cyclone spin</td></tr>
@@ -381,7 +390,8 @@ export default function Home() {
               <div>
                 <h3 className="mb-2 text-xs font-black tracking-[0.3em] text-red-400">FIELD MANUAL</h3>
                 <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed text-zinc-400">
-                  <li>Never stop moving. Dash through enemies — dash cancels every attack.</li>
+                  <li>Strike during a dash. Your separate 600-point stamina pool costs 45 for a normal dash or 120 for a power dash; it recovers after a short delay. Below 120, a charged release becomes a normal dash.</li>
+                  <li>Power dash commits to a low, less-steerable skid before rising. Attacks remain available through the dash and recovery.</li>
                   <li>Light attacks chain: press J in rhythm for five escalating slashes.</li>
                   <li>Launch with W+J, then chase into the air with jump + air slashes for juggles.</li>
                   <li>Hold K to charge an Overload Slash — each blade charges differently.</li>
@@ -615,7 +625,10 @@ function TouchLayer({ input, onPause }: { input: GameInput; onPause: () => void 
         <Pause className="h-5 w-5" />
       </button>
       <Joystick input={input} />
-      <div className="absolute bottom-5 right-4 z-20 grid grid-cols-3 gap-2.5">
+      <div className="absolute bottom-2 right-2 z-20 grid grid-cols-3 gap-1 sm:bottom-5 sm:right-4 sm:gap-2.5">
+        <TouchBtn input={input} action="sheathe" label="DRAW" small />
+        <TouchBtn input={input} action="cycleSword" label="SWORD" small />
+        <div />
         <TouchBtn input={input} action="parry" label="PARRY" small />
         <TouchBtn input={input} action="ability" label="SPEC" small />
         <TouchBtn input={input} action="ult" label="ULT" small />
@@ -631,13 +644,15 @@ function TouchLayer({ input, onPause }: { input: GameInput; onPause: () => void 
 }
 
 function TouchBtn({ input, action, label, small }: { input: GameInput; action: Action; label: string; small?: boolean }) {
-  const cls = small
-    ? 'h-14 w-14 text-[9px]'
-    : 'h-[4.5rem] w-[4.5rem] text-[10px]'
+  const cls = small ? 'text-[9px]' : 'text-[10px]'
+  const size = small
+    ? 'clamp(44px, min(11dvh, calc((100vw - 120px) / 3)), 56px)'
+    : 'clamp(44px, min(13dvh, calc((100vw - 120px) / 3)), 72px)'
   return (
     <button
       type="button"
       aria-label={label}
+      style={{ width: size, height: size }}
       className={`${cls} touch-none select-none rounded-full border border-zinc-600/80 bg-black/55 font-black tracking-widest text-zinc-200 backdrop-blur-sm active:border-red-500 active:bg-red-950/70 active:text-red-200`}
       onPointerDown={(e) => { e.preventDefault(); input.setVirtual(action, true) }}
       onPointerUp={() => input.setVirtual(action, false)}
@@ -681,22 +696,25 @@ function Joystick({ input }: { input: GameInput }) {
   return (
     <div
       ref={ref}
-      className="absolute bottom-6 left-5 z-20 h-32 w-32 touch-none rounded-full border border-zinc-700/70 bg-black/40 backdrop-blur-sm"
+      className="absolute bottom-3 left-3 z-20 touch-none rounded-full border border-zinc-700/70 bg-black/40 backdrop-blur-sm"
+      style={{ width: 'clamp(88px, min(25dvh, 26vw), 128px)', height: 'clamp(88px, min(25dvh, 26vw), 128px)' }}
       onPointerDown={(e) => {
         e.preventDefault()
+        if (activeId.current !== null) return
         activeId.current = e.pointerId
-        ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+        e.currentTarget.setPointerCapture?.(e.pointerId)
         handle(e)
       }}
       onPointerMove={(e) => {
         if (activeId.current === e.pointerId) handle(e)
       }}
-      onPointerUp={release}
-      onPointerCancel={release}
+      onPointerUp={(e) => { if (activeId.current === e.pointerId) release() }}
+      onPointerCancel={(e) => { if (activeId.current === e.pointerId) release() }}
+      onLostPointerCapture={(e) => { if (activeId.current === e.pointerId) release() }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full border border-zinc-500 bg-zinc-800/90"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 rounded-full border border-zinc-500 bg-zinc-800/90"
         style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
       />
     </div>

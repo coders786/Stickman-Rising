@@ -27,7 +27,7 @@ export function sprintHandArc(phase:number){
  return{x:arcChannel(SPRINT_HAND_X,t),y:arcChannel(SPRINT_HAND_Y,t)}
 }
 /** Opposed arm pumping with a soft wrist lag and loosely curled fingers.
- * This is an athletic hand path, not a rigid both-arms-back Naruto pose. */
+ * This is an athletic hand path, not a rigid arms-back pose. */
 export function runningHandMotion(phase:number,speed:number){
  if(speed<=150)return walkHandMotion(phase)
  const run=clamp01((speed-150)/130),sprint=clamp01((speed-350)/130)

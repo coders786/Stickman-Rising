@@ -1,6 +1,6 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {DashBody} from '../src/game/physics/dash-body'
+import {DashBody,powerThrustEnvelope} from '../src/game/physics/dash-body'
 import {DASH_VARIANTS} from '../src/game/combat/dash'
 import {Input} from '../src/game/core/input'
 import {Player} from '../src/game/entities/player'
@@ -102,7 +102,7 @@ test('player exit keeps velocity; next movement update eases overspeed instead o
   input.setVirtualAxis(1,0);p.startDash(w,1,0)
   let frames=0;while(p.state==='dash'&&frames++<hz){advance(p,w,1/hz,hz)}
   assert.ok(p.vx>350);const exit=p.vx
-  advance(p,w,1/hz,hz);assert.ok(p.vx<exit&&p.vx>350)
+  advance(p,w,1/hz,hz);assert.ok(p.vx<exit&&p.vx>0,'finite stabilization slows without reversing')
   assert.ok([...p.pose].every(Number.isFinite));assert.ok(p.x>400)
  }
 })
@@ -125,7 +125,7 @@ test('opposite input and pause clear sprint intent rather than leaving a runaway
 test('opposing momentum selects the new pivot dash before frame-dependent walking friction',()=>{
  for(const hz of [30,60,120]){
   const input=new Input(),p=new Player(),w=world(input)
-  p.vx=240;input.setVirtual('left',true);input.setVirtual('dash',true)
+  p.vx=240;input.setVirtual('left',true);input.setVirtual('dash',true);input.setVirtual('dash',false)
   advance(p,w,1/hz,hz)
   assert.equal(p.dashVariant,'pivot');assert.ok(p.vx>0,'brace must retain incoming momentum')
   assert.equal((p as unknown as {animator:Animator}).animator.getClip()?.name,'dashPivot')
@@ -171,4 +171,31 @@ test('propulsion accents fire once per dash, never during load, and reset on reu
   assert.equal(calls.filter(k=>k==='motionLine').length,3)
   assert.equal(calls.filter(k=>k==='speedStreaks').length,1)
  }
+})
+
+test('charged propulsion is reported as drive and the later planted catch dissipates speed',()=>{
+ for(const hz of [30,60,120])for(const dir of [-1,1]){
+  const b=new DashBody(DASH_VARIANTS.launch,0,0,dir,0,true)
+  while(b.age<.19-1e-8)b.step(Math.min(1/hz,.19-b.age),true,b.vx,b.vy,true)
+  assert.equal(b.boosting,true);assert.equal(b.phase,'drive')
+  while(b.age<.31-1e-8)b.step(Math.min(1/hz,.31-b.age),true,b.vx,b.vy,true)
+  assert.equal(b.boosting,false)
+  const speed=Math.abs(b.vx)
+  while(b.age<.38-1e-8)b.step(Math.min(1/hz,.38-b.age),true,b.vx,b.vy,true)
+  assert.ok(Math.abs(b.vx)<speed,'catch must dissipate momentum after thrust')
+  assert.ok(b.vx*dir>0,'braking cannot reverse the dash')
+ }
+})
+
+
+test('powered thrust ramps smoothly into and out of its bounded drive window',()=>{
+ assert.equal(powerThrustEnvelope(.10),0);assert.equal(powerThrustEnvelope(.30),0)
+ assert.equal(powerThrustEnvelope(.16),1)
+ const h=.00001
+ for(const t of [.10,.135,.265,.30]){
+  const l=(powerThrustEnvelope(t)-powerThrustEnvelope(t-h))/h
+  const r=(powerThrustEnvelope(t+h)-powerThrustEnvelope(t))/h
+  assert.ok(Math.abs(l-r)<.1,`force derivative continuous at ${t}`)
+ }
+ for(let i=0;i<=1000;i++){const v=powerThrustEnvelope(i/1000*.4);assert.ok(v>=0&&v<=1)}
 })

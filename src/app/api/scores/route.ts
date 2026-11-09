@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { scoreSubmissionSchema } from '@/lib/scores'
+import { checkScoreRateLimit } from '@/lib/score-rate-limit'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -20,6 +21,17 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    const limit = await checkScoreRateLimit(req.headers)
+    if (!limit.allowed) {
+      return NextResponse.json({ error: 'Too many score submissions. Please try again later.' }, {
+        status: 429, headers: { 'Retry-After': String(limit.retryAfter) },
+      })
+    }
+  } catch (error) {
+    console.error('Score rate limit unavailable', error)
+    return NextResponse.json({ error: 'Score submissions are temporarily unavailable' }, { status: 503 })
+  }
   const key = req.headers.get('idempotency-key')
   if (key !== null && !z.uuid().safeParse(key).success) {
     return NextResponse.json({ error: 'Invalid Idempotency-Key' }, { status: 400 })
@@ -59,6 +71,9 @@ export async function POST(req: NextRequest) {
     const row = key
       ? await getDb().score.upsert({ where: { id: key }, create: { id: key, ...result.data }, update: {} })
       : await getDb().score.create({ data: result.data })
+    if (key && (Object.keys(result.data) as (keyof typeof result.data)[]).some(field => row[field] !== result.data[field])) {
+      return NextResponse.json({ error: 'Idempotency-Key was already used with different score data' }, { status: 409 })
+    }
     return NextResponse.json(row, { status: 201 })
   } catch (error) {
     console.error('Failed to save score', error)

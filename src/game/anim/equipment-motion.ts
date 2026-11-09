@@ -9,11 +9,11 @@ import {runningHandMotion,dashHandMotion} from './hand-kinematics'
 import {handPose} from '../combat/unarmed'
 const cache=new WeakMap<Clip,{free?:Clip;armed?:Clip}>()
 export function equipmentClip(base:Clip,drawn:boolean):Clip{
- if(base.equipment||! /^(idle|walk|run|sprint|sprintDrive|jump|jumpLeap|airJump|fall|land|stop|brake|combatIdle|combatStep|backpedal|dash\w+)$/.test(base.name))return base
+ if(base.equipment||! /^(idle|walk|run|sprint|sprintDrive|jump|jumpLeap|airJump|fall|land|stop|brake|combatIdle|combatStep|backpedal|powerDash|dash\w+)$/.test(base.name))return base
  let pair=cache.get(base);if(!pair){pair={};cache.set(base,pair)}
  const key=drawn?'armed':'free';if(pair[key])return pair[key]!
  const clip:Clip={...base,equipment:key,source:base,frames:base.frames.map(f=>{
-  const p=f.p.slice(),phase=f.t/base.dur,air=/jump|fall/i.test(base.name),dash=/^dash/.test(base.name)
+  const p=f.p.slice(),phase=f.t/base.dur,air=/jump|fall/i.test(base.name),dash=/^(?:dash|powerDash)/.test(base.name)
   const assign=(side:'left'|'right',x:number,y:number)=>{
    const q=handPose(side,x,y)
    if(side==='left'){p[CH.shL]=q.shL!;p[CH.elL]=q.elL!}

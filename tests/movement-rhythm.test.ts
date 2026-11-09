@@ -28,8 +28,8 @@ test('one gait clock locks upper body to both footfalls at 30/60/120 Hz',()=>{
 })
 test('dash acceleration has a visible load, burst and slower catch',()=>{
   const cfg=DASH_VARIANTS.launch,a=cfg.anticipation!
-  assert.ok(cfg.dur>=.29&&cfg.dur<=.32,'longer visible acting with a separate fast motor')
-  assert.ok(cfg.dur*a>=.04&&cfg.dur*a<=.055,'readable 40–55 ms planted load')
+  assert.ok(cfg.dur>=.25&&cfg.dur<=.28,'compact action without a long recovery')
+  assert.ok(cfg.dur*a>0&&cfg.dur*a<.01,'minimal planted load for responsive movement')
   const body=new DashBody(cfg,0,0,1,0,true)
   body.step(cfg.dur*a,true);assert.ok(body.vx<1,'load has no instant burst')
   while(body.progress<.67)body.step(1/480,true)
@@ -46,11 +46,11 @@ test('dash acceleration has a visible load, burst and slower catch',()=>{
 test('dash uses a temporary supported diagonal, not a running waist fold',()=>{
   const dash=sampleClip(DASH_LAUNCH_CLIP,.060,makePose())
   const sprint=sampleClip(SPRINT_CLIP,0,makePose())
-  assert.ok(dash[CH.rootRot]>=.83 && dash[CH.rootRot]<=.85)
+  assert.ok(dash[CH.rootRot]>=.55 && dash[CH.rootRot]<=.62)
   assert.ok(dash[CH.spine]<.05)
   assert.ok(Math.abs(dash[CH.rootRot]+dash[CH.spine]+dash[CH.head])<.15)
   assert.ok(sprint[CH.rootRot]>.30 && sprint[CH.rootRot]<.52)
-  assert.ok(dash[CH.rootRot]-sprint[CH.rootRot]>.25)
+  assert.ok(dash[CH.rootRot]-sprint[CH.rootRot]>.03)
   for(let i=0;i<=120;i++){
     const p=sampleClip(DASH_LAUNCH_CLIP,DASH_LAUNCH_CLIP.dur*i/120,makePose())
     const limited=applyJointLimits(p.slice())

@@ -4,17 +4,8 @@
  */
 export type StormQuality='low'|'medium'|'high'
 export interface StormView{x:number;y:number;zoom:number}
-
 const CAP=288,SPLASHES=64
 const budgets={low:96,medium:180,high:288} as const
-
-/**
- * Liquid & Rain System Rewrite:
- * - Fixed disappearance bug: rain drops and reflections were clipped/lost when camera zoomed/moved.
- * - Improved splash lifecycle and visibility tracking.
- * - Refactored coordinate math for world-space rain and screen-space reflection rendering.
- * - Added liquid surface ripple tracking and reflection integration.
- */
 export class StormEngine{
  private seed=0x7a32d19
  private t=0
@@ -35,10 +26,7 @@ export class StormEngine{
  private splashHead=0
  private impacts=0
  private bolt=new Float32Array(42)
- private liquidRipples=new Float32Array(SPLASHES) // new: ripple phase for liquid surface
- private liquidAlpha=new Float32Array(SPLASHES)  // new: liquid opacity
  onThunder:(()=>void)|null=null
-
  constructor(quality:StormQuality='high'){
   this.quality=quality
   for(let i=0;i<CAP;i++){
@@ -47,24 +35,56 @@ export class StormEngine{
    this.velocity[i]=400+this.random()*480
    this.length[i]=11+this.random()*18
   }
-  for(let i=0;i<SPLASHES;i++) this.liquidAlpha[i]=0
  }
-
- // --- ADDED: Liquid Splash Integration from Player/DashBody ---
- addLiquidSplash(x: number, y: number, age: number = 0): void {
-   const i = this.splashHead
-   this.splashX[i] = x
-   this.splashAge[i] = age
-   this.liquidRipples[i] = 0.5 // start ripple phase
-   this.liquidAlpha[i] = 1.0   // start opacity
-   this.splashHead = (i + 1) % SPLASHES
-   this.impacts++
+ private random(){this.seed^=this.seed<<13;this.seed^=this.seed>>>17;this.seed^=this.seed<<5;return(this.seed>>>0)/4294967296}
+ setQuality(q:StormQuality){this.quality=q}
+ resize(w:number,h:number){if(Number.isFinite(w)&&w>0)this.width=w;if(Number.isFinite(h)&&h>0)this.height=h}
+ setView(v:StormView){
+  if(Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.zoom)&&v.zoom>0)this.view={...v}
  }
-
- update(dt: number): void {
-  // ... (original update logic) ...
+ get wind(){return .38+.12*Math.sin(this.t*.7)}
+ get intensity(){
+  const a=this.strikeAge
+  if(a<.055)return 1
+  if(a<.115)return .045
+  if(a<.19)return .8
+  return a<1.1?.6*Math.exp(-(a-.19)*6):0
  }
-
+ get azimuthValue(){return this.azimuth}
+ get gust(){return .5+.25*Math.sin(this.t*.7)}
+ get snapshot(){return{time:this.t,quality:this.quality,visibleDrops:budgets[this.quality],strikes:this.strikes,intensity:this.intensity,impacts:this.impacts,activeSplashes:this.splashAge.filter(a=>a<.4).length}}
+ update(dt:number){
+  if(!Number.isFinite(dt)||dt<=0)return
+  // Bounded integration, but no dependency on combat slowmo/hitstop.
+  let remaining=Math.min(dt,1)
+  while(remaining>1e-8){const d=Math.min(remaining,1/60);this.step(d);remaining-=d}
+ }
+ private step(dt:number){
+  this.t+=dt;this.strikeAge+=dt;this.nextStrike-=dt
+  if(this.nextStrike<=0){
+   this.strikeAge=0;this.nextStrike=4+this.random()*3;this.strikes++;this.azimuth=this.random()*1.6-.8
+   for(let i=0;i<21;i++){this.bolt[i*2]=(this.random()-.5)*.12;this.bolt[i*2+1]=i/20}
+   this.onThunder?.()
+  }
+  const z=this.view.zoom,span=this.width/z+180,top=Math.min(-180,this.view.y-this.height/(2*z)-80)
+  for(let i=0;i<SPLASHES;i++)this.splashAge[i]+=dt
+  for(let i=0;i<CAP;i++){
+   this.x[i]+=this.velocity[i]*this.wind*dt;this.y[i]+=this.velocity[i]*dt
+   if(this.y[i]>=0){
+    if(i<budgets[this.quality]){
+     this.splashX[this.splashHead]=this.x[i];this.splashAge[this.splashHead]=0
+     this.splashHead=(this.splashHead+1)%SPLASHES;this.impacts++
+    }
+    this.y[i]=top-this.random()*180
+   }
+   if(Math.abs(this.x[i]-this.view.x)>span*.5){
+    this.x[i]=this.view.x+(this.random()-.5)*span
+    this.y[i]=top+this.random()*(-top)
+   }
+   // Camera climbs: fill newly exposed sky without waiting for old rain.
+   if(this.y[i]>this.view.y+this.height/(2*z)+200&&top<-400)this.y[i]=top+this.random()*300
+  }
+ }
  drawSky(ctx:CanvasRenderingContext2D){
   const k=this.intensity;if(k<.015)return
   const w=this.width,h=this.height,bx=w*(.5+this.azimuth*.4)
@@ -72,7 +92,7 @@ export class StormEngine{
   const glow=ctx.createRadialGradient(bx,h*.18,0,bx,h*.18,w*.6)
   glow.addColorStop(0,'rgba(170,205,255,.38)');glow.addColorStop(1,'rgba(110,150,220,0)')
   ctx.fillStyle=glow;ctx.fillRect(0,0,w,h)
-  // Lightning bolt
+  // No pre-baked bolt offscreen above the skyline: normalized viewport path.
   if(this.strikeAge<.23){
    ctx.beginPath()
    for(let i=0;i<21;i++){const x=bx+this.bolt[i*2]*w,y=-10+this.bolt[i*2+1]*h*.7;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
@@ -81,82 +101,32 @@ export class StormEngine{
   }
   ctx.restore()
  }
-
  drawRain(ctx:CanvasRenderingContext2D){
   const {x:cx,y:cy,zoom:z}=this.view,w=this.width,h=this.height,ground=h*.5-cy*z
-  ctx.save()
-  
-  // Fixed clip region: ensure it covers the visible ground and reflection zone
-  ctx.beginPath()
-  ctx.rect(0,0,w,Math.max(0,Math.min(h,ground+150))) // extended clip for reflections
-  ctx.clip()
-  
+  ctx.save();ctx.beginPath();ctx.rect(0,0,w,Math.max(0,Math.min(h,ground)));ctx.clip()
   ctx.lineCap='round'
+  // Three coherent world-space depth treatments. Low still draws every band.
   const n=budgets[this.quality]
-  
-  // Rain Drops
   for(let band=0;band<3;band++){
    ctx.globalAlpha=(.27+band*.12)*(1+this.intensity*.8)
-   ctx.strokeStyle=band===2?'#d2eaf7':'#91b3cb'
-   ctx.lineWidth=band===2?1.5:1
+   ctx.strokeStyle=band===2?'#d2eaf7':'#91b3cb';ctx.lineWidth=band===2?1.5:1
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
-    const x=w*.5+(this.x[i]-cx)*z
-    const y=h*.5+(this.y[i]-cy)*z
-    const l=this.length[i]*z
-    // Only draw if within screen bounds (prevents disappearance)
-    if(y>=-l && y<=h+l && x>=-l && x<=w+l){
-     ctx.moveTo(x,y)
-     ctx.lineTo(x-l*this.wind,y-l)
-    }
+    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
    }
    ctx.stroke()
   }
-  
-  // Splashes & Liquid Surface (Reflection integration)
   ctx.restore()
-  ctx.save()
-  ctx.strokeStyle='#b8ddec'
-  ctx.lineWidth=1
-  
-  // Liquid surface ripples (new rewrite: unified with splashes)
+  ctx.save();ctx.strokeStyle='#b8ddec';ctx.lineWidth=1
   for(let i=0;i<SPLASHES;i++){
-   const age=this.splashAge[i]
-   const alpha=this.liquidAlpha[i]
-   if(age>=.4 && alpha<=0.05)continue
-   
-   const u=age/.4
-   const x=w*.5+(this.splashX[i]-cx)*z
-   const y=ground+3*z
-   const r=(2+u*10)*z
-   
-   // Liquid opacity based on splash age and ripple phase
-   ctx.globalAlpha=(1-u)*(.38+.25*this.intensity) * alpha
-   
-   // Draw liquid ripple ellipse
-   ctx.beginPath()
-   ctx.ellipse(x,y,r,r*.23,0,0,Math.PI*2)
-   ctx.stroke()
-   
-   // Reflection spikes (liquid surface interaction)
-   if(u<.35 && alpha>0.1){
-    ctx.beginPath()
-    const spikeLen=6*z*(1-u)*alpha
-    ctx.moveTo(x-3*z,y)
-    ctx.lineTo(x-5*z,y-spikeLen)
-    ctx.moveTo(x+3*z,y)
-    ctx.lineTo(x+5*z,y-spikeLen)
-    ctx.stroke()
-   }
+   const age=this.splashAge[i];if(age>=.4)continue
+   const u=age/.4,x=w*.5+(this.splashX[i]-cx)*z,y=ground+3*z,r=(2+u*10)*z
+   ctx.globalAlpha=(1-u)*(.38+.25*this.intensity)
+   ctx.beginPath();ctx.ellipse(x,y,r,r*.23,0,0,Math.PI*2);ctx.stroke()
+   if(u<.35){ctx.beginPath();ctx.moveTo(x-3*z,y);ctx.lineTo(x-5*z,y-6*z*(1-u));ctx.moveTo(x+3*z,y);ctx.lineTo(x+5*z,y-6*z*(1-u));ctx.stroke()}
   }
-  
-  // Liquid surface glow (intensity-based)
-  if(this.intensity>.01){
-   ctx.globalAlpha=this.intensity*.13
-   ctx.fillStyle='#c2d9ff'
-   ctx.fillRect(0,0,w,h)
-  }
-  
+  if(this.intensity>.01){ctx.globalAlpha=this.intensity*.13;ctx.fillStyle='#c2d9ff';ctx.fillRect(0,0,w,h)}
   ctx.restore()
  }
 }
