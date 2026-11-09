@@ -1,0 +1,14 @@
+{
+  "errors": [],
+  "updates": 420,
+  "simulationHz": 120,
+  "frames": 210,
+  "captureHz": 60,
+  "allPosesFinite": true,
+  "bothModesReachHorizontalFlight": true,
+  "plantedDuringLoad": true,
+  "noFloorPenetration": true,
+  "minPhysicsY": -37.550238039122384,
+  "peakPitchDegrees": 86.99476025080757,
+  "worstSupportContact": -46.18556718582505
+}

@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "updates": 600,
+  "simulationHz": 120,
+  "frames": 150,
+  "captureHz": 30,
+  "allPosesFinite": true,
+  "clips": [
+    "idle",
+    "walk",
+    "stop",
+    "draw"
+  ],
+  "walkHipRange": [
+    -64.97497375225686,
+    -63.229566927933696
+  ]
+}

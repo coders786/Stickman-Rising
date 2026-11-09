@@ -123,6 +123,7 @@ export class Enemy {
   private strikeHits = 0
   private burstLeft = 0
   private burstT = 0
+  get guardHealth():number{return this.blockHp}
   private blockHp = 3
   blockUp = false
   staggerMeter = 0
@@ -667,9 +668,9 @@ export class Enemy {
   /* reactions                                                            */
   /* ------------------------------------------------------------------ */
 
-  /** returns 'killed' | 'hit' | 'blocked' | 'armored' */
-  takeHit(info: AttackRuntimeInfo, dir: number, fromX: number): 'killed' | 'hit' | 'blocked' | 'armored' {
-    if (this.dead) return 'killed'
+  /** Armor absorbs interruption, not HP damage. Dead contacts are misses. */
+  takeHit(info: AttackRuntimeInfo, dir: number, fromX: number): 'killed' | 'hit' | 'blocked' | 'armored' | 'miss' {
+    if (this.dead) return 'miss'
     this.hpBarT = 2
     this.flashT = 1
 
@@ -679,7 +680,9 @@ export class Enemy {
       !info.breakGuard && Math.sign(fromX - this.x) === this.face
     ) {
       this.blockHp -= info.heavy ? 2 : 1
-      this.hp -= info.dmg * 0.12
+      this.hp = Math.max(0,this.hp-info.dmg*.12)
+      // Chip is lethal: resolve it before either block or guard-break exits.
+      if(this.hp<=0){this.dead=true;return 'killed'}
       if (this.blockHp <= 0) {
         // guard break
         this.state = 'stun'
@@ -696,7 +699,7 @@ export class Enemy {
     let dmg = info.dmg
     if (this.vulnerableT > 0) dmg *= 2
     if (this.kind === 'heavy' || this.kind === 'boss') dmg *= 0.72
-    this.hp -= dmg
+    this.hp = Math.max(0,this.hp-dmg)
 
     if (this.hp <= 0) {
       this.dead = true
@@ -993,7 +996,6 @@ export class Enemy {
       if (this.gaitW > 0.5) {
         if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
         if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-        if (contacts.length) contacts.push(this.x)
       }
       for (const c of this.snapContacts) contacts.push(c)
     }

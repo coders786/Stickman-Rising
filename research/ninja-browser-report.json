@@ -1,0 +1,17 @@
+{
+  "updates": 720,
+  "simulationHz": 120,
+  "javascriptErrors": [],
+  "allPosesFinite": true,
+  "normalSpeed": 350,
+  "sprintSpeed": 480,
+  "sprintObservedPitchDegrees": [
+    6.863306195977204,
+    26.925587547883453
+  ],
+  "carryDashObservedPitchDegrees": [
+    7.16197243913529,
+    42.10939689359799
+  ],
+  "note": "Observed total pitch includes transitions and procedural acceleration, not just authored targets. 240 gameplay frames sampled at 60 Hz, shown half-speed. Offline sampling is not a device FPS benchmark."
+}

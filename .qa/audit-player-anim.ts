@@ -1,4 +1,4 @@
-/** Comprehensive audit test for remodeled Shadow Ronin player animations:
+/** Comprehensive audit test for continuous humanoid player animations:
  * validates posture, joint bounds, transition continuity, and flourish state.
  */
 import { Player } from '../src/game/entities/player'
@@ -11,7 +11,7 @@ import {
 } from '../src/game/anim/clips'
 
 console.log('--- 1. VERIFYING ANATOMICAL SKELETON SPEC ---')
-console.log(`Neck: ${PLAYER_SPEC.neck} (expected ~4.8)`)
+console.log(`Neck: ${PLAYER_SPEC.neck} (expected ~4.6)`)
 console.log(`Shoulder Fwd/Drop: ${PLAYER_SPEC.shoulderFwd} / ${PLAYER_SPEC.shoulderDrop}`)
 console.log(`Torso / HeadR: ${PLAYER_SPEC.torso} / ${PLAYER_SPEC.headR}`)
 console.log(`UpperArm / ForeArm: ${PLAYER_SPEC.upperArm} / ${PLAYER_SPEC.foreArm}`)
@@ -25,9 +25,9 @@ if (player.swordDrawn !== false) throw new Error('Player must start with sword s
 
 // Check neutral pose channels
 const pose = (player as any).pose
-console.log(`Neutral rootRot: ${pose[CH.rootRot]} (expected 0.0 - upright)`)
-console.log(`Neutral spine: ${pose[CH.spine]} (expected 0.0 - straight spine)`)
-console.log(`Neutral head: ${pose[CH.head]} (expected 0.0 - level gaze)`)
+console.log(`Neutral rootRot: ${pose[CH.rootRot]} (expected 0.03 - poised)`)
+console.log(`Neutral spine: ${pose[CH.spine]} (expected 0.015 - soft core angle)`)
+console.log(`Neutral head: ${pose[CH.head]} (expected -0.06 - compensated gaze)`)
 console.log(`Neutral shR (sword arm): ${pose[CH.shR]} (expected ~0.12 - tucked arm, hand at tsuka)`)
 console.log(`Neutral elR: ${pose[CH.elR]} (expected ~ -0.52 - tucked elbow)`)
 
@@ -80,8 +80,8 @@ console.log('PLAYER_STYLE:', {
   bracers: PLAYER_STYLE.bracers,
   legWraps: PLAYER_STYLE.legWraps,
 })
-if (!PLAYER_STYLE.scarf || !PLAYER_STYLE.topknot || !PLAYER_STYLE.bracers) {
-  throw new Error('Modular cosmetics missing in PLAYER_STYLE!')
+if (PLAYER_STYLE.scarf || PLAYER_STYLE.topknot || PLAYER_STYLE.bracers || PLAYER_STYLE.model !== 'shadow-ronin') {
+  throw new Error('Legacy robotic costume must not return!')
 }
 
 console.log('\nALL ANIMATION AND REMODEL AUDIT CHECKS PASSED SUCCESSFULLY!')

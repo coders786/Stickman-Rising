@@ -1,0 +1,24 @@
+{
+  "errors": [],
+  "updates": 420,
+  "simulationHz": 120,
+  "quality": "high",
+  "renderSampling": "every fourth simulation tick plus requested landmarks; not a performance benchmark",
+  "parryOpensImmediately": true,
+  "allFinite": true,
+  "attackMaxDeltaV": 23.333333333333258,
+  "attackEndX": 815.5694444444438,
+  "landingCaptured": true,
+  "dashLoadPlanted": true,
+  "chargeReleaseHorizontalFlight": true,
+  "screenshots": [
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/20.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/30.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/108.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/116.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/145.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/210.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/270.png",
+    "/home/user/Stickman-Rising/.cache/player-motor-browser/300.png"
+  ]
+}

@@ -196,6 +196,19 @@ export class AudioEngine {
     if (this.musicWanted && this.timer === null) this.beginLoop();
   }
 
+  /** Release audio resources when the game unmounts. */
+  destroy(): void {
+    this.stopMusic();
+    for (const voice of this.voices) {
+      for (const source of voice.srcs) { source.onended = null; stopSource(source, 0); }
+      disconnectNode(voice.out);
+    }
+    this.voices = [];
+    const graph = this.graph;
+    this.graph = null;
+    if (graph && graph.ctx.state !== 'closed') void graph.ctx.close().catch(() => undefined);
+  }
+
   /** Suspend the context (audio clock freezes; music resumes where it left). */
   suspend(): void {
     const g = this.graph;
@@ -293,7 +306,11 @@ export class AudioEngine {
       if (!this.warned) { this.warned = true; console.warn('[audio] Web Audio API unavailable — running silent'); }
       return null;
     }
-    const ctx = new AC();
+    let ctx: AudioContext;
+    try { ctx = new AC(); } catch (error) {
+      if (!this.warned) { this.warned = true; console.warn('[audio] Unable to initialize audio — running silent', error); }
+      return null;
+    }
 
     // Master bus: [sfx | music] → compressor → destination. The compressor
     // glues layered hits together and stops hard clipping.

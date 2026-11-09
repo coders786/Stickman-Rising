@@ -1,0 +1,16 @@
+{
+  "errors": [],
+  "updates": 480,
+  "simulationHz": 120,
+  "captureHz": 30,
+  "frames": 120,
+  "variants": [
+    "carry",
+    "carve",
+    "hunt",
+    "launch"
+  ],
+  "allPosesFinite": true,
+  "peakSprintLean": 0.5987428426742554,
+  "rainDrops": 170
+}

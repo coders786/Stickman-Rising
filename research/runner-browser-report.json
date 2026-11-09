@@ -1,0 +1,29 @@
+{
+  "source": "Actual rebuilt production browser game",
+  "simulationHz": 120,
+  "updates": 600,
+  "poseFiniteEveryUpdate": true,
+  "javascriptErrors": [],
+  "landingClipFrames": 25,
+  "conditionVariants": [
+    "rest-open",
+    "patrol",
+    "run-drive-free",
+    "run-cruise-free",
+    "wounded-travel",
+    "skid-open",
+    "vertical-rise",
+    "apex-balance",
+    "fall-brace",
+    "hard-landing",
+    "rest-surrounded"
+  ],
+  "capture": {
+    "frames": 120,
+    "sampleHz": 60,
+    "reviewHalfSpeed": true,
+    "width": 1000,
+    "height": 600
+  },
+  "note": "Headless offline sampling, not a live device FPS benchmark. Background/quality governor held at low quality; alternate render frames sampled only for the first two simulation seconds."
+}

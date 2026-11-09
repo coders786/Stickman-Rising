@@ -1,0 +1,26 @@
+{
+  "errors": [],
+  "simulationHz": 120,
+  "updates": 720,
+  "frames": 360,
+  "motionAware": true,
+  "allPosesFinite": true,
+  "clips": [
+    "idle",
+    "jump",
+    "fall",
+    "land",
+    "walk",
+    "run",
+    "jumpLeap",
+    "stop",
+    "sheathe",
+    "draw",
+    "dashLaunch"
+  ],
+  "drawVisibilityGate": true,
+  "drawDashInterrupt": true,
+  "drawCompletionWristDeltaRadians": 0.4298672676086426,
+  "maxCorePitchDeltaPer120HzUpdateRadians": 0.06715784966945648,
+  "scope": "Scripted jump/leap/land/sheathe/draw/dash-interrupt sequence, not proof of universal physical realism."
+}

@@ -1,0 +1,8 @@
+{
+  "nearDamage": 12,
+  "farDamage": 0,
+  "steelHome": true,
+  "pooledSlashTrails": 0,
+  "handUltimate": true,
+  "explicitDraw": true
+}

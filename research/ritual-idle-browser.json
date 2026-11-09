@@ -1,0 +1,15 @@
+{
+  "errors": [],
+  "simulationHz": 120,
+  "updates": 840,
+  "frames": 420,
+  "allPosesFinite": true,
+  "clips": [
+    "idle",
+    "sheathe",
+    "draw"
+  ],
+  "fullIdleCycle": true,
+  "sheathVisibilityGate": true,
+  "drawVisibilityGate": true
+}

@@ -1,6 +1,6 @@
 /** STICKMAN RISING — the CONDITIONED DASH ACTIVATION SYSTEM.
  *
- * One movement — the dash — driven by NINE distinct authored animations.
+ * One movement — the dash — driven by TEN distinct authored animations.
  * The variant is not picked by a single input direction: the system
  * evaluates the full tactical context AT THE INPUT INSTANT and activates
  * the animation whose pose, timing, and silhouette express that situation:
@@ -20,12 +20,13 @@
 
 import { Clip } from '../anim/animator'
 import {
-  DASH_LAUNCH_CLIP, DASH_CHAIN_CLIP, DASH_CARRY_CLIP, DASH_HUNT_CLIP,
+  DASH_PIVOT_CLIP, DASH_LAUNCH_CLIP, DASH_CHAIN_CLIP, DASH_CARRY_CLIP, DASH_HUNT_CLIP,
   DASH_PIERCE_CLIP, DASH_RETREAT_CLIP, DASH_VAULT_CLIP, DASH_AIR_CLIP,
   DASH_CARVE_CLIP,
 } from '../anim/clips'
 
 export type DashVariant =
+  | 'pivot'  // incoming momentum opposes intent: brace, reverse, drive
   | 'launch'  // iai explosion from a standing start
   | 'chain'   // mirrored stride: the second chained dash
   | 'carry'   // momentum-matched: initiated from run/sprint
@@ -48,6 +49,8 @@ export interface DashConditions {
   face: 1 | -1
   /** |vx| at initiation — the momentum the dash must match */
   speed: number
+  /** Signed velocity projected along dash intent (negative = reversal). */
+  forwardMomentum?:number
   /** a live enemy sits INSIDE the melee pocket ahead (<170) */
   pocketTarget: boolean
   /** a live enemy sits in the gap-close band ahead (240–640) */
@@ -56,6 +59,8 @@ export interface DashConditions {
   surrounded: boolean
   /** damped enemy-proximity weight (0..1, hysteresis) */
   enemyNearW: number
+  /** Threat behind the selected travel direction, sampled immediately. */
+  rearTarget?:boolean
   /** dashes already fired inside the chain window */
   chain: number
 }
@@ -66,22 +71,27 @@ export interface DashConditions {
  *  3. vertical escape               → vault
  *  4. retreating input              → carve (pocketed) / retreat
  *  5. neutral while pocketed        → carve
- *  6. threat variants (fwd input)   → pierce (inside) / hunt (approaching)
- *  7. chained second dash           → chain (mirrored stride)
- *  8. momentum-matched              → carry (from run/sprint)
- *  9. otherwise                     → launch (the iai explosion) */
+ *  6. opposite incoming momentum   → pivot (physical brace/reversal)
+ *  7. threat variants (fwd input)   → pierce (inside) / hunt (approaching)
+ *  8. chained second dash           → chain (mirrored stride)
+ *  9. momentum-matched              → carry (from run/sprint)
+ * 10. otherwise                     → launch (the iai explosion) */
 export function evaluateDash(c: DashConditions): DashVariant {
   if (!c.grounded) return 'air'
   const horiz = Math.abs(c.dx)
   const dot = c.dx * c.face // −1 = input directly opposes facing
-  const pocket = c.surrounded && c.enemyNearW > 0.5
+  const pocket = c.surrounded
   // vertical family: near-zero horizontal intent with strong UP input
   if (horiz < 0.4 && c.dy < -0.5) return pocket ? 'carve' : 'vault'
   // retreating family: input opposes the facing — the guard stays on the
   // threat; pocketed retreats carve out instead of backing into steel
   if (dot < -0.35) return pocket ? 'carve' : 'retreat'
+  if(pocket&&horiz>=.4)return 'carve'
+  // A pursuing enemy gets a fleeing drive, rather than an idle launch.
+  if(c.rearTarget&&!c.pocketTarget&&!c.huntTarget&&dot>.35)return 'hunt'
   // neutral dash inside the pocket → breakaway
   if (pocket && horiz < 0.4) return 'carve'
+  if((c.forwardMomentum??0)<-180&&horiz>.4)return 'pivot'
   // forward family — conditioned by THREAT GEOMETRY first (the enemy
   // decides), then chain mirroring, then momentum matching:
   if (dot > 0.35) {
@@ -110,9 +120,12 @@ export interface DashVariantCfg {
   iframes: number
   /** animator entry crossfade (s) — momentum-matched entries blend longer */
   blend: number
-  /** velocity envelope: fraction of the dash held at full speed before the
-   *  quadratic tail bleed (hunt/pierce sustain; launch bleeds immediately) */
-  sustain: number
+  /** Fraction of state spent visibly loading before the burst (forward family). */
+  anticipation?: number
+  /** Independent motor pulse: longer visible acting must not dilute thrust. */
+  driveDuration?:number
+  /** Ground recovery deceleration in world px/s² (contact braking force / mass). */
+  catchBrake?: number
   /** audio pitch band [lo, hi] */
   pitch: [number, number]
   /** camera trauma on entry */
@@ -123,51 +136,52 @@ export interface DashVariantCfg {
 
 /** Base dash speed — the variant multipliers shape the feel (hunt is
  * hungrier than retreat; carry rides existing momentum). */
-export const DASH_SPEED = 980
+export const DASH_SPEED = 900
 
 export const DASH_VARIANTS: Record<DashVariant, DashVariantCfg> = {
+  pivot:{clip:DASH_PIVOT_CLIP,dur:.29,spd:1,iframes:.12,blend:.035,
+    anticipation:.22,catchBrake:4300,pitch:[.86,.98],trauma:.1,chroma:.35},
   launch: {
-    clip: DASH_LAUNCH_CLIP, dur: 0.17, spd: 1.0, iframes: 0.12, blend: 0.035,
-    sustain: 0, pitch: [0.95, 1.1], trauma: 0.06, chroma: 0.35,
+    catchBrake:1400, driveDuration:.112,
+    clip: DASH_LAUNCH_CLIP, dur: 0.30, spd: 1.15, iframes: 0.12, blend: 0.018,
+    anticipation: .16, pitch: [0.95, 1.1], trauma: 0.12, chroma: 0.35,
   },
   chain: {
-    clip: DASH_CHAIN_CLIP, dur: 0.16, spd: 1.06, iframes: 0.12, blend: 0.035,
-    sustain: 0, pitch: [1.0, 1.12], trauma: 0.06, chroma: 0.5,
+    catchBrake:1400, driveDuration:.112,
+    clip: DASH_CHAIN_CLIP, dur: 0.295, spd: 1.22, iframes: 0.12, blend: 0.018,
+    anticipation: .12, pitch: [1.0, 1.12], trauma: 0.11, chroma: 0.5,
   },
   carry: {
-    clip: DASH_CARRY_CLIP, dur: 0.19, spd: 1.08, iframes: 0.11, blend: 0.09,
-    sustain: 0.3, pitch: [1.0, 1.12], trauma: 0.05, chroma: 0.35,
+    catchBrake:1200, driveDuration:.117,
+    clip: DASH_CARRY_CLIP, dur: 0.29, spd: 1.20, iframes: 0.11, blend: 0.022,
+    anticipation: .029, pitch: [1.0, 1.12], trauma: 0.09, chroma: 0.35,
   },
   hunt: {
-    clip: DASH_HUNT_CLIP, dur: 0.21, spd: 1.16, iframes: 0.13, blend: 0.04,
-    sustain: 0.55, pitch: [0.88, 0.98], trauma: 0.07, chroma: 0.45,
+    catchBrake:1400, driveDuration:.125,
+    clip: DASH_HUNT_CLIP, dur: 0.32, spd: 1.28, iframes: 0.13, blend: 0.022,
+    anticipation: .13, pitch: [0.88, 0.98], trauma: 0.13, chroma: 0.45,
   },
   pierce: {
-    clip: DASH_PIERCE_CLIP, dur: 0.18, spd: 1.1, iframes: 0.14, blend: 0.035,
-    sustain: 0.5, pitch: [0.92, 1.0], trauma: 0.07, chroma: 0.5,
+    catchBrake:3000,
+    clip: DASH_PIERCE_CLIP, dur: 0.25, spd: 1.1, iframes: 0.14, blend: 0.022,
+    anticipation: .1, pitch: [0.92, 1.0], trauma: 0.12, chroma: 0.5,
   },
   retreat: {
+    catchBrake:9000,
     clip: DASH_RETREAT_CLIP, dur: 0.15, spd: 0.92, iframes: 0.12, blend: 0.05,
-    sustain: 0, pitch: [1.12, 1.26], trauma: 0.03, chroma: 0.35,
+    pitch: [1.12, 1.26], trauma: 0.03, chroma: 0.35,
   },
   vault: {
     clip: DASH_VAULT_CLIP, dur: 0.18, spd: 0.8, iframes: 0.13, blend: 0.05,
-    sustain: 0, pitch: [1.18, 1.3], trauma: 0.04, chroma: 0.35,
+    pitch: [1.18, 1.3], trauma: 0.04, chroma: 0.35,
   },
   carve: {
+    catchBrake:6500,
     clip: DASH_CARVE_CLIP, dur: 0.2, spd: 0.96, iframes: 0.16, blend: 0.055,
-    sustain: 0.15, pitch: [0.82, 0.92], trauma: 0.1, chroma: 0.55,
+    pitch: [0.82, 0.92], trauma: 0.1, chroma: 0.55,
   },
   air: {
     clip: DASH_AIR_CLIP, dur: 0.15, spd: 1.0, iframes: 0.1, blend: 0.06,
-    sustain: 0, pitch: [1.05, 1.15], trauma: 0.04, chroma: 0.35,
+    pitch: [1.05, 1.15], trauma: 0.04, chroma: 0.35,
   },
-}
-
-/** dash velocity envelope — entry burst → sustain plateau → quadratic tail
- * bleed. `sustain` = fraction held at full speed. */
-export function dashEnvelope(k: number, sustain: number): number {
-  const s = Math.min(Math.max(sustain, 0), 0.95)
-  const tail = s < 1 ? Math.max(0, (k - s) / (1 - s)) : 0
-  return 1 - 0.42 * tail * tail
 }

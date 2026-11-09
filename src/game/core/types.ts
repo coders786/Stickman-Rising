@@ -51,6 +51,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
 
 /** Events the Game emits to the React layer (discrete, never per-frame). */
 export type GameEvent =
+  | { type: 'error' }
   | { type: 'gameover'; stats: RunStats }
   | { type: 'wave'; wave: number; boss: boolean }
   | { type: 'unlock'; swordId: string }
@@ -72,8 +73,8 @@ export interface WorldRef {
   arenaMaxX: number
   quality: QualityLevel
   gore: 'energy' | 'blood'
-  /** Player just landed a blade segment on an enemy. */
-  hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo): void
+  /** Resolve contact once; callers use the outcome rather than assuming a hit. */
+  hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo): import('../combat/hit-resolution').HitResolution
   /** Enemy attack / projectile is about to damage the player. Returns true if parried. */
   enemyStrikePlayer(dmg: number, dir: number, heavy: boolean, sourceX: number): boolean
   spawnProjectile(p: import('../entities/projectiles').ProjectileSpawn): void

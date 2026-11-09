@@ -1,0 +1,20 @@
+{
+  "simulationHz": 120,
+  "simulationUpdates": 600,
+  "javascriptErrors": [],
+  "allPosesFinite": true,
+  "sprintIntervalSeconds": 2,
+  "exposedPoses": 20,
+  "poseRateHz": 10,
+  "identicalArmAndHandUpdatePairs": 220,
+  "normalSpeed": 350,
+  "sprintSpeed": 480,
+  "dashInterruptsImmediately": true,
+  "pivotInterruptsImmediately": true,
+  "capture": {
+    "frames": 300,
+    "sampleHz": 60,
+    "playback": "real speed, 5 seconds"
+  },
+  "note": "10 Hz upper-body acting, full-rate travel and contact constraints. Offline simulation sampling, not a device FPS benchmark."
+}

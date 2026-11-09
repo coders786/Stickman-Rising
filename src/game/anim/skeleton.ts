@@ -31,45 +31,19 @@ export interface SkelSpec {
   blade: number
 }
 
-/** ANATOMICAL PROPORTION SYSTEM — 8-head canon adapted to a silhouette
- * fighter (H ≈ 104 local units ≈ 137px at SCALE 1.32). Every joint offset
- * below derives from this table; nothing is placed by eye:
- *
- *   region            fraction    local units
- *   ──────────────────────────────────────────────
- *   skull height      1.28 head   17.6 (r 8.8 — stylized readability)
- *   neck column       0.55 head    7.2 (C7 → skull base — stylized long
- *                                    so the column READS at silhouette
- *                                    scale: a real 0.35-head neck reads
- *                                    as fused at gameplay zoom)
- *   hip→shoulder line 0.355 H     37   (waist split 0.57/0.43)
- *   femur head offset             ±~2  (front hip +1.7, rear −2.1)
- *   glenohumeral jt   0.031 H      3.2 fwd × 3.3 drop (near shoulder)
- *   humerus           0.212 H      22
- *   forearm           0.160 H     16.6 (humerus:forearm = 1.33:1 — the
- *                                      Drillis–Contini intermembral ratio,
- *                                      upper end: joint caps + bent-arm
- *                                      foreshortening eat ~10% of the
- *                                      perceived humerus at render time)
- *   hand              0.062 H     6.5
- *   femur             0.24 H      25
- *   tibia             0.23 H      24   (femur:tibia = 1.04:1 ✓)
- *   foot length       0.10 H      10
- *   blade 56 ≈ 54% of height + tsuka ≈ 70% — legit long-katana read
- *
- * Leg chain 49 keeps HIP_H = 64 world EXACTLY stable (ground contact,
- * foot-lock and hitbox heights all depend on it). The arm chain 38.6 keeps
- * ~96% of the legacy reach envelope while restoring the true humerus:
- * forearm ratio (1.1:1 read as a gorilla forearm at silhouette scale).
+/** Anime ronin rig proportions: 32-unit torso, 4.6-unit neck and 6.1-unit
+ * skull radius give a roughly adult seven-to-eight-head silhouette.
+ * Leg length stays 49 and arm length 38 to preserve contact/combat reach.
+ * The player surface is continuous anatomy; enemy stick styles are separate.
  */
 export const PLAYER_SPEC: SkelSpec = {
-  torso: 36,
-  neck: 4.8,
-  headR: 8.0,
-  shoulderFwd: 1.2,
-  shoulderDrop: 1.8,
-  upperArm: 21,
-  foreArm: 17,
+  torso: 32,
+  neck: 4.6,
+  headR: 6.1,
+  shoulderFwd: 1.6,
+  shoulderDrop: 2.0,
+  upperArm: 20,
+  foreArm: 18,
   hand: 6.2,
   thigh: 25,
   shin: 24,
@@ -235,6 +209,7 @@ export function solveSkeleton(pose: Pose, spec: SkelSpec, out: SkelGeom): SkelGe
 /* ------------------------------------------------------------------ */
 
 export interface StickStyle {
+  model?: 'humanoid' | 'shadow-ronin'
   body: string
   dark: string
   outline: string
@@ -262,25 +237,27 @@ export interface StickStyle {
   katanaStyle?: string
 }
 
+/** Human fighter: no helmet, scarf, armored cuffs or robotic joint caps. */
 export const PLAYER_STYLE: StickStyle = {
-  body: '#04060a',
-  dark: '#24334d', // back-limb depth shade — bright enough to READ against
-  outline: '#2c3a50',
-  glow: '#41f6ff',
-  lineW: 5,
-  headStyle: 'visor',
+  model: 'shadow-ronin',
+  body: '#000000',
+  dark: '#000000',
+  outline: '#000000',
+  glow: '#75eee0',
+  lineW: 4.5,
+  headStyle: 'helm',
   armor: false,
   silhouette: true,
-  scarf: true,
-  scarfColor: '#e63946', // vibrant ronin crimson scarf
-  topknot: true,
-  topknotColor: '#04060a',
-  bracers: true,
-  bracerColor: '#1d2a44',
-  sashColor: '#1a2332',
-  mask: true,
-  legWraps: true,
-  legWrapColor: '#141d2d',
+  scarf: false,
+  scarfColor: '#3ab6ae',
+  topknot: false,
+  bracers: false,
+  bracerColor: '#bacac6',
+  sashColor: '#7e2d44',
+  mask: false,
+  maskColor: '#e0e5da',
+  legWraps: false,
+  legWrapColor: '#73918e',
 }
 
 export interface DrawOpts {
