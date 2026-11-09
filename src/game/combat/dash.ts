@@ -14,7 +14,7 @@
  *
  * Reference silhouettes (see clips.ts DASH LIBRARY header for the full
  * keyframe credits): MGR:R Raiden dash, Sword of the Stranger iai-dash,
- * Naruto shunshin carry, Sekiro Shadowrush pass, the fencing lunge/drive,
+ * momentum carry, Sekiro Shadowrush pass, the fencing lunge/drive,
  * Nier:Automata evade carve.
  */
 
@@ -142,24 +142,24 @@ export const DASH_VARIANTS: Record<DashVariant, DashVariantCfg> = {
   pivot:{clip:DASH_PIVOT_CLIP,dur:.29,spd:1,iframes:.12,blend:.035,
     anticipation:.22,catchBrake:4300,pitch:[.75,.98],trauma:.18,chroma:.55},
   launch: {
-    catchBrake:1400, driveDuration:.112,
-    clip: DASH_LAUNCH_CLIP, dur: 0.30, spd: 1.15, iframes: 0.12, blend: 0.018,
-    anticipation: .16, pitch: [0.85, 1.25], trauma: 0.22, chroma: .55,
+    catchBrake:1400, driveDuration:.095,
+    clip: DASH_LAUNCH_CLIP, dur: 0.27, spd: 1.15, iframes: 0.12, blend: 0.018,
+    anticipation: .02, pitch: [0.85, 1.25], trauma: 0.22, chroma: .55,
   },
   chain: {
-    catchBrake:1400, driveDuration:.112,
-    clip: DASH_CHAIN_CLIP, dur: 0.295, spd: 1.22, iframes: 0.12, blend: 0.018,
-    anticipation: .12, pitch: [0.90, 1.35], trauma: 0.20, chroma: .65,
+    catchBrake:1400, driveDuration:.095,
+    clip: DASH_CHAIN_CLIP, dur: 0.265, spd: 1.22, iframes: 0.12, blend: 0.018,
+    anticipation: .02, pitch: [0.90, 1.35], trauma: 0.20, chroma: .65,
   },
   carry: {
-    catchBrake:1200, driveDuration:.117,
-    clip: DASH_CARRY_CLIP, dur: 0.29, spd: 1.20, iframes: 0.11, blend: 0.022,
-    anticipation: .029, pitch: [0.90, 1.35], trauma: 0.18, chroma: .55,
+    catchBrake:1200, driveDuration:.095,
+    clip: DASH_CARRY_CLIP, dur: 0.26, spd: 1.20, iframes: 0.11, blend: 0.022,
+    anticipation: .02, pitch: [0.90, 1.35], trauma: 0.18, chroma: .55,
   },
   hunt: {
-    catchBrake:1400, driveDuration:.125,
-    clip: DASH_HUNT_CLIP, dur: 0.32, spd: 1.28, iframes: 0.13, blend: 0.022,
-    anticipation: .13, pitch: [0.75, 1.25], trauma: 0.25, chroma: .65,
+    catchBrake:1400, driveDuration:.10,
+    clip: DASH_HUNT_CLIP, dur: 0.28, spd: 1.28, iframes: 0.13, blend: 0.022,
+    anticipation: .02, pitch: [0.75, 1.25], trauma: 0.25, chroma: .65,
   },
   pierce: {
     catchBrake:3000,

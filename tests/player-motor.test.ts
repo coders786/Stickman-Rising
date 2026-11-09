@@ -28,6 +28,7 @@ test('landing load uses incoming normal momentum and bounded visual pressure',()
 })
 
 import {Game} from '../src/game/game'
+import {quadraticDragVelocity,airDragCoefficient} from '../src/game/physics/motion-laws'
 import {ATTACKS} from '../src/game/combat/attacks'
 import type {WorldRef} from '../src/game/core/types'
 function setup(){
@@ -48,10 +49,12 @@ test('actual sword light strike preserves incoming carry and finite drive across
   if(incoming===900)assert.ok(p.vx*direction>500,'strike must not erase overspeed')
  }
 })
-test('locomotion helper extraction preserves the accepted 60 Hz coast envelope',()=>{
+test('locomotion coast follows ground friction plus quadratic air drag',()=>{
  const {g,p,w}=setup();p.vx=480
  for(let i=0;i<120;i++){p.update(1/60,w);g.input.endFrame(1/60)}
- assert.ok(Math.abs(p.x-37.222222222222214)<1e-8);assert.equal(p.vx,0)
+ let x=0,v=480
+ for(let i=0;i<120;i++){v=brakeVelocity(quadraticDragVelocity(v,airDragCoefficient(0),1/60),2800,1/60);x+=v/60}
+ assert.ok(Math.abs(p.x-x)<1e-8);assert.equal(p.vx,0)
 })
 test('landing captures incoming load once, preserves tangent carry, and resets cleanly',()=>{
  const {g,p,w}=setup();p.y=-1;p.grounded=false;p.vy=700;p.vx=350
@@ -70,7 +73,8 @@ test('parry opens defense immediately but catches momentum over finite support t
   assert.equal(p.vx,480*direction);assert.equal(p.parryWindowOpen,true)
   for(let i=0;i<hz*.15;i++){
    const before=p.vx;p.update(1/hz,w);g.input.endFrame(1/hz)
-   assert.ok(Math.abs(p.vx-before)<=8000/hz+1e-8);assert.ok(p.vx*direction>=0)
+   const airLoss=Math.abs(before-quadraticDragVelocity(before,airDragCoefficient(0),1/hz))
+   assert.ok(Math.abs(p.vx-before)<=8000/hz+airLoss+1e-8);assert.ok(p.vx*direction>=0)
   }
   assert.equal(Math.abs(p.vx),0)
  }

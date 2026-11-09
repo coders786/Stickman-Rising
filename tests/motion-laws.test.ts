@@ -1,6 +1,6 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {tractionAcceleration,quadraticDragVelocity,contactVelocity,impulseFraction} from '../src/game/physics/motion-laws'
+import {tractionAcceleration,quadraticDragVelocity,contactVelocity,impulseFraction,airDragCoefficient} from '../src/game/physics/motion-laws'
 import {DashBody} from '../src/game/physics/dash-body'
 import {DASH_VARIANTS} from '../src/game/combat/dash'
 import {Game} from '../src/game/game'
@@ -47,10 +47,21 @@ test('Player bounds extreme overspeed braking by traction and publishes net mome
  p.reset(0);w.arenaMinX=-100000;w.arenaMaxX=100000
  g.input.axisX=()=>1;p.vx=5000
  const old=p.vx;p.update(1/120,w)
- assert.ok(old-p.vx<=4612.5/120+1e-8);assert.ok(p.vx>480)
+ const afterAir=quadraticDragVelocity(old,airDragCoefficient(0),1/120)
+ assert.ok(afterAir-p.vx<=4612.5/120+1e-8);assert.ok(p.vx>480)
  assert.equal(p.physicsMetrics.momentumX,p.physicsMetrics.mass*p.vx)
  assert.equal(p.physicsMetrics.energy,.5*p.physicsMetrics.mass*(p.vx*p.vx+p.vy*p.vy))
  assert.ok(p.physicsMetrics.supportLoad>0)
  p.y=-100;p.grounded=false;p.update(1/120,w);assert.equal(p.physicsMetrics.supportLoad,0)
  p.reset(0);assert.equal(p.physicsMetrics.energy,0)
+})
+
+test('air drag scales quadratically and forward lean reduces but cannot eliminate it',()=>{
+ const upright=airDragCoefficient(0),lean=airDragCoefficient(1)
+ assert.ok(lean>0&&lean<upright);assert.equal(airDragCoefficient(5),lean);assert.equal(airDragCoefficient(-5),upright)
+ const dt=1e-5,slow=400,fast=800
+ const f1=(slow-quadraticDragVelocity(slow,upright,dt))/dt
+ const f2=(fast-quadraticDragVelocity(fast,upright,dt))/dt
+ assert.ok(Math.abs(f2/f1-4)<.001)
+ assert.ok(quadraticDragVelocity(fast,lean,.1)>quadraticDragVelocity(fast,upright,.1))
 })

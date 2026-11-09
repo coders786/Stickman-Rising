@@ -3,6 +3,7 @@
  */
 
 import { clamp01, damp, fmt, rgba, TAU } from '../core/utils'
+import {DASH_STAMINA_COST,POWER_DASH_STAMINA_COST} from '../combat/stamina'
 
 export interface HudComboState {
   hits: number
@@ -19,6 +20,10 @@ export interface HudState {
   maxHp: number
   energy: number
   maxEnergy: number
+  stamina: number
+  maxStamina: number
+  dashCharge: number
+  staminaCooldown: number
   meter: number
   swordName: string
   swordColor: string
@@ -68,16 +73,6 @@ export class HUD {
   private bannerShake = 0
   private lowHpPulse = 0
 
-  /* VITALS CHROME CACHE: the static bar furniture (skewed panel backs,
-  * segment ticks, borders, EN label, sword chip frame) is pre-rendered
-  * once into an offscreen plate and blitted per frame. The live version
-  * redrew ~15 skewed fillRects + 10 strokes + a fresh gradient EVERY
-  * frame — 2-4.6ms/frame on software raster (second-largest cost after
-  * the grain). Only the dynamic fills + text remain live. */
-  private vitalsPlate: HTMLCanvasElement | null = null
-  private vitalsKey = ''
-  private hpGrad: CanvasGradient | null = null
-  private hpGradW = 0
   /* low-HP red vignette: baked plate (see drawLowHpVignette) */
   private lowHpPlate: HTMLCanvasElement | null = null
   private lowHpW = 0
@@ -88,8 +83,6 @@ export class HUD {
     this.comboPop = 0
     this.rankFlash = 0
     this.lastHits = 0
-    this.vitalsPlate = null
-    this.vitalsKey = ''
     this.lowHpPlate = null
   }
 
@@ -127,146 +120,89 @@ export class HUD {
 
   /* ------------------------------------------------------------------ */
 
+  /** A single responsive panel keeps all resources aligned and legible. */
+  private panelWidth(w:number):number{return Math.min(350,Math.max(150,w*.55),w-140)}
+
   private drawVitals(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
-    const x = 18
-    const y = 18
-    const hpW = Math.min(300, w * 0.34)
-
-    const hpFrac = clamp01(s.hp / s.maxHp)
-    const dispFrac = clamp01(this.hpDisplay / s.maxHp)
-    const sy = y + 24 + 15 + (s.ultReady ? 34 : 18)
-
-    // ---- static chrome: one cached blit (rebuilds on layout change) ----
-    const key = `${Math.round(w)}|${Math.round(hpW)}|${s.ultReady ? 1 : 0}`
-    if (!this.vitalsPlate || this.vitalsKey !== key) {
-      const ey = y + 24
-      const uy = ey + 15
-      const enW = hpW * 0.72
-      const ultW = hpW * 0.5
-      const c = document.createElement('canvas')
-      // plate covers the full left panel down to the sword chip + ability line
-      c.width = Math.max(2, Math.ceil(Math.min(w, x + 210)))
-      c.height = Math.max(2, Math.ceil(sy + 40))
-      const g2 = c.getContext('2d')
-      if (g2) {
-        // HP bar back + ticks + border (skewed — the parallelogram style)
-        g2.save()
-        g2.transform(1, 0, -0.22, 1, 12, 0)
-        g2.fillStyle = 'rgba(6,9,14,0.85)'
-        g2.fillRect(x, y, hpW, 16)
-        g2.strokeStyle = 'rgba(4,6,10,0.7)'
-        g2.lineWidth = 2
-        for (let i = 1; i < 10; i++) {
-          const tx = x + (hpW / 10) * i
-          g2.beginPath()
-          g2.moveTo(tx, y)
-          g2.lineTo(tx, y + 16)
-          g2.stroke()
-        }
-        g2.strokeStyle = 'rgba(230,240,245,0.35)'
-        g2.lineWidth = 1
-        g2.strokeRect(x, y, hpW, 16)
-        // Energy back + border + label
-        g2.fillStyle = 'rgba(6,9,14,0.85)'
-        g2.fillRect(x, ey, enW, 9)
-        g2.strokeStyle = 'rgba(230,240,245,0.25)'
-        g2.lineWidth = 1
-        g2.strokeRect(x, ey, enW, 9)
-        // Ult back
-        g2.fillStyle = 'rgba(6,9,14,0.85)'
-        g2.fillRect(x, uy, ultW, 6)
-        g2.restore()
-        // EN label
-        g2.fillStyle = 'rgba(160,200,215,0.8)'
-        g2.font = `9px ${MONO}`
-        g2.fillText('EN', x + 4, ey + 7)
-        // sword chip frame
-        g2.fillStyle = 'rgba(6,9,14,0.8)'
-        g2.fillRect(x, sy, 172, 22)
-      }
-      this.vitalsPlate = c
-      this.vitalsKey = key
-    }
-    if (this.vitalsPlate) ctx.drawImage(this.vitalsPlate, 0, 0)
-
-    // ---- dynamic fills (2 rects each, straight) ----
+    const x=12,y=12,pw=this.panelWidth(w),pad=10,bx=x+pad,bw=pw-pad*2
+    const stamina=clamp01(s.stamina/s.maxStamina),hp=clamp01(s.hp/s.maxHp)
+    const energy=clamp01(s.energy/s.maxEnergy),ult=clamp01(s.meter/100)
+    const canDash=s.stamina>=DASH_STAMINA_COST,canPower=s.stamina>=POWER_DASH_STAMINA_COST
+    const charge=clamp01(s.dashCharge),compact=pw<215
     ctx.save()
-    ctx.transform(1, 0, -0.22, 1, 12, 0) // skew
-    // trailing damage (white ghost)
-    ctx.fillStyle = 'rgba(255,235,235,0.55)'
-    ctx.fillRect(x, y, hpW * dispFrac, 16)
-    // hp gradient fill (gradient object cached per width)
-    if (!this.hpGrad || this.hpGradW !== hpW) {
-      const g = ctx.createLinearGradient(x, y, x + hpW, y)
-      g.addColorStop(0, '#ff2a4a')
-      g.addColorStop(1, '#ff6a5e')
-      this.hpGrad = g
-      this.hpGradW = hpW
+    // One backing surface instead of separately clipped, overlapping plates.
+    ctx.fillStyle='rgba(5,11,18,.88)';ctx.fillRect(x,y,pw,154)
+    ctx.strokeStyle='rgba(170,213,221,.26)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,pw-1,153)
+    ctx.fillStyle=s.swordColor;ctx.fillRect(x,y,3,154)
+    const text=(label:string,value:string,yy:number,color:string)=>{
+      ctx.font=`bold 10px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(218,230,235,.96)'
+      ctx.fillText(label,bx,yy,bw*.53)
+      ctx.textAlign='right';ctx.fillStyle=color;ctx.fillText(value,bx+bw,yy,bw*.47)
     }
-    ctx.fillStyle = this.hpGrad
-    ctx.fillRect(x, y, hpW * hpFrac, 16)
-    // energy fill
-    const ey = y + 24
-    const enW = hpW * 0.72
-    const enFrac = clamp01(s.energy / s.maxEnergy)
-    ctx.fillStyle = s.abilityReady ? '#35f2ff' : 'rgba(53,242,255,0.45)'
-    ctx.fillRect(x, ey, enW * enFrac, 9)
-    // ult fill
-    const uy = ey + 15
-    const ultW = hpW * 0.5
-    const ultFrac = clamp01(s.meter / 100)
-    ctx.fillStyle = s.ultReady ? '#ff2d95' : 'rgba(255,45,149,0.5)'
-    ctx.fillRect(x, uy, ultW * ultFrac, 6)
+    const bar=(yy:number,height:number,fraction:number,color:string)=>{
+      ctx.fillStyle='rgba(37,50,55,.9)';ctx.fillRect(bx,yy,bw,height)
+      ctx.fillStyle=color;ctx.fillRect(bx,yy,bw*fraction,height)
+    }
+    text('HEALTH',`${Math.ceil(s.hp)} / ${s.maxHp}`,y+16,'#ffc4c9')
+    bar(y+21,8,clamp01(this.hpDisplay/s.maxHp),'#f5b5bd')
+    bar(y+21,8,hp,'#ff5064')
+    text('ENERGY',`${Math.floor(s.energy)} / ${s.maxEnergy}`,y+44,'#80e8ef')
+    bar(y+49,6,energy,'#39dbe7')
+    text('STAMINA',`${Math.floor(s.stamina)} / ${s.maxStamina}`,y+71,canDash?'#b8ffcf':'#ff9890')
+    bar(y+76,13,stamina,canDash?'#60dd9a':'#fa8875')
+    // Exact cost markers make the two launch limits visible on any pool size.
+    ctx.strokeStyle='rgba(4,16,13,.9)';ctx.lineWidth=2
+    for(const cost of [DASH_STAMINA_COST,POWER_DASH_STAMINA_COST]){
+      const tx=bx+bw*clamp01(cost/s.maxStamina)
+      ctx.beginPath();ctx.moveTo(tx,y+76);ctx.lineTo(tx,y+89);ctx.stroke()
+    }
+    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left'
+    ctx.fillStyle=canDash?'rgba(207,236,222,.95)':'#ffaaa0'
+    const status=charge>0?(charge>=.999?(canPower?'RELEASE: POWER':'RELEASE: NORMAL'):`CHARGING ${Math.round(charge*100)}%`)
+      :!canDash?'EXHAUSTED':!canPower?'POWER LOW':s.staminaCooldown>0?'RECOVERING':'POWER READY'
+    ctx.fillText(status,bx,y+103,bw*.53)
+    ctx.textAlign='right';ctx.fillStyle='rgba(187,211,200,.95)'
+    ctx.fillText(compact?'45 / 120':'DASH 45  |  POWER 120',bx+bw,y+103,bw*.43)
+    // Charge indicator is distinct from stamina: holding is not spending.
+    ctx.fillStyle='rgba(34,48,47,.95)';ctx.fillRect(bx,y+107,bw,3)
+    if(charge>0){ctx.fillStyle=canPower?'#d5ff8c':'#f2bc69';ctx.fillRect(bx,y+107,bw*charge,3)}
+    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(207,218,228,.9)'
+    ctx.fillText(compact?'ULT':'ULTIMATE',bx,y+123,bw*.35)
+    ctx.textAlign='right';ctx.fillStyle=s.ultReady?'#ff80bd':'#cda0b8'
+    ctx.fillText(s.ultReady?'READY [I]':`${Math.floor(s.meter)}%`,bx+bw,y+123,bw*.6)
+    bar(y+127,4,ult,s.ultReady?'#ff5ab2':'#b73e7c')
+    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(188,214,220,.95)'
+    const equip=compact?(s.swordName.includes('SHEATHED')?'EMPTY HAND':'SWORD DRAWN'):s.swordName
+    ctx.fillText(equip,bx,y+145,bw*.53)
+    ctx.textAlign='right';ctx.fillStyle=s.abilityReady?'#7fe5ed':'#82949d'
+    ctx.fillText(s.abilityReady?'[U] READY':`[U] ${s.abilityCost} EN`,bx+bw,y+145,bw*.47)
     ctx.restore()
-
-    // ---- live text ----
-    ctx.font = `10px ${MONO}`
-    ctx.fillStyle = 'rgba(200,215,225,0.85)'
-    ctx.textAlign = 'left'
-    ctx.fillText(`HP ${Math.ceil(s.hp)}`, x + 8, y + 11)
-
-    if (s.ultReady) {
-      const pulse = 0.6 + 0.4 * Math.sin(this.lowHpPulse * 8)
-      ctx.fillStyle = rgba('#ff2d95', pulse)
-      ctx.font = `900 11px ${FONT}`
-      ctx.fillText('BLADE MODE READY  [I]', x + 4, uy + 22)
-    }
-
-    // sword chip: color edge + name (chip bg lives on the plate)
-    ctx.fillStyle = s.swordColor
-    ctx.fillRect(x, sy, 4, 22)
-    ctx.fillStyle = 'rgba(235,240,245,0.95)'
-    ctx.font = `900 11px ${FONT}`
-    ctx.fillText(s.swordName, x + 12, sy + 15)
-    // ability status
-    ctx.font = `9px ${MONO}`
-    ctx.fillStyle = s.abilityReady ? rgba(s.swordColor, 0.95) : 'rgba(140,150,160,0.7)'
-    ctx.fillText(
-      s.abilityReady ? `[U] ${s.abilityName} — ${s.abilityCost} EN` : `${s.abilityName} — NEED ${s.abilityCost} EN`,
-      x + 12,
-      sy + 34,
-    )
   }
 
   private drawScore(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
-    const x = w - 18
-    ctx.save()
-    ctx.textAlign = 'right'
-    ctx.font = `900 20px ${FONT}`
-    ctx.fillStyle = 'rgba(240,245,250,0.95)'
-    ctx.fillText(fmt(s.score), x, 30)
-    ctx.font = `10px ${MONO}`
-    ctx.fillStyle = 'rgba(170,185,195,0.85)'
-    ctx.fillText(`WAVE ${s.wave}   HOSTILES ${s.enemiesLeft}   KILLS ${s.kills}`, x, 48)
+    // Reserve the upper-right 48px for the touch pause button on narrow screens.
+    const compact=w<850,x=w-(compact?64:16),available=Math.max(45,x-(12+this.panelWidth(w)+8))
+    ctx.save();ctx.textAlign='right';ctx.fillStyle='#f0f7fa';ctx.font=`900 ${compact?16:20}px ${FONT}`
+    ctx.fillText(fmt(s.score),x,29,available)
+    ctx.font=`10px ${MONO}`;ctx.fillStyle='rgba(200,219,225,.9)'
+    if(compact){
+      ctx.fillText(`WAVE ${s.wave}`,x,45,available)
+      ctx.fillText(`${s.enemiesLeft} FOES`,x,59,available)
+      ctx.fillText(`${s.kills} KILLS`,x,73,available)
+    } else ctx.fillText(`WAVE ${s.wave}  HOSTILES ${s.enemiesLeft}  KILLS ${s.kills}`,x,48,available)
     ctx.restore()
   }
-
-  /* ------------------------------------------------------------------ */
 
   private drawCombo(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
     const c = s.combo
     if (c.hits < 2) return
     const { rank, color } = rankForHits(c.hits)
+    if(w<850){
+      ctx.save();ctx.textAlign='right';ctx.font=`bold 12px ${FONT}`;ctx.fillStyle=color
+      const x=w-64,available=Math.max(45,x-(12+this.panelWidth(w)+8))
+      ctx.fillText(`${rank} ${c.hits} HITS  ×${c.mult.toFixed(1)}`,x,100,available)
+      ctx.restore();return
+    }
     const cx = w - 108
     const cy = h * 0.34
     const pop = 1 + this.comboPop * 0.35
@@ -339,9 +275,9 @@ export class HUD {
   private drawBossBar(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
     const b = s.boss
     if (!b) return
-    const bw = Math.min(560, w * 0.6)
-    const bx = w / 2 - bw / 2
-    const by = 20
+    const bw=this.panelWidth(w)-16
+    const bx = 20
+    const by = 181
     const frac = clamp01(b.hp / b.maxHp)
     ctx.save()
     ctx.fillStyle = 'rgba(4,6,10,0.85)'
@@ -367,7 +303,7 @@ export class HUD {
     ctx.font = `900 12px ${FONT}`
     ctx.textAlign = 'center'
     ctx.fillStyle = 'rgba(240,245,250,0.95)'
-    ctx.fillText(b.name, w / 2, by + 26)
+    ctx.fillText(b.name, bx+bw/2, by + 26,bw)
     ctx.restore()
   }
 
@@ -427,7 +363,7 @@ export class HUD {
   }
 
   private drawHints(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    if (s.runTime > 14 || s.wave > 2) return
+    if (s.runTime > 14 || s.wave > 2 || w < 650) return
     const a = clamp01((14 - s.runTime) / 3) * 0.75
     ctx.save()
     ctx.globalAlpha = a
@@ -438,6 +374,7 @@ export class HUD {
       'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   1-6 SWORDS',
       w / 2,
       h - 16,
+      w-24,
     )
     ctx.restore()
   }
@@ -478,5 +415,5 @@ export class HUD {
 function h_centerY(w: number): number {
   // banner sits at a pleasant height regardless of width
   void w
-  return 120
+  return w<850?240:120
 }

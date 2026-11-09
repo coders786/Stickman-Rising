@@ -40,6 +40,9 @@ const PREVENT_DEFAULT = new Set([
 
 export class Input {
   private downMap = new Map<Action, boolean>()
+  // Several physical keys can map to one action (e.g. A and Left Arrow).
+  private heldKeys = new Set<string>()
+  private virtualDirection = 0
   private pressedMap = new Map<Action, boolean>()
   private releasedMap = new Map<Action, boolean>()
   private pressTime = new Map<Action, number>() // REAL seconds (performance.now)
@@ -56,8 +59,9 @@ export class Input {
     this.tapDirection=dir;this.tapAt=t
   }
   sprintDirection():number {
-    return this.enabled&&Math.sign(this.axisX())===this.sprintDir
-      &&this.down(this.sprintDir===1?'right':'left')?this.sprintDir:0
+    return this.enabled && this.sprintDir !== 0 && Math.sign(this.axisX()) === this.sprintDir
+      && (this.down(this.sprintDir === 1 ? 'right' : 'left') || this.virtualDirection === this.sprintDir)
+      ? this.sprintDir : 0
   }
 
   /** REAL-time clock in seconds (performance.now based) — immune to
@@ -96,7 +100,8 @@ export class Input {
   }
 
   private reset(): void {
-    this.tapDirection=0;this.tapAt=-Infinity;this.sprintDir=0
+    this.tapDirection=0;this.tapAt=-Infinity;this.sprintDir=0;this.virtualDirection=0
+    this.heldKeys.clear()
     this.downMap.clear()
     this.pressedMap.clear()
     this.releasedMap.clear()
@@ -113,14 +118,15 @@ export class Input {
     const action = KEYMAP[e.code]
     if (!action) return
     if (PREVENT_DEFAULT.has(e.code)) e.preventDefault()
-    if (e.repeat) return
+    if (e.repeat || this.heldKeys.has(e.code)) return
+    this.heldKeys.add(e.code)
     this.press(action)
   }
 
   private onKeyUp = (e: KeyboardEvent): void => {
     const action = KEYMAP[e.code]
-    if (!action) return
-    this.release(action)
+    if (!action || !this.heldKeys.delete(e.code)) return
+    if (![...this.heldKeys].some(code => KEYMAP[code] === action)) this.release(action)
   }
 
   private onBlur = (): void => { this.reset() }
@@ -218,6 +224,12 @@ export class Input {
     if (!this.enabled) return
     this.vAxis.x = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0
     this.vAxis.y = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0
+    const direction = Math.abs(this.vAxis.x) >= 0.5 ? Math.sign(this.vAxis.x) : 0
+    if (direction !== this.virtualDirection) {
+      if (this.virtualDirection === this.sprintDir) this.sprintDir = 0
+      this.virtualDirection = direction
+      if (direction) this.recordDirection(direction === 1 ? 'right' : 'left')
+    }
   }
 
   setVirtual(a: Action, isDown: boolean): void {

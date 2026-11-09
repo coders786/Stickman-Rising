@@ -41,3 +41,9 @@ model Score {
   sword     String
   createdAt DateTime @default(now())
 }
+
+model ScoreRateLimit {
+  key       String @id
+  count     Int
+  expiresAt Int
+}

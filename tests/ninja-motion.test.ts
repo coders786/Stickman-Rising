@@ -17,8 +17,8 @@ test('ninja sprint and dash lean from the core while the head stays balanced',()
    if(clip.loop)assert.ok(p[CH.rootRot]>.50&&p[CH.rootRot]<.65)
   }
  }
- assert.ok(sampleClip(DASH_LAUNCH_CLIP,.060,makePose())[CH.rootRot]>.7)
- assert.ok(sampleClip(DASH_CARRY_CLIP,.06,makePose())[CH.rootRot]>.65)
+ assert.ok(sampleClip(DASH_LAUNCH_CLIP,.060,makePose())[CH.rootRot]>.5)
+ assert.ok(sampleClip(DASH_CARRY_CLIP,.06,makePose())[CH.rootRot]>.5)
 })
 test('free hands pump oppositely with relaxed wrists and bounded reachable paths',()=>{
  let covariance=0

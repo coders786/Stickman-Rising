@@ -36,3 +36,32 @@ test('an attack buffer can be consumed only once', () => {
   assert.equal(input.pressed('light'), false)
   assert.equal(input.down('light'), true)
 })
+
+test('releasing one physical alias keeps an action down until all aliases are released', () => {
+  const input = new Input()
+  const events = input as unknown as { onKeyDown: (e: KeyboardEvent) => void; onKeyUp: (e: KeyboardEvent) => void }
+  const key = (code: string) => ({ code, repeat: false, target: null, preventDefault() {} }) as unknown as KeyboardEvent
+  events.onKeyDown(key('KeyA'))
+  events.onKeyDown(key('ArrowLeft'))
+  events.onKeyUp(key('KeyA'))
+  assert.equal(input.down('left'), true)
+  assert.equal(input.released('left'), false)
+  events.onKeyUp(key('ArrowLeft'))
+  assert.equal(input.down('left'), false)
+  assert.equal(input.released('left'), true)
+})
+
+test('touch joystick double-tap and hold enables sprint until released', () => {
+  const input = new Input()
+  input.setVirtualAxis(1, 0)
+  assert.equal(input.sprintDirection(), 0)
+  input.setVirtualAxis(0, 0)
+  input.setVirtualAxis(1, 0)
+  assert.equal(input.sprintDirection(), 1)
+  input.setVirtualAxis(0, 0)
+  assert.equal(input.sprintDirection(), 0)
+  input.setEnabled(false)
+  input.setEnabled(true)
+  input.setVirtualAxis(-1, 0)
+  assert.equal(input.sprintDirection(), 0)
+})

@@ -317,7 +317,7 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
 /** SHADOW RONIN / SPRINT — forefoot strike, compression, drive, toe-off,
  * flight and recovery. Sustained speed uses a modest 10–12° pitch, not
  * a permanent acceleration fold. A short bent sword-side arm stabilizes the hilt;
- * the free arm drives through a full counter-swing. No Naruto dead arms.
+ * the free arm drives through a full counter-swing. Avoid rigid arms.
  */
 const SPRINT_Q: PoseInput[] = [
   { // 01 / forefoot strike: foot lands under the advancing center of mass
@@ -910,7 +910,7 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
  *  · CHAIN   the second chained dash: the MIRRORED stride of LAUNCH —
  *            dash-spam reads as alternating drives, not a loop.
  *  · CARRY   initiated from a run/sprint: NO re-coil — the run feeds the
- *            dash (momentum-matched entry, the shunshin / ninja run:
+ *            dash (momentum-matched entry, a low forward carry:
  *            torso deep, BOTH arms trailing back, legs mid-scissor).
  *  · HUNT    gap-closing an enemy 240–640 ahead (fencing drive / Sekiro
  *            chase): lower, longer, gaze LOCKED on the target — the head
@@ -943,13 +943,13 @@ const DASH_LAUNCH_Q: PoseInput[] = [
     pelvisYaw: -.06, chestYaw: .04, armRz: -.035, armLz: .025,
   },
   { // PUSH: rear support and core form a diagonal; no lumbar collapse.
-    rootX: 8, rootY: 4.5, rootRot: .80, spine: .045, head: -.75,
+    rootX: 8, rootY: 4.5, rootRot: .58, spine: .045, head: -.60,
     hipR: 1.12, kneeR: -1.52, footR: .16, hipL: -.65, kneeL: -.20, footL: -.18,
     shR: -.08, elR: -1.25, wrR: 5.25, ...humanFreeArm(-10,24),
     pelvisYaw: .05, chestYaw: -.04, armRz: -.035, armLz: .025, bladeYaw: -.22,
   },
-  { // FLIGHT: one leg recovers while the lead thigh reaches for the catch.
-    rootX: 9, rootY: -.5, rootRot: .78, spine: .045, head: -.74,
+  { // PASS: one leg recovers while the lead thigh reaches for the catch.
+    rootX: 9, rootY: -.5, rootRot: .56, spine: .045, head: -.58,
     hipR: .95, kneeR: -1.18, footR: .13, hipL: -.40, kneeL: -1.40, footL: .10,
     shR: -.04, elR: -1.28, wrR: 5.30, ...humanFreeArm(-15,25),
     pelvisYaw: .035, chestYaw: -.025, armRz: -.03, armLz: -.025, bladeYaw: -.22,
@@ -968,28 +968,35 @@ const DASH_LAUNCH_Q: PoseInput[] = [
   },
 ]
 
-/** Nine authored drawings: four NEW breakdowns, not repeated hold keys.
- * The long drive plateau is visible while the force motor remains snappy. */
+/** Nine core drawings; four additional transitions are inserted below.
+ * The compact drive is timed independently of the physical motor. */
 const DASH_ANIME_Q:PoseInput[]=[
   DASH_LAUNCH_Q[0],
   {...DASH_LAUNCH_Q[0],rootX:2,rootY:6.5,rootRot:.46,spine:.04,head:-.43,
     hipR:.9,kneeR:-1.3,hipL:-.48,kneeL:-.44,...humanFreeArm(1,23)}, // release
   DASH_LAUNCH_Q[1],
-  {...DASH_LAUNCH_Q[1],rootX:9,rootY:2,rootRot:.80,spine:.045,head:-.75,
+  {...DASH_LAUNCH_Q[1],rootX:9,rootY:2,rootRot:.58,spine:.045,head:-.60,
     hipR:1.06,kneeR:-1.4,hipL:-.72,kneeL:-.48,...humanFreeArm(-13,24)}, // stretch
   DASH_LAUNCH_Q[2],
-  {...DASH_LAUNCH_Q[2],rootX:7,rootY:2,rootRot:.65,spine:.04,head:-.61,
+  {...DASH_LAUNCH_Q[2],rootX:7,rootY:2,rootRot:.50,spine:.04,head:-.51,
     hipR:.86,kneeR:-1.05,hipL:-.35,kneeL:-1.1,...humanFreeArm(-7,25)}, // gather
   DASH_LAUNCH_Q[3],
   {...DASH_LAUNCH_Q[3],rootX:2.7,rootY:5,rootRot:.19,spine:.03,head:-.17,
     hipR:.52,kneeR:-.73,hipL:-.36,kneeL:-.46,...humanFreeArm(12,25)}, // rebound
   DASH_LAUNCH_Q[4],
 ]
-for(const q of DASH_ANIME_Q){
-  const boost=(q.rootRot??0)>.55?Math.min(.07,.84-(q.rootRot??0)):0
-  q.rootRot=(q.rootRot??0)+boost;q.head=Math.max(-.75,(q.head??0)-boost)
-}
-export const DASH_ANIME_TIMES=[0,.028,.060,.103,.160,.195,.225,.265,.300] as const
+// Four additional, individually authored transitions: a quick toe-off,
+// a passing step, a foot plant, and a balanced recovery. They enrich the
+// silhouette without extending the dash or holding a near-horizontal pose.
+DASH_ANIME_Q.splice(2,0,{...DASH_ANIME_Q[1],rootX:5,rootY:5.5,rootRot:.52,head:-.54,
+  hipR:1.02,kneeR:-1.42,hipL:-.57,kneeL:-.31,...humanFreeArm(-5,23)})
+DASH_ANIME_Q.splice(5,0,{...DASH_ANIME_Q[4],rootX:9,rootY:1,rootRot:.57,head:-.59,
+  hipR:1.01,kneeR:-1.33,hipL:-.56,kneeL:-.82,...humanFreeArm(-14,24)})
+DASH_ANIME_Q.splice(8,0,{...DASH_ANIME_Q[7],rootX:5,rootY:4,rootRot:.39,head:-.41,
+  hipR:.7,kneeR:-.98,hipL:-.40,kneeL:-.80,...humanFreeArm(2,25)})
+DASH_ANIME_Q.splice(11,0,{...DASH_ANIME_Q[10],rootX:2.4,rootY:4,rootRot:.15,head:-.12,
+  hipR:.50,kneeR:-.64,hipL:-.34,kneeL:-.40,...humanFreeArm(11,26)})
+export const DASH_ANIME_TIMES=[0,.028,.044,.060,.103,.132,.160,.195,.210,.225,.265,.282,.300] as const
 export const DASH_LAUNCH_CLIP:Clip=makeClip('dashLaunch',
   DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i],q,'inOutSine')))
 DASH_LAUNCH_CLIP.interpolation='monotone'
@@ -1011,29 +1018,18 @@ export const DASH_CHAIN_CLIP:Clip=makeClip('dashChain',
   DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i],mirrorLegs(q),'inOutSine')))
 DASH_CHAIN_CLIP.interpolation='monotone'
 
-// Momentum-matched entry, then the same extended drive silhouette. Four
-// additional breakdowns bring carry from four to eight authored drawings.
-const DASH_CARRY_Q:PoseInput[]=[
- {...DASH_LAUNCH_Q[1],rootRot:.69,rootY:3,head:-.65},
- {...DASH_ANIME_Q[3],rootRot:.77,head:-.73},
- {...DASH_LAUNCH_Q[2],rootRot:.79,head:-.75},
- {...DASH_ANIME_Q[3],rootX:9.5,rootY:-.2,rootRot:.79,head:-.75,
-   hipR:1.0,kneeR:-1.26,hipL:-.5,kneeL:-1.2},
- {...DASH_LAUNCH_Q[2],rootRot:.76,head:-.73},
- DASH_ANIME_Q[5],DASH_LAUNCH_Q[3],
- {...DASH_LAUNCH_Q[4],rootRot:.18,head:-.14},
-]
-for(const q of DASH_CARRY_Q){
- const boost=(q.rootRot??0)>.55?Math.min(.055,.84-(q.rootRot??0)):0
- q.rootRot=(q.rootRot??0)+boost;q.head=Math.max(-.75,(q.head??0)-boost)
-}
+// Momentum-matched entry uses twelve breakdowns, with a
+// slightly more committed first stride; no added airtime or pose plateau.
+const DASH_CARRY_Q:PoseInput[]=DASH_ANIME_Q.filter((_,i)=>i!==11).map((q,i)=>({
+  ...q, rootRot:i===0?.40:q.rootRot, head:i===0?-.42:q.head,
+}))
 export const DASH_CARRY_CLIP:Clip=makeClip('dashCarry',
- DASH_CARRY_Q.map((q,i)=>keyframe([0,.030,.065,.110,.160,.205,.245,.290][i],q,'inOutSine')))
+ DASH_CARRY_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i<11?i:i+1]*.29/.30,q,'inOutSine')))
 DASH_CARRY_CLIP.interpolation='monotone'
 
 export const DASH_HUNT_CLIP:Clip=makeClip('dashHunt',
  DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i]*.32/.30,{
-  ...q,rootX:(q.rootX??0)+(i>=2&&i<=5?1.5:0),
+  ...q,rootX:(q.rootX??0)+(DASH_ANIME_TIMES[i]>=.044&&DASH_ANIME_TIMES[i]<=.195?1.5:0),
  },'inOutSine')))
 DASH_HUNT_CLIP.interpolation='monotone'
 

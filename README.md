@@ -38,6 +38,10 @@ A fast, kinetic **2D wave-survival combat game** with a pseudo-3D stickman warri
 | Cycle sword | `Tab` / `1`–`6` |
 | Pause | `P` / `Esc` |
 
+On touch devices, use the on-screen DRAW and SWORD buttons to draw/sheathe and
+cycle unlocked swords. Flick the joystick in a direction, release, then hold it
+in the same direction within 280 ms to sprint.
+
 ## 🛠 Tech Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript 6**
@@ -125,8 +129,9 @@ For reproducible installs, run `bun install --frozen-lockfile`. To refresh depen
 within the declared version ranges, run `bun update`.
 
 TypeScript stays on **6.x** because the current `typescript-eslint` integration does
-not support TypeScript 7. Prisma stays on **7.x**; the registry's latest tag currently
-points to an 8.x release candidate rather than a stable release.
+not support TypeScript 7. Prisma stays on **7.x**. ESLint 9 is used for plugin peer
+compatibility; the scoped minimatch override addresses GHSA-g3hv-75wg-m249. Check
+both `npm audit` and `bun audit` when updating either lockfile.
 
 ## 🚀 Getting Started
 
@@ -163,9 +168,23 @@ HOSTNAME=0.0.0.0 bun run start
 - Scores API returns `400` for invalid data, `413` for bodies over 4 KiB, `415`
   for unsupported content types, and `503` when the database is unavailable.
   A UUID `Idempotency-Key` header makes retries safe; the game reuses it per run.
+  Reusing a key with different score data returns `409` rather than silently
+  accepting a different submission.
+- Score POSTs have a SQLite-backed, atomic global limit of 120 requests per minute.
+  Optionally set `SCORES_TRUSTED_IP_HEADER=x-real-ip` to additionally limit each
+  client to 20 requests per minute. Enable this only behind a trusted proxy that
+  overwrites the configured header and blocks direct access to the app; arbitrary
+  forwarded headers are otherwise ignored. Limits are shared only by processes
+  using the same SQLite file. Use a shared rate-limiting service for independent
+  databases or multiple hosts. The limiter fails closed if SQLite is unavailable.
+- Mount the SQLite database on persistent storage and set `DATABASE_URL` to its
+  absolute `file:` path in production. A packaged database or local preview file
+  alone does not survive replacement of the deployment or its storage.
 - Corrupt saves/settings recover safe defaults. Failed storage writes and network
   requests show warnings instead of reporting success. Scores remain client-reported;
-  this is not an authenticated or cheat-proof leaderboard.
+  rate limiting reduces spam but cannot verify gameplay. A cheat-resistant ranking
+  requires trusted server-side simulation or verification and a suitable identity
+  system.
 - Python deployment helper tests require `uv`; the container test additionally
   requires Docker and the configured runner image.
 

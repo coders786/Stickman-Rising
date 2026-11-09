@@ -6,6 +6,12 @@ export function tractionAcceleration(requested:number,grip=GROUND_GRIP,normalAcc
  const limit=Math.max(0,grip)*Math.max(0,normalAcceleration)
  return Math.max(-limit,Math.min(limit,requested))
 }
+/** Simplified frontal-area change for the dash's forward drive, in arcade
+ * units. Lean modestly reduces, but never removes, still-air resistance. */
+export function airDragCoefficient(lean:number):number {
+ const posture=Math.max(0,Math.min(1,Number.isFinite(lean)?lean:0))
+ return .0001*(1-.18*posture)
+}
 /** Exact scalar dv/dt=-k*v*|v|. Never reverses passive travel. */
 export function quadraticDragVelocity(v:number,k:number,dt:number):number{
  return v/(1+Math.max(0,k)*Math.abs(v)*Math.max(0,dt))
