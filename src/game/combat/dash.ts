@@ -140,48 +140,48 @@ export const DASH_SPEED = 900
 
 export const DASH_VARIANTS: Record<DashVariant, DashVariantCfg> = {
   pivot:{clip:DASH_PIVOT_CLIP,dur:.29,spd:1,iframes:.12,blend:.035,
-    anticipation:.22,catchBrake:4300,pitch:[.86,.98],trauma:.1,chroma:.35},
+    anticipation:.22,catchBrake:4300,pitch:[.75,.98],trauma:.18,chroma:.55},
   launch: {
     catchBrake:1400, driveDuration:.112,
     clip: DASH_LAUNCH_CLIP, dur: 0.30, spd: 1.15, iframes: 0.12, blend: 0.018,
-    anticipation: .16, pitch: [0.95, 1.1], trauma: 0.12, chroma: 0.35,
+    anticipation: .16, pitch: [0.85, 1.25], trauma: 0.22, chroma: .55,
   },
   chain: {
     catchBrake:1400, driveDuration:.112,
     clip: DASH_CHAIN_CLIP, dur: 0.295, spd: 1.22, iframes: 0.12, blend: 0.018,
-    anticipation: .12, pitch: [1.0, 1.12], trauma: 0.11, chroma: 0.5,
+    anticipation: .12, pitch: [0.90, 1.35], trauma: 0.20, chroma: .65,
   },
   carry: {
     catchBrake:1200, driveDuration:.117,
     clip: DASH_CARRY_CLIP, dur: 0.29, spd: 1.20, iframes: 0.11, blend: 0.022,
-    anticipation: .029, pitch: [1.0, 1.12], trauma: 0.09, chroma: 0.35,
+    anticipation: .029, pitch: [0.90, 1.35], trauma: 0.18, chroma: .55,
   },
   hunt: {
     catchBrake:1400, driveDuration:.125,
     clip: DASH_HUNT_CLIP, dur: 0.32, spd: 1.28, iframes: 0.13, blend: 0.022,
-    anticipation: .13, pitch: [0.88, 0.98], trauma: 0.13, chroma: 0.45,
+    anticipation: .13, pitch: [0.75, 1.25], trauma: 0.25, chroma: .65,
   },
   pierce: {
     catchBrake:3000,
     clip: DASH_PIERCE_CLIP, dur: 0.25, spd: 1.1, iframes: 0.14, blend: 0.022,
-    anticipation: .1, pitch: [0.92, 1.0], trauma: 0.12, chroma: 0.5,
+    anticipation: .1, pitch: [0.80, 1.20], trauma: 0.22, chroma: .65,
   },
   retreat: {
     catchBrake:9000,
     clip: DASH_RETREAT_CLIP, dur: 0.15, spd: 0.92, iframes: 0.12, blend: 0.05,
-    pitch: [1.12, 1.26], trauma: 0.03, chroma: 0.35,
+    pitch: [1.0, 1.45], trauma: 0.12, chroma: .55,
   },
   vault: {
     clip: DASH_VAULT_CLIP, dur: 0.18, spd: 0.8, iframes: 0.13, blend: 0.05,
-    pitch: [1.18, 1.3], trauma: 0.04, chroma: 0.35,
+    pitch: [1.05, 1.45], trauma: 0.15, chroma: .55,
   },
   carve: {
     catchBrake:6500,
     clip: DASH_CARVE_CLIP, dur: 0.2, spd: 0.96, iframes: 0.16, blend: 0.055,
-    pitch: [0.82, 0.92], trauma: 0.1, chroma: 0.55,
+    anticipation: .1, pitch: [0.75, 1.15], trauma: 0.20, chroma: .75,
   },
   air: {
     clip: DASH_AIR_CLIP, dur: 0.15, spd: 1.0, iframes: 0.1, blend: 0.06,
-    pitch: [1.05, 1.15], trauma: 0.04, chroma: 0.35,
+    pitch: [0.95, 1.45], trauma: 0.15, chroma: .55,
   },
 }
