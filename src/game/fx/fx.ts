@@ -7,7 +7,8 @@
  */
 
 import { makePose, Pose } from '../anim/pose'
-import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
+import { makeFighterGeom, solveFighter3D, drawFighter3D } from '../anim/rig3d'
 import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
 import { LightningSystem, RayOpts, RayWorld } from './lightning'
@@ -142,7 +143,7 @@ interface ShadowSmear {
 
 const MAX_PARTICLES = 1500
 const TRAIL_N = 26
-const scrashGeom: SkelGeom = makeSkelGeom()
+const echoGeom = makeFighterGeom()
 const aiPose = makePose()
 
 export class FX {
@@ -872,9 +873,9 @@ export class FX {
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
       aiPose.set(a.pose)
-      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
+      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
       // shadow body — solid dark, source-over (a real cast shadow)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: '#02050b',
         ghostAlpha: (a.a0 ?? 0.44) * k,
       })
@@ -885,17 +886,9 @@ export class FX {
       ctx.globalCompositeOperation = 'lighter'
       ctx.save()
       ctx.translate(rimLocal, 0)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: a.rim,
-        ghostAlpha: 0.2 * k,
-      })
-      ctx.restore()
-      // white-hot inner rim (HDR layering: saturated rim + white core)
-      ctx.save()
-      ctx.translate(rimLocal * 0.5, 0)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
-        ghost: '#f4fbff',
-        ghostAlpha: 0.1 * k,
+        ghostAlpha: 0.07 * k,
       })
       ctx.restore()
       ctx.restore()
@@ -922,8 +915,8 @@ export class FX {
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
       aiPose.set(a.pose)
-      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: a.color,
         ghostAlpha: k * 0.5,
         time,

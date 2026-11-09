@@ -66,13 +66,19 @@ export function solveLegIK(
   bend: 1 | -1 = 1,
   out?: LegIKOut,
 ): LegIKOut {
+  if (!Number.isFinite(l1) || !Number.isFinite(l2) || l1 <= 0 || l2 <= 0) throw new RangeError('Leg lengths must be finite and positive')
   const o = out ?? { kx: 0, ky: 0, ax: 0, ay: 0, clamped: false }
   let dx = tx - hx
   let dy = ty - hy
   let d = Math.hypot(dx, dy)
-  const dMax = (l1 + l2) * 0.9995
-  const dMin = Math.abs(l1 - l2) + 0.01
-  o.clamped = false
+  // Knee flexion constrained to 10–155 degrees, including unreachable
+  // and coincident targets. A straight locked knee is not a valid plant.
+  const dMax = Math.sqrt(l1*l1 + l2*l2 + 2*l1*l2*Math.cos(.17))
+  const dMin = Math.sqrt(l1*l1 + l2*l2 + 2*l1*l2*Math.cos(2.71))
+  const invalidTarget = !Number.isFinite(d)
+  if (invalidTarget) { dx = 0; dy = dMax; d = dMax }
+  if (d < 1e-8) { dx = 0; dy = dMin; d = dMin; o.clamped = true }
+  o.clamped = invalidTarget || Math.hypot(tx - hx, ty - hy) < dMin
   if (d > dMax) {
     const k = dMax / (d || 1)
     dx *= k
@@ -84,6 +90,7 @@ export function solveLegIK(
     dx *= k
     dy *= k
     d = dMin
+    o.clamped = true
   }
   const base = Math.atan2(dy, dx)
   const cosA = clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1)
@@ -101,7 +108,7 @@ export function solveLegIK(
  * used by the foot-ground lock (the "weight" of the body). Returns a
  * NEGATIVE number (height above the y=0 ground line, canvas y-down). */
 export function legVerticalReach(dx: number, l1: number, l2: number, sole: number): number {
-  const reach = (l1 + l2) * 0.999
+  const reach = Math.sqrt(l1*l1 + l2*l2 + 2*l1*l2*Math.cos(.17))
   const h = Math.sqrt(Math.max(0, reach * reach - dx * dx))
   return -(h + sole)
 }
@@ -111,12 +118,13 @@ export function legVerticalReach(dx: number, l1: number, l2: number, sole: numbe
 /* ------------------------------------------------------------------ */
 
 export interface GaitTuning {
-  /** stance (foot-on-ground) fraction of the step cycle: walk 0.62,
-   * combat 0.55, run 0.40, sprint 0.32 (real duty factors) */
+  profile?:'patrol'
+  /** stance (foot-on-ground) fraction of the step cycle: walk 0.64,
+   * combat 0.55, run 0.40, sprint 0.30 (real duty factors) */
   duty: number
-  /** reference stride length (world px per step) — cadence = speed/stride */
+  /** reference stride length (world px per FULL left/right cycle) — cadence = speed/stride */
   stride: number
-  /** cadence clamp (steps/sec) */
+  /** cadence clamp (full cycles/sec; footfall rate is twice this) */
   cadMin: number
   cadMax: number
   /** swing apex clearance (world px above the planted ankle line) */
@@ -126,6 +134,8 @@ export interface GaitTuning {
   stepAhead: number
   /** ankle rise at full toe-off (world px) */
   lift: number
+  /** Parked half-stance width; player martial stances can be wider than enemies. */
+  standWidth?: number
 }
 
 /** PLANT ENVELOPE — the farthest a footfall may anchor from the femoral
@@ -139,12 +149,12 @@ export interface GaitTuning {
 const PLANT_ENVELOPE = 46
 
 export const PLAYER_GAIT: Record<string, GaitTuning> = {
-  walk:      { duty: 0.62, stride: 68,  cadMin: 0.9, cadMax: 2.4, clearance: 9,  stepAhead: 19,  lift: 6 },
-  run:       { duty: 0.40, stride: 98,  cadMin: 2.6, cadMax: 4.6, clearance: 17, stepAhead: 27,  lift: 10 },
-  sprint:    { duty: 0.32, stride: 112, cadMin: 3.4, cadMax: 5.2, clearance: 24, stepAhead: 31,  lift: 12 },
-  combat:    { duty: 0.55, stride: 50,  cadMin: 1.6, cadMax: 4.2, clearance: 7,  stepAhead: 11,  lift: 5 },
+  walk:      { profile:'patrol', duty:.60, stride:92, cadMin:.15, cadMax:2.3, clearance:7.5, stepAhead:0, lift:2, standWidth:8 },
+  run:       { duty: 0.40, stride: 185, cadMin: 1.2, cadMax: 2.15, clearance: 17, stepAhead: 27,  lift: 10 },
+  sprint:    { duty: 0.30, stride: 220, cadMin: 1.65, cadMax: 2.5, clearance: 28, stepAhead: 29,  lift: 14 },
+  combat:    { duty: 0.55, stride: 50,  cadMin: 1.6, cadMax: 4.2, clearance: 7,  stepAhead: 11,  lift: 5, standWidth: 20 },
   backpedal: { duty: 0.60, stride: 54,  cadMin: 1.8, cadMax: 4.0, clearance: 7,  stepAhead: -13, lift: 5 },
-  idle:      { duty: 1.0,  stride: 60,  cadMin: 0.0, cadMax: 1.0, clearance: 7,  stepAhead: 12,  lift: 5 },
+  idle:      { duty: 1.0,  stride: 60,  cadMin: 0.0, cadMax: 1.0, clearance: 7,  stepAhead: 12,  lift: 5, standWidth: 17 },
 }
 
 export const ENEMY_GAIT: GaitTuning = {
@@ -197,6 +207,7 @@ export class GaitPlanner {
   ]
   private seeded = false
   private standW = 1
+  private lastProfile:GaitTuning['profile']
 
   /**
    * Drive the gait for one frame.
@@ -247,6 +258,17 @@ export class GaitPlanner {
     this.standing = cad <= 0.001
     if (!this.standing) this.phase = (this.phase + cad * dt) % 1
 
+    if(!this.standing&&tune.profile==='patrol'&&this.lastProfile!=='patrol'){
+      // Entry establishes anchors from CURRENT phase, not old idle feet.
+      // Otherwise a first slow step can drag a stale anchor for >1 second.
+      const stride=speed/Math.max(.001,cad),ahead=stride*tune.duty*.5
+      for(const [leg,p] of [[this.legs[1],this.phase],[this.legs[0],(this.phase+.5)%1]] as const){
+        leg.anchor=x+dir*(ahead-stride*p);leg.park=leg.anchor
+        leg.land=x+dir*ahead;leg.swinging=p>=tune.duty
+      }
+    }
+    this.lastProfile=this.standing?undefined:tune.profile
+
     this.solveLeg(this.footR, this.legs[1], this.phase, x, vx, dir, cad, tune, dt, sole, 1)
     this.solveLeg(this.footL, this.legs[0], (this.phase + 0.5) % 1, x, vx, dir, cad, tune, dt, sole, -1)
     this.hasPlanted = this.footR.planted || this.footL.planted
@@ -256,9 +278,29 @@ export class GaitPlanner {
 
   /** re-seed anchors (landing, big teleports) — feet park under the hips */
   reseed(x: number, face: 1 | -1): void {
+    this.lastProfile=undefined
     this.legs[0].anchor = this.legs[0].park = x - face * 9
     this.legs[1].anchor = this.legs[1].park = x + face * 13
     this.seeded = true
+  }
+
+  /** Dedicated centered walk trajectory. No run-style delayed swing or
+   * giant stepAhead; each new anchor centers the following support interval. */
+  private solvePatrol(out:FootPlan,leg:LegState,p:number,x:number,vx:number,dir:1|-1,cad:number,tune:GaitTuning,sole:number):void{
+    const stride=cad>.001?Math.abs(vx)/cad:tune.stride
+    const ahead=Math.min(31,stride*tune.duty*.5)
+    if(p<tune.duty){
+      const u=p/tune.duty
+      out.x=leg.anchor;out.y=-sole-tune.lift*smooth01((u-.82)/.18)
+      out.planted=true
+      out.pitch=u<.12?lerp(.28,0,smooth01(u/.12)):-.5*smooth01((u-.72)/.28)
+    }else{
+      const u=(p-tune.duty)/(1-tune.duty),until=(1-p)/Math.max(.001,cad)
+      leg.land=x+vx*until+dir*ahead
+      out.x=lerp(leg.anchor,leg.land,smooth01(u))
+      out.y=-sole-tune.clearance*Math.pow(Math.sin(Math.PI*u),1.2)-tune.lift*(1-smooth01(u/.24))
+      out.pitch=lerp(-.5,.28,smooth01(u));out.planted=false;leg.swinging=true
+    }
   }
 
   private solveLeg(
@@ -282,7 +324,7 @@ export class GaitPlanner {
     }
     if (this.standing) {
       // ---- STAND: park the foot at the staggered stance position, flat
-      const park = x + dir * side * 12 * this.standW
+      const park = x + dir * side * (tune.standWidth ?? 12) * this.standW
       leg.park = damp(leg.park, park, 12, dt)
       leg.anchor = leg.park
       leg.swinging = false
@@ -292,6 +334,7 @@ export class GaitPlanner {
       out.pitch = side > 0 ? 0.16 : 0.04
       return
     }
+    if(tune.profile==='patrol'){this.solvePatrol(out,leg,p,x,vx,dir,cad,tune,sole);return}
     if (p < tune.duty) {
       // ---- STANCE: world-locked anchor, flat sole, heel lifts to toe-off
       const u = p / tune.duty

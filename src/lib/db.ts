@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { mkdirSync } from 'node:fs'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '@/generated/prisma/client'
 
@@ -7,8 +8,10 @@ function resolveSqliteUrl(): string {
   const raw = process.env.DATABASE_URL && process.env.DATABASE_URL.length > 0
     ? process.env.DATABASE_URL
     : 'file:db/custom.db'
-  const file = raw.replace(/^file:/, '')
-  const abs = path.isAbsolute(file) ? file : path.resolve(process.cwd(), file)
+  if (!raw.startsWith('file:') || raw === 'file:') throw new Error('DATABASE_URL must be a non-empty SQLite file URL')
+  const file = raw.slice(5)
+  const abs = path.isAbsolute(file) ? file : path.resolve(/* turbopackIgnore: true */ process.cwd(), file)
+  mkdirSync(/* turbopackIgnore: true */ path.dirname(abs), { recursive: true })
   return 'file:' + abs
 }
 
@@ -20,10 +23,11 @@ function createPrismaClient(): PrismaClient {
   const adapter = new PrismaBetterSqlite3({ url: resolveSqliteUrl() })
   return new PrismaClient({
     adapter,
-    log: ['query', 'warn', 'error'],
+    log: ['warn', 'error'],
   })
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+/** Initialize inside request handlers so configuration/driver failures are caught. */
+export function getDb(): PrismaClient {
+  return globalForPrisma.prisma ??= createPrismaClient()
+}

@@ -70,6 +70,7 @@ for (const c of [
 if (all.length === 0) {
   console.log('CONTINUITY: ALL CLEAN (worst-case outCubic first-frame model)')
 } else {
+  process.exitCode = 1
   console.log(`CONTINUITY ISSUES (${all.length}):`)
   for (const s of all) console.log('  ' + s)
 }

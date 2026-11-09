@@ -1,0 +1,19 @@
+{
+  "errors": [],
+  "simulationHz": 120,
+  "updates": 600,
+  "frames": 300,
+  "allPosesFinite": true,
+  "variants": [
+    "launch",
+    "carry",
+    "pivot"
+  ],
+  "maxDashSpeed": 1104.3871094157014,
+  "maxDashLeanDegrees": 48.987892576515655,
+  "visibleLeanOver065RadiansMs": {
+    "launch": 150,
+    "carry": 191.6667
+  },
+  "note": "Actual constrained browser pose samples; real-speed capture, not device FPS benchmark."
+}

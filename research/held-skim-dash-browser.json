@@ -1,0 +1,12 @@
+{
+  "errors": [],
+  "updates": 350,
+  "simulationHz": 120,
+  "frames": 175,
+  "captureHz": 60,
+  "allPosesFinite": true,
+  "bothModesReachNearHorizontal": true,
+  "noFloorPenetration": true,
+  "peakPitchDegrees": 87.08896905002956,
+  "worstSupportContact": -8.382624582952182
+}

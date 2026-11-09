@@ -1,3 +1,4 @@
+import {StormEngine} from './storm'
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -126,26 +127,8 @@ const SIGN_BORDER: ReadonlyArray<string> = [
 ];
 const LIFT_COL: ReadonlyArray<string> = ['#ffd9a0', '#9df0e2'];
 const SVC_COL = '#ffb02e';
-const RIPPLE_COL = '#a9c6d8';
-const RAIN_TIP = 'rgba(214,236,246,0.16)';
-const RAIN_STYLES: ReadonlyArray<string> = [
-  'rgba(173,196,210,0.05)', 'rgba(173,196,210,0.063)', 'rgba(173,196,210,0.076)',
-  'rgba(173,196,210,0.089)', 'rgba(173,196,210,0.102)', 'rgba(173,196,210,0.115)',
-  'rgba(173,196,210,0.128)', 'rgba(173,196,210,0.14)',
-];
-const MOTE_STYLES: ReadonlyArray<string> = [
-  'rgba(205,225,232,0.03)', 'rgba(205,225,232,0.045)',
-  'rgba(205,225,232,0.06)', 'rgba(205,225,232,0.08)',
-];
-
-/* ============================ storm tuning =============================== */
-
-const SPLASH_MAX = 56;         // ring-buffered ground splashes (near-band drops)
-const SPLASH_LIFE = 0.34;      // seconds until a splash ring fades out
 const MIST_W = 3072;           // ground-mist tiling period in world px (fogSpr × 3)
 const MIST_SP = 26;            // ground-mist scroll speed, world px/s
-const BOLT_W = 360;            // lightning bolt sprite size (layer px)
-const BOLT_H = 560;
 
 /* ======================== animated-record shapes ========================= */
 
@@ -154,7 +137,6 @@ interface BeaconRec { x: number; yA: number; ph: number; sp: number }
 interface SignRec { x: number; yA: number; w: number; h: number; ci: number; ph: number; state: number; timer: number; next: number }
 interface LiftRec { x: number; yA0: number; yA1: number; sp: number; ph: number; ci: number }
 interface BeamRec { x: number; yA: number; amp: number; sp: number; ph: number }
-interface RippleRec { wx: number; oy: number; ph: number; sp: number; r: number }
 interface PuddleRec { x: number; rx: number; ry: number; ci: number; ph: number; sp: number }
 interface SvcRec { x: number; y: number; ph: number; sp: number }
 interface GlyphStroke { x0: number; y0: number; x1: number; y1: number; dot: boolean }
@@ -202,72 +184,6 @@ function buildMoon(): HTMLCanvasElement {
 
 /* ======================== storm sprite pre-renders ======================= */
 
-/** forked lightning bolt — jagged main channel + 2-3 branches, halo + core.
- *  Deterministic per seed so every storm looks hand-placed, never noisy. */
-function buildBoltSprite(seed: number): HTMLCanvasElement {
-  const { c, g } = makeCanvas(BOLT_W, BOLT_H);
-  const rng = mulberry32(seed);
-  // main channel
-  const pts: number[] = [];
-  let x = BOLT_W * 0.5 + (rng() - 0.5) * 150;
-  let y = 6;
-  pts.push(x, y);
-  while (y < BOLT_H - 30) {
-    y += 42 + rng() * 62;
-    x += (rng() - 0.5) * 88;
-    pts.push(x, y);
-  }
-  const stroke = (seg: number[], lw: number, col: string): void => {
-    g.strokeStyle = col;
-    g.lineWidth = lw;
-    g.lineJoin = 'round';
-    g.lineCap = 'round';
-    g.beginPath();
-    g.moveTo(seg[0], seg[1]);
-    for (let i = 2; i < seg.length; i += 2) g.lineTo(seg[i], seg[i + 1]);
-    g.stroke();
-  };
-  // branches off mid-channel
-  const forks: number[][] = [];
-  const np = pts.length >> 1;
-  if (np >= 5) {
-    const nf = 2 + ((rng() * 2) | 0);
-    for (let f = 0; f < nf; f++) {
-      const k = Math.min(np - 2, 2 + ((rng() * (np - 4)) | 0)) * 2;
-      const dir = rng() < 0.5 ? -1 : 1;
-      let fx = pts[k], fy = pts[k + 1];
-      const seg: number[] = [fx, fy];
-      const n = 3 + ((rng() * 3) | 0);
-      for (let j = 0; j < n; j++) {
-        fy += 26 + rng() * 48;
-        fx += dir * (18 + rng() * 46);
-        seg.push(fx, fy);
-      }
-      forks.push(seg);
-    }
-  }
-  stroke(pts, 22, 'rgba(160,190,255,0.3)');               // wide halo
-  for (const f of forks) stroke(f, 9, 'rgba(170,196,255,0.2)');
-  stroke(pts, 5.5, 'rgba(214,232,255,0.9)');              // mid glow
-  for (const f of forks) stroke(f, 2.8, 'rgba(206,226,255,0.6)');
-  stroke(pts, 2.4, 'rgba(255,255,255,0.98)');             // hot core
-  for (const f of forks) stroke(f, 1.4, 'rgba(240,248,255,0.85)');
-  return c;
-}
-
-/** soft radial sky-bloom centered on the strike — sells the "the sky itself
- *  lit up" moment better than any stroke width can */
-function buildBoltGlow(): HTMLCanvasElement {
-  const { c, g } = makeCanvas(256, 256);
-  const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-  gr.addColorStop(0, 'rgba(190,212,255,0.5)');
-  gr.addColorStop(0.4, 'rgba(170,196,255,0.2)');
-  gr.addColorStop(1, 'rgba(160,190,255,0)');
-  g.fillStyle = gr;
-  g.fillRect(0, 0, 256, 256);
-  return c;
-}
-
 /** cheap bokeh depth-of-field: downsample, then smooth-upsample back to the
  *  original tile size (one-time build, zero per-frame cost). */
 function blurTile(src: HTMLCanvasElement, down: number): HTMLCanvasElement {
@@ -279,18 +195,6 @@ function blurTile(src: HTMLCanvasElement, down: number): HTMLCanvasElement {
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = 'high';
   g.drawImage(small.c, 0, 0, src.width, src.height);
-  return c;
-}
-
-/** sky-biased lightning flash gradient (drawn additively full-screen) */
-function buildFlashStrip(): HTMLCanvasElement {
-  const { c, g } = makeCanvas(8, 256);
-  const gr = g.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, 'rgba(202,220,255,0.52)');
-  gr.addColorStop(0.45, 'rgba(202,220,255,0.22)');
-  gr.addColorStop(1, 'rgba(202,220,255,0.08)');
-  g.fillStyle = gr;
-  g.fillRect(0, 0, 8, 256);
   return c;
 }
 
@@ -471,7 +375,6 @@ export class CyberBackground {
 
   /* clock + ambient wind */
   private t = 0;
-  private slant = 0.72;        // rain slant dx/dy, animated in update()
   private fogCount = 3;
 
   /* pre-rendered art (built once, resolution independent) */
@@ -500,44 +403,9 @@ export class CyberBackground {
   private puddleA = new Float32Array(0);
   private svcLights: SvcRec[] = [];
 
-  /* weather particles (preallocated, wrap-indexed in place).
-   * rainB doubles as depth-band + alpha bucket: 0..2 = far band (dim, slow),
-   * 3..5 = mid band, 6..7 = near band (fast, gusting, fat streaks). */
-  private rainCap: number;
-  private rainX: Float32Array;
-  private rainY: Float32Array;
-  private rainL: Float32Array;
-  private rainS: Float32Array;
-  private rainB: Uint8Array;
-  private moteCap: number;
-  private moteX: Float32Array;
-  private moteY: Float32Array;
-  private moteP: Float32Array;
-  private moteB: Uint8Array;
-  private ripples: RippleRec[] = [];
-
-  /* raindrop ground splashes (ring buffer, allocation-free) */
-  private splashX = new Float32Array(SPLASH_MAX);
-  private splashY = new Float32Array(SPLASH_MAX);
-  private splashT = new Float32Array(SPLASH_MAX);   // age; >= SPLASH_LIFE = dead
-  private splashHead = 0;
-
-  /* wind gust envelope (drives near-band slant/speed + mist density) */
-  private gust = 0.5;
-
-  /* cached camera ground-line (screen y of world y=0, updated in drawSky)
-   * so update() can spawn splashes where drops actually meet the floor */
-  private camGroundY = 0;
-
-  /* distant lightning: multi-strike envelope, azimuth, bolt art */
-  private ltnT = -1;
-  private ltnNext = 6;
-  private ltnAz = 0;            // -1..1 → bolt screen-x bias + shadow lean
-  private ltnAmp2 = 0.7;        // re-strike amplitude, randomized per event
-  private ltnBolt = 0;          // bolt sprite index
-  private boltSpr: HTMLCanvasElement[] = [];
-  private boltGlowSpr!: HTMLCanvasElement;   // radial sky bloom for strikes
-  private flashSpr: HTMLCanvasElement | null = null;  // vertical flash gradient
+  /** City art consumes a persistent external weather service. */
+  readonly storm:StormEngine;
+  private get gust(){return this.storm.gust}
   private hazeSpr: HTMLCanvasElement | null = null;   // humid horizon haze strip
 
   /* depth-of-field variants of the city tiles (pre-blurred once) */
@@ -546,62 +414,15 @@ export class CyberBackground {
 
   private q: Quality;
 
-  /** fires once when a strike sequence begins — Game wires thunder audio */
-  onThunder: (() => void) | null = null;
-
-  constructor(quality: Quality) {
-    this.q = quality;
-    /* three rain depth bands — far/mid/near counts */
-    const nFar = quality === 'high' ? 150 : quality === 'medium' ? 80 : 0;
-    const nMid = quality === 'high' ? 130 : quality === 'medium' ? 60 : 0;
-    const nNear = quality === 'high' ? 80 : quality === 'medium' ? 30 : 0;
-    this.rainCap = nFar + nMid + nNear;
-    this.moteCap = quality === 'high' ? 20 : quality === 'medium' ? 10 : 0;
-    this.fogCount = quality === 'low' ? 2 : 3;
-    const nRain = this.rainCap, nMote = this.moteCap;
-    this.rainX = new Float32Array(nRain);
-    this.rainY = new Float32Array(nRain);
-    this.rainL = new Float32Array(nRain);
-    this.rainS = new Float32Array(nRain);
-    this.rainB = new Uint8Array(nRain);
-    this.moteX = new Float32Array(nMote);
-    this.moteY = new Float32Array(nMote);
-    this.moteP = new Float32Array(nMote);
-    this.moteB = new Uint8Array(nMote);
-    // deterministic first scatter for rain / motes / ripples
-    const rng = mulberry32(0x5170394);
-    for (let i = 0; i < nRain; i++) {
-      this.rainX[i] = rng() * 1360 - 40;
-      this.rainY[i] = rng() * 800 - 40;
-      if (i < nFar) {
-        this.rainB[i] = (rng() * 3) | 0;              // far: dim + slow + short
-        this.rainS[i] = 300 + rng() * 90;
-        this.rainL[i] = 6 + rng() * 5;
-      } else if (i < nFar + nMid) {
-        this.rainB[i] = 3 + ((rng() * 3) | 0);        // mid: reference band
-        this.rainS[i] = 460 + rng() * 160;
-        this.rainL[i] = 10 + rng() * 7;
-      } else {
-        this.rainB[i] = 6 + ((rng() * 2) | 0);        // near: fast + long streaks
-        this.rainS[i] = 720 + rng() * 260;
-        this.rainL[i] = 17 + rng() * 13;
-      }
-    }
-    for (let i = 0; i < nMote; i++) {
-      this.moteX[i] = rng() * 1320 - 20;
-      this.moteY[i] = rng() * 760 - 20;
-      this.moteP[i] = rng() * TAU;
-      this.moteB[i] = (rng() * 4) | 0;
-    }
-    for (let i = 0; i < 10; i++) {
-      this.ripples.push({ wx: 140 + rng() * 2470, oy: 3 + rng() * 9, ph: rng(), sp: 0.45 + rng() * 0.4, r: 6 + rng() * 8 });
-    }
-    for (let i = 0; i < SPLASH_MAX; i++) this.splashT[i] = SPLASH_LIFE;  // all dead
-    this.ltnNext = 4 + rng() * 6;
+  get onThunder(){return this.storm.onThunder}
+  set onThunder(cb:(()=>void)|null){this.storm.onThunder=cb}
+  constructor(quality:Quality,storm=new StormEngine(quality)){
+    this.q=quality;this.storm=storm;this.fogCount=quality==='low'?2:3;
   }
 
   /** CSS-pixel size of the game canvas viewport. */
   resize(w: number, h: number): void {
+    this.storm.resize(w,h);
     this.vw = w > 0 ? w : 1;
     this.vh = h > 0 ? h : 1;
     // All art is pre-rendered in a fixed layer space from a fixed seed, so a
@@ -614,10 +435,6 @@ export class CyberBackground {
     const d = dt > 0 ? (dt < 0.1 ? dt : 0.1) : 0;
     this.t += d;
     const t = this.t;
-    this.slant = 0.72 + 0.16 * Math.sin(t * 0.09) + 0.08 * Math.sin(t * 0.037 + 2.1);
-    /* wind gust envelope: slow product of two sines → organic squalls */
-    this.gust = 0.55 + 0.45 * Math.sin(t * 0.11) * Math.sin(t * 0.057 + 1.7);
-
     /* neon-sign buzz / brown-out / re-ignite state machines */
     for (let i = 0; i < this.signs.length; i++) {
       const s = this.signs[i];
@@ -639,88 +456,10 @@ export class CyberBackground {
       this.puddleA[i] = 0.5 + 0.28 * Math.sin(t * p.sp + p.ph) + 0.1 * Math.sin(t * p.sp * 2.7 + p.ph * 2);
     }
 
-    /* rain (3 depth bands) + splashes where near-band drops meet the floor */
-    if (this.rainCap > 0) {
-      const w = this.vw, h = this.vh, sl = this.slant;
-      const gy = this.camGroundY;
-      const gyVis = gy > -20 && gy < h + 60;
-      const slN = sl * (0.85 + 0.5 * this.gust);   // near band rides the gust
-      const spN = 0.85 + 0.3 * this.gust;
-      for (let i = 0; i < this.rainCap; i++) {
-        const b = this.rainB[i];
-        const band = b < 3 ? 0 : b < 6 ? 1 : 2;
-        const spd = this.rainS[i] * (band === 2 ? spN : 1);
-        const s = band === 0 ? sl * 0.8 : band === 1 ? sl : slN;
-        const py = this.rainY[i];
-        let y = py + spd * d;
-        let x = this.rainX[i] + spd * s * d;
-        if (band === 2 && gyVis && py < gy && y >= gy) {
-          // this drop just crossed the roof plane → register a splash ring
-          const sp = this.splashHead;
-          this.splashX[sp] = x;
-          this.splashY[sp] = gy + 2 + Math.random() * 7;
-          this.splashT[sp] = 0;
-          this.splashHead = (sp + 1) % SPLASH_MAX;
-        }
-        if (y > h + 40) { y = -30 - Math.random() * 90; x = Math.random() * (w + 80) - 40; }
-        if (x > w + 40) x -= w + 80;
-        else if (x < -40) x += w + 80;
-        this.rainX[i] = x;
-        this.rainY[i] = y;
-      }
-      for (let i = 0; i < SPLASH_MAX; i++) {
-        if (this.splashT[i] < SPLASH_LIFE) this.splashT[i] += d;
-      }
-    }
-    if (this.moteCap > 0) {
-      for (let i = 0; i < this.moteCap; i++) {
-        const ph = this.moteP[i];
-        let x = this.moteX[i] + (5 + 3 * Math.sin(t * 0.05 + ph)) * d;
-        let y = this.moteY[i] + Math.sin(t * 0.21 + ph) * 5 * d;
-        if (x > this.vw + 20) x -= this.vw + 40;
-        if (y > this.vh + 20) y -= this.vh + 40;
-        else if (y < -20) y += this.vh + 40;
-        this.moteX[i] = x;
-        this.moteY[i] = y;
-      }
-    }
-
-    /* distant lightning scheduler (5..11.5 s cadence, stormier than before).
-     * Each event randomizes azimuth + re-strike amplitude + bolt art. */
-    if (this.ltnT >= 0) {
-      this.ltnT += d;
-      if (this.ltnT > 1.2) this.ltnT = -1;           // long tail for the slow fade
-    } else {
-      this.ltnNext -= d;
-      if (this.ltnNext <= 0) {
-        this.ltnT = 0;
-        this.ltnNext = 5 + Math.random() * 6.5;
-        this.ltnAz = Math.random() * 2 - 1;
-        this.ltnAmp2 = 0.55 + Math.random() * 0.4;
-        this.ltnBolt = (Math.random() * 3) | 0;
-        if (this.onThunder) this.onThunder();
-      }
-    }
   }
 
-  /* ------------------------- storm public state -------------------------- */
-
-  /** current lightning intensity 0..1 (multi-strike envelope) */
-  lightningI(): number {
-    if (this.ltnT < 0) return 0;
-    const t = this.ltnT;
-    let I: number;
-    if (t < 0.05) I = 1;                              // first return stroke
-    else if (t < 0.1) I = 0.12;                       // inter-stroke dark
-    else if (t < 0.16) I = this.ltnAmp2;              // re-strike
-    else I = this.ltnAmp2 * Math.exp(-(t - 0.16) * 5.5);
-    return I > 1 ? 1 : I;
-  }
-
-  /** strike azimuth -1..1 (bolt side of screen; shadows lean opposite) */
-  lightningAz(): number {
-    return this.ltnT >= 0 ? this.ltnAz : 0;
-  }
+  lightningI():number{return this.storm.intensity}
+  lightningAz():number{return this.storm.azimuthValue}
 
   /* ------------------------ screen-space sky pass ------------------------ */
 
@@ -735,7 +474,6 @@ export class CyberBackground {
 
     /* 1 — sky gradient anchored to the world ground line */
     const hy = h * 0.5 + (0 - cy) * cz;                     // screen y of world y=0
-    this.camGroundY = hy;                                   // cached for splash spawns
     const skyH = hy > 1 ? (hy < h ? hy : h) : 1;
     ctx.drawImage(this.skyStrip, 0, 0, 8, 600, 0, 0, w, skyH);
     ctx.fillStyle = SKY_BELOW;
@@ -802,26 +540,7 @@ export class CyberBackground {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
-    /* lightning bolt — in front of the far/mid skyline (their opaque towers
-     * would otherwise fully occlude it), behind the near towers + signs.
-     * 'lighter' + a scaled re-blit + a wide sky bloom makes it read as the
-     * strike's light wrapping the scene; visible through the first strokes. */
-    if (I > 0.02 && this.ltnT < 0.2) {
-      const bs = 0.95 + cz * 0.3;
-      const bx = w * (0.5 + this.ltnAz * 0.34) - (BOLT_W * bs) / 2;
-      const by = byM - 26 - BOLT_H * bs;
-      const ba = this.ltnT < 0.05 ? 1 : 0.55;
-      ctx.globalCompositeOperation = 'lighter';
-      // sky bloom around the strike (the "sky lit up" moment)
-      ctx.globalAlpha = ba * 0.9;
-      ctx.drawImage(this.boltGlowSpr, bx + (BOLT_W * bs) / 2 - w * 0.33, by + BOLT_H * bs * 0.34, w * 0.66, w * 0.66);
-      ctx.globalAlpha = ba * 0.55;                        // cheap bloom pass
-      ctx.drawImage(this.boltSpr[this.ltnBolt], bx - BOLT_W * bs * 0.09, by - BOLT_H * bs * 0.045, BOLT_W * bs * 1.18, BOLT_H * bs * 1.09);
-      ctx.globalAlpha = ba;
-      ctx.drawImage(this.boltSpr[this.ltnBolt], bx, by, BOLT_W * bs, BOLT_H * bs);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
+    this.storm.drawSky(ctx);
     ctx.lineWidth = 1;
     for (let i = 0; i < this.signs.length; i++) {
       const s = this.signs[i];
@@ -961,132 +680,9 @@ export class CyberBackground {
 
   /* ---------------------- screen-space weather pass ---------------------- */
 
-  drawWeather(ctx: CanvasRenderingContext2D, cam: BgCam): void {
-    this.ensureBuilt();
-    const cx = Number.isFinite(cam.x) ? cam.x : 0;
-    const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
-    const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
-    const w = this.vw, h = this.vh, t = this.t;
-
-    ctx.save();
-    ctx.lineCap = 'round';
-
-    const I = this.lightningI();
-
-    /* rain — three depth bands with distinct parallax, speed, width and
-     * gust response; every streak brightens when a strike lights the sky
-     * (fake GI bounce: the rain itself becomes visible in the strobe) */
-    if (this.rainCap > 0) {
-      const lit = 1 + 2.6 * I;
-      const wrapW = w + 80, wrapH = h + 80;
-      for (let band = 0; band < 3; band++) {
-        const ox = -cx * cz * (band === 0 ? 0.25 : band === 1 ? 0.5 : 0.85);
-        const oy = -(cy - NOMINAL_Y) * cz * (band === 0 ? 0.15 : band === 1 ? 0.3 : 0.5);
-        const sl = band === 0 ? this.slant * 0.8
-                 : band === 1 ? this.slant
-                 : this.slant * (0.85 + 0.45 * this.gust);
-        const inv = 1 / Math.sqrt(1 + sl * sl);
-        const ux = sl * inv, uy = inv;
-        ctx.lineWidth = band === 2 ? 1.8 : 1;
-        const nB = band === 2 ? 2 : 3;                    // buckets in this band
-        for (let bb = 0; bb < nB; bb++) {
-          const b = band * 3 + bb;
-          ctx.strokeStyle = RAIN_STYLES[b];
-          ctx.globalAlpha = lit;
-          ctx.beginPath();
-          for (let i = 0; i < this.rainCap; i++) {
-            if (this.rainB[i] !== b) continue;
-            const x = mod(this.rainX[i] + ox, wrapW) - 40;
-            const y = mod(this.rainY[i] + oy, wrapH) - 40;
-            ctx.moveTo(x, y);
-            ctx.lineTo(x - ux * this.rainL[i], y - uy * this.rainL[i]);
-          }
-          ctx.stroke();
-        }
-      }
-      /* bright tips on the near band only — reads as motion-blurred heads */
-      ctx.strokeStyle = RAIN_TIP;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = lit;
-      ctx.beginPath();
-      for (let i = 0; i < this.rainCap; i++) {
-        if (this.rainB[i] < 6) continue;
-        const ox = -cx * cz * 0.85, oy = -(cy - NOMINAL_Y) * cz * 0.5;
-        const x = mod(this.rainX[i] + ox, wrapW) - 40;
-        const y = mod(this.rainY[i] + oy, wrapH) - 40;
-        const sl = this.slant * (0.85 + 0.45 * this.gust);
-        const inv = 1 / Math.sqrt(1 + sl * sl);
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - sl * inv * 5, y - inv * 5);
-      }
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-
-      /* tiny ripple ellipses pinned to the arena floor (thicker in a flash) */
-      const hy = h * 0.5 + (0 - cy) * cz;
-      if (hy > -30 && hy < h + 40) {
-        ctx.strokeStyle = RIPPLE_COL;
-        ctx.lineWidth = 1;
-        for (let i = 0; i < this.ripples.length; i++) {
-          const r = this.ripples[i];
-          let u = (t * r.sp + r.ph) % 1;
-          if (u < 0) u += 1;
-          const sx = w * 0.5 + (r.wx - cx) * cz;
-          if (sx < -24 || sx > w + 24) continue;
-          const e = Math.sin(u * Math.PI);
-          ctx.globalAlpha = e * e * (0.12 + 0.14 * I);
-          ctx.beginPath();
-          ctx.ellipse(sx, hy + r.oy * cz, r.r * (0.3 + 0.7 * u) * cz, r.r * (0.3 + 0.7 * u) * cz * 0.24, 0, 0, TAU);
-          ctx.stroke();
-        }
-        /* splash rings where near-band drops struck the ground this instant */
-        for (let i = 0; i < SPLASH_MAX; i++) {
-          const age = this.splashT[i];
-          if (age >= SPLASH_LIFE) continue;
-          const u = age / SPLASH_LIFE;
-          const e2 = 1 - u;
-          const rx = 2.5 + u * 11;
-          const sx = this.splashX[i], sy = this.splashY[i];
-          ctx.globalAlpha = e2 * e2 * (0.34 + 0.5 * I);
-          ctx.beginPath();
-          ctx.ellipse(sx, sy, rx, rx * 0.32, 0, 0, TAU);
-          ctx.stroke();
-          if (u < 0.4) {                                  // droplet kick ticks
-            ctx.beginPath();
-            ctx.moveTo(sx - rx * 0.8, sy - 2);
-            ctx.lineTo(sx - rx * 0.55, sy - 5 - e2 * 4);
-            ctx.moveTo(sx + rx * 0.8, sy - 2);
-            ctx.lineTo(sx + rx * 0.55, sy - 5 - e2 * 4);
-            ctx.stroke();
-          }
-        }
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    /* drifting motes */
-    if (this.moteCap > 0) {
-      const ox = -cx * cz * 0.22, oy = -(cy - NOMINAL_Y) * cz * 0.15;
-      const wrapW = w + 40, wrapH = h + 40;
-      for (let b = 0; b < 4; b++) {
-        ctx.fillStyle = MOTE_STYLES[b];
-        for (let i = 0; i < this.moteCap; i++) {
-          if (this.moteB[i] !== b) continue;
-          ctx.fillRect(mod(this.moteX[i] + ox, wrapW) - 20, mod(this.moteY[i] + oy, wrapH) - 20, 2, 2);
-        }
-      }
-    }
-
-    /* lightning screen response — vertical gradient strobe (sky-biased) drawn
-     * additively, brightening the whole lens for ~0.2 s */
-    if (I > 0.012) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = I;
-      ctx.drawImage(this.flashSpr!, 0, 0, w, h);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
+  drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void{
+    this.storm.setView(cam);
+    this.storm.drawRain(ctx);
   }
 
   /* --------------------------- private helpers --------------------------- */
@@ -1118,9 +714,6 @@ export class CyberBackground {
     this.nearTile = this.buildNear();
     this.arenaTile = this.buildArena();
     /* storm art: bolt variants, flash gradient, horizon haze, DOF tiles */
-    this.boltSpr.push(buildBoltSprite(0x9e3779b1), buildBoltSprite(0x51ed270b), buildBoltSprite(0x2545f491));
-    this.boltGlowSpr = buildBoltGlow();
-    this.flashSpr = buildFlashStrip();
     this.hazeSpr = buildHazeStrip();
     this.farTileBlur = blurTile(this.farTile, 6);
     this.midTileBlur = blurTile(this.midTile, 3);

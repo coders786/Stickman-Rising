@@ -1,38 +1,7 @@
-/** STICKMAN RISING — LIGHTING & SHADOW ENGINE (lighting).
- *
- * A 3D-game-style lighting model for the 2D canvas:
- *
- *   · KEY LIGHT — one dynamic directional light that blends the ambient
- *     moonlight (high elevation, soft, cool) with the storm's lightning
- *     strobes (low elevation, hard, from the bolt's azimuth). Everything
- *     downstream reads from this single source of truth.
- *   · PROJECTED SKELETON SHADOWS — instead of a static "blob" ellipse
- *     glued under each entity, every solved JOINT of the articulated body
- *     (and the blade) is projected along the key light's rays onto the
- *     ground plane, and the projected skeleton is re-drawn as a soft,
- *     multi-pass stroke figure — the shadow DEFORMS WITH THE POSE: knees
- *     bend, the sword arm sweeps, the blade throws its own slanted streak,
- *     a lunging torso stretches the silhouette. This is the "ray-traced"
- *     read of a 3D engine's character shadow, in 2D vector form.
- *   · PENUMBRA — a hard light casts hard-edged shadows; a soft light
- *     (moon) spreads a graduated penumbra. Emulated with 2–3 nested
- *     stroke passes of growing width and falling alpha.
- *   · CONTACT OCCLUSION — a tight, dark core exactly under each PLANTED
- *     foot (fed by the legik gait anchors — the exact ground-contact
- *     points) plus a body-core ellipse: the ambient-occlusion "weight"
- *     that keeps characters visually glued to the floor.
- *   · HEIGHT FALLOFF — airborne entities cast shadows that detach, slide
- *     along the light direction, fade and soften with altitude (the
- *     platformer "height = lighter + offset" law, but driven by the same
- *     physical projection).
+/** Ground-shadow rewrite, pass 3: bounded penumbra, normalized compositing and contacts.
+ * World joint Y ALREADY includes jump height. Never add it again to the skull.
  */
-
-import { clamp, clamp01, lerp } from '../core/utils'
-import { rgba } from '../core/utils'
-/* ------------------------------------------------------------------ */
-/* Key light                                                           */
-/* ------------------------------------------------------------------ */
-
+import { clamp,clamp01,lerp,rgba } from '../core/utils'
 export interface KeyLight {
   /** horizontal direction shadows lean along (unit-ish, +X = right) */
   dirX: number
@@ -45,43 +14,6 @@ export interface KeyLight {
   /** shadow tint (near-black; storms cool it further) */
   color: string
 }
-
-const MOON: KeyLight = {
-  dirX: -0.42,   // moon rides upper-right → shadows lean left
-  elev: 1.02,    // steep: short, tight shadows
-  hard: 0.14,
-  i: 0.55,
-  color: '#020409',
-}
-
-/** Blend the ambient moonlight with a lightning strobe.
- * @param li   storm intensity 0..1 (bg.lightningI())
- * @param az   strike azimuth −1..1 (bg.lightningAz(); shadows lean OPPOSITE)
- *
- * CONTINUOUS AZIMUTH (the shadow-shift fix): the old bolt direction was a
- * BINARY flip (`az ≥ 0 ? −0.92 : +0.92`) — two strobes on opposite sides
- * of the sky teleported the whole projected shadow silhouette across the
- * feet between frames: the "shadow shifts / slides" defect. The bolt
- * direction now interpolates CONTINUOUSLY through az, and the strobe
- * elevation floors at 0.42 rad so raking shadows stay on screen instead
- * of flying 3× the body height to the side. */
-export function keyLightFromStorm(li: number, az: number): KeyLight {
-  const k = clamp01(li)
-  if (k <= 0.001) return { ...MOON }
-  // continuous: az −1 (bolt left) → shadows lean right (+), az +1 → left
-  const boltDir = -0.92 * clamp(az, -1, 1)
-  return {
-    dirX: lerp(MOON.dirX, boltDir, k),
-    elev: lerp(MOON.elev, 0.42, k),      // raking but groundable shadows
-    hard: lerp(MOON.hard, 1, k),
-    i: MOON.i + k * 0.75,
-    color: '#010307',
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* Projected skeleton shadow                                           */
-/* ------------------------------------------------------------------ */
 
 export interface ShadowFigure {
   /** stroke chains in WORLD space: flat [x0,y0, x1,y1, ...] per chain
@@ -103,7 +35,7 @@ export interface CastShadowOpts {
   passes?: number
   /** body scale (widths scale) */
   scale?: number
-  /** whole-body extra height (airborne; negative = above ground) */
+  /** Physics root altitude, for falloff only; joints already include world Y. */
   height?: number
   /** planted-foot contact points for the AO cores (world x) */
   contacts?: number[]
@@ -111,143 +43,84 @@ export interface CastShadowOpts {
   lightBoost?: number
 }
 
-/* ------------------------------------------------------------------ */
-/* Strobe rim light                                                    */
-/* ------------------------------------------------------------------ */
 
-/** STROBE RIM — the other half of the lighting model: the light that
- * CASTS the shadow must also LIGHT the caster. During lightning strobes
- * an additive edge pass strokes the figure's silhouette, offset toward
- * the source, in the bolt's cool color — the character's lit side catches
- * the flash while the far side stays black. Chains are LOCAL space (the
- * ctx is expected to already carry the entity transform). */
-export function drawStrobeRim(
-  ctx: CanvasRenderingContext2D,
-  light: KeyLight, k: number,
-  chains: number[][],
-  head: { x: number; y: number; r: number },
-  face: number, lineW: number,
-): void {
-  if (k <= 0.04) return
-  // slide toward the source so the rim peeks off the LIT edge only
-  const off = -light.dirX * face * 2.6
-  ctx.save()
-  ctx.globalCompositeOperation = 'lighter'
-  ctx.strokeStyle = rgba('#cfe4ff', 0.32 * k)
-  ctx.lineWidth = lineW + 1.6
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
+const finite=(n:number,fallback:number)=>Number.isFinite(n)?n:fallback
+export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
+  const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
+  return {dirX:lerp(-.42,-.92*az,k),elev:lerp(1.02,.42,k),hard:lerp(.14,1,k),
+    i:lerp(.55,1,k),color:'#020409'}
+}
+export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y:number}|null {
+  if(!Number.isFinite(x)||!Number.isFinite(y))return null
+  const height=Math.max(0,-y)
+  const cot=1/Math.tan(clamp(finite(light.elev,1),.3,1.45))
+  const offset=clamp(height*cot*clamp(finite(light.dirX,0),-1,1),-320,320)
+  return {x:x+offset,y:1.5+Math.min(12,height*.06)}
+}
+/** Build every body primitive into ONE fill path: crossings/duplicates do
+ * not multiply opacity. World coordinates already contain the airborne Y. */
+function shadowPath(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight,radius:number):void {
+  const rx=radius,ry=Math.max(.5,radius*.32)
+  const ellipse=(x:number,y:number,xr=rx,yr=ry)=>{ctx.moveTo(x+xr,y);ctx.ellipse(x,y,xr,yr,0,0,Math.PI*2)}
   ctx.beginPath()
-  for (const ch of chains) {
-    if (ch.length < 4) continue
-    ctx.moveTo(ch[0] + off, ch[1])
-    for (let i = 2; i < ch.length; i += 2) ctx.lineTo(ch[i] + off, ch[i + 1])
+  for(const chain of fig.chains){
+    let prev:{x:number;y:number}|null=null
+    for(let i=0;i+1<chain.length;i+=2){
+      const q=projectGroundPoint(chain[i],chain[i+1],light)
+      if(!q){prev=null;continue}
+      ellipse(q.x,q.y)
+      if(prev){const dx=q.x-prev.x,dy=q.y-prev.y,l=Math.hypot(dx,dy)||1
+        const nx=-dy/l*rx,ny=dx/l*ry
+        // Same winding as ellipses, so overlapping shapes form a solid union.
+        ctx.moveTo(prev.x-nx,prev.y-ny);ctx.lineTo(q.x-nx,q.y-ny)
+        ctx.lineTo(q.x+nx,q.y+ny);ctx.lineTo(prev.x+nx,prev.y+ny);ctx.closePath()}
+      prev=q
+    }
   }
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.arc(head.x + off * 0.8, head.y, head.r + 0.9, 0, Math.PI * 2)
-  ctx.stroke()
+  if(fig.head){const q=projectGroundPoint(fig.head.x,fig.head.y,light)
+    if(q){const r=clamp(finite(fig.head.r,6),1,30);ellipse(q.x,q.y,r*.9+radius*.25,Math.max(1,r*.26))}}
+  if(fig.blade){const b=fig.blade,a=projectGroundPoint(b.x0,b.y0,light),z=projectGroundPoint(b.x1,b.y1,light)
+    if(a&&z){const r=Math.max(.7,radius*.22)
+      ctx.moveTo(a.x,a.y-r);ctx.lineTo(z.x,z.y-r);ctx.lineTo(z.x,z.y+r);ctx.lineTo(a.x,a.y+r);ctx.closePath()}}
+}
+export function shadowOpacity(height:number,alpha=.55):number {
+  // Height changes softness/opacity, NOT a second displacement of the head.
+  return clamp01(finite(alpha,.55))/(1+Math.max(0,-finite(height,0))/115)
+}
+export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight,opts:CastShadowOpts={}):void {
+  const height=finite(opts.height??0,0),alpha=shadowOpacity(height,opts.alpha??.55)
+  if(alpha<.005)return
+  const scale=clamp(finite(opts.scale??1,1),.1,5)
+  const radius=clamp(finite(opts.width??6,6),.5,24)*scale*.5
+  ctx.save();ctx.globalCompositeOperation='source-over'
+  const passes=Math.round(clamp(finite(opts.passes??2,2),1,3))
+  const soft=1-clamp01(finite(light.hard,.14)),alt=Math.max(0,-height)
+  const weights=[.62,.26,.12],sum=weights.slice(0,passes).reduce((a,b)=>a+b,0)
+  const target=alpha*(.8+.2*clamp01(finite(opts.lightBoost??light.i,.55)))
+  const tint=/^#[0-9a-f]{6}$/i.test(light.color)?light.color:'#020409'
+  // Outside-in soft passes. Normalize accumulated center opacity so adding
+  // quality passes cannot darken the entire character shadow three times.
+  for(let pass=passes-1;pass>=0;pass--){
+    const opacity=1-Math.pow(1-target,weights[pass]/sum)
+    ctx.fillStyle=rgba(tint,opacity)
+    shadowPath(ctx,fig,light,radius*(1+pass*(soft*.65+Math.min(.65,alt/400))))
+    ctx.fill()
+  }
+  // AO belongs only to actual foot contact; stale airborne anchors are ignored.
+  if(height>=-1.5){
+    ctx.fillStyle=rgba('#010307',alpha*.35)
+    const unique=new Set((opts.contacts??[]).filter(Number.isFinite).map(x=>Math.round(x*4)/4))
+    ctx.beginPath();for(const x of unique){ctx.moveTo(x+6*scale,2);ctx.ellipse(x,2,6*scale,1.6*scale,0,0,Math.PI*2)}ctx.fill()
+  }
   ctx.restore()
 }
-
-const scratchProj: number[] = []
-
-/**
- * Draw the projected-skeleton cast shadow for one figure onto the ground
- * line (y = 0). The chains are re-projected per pass with growing width
- * and falling alpha — the cheap penumbra. Contact AO cores render under
- * the given planted-foot anchors.
- */
-export function drawCastShadow(
-  ctx: CanvasRenderingContext2D,
-  fig: ShadowFigure,
-  light: KeyLight,
-  opts: CastShadowOpts = {},
-): void {
-  const height = opts.height ?? 0
-  // whole-figure falloff with altitude (detached, fading, softening) —
-  // gentler than pure inverse so an apex jump shadow still reads on screen
-  const hFall = Math.max(0.34, 1 / (1 + Math.max(0, -height) / 210))
-  const aBase = (opts.alpha ?? 0.6) * clamp01(0.72 + light.i * 0.5) * hFall
-  if (aBase < 0.02) return
-  const wBase = (opts.width ?? 6.2) * (opts.scale ?? 1) * (1 + Math.max(0, -height) / 240)
-  const passes = opts.passes ?? 2
-  // penumbra spread: soft light spreads wide, hard light stays tight
-  const spread = (1 - light.hard) * 1.35 + 0.18
-  // strobes rake wider, harder strokes — the peak flash owns the ground
-  const hardBoost = 1 + light.hard * 0.4
-  const elev = Math.max(0.2, light.elev)
-  const cot = 1 / Math.tan(elev)
-  const dx = light.dirX
-  const passesAlpha = [1, 0.42, 0.18]
-
-  ctx.save()
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  // ---- penumbra passes over every chain ----
-  for (let k = 0; k < passes; k++) {
-    const wPass = wBase * (1 + k * spread) * hardBoost
-    const aPass = aBase * passesAlpha[Math.min(k, 2)]
-    if (aPass < 0.012) continue
-    ctx.strokeStyle = rgba(light.color, Math.min(0.8, aPass))
-    ctx.lineWidth = wPass
-    for (const chain of fig.chains) {
-      const n = chain.length
-      if (n < 4) continue
-      // chain height fade: tall chains cast lighter (distance soft)
-      let meanH = 0
-      for (let i = 1; i < n; i += 2) meanH += chain[i]
-      meanH = -meanH / ((n - 1) / 2) + Math.max(0, -height) * 0.35
-      const cFall = 1 / (1 + Math.max(0, meanH) / 170)
-      const aChain = aPass * cFall
-      if (aChain < 0.015) continue
-      ctx.strokeStyle = rgba(light.color, Math.min(0.8, aChain))
-      ctx.beginPath()
-      // project each joint along the light ray to the ground plane
-      for (let i = 0; i < n; i += 2) {
-        const px = chain[i] + (-chain[i + 1]) * cot * dx
-        const py = 2.5 + k * 1.4 // hug the walkway line; widen slightly per pass
-        if (i === 0) ctx.moveTo(px, py)
-        else ctx.lineTo(px, py)
-      }
-      ctx.stroke()
-    }
-    // head: projected skull ellipse
-    if (fig.head) {
-      const hx = fig.head.x + (-fig.head.y + Math.max(0, -height)) * cot * dx
-      const hy = 2.5 + k * 1.4
-      const hr = fig.head.r * (1.5 + k * spread * 0.8)
-      ctx.fillStyle = rgba(light.color, Math.min(0.85, aPass * 0.85))
-      ctx.beginPath()
-      ctx.ellipse(hx, hy, hr, hr * 0.42, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    // blade streak: the steel casts its own wide soft line
-    if (fig.blade) {
-      const b = fig.blade
-      const ax = b.x0 + (-b.y0) * cot * dx
-      const bx = b.x1 + (-b.y1) * cot * dx
-      const midFall = 1 / (1 + Math.max(0, -(b.y0 + b.y1) / 2) / 170)
-      ctx.strokeStyle = rgba(light.color, Math.min(0.78, aPass * 0.75 * midFall))
-      ctx.lineWidth = wBase * 1.05 * (1 + k * spread)
-      ctx.beginPath()
-      ctx.moveTo(ax, 2.5 + k * 1.4)
-      ctx.lineTo(bx, 2.5 + k * 1.4)
-      ctx.stroke()
-    }
-  }
-
-  // ---- CONTACT OCCLUSION: tight dark cores exactly under planted feet ----
-  if (opts.contacts && opts.contacts.length) {
-    const s = opts.scale ?? 1
-    for (const cx of opts.contacts) {
-      ctx.fillStyle = rgba('#010307', Math.min(0.6, aBase * 1.15 * hFall))
-      ctx.beginPath()
-      ctx.ellipse(cx, 3.5, 8.5 * s, 3.1 * s, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-  ctx.restore()
-  void scratchProj
+export function drawStrobeRim(ctx:CanvasRenderingContext2D,light:KeyLight,k:number,chains:number[][],head:{x:number;y:number;r:number},face:number,lineW:number):void {
+  const amount=clamp01(finite(k,0));if(amount<.04)return
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=rgba('#cfe4ff',amount*.16)
+  ctx.lineWidth=.65;ctx.beginPath()
+  const off=-clamp(finite(light.dirX,0),-1,1)*finite(face,1)*(clamp(finite(lineW,5),.1,20)*.5+.5)
+  for(const chain of chains){let started=false;for(let i=0;i+1<chain.length;i+=2){
+    if(!Number.isFinite(chain[i])||!Number.isFinite(chain[i+1])){started=false;continue}
+    if(!started)ctx.moveTo(chain[i]+off,chain[i+1]);else ctx.lineTo(chain[i]+off,chain[i+1]);started=true}}
+  ctx.stroke();ctx.restore();void head
 }

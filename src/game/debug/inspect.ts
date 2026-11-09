@@ -19,7 +19,8 @@
 import { Game } from '../game'
 import { Player, LocoMode } from '../entities/player'
 import { makePose, Pose } from '../anim/pose'
-import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+import { PLAYER_SPEC, SkelGeom, PLAYER_STYLE } from '../anim/skeleton'
+import { makeFighterGeom, solveFighter3D, drawFighter3D, type FighterGeom } from '../anim/rig3d'
 import { sampleClip } from '../anim/animator'
 import {
   WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, COMBAT_IDLE_CLIP,
@@ -43,7 +44,7 @@ export class Inspect {
   showFeet = true
 
   private scratchPose: Pose = makePose()
-  private scratchGeom: SkelGeom = makeSkelGeom()
+  private scratchGeom: FighterGeom = makeFighterGeom()
 
   setMode(m: InspectMode): void {
     this.mode = m
@@ -114,7 +115,7 @@ export class Inspect {
     ctx.save()
     ctx.translate(cx, hipScreenY)
     ctx.scale(p.face * PSCALE, PSCALE)
-    drawStick(ctx, p.geom, PLAYER_STYLE, { time })
+    drawFighter3D(ctx, p.geom, PLAYER_STYLE, { time })
     this.drawSkeleton(ctx, p.geom)
     ctx.restore()
     // ground line + foot contact markers at their true screen positions
@@ -259,7 +260,7 @@ export class Inspect {
       for (let c = 0; c < cols; c++) {
         const t = (clip.dur * c) / cols
         sampleClip(clip, t, this.scratchPose)
-        const g = solveSkeleton(this.scratchPose, PLAYER_SPEC, this.scratchGeom)
+        const g = solveFighter3D(this.scratchPose, PLAYER_SPEC, this.scratchGeom, PLAYER_SPEC.blade)
         // normalize: lowest foot contact sits ON this cell's ground line
         const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y)
         const cx = group * (w / groupsPerRow) + cellW * (c + 0.5)
@@ -267,7 +268,7 @@ export class Inspect {
         ctx.save()
         ctx.translate(cx, groundY - (lowContact + 2.4) * S)
         ctx.scale(S, S)
-        drawStick(ctx, g, PLAYER_STYLE, { time: t, simple: true })
+        drawFighter3D(ctx, g, PLAYER_STYLE, { time: t })
         ctx.restore()
         // per-cell ground line
         ctx.strokeStyle = 'rgba(40,80,110,0.45)'

@@ -1,0 +1,55 @@
+{
+  "errors": [],
+  "start": {
+    "phase": "playing",
+    "storm": {
+      "time": 0.21669999999999992,
+      "quality": "low",
+      "visibleDrops": 96,
+      "strikes": 0,
+      "intensity": 0,
+      "impacts": 64,
+      "activeSplashes": 64
+    }
+  },
+  "transitions": [
+    {
+      "q": "medium",
+      "same": true,
+      "timeBefore": 1.3667,
+      "timeAfter": 1.3667,
+      "drops": 180
+    },
+    {
+      "q": "high",
+      "same": true,
+      "timeBefore": 1.3667,
+      "timeAfter": 1.3667,
+      "drops": 288
+    },
+    {
+      "q": "low",
+      "same": true,
+      "timeBefore": 1.3667,
+      "timeAfter": 1.3667,
+      "drops": 96
+    }
+  ],
+  "end": {
+    "phase": "playing",
+    "storm": {
+      "time": 8.016699999999979,
+      "quality": "low",
+      "visibleDrops": 96,
+      "strikes": 2,
+      "intensity": 0,
+      "impacts": 945,
+      "activeSplashes": 46
+    },
+    "same": true,
+    "quality": "low"
+  },
+  "naturalScheduler": true,
+  "realAnimationFrames": true,
+  "governorEnabled": true
+}

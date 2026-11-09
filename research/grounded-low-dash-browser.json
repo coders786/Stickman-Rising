@@ -1,0 +1,12 @@
+{
+  "errors": [],
+  "updates": 300,
+  "simulationHz": 120,
+  "frames": 150,
+  "captureHz": 60,
+  "allPosesFinite": true,
+  "bothModesReachSixtyDegrees": true,
+  "groundedSupportDuringDash": true,
+  "peakPitchDegrees": 60.000001669652114,
+  "worstSupportContact": -3.0683817611189568
+}

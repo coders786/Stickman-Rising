@@ -105,17 +105,14 @@ export class Renderer {
       e.draw(ctx, time)
     }
 
+    // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
+    fx.drawSilhouettes(ctx)
+
     // player
     player.draw(ctx, time)
 
     // projectiles
     projectiles.draw(ctx, time)
-
-    // SHADOW SILHOUETTES — dash afterimages as dark figures with backlit
-    // rims (source-over: they genuinely darken like cast shadows), between
-    // the entities and the additive FX so the player runs ahead of their
-    // own shadow trail
-    fx.drawSilhouettes(ctx)
 
     // additive FX (trails, HDR motion lines, particles, rings, ghosts)
     fx.drawAdditive(ctx, time)
@@ -244,6 +241,8 @@ export class Renderer {
    *  killer once waves scaled — the mirror only needs a silhouette). */
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world
+    ctx.save()
+    ctx.beginPath();ctx.rect(cam.x-viewHalfW,0,viewHalfW*2,240);ctx.clip()
     const li = bg.lightningI()
     // the mirror still snaps brighter on strobes, but gently — the CAST
     // shadow (stretching away from the bolt) owns the directional read
@@ -251,7 +250,7 @@ export class Renderer {
     ctx.save()
     ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
     ctx.globalAlpha = a
-    player.draw(ctx, time)
+    player.draw(ctx, time, true)
     ctx.globalAlpha = a * 0.8
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
@@ -279,5 +278,6 @@ export class Renderer {
     }
     ctx.globalAlpha = 1
     ctx.drawImage(this.reflFade, cam.x - viewHalfW, 0, viewHalfW * 2, 195)
+    ctx.restore()
   }
 }

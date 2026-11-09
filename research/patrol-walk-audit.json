@@ -1,0 +1,610 @@
+{
+  "cases": 60,
+  "updates": 25200,
+  "simulationSeconds": 360,
+  "allPosesFinite": true,
+  "worstHipHeight": -62.407708591280134,
+  "maxFootOffset": 21.90994381087412,
+  "results": [
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.37438557879642,
+      "maxHip": -62.4922044773043,
+      "maxFootOffset": 21.882143594665813,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.30981730943576,
+      "maxHip": -62.52946239861438,
+      "maxFootOffset": 21.881835384335727,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.21919356425764,
+      "maxHip": -62.46220094799647,
+      "maxFootOffset": 21.884451882904393,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.05786879569507,
+      "maxHip": -62.407708591280155,
+      "maxFootOffset": 21.88440193393872,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -63.927796657459425,
+      "maxHip": -62.497356094809945,
+      "maxFootOffset": 21.88427778824252,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.37438557879642,
+      "maxHip": -62.4922044773043,
+      "maxFootOffset": 21.882143594665855,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.30981730943576,
+      "maxHip": -62.529462398614406,
+      "maxFootOffset": 21.881835384336803,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.21919356425764,
+      "maxHip": -62.46220094799648,
+      "maxFootOffset": 21.884451882904436,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.05786879569507,
+      "maxHip": -62.407708591280134,
+      "maxFootOffset": 21.884401933938587,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": false,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -63.927796657459425,
+      "maxHip": -62.49735609480999,
+      "maxFootOffset": 21.88427778824235,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.37438557879642,
+      "maxHip": -62.49220447730326,
+      "maxFootOffset": 21.882143594665813,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.30981730943576,
+      "maxHip": -62.52946239861438,
+      "maxFootOffset": 21.881835384335727,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.21919356425758,
+      "maxHip": -62.46220094799647,
+      "maxFootOffset": 21.884451882904393,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.05786879569507,
+      "maxHip": -62.407708591280155,
+      "maxFootOffset": 21.88440193393872,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -63.927796657459425,
+      "maxHip": -62.497356094809945,
+      "maxFootOffset": 21.88427778824252,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.37438557879642,
+      "maxHip": -62.49220447730326,
+      "maxFootOffset": 21.882143594665855,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.30981730943576,
+      "maxHip": -62.529462398614406,
+      "maxFootOffset": 21.881835384336803,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.21919356425758,
+      "maxHip": -62.46220094799648,
+      "maxFootOffset": 21.884451882904436,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.05786879569507,
+      "maxHip": -62.407708591280134,
+      "maxFootOffset": 21.884401933938587,
+      "updates": 180
+    },
+    {
+      "hz": 30,
+      "drawn": true,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -63.927796657459425,
+      "maxHip": -62.49735609480999,
+      "maxFootOffset": 21.88427778824235,
+      "updates": 180
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.87458599940457,
+      "maxHip": -62.760803674447295,
+      "maxFootOffset": 21.883504209518353,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.92016653881268,
+      "maxHip": -63.18016841327026,
+      "maxFootOffset": 21.8843849475278,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.94518244402506,
+      "maxHip": -63.183546151775055,
+      "maxFootOffset": 21.88341532019372,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.9565248917608,
+      "maxHip": -63.33734233249434,
+      "maxFootOffset": 21.881374411326206,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -64.93074177177756,
+      "maxHip": -63.36910264044912,
+      "maxFootOffset": 21.88354060341741,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.87458599940457,
+      "maxHip": -62.760803674447374,
+      "maxFootOffset": 21.883504209521885,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.92016653881268,
+      "maxHip": -63.180168413270195,
+      "maxFootOffset": 21.884384947525646,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.94518244402506,
+      "maxHip": -63.183546151775,
+      "maxFootOffset": 21.883415320193755,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.9565248917608,
+      "maxHip": -63.33734233249438,
+      "maxFootOffset": 21.8813744113272,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": false,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -64.93074177177756,
+      "maxHip": -63.36910264044913,
+      "maxFootOffset": 21.88354060341699,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.87458599940457,
+      "maxHip": -62.760803674447295,
+      "maxFootOffset": 21.883504209518353,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.92016653881268,
+      "maxHip": -63.18016841327026,
+      "maxFootOffset": 21.8843849475278,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.94518244402506,
+      "maxHip": -63.183546151775055,
+      "maxFootOffset": 21.88341532019372,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.9565248917608,
+      "maxHip": -63.33734233249434,
+      "maxFootOffset": 21.881374411326206,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -64.93074177177756,
+      "maxHip": -63.36910264044912,
+      "maxFootOffset": 21.88354060341741,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.87458599940457,
+      "maxHip": -62.760803674447374,
+      "maxFootOffset": 21.883504209521885,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.92016653881268,
+      "maxHip": -63.180168413270195,
+      "maxFootOffset": 21.884384947525646,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.94518244402506,
+      "maxHip": -63.183546151775,
+      "maxFootOffset": 21.883415320193755,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.9565248917608,
+      "maxHip": -63.33734233249438,
+      "maxFootOffset": 21.8813744113272,
+      "updates": 360
+    },
+    {
+      "hz": 60,
+      "drawn": true,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -64.93074177177756,
+      "maxHip": -63.36910264044913,
+      "maxFootOffset": 21.88354060341699,
+      "updates": 360
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.89647940369538,
+      "maxHip": -62.858641970859864,
+      "maxFootOffset": 21.90994381087407,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.94652442963209,
+      "maxHip": -63.105121433239624,
+      "maxFootOffset": 21.909680904019787,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.97489711928979,
+      "maxHip": -63.282176910680064,
+      "maxFootOffset": 21.883616071566564,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.98714193890186,
+      "maxHip": -63.37190699653124,
+      "maxFootOffset": 21.88409829628739,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -64.95893599756478,
+      "maxHip": -63.54189497920129,
+      "maxFootOffset": 21.88301653948318,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.89647940369538,
+      "maxHip": -62.858641970859864,
+      "maxFootOffset": 21.90994381087412,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.94652442963209,
+      "maxHip": -63.1051214332397,
+      "maxFootOffset": 21.90968090401966,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.97489711928979,
+      "maxHip": -63.28217691068011,
+      "maxFootOffset": 21.883616071566422,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.98714193890186,
+      "maxHip": -63.37190699653123,
+      "maxFootOffset": 21.8840982962844,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": false,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -64.95893599756478,
+      "maxHip": -63.54189497920129,
+      "maxFootOffset": 21.883016539483243,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": -1,
+      "speed": 42,
+      "minHip": -64.89647940369538,
+      "maxHip": -62.858641970859956,
+      "maxFootOffset": 21.903509553398052,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": -1,
+      "speed": 70,
+      "minHip": -64.94652442963209,
+      "maxHip": -63.105121433239624,
+      "maxFootOffset": 21.900886811803048,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": -1,
+      "speed": 98.00000000000001,
+      "minHip": -64.97489711928979,
+      "maxHip": -63.282176910680064,
+      "maxFootOffset": 21.883616071566564,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": -1,
+      "speed": 147,
+      "minHip": -64.98714193890186,
+      "maxHip": -63.37190699653124,
+      "maxFootOffset": 21.88409829628739,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": -1,
+      "speed": 196.00000000000003,
+      "minHip": -64.95893599756478,
+      "maxHip": -63.54189497920129,
+      "maxFootOffset": 21.88301653948318,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": 1,
+      "speed": 42,
+      "minHip": -64.89647940369538,
+      "maxHip": -62.858641970859956,
+      "maxFootOffset": 21.903509553398095,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": 1,
+      "speed": 70,
+      "minHip": -64.94652442963209,
+      "maxHip": -63.1051214332397,
+      "maxFootOffset": 21.900886811802877,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": 1,
+      "speed": 98.00000000000001,
+      "minHip": -64.97489711928979,
+      "maxHip": -63.28217691068011,
+      "maxFootOffset": 21.883616071566422,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": 1,
+      "speed": 147,
+      "minHip": -64.98714193890186,
+      "maxHip": -63.37190699653123,
+      "maxFootOffset": 21.8840982962844,
+      "updates": 720
+    },
+    {
+      "hz": 120,
+      "drawn": true,
+      "direction": 1,
+      "speed": 196.00000000000003,
+      "minHip": -64.95893599756478,
+      "maxHip": -63.54189497920129,
+      "maxFootOffset": 21.883016539483243,
+      "updates": 720
+    }
+  ]
+}

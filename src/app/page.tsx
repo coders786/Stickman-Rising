@@ -14,53 +14,18 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { fmt } from '@/game/core/utils'
+import { parseSave, parseSettings, readStorage, writeStorage, SAVE_KEY, SETTINGS_KEY, NAME_KEY, type SaveData } from '@/lib/persistence'
+import { scoreRowsSchema, type ScoreRow } from '@/lib/scores'
 import { Swords, Trophy, Play, Settings as SettingsIcon, BookOpen, ChevronRight, RotateCcw, Home as HomeIcon, Send, Pause } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
 
 type Screen = 'title' | 'arsenal' | 'howto' | 'scores' | 'settings' | 'playing' | 'paused' | 'gameover'
 
-interface SaveData {
-  totalKills: number
-  best: number
-  unlocked: SwordId[]
-}
-
-interface ScoreRow {
-  id: string
-  name: string
-  score: number
-  wave: number
-  maxCombo: number
-  kills: number
-  sword: string
-}
-
-const SAVE_KEY = 'sr_save_v1'
-const SETTINGS_KEY = 'sr_settings_v1'
-const NAME_KEY = 'sr_name_v1'
-
-function loadSave(): SaveData {
-  if (typeof window === 'undefined') return { totalKills: 0, best: 0, unlocked: ['katana'] }
-  try {
-    const raw = window.localStorage.getItem(SAVE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as SaveData
-      if (!parsed.unlocked?.includes('katana')) parsed.unlocked.unshift('katana')
-      return parsed
-    }
-  } catch { /* ignore */ }
-  return { totalKills: 0, best: 0, unlocked: ['katana'] }
-}
-
+function loadSave(): SaveData { return parseSave(readStorage(SAVE_KEY)) }
 function loadSettings(): GameSettings {
-  if (typeof window === 'undefined') return { ...DEFAULT_SETTINGS }
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_KEY)
-    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<GameSettings>) }
-  } catch { /* ignore */ }
-  const coarse = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches
-  return { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : 'high' }
+  const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false)
+  return parseSettings(readStorage(SETTINGS_KEY), coarse)
 }
 
 /* ================================================================== */
@@ -74,6 +39,8 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>('title')
   const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
   const [stats, setStats] = useState<RunStats | null>(null)
+  const [runSword, setRunSword] = useState<SwordId>('katana')
+  const submissionKey = useRef<string | null>(null)
   /* persisted state starts from SSR-safe defaults; real values load in a
    * mount effect below so server HTML === first client render (no
    * hydration mismatch badge) */
@@ -83,6 +50,15 @@ export default function Home() {
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [name, setName] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const runRef = useRef(0)
+  const [scoreError, setScoreError] = useState<string | null>(null)
+  const [scoresLoading, setScoresLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [gameError, setGameError] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
+  const [storageError, setStorageError] = useState(false)
   const [newUnlocks, setNewUnlocks] = useState<SwordId[]>([])
   const [touchMode, setTouchMode] = useState(false)
   const [gameInput, setGameInput] = useState<GameInput | null>(null)
@@ -93,13 +69,13 @@ export default function Home() {
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       const s = loadSave()
+      saveRef.current = s
       setSave(s)
       setSelectedSword(s.unlocked[s.unlocked.length - 1] ?? 'katana')
       setSettings(loadSettings())
+      setHydrated(true)
       setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
-      try {
-        setName(window.localStorage.getItem(NAME_KEY) ?? '')
-      } catch { /* ignore */ }
+      setName((readStorage(NAME_KEY) ?? '').slice(0, 16))
     })
     return () => cancelAnimationFrame(id)
   }, [])
@@ -114,10 +90,14 @@ export default function Home() {
     game.applySettings(loadSettings())
     game.setUnlocked(loadSave().unlocked)
     const off = game.on((e) => {
-      if (e.type === 'gameover') {
+      if (e.type === 'error') {
+        setGameError('The game encountered an unexpected error. Reload to try again; saved progress is retained.')
+      } else if (e.type === 'gameover') {
+        setRunSword(game.player.sword.id)
         setStats(e.stats)
         setScreen('gameover')
         setSubmitted(false)
+        setSubmitError(null)
         // persist progress + unlocks
         const prev = saveRef.current
         const totalKills = prev.totalKills + e.stats.kills
@@ -133,9 +113,7 @@ export default function Home() {
         const next = { totalKills, best, unlocked }
         saveRef.current = next
         setSave(next)
-        try {
-          window.localStorage.setItem(SAVE_KEY, JSON.stringify(next))
-        } catch { /* ignore */ }
+        setStorageError(!writeStorage(SAVE_KEY, JSON.stringify(next)))
         if (fresh.length) {
           setNewUnlocks(fresh)
           setSelectedSword(fresh[fresh.length - 1])
@@ -145,8 +123,17 @@ export default function Home() {
         if (e.phase === 'playing') setScreen('playing')
       }
     })
-    game.mount(canvas)
-    setGameInput(game.input)
+    try {
+      game.mount(canvas)
+      setGameInput(game.input)
+    } catch (error) {
+      console.error('Game initialization failed', error)
+      setGameError('Unable to start the game. Check that Canvas 2D is enabled, then reload.')
+      off()
+      game.destroy()
+      gameRef.current = null
+      return
+    }
 
     const ro = new ResizeObserver(() => game.resize())
     if (wrapRef.current) ro.observe(wrapRef.current)
@@ -162,12 +149,10 @@ export default function Home() {
 
   useEffect(() => {
     const game = gameRef.current
-    if (!game) return
+    if (!game || !hydrated) return
     game.applySettings(settings)
-    try {
-      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
-    } catch { /* ignore */ }
-  }, [settings])
+    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify(settings)))
+  }, [settings, hydrated])
 
   useEffect(() => {
     gameRef.current?.setUnlocked(save.unlocked)
@@ -179,12 +164,10 @@ export default function Home() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      if (e.repeat || (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable))) return
       if (e.code === 'Escape' || e.code === 'KeyP') {
         if (screen === 'paused') {
           gameRef.current?.resume()
-        } else if (screen === 'playing') {
-          gameRef.current?.pause()
         }
       }
     }
@@ -194,56 +177,70 @@ export default function Home() {
 
   /* ---------------- actions ---------------- */
 
-  const refreshScores = useCallback(async () => {
+  const refreshScores = useCallback(async (signal?: AbortSignal) => {
+    setScoresLoading(true)
+    setScoreError(null)
     try {
-      const res = await fetch('/api/scores', { cache: 'no-store' })
-      if (res.ok) setScores((await res.json()) as ScoreRow[])
-    } catch { /* offline */ }
+      const res = await fetch('/api/scores', { cache: 'no-store', signal: AbortSignal.any([AbortSignal.timeout(10_000), ...(signal ? [signal] : [])]) })
+      if (!res.ok) throw new Error('Leaderboard unavailable')
+      const rows = scoreRowsSchema.parse(await res.json())
+      if (!signal?.aborted) setScores(rows)
+    } catch {
+      if (!signal?.aborted) setScoreError('Unable to load the leaderboard. Please try again.')
+    } finally {
+      if (!signal?.aborted) setScoresLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     if (screen !== 'scores') return
-    let cancelled = false
-    fetch('/api/scores', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => {
-        if (!cancelled) setScores(rows as ScoreRow[])
-      })
-      .catch(() => { /* offline */ })
-    return () => {
-      cancelled = true
-    }
-  }, [screen])
+    const controller = new AbortController()
+    void refreshScores(controller.signal)
+    return () => controller.abort()
+  }, [screen, refreshScores])
 
   const startGame = useCallback((sword: SwordId) => {
+    if (!gameRef.current || !hydrated) return
+    runRef.current += 1
+    submissionKey.current = crypto.randomUUID()
+    setSubmitted(false)
+    setSubmitError(null)
     setNewUnlocks([])
-    gameRef.current?.startRun(sword)
+    gameRef.current.startRun(sword)
     setScreen('playing')
-  }, [])
+  }, [hydrated])
 
   const submitScore = useCallback(async () => {
-    if (!stats || submitted) return
-    const finalName = name.trim() || 'ANON'
+    if (!stats || submitted || submittingRef.current) return
+    const run = runRef.current
+    const finalName = name.trim().slice(0, 16) || 'ANON'
+    setStorageError(!writeStorage(NAME_KEY, finalName))
+    submittingRef.current = true
+    setSubmitting(true)
+    setSubmitError(null)
     try {
-      window.localStorage.setItem(NAME_KEY, finalName)
-    } catch { /* ignore */ }
-    setSubmitted(true)
-    try {
-      await fetch('/api/scores', {
+      const response = await fetch('/api/scores', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(submissionKey.current ? { 'Idempotency-Key': submissionKey.current } : {}) },
+        signal: AbortSignal.timeout(10_000),
         body: JSON.stringify({
           name: finalName,
           score: Math.round(stats.score),
           wave: stats.wave,
           maxCombo: stats.maxCombo,
           kills: stats.kills,
-          sword: selectedSword,
+          sword: runSword,
         }),
       })
-      await refreshScores()
-    } catch { /* offline */ }
-  }, [stats, name, submitted, selectedSword, refreshScores])
+      if (!response.ok) throw new Error('Score submission failed')
+      if (run === runRef.current) setSubmitted(true)
+    } catch {
+      if (run === runRef.current) setSubmitError('Score was not confirmed. Check your connection and try again.')
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
+  }, [stats, name, submitted, runSword])
 
   const menuBtn = 'h-12 px-8 font-black tracking-[0.25em] text-sm'
 
@@ -253,6 +250,8 @@ export default function Home() {
     <div ref={wrapRef} className="relative w-screen h-[100dvh] overflow-hidden bg-black select-none">
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-label="Stickman Rising game canvas" />
 
+      {gameError && <div role="alert" className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black p-6 text-white"><p>{gameError}</p><Button onClick={() => window.location.reload()}>RELOAD</Button></div>}
+      {storageError && <p role="status" className="absolute bottom-2 left-2 z-40 text-xs text-amber-300">Local storage is unavailable. Progress may not survive a reload.</p>}
       {/* ------------ touch controls ------------ */}
       {screen === 'playing' && touchMode && gameInput && <TouchLayer input={gameInput} onPause={() => gameRef.current?.pause()} />}
 
@@ -359,19 +358,21 @@ export default function Home() {
                 <h3 className="mb-2 text-xs font-black tracking-[0.3em] text-red-400">CONTROLS</h3>
                 <table className="w-full text-xs">
                   <tbody className="[&_td]:py-1.5 [&_td:first-child]:w-32 [&_td:first-child]:font-mono [&_td:first-child]:text-red-300 [&_td:last-child]:text-zinc-400">
-                    <tr><td>A / D</td><td>Move</td></tr>
+                    <tr><td>A / D</td><td>Move — normal run</td></tr>
+                    <tr><td>A, A / D, D</td><td>Double-tap, hold second press: faster sprint</td></tr>
                     <tr><td>SPACE</td><td>Jump / double jump</td></tr>
-                    <tr><td>J</td><td>Light attack (chain up to 5)</td></tr>
+                    <tr><td>Q</td><td>Draw / sheathe — choose sword or empty-hand combat</td></tr>
+                    <tr><td>J</td><td>Light chain — fists sheathed, cuts drawn</td></tr>
                     <tr><td>K</td><td>Heavy attack — hold to CHARGE</td></tr>
-                    <tr><td>L / SHIFT</td><td>Dash (8 directions, cancels anything)</td></tr>
-                    <tr><td>DASH + J / K</td><td>Dash slash / piercing fang</td></tr>
+                    <tr><td>L / SHIFT</td><td>Momentum dash — thrust, coast, brake; cancels attacks</td></tr>
+                    <tr><td>DASH + J / K</td><td>Dash palm sheathed / sword strike drawn</td></tr>
                     <tr><td>W + J</td><td>Launcher — sends foes skyward</td></tr>
                     <tr><td>S + J</td><td>Cyclone spin</td></tr>
                     <tr><td>AIR J / K</td><td>Air combos / dive / meteor slam</td></tr>
                     <tr><td>O</td><td>Parry — then J for a riposte</td></tr>
-                    <tr><td>U</td><td>Sword ability (costs energy)</td></tr>
-                    <tr><td>I</td><td>Ultimate when the blade meter is full</td></tr>
-                    <tr><td>E</td><td>Execute staggered enemies — restores HP</td></tr>
+                    <tr><td>U</td><td>Focused palm sheathed / sword ability drawn (energy)</td></tr>
+                    <tr><td>I</td><td>Focused palm finisher / sword ultimate (full meter)</td></tr>
+                    <tr><td>E</td><td>Guard-break strike sheathed / execution drawn</td></tr>
                     <tr><td>1 - 6 / TAB</td><td>Switch blades</td></tr>
                     <tr><td>P / ESC</td><td>Pause</td></tr>
                   </tbody>
@@ -404,6 +405,8 @@ export default function Home() {
             <Trophy className="h-5 w-5 text-amber-400" />
             <h2 className="text-2xl font-black tracking-widest text-white">LEADERBOARD</h2>
           </div>
+          {scoresLoading && <p role="status" className="mt-3 text-zinc-400">Loading leaderboard…</p>}
+          {scoreError && <div role="alert" className="mt-3 text-red-300">{scoreError} <Button variant="outline" disabled={scoresLoading} onClick={() => void refreshScores()}>RETRY</Button></div>}
           <ScrollArea className="mt-4 min-h-0 flex-1">
             <table className="w-full text-xs">
               <thead>
@@ -418,7 +421,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="[&_td]:py-2 [&_tr]:border-b [&_tr]:border-zinc-900">
-                {scores.length === 0 && (
+                {scores.length === 0 && !scoresLoading && !scoreError && (
                   <tr><td colSpan={7} className="py-8 text-center font-mono text-zinc-600">NO RECORDS YET — BE THE FIRST</td></tr>
                 )}
                 {scores.map((r, i) => (
@@ -550,11 +553,12 @@ export default function Home() {
               className="h-11 w-48 border-zinc-700 bg-black/70 font-mono tracking-widest text-zinc-200 placeholder:text-zinc-600"
               maxLength={16}
             />
-            <Button className="h-11 bg-red-600 font-black tracking-widest text-white hover:bg-red-500" disabled={submitted} onClick={(e) => { e.currentTarget.blur(); void submitScore() }}>
-              <Send className="mr-2 h-4 w-4" /> {submitted ? 'SUBMITTED' : 'SUBMIT'}
+            <Button className="h-11 bg-red-600 font-black tracking-widest text-white hover:bg-red-500" disabled={submitted || submitting} onClick={(e) => { e.currentTarget.blur(); void submitScore() }}>
+              <Send className="mr-2 h-4 w-4" /> {submitted ? 'SUBMITTED' : submitting ? 'SAVING…' : 'SUBMIT'}
             </Button>
           </div>
 
+          {submitError && <p role="alert" className="mt-3 text-sm text-red-300">{submitError}</p>}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
               <RotateCcw className="mr-2 h-4 w-4" /> RETRY

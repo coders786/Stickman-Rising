@@ -1,0 +1,14 @@
+{
+  "errors": [],
+  "simulationHz": 120,
+  "updates": 600,
+  "frames": 300,
+  "allPosesFinite": true,
+  "variants": [
+    "launch",
+    "carry",
+    "pivot"
+  ],
+  "maxDashSpeed": 1081.3007392817424,
+  "maxDashLeanDegrees": 48.98734274628747
+}

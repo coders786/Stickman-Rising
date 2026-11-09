@@ -45,6 +45,20 @@ export class Input {
   private pressTime = new Map<Action, number>() // REAL seconds (performance.now)
   private consumedBuffer = new Map<Action, boolean>()
   private attached = false
+  private tapDirection = 0
+  private tapAt = -Infinity
+  private sprintDir = 0
+  /** Detect in EVENTS, not in update(): both taps may occur between frames. */
+  private recordDirection(a:Action):void {
+    if(a!=='left'&&a!=='right')return
+    const dir=a==='right'?1:-1,t=this.now
+    this.sprintDir=this.tapDirection===dir&&t-this.tapAt<=.28?dir:0
+    this.tapDirection=dir;this.tapAt=t
+  }
+  sprintDirection():number {
+    return this.enabled&&Math.sign(this.axisX())===this.sprintDir
+      &&this.down(this.sprintDir===1?'right':'left')?this.sprintDir:0
+  }
 
   /** REAL-time clock in seconds (performance.now based) — immune to
    * frame-rate distortion (throttled rAF, synthetic compositor timestamps,
@@ -73,19 +87,27 @@ export class Input {
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
     window.removeEventListener('blur', this.onBlur)
+    this.reset()
   }
 
   setEnabled(v: boolean): void {
     this.enabled = v
-    if (!v) {
-      this.downMap.clear()
-      this.vDown.clear()
-      this.vAxis.x = 0
-      this.vAxis.y = 0
-    }
+    if (!v) this.reset()
+  }
+
+  private reset(): void {
+    this.tapDirection=0;this.tapAt=-Infinity;this.sprintDir=0
+    this.downMap.clear()
+    this.pressedMap.clear()
+    this.releasedMap.clear()
+    this.pressTime.clear()
+    this.consumedBuffer.clear()
+    this.vDown.clear()
+    this.vAxis = { x: 0, y: 0 }
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    if (!this.enabled) return
     const t = e.target as HTMLElement | null
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
     const action = KEYMAP[e.code]
@@ -101,17 +123,13 @@ export class Input {
     this.release(action)
   }
 
-  private onBlur = (): void => {
-    this.downMap.clear()
-    this.vDown.clear()
-    this.vAxis.x = 0
-    this.vAxis.y = 0
-  }
+  private onBlur = (): void => { this.reset() }
 
   private press(a: Action): void {
     if (this.downMap.get(a)) return
     this.downMap.set(a, true)
     this.pressedMap.set(a, true)
+    this.recordDirection(a)
     this.pressTime.set(a, this.now)
     this.consumedBuffer.set(a, false)
   }
@@ -119,6 +137,7 @@ export class Input {
   private release(a: Action): void {
     if (!this.downMap.get(a)) return
     this.downMap.set(a, false)
+    if((a==='right'&&this.sprintDir===1)||(a==='left'&&this.sprintDir===-1))this.sprintDir=0
     this.releasedMap.set(a, true)
   }
 
@@ -169,7 +188,7 @@ export class Input {
 
   /** Horizontal axis: -1..1 (keyboard + virtual stick). */
   axisX(): number {
-    if (!this.enabled) return this.vAxis.x
+    if (!this.enabled) return 0
     let x = this.vAxis.x
     if (this.down('left')) x -= 1
     if (this.down('right')) x += 1
@@ -177,7 +196,7 @@ export class Input {
   }
 
   axisY(): number {
-    if (!this.enabled) return this.vAxis.y
+    if (!this.enabled) return 0
     let y = this.vAxis.y
     if (this.down('up')) y -= 1
     if (this.down('down')) y += 1
@@ -196,20 +215,24 @@ export class Input {
   /* ---------- virtual (touch) API — called by React layer ---------- */
 
   setVirtualAxis(x: number, y: number): void {
-    this.vAxis.x = Math.max(-1, Math.min(1, x))
-    this.vAxis.y = Math.max(-1, Math.min(1, y))
+    if (!this.enabled) return
+    this.vAxis.x = Number.isFinite(x) ? Math.max(-1, Math.min(1, x)) : 0
+    this.vAxis.y = Number.isFinite(y) ? Math.max(-1, Math.min(1, y)) : 0
   }
 
   setVirtual(a: Action, isDown: boolean): void {
+    if (!this.enabled) return
     if (isDown) {
       if (this.vDown.get(a)) return
       this.vDown.set(a, true)
       this.pressedMap.set(a, true)
+      this.recordDirection(a)
       this.pressTime.set(a, this.now)
       this.consumedBuffer.set(a, false)
     } else {
       if (!this.vDown.get(a)) return
       this.vDown.set(a, false)
+      if((a==='right'&&this.sprintDir===1)||(a==='left'&&this.sprintDir===-1))this.sprintDir=0
       this.releasedMap.set(a, true)
     }
   }
