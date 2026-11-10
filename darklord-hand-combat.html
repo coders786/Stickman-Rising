@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE DARK LORD — Hand Combat Study · Frame Interpolation Lab</title>
+<style>
+  :root{
+    --font-mono: "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+    --bg: #0d0e12;
+    --panel: #14161d;
+    --panel-2: #1a1d26;
+    --line: #262a36;
+    --text: #e9ebf2;
+    --text-muted: #8b91a4;
+    --accent: #ff2b3c;
+    --accent-dim: #b3202c;
+    --ok: #37d67a;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    display:flex; flex-direction:column;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  .top-strip{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; padding:10px 18px;
+    border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, #14161d, #101218);
+    flex-wrap: wrap;
+  }
+  .title-block{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  .title-block h1{
+    font-size:0.92rem; letter-spacing:0.14em; font-weight:700;
+    color:var(--text);
+  }
+  .title-block h1 .red{ color:var(--accent); }
+  .subtitle{ font-size:0.68rem; color:var(--text-muted); letter-spacing:0.08em; }
+  .tech-readout{
+    font-size:0.72rem; letter-spacing:0.10em; color:var(--accent);
+    border:1px solid var(--accent-dim); padding:4px 10px;
+    background:rgba(255,43,60,0.07);
+  }
+  .stage-wrap{
+    position:relative;
+    width:min(1280px, 100%);
+    margin:14px auto 8px;
+    aspect-ratio: 16 / 9;
+    background:#ffffff;
+    border:1px solid var(--line);
+    box-shadow: 0 12px 60px rgba(0,0,0,0.55);
+    overflow:hidden;
+    flex:0 0 auto;
+  }
+  canvas#stage{ display:block; width:100%; height:100%; }
+  .hud{
+    position:absolute; top:10px; left:12px; right:12px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    pointer-events:none;
+    font-size:0.66rem; letter-spacing:0.12em;
+    color:rgba(40,40,50,0.55);
+    text-transform:uppercase;
+    mix-blend-mode: multiply;
+  }
+  .controls-row{
+    display:flex; flex-wrap:wrap; align-items:center; gap:10px 18px;
+    width:min(1280px, 100%);
+    margin:10px auto 0;
+    padding:10px 12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+  }
+  .btn-group{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  button{
+    font-family:var(--font-mono);
+    font-size:0.70rem; letter-spacing:0.08em;
+    color:var(--text);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    padding:7px 12px;
+    cursor:pointer;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+    user-select:none;
+  }
+  button:hover{ background:#232734; border-color:#39405a; }
+  button:active{ transform: translateY(1px); }
+  .fps-btn.active{
+    background:var(--accent); border-color:var(--accent); color:#fff;
+    box-shadow: 0 0 14px rgba(255,43,60,0.35);
+  }
+  .toggle-btn{ color:var(--text-muted); }
+  .toggle-btn.active{
+    color:#fff; border-color:var(--accent-dim);
+    background:rgba(255,43,60,0.12);
+    box-shadow: inset 0 0 0 1px rgba(255,43,60,0.25);
+  }
+  .annotation-box{
+    width:min(1280px, 100%);
+    margin:10px auto 0;
+    padding:12px 14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:3px solid var(--accent);
+    font-size:0.74rem;
+    line-height:1.65;
+    color:var(--text);
+    min-height:72px;
+  }
+  .annotation-box b{ color:var(--accent); letter-spacing:0.06em; }
+  .annotation-box .tag{
+    color:#fff; background:rgba(255,43,60,0.14);
+    border:1px solid var(--accent-dim);
+    padding:1px 7px; margin-right:6px;
+    font-size:0.66rem;
+  }
+  .annotation-box .metrics{
+    display:block; margin-top:6px;
+    color:var(--text-muted); font-size:0.68rem; letter-spacing:0.05em;
+  }
+  .hint-row{
+    width:min(1280px, 100%);
+    margin:10px auto 18px;
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-size:0.64rem; color:var(--text-muted); letter-spacing:0.08em;
+    padding:0 2px;
+  }
+  .hint-row kbd{
+    background:var(--panel-2); border:1px solid var(--line);
+    padding:1px 6px; margin:0 2px; font-family:var(--font-mono);
+    color:var(--text);
+  }
+  @media (max-width: 720px){
+    .title-block h1{ font-size:0.78rem; }
+    button{ font-size:0.62rem; padding:6px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-strip">
+  <div class="title-block">
+    <h1>THE <span class="red">DARK LORD</span> — HAND COMBAT STUDY</h1>
+    <span class="subtitle">UNARMED CHOREOGRAPHY · KEYFRAME @24 · INTERP @60 · RESEARCH-GROUNDED POSES</span>
+  </div>
+  <div class="tech-readout" id="techReadout">M01 · SETTLE-IN</div>
+</div>
+
+<div class="stage-wrap">
+  <canvas id="stage" width="1280" height="720"></canvas>
+  <div class="hud">
+    <span id="hudLeft">SEQUENCE 01 / 11 · SOLO IMPACT-FRAME REEL</span>
+    <span id="hudRight">F0000 · 60 FPS INTERP</span>
+  </div>
+</div>
+
+<div class="controls-row">
+  <div class="btn-group">
+    <button id="btnPlayPause">■ PAUSE</button>
+    <button id="btnPrev">◄ STEP</button>
+    <button id="btnNext">STEP ►</button>
+  </div>
+
+  <div class="btn-group">
+    <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); margin-right: 4px;">FPS:</span>
+    <button class="fps-btn" data-fps="6">06 [SLOW]</button>
+    <button class="fps-btn" data-fps="12">12 [TWOS]</button>
+    <button class="fps-btn" data-fps="24">24 [SAKUGA]</button>
+    <button class="fps-btn active" data-fps="60">60 [INTERP]</button>
+  </div>
+
+  <div class="btn-group">
+    <button id="btnOnion" class="toggle-btn active">ONION SKIN [O]</button>
+    <button id="btnSmear" class="toggle-btn active">SMEAR HULLS [S]</button>
+    <button id="btnPhysics" class="toggle-btn active">PHYSICS VECTORS [P]</button>
+  </div>
+</div>
+
+<div class="annotation-box" id="annotation">
+  <b>Biomechanical Reference:</b> Initializing frame coordinates...
+</div>
+
+<div class="hint-row">
+  <span><kbd>SPACE</kbd> play/pause · <kbd>◄</kbd><kbd>►</kbd> step keyframes · <kbd>O</kbd> onion · <kbd>S</kbd> smears · <kbd>P</kbd> vectors · <kbd>1-4</kbd> fps</span>
+  <span>MODEL: RED STICK · HOLLOW HEAD · RIGHT-WRIST BAND (CANON #FF0000) · PX/M 205 · IK 2-BONE · HERMITE-CR INTERPOLATOR</span>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   THE DARK LORD — HAND COMBAT STUDY
+   Single-file animation lab. Python kept in the head; the math
+   below is what it spat out: IK, hermite interpolation, rigid
+   weight shifts, and drama that knowingly bends physics.
+   ============================================================ */
+
+// ---------- constants ----------
+const W = 1280, H = 720, GROUND = 600, PX_PER_M = 205;
+const ARM_U = 84, ARM_F = 78;          // upper arm / forearm  (px)
+const LEG_T = 100, LEG_S = 98;         // thigh / shin         (px)
+const KEY_FPS = 24;                    // authored keyframe grid
+
+// ---------- math utils ----------
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp = (a, b, u) => a + (b - a) * u;
+function rot(x, y, deg) {
+  const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+  return [x * c - y * s, x * s + y * c];
+}
+function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
+
+// 2-bone IK. side=+1 elbow/knee drops below the S->T line, -1 lifts above.
+function ik(S, T, L1, L2, side) {
+  let dx = T[0] - S[0], dy = T[1] - S[1];
+  let d = Math.hypot(dx, dy);
+  const maxd = L1 + L2 - 0.5, mind = Math.abs(L1 - L2) + 2;
+  if (d > maxd) { dx *= maxd / d; dy *= maxd / d; d = maxd; }
+  if (d < mind) { if (d < 1e-3) { dx = mind; dy = 0; d = mind; } else { dx *= mind / d; dy *= mind / d; d = mind; } }
+  const ux = dx / d, uy = dy / d;
+  const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+  return {
+    joint: [S[0] + ux * a - uy * side * h, S[1] + uy * a + ux * side * h],
+    end: [S[0] + dx, S[1] + dy]
+  };
+}
+
+// cubic hermite with finite-difference (catmull-rom) tangents,
+// tangent-limited to 3x segment slope so keys never scream.
+function hermiteChannel(T, V, t) {
+  const n = T.length;
+  if (t <= T[0]) return V[0];
+  if (t >= T[n - 1]) return V[n - 1];
+  let i = 0;
+  while (i < n - 2 && T[i + 1] <= t) i++;
+  const t0 = T[i], t1 = T[i + 1], dt = t1 - t0;
+  const u = (t - t0) / dt;
+  const slope = (V[i + 1] - V[i]) / dt;
+  const tan = (j) => {
+    if (j <= 0) return (V[1] - V[0]) / (T[1] - T[0]);
+    if (j >= n - 1) return (V[n - 1] - V[n - 2]) / (T[n - 1] - T[n - 2]);
+    return (V[j + 1] - V[j - 1]) / (T[j + 1] - T[j - 1]);
+  };
+  const lim = (m) => {
+    const cap = 3 * Math.abs(slope) + 1e-6;
+    return clamp(m, -cap, cap);
+  };
+  const m0 = lim(tan(i)) * dt, m1 = lim(tan(i + 1)) * dt;
+  const u2 = u * u, u3 = u2 * u;
+  return (2 * u3 - 3 * u2 + 1) * V[i] + (u3 - 2 * u2 + u) * m0 +
+         (-2 * u3 + 3 * u2) * V[i + 1] + (u3 - u2) * m1;
+}
+
+// ---------- pose key helper ----------
+// f: keyframe index on the 24fps grid. hr/hl: right(far)/left(near) fist targets.
+// fr/fl: right(far)/left(near) ankle targets. o: {esL,esR,ksL,ksR,pr,pl,glow}
+const k = (f, rx, ry, lean, head, hr, hl, fr, fl, o) =>
+  ({ f, rx, ry, lean, head, hr, hl, fr, fl, o: o || null });
+
+// ============================================================
+// CHOREOGRAPHY — 11 continuous moves, 213 authored keyframes on
+// a 24fps grid. No move repeats another's motion. Boundaries are
+// pose-identical by construction (loop is seamless).
+// Targets stay inside IK reach (+soft clamp <15px). Research refs
+// in the notes: Finch et al. IJPAS 2018 (fist velocities), boxing
+// kinetic-chain literature (GRF → hip → shoulder → fist).
+// ============================================================
+const CHOREO = [
+{
+  code: "M01", name: "SETTLE-IN · BREATH & WEIGHT", hold: 0.10,
+  keys: [
+    k(0,  558,428, 5,1, [618,296],[680,272],[498,600],[618,600], {glow:0}),
+    k(2,  559,425, 6,2, [620,292],[683,268],[499,600],[620,600], {glow:0}),
+    k(4,  560,422, 7,3, [622,288],[685,263],[500,600],[621,600], {glow:0.04}),
+    k(6,  561,426, 6,2, [621,291],[683,266],[500,600],[622,600], {glow:0.04}),
+    k(8,  560,423, 7,3, [622,289],[685,264],[500,600],[622,600], {glow:0.05}),
+    k(10, 560,425, 6,2, [621,291],[684,266],[500,600],[621,600], {glow:0.04}),
+    k(12, 560,424, 7,3, [622,290],[686,264],[500,600],[622,600], {glow:0.05}),
+    k(13, 560,424, 7,3, [622,290],[686,264],[500,600],[622,600], {glow:0.05})
+  ],
+  notes: [
+    [0, "SETTLE-IN — micro weight shift over the stance. The COM oscillates a few px: fighters never stand still, the stabilizers never switch off."],
+    [6, "Guard geometry: lead fist at brow line, rear fist at chin. Elbows tucked (pole +1 = below the shoulder-hand line)."]
+  ],
+  imp: []
+},
+{
+  code: "M02", name: "LEAD JAB · KIZAMI-ZUKI", hold: 0.10,
+  keys: [
+    k(0,  560,424, 7,3, [622,290],[686,264],[500,600],[622,600], {glow:0.05}),
+    k(2,  558,427, 5,2, [618,294],[676,272],[500,600],[619,600], {glow:0.06}),
+    k(4,  572,426, 8,4, [616,292],[682,268],[502,600],[648,600], {glow:0.08}),
+    k(5,  584,425, 9,4, [614,291],[700,266],[506,600],[658,600], {glow:0.1}),
+    k(6,  598,424, 11,5,[610,289],[730,262],[512,600],[670,600], {glow:0.12}),
+    k(7,  612,423, 12,5,[608,288],[766,257],[518,600],[682,600], {glow:0.15}),
+    k(8,  622,422, 13,5,[606,287],[792,252],[524,600],[690,600], {glow:0.22}),
+    k(9,  622,422, 13,5,[606,287],[794,252],[524,600],[690,600], {glow:0.22}),
+    k(10, 622,422, 13,5,[606,287],[792,252],[524,600],[690,600], {glow:0.2}),
+    k(11, 620,423, 12,5,[608,288],[774,255],[522,600],[688,600], {glow:0.18}),
+    k(12, 612,423, 11,5,[610,289],[736,261],[518,600],[682,600], {glow:0.15}),
+    k(13, 602,424, 10,4,[612,290],[712,265],[512,600],[672,600], {glow:0.12}),
+    k(14, 592,424, 9,4, [614,290],[700,266],[508,600],[660,600], {glow:0.1}),
+    k(15, 582,424, 8,3, [618,290],[694,266],[504,600],[648,600], {glow:0.08}),
+    k(16, 576,424, 8,3, [620,290],[692,265],[502,600],[640,600], {glow:0.06}),
+    k(16, 576,424, 8,3, [620,290],[692,265],[502,600],[640,600], {glow:0.06})
+  ],
+  notes: [
+    [2, "JAB — shortest delivery window of the punch family (~200-400 ms). Power is shoulder protraction + triceps lockout, not mass."],
+    [6, "Kinetic chain fires: lead-foot GRF -> hip drift -> scapular protraction. Proximal-to-distal sequencing, textbook order."],
+    [8, "CONTACT — arm at full extension (locked chain). Stepping jab: the root advances +62px so the shoulder arrives with the fist."]
+  ],
+  imp: [[8, 800, 250, 0.85, "fist"]]
+},
+{
+  code: "M03", name: "REAR CROSS · GYAKU-ZUKI", hold: 0.10,
+  keys: [
+    k(0,  576,424, 8,3, [620,290],[692,265],[502,600],[640,600], {glow:0.06}),
+    k(2,  568,428, 6,2, [612,297],[684,270],[502,600],[638,600], {glow:0.08}),
+    k(3,  565,429, 5,1, [610,299],[682,272],[502,600],[637,600], {glow:0.1}),
+    k(4,  570,428, 6,2, [614,298],[680,271],[508,598],[637,600], {glow:0.12}),
+    k(5,  582,426, 8,3, [626,295],[676,270],[522,595],[638,600], {glow:0.16}),
+    k(6,  598,424, 11,4,[652,291],[668,270],[540,593],[640,600], {glow:0.22}),
+    k(7,  614,422, 13,5,[696,283],[654,272],[558,592],[643,600], {glow:0.3}),
+    k(8,  630,420, 15,6,[752,273],[640,276],[576,592],[646,600], {glow:0.42}),
+    k(9,  642,418, 17,6,[806,261],[632,280],[592,593],[648,600], {glow:0.55}),
+    k(10, 650,417, 18,7,[838,254],[628,282],[604,594],[650,600], {glow:0.62}),
+    k(11, 650,417, 18,7,[840,253],[628,282],[605,594],[650,600], {glow:0.62}),
+    k(12, 650,417, 18,7,[838,254],[628,282],[604,594],[650,600], {glow:0.6}),
+    k(13, 649,417, 17,7,[828,255],[629,282],[602,594],[650,600], {glow:0.55}),
+    k(14, 644,418, 15,6,[800,257],[631,281],[596,595],[649,600], {glow:0.45}),
+    k(15, 632,419, 13,5,[756,264],[636,280],[584,596],[648,600], {glow:0.35}),
+    k(16, 616,421, 11,4,[714,272],[646,277],[568,598],[646,600], {glow:0.28}),
+    k(17, 600,422, 10,4,[682,278],[658,274],[548,599],[644,600], {glow:0.22}),
+    k(18, 588,423, 9,4, [660,283],[668,272],[532,600],[642,600], {glow:0.15}),
+    k(19, 580,424, 9,4, [648,286],[676,271],[520,600],[640,600], {glow:0.1})
+  ],
+  notes: [
+    [2, "REAR CROSS — rear-forefoot GRF initiates the chain: ankle -> knee -> hip -> trunk -> shoulder -> elbow -> fist."],
+    [5, "HIP-SHOULDER SEPARATION (X-factor): hips open while shoulders stay coiled. The oblique sling stretch-shortening cycle stores elastic energy."],
+    [10, "CONTACT — peak fist v in the 8-10 m/s class. Elite straight cross measures ~3,158 N peak force with full proximal-to-distal transfer."]
+  ],
+  imp: [[10, 848, 246, 1.0, "fist"]]
+},
+{
+  code: "M04", name: "LEAD HOOK · KAGI-ZUKI", hold: 0.10,
+  keys: [
+    k(0,  580,424, 9,4, [648,286],[676,271],[520,600],[640,600], {glow:0.1}),
+    k(2,  574,425, 7,3, [640,289],[662,277],[510,600],[630,600], {glow:0.12}),
+    k(3,  571,426, 6,3, [636,290],[652,281],[507,600],[627,600], {glow:0.14}),
+    k(4,  576,425, 8,3, [634,289],[672,270],[512,600],[632,600], {glow:0.18, esL:-1}),
+    k(5,  588,424, 10,4,[632,288],[716,258],[524,600],[644,600], {glow:0.26, esL:-1}),
+    k(6,  610,423, 12,4,[628,288],[770,232],[546,600],[666,600], {glow:0.4, esL:-1}),
+    k(7,  636,421, 13,5,[624,289],[796,234],[572,600],[692,600], {glow:0.55, esL:-1}),
+    k(8,  656,420, 14,5,[620,290],[802,252],[592,600],[712,600], {glow:0.66, esL:-1}),
+    k(9,  656,420, 14,5,[620,290],[804,253],[592,600],[712,600], {glow:0.66, esL:-1}),
+    k(10, 656,420, 14,5,[620,290],[802,252],[592,600],[712,600], {glow:0.64, esL:-1}),
+    k(11, 653,421, 13,5,[622,289],[790,256],[589,600],[709,600], {glow:0.58, esL:-1}),
+    k(12, 644,422, 11,4,[626,288],[770,264],[580,600],[700,600], {glow:0.5, esL:-1}),
+    k(13, 632,423, 10,4,[630,288],[750,272],[568,600],[688,600], {glow:0.42}),
+    k(14, 618,423, 9,4, [634,288],[730,275],[554,600],[674,600], {glow:0.34}),
+    k(15, 604,424, 9,4, [638,288],[712,276],[540,600],[660,600], {glow:0.28}),
+    k(16, 592,424, 8,4, [642,288],[698,274],[528,600],[648,600], {glow:0.22}),
+    k(17, 584,424, 8,4, [644,288],[688,272],[520,600],[640,600], {glow:0.18}),
+    k(17, 584,424, 8,4, [644,288],[688,272],[520,600],[640,600], {glow:0.18})
+  ],
+  notes: [
+    [3, "LEAD HOOK — literature peak fist velocity ~11.95 +/- 1.84 m/s (Finch et al., IJPAS 2018): the fastest of the punch family."],
+    [6, "Elbow leads, fist follows. A bent arm has low rotational inertia, so the shoulder segment supplies 50-71% of total rotation."],
+    [8, "CONTACT on the arc's descending limb — the arm lands bent (~90-120 deg elbow), which is exactly where a hook carries its mass."]
+  ],
+  imp: [[8, 812, 248, 1.1, "fist"]]
+},
+{
+  code: "M05", name: "REAR UPPERCUT · AGE-ZUKI", hold: 0.10,
+  keys: [
+    k(0,  584,424, 8,4, [644,288],[688,272],[520,600],[640,600], {glow:0.18}),
+    k(2,  582,432, 9,3, [636,300],[678,282],[518,600],[638,600], {glow:0.2}),
+    k(3,  581,438, 9,2, [630,308],[672,288],[517,600],[637,600], {glow:0.22}),
+    k(4,  580,445, 8,1, [618,318],[664,294],[516,600],[636,600], {glow:0.26}),
+    k(5,  582,442, 9,2, [616,322],[660,292],[518,600],[638,600], {glow:0.3}),
+    k(6,  590,434, 11,3,[634,318],[654,288],[526,598],[646,598], {glow:0.38}),
+    k(7,  604,424, 13,4,[672,304],[648,284],[540,596],[660,596], {glow:0.48}),
+    k(8,  622,412, 15,5,[730,282],[642,280],[558,596],[678,596], {glow:0.58}),
+    k(9,  642,402, 16,6,[782,252],[638,276],[576,591],[698,591], {glow:0.68}),
+    k(10, 656,396, 17,7,[806,224],[636,273],[590,588],[712,588], {glow:0.75}),
+    k(11, 656,396, 17,7,[808,223],[636,273],[590,588],[712,588], {glow:0.75}),
+    k(12, 656,396, 17,7,[806,224],[636,273],[590,588],[712,588], {glow:0.72}),
+    k(13, 653,400, 16,7,[790,232],[637,274],[588,590],[708,590], {glow:0.66}),
+    k(14, 646,408, 14,6,[758,248],[640,277],[582,593],[700,593], {glow:0.56}),
+    k(15, 634,416, 12,5,[718,264],[646,280],[570,597],[686,597], {glow:0.46}),
+    k(16, 618,421, 10,5,[686,276],[656,282],[554,599],[672,600], {glow:0.38}),
+    k(17, 602,423, 9,4, [664,282],[664,277],[538,600],[658,600], {glow:0.3}),
+    k(18, 590,424, 9,4, [652,286],[672,273],[526,600],[646,600], {glow:0.24}),
+    k(19, 584,424, 9,4, [646,288],[678,271],[518,600],[640,600], {glow:0.2})
+  ],
+  notes: [
+    [4, "UPPERCUT — deepest level change of the reel. Squat depth trades potential energy for vertical impulse."],
+    [8, "The rear uppercut records the greatest shoulder joint angular velocity of the punch family (~1070 deg/s). Vertical GRF dominates."],
+    [10, "APEX CONTACT — feet are momentarily near-unloaded (watch the COM vector); the strike lands between gravity's departure and return."]
+  ],
+  imp: [[10, 816, 216, 1.15, "fist"]]
+},
+{
+  code: "M06", name: "SPINNING BACK FIST · URAMAWASHI", hold: 0.10,
+  keys: [
+    k(0,  584,424, 9,4, [646,288],[678,271],[518,600],[640,600], {glow:0.2}),
+    k(2,  580,427, 3,-2,[638,292],[664,281],[516,600],[636,600], {glow:0.22}),
+    k(3,  578,428, 0,-6,[632,296],[652,288],[515,600],[633,600], {glow:0.24}),
+    k(4,  576,429, -4,-10,[626,298],[638,292],[518,600],[629,600], {glow:0.26}),
+    k(5,  575,430, -8,-14,[616,300],[616,296],[534,600],[622,600], {glow:0.3}),
+    k(6,  574,431, -12,-18,[598,306],[588,302],[556,600],[606,600], {glow:0.35}),
+    k(7,  574,431, -16,-22,[566,318],[552,316],[582,598],[578,598], {glow:0.42}),
+    k(8,  575,431, -18,-24,[534,330],[520,332],[606,596],[552,598], {glow:0.5}),
+    k(9,  577,430, -16,-20,[520,336],[512,342],[620,596],[534,598], {glow:0.58}),
+    k(10, 582,429, -10,-12,[540,330],[548,330],[628,598],[522,600], {glow:0.66, esL:-1}),
+    k(11, 590,427, -2,-2,[588,312],[632,306],[632,599],[514,600], {glow:0.75, esL:-1}),
+    k(12, 606,425, 6,6, [640,292],[724,268],[634,600],[508,600], {glow:0.82, esL:-1}),
+    k(13, 630,423, 12,10,[636,288],[786,244],[642,600],[552,600], {glow:0.88, esL:-1}),
+    k(14, 630,423, 12,10,[636,288],[788,243],[642,600],[552,600], {glow:0.88, esL:-1}),
+    k(15, 630,423, 12,10,[636,288],[786,244],[640,600],[556,600], {glow:0.85, esL:-1}),
+    k(16, 628,423, 11,9, [636,288],[772,250],[636,600],[564,600], {glow:0.76, esL:-1}),
+    k(17, 624,424, 8,6, [634,289],[740,262],[630,600],[574,600], {glow:0.64, esL:-1}),
+    k(18, 618,425, 5,3, [632,290],[702,278],[624,600],[584,600], {glow:0.52}),
+    k(19, 612,425, 3,1, [630,290],[682,290],[618,600],[592,600], {glow:0.44}),
+    k(20, 606,425, 3,1, [628,290],[676,288],[612,600],[598,600], {glow:0.38}),
+    k(21, 602,425, 5,2, [628,290],[676,284],[606,600],[602,600], {glow:0.34}),
+    k(22, 598,425, 6,3, [628,290],[676,280],[600,600],[606,600], {glow:0.3}),
+    k(23, 594,425, 7,3, [628,290],[676,276],[594,600],[610,600], {glow:0.28}),
+    k(24, 590,425, 8,4, [628,290],[676,273],[590,600],[614,600], {glow:0.26}),
+    k(25, 587,425, 9,4, [628,290],[676,271],[586,600],[618,600], {glow:0.24}),
+    k(26, 585,425, 9,4, [628,290],[676,270],[584,600],[620,600], {glow:0.22}),
+    k(26, 585,425, 9,4, [628,290],[676,270],[584,600],[620,600], {glow:0.22})
+  ],
+  notes: [
+    [4, "SPIN — angular momentum conserved: arms adduct toward the axis, I drops, omega rises (figure-skater rule). The feet shuffle the axis forward."],
+    [10, "UNFURL AT 270 DEG — stored rotational energy transfers distally the moment the arm extends. Whip, not push."],
+    [13, "CONTACT — spinning back fist class peaks at 14+ m/s. The two frozen drawings here are where anime spends its entire budget."],
+    [20, "Counter-rotation recovers balance; the feet walk the stance back to orthodox before the next weapon loads."]
+  ],
+  imp: [[13, 796, 238, 1.25, "fist"]]
+},
+{
+  code: "M07", name: "REAR ROUNDHOUSE · MAWASHI-GERI", hold: 0.10,
+  keys: [
+    k(0,  585,425, 9,4, [628,290],[676,270],[584,600],[620,600], {glow:0.22}),
+    k(2,  592,428, 7,3, [622,292],[670,272],[580,598],[618,600], {glow:0.24}),
+    k(3,  596,430, 6,2, [620,294],[668,274],[578,594],[617,600], {glow:0.26}),
+    k(4,  604,429, 4,1, [618,296],[666,276],[584,556],[616,600], {glow:0.3, pr:30}),
+    k(5,  618,428, 2,0, [616,298],[664,278],[604,516],[616,600], {glow:0.36, pr:32}),
+    k(6,  636,426, 0,-1,[614,298],[662,278],[642,466],[618,598], {glow:0.44, pr:34, pl:-25}),
+    k(7,  654,424, -2,-2,[612,298],[658,278],[710,382],[620,596], {glow:0.54, pr:34, pl:-25}),
+    k(8,  668,421, -5,-3,[608,298],[652,278],[762,306],[622,594], {glow:0.64, pr:34, pl:-25}),
+    k(9,  678,418, -8,-4,[604,298],[646,278],[792,270],[624,592], {glow:0.72, pr:34, pl:-25}),
+    k(10, 685,415, -10,-5,[600,298],[640,278],[812,246],[626,590], {glow:0.78, pr:34, pl:-25}),
+    k(11, 685,415, -10,-5,[600,298],[640,278],[814,244],[626,590], {glow:0.78, pr:34, pl:-25}),
+    k(12, 685,415, -10,-5,[600,298],[640,278],[812,246],[626,590], {glow:0.75, pr:32, pl:-25}),
+    k(13, 684,416, -9,-4,[601,298],[642,278],[802,254],[626,591], {glow:0.7, pr:30, pl:-22}),
+    k(14, 680,418, -7,-3,[604,298],[646,278],[776,272],[626,593], {glow:0.62, pr:26, pl:-18}),
+    k(15, 674,421, -4,-2,[608,298],[650,278],[736,312],[626,595], {glow:0.54, pr:20, pl:-12}),
+    k(16, 668,424, -1,-1,[612,297],[654,278],[700,362],[626,597], {glow:0.46, pr:14, pl:-6}),
+    k(17, 662,426, 2,1, [616,296],[658,278],[664,432],[626,598], {glow:0.4, pr:8}),
+    k(18, 656,427, 5,2, [620,294],[662,277],[636,516],[626,599], {glow:0.36, pr:4}),
+    k(19, 652,427, 7,3, [624,292],[666,275],[632,588],[620,600], {glow:0.32}),
+    k(20, 650,426, 8,3, [626,291],[670,273],[636,600],[610,600], {glow:0.3}),
+    k(21, 649,426, 9,4, [628,290],[672,272],[640,600],[600,600], {glow:0.28}),
+    k(22, 648,425, 9,4, [628,290],[674,271],[642,600],[592,600], {glow:0.26}),
+    k(23, 648,425, 9,4, [628,290],[676,270],[642,600],[586,600], {glow:0.24}),
+    k(24, 648,425, 9,4, [628,290],[678,270],[642,600],[582,600], {glow:0.24}),
+    k(24, 648,425, 9,4, [628,290],[678,270],[642,600],[582,600], {glow:0.24})
+  ],
+  notes: [
+    [4, "ROUNDHOUSE — chamber first: knee leads, hip externally rotates. The pivot on the standing foot is what unlocks the hip."],
+    [8, "Torso counter-leans -10 deg while the leg fires (10-12 m/s class). Angular momentum conservation: the upper body is the counterweight."],
+    [10, "CONTACT — heel velocity peaks at full extension. Rear-leg propulsive GRF precedes contact by ~2 frames."]
+  ],
+  imp: [[10, 822, 238, 1.3, "kick"]]
+},
+{
+  code: "M08", name: "FALLING ELBOW · OTOSHI-HIJI", hold: 0.10,
+  keys: [
+    k(0,  648,425, 9,4, [628,290],[678,270],[642,600],[582,600], {glow:0.24}),
+    k(2,  646,430, 7,3, [634,294],[662,276],[640,600],[580,600], {glow:0.26}),
+    k(3,  645,434, 6,2, [636,298],[652,282],[639,600],[579,600], {glow:0.28}),
+    k(4,  652,412, 8,3, [632,282],[634,270],[636,562],[578,566], {glow:0.34}),
+    k(5,  662,396, 10,4,[626,268],[622,258],[636,538],[578,542], {glow:0.42, esL:-1}),
+    k(6,  672,382, 13,5,[620,258],[614,250],[638,524],[580,528], {glow:0.5, esL:-1}),
+    k(7,  682,392, 17,7,[618,278],[618,266],[642,542],[582,546], {glow:0.58, esL:-1}),
+    k(8,  690,412, 22,9,[620,312],[622,296],[648,566],[586,570], {glow:0.66, esL:-1}),
+    k(9,  696,438, 26,11,[624,348],[626,330],[652,592],[590,596], {glow:0.72, esL:-1}),
+    k(10, 700,452, 28,12,[626,372],[628,352],[656,600],[594,600], {glow:0.78, esL:-1}),
+    k(11, 700,452, 28,12,[626,372],[628,352],[656,600],[594,600], {glow:0.78, esL:-1}),
+    k(12, 700,451, 27,12,[626,371],[628,351],[656,600],[594,600], {glow:0.75, esL:-1}),
+    k(13, 698,450, 26,11,[625,366],[627,346],[655,600],[593,600], {glow:0.7, esL:-1}),
+    k(14, 696,446, 23,10,[624,352],[626,336],[653,600],[592,600], {glow:0.62, esL:-1}),
+    k(15, 693,440, 19,9, [624,332],[626,320],[651,600],[591,600], {glow:0.54}),
+    k(16, 689,434, 15,7, [626,312],[628,302],[650,600],[590,600], {glow:0.46}),
+    k(17, 685,429, 12,5, [628,298],[632,288],[649,600],[588,600], {glow:0.4}),
+    k(18, 681,426, 10,4, [628,292],[638,278],[648,600],[586,600], {glow:0.36}),
+    k(18, 681,426, 10,4, [628,292],[638,278],[648,600],[586,600], {glow:0.36})
+  ],
+  notes: [
+    [4, "FALLING ELBOW — mgh converts to kinetic on the way down. The hop is small; the drama lives in the fold of the body."],
+    [8, "Drive phase: the elbow tip is the striking surface. Forearm folds to a rigid strut; the hand tucks to the hip (pole es -1)."],
+    [10, "CONTACT + LANDING — one frame, two GRF spikes: strike shock and eccentric quadriceps absorption. Watch the shake decay."]
+  ],
+  imp: [[10, 702, 598, 1.4, "elbow"], [10, 660, 600, 0.55, "ground"]]
+},
+{
+  code: "M09", name: "LEAD SWEEP · SOKU-GARI", hold: 0.10,
+  keys: [
+    k(0,  681,426, 10,4,[628,292],[638,278],[648,600],[586,600], {glow:0.36}),
+    k(2,  676,438, 14,6,[622,312],[634,300],[646,600],[584,600], {glow:0.34}),
+    k(3,  672,446, 17,8,[616,330],[630,316],[644,600],[582,600], {glow:0.32}),
+    k(4,  668,456, 22,10,[610,352],[624,338],[642,600],[580,600], {glow:0.3}),
+    k(5,  666,468, 28,12,[610,388],[622,372],[640,600],[578,600], {glow:0.28}),
+    k(6,  664,482, 34,14,[630,492],[652,472],[638,600],[576,600], {glow:0.26}),
+    k(7,  662,498, 40,16,[662,562],[700,556],[636,600],[574,600], {glow:0.26}),
+    k(8,  660,514, 46,18,[656,578],[696,572],[634,600],[572,600], {glow:0.26}),
+    k(9,  658,524, 50,20,[652,588],[694,582],[632,600],[566,600], {glow:0.28}),
+    k(10, 656,530, 53,21,[650,592],[692,588],[630,598],[530,596], {glow:0.3, pl:10}),
+    k(11, 655,532, 55,22,[648,594],[690,590],[628,596],[478,590], {glow:0.34, pl:18}),
+    k(12, 656,532, 56,22,[646,594],[688,592],[626,594],[560,594], {glow:0.4, pl:25}),
+    k(13, 658,532, 57,22,[646,594],[688,592],[624,594],[672,590], {glow:0.48, pl:25}),
+    k(14, 660,531, 57,22,[644,592],[686,592],[622,594],[744,586], {glow:0.56, pl:25}),
+    k(15, 662,530, 56,21,[644,590],[686,590],[620,594],[786,582], {glow:0.62, pl:25}),
+    k(16, 662,528, 54,20,[646,586],[688,586],[618,594],[798,578], {glow:0.62, pl:22}),
+    k(17, 660,522, 50,18,[650,578],[692,578],[616,594],[786,582], {glow:0.58, pl:18}),
+    k(18, 656,510, 42,15,[662,552],[700,548],[614,596],[730,588], {glow:0.52, pl:12}),
+    k(19, 650,488, 32,11,[668,512],[704,506],[612,598],[682,594], {glow:0.46, pl:6}),
+    k(20, 644,458, 22,8, [630,438],[660,430],[610,600],[654,598], {glow:0.42}),
+    k(21, 638,438, 15,6, [630,360],[648,356],[608,600],[636,600], {glow:0.38}),
+    k(22, 632,430, 12,5, [622,318],[618,304],[606,600],[626,600], {glow:0.34}),
+    k(23, 628,427, 11,4, [626,300],[626,290],[604,600],[622,600], {glow:0.3}),
+    k(24, 625,426, 10,4, [628,294],[632,282],[602,600],[620,600], {glow:0.3}),
+    k(24, 625,426, 10,4, [628,294],[632,282],[602,600],[620,600], {glow:0.3})
+  ],
+  notes: [
+    [7, "SWEEP — COM drops below half height; hands become extra contact points. A four-point base trades mobility for moment arm."],
+    [12, "Scythe phase: the sweeping leg is a long moment arm at ankle height. Hip angular velocity peaks before foot velocity does."],
+    [15, "CONTACT at the far ankle line — low kicks need reach more than speed; the plant foot pivots to protect the knee."]
+  ],
+  imp: [[15, 796, 580, 1.0, "kick"], [8, 630, 596, 0.5, "ground"]]
+},
+{
+  code: "M10", name: "FLURRY FINISH · RENZOKU", hold: 1.60,
+  keys: [
+    k(0,  625,426, 10,4,[628,294],[632,282],[602,600],[620,600], {glow:0.3}),
+    k(2,  628,429, 8,3, [622,298],[626,288],[602,600],[622,600], {glow:0.28}),
+    k(3,  630,431, 7,2, [618,301],[622,292],[602,600],[623,600], {glow:0.26}),
+    k(5,  636,428, 9,3, [616,296],[628,286],[604,600],[628,600], {glow:0.3}),
+    k(6,  648,425, 11,4,[612,293],[716,262],[608,600],[640,600], {glow:0.36}),
+    k(7,  660,423, 13,5,[608,290],[822,250],[612,600],[652,600], {glow:0.44}),
+    k(8,  660,423, 13,5,[608,290],[824,250],[612,600],[652,600], {glow:0.44}),
+    k(9,  664,423, 12,5,[612,292],[762,260],[614,600],[656,600], {glow:0.46}),
+    k(10, 672,423, 12,5,[636,292],[708,266],[618,600],[662,600], {glow:0.5}),
+    k(11, 684,422, 13,6,[702,282],[670,272],[624,600],[670,600], {glow:0.54}),
+    k(12, 696,421, 15,6,[784,266],[654,278],[630,600],[678,600], {glow:0.58}),
+    k(13, 706,420, 16,7,[872,250],[644,282],[636,600],[686,600], {glow:0.62}),
+    k(14, 706,420, 16,7,[874,250],[644,282],[636,600],[686,600], {glow:0.62}),
+    k(15, 708,420, 15,6,[812,256],[648,280],[638,600],[688,600], {glow:0.64}),
+    k(16, 710,420, 14,6,[748,262],[672,268],[640,600],[690,600], {glow:0.66, esL:-1}),
+    k(17, 712,419, 15,6,[700,272],[756,252],[642,600],[692,600], {glow:0.7, esL:-1}),
+    k(18, 714,419, 16,6,[682,276],[836,238],[644,600],[694,600], {glow:0.74, esL:-1}),
+    k(19, 714,419, 16,6,[682,276],[838,238],[644,600],[694,600], {glow:0.74, esL:-1}),
+    k(20, 715,420, 15,6,[688,276],[802,252],[644,600],[695,600], {glow:0.72}),
+    k(21, 716,421, 14,6,[716,290],[718,272],[644,600],[696,600], {glow:0.72}),
+    k(22, 717,422, 15,6,[806,338],[692,286],[644,600],[697,600], {glow:0.76}),
+    k(23, 717,422, 15,6,[808,338],[692,286],[644,600],[697,600], {glow:0.76}),
+    k(24, 718,424, 14,5,[744,368],[688,288],[648,600],[698,600], {glow:0.78}),
+    k(25, 720,426, 14,5,[706,382],[684,288],[650,600],[700,600], {glow:0.82}),
+    k(26, 726,418, 15,6,[788,300],[680,286],[656,598],[702,598], {glow:0.88}),
+    k(27, 732,410, 16,7,[852,226],[676,282],[662,594],[706,594], {glow:0.92}),
+    k(28, 728,413, 17,7,[832,232],[712,266],[664,596],[708,596], {glow:0.94}),
+    k(29, 726,414, 18,7,[764,252],[790,252],[666,598],[710,598], {glow:0.96}),
+    k(30, 728,414, 20,8,[722,266],[896,230],[668,600],[712,600], {glow:1.0}),
+    k(31, 730,415, 21,8,[718,268],[902,228],[670,600],[714,600], {glow:1.0}),
+    k(32, 730,416, 21,8,[718,268],[900,228],[670,600],[714,600], {glow:1.0}),
+    k(32, 730,416, 21,8,[718,268],[900,228],[670,600],[714,600], {glow:1.0})
+  ],
+  notes: [
+    [3, "The stillness beat. Combo rhythm needs silence before density — anime spends this frame on the eyes."],
+    [7, "SHOT 1/6 — jab. Elite bursts run a 7-8 Hz ceiling; this flurry runs ~5.5 shots/s so each drawing can breathe."],
+    [13, "SHOT 2/6 — cross. Weight forward: effective mass behind every shot, not just arm mass."],
+    [18, "SHOT 3/6 — hook. Elbow-up pole (es -1). The arc is drawn by the interpolator between keys, not by luck."],
+    [22, "SHOT 4/6 — body hook. The level change loads the legs for the rising finish."],
+    [27, "SHOT 5/6 — uppercut. Vertical chain again: same as M05, half the setup time."],
+    [30, "SHOT 6/6 — final straight. Rate of force development peaks here; wristband at full glow (canon: Wristband of Power)."]
+  ],
+  imp: [
+    [7, 832, 246, 0.8, "fist"], [13, 882, 246, 1.0, "fist"], [18, 846, 234, 1.05, "fist"],
+    [22, 818, 340, 0.95, "fist"], [27, 862, 218, 1.1, "fist"], [30, 906, 222, 1.35, "fist"]
+  ]
+},
+{
+  code: "M11", name: "RESET & BREATHE", hold: 0.10,
+  keys: [
+    k(0,  730,416, 21,8, [718,268],[900,228],[670,600],[714,600], {glow:1.0}),
+    k(2,  722,414, 18,7, [712,272],[860,242],[660,600],[706,600], {glow:0.7}),
+    k(4,  708,416, 15,6, [704,278],[800,258],[648,600],[694,600], {glow:0.45}),
+    k(6,  690,419, 12,5, [692,284],[752,272],[632,600],[678,600], {glow:0.28}),
+    k(8,  668,422, 10,4, [676,288],[720,280],[612,600],[662,600], {glow:0.18}),
+    k(10, 640,424, 8,3,  [660,290],[702,280],[588,600],[642,600], {glow:0.1}),
+    k(12, 612,426, 6,2,  [644,292],[690,276],[554,600],[628,600], {glow:0.05}),
+    k(14, 584,427, 5,1,  [628,295],[684,273],[518,600],[618,600], {glow:0}),
+    k(16, 558,428, 5,1,  [618,296],[680,272],[498,600],[618,600], {glow:0}),
+    k(16, 558,428, 5,1,  [618,296],[680,272],[498,600],[618,600], {glow:0})
+  ],
+  notes: [
+    [2, "RESET — the fighter relaxes out of the final pose. Recovery is part of the choreography, not the gap between moves."],
+    [10, "Breathing returns; the wristband glow decays. Every loop starts from the exact neutral it ends on — seam-free."]
+  ],
+  imp: []
+}
+];
+
+// ============================================================
+// ENGINE — timeline flattening, hermite sampler, IK solver,
+// renderer with onion skin / smear hulls / physics vectors,
+// impact choreography (shake + bursts), UI wiring, RAF loop.
+// ============================================================
+
+// ---------- timeline ----------
+const CHAN = ["rx","ry","lean","head","hrx","hry","hlx","hly","frx","fry","flx","fly","pr","pl","glow"];
+const TL = { T: [], V: {}, keys: [], moves: [], totalDur: 0, noteList: [], impList: [] };
+
+(function buildTimeline() {
+  for (const c of CHAN) TL.V[c] = [];
+  let off = 0;
+  CHOREO.forEach((m, mi) => {
+    const last = m.keys[m.keys.length - 1];
+    m.offset = off;
+    m.dur = last.f / KEY_FPS + (m.hold || 0.10) + 1 / KEY_FPS;
+    m.index = mi;
+    TL.moves.push(m);
+    for (const kk of m.keys) {
+      const t = off + kk.f / KEY_FPS;
+      // dedupe identical timestamps (padded end keys) — keeps hermite dt > 0
+      if (TL.T.length && Math.abs(t - TL.T[TL.T.length - 1]) < 1e-9) continue;
+      TL.T.push(t);
+      const o = kk.o || {};
+      TL.V.rx.push(kk.rx); TL.V.ry.push(kk.ry);
+      TL.V.lean.push(kk.lean); TL.V.head.push(kk.head);
+      TL.V.hrx.push(kk.hr[0]); TL.V.hry.push(kk.hr[1]);
+      TL.V.hlx.push(kk.hl[0]); TL.V.hly.push(kk.hl[1]);
+      TL.V.frx.push(kk.fr[0]); TL.V.fry.push(kk.fr[1]);
+      TL.V.flx.push(kk.fl[0]); TL.V.fly.push(kk.fl[1]);
+      TL.V.pr.push(o.pr || 0); TL.V.pl.push(o.pl || 0);
+      TL.V.glow.push(o.glow || 0);
+      TL.keys.push({ t, k: kk, m });
+    }
+    for (const n of (m.notes || [])) TL.noteList.push({ t: off + n[0] / KEY_FPS, text: n[1], m });
+    for (const im of (m.imp || [])) {
+      const t = off + im[0] / KEY_FPS;
+      const spokes = [];
+      let seed = Math.floor(t * 1000) + 7;
+      const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      for (let s = 0; s < 11; s++) spokes.push({ a: rnd() * Math.PI * 2, l: 0.7 + rnd() * 0.65, w: 0.6 + rnd() * 0.8 });
+      const dust = [];
+      for (let s = 0; s < 8; s++) dust.push({ dx: (rnd() - 0.5) * 130, dy: -rnd() * 26, r: 5 + rnd() * 9, sp: 0.5 + rnd() });
+      TL.impList.push({ t, x: im[1], y: im[2], mag: im[3], kind: im[4], spokes, dust });
+    }
+    off += m.dur;
+  });
+  TL.totalDur = off;
+  TL.noteList.sort((a, b) => a.t - b.t);
+  TL.impList.sort((a, b) => a.t - b.t);
+})();
+
+// ---------- pose sampler ----------
+function samplePose(t) {
+  const T = TL.T;
+  const p = {
+    rx: hermiteChannel(T, TL.V.rx, t), ry: hermiteChannel(T, TL.V.ry, t),
+    lean: hermiteChannel(T, TL.V.lean, t), head: hermiteChannel(T, TL.V.head, t),
+    hrx: hermiteChannel(T, TL.V.hrx, t), hry: hermiteChannel(T, TL.V.hry, t),
+    hlx: hermiteChannel(T, TL.V.hlx, t), hly: hermiteChannel(T, TL.V.hly, t),
+    frx: hermiteChannel(T, TL.V.frx, t), fry: hermiteChannel(T, TL.V.fry, t),
+    flx: hermiteChannel(T, TL.V.flx, t), fly: hermiteChannel(T, TL.V.fly, t),
+    pr: hermiteChannel(T, TL.V.pr, t), pl: hermiteChannel(T, TL.V.pl, t),
+    glow: hermiteChannel(T, TL.V.glow, t)
+  };
+  // discrete pole flags: hold from the most recent key (no interpolation)
+  let lo = 0, hi = TL.keys.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (TL.keys[mid].t <= t + 1e-9) lo = mid; else hi = mid - 1; }
+  const ok = TL.keys[Math.min(lo, TL.keys.length - 1)].k.o || {};
+  p.esL = ok.esL !== undefined ? ok.esL : 1;
+  p.esR = ok.esR !== undefined ? ok.esR : 1;
+  p.ksL = ok.ksL !== undefined ? ok.ksL : -1;
+  p.ksR = ok.ksR !== undefined ? ok.ksR : -1;
+  return p;
+}
+
+// ---------- rig solver ----------
+function solve(p) {
+  const rl = (x, y) => { const r = rot(x, y, p.lean); return [p.rx + r[0], p.ry + r[1]]; };
+  const C = rl(0, -108), N = rl(0, -134);
+  const hv = rot(0, -32, p.lean + p.head);
+  const H = [N[0] + hv[0], N[1] + hv[1]];
+  const Sn = rl(7, -102), Sf = rl(-8, -112);    // near(L)/far(R) shoulders (top of torso)
+  const Hn = rl(6, -2), Hf = rl(-8, -10);      // near(L)/far(R) hips
+  const armR = ik(Sf, [p.hrx, p.hry], ARM_U, ARM_F, p.esR);
+  const armL = ik(Sn, [p.hlx, p.hly], ARM_U, ARM_F, p.esL);
+  const legR = ik(Hf, [p.frx, p.fry], LEG_T, LEG_S, p.ksR);
+  const legL = ik(Hn, [p.flx, p.fly], LEG_T, LEG_S, p.ksL);
+  const toeRv = rot(26, 4, p.pr), toeLv = rot(26, 4, p.pl);
+  return {
+    root: [p.rx, p.ry], C, N, H, Sn, Sf, Hn, Hf,
+    elbowR: armR.joint, handR: armR.end,
+    elbowL: armL.joint, handL: armL.end,
+    kneeR: legR.joint, ankleR: legR.end,
+    kneeL: legL.joint, ankleL: legL.end,
+    toeR: [legR.end[0] + toeRv[0], legR.end[1] + toeRv[1]],
+    toeL: [legL.end[0] + toeLv[0], legL.end[1] + toeLv[1]],
+    glow: p.glow
+  };
+}
+
+// ---------- drawing ----------
+const RED = "#ff2b2b", RED_FAR = "rgba(255,90,90,0.88)", RED_SOFT = "rgba(255,43,43,0.16)";
+function seg(ctx, a, b, w, color) {
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+}
+function drawRig(ctx, sk, mode) {
+  // mode: null | 'past' | 'future'
+  let main = RED, far = RED_FAR, headW = 5.5, lw = 1, detail = true;
+  if (mode === "past") { main = "rgba(255,80,80,0.24)"; far = "rgba(255,110,110,0.18)"; detail = false; }
+  if (mode === "future") { main = "rgba(80,120,255,0.20)"; far = "rgba(120,150,255,0.15)"; detail = false; }
+  const armW = 7.2, legW = 7.6, torsoW = 8.6;
+
+  // far side (right) first
+  seg(ctx, sk.Sf, sk.elbowR, armW * 0.9, far);
+  seg(ctx, sk.elbowR, sk.handR, (armW - 1.1) * 0.9, far);
+  seg(ctx, sk.Hf, sk.kneeR, legW * 0.9, far);
+  seg(ctx, sk.kneeR, sk.ankleR, (legW - 1.2) * 0.9, far);
+  seg(ctx, sk.ankleR, sk.toeR, 6.2 * 0.9, far);
+  if (detail) { ctx.fillStyle = far; ctx.beginPath(); ctx.arc(sk.handR[0], sk.handR[1], 7.8, 0, 6.2832); ctx.fill(); }
+
+  // torso + head
+  seg(ctx, sk.root, sk.C, torsoW, main);
+  seg(ctx, sk.C, sk.N, torsoW * 0.62, main);
+  ctx.strokeStyle = main; ctx.lineWidth = headW;
+  ctx.beginPath(); ctx.arc(sk.H[0], sk.H[1], 27, 0, 6.2832); ctx.stroke();
+
+  // near side (left) on top
+  seg(ctx, sk.Hn, sk.kneeL, legW, main);
+  seg(ctx, sk.kneeL, sk.ankleL, legW - 1.2, main);
+  seg(ctx, sk.ankleL, sk.toeL, 6.4, main);
+  seg(ctx, sk.Sn, sk.elbowL, armW, main);
+  seg(ctx, sk.elbowL, sk.handL, armW - 1.1, main);
+  if (detail) { ctx.fillStyle = main; ctx.beginPath(); ctx.arc(sk.handL[0], sk.handL[1], 8.6, 0, 6.2832); ctx.fill(); }
+
+  // right wristband (canon: Wristband of Power) + glow
+  if (detail) {
+    const w = sk.handR, e = sk.elbowR;
+    const dx = w[0] - e[0], dy = w[1] - e[1], d = Math.hypot(dx, dy) || 1;
+    const bx = w[0] - dx / d * 16, by = w[1] - dy / d * 16;
+    const px = -dy / d * 7, py = dx / d * 7;
+    const g = clamp(sk.glow + 0.08, 0, 1);
+    if (g > 0.12) {
+      const rad = ctx.createRadialGradient(w[0], w[1], 2, w[0], w[1], 26 + g * 42);
+      rad.addColorStop(0, `rgba(255,60,60,${0.30 * g + 0.12})`);
+      rad.addColorStop(1, "rgba(255,60,60,0)");
+      ctx.fillStyle = rad; ctx.beginPath(); ctx.arc(w[0], w[1], 26 + g * 42, 0, 6.2832); ctx.fill();
+    }
+    seg(ctx, [bx - px, by - py], [bx + px, by + py], 5.4, "rgba(255,255,255,0.92)");
+    seg(ctx, [bx - px, by - py], [bx + px, by + py], 2.2, "#ff2b2b");
+  }
+}
+
+function drawSmearHulls(ctx, sk, skPrev) {
+  const chains = [
+    [sk.Sn, sk.elbowL, sk.handL, skPrev.elbowL, skPrev.handL, "L-arm"],
+    [sk.Sf, sk.elbowR, sk.handR, skPrev.elbowR, skPrev.handR, "R-arm"],
+    [sk.Hn, sk.kneeL, sk.ankleL, skPrev.kneeL, skPrev.ankleL, "L-leg"],
+    [sk.Hf, sk.kneeR, sk.ankleR, skPrev.kneeR, skPrev.ankleR, "R-leg"]
+  ];
+  for (const c of chains) {
+    const spd = dist(c[2], c[4]) * 60; // px/s over one 1/60 step
+    if (spd < 620) continue;
+    const a = clamp((spd - 620) / 2400, 0, 0.30);
+    ctx.fillStyle = `rgba(255,43,43,${a})`;
+    ctx.beginPath();
+    ctx.moveTo(c[0][0], c[0][1]);
+    ctx.lineTo(c[3][0], c[3][1]); ctx.lineTo(c[4][0], c[4][1]);
+    ctx.lineTo(c[2][0], c[2][1]); ctx.lineTo(c[1][0], c[1][1]);
+    ctx.closePath(); ctx.fill();
+  }
+  const hspd = dist(sk.H, skPrev.H) * 60;
+  if (hspd > 620) {
+    const a = clamp((hspd - 620) / 2400, 0, 0.22);
+    ctx.fillStyle = `rgba(255,43,43,${a})`;
+    ctx.beginPath();
+    ctx.ellipse((sk.H[0] + skPrev.H[0]) / 2, (sk.H[1] + skPrev.H[1]) / 2,
+      Math.abs(sk.H[0] - skPrev.H[0]) / 2 + 22, Math.abs(sk.H[1] - skPrev.H[1]) / 2 + 22, 0, 0, 6.2832);
+    ctx.fill();
+  }
+}
+
+function drawImpact(ctx, im, tNow, camZoom) {
+  let age = tNow - im.t;
+  if (age < -0.001) age += TL.totalDur; // loop wrap
+  if (age < 0 || age > 0.55) return;
+  const u = age / 0.55, fade = 1 - u;
+  // expanding ring
+  ctx.strokeStyle = `rgba(255,30,40,${0.85 * fade})`;
+  ctx.lineWidth = Math.max(1, 4.2 * fade + 0.6);
+  ctx.beginPath(); ctx.arc(im.x, im.y, 12 + age * 300 * im.mag, 0, 6.2832); ctx.stroke();
+  // manga spokes
+  const base = 22 + im.mag * 30;
+  for (const s of im.spokes) {
+    const L = base * s.l * (0.5 + age * 2.6);
+    const x2 = im.x + Math.cos(s.a) * (base + L), y2 = im.y + Math.sin(s.a) * (base + L);
+    const x1 = im.x + Math.cos(s.a) * base * 0.45, y1 = im.y + Math.sin(s.a) * base * 0.45;
+    ctx.strokeStyle = `rgba(20,20,26,${0.75 * fade * s.w})`;
+    ctx.lineWidth = Math.max(1, 3.4 * fade * s.w);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  // kind-specific extras
+  if (im.kind === "ground" || im.kind === "elbow") {
+    for (const d of im.dust) {
+      const dy = d.dy - age * 90 * d.sp, r = d.r * (1 + age * 1.6);
+      ctx.fillStyle = `rgba(120,120,130,${0.30 * fade})`;
+      ctx.beginPath(); ctx.arc(im.x + d.dx * (1 + age * 0.7), im.y + dy, r, 0, 6.2832); ctx.fill();
+    }
+  }
+  if (im.kind === "elbow") {
+    ctx.strokeStyle = `rgba(255,30,40,${0.5 * fade})`;
+    ctx.lineWidth = 2.4;
+    for (let i = -2; i <= 2; i++) {
+      const yy = im.y + 10 + i * 12 + age * 8;
+      ctx.beginPath(); ctx.moveTo(im.x - 60 - Math.abs(i) * 14, yy);
+      ctx.lineTo(im.x + 60 + Math.abs(i) * 14, yy); ctx.stroke();
+    }
+  }
+}
+
+function arrow(ctx, x, y, vx, vy, color, scale, w) {
+  const ex = x + vx * scale, ey = y + vy * scale;
+  if (Math.hypot(ex - x, ey - y) < 4) return;
+  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+  const a = Math.atan2(ey - y, ex - x), hl = 7 + w * 1.6;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - Math.cos(a - 0.42) * hl, ey - Math.sin(a - 0.42) * hl);
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - Math.cos(a + 0.42) * hl, ey - Math.sin(a + 0.42) * hl);
+  ctx.stroke();
+}
+
+// ---------- app state ----------
+const cvs = document.getElementById("stage");
+const ctx = cvs.getContext("2d");
+const $ = (id) => document.getElementById(id);
+const state = {
+  playing: true, tPlay: 0, fps: 60,
+  onion: true, smear: true, physics: true,
+  cam: { x: 640, y: 432, zoom: 1, shake: 0, kick: 0 },
+  trail: [], lastRenderT: -1, started: 0
+};
+const FPS_LABEL = { 6: "06 SLOW", 12: "12 TWOS", 24: "24 SAKUGA", 60: "60 INTERP" };
+
+function keyIndexAt(t) {
+  let lo = 0, hi = TL.keys.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (TL.keys[mid].t <= t + 1e-9) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+function currentMoveAt(t) {
+  for (let i = TL.moves.length - 1; i >= 0; i--) if (t >= TL.moves[i].offset - 1e-9) return TL.moves[i];
+  return TL.moves[0];
+}
+function noteAt(t) {
+  let out = null;
+  for (const n of TL.noteList) if (n.t <= t + 1e-9) out = n; else break;
+  return out;
+}
+
+// ---------- annotation ----------
+const annEl = $("annotation");
+const T0 = performance.now();
+let lastAnnFrame = -1;
+function updateAnnotation(t, sk, pose) {
+  if (performance.now() - T0 < 650) return; // let "Initializing frame coordinates..." read first
+  const frame = Math.floor(t * KEY_FPS);
+  if (frame === lastAnnFrame) return;
+  lastAnnFrame = frame;
+  const mv = currentMoveAt(t);
+  const note = noteAt(t);
+  const d = 1 / 120;
+  const pA = samplePose(Math.max(0, t - d)), pB = samplePose(Math.min(TL.totalDur - 0.001, t + d));
+  const sA = solve(pA), sB = solve(pB);
+  const vOf = (a, b) => dist(a, b) / (2 * d) / PX_PER_M;
+  const fistV = Math.max(vOf(sA.handR, sB.handR), vOf(sA.handL, sB.handL));
+  const kickV = Math.max(vOf(sA.ankleR, sB.ankleR), vOf(sA.ankleL, sB.ankleL));
+  const comV = vOf(sA.root, sB.root);
+  const torsoW = Math.abs(pB.lean - pA.lean) / (2 * d);
+  const air = clamp((424 - sk.root[1]) / PX_PER_M, 0, 2);
+  annEl.innerHTML =
+    `<b>Biomechanical Reference:</b> <span class="tag">${mv.code} · ${mv.name}</span>${note ? note.text : "..."}` +
+    `<span class="metrics">F${String(frame).padStart(4, "0")} · T+${t.toFixed(3)}s · FIST ${fistV.toFixed(1)} m/s · KICK ${kickV.toFixed(1)} m/s · COM ${comV.toFixed(1)} m/s · TORSO ω ${Math.round(torsoW)}°/s · AIR ${air.toFixed(2)} m · SAMPLE ${FPS_LABEL[state.fps]} · INTERP HERMITE-CR</span>`;
+}
+
+// ---------- main render ----------
+function render(tNow, dtReal) {
+  const pose = samplePose(tNow);
+  const sk = solve(pose);
+  const skPrev = solve(samplePose(Math.max(0, tNow - 1 / 60)));
+
+  // camera
+  const cam = state.cam;
+  const targetX = sk.root[0] + 95;
+  const targetY = 432 + (sk.root[1] - 424) * 0.55;
+  const mv = currentMoveAt(tNow);
+  const finalHold = (mv.code === "M10" && tNow - mv.offset > 30 / KEY_FPS);
+  const zoomTarget = 1 + cam.kick + (finalHold ? 0.05 : 0);
+  cam.x += (targetX - cam.x) * Math.min(1, dtReal * 5);
+  cam.y += (targetY - cam.y) * Math.min(1, dtReal * 5);
+  cam.zoom += (zoomTarget - cam.zoom) * Math.min(1, dtReal * 3.2);
+  cam.kick *= Math.pow(0.02, dtReal);
+  cam.shake *= Math.pow(0.0045, dtReal);
+  const shx = (Math.random() - 0.5) * cam.shake, shy = (Math.random() - 0.5) * cam.shake;
+
+  // world transform
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(cam.zoom, 0, 0, cam.zoom,
+    W / 2 - cam.x * cam.zoom + shx, H / 2 - cam.y * cam.zoom + shy);
+
+  // ground contact shadow
+  const air = clamp((424 - sk.root[1]) / 150, 0, 1);
+  ctx.fillStyle = `rgba(30,30,40,${0.13 * (1 - air * 0.75)})`;
+  ctx.beginPath();
+  ctx.ellipse(sk.root[0] + 12, GROUND + 10, 86 * (1 - air * 0.35) * (1 + pose.lean / 90), 11, 0, 0, 6.2832);
+  ctx.fill();
+
+  // onion skin
+  if (state.onion) {
+    const back = state.fps >= 60 ? 0.085 : 2 / state.fps;
+    drawRig(ctx, solve(samplePose(Math.max(0, tNow - back))), "past");
+    drawRig(ctx, solve(samplePose(Math.min(TL.totalDur - 0.001, tNow + back * 0.8))), "future");
+  }
+
+  // smear hulls
+  if (state.smear) drawSmearHulls(ctx, sk, skPrev);
+
+  // figure
+  drawRig(ctx, sk, null);
+
+  // impacts
+  for (const im of TL.impList) drawImpact(ctx, im, tNow, cam.zoom);
+
+  // physics vectors
+  if (state.physics) {
+    const d2 = 1 / 60;
+    const pA = samplePose(Math.max(0, tNow - d2)), pB = samplePose(Math.min(TL.totalDur - 0.001, tNow + d2));
+    const sA = solve(pA), sB = solve(pB);
+    const joints = [
+      [sk.handR, sA.handR, sB.handR, "R-hand"], [sk.handL, sA.handL, sB.handL, "L-hand"],
+      [sk.ankleR, sA.ankleR, sB.ankleR, "R-foot"], [sk.ankleL, sA.ankleL, sB.ankleL, "L-foot"],
+      [sk.H, sA.H, sB.H, "head"]
+    ];
+    for (const j of joints) {
+      const vx = (j[2][0] - j[1][0]) / (2 * d2), vy = (j[2][1] - j[1][1]) / (2 * d2);
+      arrow(ctx, j[0][0], j[0][1], vx, vy, "rgba(29,79,216,0.85)", 0.042, 1.9);
+    }
+    // COM velocity + trail
+    const cvx = (sB.root[0] - sA.root[0]) / (2 * d2), cvy = (sB.root[1] - sA.root[1]) / (2 * d2);
+    arrow(ctx, sk.root[0], sk.root[1] - 52, cvx, cvy, "rgba(13,148,136,0.9)", 0.042, 2.2);
+    state.trail.push([sk.root[0], sk.root[1] - 52]);
+    if (state.trail.length > 26) state.trail.shift();
+    if (state.trail.length > 2) {
+      ctx.strokeStyle = "rgba(100,110,130,0.35)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(state.trail[0][0], state.trail[0][1]);
+      for (const q of state.trail) ctx.lineTo(q[0], q[1]);
+      ctx.stroke();
+    }
+  }
+
+  // impact flash tint (screen space)
+  for (const im of TL.impList) {
+    let age = tNow - im.t;
+    if (age < -0.001) age += TL.totalDur;
+    if (age >= 0 && age < 0.12) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(255,40,50,${0.10 * (1 - age / 0.12) * im.mag})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.setTransform(cam.zoom, 0, 0, cam.zoom, W / 2 - cam.x * cam.zoom + shx, H / 2 - cam.y * cam.zoom + shy);
+    }
+  }
+
+  // HUD text
+  $("techReadout").textContent = `${mv.code} · ${mv.name}`;
+  $("hudRight").textContent = `F${String(Math.floor(tNow * KEY_FPS)).padStart(4, "0")} · ${FPS_LABEL[state.fps]}`;
+  $("hudLeft").textContent = `SEQUENCE ${String(mv.index + 1).padStart(2, "0")} / ${TL.moves.length} · SOLO IMPACT-FRAME REEL`;
+  updateAnnotation(tNow, sk, pose);
+}
+
+// ---------- UI wiring ----------
+const btnPlayPause = $("btnPlayPause");
+function setPlaying(v) {
+  state.playing = v;
+  btnPlayPause.textContent = v ? "■ PAUSE" : "▶ PLAY";
+}
+btnPlayPause.addEventListener("click", () => setPlaying(!state.playing));
+$("btnNext").addEventListener("click", () => stepKey(1));
+$("btnPrev").addEventListener("click", () => stepKey(-1));
+function stepKey(dir) {
+  setPlaying(false);
+  const i = keyIndexAt(state.tPlay);
+  let j = i + dir;
+  if (TL.keys[i].t > state.tPlay + 1e-6 && dir < 0) j = i;
+  if (j >= TL.keys.length) j = 0;
+  if (j < 0) j = TL.keys.length - 1;
+  state.tPlay = TL.keys[j].t + 0.0005;
+  state.trail.length = 0;
+}
+document.querySelectorAll(".fps-btn").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".fps-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    state.fps = parseInt(b.dataset.fps, 10);
+  });
+});
+function bindToggle(id, key) {
+  const b = $(id);
+  b.addEventListener("click", () => {
+    state[key] = !state[key];
+    b.classList.toggle("active", state[key]);
+  });
+}
+bindToggle("btnOnion", "onion");
+bindToggle("btnSmear", "smear");
+bindToggle("btnPhysics", "physics");
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") { e.preventDefault(); setPlaying(!state.playing); }
+  else if (e.code === "ArrowRight") { e.preventDefault(); stepKey(1); }
+  else if (e.code === "ArrowLeft") { e.preventDefault(); stepKey(-1); }
+  else if (e.key === "o" || e.key === "O") $("btnOnion").click();
+  else if (e.key === "s" || e.key === "S") $("btnSmear").click();
+  else if (e.key === "p" || e.key === "P") $("btnPhysics").click();
+  else if (e.key >= "1" && e.key <= "4") {
+    const map = { "1": 6, "2": 12, "3": 24, "4": 60 };
+    const btn = document.querySelector(`.fps-btn[data-fps="${map[e.key]}"]`);
+    if (btn) btn.click();
+  }
+});
+
+// ---------- RAF loop ----------
+let lastTs = 0;
+function frame(ts) {
+  const dtReal = Math.min(0.05, (ts - lastTs) / 1000 || 0.016);
+  lastTs = ts;
+  const timeScale = state.fps === 6 ? 0.35 : 1;   // 06 = slow-motion study
+  if (state.playing) {
+    const prev = state.tPlay;
+    state.tPlay += dtReal * timeScale;
+    if (state.tPlay >= TL.totalDur) { state.tPlay %= TL.totalDur; state.trail.length = 0; }
+    // impact triggers (shake on crossing)
+    for (const im of TL.impList) {
+      const crossed = (prev < im.t && state.tPlay >= im.t) ||
+        (state.tPlay < prev && (im.t > prev || im.t <= state.tPlay));
+      if (crossed) {
+        state.cam.shake = Math.min(30, state.cam.shake + 13 * im.mag);
+        state.cam.kick = Math.min(0.06, state.cam.kick + 0.018 * im.mag);
+      }
+    }
+  }
+  // display quantization: hold each sampled frame at the chosen fps
+  const tRender = Math.floor(state.tPlay * state.fps) / state.fps;
+  if (tRender !== state.lastRenderT || state.playing === false) {
+    render(tRender, dtReal);
+    state.lastRenderT = tRender;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+setPlaying(true);
+</script>
+</body>
+</html>
