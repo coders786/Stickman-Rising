@@ -17,9 +17,11 @@ import { Player } from './entities/player'
 import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
 import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
 import { SWORDS, SwordId, SWORD_ORDER } from './combat/swords'
+import { EXECUTE_POSE_CLIP } from './anim/clips'
+import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
-import { Inspect, runQA, InspectMode } from './debug/inspect'
+import { Inspect, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
 const ARENA_MAX = 2560
@@ -254,7 +256,11 @@ export class Game {
       detail: (key: string | number) =>
         typeof key === 'number' ? inspect.poseLib.get(key) : inspect.poseLib.find(key),
     }
-    srAny.__srQA = { run: () => runQA(this) }
+    // Live scripted QA harness (checks A–I: NaN, foot penetration, pose
+    // continuity, deadlocks, frame-rate invariance, FX pools, PAVE
+    // micro-motion, afterimage hygiene, escalation table) — installs the
+    // window.__srQA handle { run(), last }.
+    installQA(this)
     // F9 cycles the inspect views (off → solo → sheet → edit). A dedicated
     // listener (not the Input action map) so it works even while the
     // gameplay input layer is disabled on menus.
@@ -994,6 +1000,12 @@ export class Game {
         this.stats.score += Math.round(300 * this.combo.mult)
         this.fx.text(e.x, e.y - 96, 'EXECUTED', '#ff2a4a', 16)
         this.fx.text(e.x, e.y - 72, '+22 HP', '#46ffb4', 12)
+        // KILL-FRAME HOLD (the samurai-film beat): at the kill flash the
+        // finisher settles into the authored execution pose — sword low,
+        // split stance, stillness while the enemy falls. PAVE keeps the hold
+        // alive with micro-motion (moving holds). This gives the once-orphaned
+        // execPose clip its authored home in the choreography.
+        this.player.playClip(EXECUTE_POSE_CLIP, 1)
       } else if (ex.step === 4 && ex.t >= 1.15) {
         this.player.exitScripted()
         this.exec = null

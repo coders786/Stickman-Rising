@@ -25,6 +25,7 @@ import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFight
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
+import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
 import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -382,6 +383,20 @@ export class Player {
   /** damped weight of the sheathed pommel-rest arm layer */
   private sheathW = 0
 
+  /* ---- PAVE: procedural animation variation — the bounded secondary-
+   * motion layer (moving holds, breath, hurt posture, sword body-language,
+   * combo escalation flair). Additive pass that runs AFTER every authored /
+   * procedural writer and the grip IK, BEFORE the anatomical limits + FK
+   * solve (documented solve order). Per-entity seeded → no two plays of a
+   * clip render identically. */
+  private pave = new PaveState()
+  /** seconds since the last damage taken (flinch carryover window 0–1s) */
+  private sinceHitT = 99
+  /** seconds airborne (aerial pose evolution: tuck → extend → spread) */
+  private airT = 0
+  /** airborne silhouette variant for PAVE ('leap' = momentum long-jump) */
+  private jumpStyle: JumpStyle = 'standard'
+
   /* ---- IDLE FLOURISHES & SCARF SIMULATION ---- */
   private standstillT = 0
   private lastFlourish = -1
@@ -564,6 +579,10 @@ export class Player {
     this.carryRelaxW=0
     this.peaceT = 0
     this.sheathW = 0
+    this.pave = new PaveState()
+    this.sinceHitT = 99
+    this.airT = 0
+    this.jumpStyle = 'standard'
     this.standstillT = 0
     this.isFlourishActive = false
     this.playAnimation(IDLE_CLIP, { blend: 0.05 })
@@ -622,6 +641,7 @@ export class Player {
     this.iframes = Math.max(0, this.iframes - dt)
     this.armorT = Math.max(0, this.armorT - dt)
     this.flashT = Math.max(0, this.flashT - dt * 5)
+    this.sinceHitT += dt
     this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
     this.riposteT = Math.max(0, this.riposteT - dt)
     this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
@@ -736,6 +756,11 @@ export class Player {
     } else {
       this.grounded = false
     }
+    this.airT = this.grounded ? 0 : this.airT + dt
+    // PAVE airborne spin accumulator — inert unless a jump style sets a
+    // target; the post-landing unwind to the nearest full turn preserves
+    // rendered pose continuity (pave.ts owns the math).
+    updatePaveSpin(this.pave, dt, !this.grounded)
     // arena bounds
     if (this.x < w.arenaMinX + 20) {
       this.x = w.arenaMinX + 20
@@ -904,6 +929,46 @@ export class Player {
     })
     this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
     this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
+    // ---- PAVE (bounded organic variation): the additive secondary-motion
+    // pass. Positioned deliberately AFTER every authored/procedural writer
+    // and the grip IK but BEFORE the anatomical gate + FK solve, so:
+    //   (a) the off-hand grip + foot IK re-solve against the varied pose
+    //       (a gripping hand never gets uncontrolled noise — brief §6),
+    //   (b) applyJointLimits bounds every additive offset,
+    //   (c) the arm channels are gated to near-zero inside strike/trail
+    //       windows so hitboxes and trails stay crisp.
+    {
+      const a = this.action
+      const striking = this.state === 'attack' && a != null
+        && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
+      // Precision actions gate the arm channels: strike/trail windows and
+      // the dash family are authored contact silhouettes (hand separation,
+      // blade arcs) — noise there would blur readable beats. Rituals,
+      // parries and the scripted cinematic keep a partial gate so holds
+      // stay alive without smearing choreography.
+      const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
+        : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
+        : 1
+      const hpFrac = this.hp / this.maxHp
+      const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
+      applyPave(this.pose, {
+        time: this.now,
+        dt,
+        hp: hpFrac,
+        comboHits: w.combo?.hits ?? 0,
+        speedRatio,
+        airborne: !this.grounded,
+        airborneT: this.airT,
+        chargeRatio: this.chargeRatio,
+        sinceHitTaken: this.sinceHitT,
+        sword: this.sword.id,
+        armGate,
+        // contextual breath: calm 14 bpm → combat threat + sprint exertion
+        // + near-death labor climb toward ~40 (spec §4.3)
+        breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
+        jumpStyle: this.jumpStyle,
+      }, this.pave)
+    }
     // ANATOMICAL LIMITS: the last writer before the solve. Clips, additive
     // layers, crossfades and every IK all pass through the same human ROM
     // gate — elbows never cross their flexion side, knees never fold
@@ -1461,6 +1526,7 @@ export class Player {
       // a run converts into the LEAP (momentum long-jump + a touch of
       // carry-over speed), a standstill gets the vertical hands-only jump.
       const speed = Math.abs(this.vx)
+      this.jumpStyle = wasGrounded && speed > 300 ? 'leap' : 'standard'
       if (wasGrounded && speed > 300) {
         this.vx = Math.sign(this.vx) * Math.max(speed, Math.min(speed * 1.12, 560))
         this.playAnimation(JUMP_LEAP_CLIP, { blend: 0.05 })
@@ -1855,6 +1921,9 @@ export class Player {
     if (!def) return
     this.peaceT = 0
     this.sheathAct = null
+    // per-combo variation seed: no two plays of the same chain render
+    // identically (PAVE spec var #27)
+    this.pave.reseed(w.time, this.x)
     // Preserve current motion through the shared inertial transition.
     // Empty-hand arm residuals clear before the damage window begins.
     const wasAttack = this.state === 'attack'
@@ -2307,6 +2376,7 @@ export class Player {
     // power instead of a liability.
     if (this.armorT > 0) {
       this.hp = Math.max(0, this.hp - dmg * 0.35)
+      this.sinceHitT = 0
       this.flashT = Math.max(this.flashT, 0.45)
       if (this.hp <= 0) {
         this.state = 'dead'
@@ -2321,6 +2391,7 @@ export class Player {
       return true
     }
     this.hp = Math.max(0, this.hp - dmg)
+    this.sinceHitT = 0
     this.flashT = 1
     this.hurtT = 0.34
     this.iframes = 0.75
@@ -2385,6 +2456,7 @@ export class Player {
   }
 
   playClip(clip: Parameters<Animator['play']>[0], speed = 1): void {
+    if (!clip) return // same guard as startAttack — cinematics must never crash on a missing clip
     const intent=Object.values(ATTACKS).find(a=>a.clip===clip)
     if(!this.swordDrawn&&intent)clip=unarmedAttack(intent).clip
     this.playAnimation(clip, { blend: 0.03, speed, restart: true })

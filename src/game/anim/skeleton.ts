@@ -13,6 +13,14 @@ export interface Vec2 {
   y: number
 }
 
+/** Pose sanity gate used by the live QA harness: every channel finite.
+ * A single NaN channel poisons the whole FK solve (renders collapse to the
+ * origin), so the harness counts frames where this returns false. */
+export function isPoseValid(p: Pose): boolean {
+  for (let i = 0; i < p.length; i++) if (!Number.isFinite(p[i])) return false
+  return true
+}
+
 export interface SkelSpec {
   torso: number
   /** visible neck column: shoulder-line (C7) → skull base (atlas) */

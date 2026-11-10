@@ -73,6 +73,10 @@ export interface WorldRef {
   arenaMaxX: number
   quality: QualityLevel
   gore: 'energy' | 'blood'
+  /** live combo state (read-only): PAVE escalation reads the live hit count
+   * so variation intensity tracks combat heat. Optional so lightweight test
+   * worlds can omit it (players must read it defensively). */
+  combo?: { hits: number }
   /** Resolve contact once; callers use the outcome rather than assuming a hit. */
   hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo): import('../combat/hit-resolution').HitResolution
   /** Enemy attack / projectile is about to damage the player. Returns true if parried. */
