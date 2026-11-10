@@ -484,6 +484,125 @@ const POWERRAM = clip('unarmedPowerRam', [
   kf(0.44, G),
 ])
 
+/** 17c · SHEATHED DUAL RELEASE — RAIJIN KEN (雷神拳, thunder-god fist): the
+ * empty-hand twin of RAIJIN ZAN. Both keys held through the planted coil
+ * (dash + heavy, blade sheathed — the FIST_DUAL_CHARGE chamber), released
+ * together: one committed power-dash drive with the cross ripping THROUGH
+ * the pack. The startup was fully paid inside the chamber — the first
+ * frame IS the detonation.
+ *
+ * Choreography (the same Alan-Becker-language beat structure as
+ * atk_powerSlash): SIT (.035) the last compression · DETONATION (.08) the
+ * legs fire — the body is GONE before the fist (motion leads, the weapon
+ * lags) · THE CROSS (.14) the fist rips through full extension while the
+ * pelvis unwinds through depth (pelvisYaw +.22 → −.20, the fist crossing
+ * the depth plane on armRz/foreRz) · CARRY (.21) the torso winds OVER the
+ * punched arm · RIDE (.3) · CATCH (.4) the skid plant · SKID (.52) ·
+ * settle to the fight guard. kf0 = FIST_DUAL_CHARGE_CLIP's TAUT LOCK,
+ * verbatim — the seamless-handoff law. */
+const TAUT_LOCK: PoseInput = {
+  rootX: 1, rootY: 5.5, rootRot: 0.48, head: -0.42, spine: 0.04,
+  hipL: -0.4, kneeL: -0.8, hipR: 0.9, kneeR: -1.72, footR: 0.28, footL: -0.05,
+  shR: -0.32, elR: -1.14, wrR: -0.52, shL: 0.85, elL: -1.5, wrL: -0.3,
+  pelvisYaw: 0.22, chestYaw: -0.24, armLz: 0.15, foreRz: -0.12,
+}
+const POWERCROSS = clip('unarmedPowerCross', [
+  // the sheathed TAUT LOCK, verbatim — seamless detonation handoff
+  kf(0, TAUT_LOCK, 'outQuad'),
+  // THE SIT: one final compression beat — squash before the snap
+  kf(0.035, { ...TAUT_LOCK, rootY: 5.8, rootRot: 0.52, kneeL: -0.86,
+    kneeR: -1.85, head: -0.46 }, 'outQuad'),
+  // DETONATION: legs fire — the planted leg drives, the lifted knee plants
+  // into the stride; the fist stays cocked (the lag beat: motion leads)
+  kf(0.08, { rootX: 2.6, rootY: 4.8, rootRot: 0.9, head: -0.78, spine: 0.05,
+    hipL: -0.66, kneeL: -0.55, footL: 0, hipR: 0.82, kneeR: -1.05, footR: 0.18,
+    shR: -0.25, elR: -1.0, wrR: -0.5, shL: 0.7, elL: -0.95, wrL: -0.25,
+    pelvisYaw: 0.14, chestYaw: -0.12, armLz: 0.1 }, 'outQuad'),
+  // THE CROSS: the fist rips through full extension — hips unwind through
+  // the swing, the fist CROSSES THE DEPTH PLANE (armRz/foreRz authored)
+  kf(0.14, { rootX: 5.5, rootY: 4.2, rootRot: 1.08, spine: 0.1, head: -0.8,
+    hipL: -0.9, kneeL: -0.4, footL: 0.06, hipR: 1.0, kneeR: -1.3, footR: 0.2,
+    shR: 1.5, elR: 0.15, wrR: 0.15, shL: 0.9, elL: -0.6, wrL: -0.2,
+    pelvisYaw: -0.2, chestYaw: 0.2, armRz: 0.3, foreRz: 0.15 }, 'outQuart'),
+  // CARRY: follow-through whips the torso over the punched arm
+  kf(0.21, { rootX: 8, rootY: 4.0, rootRot: 1.22, spine: 0.1, head: -0.85,
+    hipL: -1.0, kneeL: -0.32, footL: 0.1, hipR: 1.12, kneeR: -1.5, footR: 0.22,
+    shR: 1.6, elR: 0.35, wrR: -0.4, shL: 1.0, elL: -0.45, wrL: -0.2,
+    pelvisYaw: -0.12, chestYaw: 0.1, armRz: 0.2 }, 'outCubic'),
+  // RIDE: fist extended, trailing the travel line through the pack
+  kf(0.3, { rootX: 7.6, rootY: 4.2, rootRot: 1.2, spine: 0.09, head: -0.82,
+    hipL: -0.8, kneeL: -0.5, footL: 0.08, hipR: 1.05, kneeR: -1.42, footR: 0.21,
+    shR: 1.45, elR: 0.2, wrR: -0.55, shL: 0.85, elL: -0.55, wrL: -0.2,
+    pelvisYaw: -0.06, chestYaw: 0.05, armRz: 0.22 }, 'inOutSine'),
+  // THE CATCH: the front leg reaches far ahead and plants the skid
+  kf(0.4, { rootX: 6, rootY: 5.2, rootRot: 0.6, spine: 0.05, head: -0.5,
+    hipL: -0.55, kneeL: -1.0, footL: 0.08, hipR: 1.05, kneeR: -1.5, footR: 0.25,
+    shR: 0.9, elR: -0.1, wrR: -0.7, shL: 0.55, elL: -0.8, wrL: -0.2,
+    pelvisYaw: -0.05, chestYaw: 0.02 }, 'outCubic'),
+  // SKID ABSORB: weight sits back, the fists settle low
+  kf(0.52, { rootX: 3, rootY: 5.6, rootRot: 0.3, spine: 0.05, head: -0.2,
+    hipL: -0.5, kneeL: -0.9, footL: 0.1, hipR: 0.6, kneeR: -1.35, footR: 0.18,
+    shR: 0.5, elR: -0.4, wrR: -0.6, shL: 0.4, elL: -0.7, wrL: -0.2,
+    pelvisYaw: 0.02, chestYaw: 0 }, 'inOutCubic'),
+  mid(0.58, { rootX: 3, rootY: 5.6, rootRot: 0.3, spine: 0.05, head: -0.2,
+    hipL: -0.5, kneeL: -0.9, footL: 0.1, hipR: 0.6, kneeR: -1.35, footR: 0.18,
+    shR: 0.5, elR: -0.4, wrR: -0.6, shL: 0.4, elL: -0.7, wrL: -0.2,
+    pelvisYaw: 0.02, chestYaw: 0 }, G),
+  kf(0.66, G),
+])
+
+/** 17d · SHEATHED DUAL RELEASE — FUJIN KYAKU (風神脚, wind-god kick): the
+ * kick twin. Same TAUT LOCK handoff, same detonation law — but the lifted
+ * knee never plants: it whips higher into the flight, then the shin snaps
+ * out and the sole rips flat THROUGH the pack, crossing the DEPTH plane on
+ * hipRz while the torso rides the power-dash pitch into the drive (the
+ * body leans with the family — the spear leg IS the weapon). CARRY rides
+ * the extended kick; the CATCH plants the landing leg far ahead. */
+const POWERKICK = clip('unarmedPowerKick', [
+  // the sheathed TAUT LOCK, verbatim — seamless detonation handoff
+  kf(0, TAUT_LOCK, 'outQuad'),
+  // THE SIT: one final compression beat — the coil loads deeper
+  kf(0.035, { ...TAUT_LOCK, rootY: 5.9, rootRot: 0.52, kneeL: -0.88,
+    kneeR: -1.9, head: -0.46 }, 'outQuad'),
+  // DETONATION: legs fire — the planted leg drives, the chambered knee
+  // whips HIGHER into the flight (the spear loads, fist stays home)
+  kf(0.08, { rootX: 2.6, rootY: 4.7, rootRot: 0.88, head: -0.75, spine: 0.05,
+    hipL: -0.62, kneeL: -0.5, footL: 0, hipR: 1.0, kneeR: -1.55, footR: 0.25,
+    shR: -0.2, elR: -0.95, wrR: -0.5, shL: 0.7, elL: -0.9, wrL: -0.25,
+    pelvisYaw: 0.16, chestYaw: -0.14, armLz: 0.1 }, 'outQuad'),
+  // THE SPEAR: the knee snaps out — the foot rips flat through the pack,
+  // the sole CROSSING THE DEPTH PLANE (hipRz), arms flare back for balance
+  kf(0.14, { rootX: 5.5, rootY: 4.3, rootRot: 1.05, spine: 0.1, head: -0.8,
+    hipL: -0.85, kneeL: -0.45, footL: 0.06, hipR: 1.32, kneeR: -0.14, footR: 1.5,
+    shR: -0.15, elR: -0.5, wrR: -0.4, shL: -0.3, elL: -0.45, wrL: -0.25,
+    pelvisYaw: -0.08, chestYaw: 0.06, hipRz: 0.2 }, 'outQuart'),
+  // CARRY: the spear rides extended through the pack, arms trail wide
+  kf(0.21, { rootX: 8, rootY: 4.0, rootRot: 1.2, spine: 0.1, head: -0.85,
+    hipL: -1.0, kneeL: -0.32, footL: 0.1, hipR: 1.25, kneeR: -0.2, footR: 0.95,
+    shR: -0.2, elR: -0.55, wrR: -0.45, shL: -0.25, elL: -0.5, wrL: -0.25,
+    pelvisYaw: -0.1, chestYaw: 0.08, hipRz: 0.15 }, 'outCubic'),
+  // RIDE: the kick folds down toward the skim, torso settles
+  kf(0.3, { rootX: 7.6, rootY: 4.2, rootRot: 1.18, spine: 0.09, head: -0.82,
+    hipL: -0.8, kneeL: -0.5, footL: 0.08, hipR: 1.15, kneeR: -0.5, footR: 0.4,
+    shR: 0.1, elR: -0.7, wrR: -0.5, shL: 0.1, elL: -0.7, wrL: -0.2,
+    pelvisYaw: -0.05, chestYaw: 0.04 }, 'inOutSine'),
+  // THE CATCH: the landing leg plants far ahead, weight absorbs
+  kf(0.4, { rootX: 6, rootY: 5.2, rootRot: 0.6, spine: 0.05, head: -0.5,
+    hipL: -0.55, kneeL: -1.05, footL: 0.08, hipR: 0.95, kneeR: -1.3, footR: 0.2,
+    shR: 0.4, elR: -0.6, wrR: -0.5, shL: 0.5, elL: -0.8, wrL: -0.2,
+    pelvisYaw: -0.04, chestYaw: 0.02 }, 'outCubic'),
+  // SKID ABSORB: weight sits back, the guard reclaims
+  kf(0.52, { rootX: 3, rootY: 5.6, rootRot: 0.3, spine: 0.05, head: -0.2,
+    hipL: -0.5, kneeL: -0.9, footL: 0.1, hipR: 0.55, kneeR: -1.3, footR: 0.15,
+    shR: 0.45, elR: -0.45, wrR: -0.5, shL: 0.4, elL: -0.7, wrL: -0.2,
+    pelvisYaw: 0.02, chestYaw: 0 }, 'inOutCubic'),
+  mid(0.58, { rootX: 3, rootY: 5.6, rootRot: 0.3, spine: 0.05, head: -0.2,
+    hipL: -0.5, kneeL: -0.9, footL: 0.1, hipR: 0.55, kneeR: -1.3, footR: 0.15,
+    shR: 0.45, elR: -0.45, wrR: -0.5, shL: 0.4, elL: -0.7, wrL: -0.2,
+    pelvisYaw: 0.02, chestYaw: 0 }, G),
+  kf(0.66, G),
+])
+
 /* ================================================================== */
 /* SPECIALS                                                            */
 /* ================================================================== */
@@ -748,6 +867,13 @@ interface MoveSpec {
   sfxT?: number
   heavySfx?: boolean
   groundDrive?: { duration: number; acceleration: number }
+  /** DASH THROUGH-STRIKE corridor (px): the swept volume behind/ahead of
+   * the body along the travel line — the sheathed power strikes declare it
+   * so the pass tears through the whole pack (see AttackHit). */
+  corridorBack?: number
+  corridorFront?: number
+  /** corridor band height above the feet (px) — the kick rides lower. */
+  corridorY?: number
 }
 
 /** Enforce the empty-hand contract: visible-limb hitbox (strikeHand set,
@@ -762,6 +888,7 @@ function move(s: MoveSpec): AttackDef {
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
     heavy: !!s.heavy, pad: s.pad ?? (s.heavy ? 7 : 5), breakGuard: s.breakGuard,
     multiHit: s.multiHit, aoe: s.aoe,
+    corridorBack: s.corridorBack, corridorFront: s.corridorFront, corridorY: s.corridorY,
   }
   return {
     id: s.id, label: s.label, kind: s.kind, requires: s.requires,
@@ -829,6 +956,20 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.09, hitEnd: 0.22, dmg: 24, kb: 460, heavy: true, breakGuard: true,
     stagger: 0.5, hitstop: 0.08, shake: 0.24, multiHit: 0.09, moveX: 240, moveXAt: 0.02,
     chain: ['h1', 'l1'] },
+  /* sheathed dual release — the empty-hand twin of RAIJIN ZAN: dash hold +
+   * heavy hold through the fist chamber, BOTH keys released together.
+   * Alternates punch ↔ kick per armed use (Player.firePowerDashSlash); the
+   * corridor is the dash path itself, so the pass tears the pack. */
+  { id: 'powerPunch', label: 'RAIJIN KEN', kind: 'dash', requires: 'ground', clip: POWERCROSS, limb: 'right', joint: 'hand',
+    hitStart: 0.10, hitEnd: 0.44, dmg: 30, kb: 560, kbY: -40, heavy: true, breakGuard: true,
+    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: 10,
+    corridorBack: 150, corridorFront: 88, corridorY: 55,
+    moveX: 240, moveXAt: 0.02, chain: ['h1', 'l1'] },
+  { id: 'powerKick', label: 'FUJIN KYAKU', kind: 'dash', requires: 'ground', clip: POWERKICK, limb: 'right', joint: 'foot',
+    hitStart: 0.10, hitEnd: 0.44, dmg: 26, kb: 640, kbY: -90, launch: 260, heavy: true, breakGuard: true,
+    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: 10,
+    corridorBack: 150, corridorFront: 88, corridorY: 40,
+    moveX: 240, moveXAt: 0.02, chain: ['h2', 'l1'] },
   /* specials */
   { id: 'riposte', label: 'REKKA COUNTER PALM', kind: 'riposte', requires: 'any', clip: COUNTERPALM, limb: 'right',
     hitStart: 0.13, hitEnd: 0.24, dmg: 24, kb: 215, breakGuard: true },

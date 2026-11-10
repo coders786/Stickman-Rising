@@ -65,3 +65,4 @@ server.log
 /skills/
 # Intermediate motion-study / browser capture frames (published previews live in research/)
 /.cache/
+tool-results/

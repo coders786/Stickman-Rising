@@ -26,6 +26,11 @@ export interface HudState {
   /** THE DUAL CHARGE blade-segment (RAIJIN ZAN): 0..1 while dash + heavy
    * are both held in the planted charge — the HUD's release prompt. */
   slashCharge: number
+  /** stance feeding the dual-charge status line: drawn steel reads
+   * RAIJIN ZAN; sheathed fists read the alternating fist/foot release. */
+  swordDrawn: boolean
+  /** next sheathed dual release (alternates per use): 'punch' | 'kick'. */
+  fistStrike: 'punch' | 'kick'
   staminaCooldown: number
   meter: number
   swordName: string
@@ -161,7 +166,10 @@ export class HUD {
     }
     ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left'
     ctx.fillStyle=canDash?'rgba(207,236,222,.95)':'#ffaaa0'
-    const status=slash>0?(slash>=.999?(canPower?'RELEASE BOTH: RAIJIN ZAN':'BLADE LOCKED — STAMINA LOW'):`BLADE CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`)
+    const status=slash>0?(
+      s.swordDrawn
+        ?(slash>=.999?(canPower?'RELEASE BOTH: RAIJIN ZAN':'BLADE LOCKED — STAMINA LOW'):`BLADE CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`)
+        :(slash>=.999?(canPower?`RELEASE BOTH: ${s.fistStrike==='kick'?'FUJIN KYAKU':'RAIJIN KEN'}`:'FISTS LOCKED — STAMINA LOW'):`FIST CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`))
       :charge>0?(charge>=.999?(canPower?'RELEASE: POWER':'RELEASE: NORMAL'):`CHARGING ${Math.round(charge*100)}%`)
       :!canDash?'EXHAUSTED':!canPower?'POWER LOW':s.staminaCooldown>0?'RECOVERING':'POWER READY'
     ctx.fillText(status,bx,y+103,bw*.53)
@@ -378,7 +386,7 @@ export class HUD {
     ctx.font = `10px ${MONO}`
     ctx.fillStyle = 'rgba(200,215,225,0.95)'
     ctx.fillText(
-      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   HOLD L+K, RELEASE BOTH: RAIJIN ZAN   1-6 SWORDS',
+      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   HOLD L+K, RELEASE BOTH: RAIJIN ZAN / SHEATHED RAIJIN KEN·FUJIN KYAKU   1-6 SWORDS',
       w / 2,
       h - 16,
       w-24,

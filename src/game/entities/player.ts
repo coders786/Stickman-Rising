@@ -3,7 +3,7 @@ import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVeloci
 import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
 import {rewardsConfirmedHit} from '../combat/hit-resolution'
 import {groundedDashAct} from '../anim/grounded-dash'
-import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,POWER_DASH_CLIP,POWER_DASH_SLASH_CHARGE,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
+import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,FIST_DUAL_CHARGE_CLIP,POWER_DASH_CLIP,POWER_DASH_SLASH_CHARGE,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
 /** STICKMAN RISING — the Player: state machine, dash system, combo machine,
  * parry/riposte, charged attacks, elemental abilities, execution finishers.
  */
@@ -333,6 +333,8 @@ export class Player {
   private dualLockTold=false
   /** tap-vs-hold classifier for the sword button inside the dash charge */
   private dashHeavyArmT=-1
+  /** sheathed dual-release alternation: RAIJIN KEN ↔ FUJIN KYAKU per use */
+  private fistDualAlt=false
   /** dash key released while the heavy still holds: grace beat before the
    * invested charge converts into the standing blade gather */
   private dualDashRelT=0
@@ -652,6 +654,9 @@ export class Player {
   get slashChargeProgress():number {return this.state==='dashCharge'&&this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0}
   /** RAIJIN ZAN is armed: both charges locked, both keys still held. */
   get slashReady():boolean {return this.dashDualArmed&&this.dashDualT>=POWER_DASH_SLASH_CHARGE}
+  /** Next sheathed dual-release strike (HUD readout) — alternates per use:
+   * RAIJIN KEN (dash cross) ↔ FUJIN KYAKU (dash spear kick). */
+  get fistStrikeNext():'punch'|'kick'{return this.fistDualAlt?'kick':'punch'}
   get staminaCooldown():number {return this.staminaRegenDelay}
 
   get parryWindowOpen(): boolean {
@@ -1681,22 +1686,33 @@ export class Player {
   }
 
   /** The HEAVY hold inside the planted dash charge arms THE DUAL CHARGE —
-   * dash hold + heavy hold loads the blade (POWER DASH SLASH). */
+   * dash hold + heavy hold loads the release, in BOTH stances: drawn steel
+   * chambers the blade (RAIJIN ZAN); sheathed hips chamber the fist/foot
+   * (RAIJIN KEN / FUJIN KYAKU). */
   private armDualCharge(w:WorldRef):void{
     if(this.dashDualArmed)return
     this.dashDualArmed=true
-    // the hand settling back onto the steel: one soft physical grip note
-    w.audio.play('swordSwitch',{volume:.14,pitch:.95})
+    if(this.swordDrawn){
+      // the hand settling back onto the steel: one soft physical grip note
+      w.audio.play('swordSwitch',{volume:.14,pitch:.95})
+    }else{
+      // the breath clench — the coiled fists take the load
+      w.audio.play('charge',{volume:.2,pitch:.62})
+    }
   }
 
-  /** THE DUAL RELEASE — both keys up, both charges locked: RAIJIN ZAN. The
-   * startup was fully paid inside the planted chamber, so the payoff is one
-   * committed hyper-armored drive with the steel ripping its horizontal
-   * draw-cut THROUGH the whole pack — the corridor sweep is the hit. */
+  /** THE DUAL RELEASE — both keys up, both charges locked: RAIJIN ZAN when
+   * the steel is drawn; the sheathed twin (RAIJIN KEN / FUJIN KYAKU, punch ↔
+   * kick alternating per armed use) when it rides the saya. The startup
+   * was fully paid inside the planted chamber, so the payoff is one
+   * committed hyper-armored drive — the corridor sweep THROUGH the whole
+   * pack is the hit. */
   private firePowerDashSlash(w:WorldRef):void{
+    const sheathedStrike=!this.swordDrawn?(this.fistDualAlt?'powerKick':'powerPunch'):null
     this.dropDualCharge()
+    if(sheathedStrike)this.fistDualAlt=!this.fistDualAlt
     this.startDash(w,this.dashChargeX,0,true)
-    this.startAttack(ATTACKS.powerSlash,w)
+    this.startAttack(sheathedStrike?ATTACKS[sheathedStrike]:ATTACKS.powerSlash,w)
     // detonation accents — physical: the ground releases the planted load
     w.fx.dust(this.x-this.dashChargeX*10,0,9)
     w.cam.addTrauma(.18)
@@ -1736,9 +1752,11 @@ export class Player {
       this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
     }
     // HEAVY inside the charge: HOLD arms THE DUAL CHARGE (dash hold + heavy
-    // hold = the blade loads for RAIJIN ZAN); a quick TAP keeps the legacy
-    // strike path (GALE BREAKER on a ready charge, a plain heavy otherwise).
-    // Classification waits one hold beat so taps still resolve on release.
+    // hold = the release loads) in BOTH stances — drawn steel chambers the
+    // blade (RAIJIN ZAN), sheathed hips chamber the fist (RAIJIN KEN /
+    // FUJIN KYAKU); a quick TAP keeps the legacy strike path (GALE BREAKER /
+    // CHARGED RAM on a ready charge, a plain heavy otherwise). Classification
+    // waits one hold beat so taps still resolve on release.
     if(this.dashHeavyArmT>=0){
       this.dashHeavyArmT+=dt
       if(!input.down('heavy')){
@@ -1754,22 +1772,13 @@ export class Player {
       }
       if(this.dashHeavyArmT>=HEAVY_HOLD_ARM){
         this.dashHeavyArmT=-1
-        // the sword-button mechanic needs the steel; a sheathed heavy stays
-        // on the legacy tap path (it already resolved above on release)
-        if(this.swordDrawn)this.armDualCharge(w)
+        // both stances arm — the chamber clip (blade or fist) follows at the
+        // coil's LOCK beat below
+        this.armDualCharge(w)
       }
     } else if(input.pressed('heavy')||input.buffered('heavy')){
       input.takeBuffered('heavy')
-      if(!this.swordDrawn){
-        // sheathed: no dual chamber — the plain legacy behavior stands
-        if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
-          this.startDash(w,this.dashChargeX,0,true)
-          this.startAttack(ATTACKS.powerArc,w)
-          return
-        }
-        this.startAttack(this.pickHeavy(w),w);return
-      }
-      this.dashHeavyArmT=0 // begin hold classification
+      this.dashHeavyArmT=0 // begin hold classification (both stances)
     }
     if(input.pressed('jump')||input.pressed('parry')||input.pressed('sheathe')){
       this.state='move';this.dropDualCharge()
@@ -1828,21 +1837,24 @@ export class Player {
     }
     this.dashChargeElapsedT+=dt
     this.dashChargeT=Math.min(POWER_DASH_CHARGE,this.dashChargeT+dt)
-    // the coil's LOCK beat hands the stance to the deeper dual chamber
+    // the coil's LOCK beat hands the stance to the deeper dual chamber —
+    // blade chamber when drawn, fist chamber when sheathed
     if(this.dashDualArmed&&!this.dashDualClipOn&&this.dashChargeElapsedT>=DASH_CHARGE_LOCK_BEAT){
       this.dashDualClipOn=true
-      this.playAnimation(DUAL_CHARGE_CLIP,{blend:.09})
+      this.playAnimation(this.swordDrawn?DUAL_CHARGE_CLIP:FIST_DUAL_CHARGE_CLIP,{blend:.09})
     }
     if(this.dashDualArmed&&this.dashDualClipOn){
       this.dashDualT=Math.min(POWER_DASH_SLASH_CHARGE,this.dashDualT+dt)
       if(this.dashDualT>=POWER_DASH_SLASH_CHARGE&&!this.dualLockTold){
         this.dualLockTold=true
         if(this.stamina>=POWER_DASH_STAMINA_COST){
-          // the TAUT tell — drawn steel: the same kinetic language as the
-          // coil lock, one grade deeper (heavier spark, one notch more bite)
+          // the TAUT tell — drawn steel or loaded fists: the same kinetic
+          // language as the coil lock, one grade deeper (heavier note, one
+          // notch more bite). Sheathed stays strictly physical — the ground
+          // sheds under the deeper sink, no steel glints off the saya.
           w.audio.play('chargeReady',{volume:.36,pitch:.95})
           if(this.swordDrawn)w.fx.sparks(this.blade.tx,this.blade.ty,-Math.PI/2,.5,3,'#f2fbff',260,.22)
-          w.fx.dust(this.x-this.dashChargeX*10,0,4)
+          w.fx.dust(this.x-this.dashChargeX*10,0,this.swordDrawn?4:7)
           w.cam.addTrauma(.065)
         }
       }
@@ -2201,8 +2213,10 @@ export class Player {
     // HYPER-ARMOR: charged releases cannot be interrupted (the root cause
     // of "charged never hits" — enemies struck mid-swing cancelled it).
     // RAIJIN ZAN's commitment spans the whole drive: the body is locked in.
+    // The sheathed twins (RAIJIN KEN / FUJIN KYAKU) carry the same contract.
     if (def.id === 'charged') this.armorT = 0.5
     if (def.id === 'powerSlash') this.armorT = 0.62
+    if (def.id === 'powerPunch' || def.id === 'powerKick') this.armorT = 0.62
 
     const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
@@ -2296,15 +2310,19 @@ export class Player {
       // band from 124px behind the player to 66px ahead — anchored to the
       // path (not the wandering kissaki, which wraps behind on the
       // follow-through and would collapse the span). This is the swept
-      // volume of the through-cut.
+      // volume of the through-cut. The sheathed power strikes (fist /
+      // spear-foot) declare their own corridor — the pass tears the pack
+      // the same way, at their own strike height.
       let curSeg = this.blade
       let usePrev = this.hasPrevBlade
-      if (def.kind === 'dash' && !def.strikeHand) {
+      const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
+      if (def.kind === 'dash' && (!def.strikeHand || declaresCorridor)) {
+        const cy = h.corridorY ?? 55
         curSeg = {
           bx: this.x - this.face * (h.corridorBack ?? 124),
-          by: this.y - 55,
+          by: this.y - cy,
           tx: this.x + this.face * (h.corridorFront ?? 66),
-          ty: this.y - 55,
+          ty: this.y - cy,
         }
         usePrev = this.hasPrevBlade
       }

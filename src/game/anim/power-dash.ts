@@ -89,6 +89,46 @@ export const DUAL_CHARGE_CLIP=makeClip('dualChargeCoil',[
 ])
 DUAL_CHARGE_CLIP.interpolation='monotone'
 
+/** THE SHEATHED DUAL CHAMBER — the empty-hand twin of DUAL_CHARGE_CLIP:
+ * the same planted coil, loaded with fists instead of steel. While the dash
+ * button stays held and the HEAVY hold joins it with the blade sheathed,
+ * the stance deepens one more grade and the body arms the FIST/FOOT release
+ * (RAIJIN KEN / FUJIN KYAKU — the power dash punch and kick). Physical
+ * language only: the hips sink, the pelvis winds, the rear knee LIFTS into
+ * a dual-purpose chamber (the punch plants it, the kick fires it), the
+ * cross cocks back at the hip and the lead arm raises a high guard.
+ *
+ * Choreography law (the seamless-handoff chain): the first keyframe is
+ * EXACTLY DASH_CHARGE_CLIP's LOCK beat (t=.42) — the deepen crossfades off
+ * the resting coil pose-identically — and the TAUT LOCK (t=.22) is the
+ * verbatim first keyframe of BOTH sheathed strike clips (unarmedPowerCross
+ * / unarmedPowerKick in moveset.ts), so the dual release detonates without
+ * re-loading. Name stays OUTSIDE equipmentClip's adaptation whitelist. */
+export const FIST_DUAL_CHARGE_CLIP=makeClip('fistDualCoil',[
+ // entry: the dash-charge LOCK beat, verbatim — seamless handoff
+ keyframe(0,{rootX:1,rootY:4.6,rootRot:.35,head:-.32,
+   hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,footR:.15,footL:-.04,
+   shR:.16,elR:-.75,wrR:-.62,shL:.4,elL:-1.2,
+   pelvisYaw:.14,chestYaw:-.14},'inOutSine'),
+ // the plant deepens under the added fist load — hips sink, coil tightens
+ keyframe(.08,{rootX:1,rootY:5.2,rootRot:.41,head:-.38,
+   hipL:-.38,kneeL:-.72,hipR:.66,kneeR:-1.28,footR:.18,footL:-.05,
+   shR:-.02,elR:-.9,wrR:-.6,shL:.5,elL:-1.35,wrL:-.2,
+   pelvisYaw:.17,chestYaw:-.18},'inOutSine'),
+ // THE FIST CHAMBER: rear knee lifts into the dual-purpose coil, the cross
+ // cocks at the hip, lead guard raises — pelvis wound hard through depth
+ keyframe(.15,{rootX:1,rootY:5.3,rootRot:.48,head:-.42,spine:.04,
+   hipL:-.4,kneeL:-.78,hipR:.9,kneeR:-1.7,footR:.28,footL:-.05,
+   shR:-.3,elR:-1.12,wrR:-.5,shL:.85,elL:-1.5,wrL:-.3,
+   pelvisYaw:.22,chestYaw:-.24,armLz:.15,foreRz:-.12},'inOutSine'),
+ // TAUT LOCK: the set settles one final unit and stops — loaded fists
+ keyframe(.22,{rootX:1,rootY:5.5,rootRot:.48,head:-.42,spine:.04,
+   hipL:-.4,kneeL:-.8,hipR:.9,kneeR:-1.72,footR:.28,footL:-.05,
+   shR:-.32,elR:-1.14,wrR:-.52,shL:.85,elL:-1.5,wrL:-.3,
+   pelvisYaw:.22,chestYaw:-.24,armLz:.15,foreRz:-.12},'inOutSine'),
+])
+FIST_DUAL_CHARGE_CLIP.interpolation='monotone'
+
 /** Blade-segment charge time the HEAVY hold adds on top of the dash charge
  * (POWER_DASH_CHARGE=.32). The dash coil locks at .42 (settle beat), then
  * the dual chamber loads for this long before RAIJIN ZAN is armed. */

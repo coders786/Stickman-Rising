@@ -51,9 +51,13 @@ export interface AttackHit {
   /** DASH THROUGH-CUT corridor: the swept volume behind/ahead of the body
    * along the travel line (px). Defaults live in Player.updateAttack; a
    * wider corridor is a deeper pass — the dual-charged release carves the
-   * widest lane in the moveset. */
+   * widest lane in the moveset. Sheathed power strikes (fist/foot) declare
+   * their own corridor so the pass tears through the pack too. */
   corridorBack?: number
   corridorFront?: number
+  /** corridor band height above the feet (px) — default 55 (chest); the
+   * kick release rides lower (~40) as the spear leg drives. */
+  corridorY?: number
 }
 
 export interface AttackDef {
@@ -1445,6 +1449,11 @@ export const ATTACKS: Record<string, AttackDef> = {
   airTwist: MOVES.airTwist,
   airElbow: MOVES.airElbow,
   ultPalm: UNARMED_ULT,
+  /* sheathed power-dash strikes — fired by the dual-hold release
+   * (dash hold + heavy hold, both released) with the blade sheathed;
+   * alternate punch ↔ kick per armed use (Player.firePowerDashSlash) */
+  powerPunch: MOVES.powerPunch,
+  powerKick: MOVES.powerKick,
 }
 
 export function getAttack(id: string): AttackDef | undefined {
