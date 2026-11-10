@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1) **Yes** — gameplay is running: top-left HUD shows HEALTH 100/100, ENERGY 100/100, STAMINA 600/600, plus POWER READY, ULTIMATE, and DASH/POWER stats. Center banner reads \"WAVE 1 — HOSTILES INBOUND,\" and top-right shows \"WAVE 1 | HOSTILES 4 | KILLS 0.\"\n\n2) **Yes**, the stickman is visible standing on the platform (mid-scene, dark silhouette). His sword is **SHEATHED** — the HUD explicitly reads \"EMPTY HAND / SHEATHED,\" and only a faint blue sheath/handle line is visible at his side, with no blade drawn.\n\n3) **No enemies are visible on screen** — the wave banner says \"HOSTILES INBOUND,\" indicating they haven't spawned/entered yet.\n\n4) **No errors or blank canvas** — the scene renders fully: rain effect, city background, reflective floor, HUD, banner, and control legend at the bottom are all displayed correctly.",
+        "reasoning_content": "HUD present, wave banner \"WAVE 1 HOSTILES INBOUND\", stickman visible, sword sheathed (HUD says \"EMPTY HAND / SHEATHED\", and a faint blue line/handle visible — sheathed). Enemies not visible yet (wave inbound). No errors.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794343529,
+  "id": "20261111044524628f2191bf3e4293",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111044524628f2191bf3e4293",
+  "usage": {
+    "completion_tokens": 275,
+    "completion_tokens_details": {
+      "reasoning_tokens": 56
+    },
+    "prompt_tokens": 1060,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1335
+  }
+}

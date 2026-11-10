@@ -1,0 +1,29 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "**1) Status line:** It reads exactly **`RELEASE BOTH: RAIJIN ZAN`** (left) with `DASH 45 | POWER 120` on the right — not \"BLADE CHARGING...\", so full dual charge is confirmed registered.\n\n**2) 3px strip under the status line:** Yes — the thin white strip spans the **full panel width** (solid white, no visible fill gradient/segments), indicating a fully complete charge.\n\n**3) Stickman pose:** He's in a **deep sunk coil** — knees deeply bent, hips low, body compressed forward over the leading leg. The sword arm is **chambered back-low behind the hip**, with the glowing cyan blade trailing back and angled upward along the scabbard line behind him (a sheath-style taut stance), **not** upright with blade raised. This matches the RAIJIN ZAN taut chamber description.\n\n**4) Stamina:** **600 / 600** — full, consistent with charge held but not yet spent.\n\nAll four checks are consistent with the intended full-charge RAIJIN ZAN state. Ready for the release input (I+K) when you are.",
+        "reasoning_content": "Check screenshot details.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794344267,
+  "id": "2026111104574360f788ccd8234434",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "2026111104574360f788ccd8234434",
+  "usage": {
+    "completion_tokens": 255,
+    "completion_tokens_details": {
+      "reasoning_tokens": 4
+    },
+    "prompt_tokens": 1133,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1388
+  }
+}

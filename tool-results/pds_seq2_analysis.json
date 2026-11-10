@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "# RAIJIN ZAN Test Analysis\n\n## Image 1 — End of Dual Hold (charge complete)\n\n1. **HUD status text:** \"EMPTY HAND / SHEATHED\" with \"[U] READY\" on the right side of the panel.\n2. **Charge strip:** Filled — bright green segment at the left end of the thin strip below the stamina bar (only a small portion filled, the \"power ready\" charge pips).\n3. **Pose:** Upright planted stance, sword held low and pointed down-back at an angle — not a deep coil; player looks stationary, preparing to release. No visible crouch.\n4. **Sword:** DRAWN — blade visible, extending down-left with a glowing cyan hilt ring.\n5. **Effects:** No slash trail, no afterimages, no speed lines. Rain only.\n6. **Alive:** Yes — full health 100/100.\n7. **Stamina:** 600 / 600.\n8. **Enemies:** None on screen yet (\"WAVE 1 / HOSTILES INBOUND\" banner showing). Kills 0, hostiles 4.\n\n## Image 2 — ~0.17s After Release (dash-slash in flight)\n\n1. **HUD status text:** Still \"EMPTY HAND / SHEATHED\" with \"[U] READY\" (status not yet updated mid-move).\n2. **Charge strip:** Green charge segment still visible/filled at left end of strip.\n3. **Pose:** Neutral upright running/standing stance — **not** a horizontal flying dash. Player appears near-identical to Image 1, just shifted slightly right. ❗ No extended-blade dash pose visible.\n4. **Sword:** DRAWN — same down-back blade angle with cyan hilt ring.\n5. **Effects:** **No motion trail, no afterimage ghosts, no speed lines.** Only ambient rain streaks. ❗ The move reads as having not launched.\n6. **Alive:** Yes — 100/100.\n7. **Stamina:** 600 / 600 (no cost deducted).\n8. **Enemies:** One enemy visible ahead-left (white stickman with blade, red visor) but **not hit** — no damage numbers, no hit flash. Kills still 0, hostiles still 4.\n\n## Image 3 — ~1s After (recovery)\n\n1. **HUD status text:** \"EMPTY HAND / SHEATHED\" / \"[U] READY\".\n2. **Charge strip:** Same green filled segment at strip's left end.\n3. **Pose:** Upright running/advancing stance — a normal run, **not** a standing recovery guard. Player has moved slightly right.\n4. **Sword:** DRAWN — blade still down-back, unchanged.\n5. **Effects:** None — no trail, ghosts, or speed effects.\n6. **Alive:** Yes — 100/100.\n7. **Stamina:** 600 / 600.\n8. **Enemies:** Three enemies now visible ahead (two on the left, one engaged near player at the third enemy's position) but **no damage numbers, no hit reactions**. Kills 0, hostiles 4 — unchanged.\n\n## Verdict\n\nThe RAIJIN ZAN input **does not appear to trigger**. Across all three frames:\n\n- No deep coil pose at hold-end\n- No horizontal flying-dash pose, blade extension, or motion trail after release\n- No afterimage ghosts at any point\n- Stamina never decreases (600/600 constant)\n- No enemies hit, no damage numbers, kills counter unchanged\n- HUD status text never changes from \"EMPTY HAND / SHEATHED\"\n\nThe character behaves identically in all three screenshots apart from normal movement and enemies spawning — the hold L+K → release both input appears unregistered or unimplemented in this build.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794343707,
+  "id": "20261111044809de2407b75736400a",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111044809de2407b75736400a",
+  "usage": {
+    "completion_tokens": 800,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 3096,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 3896
+  }
+}

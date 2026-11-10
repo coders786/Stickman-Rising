@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "1) HUD status line: It says **\"EMPTY HAND / SHEATHED\"** (with \"[U] READY\" on the right) — none of the charge texts appear.\n\n2) No thin charge strip is visible below the stamina bar in a filled/white state — the area under STAMINA shows the POWER READY line instead.\n\n3) Pose: No. The stickman is not in a dual-charge stance — he appears standing upright/floating near the death screen, not a sunk coil with the blade chambered back low.\n\n4) Sword: Not drawn — the HUD explicitly indicates \"EMPTY HAND / SHEATHED.\"\n\n5) Errors: Yes — this is a death/game-over screen: \"CONNECTION LOST — YOU HAVE FALLEN\" with score 0, wave 1, 0 kills, rank D. The game has ended, so the RAIJIN ZAN dual charge (L+K) cannot be occurring. The player is dead, not charging.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1794343555,
+  "id": "20261111044549d65bc523239a4db6",
+  "model": "glm-5.3-flash",
+  "object": "chat.completion",
+  "request_id": "20261111044549d65bc523239a4db6",
+  "usage": {
+    "completion_tokens": 207,
+    "completion_tokens_details": {
+      "reasoning_tokens": 206
+    },
+    "prompt_tokens": 1166,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "total_tokens": 1373
+  }
+}
