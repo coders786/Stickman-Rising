@@ -115,6 +115,18 @@ interface ImpactFrame {
   seed: number
 }
 
+/** POINT IMPACT FLASH — a pooled radial-gradient bloom + lens cross-flare
+ * at the strike point: white-hot core melting into the weapon color, with
+ * a shrinking horizontal/vertical lens streak. Additive camera-bloom
+ * language layered UNDER the sparks (sparks ride on top of the bloom). */
+interface Flash {
+  active: boolean
+  x: number; y: number
+  age: number; life: number
+  color: string
+  heavy: boolean
+}
+
 /** HDR MOTION LINE — one clean velocity streak replacing the old particle
  * speed-streak train: a gradient smear along the travel vector with a
  * white-hot core and a leading glint. Deep contrast (transparent tail →
@@ -171,6 +183,9 @@ export class FX {
   /** ground shadow smears (dash) */
   private smears: ShadowSmear[] = []
   private smFree: ShadowSmear[] = []
+  /** point impact flashes (bloom + lens cross) */
+  private flashes: Flash[] = []
+  private flFree: Flash[] = []
 
   /** chromatic aberration intensity (0..1) — edge lens strain on dashes
    * and heavy impacts; decays every update */
@@ -214,6 +229,8 @@ export class FX {
     this.lines.length = 0
     for (const s of this.smears) { s.active = false; this.smFree.push(s) }
     this.smears.length = 0
+    for (const f of this.flashes) { f.active = false; this.flFree.push(f) }
+    this.flashes.length = 0
     for (const i of this.impactFrames) i.active = false
     this.impactFrames.length = 0
     // lightning bolts die with the world (pool slots recycle in update)
@@ -372,6 +389,7 @@ export class FX {
 
   /** impact flash + directional sparks + micro ring */
   impact(x: number, y: number, dir: number, heavy: boolean, color: string, accent: string): void {
+    this.pointFlash(x, y, color, heavy)
     this.sparks(x, y, dir, heavy ? 0.9 : 0.6, heavy ? 16 : 9, color, heavy ? 480 : 340, heavy ? 0.55 : 0.35)
     this.sparks(x, y, dir, 0.4, heavy ? 6 : 3, '#ffffff', heavy ? 620 : 420, 0.2)
     const r = this.nextRing()
@@ -387,6 +405,31 @@ export class FX {
     if (heavy) {
       this.burst(x, y, 8, accent, 200, 0.4, 'shard')
     }
+    // motion-blur streaks: short HDR velocity lines shrapneling out of the
+    // hit (bright outer head, fade back toward the core — reads as the
+    // shockwave's fast debris, reuses the dash motion-line renderer)
+    const streaks = this.scaleCount(heavy ? 4 : 2)
+    for (let i = 0; i < streaks; i++) {
+      const a = dir + rand(-0.85, 0.85)
+      const ca = Math.cos(a)
+      const sa = Math.sin(a)
+      const L = rand(14, heavy ? 34 : 22)
+      this.motionLine(x + ca * L, y + sa * L, ca, sa, L, rand(0.12, 0.2), i % 2 === 0 ? '#ffffff' : accent)
+    }
+  }
+
+  /** pooled point bloom + lens cross at the strike point (drawn in drawAdditive) */
+  private pointFlash(x: number, y: number, color: string, heavy: boolean): void {
+    if (this.flashes.length > 6) return
+    const f = this.flFree.pop() ?? {
+      active: false, x: 0, y: 0, age: 0, life: 0.16, color: '#fff', heavy: false,
+    }
+    f.active = true
+    f.x = x; f.y = y
+    f.age = 0; f.life = heavy ? 0.18 : 0.13
+    f.color = color
+    f.heavy = heavy
+    this.flashes.push(f)
   }
 
   /** dismemberment: spinning limb debris + gore burst */
@@ -780,6 +823,17 @@ export class FX {
         this.impactFrames.splice(i, 1)
       }
     }
+    // point impact flashes
+    for (let i = this.flashes.length - 1; i >= 0; i--) {
+      const f = this.flashes[i]
+      if (!f.active) continue
+      f.age += dt
+      if (f.age >= f.life) {
+        f.active = false
+        this.flashes.splice(i, 1)
+        this.flFree.push(f)
+      }
+    }
     // HDR motion lines
     for (let i = this.lines.length - 1; i >= 0; i--) {
       const l = this.lines[i]
@@ -972,6 +1026,32 @@ export class FX {
       ctx.beginPath()
       ctx.arc(l.x, l.y, 2.1, 0, TAU)
       ctx.fill()
+    }
+
+    // point impact flashes — radial bloom + lens cross (camera-bloom
+    // language, under the sparks so sparks ride on top of the bloom)
+    for (const f of this.flashes) {
+      if (!f.active) continue
+      const k = 1 - f.age / f.life
+      const r = (f.heavy ? 46 : 26) * (0.5 + 0.5 * k)
+      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r)
+      g.addColorStop(0, rgba('#ffffff', 0.95 * k))
+      g.addColorStop(0.35, rgba(f.color, 0.55 * k))
+      g.addColorStop(1, rgba(f.color, 0))
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(f.x, f.y, r, 0, TAU)
+      ctx.fill()
+      // lens cross — shrinking horizontal/vertical streaks through the core
+      const s = (f.heavy ? 30 : 18) * k * k
+      ctx.strokeStyle = rgba('#ffffff', 0.5 * k)
+      ctx.lineWidth = 1.4
+      ctx.beginPath()
+      ctx.moveTo(f.x - s, f.y)
+      ctx.lineTo(f.x + s, f.y)
+      ctx.moveTo(f.x, f.y - s * 0.6)
+      ctx.lineTo(f.x, f.y + s * 0.6)
+      ctx.stroke()
     }
 
     // particles
@@ -1170,7 +1250,8 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
     out[0] = pts[i]; out[1] = pts[i + 1]; out[2] = pts[i + 2]; out[3] = pts[i + 3]
   }
 
-  // ---- wide soft halo + mid core ribbon ----
+  // ---- wide soft halo + mid core ribbon (tapered: wide at the swing
+  // head, needle-pointing at the tail — the anime trail dissolve) ----
   for (let layer = 0; layer < 2; layer++) {
     const wide = layer === 0
     const color = wide ? t.color2 : t.color
@@ -1180,30 +1261,40 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
       seg(i + 1, segB)
       const headBias = i / Math.max(1, n - 1)
       const alpha = baseAlpha * fade * (0.35 + 0.65 * headBias)
+      // width taper along the trail: 0.3 at the oldest point → 1.0 at head
+      const taperA = 0.3 + 0.7 * headBias
+      const taperB = 0.3 + 0.7 * ((i + 1) / Math.max(1, n - 1))
+      const ax = segA[0] + (segA[2] - segA[0]) * (1 - taperA) * 0.5
+      const ay = segA[1] + (segA[3] - segA[1]) * (1 - taperA) * 0.5
+      const bx = segB[0] + (segB[2] - segB[0]) * (1 - taperB) * 0.5
+      const by = segB[1] + (segB[3] - segB[1]) * (1 - taperB) * 0.5
       ctx.fillStyle = rgba(color, alpha)
       // quad between consecutive blade segments
       ctx.beginPath()
-      ctx.moveTo(segA[0], segA[1])
+      ctx.moveTo(ax, ay)
       ctx.lineTo(segA[2], segA[3])
       ctx.lineTo(segB[2], segB[3])
-      ctx.lineTo(segB[0], segB[1])
+      ctx.lineTo(bx, by)
       ctx.closePath()
       ctx.fill()
     }
   }
 
   // ---- hot inner core: thin near-white strip hugging the blade path ----
-  // (strided every 2nd segment — plasma-line look at half the fill cost)
+  // (strided every 2nd segment — plasma-line look at half the fill cost;
+  // inset widens toward the tail so the core tapers with the ribbon)
   for (let i = 0; i < n - 1; i += 2) {
     seg(i, segA)
     seg(Math.min(i + 1, n - 1), segB)
     const headBias = i / Math.max(1, n - 1)
     const alpha = 0.5 * fade * (0.3 + 0.7 * headBias)
-    // inset both blade endpoints 45% toward the tip → thin strip near the edge
-    const ax = segA[0] + (segA[2] - segA[0]) * 0.55
-    const ay = segA[1] + (segA[3] - segA[1]) * 0.55
-    const bx = segB[0] + (segB[2] - segB[0]) * 0.55
-    const by = segB[1] + (segB[3] - segB[1]) * 0.55
+    const taper = 0.3 + 0.7 * headBias
+    const ins = 0.55 + 0.45 * (1 - taper)
+    // inset both blade endpoints toward the tip → thin strip near the edge
+    const ax = segA[0] + (segA[2] - segA[0]) * ins
+    const ay = segA[1] + (segA[3] - segA[1]) * ins
+    const bx = segB[0] + (segB[2] - segB[0]) * ins
+    const by = segB[1] + (segB[3] - segB[1]) * ins
     ctx.fillStyle = rgba('#ffffff', alpha)
     ctx.beginPath()
     ctx.moveTo(ax, ay)
@@ -1230,6 +1321,29 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
     ctx.strokeStyle = rgba('#ffffff', 0.55 * fade)
     ctx.lineWidth = 1.5 * t.width
     ctx.stroke()
+
+    // base-edge sheen — the opposite rim completes the dual-rim energy
+    // blade (follows the tapered base so it converges into the tail point)
+    ctx.beginPath()
+    seg(0, segA)
+    {
+      const tp = 0.3
+      ctx.moveTo(
+        segA[0] + (segA[2] - segA[0]) * (1 - tp) * 0.5,
+        segA[1] + (segA[3] - segA[1]) * (1 - tp) * 0.5,
+      )
+    }
+    for (let i = 1; i < n; i++) {
+      seg(i, segA)
+      const tp = 0.3 + 0.7 * (i / Math.max(1, n - 1))
+      ctx.lineTo(
+        segA[0] + (segA[2] - segA[0]) * (1 - tp) * 0.5,
+        segA[1] + (segA[3] - segA[1]) * (1 - tp) * 0.5,
+      )
+    }
+    ctx.strokeStyle = rgba(t.color2, 0.16 * fade)
+    ctx.lineWidth = 2 * t.width
+    ctx.stroke()
   }
 
   // ---- tip glint + motion-blur streaks (only while the swing is live) ----
@@ -1244,11 +1358,21 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
       const nx = -dy * ix // perpendicular
       const ny = dx * ix
       const glint = Math.min(1, spd / 26) * fade
-      // 4-point star flare at the newest tip
       const gx = segA[2]
       const gy = segA[3]
       const g1 = 4 + t.width * 2.4
       const g2 = g1 * 0.42
+      // bloom halo behind the glint — soft radial melt into the weapon color
+      const gr = g1 * 1.9
+      const bg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr)
+      bg.addColorStop(0, rgba('#ffffff', 0.5 * glint))
+      bg.addColorStop(0.4, rgba(t.color, 0.28 * glint))
+      bg.addColorStop(1, rgba(t.color, 0))
+      ctx.fillStyle = bg
+      ctx.beginPath()
+      ctx.arc(gx, gy, gr, 0, TAU)
+      ctx.fill()
+      // 4-point star flare at the newest tip
       ctx.strokeStyle = rgba('#ffffff', 0.75 * glint)
       ctx.lineWidth = 1.1
       ctx.beginPath()
@@ -1258,6 +1382,13 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
       ctx.lineTo(gx, gy + g1)
       ctx.moveTo(gx - g2 * nx, gy - g2 * ny)
       ctx.lineTo(gx + g2 * nx, gy + g2 * ny)
+      // 45° diagonal pair — the diamond-sparkle read
+      const dg = g2 * 0.9
+      const dc = 0.7071
+      ctx.moveTo(gx - dg * dc, gy - dg * dc)
+      ctx.lineTo(gx + dg * dc, gy + dg * dc)
+      ctx.moveTo(gx + dg * dc, gy - dg * dc)
+      ctx.lineTo(gx - dg * dc, gy + dg * dc)
       ctx.stroke()
       ctx.fillStyle = rgba(t.color, 0.9 * glint)
       ctx.beginPath()
