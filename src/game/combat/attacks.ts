@@ -211,7 +211,7 @@ const l2: AttackDef = {
   trail: { start: 0.14, end: 0.33 },
   swingSfx: { t: 0.14, name: 'swing' },
   cancel: 0.31,
-  chain: ['l3', 'h1', 'h2', 'launcher', 'spin', 'retreat'],
+  chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat'],
   moveX: 130, moveXAt: 0.14,
   grip: 0.9, // kesa from jōdan — both hands on the tsuka through the diagonal
   zArc: 0.5,
@@ -260,7 +260,7 @@ const l3: AttackDef = {
   trail: { start: 0.1, end: 0.33 },
   swingSfx: { t: 0.1, name: 'swing' },
   cancel: 0.33,
-  chain: ['l4', 'h1', 'h2', 'launcher', 'retreat'],
+  chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat'],
   moveX: 110, moveXAt: 0.12,
   grip: 0.9,
   zArc: 0.5,
@@ -306,7 +306,7 @@ const l4: AttackDef = {
   trail: { start: 0.15, end: 0.41 },
   swingSfx: { t: 0.16, name: 'swing' },
   cancel: 0.37,
-  chain: ['l5', 'h2', 'launcher'],
+  chain: ['l5', 'h2', 'stabs', 'launcher'],
   moveX: 90, moveXAt: 0.16,
   grip: 0.7,
   zArc: 0.55,
@@ -472,6 +472,106 @@ const spin: AttackDef = {
   },
 }
 
+/** STABS — RENZOKU TSUKI (連続突き): the rapid triple thrust. Chamber the
+ * hilt at the hip, then three spearing thrusts with controlled retracts
+ * between — a forward-pressure string that pins the target on the point.
+ * Reached by holding INTO the enemy during a light-chain window (the
+ * forward axis was the only unmapped direction in pickLight). Pose
+ * vocabulary is h2's tsuki chamber/ignition/thrust, escalated per thrust
+ * (deeper coil, longer lunge) so the string reads as pressure, not spam. */
+const stabs: AttackDef = {
+  id: 'stabs', label: 'RENZOKU TSUKI', kind: 'light', requires: 'ground',
+  clip: makeClip('atk_stabs', [
+    keyframe(0, GUARD, 'outQuad'),
+    // chamber: hilt pulled to the hip, blade back-level, weight loading back
+    keyframe(0.09, {
+      rootRot: -0.12, spine: -0.05, head: -0.06, rootY: 1,
+      hipR: -0.15, kneeR: -0.5, footR: 0.08,
+      hipL: -0.3, kneeL: -0.35, footL: 0.1,
+      shR: -0.15, elR: -1.05, wrR: -0.55, // hilt at the hip — h2's chamber
+      shL: 0.8, elL: -1.1, // lead hand guards
+    }, 'inOutCubic'),
+    // ignition 1: blade sweeps level as the first lunge launches
+    keyframe(0.13, {
+      rootRot: 0.2, rootY: 2,
+      hipR: 0.5, kneeR: -0.7,
+      shR: 0.7, elR: -0.5, wrR: 0.3,
+      shL: 1.1, elL: -0.7,
+    }, 'outQuad'),
+    // THRUST 1 — level, full extension (sum ≈ 1.57 → blade dead-level)
+    keyframe(0.17, {
+      rootRot: 0.38, spine: 0.14, head: -0.2, rootY: 2.5,
+      hipR: 0.9, kneeR: -0.8, footR: 0.2,
+      hipL: -0.8, kneeL: -0.2,
+      shR: 1.5, elR: 0.05, wrR: 0.02,
+      shL: 1.4, elL: -0.35,
+    }, 'outCubic'),
+    // retract 1 — controlled pull back to the hip, point never drops
+    keyframe(0.24, {
+      rootRot: -0.08, rootY: 1,
+      hipR: -0.1, kneeR: -0.55,
+      shR: -0.1, elR: -1.0, wrR: -0.5,
+      shL: 0.85, elL: -1.05,
+    }, 'inOutSine'),
+    // ignition 2
+    keyframe(0.275, {
+      rootRot: 0.22, rootY: 2,
+      shR: 0.72, elR: -0.48, wrR: 0.28,
+      shL: 1.12, elL: -0.68,
+    }, 'outQuad'),
+    // THRUST 2 — a touch deeper, chest rotating through
+    keyframe(0.315, {
+      rootRot: 0.4, spine: 0.15, head: -0.21, rootY: 2.5,
+      hipR: 0.92, kneeR: -0.82, footR: 0.21,
+      hipL: -0.82, kneeL: -0.18,
+      shR: 1.52, elR: 0.04, wrR: 0.01,
+      shL: 1.42, elL: -0.34,
+    }, 'outCubic'),
+    // retract 2
+    keyframe(0.385, {
+      rootRot: -0.1, rootY: 1.5,
+      hipR: -0.12, kneeR: -0.58,
+      shR: -0.12, elR: -1.02, wrR: -0.52,
+      shL: 0.82, elL: -1.08,
+    }, 'inOutSine'),
+    // ignition 3 — deepest coil, back leg loads for the passing lunge
+    keyframe(0.425, {
+      rootRot: 0.24, rootY: 2,
+      hipR: 0.55, kneeR: -0.72,
+      shR: 0.75, elR: -0.52, wrR: 0.3,
+      shL: 1.15, elL: -0.65,
+    }, 'outQuad'),
+    // THRUST 3 — deep passing lunge, hips fully open, full penetration
+    keyframe(0.475, {
+      rootRot: 0.42, spine: 0.16, head: -0.22, rootY: 2.5,
+      hipR: 0.95, kneeR: -0.85, footR: 0.22,
+      hipL: -0.85, kneeL: -0.15,
+      shR: 1.55, elR: 0.05, wrR: 0.0,
+      shL: 1.45, elL: -0.35,
+    }, 'outCubic'),
+    // penetration beat — the hold sells the depth before recovery
+    keyframe(0.55, {
+      rootRot: 0.44, spine: 0.16, rootY: 2.2,
+      shR: 1.56, elR: 0.06, wrR: 0.0,
+      shL: 1.46, elL: -0.36,
+    }, 'inOutSine'),
+    keyframe(0.7, GUARD, 'inOutCubic'),
+    keyframe(0.78, GUARD, 'inOutCubic'),
+  ]),
+  hit: { start: 0.15, end: 0.5, dmg: 4.5, stagger: 0.12, kb: 70, hitstop: 0.03, shake: 0.06, heavy: false, multiHit: 0.15, pad: 6 },
+  trail: { start: 0.12, end: 0.55 },
+  swingSfx: { t: 0.13, name: 'swing' },
+  cancel: 0.56,
+  chain: ['l5', 'h2', 'launcher', 'spin'],
+  moveX: 250, moveXAt: 0.13,
+  grip: 1, // the string is always two-handed — h2's tsuki law
+  zArc: 0.8, // thrusts spear the lens
+  traj: { // THRUST family (string variant): the blade re-spears through
+    // depth on every beat — chambered back, pierce at the lens, repeat
+    a0: -2.8, a1: 0.05, y0: -0.3, y1: 0.5, e0: 0.45, e1: 0.97, band: 78,
+  },
+}
+
 /* ------------------------------------------------------------------ */
 /* GROUND HEAVIES                                                      */
 /* ------------------------------------------------------------------ */
@@ -578,7 +678,7 @@ const h2: AttackDef = {
   trail: { start: 0.18, end: 0.4 },
   swingSfx: { t: 0.2, name: 'swingHeavy' },
   cancel: 0.4,
-  chain: ['h3', 'l1'],
+  chain: ['h3', 'stabs', 'l1'],
   moveX: 320, moveXAt: 0.2,
   grip: 1, // tsuki: the thrust is ALWAYS two-handed
   zArc: 0.85, // the thrust SPEARS the camera — full foreshortening
@@ -1147,7 +1247,7 @@ const slam: AttackDef = {
 /* ------------------------------------------------------------------ */
 
 export const ATTACKS: Record<string, AttackDef> = {
-  l1, l2, l3, l4, l5, retreat, spin,
+  l1, l2, l3, l4, l5, retreat, spin, stabs,
   h1, h2, h3, launcher,
   dashSlash, dashHeavy, charged, riposte,
   a1, a2, a3, dive, slam,

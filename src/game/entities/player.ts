@@ -2134,7 +2134,17 @@ export class Player {
         let next: string | null = null
         if (input.buffered('light')) {
           input.takeBuffered('light')
-          next = this.riposteT > 0 && this.grounded ? 'riposte' : this.pickLight(w, ax, ay)
+          if (this.riposteT > 0 && this.grounded) {
+            next = 'riposte'
+          } else if (this.grounded && ax !== 0 && Math.sign(ax) === this.face && def.chain.includes('stabs')) {
+            // FORWARD PRESSURE: holding INTO the enemy mid-chain swaps the
+            // next light for the triple-thrust string (renzoku tsuki). The
+            // forward axis was the only unmapped direction in pickLight, so
+            // neutral / back / up / down chains are untouched.
+            next = 'stabs'
+          } else {
+            next = this.pickLight(w, ax, ay)
+          }
         } else if (input.buffered('heavy')) {
           input.takeBuffered('heavy')
           if (!this.grounded) {
