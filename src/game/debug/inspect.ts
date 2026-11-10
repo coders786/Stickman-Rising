@@ -9,6 +9,12 @@
  *                    side by side for reference comparison, each frame
  *                    solved through the REAL skeleton — inspect the
  *                    actual rendered poses, not code-level assertions
+ *  · EDIT view     — the POSE EDITOR workstation: full sim freeze,
+ *                    frame-scrub of the live clip, per-channel bend with
+ *                    ROM-safe limits, mirror, 0.25× preview, keyframe()
+ *                    export and a named-pose PRESET LIBRARY persisted in
+ *                    localStorage (`window.__srPoseLib`). Keyboard-only,
+ *                    canvas-drawn, zero DOM.
  *  · QA harness    — `window.__srQA.run()`: scripted input sequences
  *                    (walk→run→sprint→combat→backpedal→attacks) with
  *                    anatomy invariants, NaN scan, foot-lock check, loco
@@ -18,10 +24,12 @@
 
 import { Game } from '../game'
 import { Player, LocoMode } from '../entities/player'
-import { makePose, Pose } from '../anim/pose'
+import { makePose, Pose, CH, CH_COUNT, ChannelKey, NEUTRAL } from '../anim/pose'
 import { PLAYER_SPEC, SkelGeom, PLAYER_STYLE } from '../anim/skeleton'
 import { makeFighterGeom, solveFighter3D, drawFighter3D, type FighterGeom } from '../anim/rig3d'
 import { sampleClip } from '../anim/animator'
+import type { Animator, Clip } from '../anim/animator'
+import { applyJointLimits } from '../anim/limits'
 import {
   WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, COMBAT_IDLE_CLIP,
   BACKPEDAL_CLIP, IDLE_CLIP, JUMP_CLIP,
@@ -32,10 +40,123 @@ import {
 const PSCALE = 2.4 // solo-view zoom
 
 /* ------------------------------------------------------------------ */
+/* pose editor constants                                               */
+/* ------------------------------------------------------------------ */
+
+/** Editor channel order: root → spine → legs → arms → depth → blade.
+ * Tab walks this list; it matches the authoring mental model top-down. */
+const CHANNEL_KEYS: ChannelKey[] = [
+  'rootX', 'rootY', 'rootRot', 'spine', 'head',
+  'hipL', 'kneeL', 'footL', 'hipR', 'kneeR', 'footR',
+  'shL', 'elL', 'wrL', 'shR', 'elR', 'wrR',
+  'rootZ', 'pelvisYaw', 'chestYaw', 'hipLz', 'hipRz', 'armLz', 'armRz',
+  'bladeYaw', 'bladeZ', 'foreLz', 'foreRz',
+]
+
+/** Mirror semantics follow clips.ts `mirrorLegs`: bilateral limb channels
+ * swap PLAIN (a forward left leg becomes a forward right leg), while the
+ * yaw/depth channels negate (mirroring flips which side leads in depth). */
+const MIRROR_SWAP: Array<[ChannelKey, ChannelKey]> = [
+  ['hipL', 'hipR'], ['kneeL', 'kneeR'], ['footL', 'footR'],
+  ['shL', 'shR'], ['elL', 'elR'], ['wrL', 'wrR'],
+]
+const MIRROR_SWAP_NEG: Array<[ChannelKey, ChannelKey]> = [
+  ['hipLz', 'hipRz'], ['armLz', 'armRz'], ['foreLz', 'foreRz'],
+]
+const MIRROR_NEGATE: ChannelKey[] = ['pelvisYaw', 'chestYaw', 'bladeYaw']
+
+const EDIT_FRAME = 1 / 60 // one authored frame
+
+/* ------------------------------------------------------------------ */
+/* pose preset library                                                 */
+/* ------------------------------------------------------------------ */
+
+interface PoseLibEntry {
+  name: string
+  clip: string
+  t: number
+  /** full 28-channel pose snapshot (index = CH channel index) */
+  ch: number[]
+  at: string
+}
+
+const POSE_LIB_KEY = 'sr.poseLib.v1'
+
+/** Named-pose store for the editor. In-memory + localStorage persistence
+ * so authored poses survive reloads; exposed as `window.__srPoseLib`. */
+export class PoseLibrary {
+  private entries: PoseLibEntry[] = []
+
+  constructor() {
+    this.restore()
+  }
+
+  private restore(): void {
+    try {
+      const raw = window.localStorage.getItem(POSE_LIB_KEY)
+      if (!raw) return
+      const parsed: unknown = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      this.entries = parsed.filter(
+        (e): e is PoseLibEntry =>
+          typeof (e as PoseLibEntry)?.name === 'string' && Array.isArray((e as PoseLibEntry)?.ch),
+      )
+    } catch {
+      // corrupted/unavailable storage → start empty; the library still works in memory
+    }
+  }
+
+  private persist(): void {
+    try {
+      window.localStorage.setItem(POSE_LIB_KEY, JSON.stringify(this.entries))
+    } catch {
+      // private mode / quota — session-only library is still usable
+    }
+  }
+
+  list(): string[] {
+    return this.entries.map((e) => e.name)
+  }
+
+  all(): readonly PoseLibEntry[] {
+    return this.entries
+  }
+
+  get(i: number): PoseLibEntry | undefined {
+    return this.entries[i]
+  }
+
+  find(name: string): PoseLibEntry | undefined {
+    return this.entries.find((e) => e.name === name)
+  }
+
+  save(name: string, clip: string, t: number, pose: Pose): PoseLibEntry {
+    const entry: PoseLibEntry = {
+      name, clip, t,
+      ch: Array.from(pose.slice(0, CH_COUNT)),
+      at: new Date().toISOString(),
+    }
+    const i = this.entries.findIndex((e) => e.name === name)
+    if (i >= 0) this.entries[i] = entry
+    else this.entries.push(entry)
+    this.persist()
+    return entry
+  }
+
+  delete(name: string): boolean {
+    const i = this.entries.findIndex((e) => e.name === name)
+    if (i < 0) return false
+    this.entries.splice(i, 1)
+    this.persist()
+    return true
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* the panel                                                           */
 /* ------------------------------------------------------------------ */
 
-export type InspectMode = 'off' | 'solo' | 'sheet'
+export type InspectMode = 'off' | 'solo' | 'sheet' | 'edit'
 
 export class Inspect {
   mode: InspectMode = 'off'
@@ -46,12 +167,471 @@ export class Inspect {
   private scratchPose: Pose = makePose()
   private scratchGeom: FighterGeom = makeFighterGeom()
 
+  /* ---- pose editor state (mode 'edit') ---- */
+  /** named-pose store, shared with window.__srPoseLib */
+  readonly poseLib = new PoseLibrary()
+  private editClip: Clip | null = null
+  private editTime = 0
+  /** authored channel overrides: CH index → ABSOLUTE angle (radians).
+   * Rendered pose = clip sample, then overrides, then ROM limits. */
+  private overrides = new Map<number, number>()
+  private channelIdx = 5 // start on hipL — the most-often-fixed channel
+  private previewing = false
+  private previewT = 0
+  private editInit = false
+  /** true once automation/keys explicitly set the editor clock — the
+   * freeze-init then never overwrites it with the live animator time. */
+  private editClockOwned = false
+  /** scrub request made before the clip resolved — applied on first tick */
+  private pendingScrub: number | null = null
+  private editBase: Pose = makePose()
+  private editPose: Pose = makePose()
+  private editGeom: FighterGeom = makeFighterGeom()
+  private lastExport = ''
+
   setMode(m: InspectMode): void {
+    if (m !== 'edit') {
+      this.editInit = false
+      this.pendingScrub = null
+    }
+    if (m === 'edit') this.previewing = false
     this.mode = m
+  }
+
+  /** numbered view helper for automation: 0 off · 1 solo · 2 sheet · 3 edit */
+  setView(v: InspectMode | number): void {
+    const order: InspectMode[] = ['off', 'solo', 'sheet', 'edit']
+    this.setMode(typeof v === 'number' ? (order[v] ?? 'off') : v)
+  }
+
+  cycleView(): void {
+    const order: InspectMode[] = ['off', 'solo', 'sheet', 'edit']
+    this.setMode(order[(order.indexOf(this.mode) + 1) % order.length])
   }
 
   toggleBones(): void {
     this.showBones = !this.showBones
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* POSE EDITOR (mode 'edit') — the authoring workstation             */
+  /* ---------------------------------------------------------------- */
+
+  /** Per-frame editor tick, called by Game BEFORE render while frozen:
+   * consumes editor keys, advances the 0.25× preview and re-solves the
+   * authored pose. The live sim stays untouched (zero gameplay mutation). */
+  editorFrame(game: Game, dtRaw: number): void {
+    if (this.mode !== 'edit') return
+    const priv = game.player as unknown as Record<string, unknown>
+    const anim = priv.animator as Animator | undefined
+    this.editClip = anim?.getClip() ?? null
+    this.editBladeLen = PLAYER_SPEC.blade * game.player.sword.stats.range * 1.06
+    if (!this.editInit) {
+      this.editInit = true
+      this.previewing = false
+      // freeze exactly the live moment: scrub starts at the animator's clock
+      // (unless an explicit scrub/preset already claimed the editor clock)
+      if (!this.editClockOwned) {
+        this.editTime = Math.max(0, Math.min(anim?.getTime() ?? 0, this.editClip?.dur ?? 0))
+      }
+    }
+    if (!this.editClip) return
+    // a scrub issued before the clip resolved lands now
+    if (this.pendingScrub !== null) {
+      this.editTime = Math.max(0, Math.min(this.pendingScrub, Math.max(this.editClip.dur, 0)))
+      this.pendingScrub = null
+    }
+    this.editHandleKeys(game)
+    const dur = Math.max(this.editClip.dur, 1e-6)
+    if (this.previewing) {
+      this.previewT += dtRaw * 0.25
+      if (this.editClip.loop) this.previewT %= dur
+      else if (this.previewT >= dur) {
+        this.previewT = dur
+        this.previewing = false
+        this.editTime = dur
+      }
+    } else {
+      this.editTime = Math.max(0, Math.min(this.editTime, dur))
+    }
+    this.resolveEditPose()
+  }
+
+  private editBladeLen = PLAYER_SPEC.blade
+
+  /** clip sample → authored overrides → ROM limits → 3D solve. */
+  private resolveEditPose(): void {
+    if (!this.editClip) return
+    const t = this.previewing ? this.previewT : this.editTime
+    sampleClip(this.editClip, t, this.editBase)
+    this.editPose.set(this.editBase)
+    for (const [ch, v] of this.overrides) this.editPose[ch] = v
+    applyJointLimits(this.editPose)
+    solveFighter3D(this.editPose, PLAYER_SPEC, this.editGeom, this.editBladeLen)
+  }
+
+  private editHandleKeys(game: Game): void {
+    const inp = game.input
+    const sh = inp.shiftHeld
+    if (inp.rawPressed('Comma')) this.scrubBy(-(sh ? 5 : 1))
+    if (inp.rawPressed('Period')) this.scrubBy(sh ? 5 : 1)
+    if (inp.rawPressed('Enter')) this.togglePreview()
+    if (inp.rawPressed('Tab')) this.selectChannel(this.channelIdx + (sh ? -1 : 1))
+    if (inp.rawPressed('BracketLeft')) this.nudge(-(sh ? 0.01 : 0.05))
+    if (inp.rawPressed('BracketRight')) this.nudge(sh ? 0.01 : 0.05)
+    if (inp.rawPressed('KeyM')) this.mirror()
+    if (inp.rawPressed('KeyR')) this.resetOverrides()
+    if (inp.rawPressed('KeyE')) this.exportPose()
+    if (inp.rawPressed('KeyK')) this.savePreset()
+    if (inp.rawPressed('Delete') || inp.rawPressed('Backspace')) this.clearChannelOverride()
+    if (inp.rawPressed('Escape') || inp.rawPressed('KeyP')) this.setMode('off')
+    for (let d = 1; d <= 9; d++) {
+      if (inp.rawPressed(`Digit${d}`)) this.loadPreset(d - 1)
+    }
+  }
+
+  /* ---- editor automation API (window.__srInspect / __sr.inspect) ---- */
+
+  /** Scrub by `frames` authored frames (60fps). Stops preview. */
+  scrubBy(frames: number): void {
+    this.scrubTo((this.previewing ? this.previewT : this.editTime) + frames * EDIT_FRAME)
+  }
+
+  /** Scrub to absolute clip time (seconds), clamped to [0, dur].
+   * An explicit scrub takes ownership of the editor clock (no later
+   * re-init from the live animator time — automation-safe). */
+  scrubTo(t: number): void {
+    this.previewing = false
+    this.editClockOwned = true
+    this.pendingScrub = t
+    if (!this.editClip) return
+    this.editTime = Math.max(0, Math.min(t, Math.max(this.editClip.dur, 0)))
+    this.pendingScrub = null
+  }
+
+  /** Toggle 0.25× in-editor playback of the frozen clip (overrides stay
+   * applied so you can watch a bend move through the arc). Starting a
+   * preview parked at the end of a non-loop clip replays from the top. */
+  togglePreview(): void {
+    if (this.previewing) {
+      this.previewing = false
+      this.editTime = this.previewT
+    } else {
+      this.previewT = this.editTime
+      if (this.editClip && !this.editClip.loop && this.previewT >= this.editClip.dur) this.previewT = 0
+      this.previewing = true
+    }
+  }
+
+  /** Select a channel by index or name ('elR', 'bladeYaw', …). */
+  selectChannel(i: number | string): void {
+    const idx = typeof i === 'number' ? i : CHANNEL_KEYS.indexOf(i as ChannelKey)
+    if (idx >= 0 && idx < CHANNEL_KEYS.length) this.channelIdx = idx
+  }
+
+  /** Bend the selected channel by `delta` radians from its visible value.
+   * ROM limits apply afterwards, so bends can never break the rig. */
+  nudge(delta: number): void {
+    const ch = CH[CHANNEL_KEYS[this.channelIdx]]
+    this.overrides.set(ch, this.editPose[ch] + delta)
+    this.resolveEditPose()
+  }
+
+  /** Clear the selected channel's authored override. */
+  clearChannelOverride(): void {
+    this.overrides.delete(CH[CHANNEL_KEYS[this.channelIdx]])
+    this.resolveEditPose()
+  }
+
+  /** Mirror authored offsets L↔R (clips.ts semantics: bilateral swaps stay
+   * plain, yaw/depth channels negate). With no overrides yet, mirrors the
+   * whole visible pose so M is always a visible, useful act. */
+  mirror(): void {
+    const src = new Map(this.overrides)
+    if (src.size === 0) {
+      for (const k of CHANNEL_KEYS) src.set(CH[k], this.editPose[CH[k]])
+    }
+    const out = new Map<number, number>()
+    for (const [ch, v] of src) out.set(ch, v)
+    for (const [a, b] of MIRROR_SWAP) {
+      const va = src.get(CH[a]); const vb = src.get(CH[b])
+      if (va !== undefined) out.set(CH[b], va)
+      if (vb !== undefined) out.set(CH[a], vb)
+    }
+    for (const [a, b] of MIRROR_SWAP_NEG) {
+      const va = src.get(CH[a]); const vb = src.get(CH[b])
+      if (va !== undefined) out.set(CH[b], -va)
+      if (vb !== undefined) out.set(CH[a], -vb)
+    }
+    for (const k of MIRROR_NEGATE) {
+      const v = src.get(CH[k])
+      if (v !== undefined) out.set(CH[k], -v)
+    }
+    this.overrides = out
+    this.resolveEditPose()
+  }
+
+  resetOverrides(): void {
+    this.overrides.clear()
+    this.resolveEditPose()
+  }
+
+  /** Export the authored pose as a clips.ts `keyframe()` literal: only the
+   * channels that DIFFER from the guard (NEUTRAL) are emitted — makePose
+   * guard-merging reproduces the pose exactly from the partial literal.
+   * Lands on the console + `window.__srPoseExport` (+ `__srPoseExports`). */
+  exportPose(): string {
+    const pairs: string[] = []
+    for (const k of CHANNEL_KEYS) {
+      const ch = CH[k]
+      const v = this.editPose[ch]
+      if (Math.abs(v - NEUTRAL[ch]) > 0.005) pairs.push(`${k}: ${Number(v.toFixed(3))}`)
+    }
+    const t = this.previewing ? this.previewT : this.editTime
+    const lit = `keyframe(${t.toFixed(3)}, { ${pairs.join(', ')} })`
+    this.lastExport = lit
+    console.log(`[pose export] ${lit}`)
+    const w = window as unknown as Record<string, unknown>
+    w.__srPoseExport = lit
+    const hist = (w.__srPoseExports as string[] | undefined) ?? []
+    hist.push(lit)
+    w.__srPoseExports = hist
+    return lit
+  }
+
+  /** Save the visible pose. Nameless → auto `clip@time` (deduped -2, -3…). */
+  savePreset(name?: string): string {
+    const t = this.previewing ? this.previewT : this.editTime
+    const base = `${this.editClip?.name ?? 'pose'}@${t.toFixed(2)}`
+    let nm = name ?? base
+    if (!name) {
+      let n = 2
+      while (this.poseLib.find(nm)) nm = `${base}-${n++}`
+    }
+    this.poseLib.save(nm, this.editClip?.name ?? '', t, this.editPose)
+    console.log(`[poseLib] saved "${nm}" (${this.poseLib.list().length} poses)`)
+    return nm
+  }
+
+  /** Recall a preset by name or list index → becomes the authored pose. */
+  loadPreset(key: string | number): boolean {
+    const e = typeof key === 'number' ? this.poseLib.get(key) : this.poseLib.find(key)
+    if (!e) return false
+    this.overrides.clear()
+    for (let c = 0; c < Math.min(e.ch.length, CH_COUNT); c++) this.overrides.set(c, e.ch[c])
+    this.scrubTo(e.t)
+    this.resolveEditPose()
+    console.log(`[poseLib] loaded "${e.name}"`)
+    return true
+  }
+
+  listPresets(): string[] {
+    return this.poseLib.list()
+  }
+
+  /** automation readout for tests/scripts */
+  get editorInfo(): {
+    clip: string | null; t: number; channel: string; channelIndex: number
+    overrides: number; previewing: boolean; lastExport: string
+  } {
+    return {
+      clip: this.editClip?.name ?? null,
+      t: this.previewing ? this.previewT : this.editTime,
+      channel: CHANNEL_KEYS[this.channelIdx],
+      channelIndex: this.channelIdx,
+      overrides: this.overrides.size,
+      previewing: this.previewing,
+      lastExport: this.lastExport,
+    }
+  }
+
+  /* ---- editor rendering ---- */
+
+  private drawEditor(ctx: CanvasRenderingContext2D, game: Game): void {
+    const dpr = window.devicePixelRatio || 1
+    const w = ctx.canvas.width / dpr
+    const h = ctx.canvas.height / dpr
+    const p = game.player
+    const Z = PSCALE / 1.32
+    const cx = w * 0.24
+    const groundY = h * 0.78
+    const hipScreenY = groundY + p.hipY * Z
+    const now = performance.now() / 1000
+
+    // diagnostic panel behind the figure (contrast for the black body)
+    ctx.save()
+    ctx.fillStyle = '#dfe7ee'
+    ctx.beginPath()
+    ctx.roundRect(cx - 240, groundY - 322, 480, 340, 14)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(40,70,100,0.35)'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ctx.font = '700 12px ui-monospace, monospace'
+    ctx.fillStyle = '#12354e'
+    ctx.textBaseline = 'top'
+    ctx.fillText('POSE EDITOR — sim frozen', cx - 224, groundY - 306)
+    ctx.restore()
+
+    if (this.editClip) {
+      // authored figure: local geom → screen at PSCALE
+      ctx.save()
+      ctx.translate(cx, hipScreenY)
+      ctx.scale(p.face * PSCALE, PSCALE)
+      drawFighter3D(ctx, this.editGeom, PLAYER_STYLE, { time: now })
+      this.drawSkeleton(ctx, this.editGeom)
+      // blade segment (grip → kissaki) so bladeYaw/bladeZ bends read
+      ctx.strokeStyle = 'rgba(255,96,64,0.9)'
+      ctx.lineWidth = 1.6 / PSCALE
+      ctx.beginPath()
+      ctx.moveTo(this.editGeom.grip.x, this.editGeom.grip.y)
+      ctx.lineTo(this.editGeom.tip.x, this.editGeom.tip.y)
+      ctx.stroke()
+      ctx.restore()
+      // ground line
+      ctx.save()
+      ctx.strokeStyle = 'rgba(30,90,140,0.65)'
+      ctx.lineWidth = 2
+      ctx.setLineDash([7, 5])
+      ctx.beginPath()
+      ctx.moveTo(cx - 230, groundY)
+      ctx.lineTo(cx + 230, groundY)
+      ctx.stroke()
+      ctx.restore()
+      // selected-joint pulsing pivot + live radian chip (screen space)
+      const anchor = this.channelAnchor(this.channelIdx)
+      const sx = cx + p.face * PSCALE * anchor.x
+      const sy = hipScreenY + PSCALE * anchor.y
+      const k = CHANNEL_KEYS[this.channelIdx]
+      const chip = `${k} ${this.editPose[CH[k]].toFixed(3)}${this.overrides.has(CH[k]) ? ' *' : ''}`
+      ctx.save()
+      ctx.strokeStyle = '#ff2f63'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(sx, sy, 5.5 + Math.sin(now * 6) * 1.8, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.font = '700 11px ui-monospace, monospace'
+      const cw = ctx.measureText(chip).width
+      ctx.fillStyle = 'rgba(18,53,78,0.92)'
+      ctx.beginPath()
+      ctx.roundRect(sx + 12, sy - 26, cw + 12, 18, 4)
+      ctx.fill()
+      ctx.fillStyle = '#8ff3ff'
+      ctx.fillText(chip, sx + 18, sy - 22)
+      ctx.restore()
+    }
+
+    // channel list (right column) — Tab walks, [ ] bends, * = authored.
+    // Sits over the DARK world: translucent dark backing + light text.
+    ctx.save()
+    ctx.font = '600 10.5px ui-monospace, monospace'
+    ctx.textBaseline = 'top'
+    const lx = w - 158
+    ctx.fillStyle = 'rgba(6,14,22,0.72)'
+    ctx.beginPath()
+    ctx.roundRect(lx - 12, 38, 166, 446, 8)
+    ctx.fill()
+    ctx.fillStyle = '#8ff3ff'
+    ctx.fillText('CHANNELS (Tab, [ ] bend)', lx, 44)
+    let ly = 60
+    for (let i = 0; i < CHANNEL_KEYS.length; i++) {
+      const k = CHANNEL_KEYS[i]
+      const sel = i === this.channelIdx
+      const ovr = this.overrides.has(CH[k])
+      if (sel) {
+        ctx.fillStyle = 'rgba(255,47,99,0.28)'
+        ctx.fillRect(lx - 8, ly - 2, 156, 14)
+      }
+      ctx.fillStyle = sel ? '#ff5c82' : ovr ? '#ffd24a' : 'rgba(205,230,242,0.82)'
+      ctx.fillText(`${sel ? '>' : ' '}${k}${ovr ? '*' : ''}`, lx, ly)
+      ctx.fillStyle = sel ? '#ff5c82' : 'rgba(160,215,235,0.66)'
+      ctx.fillText(this.editPose[CH[k]].toFixed(3), lx + 92, ly)
+      ly += 15
+    }
+    ctx.restore()
+
+    // timeline: track + REAL keyframe ticks + playhead (light text on dark world)
+    const tx0 = 24
+    const tx1 = w - 200
+    const ty = h - 58
+    ctx.save()
+    ctx.font = '700 11px ui-monospace, monospace'
+    ctx.fillStyle = '#9fe8ff'
+    ctx.fillText(this.editClip ? `CLIP ${this.editClip.name}` : '— no clip (ENGAGE first)', tx0, ty - 30)
+    if (this.editClip && this.editClip.dur > 0) {
+      const dur = this.editClip.dur
+      const t = this.previewing ? this.previewT : this.editTime
+      ctx.strokeStyle = 'rgba(18,53,78,0.5)'
+      ctx.lineWidth = 4
+      ctx.lineCap = 'round'
+      ctx.beginPath()
+      ctx.moveTo(tx0, ty)
+      ctx.lineTo(tx1, ty)
+      ctx.stroke()
+      ctx.strokeStyle = 'rgba(255,210,74,0.95)'
+      ctx.lineWidth = 1.5
+      for (const f of this.editClip.frames) {
+        const x = tx0 + (f.t / dur) * (tx1 - tx0)
+        ctx.beginPath()
+        ctx.moveTo(x, ty - 7)
+        ctx.lineTo(x, ty + 7)
+        ctx.stroke()
+      }
+      const px = tx0 + (t / dur) * (tx1 - tx0)
+      ctx.strokeStyle = this.previewing ? '#0a9d4b' : '#ff2f63'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(px, ty - 12)
+      ctx.lineTo(px, ty + 12)
+      ctx.stroke()
+      ctx.font = '600 10.5px ui-monospace, monospace'
+      ctx.fillStyle = 'rgba(200,235,248,0.88)'
+      ctx.fillText(
+        `t ${t.toFixed(3)}s  f${Math.round(t * 60)}  dur ${dur.toFixed(2)}s`
+        + `  keys ${this.editClip.frames.length}  ovr ${this.overrides.size}`
+        + `${this.previewing ? '  PREVIEW 0.25x' : ''}`,
+        tx0, ty + 16,
+      )
+    }
+    ctx.restore()
+
+    // key legend (light text over the game's dark bottom bar)
+    ctx.save()
+    ctx.font = '600 10px ui-monospace, monospace'
+    ctx.fillStyle = 'rgba(185,225,240,0.82)'
+    ctx.fillText(
+      'F9 views | ,/. scrub 1f (Shift 5f) | Enter preview 0.25x | Tab channel (Shift back) | [ ] bend 0.05 (Shift 0.01)',
+      24, h - 22,
+    )
+    ctx.fillText(
+      'Del clear channel | M mirror L/R | R reset | E export keyframe() | K save preset | 1-9 load preset | Esc exit',
+      24, h - 10,
+    )
+    ctx.restore()
+  }
+
+  /** joint pivot that visually owns a channel (local geom space) */
+  private channelAnchor(idx: number): { x: number; y: number } {
+    const g = this.editGeom
+    switch (CHANNEL_KEYS[idx]) {
+      case 'spine': return g.waist
+      case 'head': return g.headC
+      case 'chestYaw': return g.chest
+      case 'hipL': case 'hipLz': return g.hipPtL
+      case 'kneeL': return g.kneeL
+      case 'footL': return g.ankleL
+      case 'hipR': case 'hipRz': return g.hipPtR
+      case 'kneeR': return g.kneeR
+      case 'footR': return g.ankleR
+      case 'shL': case 'armLz': return g.shoulderL
+      case 'elL': return g.elbL
+      case 'wrL': case 'foreLz': return g.handL
+      case 'shR': case 'armRz': return g.shoulderR
+      case 'elR': return g.elbR
+      case 'wrR': case 'foreRz': return g.handR
+      case 'bladeYaw': case 'bladeZ': return g.grip
+      default: return g.hip
+    }
   }
 
   /** bottom-left HUD readout (always on while mode != off) */
@@ -66,6 +646,8 @@ export class Inspect {
       this.drawSolo(ctx, game, time)
     } else if (this.mode === 'sheet') {
       this.drawSheets(ctx)
+    } else if (this.mode === 'edit') {
+      this.drawEditor(ctx, game)
     }
 
     // state readout (uses public player surface + bracket access for privates)

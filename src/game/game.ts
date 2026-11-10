@@ -172,6 +172,8 @@ export class Game {
   private listeners: ((e: GameEvent) => void)[] = []
   private destroyed = false
   private visibilityBound: (() => void) | null = null
+  /** F9 inspect-view cycle listener (pose editor / diagnostics) */
+  private f9ViewBound: ((e: KeyboardEvent) => void) | null = null
 
   constructor() {
     this.waves = new WaveDirector({
@@ -228,11 +230,41 @@ export class Game {
     const srAny = window as unknown as Record<string, unknown>
     const inspect = this.inspect
     srAny.__srInspect = {
-      setView: (m: InspectMode) => inspect.setMode(m),
+      setView: (m: InspectMode | number) => inspect.setView(m),
       toggleBones: () => inspect.toggleBones(),
+      cycleView: () => inspect.cycleView(),
+      scrubBy: (frames: number) => inspect.scrubBy(frames),
+      scrubTo: (t: number) => inspect.scrubTo(t),
+      selectChannel: (i: number | string) => inspect.selectChannel(i),
+      nudge: (delta: number) => inspect.nudge(delta),
+      mirror: () => inspect.mirror(),
+      resetOverrides: () => inspect.resetOverrides(),
+      exportPose: () => inspect.exportPose(),
+      savePreset: (name?: string) => inspect.savePreset(name),
+      loadPreset: (key: string | number) => inspect.loadPreset(key),
+      listPresets: () => inspect.listPresets(),
+      get editorInfo() { return inspect.editorInfo },
       get mode() { return inspect.mode },
     }
+    srAny.__srPoseLib = {
+      save: (name: string) => inspect.savePreset(name),
+      load: (key: string | number) => inspect.loadPreset(key),
+      list: () => inspect.listPresets(),
+      delete: (name: string) => inspect.poseLib.delete(name),
+      detail: (key: string | number) =>
+        typeof key === 'number' ? inspect.poseLib.get(key) : inspect.poseLib.find(key),
+    }
     srAny.__srQA = { run: () => runQA(this) }
+    // F9 cycles the inspect views (off → solo → sheet → edit). A dedicated
+    // listener (not the Input action map) so it works even while the
+    // gameplay input layer is disabled on menus.
+    this.f9ViewBound = (e: KeyboardEvent) => {
+      if (e.code === 'F9') {
+        e.preventDefault()
+        inspect.cycleView()
+      }
+    }
+    window.addEventListener('keydown', this.f9ViewBound)
   }
 
   destroy(): void {
@@ -246,8 +278,10 @@ export class Game {
     if (debug.__sr === this) {
       delete debug.__sr
       delete debug.__srInspect
+      delete debug.__srPoseLib
       delete debug.__srQA
     }
+    if (this.f9ViewBound) window.removeEventListener('keydown', this.f9ViewBound)
   }
 
   resize(): void {
@@ -468,13 +502,15 @@ export class Game {
     this.govern(dtRaw)
     this.detectCliff(dtRaw)
     // Weather has its own real visual clock, independent of combat hitstop.
-    if(this.phase!=='paused')this.storm.update(dtRaw)
+    // The pose editor freezes the whole frame for authoring.
+    const editFrozen = this.inspect.mode === 'edit'
+    if(this.phase!=='paused' && !editFrozen)this.storm.update(dtRaw)
 
     const ctx = this.ctx
     if (!ctx) return
 
-    if (this.phase === 'paused') {
-      // frozen frame, HUD still drawn
+    if (this.phase === 'paused' || editFrozen) {
+      // frozen frame, HUD still drawn (edit = pose-editor authoring freeze)
     } else {
       // --- timing: hitstop & slow-mo ---
       let simDt = dtRaw
@@ -540,7 +576,10 @@ export class Game {
       time: this.time,
     }
     this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
-    // inspection overlay (solo/sheet views + state readout)
+    // pose editor tick (keys + preview + solve) while its freeze is active;
+    // MUST run before endFrame so raw editor key edges survive one frame
+    if (editFrozen) this.inspect.editorFrame(this, dtRaw)
+    // inspection overlay (solo/sheet/edit views + state readout)
     this.inspect.draw(ctx, this, this.time)
 
     this.input.endFrame(dtRaw)

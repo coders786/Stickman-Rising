@@ -51,6 +51,13 @@ export class Input {
   private tapDirection = 0
   private tapAt = -Infinity
   private sprintDir = 0
+  /* RAW physical-key edges for the debug/editor tooling (inspect lab).
+   * Deliberately OUTSIDE the Action map: editor keys (Comma/Period scrub,
+   * brackets, Tab, Enter, M/R/E/K…) must never fire gameplay actions, and
+   * gameplay keys keep their meaning untouched. Repeats are KEPT for the
+   * raw set — holding Period scrubbing forward feels like a jog wheel. */
+  private rawPresses = new Set<string>()
+  private shiftDown = false
   /** Detect in EVENTS, not in update(): both taps may occur between frames. */
   private recordDirection(a:Action):void {
     if(a!=='left'&&a!=='right')return
@@ -101,6 +108,8 @@ export class Input {
 
   private reset(): void {
     this.tapDirection=0;this.tapAt=-Infinity;this.sprintDir=0;this.virtualDirection=0
+    this.rawPresses.clear()
+    this.shiftDown = false
     this.heldKeys.clear()
     this.downMap.clear()
     this.pressedMap.clear()
@@ -115,6 +124,8 @@ export class Input {
     if (!this.enabled) return
     const t = e.target as HTMLElement | null
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+    this.shiftDown = e.shiftKey
+    this.rawPresses.add(e.code) // raw edges record repeats (scrub/bend jog)
     const action = KEYMAP[e.code]
     if (!action) return
     if (PREVENT_DEFAULT.has(e.code)) e.preventDefault()
@@ -124,6 +135,7 @@ export class Input {
   }
 
   private onKeyUp = (e: KeyboardEvent): void => {
+    this.shiftDown = e.shiftKey
     const action = KEYMAP[e.code]
     if (!action || !this.heldKeys.delete(e.code)) return
     if (![...this.heldKeys].some(code => KEYMAP[code] === action)) this.release(action)
@@ -145,6 +157,19 @@ export class Input {
     this.downMap.set(a, false)
     if((a==='right'&&this.sprintDir===1)||(a==='left'&&this.sprintDir===-1))this.sprintDir=0
     this.releasedMap.set(a, true)
+  }
+
+  /* ---------- raw editor API (edge per rendered frame) ---------- */
+
+  /** True if this physical key had a keydown (incl. OS repeat) this frame.
+   * Editor tooling only — never used by gameplay code. */
+  rawPressed(code: string): boolean {
+    return this.enabled && this.rawPresses.has(code)
+  }
+
+  /** Shift modifier state from the last key event. */
+  get shiftHeld(): boolean {
+    return this.shiftDown
   }
 
   /* ---------- per-frame API ---------- */
@@ -212,6 +237,7 @@ export class Input {
   /** Tick: clear edge flags. Call once at end of frame. (The clock is
    * real-time via performance.now — no dt accumulation needed.) */
   endFrame(_dt: number): void {
+    this.rawPresses.clear()
     for (const a of ACTIONS) {
       this.pressedMap.set(a, false)
       this.releasedMap.set(a, false)
