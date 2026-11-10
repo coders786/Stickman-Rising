@@ -290,6 +290,10 @@ const UPPERcut = clip('unarmedUpperCut', [
  * driving knee barrage with forward pressure. */
 const KNEEBARRAGE = clip('unarmedKneeBarrage', [
   kf(0, G),
+  // GAP-1 · anticipation: the knee-rush entry sinks and counter-winds —
+  // chest opens back, hips wind away before the first driving knee
+  kf(0.03, { ...G, rootY: 5.5, rootRot: 0.1, chestYaw: 0.2, pelvisYaw: -0.12,
+    hipR: 0.9, kneeR: -1.15, footR: 0.08 }, 'outQuad'),
   kf(0.06, { ...G, rootY: 5, rootRot: 0.16, ...legPose('right', 8, 22), kneeR: -1.6 }, 'outQuad'),
   kf(0.12, { ...G, rootY: 4, rootRot: 0.2, ...legPose('right', 27, 6), kneeR: -1.5, pelvisYaw: 0.15,
     ...handPose('left', 8, 6), ...handPose('right', 10, 8) }, 'inOutCubic'),
@@ -399,6 +403,11 @@ const SPINHOOK = clip('unarmedSpinHook', [
  * long pushback: near-full leg extension, pointed foot. */
 const STEPKICK = clip('unarmedStepKick', [
   kf(0, G),
+  // GAP-1 · anticipation: the stop-kick coils — weight sinks, the knee
+  // starts its cocked chamber and the chest counter-rotates open before
+  // the shin snaps out
+  kf(0.06, { ...G, rootY: 5, rootRot: -0.05, chestYaw: 0.22, pelvisYaw: -0.14,
+    head: -0.1, hipR: 1.35, kneeR: -1.1, footR: 0.06, shL: 1.4, shR: 1.35 }, 'inOutSine'),
   kf(0.13, { ...G, rootY: 4, rootRot: -0.08, ...legPose('right', 12, 2), kneeR: -2.0,
     shL: 0.6, shR: 0.3, head: -0.12 }, 'outQuad'),
   mid(0.18, { ...G, rootY: 4, rootRot: -0.08, ...legPose('right', 12, 2), kneeR: -2.0,
@@ -420,6 +429,11 @@ const STEPKICK = clip('unarmedStepKick', [
  * (hitbox tracks the glenohumeral point). */
 const TACKLE = clip('unarmedTackle', [
   kf(0, G),
+  // GAP-1 · anticipation: rearward gather — the body pitches BACK, elbows
+  // fold, chest counter-winds before the shoulder drive fires forward
+  kf(0.08, { ...G, rootRot: 0.16, rootY: 5.5, spine: 0.05, head: -0.12,
+    shR: 1.15, shL: 1.05, elR: -1.9, elL: -2.0,
+    chestYaw: 0.28, pelvisYaw: -0.12 }, 'outQuad'),
   kf(0.14, { ...G, rootRot: 0.5, spine: 0.12, rootY: 5, head: -0.15, shR: 0.3, shL: 0.0,
     elR: -1.4, elL: -1.5, chestYaw: 0.15 }, 'outQuad'),
   kf(0.22, { ...G, rootRot: 0.55, spine: 0.12, rootY: 4.5, head: -0.18, shR: -0.7, shL: -0.55,

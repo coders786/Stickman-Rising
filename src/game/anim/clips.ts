@@ -937,10 +937,13 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
  * through straight-down (the kissaki would dig the floor mid-blend). */
 const DASH_LAUNCH_Q: PoseInput[] = [
   { // LOAD: center drops; knees store the burst. Arms remain compact.
-    rootX: -1, rootY: 8, rootRot: .14, spine: .025, head: -.12,
-    hipR: .65, kneeR: -1.05, footR: .08, hipL: -.25, kneeL: -.70, footL: -.10,
+    // GAP-1: the rearward gather strengthened — weight shifts BACK (rootX
+    // −2), the crouch deepens, the pelvis counter-winds and the eyes stay
+    // UP: the body visibly loads opposite before the stride fires.
+    rootX: -2, rootY: 8.6, rootRot: .14, spine: .025, head: -.15,
+    hipR: .68, kneeR: -1.15, footR: .08, hipL: -.25, kneeL: -.75, footL: -.10,
     shR: .26, elR: -1.35, wrR: 5.15, ...humanFreeArm(13,23),
-    pelvisYaw: -.06, chestYaw: .04, armRz: -.035, armLz: .025,
+    pelvisYaw: -.1, chestYaw: .08, armRz: -.035, armLz: .025,
   },
   { // PUSH: rear support and core form a diagonal; no lumbar collapse.
     rootX: 8, rootY: 4.5, rootRot: .58, spine: .045, head: -.60,

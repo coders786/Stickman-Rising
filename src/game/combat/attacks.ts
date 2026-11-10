@@ -151,6 +151,15 @@ const l1: AttackDef = {
       shR: 0.31, elR: -0.93, wrR: -0.72,
       shL: 0.35, elL: -0.6,
     }, 'outQuad'),
+    // GAP-1 · anticipation: the pre-draw coil — weight sinks, hips counter-
+    // wind AWAY from the coming horizontal draw (the whole-body load beat)
+    keyframe(0.04, {
+      rootRot: 0.02, rootY: 2.2,
+      hipR: 0.26, kneeR: -0.58,
+      shR: 0.26, elR: -1.0, wrR: -0.78, // hand seats a touch deeper on the saya
+      shL: 0.35, elL: -0.6,
+      pelvisYaw: -0.14, chestYaw: 0.12,
+    }, 'inOutSine'),
     keyframe(0.08, {
       rootRot: 0.1, rootY: 1.2,
       shR: 0.31, elR: -0.93, wrR: -0.72, // grip tightens — stillness beat
@@ -169,6 +178,7 @@ const l1: AttackDef = {
       hipL: -0.55, kneeL: -0.28, footL: 0.14,
       shR: 1.0, elR: -0.3, wrR: 0.62, // blade rips out level, elbow stays flexion-side
       shL: 0.55, elL: -0.95,
+      pelvisYaw: 0.18, chestYaw: -0.14, // hips unwind through the draw
     }, 'outCubic'),
     keyframe(0.26, {
       rootRot: 0.38, spine: 0.13, rootY: 0,
@@ -197,6 +207,16 @@ const l2: AttackDef = {
   id: 'l2', label: 'KESA GIRI', kind: 'light', requires: 'ground',
   clip: makeClip('atk_l2', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: weight SINKS before the jōdan rise — the coil
+    // that pays for the temple-to-hip cut (crouch-before-cut load beat)
+    keyframe(0.04, {
+      rootRot: -0.06, rootY: 1.8,
+      hipR: 0.2, kneeR: -0.55, footR: 0.14,
+      hipL: -0.25, kneeL: -0.5, footL: 0.12,
+      shR: 1.2, elR: -0.3, wrR: 0.6,
+      shL: 1.1, elL: -0.85,
+      pelvisYaw: -0.16, chestYaw: 0.14,
+    }, 'outQuad'),
     keyframe(0.09, {
       rootRot: -0.14, spine: -0.05, head: -0.06, rootY: -1.5,
       hipR: -0.1, kneeR: -0.4,
@@ -215,6 +235,7 @@ const l2: AttackDef = {
       hipL: -0.55, kneeL: -0.3,
       shR: 1.15, elR: -0.05, wrR: -0.2, // blade crossing the descending diagonal
       shL: 0.35, elL: -1.2,
+      pelvisYaw: 0.22, chestYaw: -0.18, // hips unwind through the diagonal
     }, 'outCubic'),
     keyframe(0.28, {
       rootRot: 0.42, spine: 0.16, rootY: 1.5,
@@ -244,6 +265,15 @@ const l3: AttackDef = {
   id: 'l3', label: 'GYAKU KESA', kind: 'light', requires: 'ground',
   clip: makeClip('atk_l3', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: the coil deepens — weight loads INTO the legs,
+    // hips wind back before the rising diagonal unloads (load beat)
+    keyframe(0.05, {
+      rootRot: 0.26, rootY: 1.6,
+      hipR: 0.45, kneeR: -0.7, footR: 0.12,
+      shR: 0.5, elR: -0.5, wrR: 0.7,
+      shL: 0.45, elL: -0.95,
+      pelvisYaw: -0.14, chestYaw: 0.12,
+    }, 'inOutSine'),
     keyframe(0.1, {
       rootRot: 0.2, spine: 0.08, head: -0.08, rootY: 3,
       hipR: 0.55, kneeR: -0.85, footR: 0.14,
@@ -264,6 +294,7 @@ const l3: AttackDef = {
       hipL: 0.35, kneeL: -0.5,
       shR: 1.75, elR: 0.55, wrR: -0.1, // blade rips up the rising diagonal
       shL: 0.3, elL: -1.4,
+      pelvisYaw: 0.18, chestYaw: -0.16, // hips unwind with the riser
     }, 'outCubic'),
     keyframe(0.29, {
       rootRot: -0.08, spine: -0.03, rootY: -3,
@@ -293,6 +324,15 @@ const l4: AttackDef = {
   id: 'l4', label: 'YOKO GIRI', kind: 'spin', requires: 'ground',
   clip: makeClip('atk_l4', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: hips counter-wind and weight sinks BEFORE the
+    // waki coil — the level sweep loads opposite first (whole-body beat)
+    keyframe(0.05, {
+      rootRot: -0.12, rootY: 1.8,
+      hipR: 0.05, kneeR: -0.45, footR: 0.1,
+      shR: -0.1, elR: -0.75, wrR: 0.5,
+      shL: 0.25, elL: -0.85,
+      pelvisYaw: -0.15, chestYaw: 0.12,
+    }, 'inOutSine'),
     keyframe(0.1, {
       rootRot: -0.08, spine: -0.03, head: -0.08, rootY: 1,
       shR: -0.35, elR: -0.6, wrR: 0.0, // waki: blade back-down at the hip
@@ -310,6 +350,7 @@ const l4: AttackDef = {
       hipL: -0.5, kneeL: -0.3,
       shR: 1.0, elR: 0.35, wrR: 0.22, // blade sweeps level through the front
       shL: 0.4, elL: -1.15,
+      pelvisYaw: 0.2, chestYaw: -0.16, // hips drive the level arc
     }, 'outCubic'),
     keyframe(0.3, {
       rootRot: 0.4, spine: 0.15, rootY: 0,
@@ -341,6 +382,16 @@ const l5: AttackDef = {
   id: 'l5', label: 'KIRI OROSHI', kind: 'finisher', requires: 'ground',
   clip: makeClip('atk_l5', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: weight sinks BEFORE the jōdan raise — the coil
+    // that pays for the vertical finishing cut (crouch-before-fall beat)
+    keyframe(0.05, {
+      rootRot: -0.1, rootY: 2,
+      hipR: -0.05, kneeR: -0.45, footR: 0.14,
+      hipL: 0.1, kneeL: -0.4, footL: 0.12,
+      shR: 1.7, elR: -0.15, wrR: 0.5,
+      shL: 1.4, elL: -0.55,
+      pelvisYaw: -0.16, chestYaw: 0.14,
+    }, 'outQuad'),
     keyframe(0.12, {
       rootRot: -0.2, spine: -0.08, head: -0.04, rootY: -2,
       hipR: -0.15, kneeR: -0.35,
@@ -365,6 +416,7 @@ const l5: AttackDef = {
       hipL: -0.6, kneeL: -0.25,
       shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi: hands stay near the
       shL: 0.9, elL: -0.7,              // body — the blade falls through the
+      pelvisYaw: 0.2, chestYaw: -0.18,  // hips unwind through the fall
     }, 'outCubic'),                       // front plane, close enough to cut
     keyframe(0.37, {
       rootRot: 0.44, spine: 0.17, rootY: 2.5,
@@ -500,6 +552,17 @@ const stabs: AttackDef = {
   id: 'stabs', label: 'RENZOKU TSUKI', kind: 'light', requires: 'ground',
   clip: makeClip('atk_stabs', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: the chamber deepens — hips counter-wind back,
+    // weight sinks, hilt pulls a touch deeper to the hip before the first
+    // lunge (the string loads pressure BEFORE it fires)
+    keyframe(0.045, {
+      rootRot: -0.16, rootY: 1.8,
+      hipR: -0.2, kneeR: -0.55, footR: 0.06,
+      hipL: -0.3, kneeL: -0.4, footL: 0.1,
+      shR: 0.3, elR: -1.15, wrR: 0.3,
+      shL: 0.8, elL: -1.1,
+      pelvisYaw: -0.2, chestYaw: 0.16,
+    }, 'inOutSine'),
     // chamber: hilt pulled to the hip, blade back-level, weight loading back
     keyframe(0.09, {
       rootRot: -0.12, spine: -0.05, head: -0.06, rootY: 1,
@@ -522,6 +585,7 @@ const stabs: AttackDef = {
       hipL: -0.8, kneeL: -0.2,
       shR: 1.5, elR: 0.05, wrR: 0.02,
       shL: 1.4, elL: -0.35,
+      pelvisYaw: 0.24, chestYaw: -0.2, // hips spear through with the point
     }, 'outCubic'),
     // retract 1 — controlled pull back to the hip, point never drops
     keyframe(0.27, {
@@ -543,6 +607,7 @@ const stabs: AttackDef = {
       hipL: -0.82, kneeL: -0.18,
       shR: 1.52, elR: 0.04, wrR: 0.01,
       shL: 1.42, elL: -0.34,
+      pelvisYaw: 0.26, chestYaw: -0.22, // hips drive the deeper repeat
     }, 'outCubic'),
     // retract 2
     keyframe(0.45, {
@@ -565,6 +630,7 @@ const stabs: AttackDef = {
       hipL: -0.85, kneeL: -0.15,
       shR: 1.55, elR: 0.05, wrR: 0.0,
       shL: 1.45, elL: -0.35,
+      pelvisYaw: 0.28, chestYaw: -0.24, // the passing lunge unwinds hardest
     }, 'outCubic'),
     // penetration beat — the hold sells the depth before recovery
     keyframe(0.63, {
@@ -599,6 +665,16 @@ const h1: AttackDef = {
   id: 'h1', label: 'KIRI OROSHI', kind: 'heavy', requires: 'ground',
   clip: makeClip('atk_h1', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: weight sinks and hips counter-wind BEFORE the
+    // jōdan raise — the vertical cut loads the whole body first
+    keyframe(0.06, {
+      rootRot: -0.26, rootY: 1.6,
+      hipR: -0.1, kneeR: -0.4, footR: 0.08,
+      hipL: 0.15, kneeL: -0.38, footL: 0.1,
+      shR: 1.4, elR: -0.1, wrR: 0.05,
+      shL: 1.1, elL: -0.5,
+      pelvisYaw: -0.2, chestYaw: 0.16,
+    }, 'outQuad'),
     keyframe(0.14, {
       rootRot: -0.22, spine: -0.09, head: -0.02, rootY: -2.5,
       hipR: -0.18, kneeR: -0.3, footR: 0.08,
@@ -629,6 +705,7 @@ const h1: AttackDef = {
       hipL: -0.65, kneeL: -0.22,
       shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi vertical fall — hands
       shL: 0.9, elL: -0.7,              // near the body, blade cuts the close plane
+      pelvisYaw: 0.22, chestYaw: -0.18, // hips unwind through the drop
     }, 'outCubic'),
     keyframe(0.45, {
       rootRot: 0.46, spine: 0.18, rootY: 3,
@@ -657,6 +734,16 @@ const h2: AttackDef = {
   id: 'h2', label: 'TSUKI', kind: 'heavy', requires: 'ground',
   clip: makeClip('atk_h2', [
     keyframe(0, GUARD, 'outQuad'),
+    // GAP-1 · anticipation: the tsuki chamber deepens — weight sinks, hips
+    // counter-wind back before the passing lunge spears forward
+    keyframe(0.05, {
+      rootRot: -0.18, rootY: 2.2,
+      hipR: -0.2, kneeR: -0.6, footR: 0.06,
+      hipL: -0.28, kneeL: -0.42, footL: 0.1,
+      shR: 0.3, elR: -1.15, wrR: 0.2, // hilt pulls deeper to the hip
+      shL: 0.75, elL: -1.05,
+      pelvisYaw: -0.22, chestYaw: 0.18,
+    }, 'inOutSine'),
     keyframe(0.12, {
       rootRot: -0.12, spine: -0.05, head: -0.06, rootY: 1,
       hipR: -0.15, kneeR: -0.5, footR: 0.08,
@@ -677,11 +764,13 @@ const h2: AttackDef = {
       hipL: -0.85, kneeL: -0.15,
       shR: 1.5, elR: 0.05, wrR: 0.02, // blade dead-level, full extension
       shL: 1.4, elL: -0.35, // second hand joins on the tsuka
+      pelvisYaw: 0.26, chestYaw: -0.22, // hips unwind into the lunge
     }, 'outCubic'),
     keyframe(0.38, {
       rootRot: 0.42, spine: 0.16, rootY: 2.2,
       shR: 1.52, elR: 0.06, wrR: 0.0, // hold — full penetration beat
       shL: 1.42, elL: -0.36,
+      pelvisYaw: 0.2, chestYaw: -0.16, // hips stay wound through the hold
     }, 'inOutSine'),
     keyframe(0.56, {
       rootRot: 0.18, spine: 0.07, rootY: 0.5,
@@ -718,6 +807,7 @@ const h3: AttackDef = {
       hipL: -0.45, kneeL: -1.0, footL: 0.15,
       shR: 2.6, elR: 0.15, wrR: 0.25, // jōdan held through the crouch
       shL: 2.0, elL: -0.45,
+      pelvisYaw: -0.16, chestYaw: 0.12, // GAP-1: hips counter-wind in the crouch
     }, 'outQuad'),
     keyframe(0.15, {
       rootY: -4, rootRot: -0.2, spine: -0.06, head: -0.1,
@@ -779,6 +869,17 @@ const launcher: AttackDef = {
       shR: 0.4, elR: -0.25, wrR: 0.75, // blade loaded low (gedan)
       shL: 0.45, elL: -0.9,
     }, 'outQuad'),
+    // GAP-1 · anticipation: the pre-coiled entry SETTLES one unit deeper —
+    // weight sinks and hips counter-wind before the legs unload (the
+    // visible load beat this launcher was missing)
+    keyframe(0.03, {
+      rootY: 8, rootRot: 0.26, spine: 0.1, head: -0.1,
+      hipR: 0.68, kneeR: -1.3, footR: 0.18,
+      hipL: -0.55, kneeL: -0.7, footL: 0.12,
+      shR: 0.35, elR: -0.25, wrR: 0.8,
+      shL: 0.45, elL: -0.9,
+      pelvisYaw: -0.16, chestYaw: 0.12,
+    }, 'inOutSine'),
     // ignition: legs unload, blade carves through level
     keyframe(0.06, {
       rootY: 1, rootRot: 0.15,
@@ -792,6 +893,7 @@ const launcher: AttackDef = {
       hipL: 0.4, kneeL: -0.45,
       shR: 1.75, elR: 0.55, wrR: -0.1, // rising cut through the front plane
       shL: 0.2, elL: -1.4,
+      pelvisYaw: 0.18, chestYaw: -0.14, // hips unwind with the riser
     }, 'outCubic'),
     keyframe(0.23, {
       rootY: -6, rootRot: -0.3, spine: -0.1,
@@ -876,6 +978,16 @@ const dashHeavy: AttackDef = {
       shR: -0.15, elR: -1.0, wrR: -0.6, // hilt at hip, blade back-level
       shL: 0.7, elL: -1.0,
     }, 'outQuad'),
+    // GAP-1 · anticipation: micro-coil — the hilt seats a touch deeper at
+    // the hip, hips counter-wind before the dash thrust spears forward
+    // (arms bridge toward the ignition: the coil is in body + arm seat)
+    keyframe(0.03, {
+      rootRot: 0.08, rootY: 2.6,
+      hipR: 0.35, kneeR: -0.8,
+      shR: 0.28, elR: -0.72, wrR: -0.15,
+      shL: 0.85, elL: -0.85,
+      pelvisYaw: -0.15, chestYaw: 0.12,
+    }, 'inOutSine'),
     keyframe(0.06, {
       rootRot: 0.3, rootY: 2,
       hipR: 0.7, kneeR: -0.72,
@@ -888,6 +1000,7 @@ const dashHeavy: AttackDef = {
       hipL: -1.0, kneeL: -0.4,
       shR: 1.55, elR: 0.08, wrR: -0.06, // full-extension level thrust
       shL: 1.35, elL: -0.4,
+      pelvisYaw: 0.2, chestYaw: -0.16, // hips unwind with the spear
     }, 'outCubic'),
     keyframe(0.26, {
       rootRot: 0.58, rootY: 2,
