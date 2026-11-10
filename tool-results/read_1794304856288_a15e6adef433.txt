@@ -1,0 +1,801 @@
+     1→     1→/** STICKMAN RISING — animation inspection lab + QA harness (spec §12).
+     2→     2→ *
+     3→     3→ * A dedicated diagnostic environment rendered ON TOP of the game:
+     4→     4→ *  · SOLO view     — the live character, zoomed, skeleton overlay with
+     5→     5→ *                    joint pivots + anatomical labels + foot-contact
+     6→     6→ *                    markers + ground line + animation state readout
+     7→     7→ *  · SHEET view    — 8-frame contact sheets of every locomotion cycle
+     8→     8→ *                    (walk / run / sprint / combat / backpedal / idle)
+     9→     9→ *                    side by side for reference comparison, each frame
+    10→    10→ *                    solved through the REAL skeleton — inspect the
+    11→    11→ *                    actual rendered poses, not code-level assertions
+    12→    12→ *  · QA harness    — `window.__srQA.run()`: scripted input sequences
+    13→    13→ *                    (walk→run→sprint→combat→backpedal→attacks) with
+    14→    14→ *                    anatomy invariants, NaN scan, foot-lock check, loco
+    15→    15→ *                    transition log, and combo verification. Result lands
+    16→    16→ *                    on `window.__qaResult`.
+    17→    17→ */
+    18→    18→
+    19→    19→import { Game } from '../game'
+    20→    20→import { Player, LocoMode } from '../entities/player'
+    21→    21→import { makePose, Pose } from '../anim/pose'
+    22→    22→import { PLAYER_SPEC, SkelGeom, PLAYER_STYLE } from '../anim/skeleton'
+    23→    23→import { makeFighterGeom, solveFighter3D, drawFighter3D, type FighterGeom } from '../anim/rig3d'
+    24→    24→import { sampleClip } from '../anim/animator'
+    25→    25→import {
+    26→    26→  WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, COMBAT_IDLE_CLIP,
+    27→    27→  BACKPEDAL_CLIP, IDLE_CLIP, JUMP_CLIP,
+    28→    28→  DASH_LAUNCH_CLIP, DASH_CARRY_CLIP, DASH_HUNT_CLIP, DASH_PIERCE_CLIP,
+    29→    29→  DASH_RETREAT_CLIP, DASH_CARVE_CLIP,
+    30→    30→} from '../anim/clips'
+    31→    31→
+    32→    32→const PSCALE = 2.4 // solo-view zoom
+    33→    33→
+    34→    34→/* ------------------------------------------------------------------ */
+    35→    35→/* the panel                                                           */
+    36→    36→/* ------------------------------------------------------------------ */
+    37→    37→
+    38→    38→export type InspectMode = 'off' | 'solo' | 'sheet'
+    39→    39→
+    40→    40→export class Inspect {
+    41→    41→  mode: InspectMode = 'off'
+    42→    42→  showBones = true
+    43→    43→  showLabels = true
+    44→    44→  showFeet = true
+    45→    45→
+    46→    46→  private scratchPose: Pose = makePose()
+    47→    47→  private scratchGeom: FighterGeom = makeFighterGeom()
+    48→    48→
+    49→    49→  setMode(m: InspectMode): void {
+    50→    50→    this.mode = m
+    51→    51→  }
+    52→    52→
+    53→    53→  toggleBones(): void {
+    54→    54→    this.showBones = !this.showBones
+    55→    55→  }
+    56→    56→
+    57→    57→  /** bottom-left HUD readout (always on while mode != off) */
+    58→    58→  draw(ctx: CanvasRenderingContext2D, game: Game, time: number): void {
+    59→    59→    if (this.mode === 'off') return
+    60→    60→    const p = game.player
+    61→    61→    ctx.save()
+    62→    62→    ctx.font = '600 12px ui-monospace, monospace'
+    63→    63→    ctx.textBaseline = 'top'
+    64→    64→
+    65→    65→    if (this.mode === 'solo') {
+    66→    66→      this.drawSolo(ctx, game, time)
+    67→    67→    } else if (this.mode === 'sheet') {
+    68→    68→      this.drawSheets(ctx)
+    69→    69→    }
+    70→    70→
+    71→    71→    // state readout (uses public player surface + bracket access for privates)
+    72→    72→    const dark = this.mode === 'sheet' // light backdrop → dark text
+    73→    73→    const priv = p as unknown as Record<string, unknown>
+    74→    74→    const lines = [
+    75→    75→      `INSPECT: ${this.mode}${this.showBones ? ' +bones' : ''}`,
+    76→    76→      `state=${p.state}  loco=${p.loco}  locoT=${Number(priv.locoT ?? 0).toFixed(2)}s`,
+    77→    77→      `dash=${p.dashVariant}${p.dashHandoff ? ' (handoff)' : ''}  cd=${Number(priv.dashCd ?? 0).toFixed(2)}`,
+    78→    78→      `vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(0)}  grounded=${p.grounded}  face=${p.face}`,
+    79→    79→      `enemyW=${p.enemyNearW.toFixed(2)}  threat=${p.hasThreat ? 'yes' : 'no'}  surrounded=${Boolean(priv.surrounded)}`,
+    80→    80→      `postAtk=${Number(priv.postAttackT ?? 0).toFixed(2)}  turn=${Number(priv.turnT ?? 0).toFixed(2)}`,
+    81→    81→      `footLock=${Number(priv.footLock ?? 0).toFixed(1)}  hipY=${p.hipY.toFixed(1)}`,
+    82→    82→    ]
+    83→    83→    let y = 10
+    84→    84→    for (const ln of lines) {
+    85→    85→      ctx.fillStyle = dark ? 'rgba(240,246,250,0.85)' : 'rgba(2,8,14,0.72)'
+    86→    86→      const wdt = ctx.measureText(ln).width
+    87→    87→      ctx.fillRect(8, y - 2, wdt + 10, 15)
+    88→    88→      ctx.fillStyle = dark ? '#12354e' : '#8ff3ff'
+    89→    89→      ctx.fillText(ln, 13, y)
+    90→    90→      y += 17
+    91→    91→    }
+    92→    92→    ctx.restore()
+    93→    93→  }
+    94→    94→
+    95→    95→  /** big live character + skeleton overlay, centered-left — drawn on a
+    96→    96→   * light diagnostic panel so the black silhouette reads at full contrast */
+    97→    97→  private drawSolo(ctx: CanvasRenderingContext2D, game: Game, time: number): void {
+    98→    98→    const p = game.player
+    99→    99→    const dpr = window.devicePixelRatio || 1
+   100→   100→    const Z = PSCALE / 1.32 // zoom factor over the in-game world scale
+   101→   101→    const cx = (ctx.canvas.width / dpr) * 0.26
+   102→   102→    const groundY = (ctx.canvas.height / dpr) * 0.82
+   103→   103→    const hipScreenY = groundY + p.hipY * Z
+   104→   104→    // light diagnostic panel behind the figure (contrast for the black body)
+   105→   105→    ctx.save()
+   106→   106→    ctx.fillStyle = '#dfe7ee'
+   107→   107→    ctx.beginPath()
+   108→   108→    ctx.roundRect(cx - 250, groundY - 330, 500, 348, 14)
+   109→   109→    ctx.fill()
+   110→   110→    ctx.strokeStyle = 'rgba(40,70,100,0.35)'
+   111→   111→    ctx.lineWidth = 1.5
+   112→   112→    ctx.stroke()
+   113→   113→    ctx.restore()
+   114→   114→    // body: local geom → screen at PSCALE
+   115→   115→    ctx.save()
+   116→   116→    ctx.translate(cx, hipScreenY)
+   117→   117→    ctx.scale(p.face * PSCALE, PSCALE)
+   118→   118→    drawFighter3D(ctx, p.geom, PLAYER_STYLE, { time })
+   119→   119→    this.drawSkeleton(ctx, p.geom)
+   120→   120→    ctx.restore()
+   121→   121→    // ground line + foot contact markers at their true screen positions
+   122→   122→    ctx.save()
+   123→   123→    ctx.strokeStyle = 'rgba(30,90,140,0.65)'
+   124→   124→    ctx.lineWidth = 2
+   125→   125→    ctx.setLineDash([7, 5])
+   126→   126→    ctx.beginPath()
+   127→   127→    ctx.moveTo(cx - 240, groundY)
+   128→   128→    ctx.lineTo(cx + 240, groundY)
+   129→   129→    ctx.stroke()
+   130→   130→    ctx.setLineDash([])
+   131→   131→    if (this.showFeet) {
+   132→   132→      const ptScreen = (j: { x: number; y: number }) => ({
+   133→   133→        x: cx + p.face * PSCALE * j.x,
+   134→   134→        y: hipScreenY + PSCALE * j.y,
+   135→   135→      })
+   136→   136→      const rA = ptScreen(p.geom.ankleR)
+   137→   137→      const lA = ptScreen(p.geom.ankleL)
+   138→   138→      // planted = lowest foot within reach of the ground line
+   139→   139→      const rPlanted = p.grounded && p.geom.ankleR.y >= p.geom.ankleL.y
+   140→   140→      const lPlanted = p.grounded && p.geom.ankleL.y > p.geom.ankleR.y
+   141→   141→      this.drawFootMarker(ctx, rA.x, rA.y, rPlanted)
+   142→   142→      this.drawFootMarker(ctx, lA.x, lA.y, lPlanted)
+   143→   143→    }
+   144→   144→    ctx.restore()
+   145→   145→  }
+   146→   146→
+   147→   147→  private drawFootMarker(ctx: CanvasRenderingContext2D, x: number, y: number, planted: boolean): void {
+   148→   148→    ctx.fillStyle = planted ? '#51ff8e' : 'rgba(255,170,60,0.8)'
+   149→   149→    ctx.beginPath()
+   150→   150→    ctx.arc(x, y, 4.5, 0, Math.PI * 2)
+   151→   151→    ctx.fill()
+   152→   152→  }
+   153→   153→
+   154→   154→  /** bones + joints + labels on any solved geom (local space) */
+   155→   155→  private drawSkeleton(ctx: CanvasRenderingContext2D, g: SkelGeom): void {
+   156→   156→    if (!this.showBones) return
+   157→   157→    ctx.save()
+   158→   158→    ctx.strokeStyle = 'rgba(65,246,255,0.55)'
+   159→   159→    ctx.lineWidth = 1.1
+   160→   160→    const seg = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+   161→   161→      ctx.beginPath()
+   162→   162→      ctx.moveTo(a.x, a.y)
+   163→   163→      ctx.lineTo(b.x, b.y)
+   164→   164→      ctx.stroke()
+   165→   165→    }
+   166→   166→    seg(g.hip, g.waist); seg(g.waist, g.chest); seg(g.chest, g.neckTop); seg(g.neckTop, g.headC)
+   167→   167→    seg(g.hipPtR, g.kneeR); seg(g.kneeR, g.ankleR); seg(g.ankleR, g.toeR)
+   168→   168→    seg(g.hipPtL, g.kneeL); seg(g.kneeL, g.ankleL); seg(g.ankleL, g.toeL)
+   169→   169→    seg(g.shoulderR, g.elbR); seg(g.elbR, g.handR)
+   170→   170→    seg(g.shoulderL, g.elbL); seg(g.elbL, g.handL)
+   171→   171→    // shoulder girdle line (the anatomy fix, visualized)
+   172→   172→    ctx.strokeStyle = 'rgba(255,120,180,0.8)'
+   173→   173→    ctx.lineWidth = 1.3
+   174→   174→    ctx.beginPath()
+   175→   175→    ctx.moveTo(g.shoulderL.x, g.shoulderL.y)
+   176→   176→    ctx.lineTo(g.neckTop.x, g.neckTop.y)
+   177→   177→    ctx.lineTo(g.shoulderR.x, g.shoulderR.y)
+   178→   178→    ctx.stroke()
+   179→   179→    // joints
+   180→   180→    ctx.fillStyle = '#ffd24a'
+   181→   181→    const joints = [
+   182→   182→      g.hip, g.hipPtR, g.hipPtL, g.waist, g.chest, g.neckTop, g.headC,
+   183→   183→      g.shoulderR, g.shoulderL, g.elbR, g.elbL, g.handR, g.handL,
+   184→   184→      g.kneeR, g.kneeL, g.ankleR, g.ankleL,
+   185→   185→    ]
+   186→   186→    for (const j of joints) {
+   187→   187→      ctx.beginPath()
+   188→   188→      ctx.arc(j.x, j.y, 1.7, 0, Math.PI * 2)
+   189→   189→      ctx.fill()
+   190→   190→    }
+   191→   191→    // THE proof joints: shoulders in pink
+   192→   192→    ctx.fillStyle = '#ff6fb5'
+   193→   193→    for (const j of [g.shoulderR, g.shoulderL]) {
+   194→   194→      ctx.beginPath()
+   195→   195→      ctx.arc(j.x, j.y, 3.0, 0, Math.PI * 2)
+   196→   196→      ctx.fill()
+   197→   197→    }
+   198→   198→    if (this.showLabels) {
+   199→   199→      ctx.fillStyle = 'rgba(160,240,255,0.95)'
+   200→   200→      ctx.font = '600 4.2px ui-monospace, monospace'
+   201→   201→      const lbl = (j: { x: number; y: number }, s: string) => ctx.fillText(s, j.x + 2.4, j.y - 2.4)
+   202→   202→      lbl(g.headC, 'skull')
+   203→   203→      lbl(g.neckTop, 'neckTop')
+   204→   204→      lbl(g.shoulderR, 'SHOULDER-R')
+   205→   205→      lbl(g.shoulderL, 'shoulder-l')
+   206→   206→      lbl(g.chest, 'chest')
+   207→   207→      lbl(g.waist, 'waist')
+   208→   208→      lbl(g.hip, 'pelvis')
+   209→   209→      lbl(g.kneeR, 'kneeR')
+   210→   210→      lbl(g.ankleR, 'ankleR')
+   211→   211→      lbl(g.elbR, 'elbR')
+   212→   212→      lbl(g.handR, 'handR')
+   213→   213→    }
+   214→   214→    ctx.restore()
+   215→   215→  }
+   216→   216→
+   217→   217→  /** contact sheets: every locomotion cycle, 8 frames each, real solve —
+   218→   218→   * light diagnostic background, per-cell ground lines + foot-contact
+   219→   219→   * markers (green = support, orange = swing), 2 clip-groups per band */
+   220→   220→  private drawSheets(ctx: CanvasRenderingContext2D): void {
+   221→   221→    const rows: Array<[string, typeof WALK_CLIP]> = [
+   222→   222→      ['WALK', WALK_CLIP],
+   223→   223→      ['RUN', RUN_CLIP],
+   224→   224→      ['SPRINT', SPRINT_CLIP],
+   225→   225→      ['COMBAT STEP', COMBAT_STEP_CLIP],
+   226→   226→      ['COMBAT-IDLE (rooted guard)', COMBAT_IDLE_CLIP],
+   227→   227→      ['BACKPEDAL', BACKPEDAL_CLIP],
+   228→   228→      ['IDLE', IDLE_CLIP],
+   229→   229→      ['JUMP', JUMP_CLIP],
+   230→   230→      ['DASH LAUNCH (iai)', DASH_LAUNCH_CLIP],
+   231→   231→      ['DASH CARRY (momentum)', DASH_CARRY_CLIP],
+   232→   232→      ['DASH HUNT (gap-close)', DASH_HUNT_CLIP],
+   233→   233→      ['DASH PIERCE (lunge)', DASH_PIERCE_CLIP],
+   234→   234→      ['DASH RETREAT (guard)', DASH_RETREAT_CLIP],
+   235→   235→      ['DASH CARVE (breakaway)', DASH_CARVE_CLIP],
+   236→   236→    ]
+   237→   237→    const dpr = window.devicePixelRatio || 1
+   238→   238→    const w = ctx.canvas.width / dpr
+   239→   239→    const h = ctx.canvas.height / dpr
+   240→   240→    const cols = 8
+   241→   241→    const groupsPerRow = 2
+   242→   242→    const bands = Math.ceil(rows.length / groupsPerRow) // 3 bands
+   243→   243→    const cellW = w / (cols * groupsPerRow)
+   244→   244→    const rowH = h / (bands + 0.25)
+   245→   245→    // figure scale: fit character height inside a band minus label space
+   246→   246→    const S = Math.min(1.0, (rowH - 34) / 138)
+   247→   247→    ctx.save()
+   248→   248→    // light diagnostic backdrop — black silhouette at full contrast
+   249→   249→    ctx.fillStyle = '#e9eef3'
+   250→   250→    ctx.fillRect(0, 0, w, h)
+   251→   251→    ctx.font = '700 12px ui-monospace, monospace'
+   252→   252→    for (let r = 0; r < rows.length; r++) {
+   253→   253→      const band = Math.floor(r / groupsPerRow)
+   254→   254→      const group = r % groupsPerRow
+   255→   255→      const [label, clip] = rows[r]
+   256→   256→      const baseY = rowH * (band + 1)
+   257→   257→      const labelX = group * (w / groupsPerRow) + 10
+   258→   258→      ctx.fillStyle = '#1a3a52'
+   259→   259→      ctx.fillText(`${label} · ${clip.dur.toFixed(2)}s cycle`, labelX, baseY - rowH + 16)
+   260→   260→      for (let c = 0; c < cols; c++) {
+   261→   261→        const t = (clip.dur * c) / cols
+   262→   262→        sampleClip(clip, t, this.scratchPose)
+   263→   263→        const g = solveFighter3D(this.scratchPose, PLAYER_SPEC, this.scratchGeom, PLAYER_SPEC.blade)
+   264→   264→        // normalize: lowest foot contact sits ON this cell's ground line
+   265→   265→        const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y)
+   266→   266→        const cx = group * (w / groupsPerRow) + cellW * (c + 0.5)
+   267→   267→        const groundY = baseY - 14
+   268→   268→        ctx.save()
+   269→   269→        ctx.translate(cx, groundY - (lowContact + 2.4) * S)
+   270→   270→        ctx.scale(S, S)
+   271→   271→        drawFighter3D(ctx, g, PLAYER_STYLE, { time: t })
+   272→   272→        ctx.restore()
+   273→   273→        // per-cell ground line
+   274→   274→        ctx.strokeStyle = 'rgba(40,80,110,0.45)'
+   275→   275→        ctx.lineWidth = 1
+   276→   276→        ctx.beginPath()
+   277→   277→        ctx.moveTo(cx - cellW * 0.42, groundY)
+   278→   278→        ctx.lineTo(cx + cellW * 0.42, groundY)
+   279→   279→        ctx.stroke()
+   280→   280→        // foot-contact markers: green = support (near ground), orange = swing
+   281→   281→        const hipY = groundY - (lowContact + 2.4) * S
+   282→   282→        const markFoot = (j: { x: number; y: number }) => {
+   283→   283→          const airborne = (lowContact - j.y) > 4 // clearly lifted vs support
+   284→   284→          ctx.fillStyle = airborne ? 'rgba(255,140,30,0.9)' : '#18c25a'
+   285→   285→          ctx.beginPath()
+   286→   286→          ctx.arc(cx + j.x * S, hipY + j.y * S, 3, 0, Math.PI * 2)
+   287→   287→          ctx.fill()
+   288→   288→        }
+   289→   289→        markFoot(g.ankleR)
+   290→   290→        markFoot(g.ankleL)
+   291→   291→        // frame tick
+   292→   292→        ctx.fillStyle = 'rgba(30,70,100,0.55)'
+   293→   293→        ctx.font = '600 9px ui-monospace, monospace'
+   294→   294→        ctx.fillText(`f${c}`, cx - 5, baseY - 3)
+   295→   295→      }
+   296→   296→    }
+   297→   297→    ctx.restore()
+   298→   298→  }
+   299→   299→}
+   300→   300→
+   301→   301→/* ------------------------------------------------------------------ */
+   302→   302→/* QA harness                                                          */
+   303→   303→/* ------------------------------------------------------------------ */
+   304→   304→
+   305→   305→interface QaCheck {
+   306→   306→  name: string
+   307→   307→  pass: boolean
+   308→   308→  detail: string
+   309→   309→}
+   310→   310→
+   311→   311→const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+   312→   312→
+   313→   313→/** Scripted end-to-end verification. Parks the report on
+   314→   314→ * window.__qaResult. Drive from the browser console / agent-browser. */
+   315→   315→export async function runQA(game: Game): Promise<void> {
+   316→   316→  const checks: QaCheck[] = []
+   317→   317→  const log: string[] = []
+   318→   318→  const p = game.player
+   319→   319→  const input = game.input
+   320→   320→
+   321→   321→  const samplePose = () => {
+   322→   322→    let bad = 0
+   323→   323→    for (let i = 0; i < 17; i++) if (!Number.isFinite(p.pose[i])) bad++
+   324→   324→    return bad
+   325→   325→  }
+   326→   326→
+   327→   327→  try {
+   328→   328→    // ---- setup: controlled empty arena (waves suppressed, player alive) ----
+   329→   329→    game.qaMode = true
+   330→   330→    game.phase = 'playing'
+   331→   331→    game.enemies.length = 0
+   332→   332→    game.waves.reset()
+   333→   333→    // release every virtual input left held by prior console driving —
+   334→   334→    // stale held buttons contaminate the whole scripted sequence
+   335→   335→    input.setVirtualAxis(0, 0)
+   336→   336→    for (const a of ['left', 'right', 'up', 'down', 'light', 'heavy', 'dash', 'jump', 'parry', 'ability', 'ult', 'execute', 'sheathe'] as const) {
+   337→   337→      input.setVirtual(a, false)
+   338→   338→    }
+   339→   339→    p.reset(400)
+   340→   340→    input.setEnabled(true)
+   341→   341→    log.push('setup ok')
+   342→   342→
+   343→   343→    // ---- 1. anatomy invariants (the arms-from-the-neck fix) ----
+   344→   344→    {
+   345→   345→      const g = p.geom
+   346→   346→      const spec = PLAYER_SPEC
+   347→   347→      const armLen = Math.hypot(g.elbR.x - g.shoulderR.x, g.elbR.y - g.shoulderR.y)
+   348→   348→      // local y grows DOWN: shoulder below neck-top means shoulderR.y GREATER
+   349→   349→      const shoulderBelowNeck = g.shoulderR.y > g.neckTop.y + 1.5
+   350→   350→      const armFromShoulder = Math.abs(armLen - spec.upperArm) < 0.6
+   351→   351→      // neck column rises above chest: neckTop.y LESS (more negative) than chest
+   352→   352→      const neckVisible = g.neckTop.y < g.chest.y - 2.5
+   353→   353→      checks.push({
+   354→   354→        name: 'anatomy: shoulder joints below neck top',
+   355→   355→        pass: shoulderBelowNeck,
+   356→   356→        detail: `shoulderR.y=${g.shoulderR.y.toFixed(1)} neckTop.y=${g.neckTop.y.toFixed(1)}`,
+   357→   357→      })
+   358→   358→      checks.push({
+   359→   359→        name: 'anatomy: arm chains FROM shoulder (len=upperArm)',
+   360→   360→        pass: armFromShoulder,
+   361→   361→        detail: `len=${armLen.toFixed(2)} spec=${spec.upperArm}`,
+   362→   362→      })
+   363→   363→      checks.push({
+   364→   364→        name: 'anatomy: neck column visible above chest',
+   365→   365→        pass: neckVisible,
+   366→   366→        detail: `neckTop.y=${g.neckTop.y.toFixed(1)} chest.y=${g.chest.y.toFixed(1)}`,
+   367→   367→      })
+   368→   368→    }
+   369→   369→
+   370→   370→    // ---- 2. walk → run escalation (Condition A, analog speed mapping) ----
+   371→   371→    input.setVirtualAxis(0.55, 0)
+   372→   372→    await sleep(700)
+   373→   373→    const earlyMode = p.loco
+   374→   374→    const earlyVx = Math.abs(p.vx)
+   375→   375→    input.setVirtualAxis(1, 0)
+   376→   376→    await sleep(1500)
+   377→   377→    const fullMode = p.loco
+   378→   378→    input.setVirtualAxis(0, 0)
+   379→   379→    await sleep(500)
+   380→   380→    checks.push({
+   381→   381→      name: 'locomotion: WALK at partial input',
+   382→   382→      pass: earlyMode === 'walk' && earlyVx > 60 && earlyVx < 210,
+   383→   383→      detail: `mode@0.7s=${earlyMode} vx=${earlyVx.toFixed(0)}`,
+   384→   384→    })
+   385→   385→    checks.push({
+   386→   386→      name: 'locomotion: RUN at full input',
+   387→   387→      pass: fullMode === 'run',
+   388→   388→      detail: `mode@2.2s=${fullMode}`,
+   389→   389→    })
+   390→   390→
+   391→   391→    // ---- 3. sprint latch via double-tap (button events → press stamps) ----
+   392→   392→    input.setVirtual('right', true)
+   393→   393→    await sleep(120)
+   394→   394→    input.setVirtual('right', false)
+   395→   395→    await sleep(60)
+   396→   396→    input.setVirtual('right', true)
+   397→   397→    await sleep(900)
+   398→   398→    const sprintMode = p.loco
+   399→   399→    const sprintVx = Math.abs(p.vx)
+   400→   400→    input.setVirtual('right', false)
+   401→   401→    await sleep(400)
+   402→   402→    checks.push({
+   403→   403→      name: 'locomotion: sprint after double-tap',
+   404→   404→      pass: sprintMode === 'sprint' && sprintVx > 380,
+   405→   405→      detail: `loco=${sprintMode} vx=${sprintVx.toFixed(0)}`,
+   406→   406→    })
+   407→   407→
+   408→   408→    // ---- 4. combat mode when enemy near (Condition B) ----
+   409→   409→    const { Enemy } = await import('../entities/enemy')
+   410→   410→    const foe = new Enemy('grunt', p.x + 240, 1)
+   411→   411→    foe.spawning = false
+   412→   412→    foe.state = 'stun' // stun STATE + huge timer = truly frozen (stunT alone
+   413→   413→    foe.stunT = 999   // does nothing from 'enter' — the foe chased & hit us)
+   414→   414→    game.enemies.push(foe)
+   415→   415→    input.setVirtualAxis(0.5, 0)
+   416→   416→    await sleep(800)
+   417→   417→    const combatMode = p.loco
+   418→   418→    const enemyW = p.enemyNearW
+   419→   419→    checks.push({
+   420→   420→      name: 'context: combat locomotion near enemy',
+   421→   421→      pass: combatMode === 'combat' && enemyW > 0.5,
+   422→   422→      detail: `loco=${combatMode} enemyW=${enemyW.toFixed(2)}`,
+   423→   423→    })
+   424→   424→
+   425→   425→    // ---- 5. backpedal away from threat (facing HOLDS toward the enemy) ----
+   426→   426→    input.setVirtualAxis(-0.5, 0) // partial retreat: stays under the escape speed
+   427→   427→    await sleep(600)
+   428→   428→    const backMode = p.loco
+   429→   429→    const backFace = p.face
+   430→   430→    input.setVirtualAxis(0, 0)
+   431→   431→    await sleep(300)
+   432→   432→    checks.push({
+   433→   433→      name: 'context: backpedal retreating vs threat',
+   434→   434→      pass: backMode === 'backpedal' && backFace === 1,
+   435→   435→      detail: `loco=${backMode} face=${backFace}`,
+   436→   436→    })
+   437→   437→
+   438→   438→    // ---- 5b. THE CONDITIONED DASH SYSTEM ----
+   439→   439→    // One movement, nine authored animations: the variant must follow the
+   440→   440→    // CONDITIONS at the input instant (momentum, threat geometry, chain).
+   441→   441→    // (a) LAUNCH: stationary + no threat → the iai explosion
+   442→   442→    {
+   443→   443→      game.enemies.length = 0
+   444→   444→      p.reset(400)
+   445→   445→      input.setVirtualAxis(0, 0)
+   446→   446→      await sleep(500)
+   447→   447→      const x0 = p.x
+   448→   448→      input.setVirtualAxis(1, 0) // HOLD the direction → handoff at exit
+   449→   449→      input.setVirtual('dash', true)
+   450→   450→      await sleep(50)
+   451→   451→      const midVariant = p.dashVariant
+   452→   452→      const midState = p.state
+   453→   453→      input.setVirtual('dash', false)
+   454→   454→      // poll for the exit frame — sample the handed-off velocity exactly at
+   455→   455→      // the dash→move transition (before locomotion friction bleeds it)
+   456→   456→      let tailVx = 0
+   457→   457→      for (let i = 0; i < 30; i++) {
+   458→   458→        await sleep(16)
+   459→   459→        if (p.state === 'move') { tailVx = Math.abs(p.vx); break }
+   460→   460→      }
+   461→   461→      await sleep(250) // dash (0.17s) + exit bleed
+   462→   462→      const dx = p.x - x0
+   463→   463→      input.setVirtualAxis(0, 0)
+   464→   464→      await sleep(400)
+   465→   465→      checks.push({
+   466→   466→        name: 'dash: stationary forward → LAUNCH (iai)',
+   467→   467→        pass: midVariant === 'launch' && midState === 'dash' && dx > 90,
+   468→   468→        detail: `variant=${midVariant} state=${midState} dx=${dx.toFixed(0)}`,
+   469→   469→      })
+   470→   470→      checks.push({
+   471→   471→        name: 'dash: momentum handoff (no dead stop)',
+   472→   472→        pass: tailVx > 300 && p.dashHandoff,
+   473→   473→        detail: `vx@exit=${tailVx.toFixed(0)} handoff=${p.dashHandoff}`,
+   474→   474→      })
+   475→   475→    }
+   476→   476→    // (b) CARRY: dash initiated from a run → the momentum-matched carry
+   477→   477→    // (no re-coil from standing — the run feeds the dash)
+   478→   478→    {
+   479→   479→      game.enemies.length = 0
+   480→   480→      input.setVirtualAxis(0, 0)
+   481→   481→      await sleep(650) // chain window + recharge fully expired
+   482→   482→      input.setVirtualAxis(1, 0)
+   483→   483→      await sleep(1000) // build to full run speed (350)
+   484→   484→      const runVx = Math.abs(p.vx)
+   485→   485→      input.setVirtual('dash', true)
+   486→   486→      await sleep(50)
+   487→   487→      const carryVariant = p.dashVariant
+   488→   488→      input.setVirtual('dash', false)
+   489→   489→      input.setVirtualAxis(0, 0)
+   490→   490→      await sleep(400)
+   491→   491→      checks.push({
+   492→   492→        name: 'dash: from a run → CARRY (momentum-matched)',
+   493→   493→        pass: carryVariant === 'carry' && runVx > 300,
+   494→   494→        detail: `variant=${carryVariant} runVx=${runVx.toFixed(0)}`,
+   495→   495→      })
+   496→   496→    }
+   497→   497→    // (c) HUNT: enemy in the gap-close band ahead (240–640) → the hungry
+   498→   498→    // lunge with locked gaze
+   499→   499→    {
+   500→   500→      game.enemies.length = 0
+   501→   501→      input.setVirtualAxis(0, 0)
+   502→   502→      await sleep(500)
+   503→   503→      const { Enemy: EnemyCtor } = await import('../entities/enemy')
+   504→   504→      const foe = new EnemyCtor('grunt', p.x + 320, 1)
+   505→   505→      foe.spawning = false
+   506→   506→      foe.state = 'stun'
+   507→   507→      foe.stunT = 999
+   508→   508→      game.enemies.push(foe)
+   509→   509→      await sleep(400) // scanEnemies settles the proximity read
+   510→   510→      input.setVirtualAxis(1, 0)
+   511→   511→      input.setVirtual('dash', true)
+   512→   512→      await sleep(50)
+   513→   513→      const huntVariant = p.dashVariant
+   514→   514→      input.setVirtual('dash', false)
+   515→   515→      await sleep(300)
+   516→   516→      input.setVirtualAxis(0, 0)
+   517→   517→      await sleep(400)
+   518→   518→      checks.push({
+   519→   519→        name: 'dash: enemy at gap-close range → HUNT',
+   520→   520→        pass: huntVariant === 'hunt',
+   521→   521→        detail: `variant=${huntVariant}`,
+   522→   522→      })
+   523→   523→      // (d) PIERCE: the hunt carried us INTO the pocket (<170 ahead) →
+   524→   524→      // the next forward dash pierces THROUGH the body
+   525→   525→      foe.x = p.x + 140
+   526→   526→      await sleep(150)
+   527→   527→      input.setVirtualAxis(1, 0)
+   528→   528→      input.setVirtual('dash', true)
+   529→   529→      await sleep(50)
+   530→   530→      const pierceVariant = p.dashVariant
+   531→   531→      input.setVirtual('dash', false)
+   532→   532→      await sleep(300)
+   533→   533→      input.setVirtualAxis(0, 0)
+   534→   534→      await sleep(400)
+   535→   535→      checks.push({
+   536→   536→        name: 'dash: enemy inside the pocket → PIERCE (pass-through)',
+   537→   537→        pass: pierceVariant === 'pierce',
+   538→   538→        detail: `variant=${pierceVariant}`,
+   539→   539→      })
+   540→   540→      // (e) RETREAT: backdash keeps the guard on the threat — face HOLDS
+   541→   541→      {
+   542→   542→        const x0 = p.x
+   543→   543→        const faceBefore = p.face
+   544→   544→        input.setVirtualAxis(-1, 0)
+   545→   545→        input.setVirtual('dash', true)
+   546→   546→        await sleep(50)
+   547→   547→        const backVariant = p.dashVariant
+   548→   548→        input.setVirtual('dash', false)
+   549→   549→        await sleep(250)
+   550→   550→        const dx = p.x - x0
+   551→   551→        const faceAfter = p.face
+   552→   552→        input.setVirtualAxis(0, 0)
+   553→   553→        await sleep(400)
+   554→   554→        checks.push({
+   555→   555→          name: 'dash: backdash → RETREAT with guard held',
+   556→   556→          pass: backVariant === 'retreat' && dx < -60 && faceAfter === faceBefore,
+   557→   557→          detail: `variant=${backVariant} dx=${dx.toFixed(0)} face ${faceBefore}→${faceAfter}`,
+   558→   558→        })
+   559→   559→      }
+   560→   560→    }
+   561→   561→    // (f) CHAIN: the second dash within the chain window mirrors the
+   562→   562→    // stride, without a separate recharge penalty
+   563→   563→    {
+   564→   564→      game.enemies.length = 0
+   565→   565→      input.setVirtualAxis(0, 0)
+   566→   566→      await sleep(650)
+   567→   567→      input.setVirtualAxis(1, 0)
+   568→   568→      input.setVirtual('dash', true)
+   569→   569→      await sleep(50)
+   570→   570→      input.setVirtual('dash', false)
+   571→   571→      await sleep(280) // first dash ends (consec → 1), chain window open
+   572→   572→      input.setVirtual('dash', true)
+   573→   573→      await sleep(50)
+   574→   574→      const chainVariant = p.dashVariant // second dash → mirrored stride
+   575→   575→      input.setVirtual('dash', false)
+   576→   576→      await sleep(150)
+   577→   577→      input.setVirtualAxis(0, 0)
+   578→   578→      await sleep(500)
+   579→   579→      checks.push({
+   580→   580→        name: 'dash: chain mirrors stride',
+   581→   581→        pass: chainVariant === 'chain',
+   582→   582→        detail: `variant=${chainVariant}`,
+   583→   583→      })
+   584→   584→    }
+   585→   585→    // (g) CARVE: surrounded pocket converts the retreat into the
+   586→   586→    // depth-carve breakaway
+   587→   587→    {
+   588→   588→      const { Enemy: EnemyCtor } = await import('../entities/enemy')
+   589→   589→      // fresh SYMMETRIC formation around the CURRENT position (the earlier
+   590→   590→      // tests moved the player — stale foe placement breaks the pocket read)
+   591→   591→      game.enemies.length = 0
+   592→   592→      const foeA = new EnemyCtor('grunt', p.x + 220, 1)
+   593→   593→      const foeB = new EnemyCtor('grunt', p.x - 220, 1)
+   594→   594→      for (const f of [foeA, foeB]) { f.spawning = false; f.state = 'stun'; f.stunT = 999 }
+   595→   595→      game.enemies.push(foeA, foeB)
+   596→   596→      await sleep(500) // scanEnemies hysteresis: surrounded flag settles
+   597→   597→      input.setVirtualAxis(-1, 0)
+   598→   598→      input.setVirtual('dash', true)
+   599→   599→      await sleep(50)
+   600→   600→      const escVariant = p.dashVariant
+   601→   601→      input.setVirtual('dash', false)
+   602→   602→      input.setVirtualAxis(0, 0)
+   603→   603→      await sleep(350)
+   604→   604→      // restore a fresh target in strike range for section 6
+   605→   605→      game.enemies.length = 0
+   606→   606→      const foe6 = new EnemyCtor('grunt', p.x + 150, 1)
+   607→   607→      foe6.spawning = false
+   608→   608→      foe6.state = 'stun'
+   609→   609→      foe6.stunT = 999
+   610→   610→      game.enemies.push(foe6)
+   611→   611→      await sleep(300)
+   612→   612→      checks.push({
+   613→   613→        name: 'dash: surrounded retreat becomes CARVE',
+   614→   614→        pass: escVariant === 'carve',
+   615→   615→        detail: `variant=${escVariant}`,
+   616→   616→      })
+   617→   617→    }
+   618→   618→    // (h) THE IDLE FIX: standing still with a threat engaged is the ROOTED
+   619→   619→    // combat idle — planted feet, weight shifts; NEVER the stepping shuffle
+   620→   620→    {
+   621→   621→      input.setVirtualAxis(0, 0)
+   622→   622→      await sleep(1100) // settle + dwell hysteresis
+   623→   623→      const idleMode = p.loco
+   624→   624→      const idleClip = (p as unknown as { animator: { getClip(): { name: string } | null } })
+   625→   625→        .animator.getClip()?.name
+   626→   626→      checks.push({
+   627→   627→        name: 'idle: rooted combat guard while stationary near threat',
+   628→   628→        pass: idleMode === 'combatIdle' && idleClip === 'combatIdle',
+   629→   629→        detail: `loco=${idleMode} clip=${idleClip}`,
+   630→   630→      })
+   631→   631→    }
+   632→   632→
+   633→   633→    // ---- 6. combat attacks land (the golden path) ----
+   634→   634→    const comboBefore = (game as unknown as { combo?: { hits: number } }).combo?.hits ?? 0
+   635→   635→    for (let i = 0; i < 6; i++) {
+   636→   636→      input.setVirtual('light', true)
+   637→   637→      await sleep(60)
+   638→   638→      input.setVirtual('light', false)
+   639→   639→      await sleep(320)
+   640→   640→    }
+   641→   641→    await sleep(700)
+   642→   642→    const comboAfter = (game as unknown as { combo?: { hits: number } }).combo?.hits ?? 0
+   643→   643→    checks.push({
+   644→   644→      name: 'combat: light attacks connect',
+   645→   645→      pass: comboAfter > comboBefore,
+   646→   646→      detail: `hits ${comboBefore}→${comboAfter}`,
+   647→   647→    })
+   648→   648→
+   649→   649→    // ---- 7. NaN scan through everything ----
+   650→   650→    const badCh = samplePose()
+   651→   651→    checks.push({
+   652→   652→      name: 'stability: no NaN pose channels',
+   653→   653→      pass: badCh === 0,
+   654→   654→      detail: `bad=${badCh}`,
+   655→   655→    })
+   656→   656→
+   657→   657→    // ---- 8. foot lock when grounded idle (settled: no enemies, no input) ----
+   658→   658→    game.enemies.length = 0
+   659→   659→    input.setVirtualAxis(0, 0)
+   660→   660→    await sleep(1200) // let every blend/spring settle into guard idle
+   661→   661→    const priv = p as unknown as Record<string, number>
+   662→   662→    // grounded ⇒ y=0 ⇒ hipY = −footLock EXACTLY (the lock IS the hip height)
+   663→   663→    const lockErr = Math.abs(p.hipY + (priv.footLock ?? 0))
+   664→   664→    // anatomical hip-height band: deep crouch 48 … full extension 78 world px
+   665→   665→    const lockBand = (priv.footLock ?? 0) > 48 && (priv.footLock ?? 0) < 78
+   666→   666→    checks.push({
+   667→   667→      name: 'grounding: footLock is the hip height (y=0)',
+   668→   668→      pass: p.grounded && p.y === 0 && lockErr < 1.5 && lockBand,
+   669→   669→      detail: `hipY=${p.hipY.toFixed(1)} footLock=${(priv.footLock ?? 0).toFixed(1)} err=${lockErr.toFixed(2)}`,
+   670→   670→    })
+   671→   671→
+   672→   672→    // ---- 9. THE JUMP OVERHAUL: height + conditioned variants ----
+   673→   673→    // (a) standing jump: hands-only vertical — apex must clear ~2.2× hip
+   674→   674→    // height (the old −840 hop peaked ≈ −123; the new −950 ≈ −155)
+   675→   675→    {
+   676→   676→      let peakY = 0
+   677→   677→      input.setVirtual('jump', true)
+   678→   678→      await sleep(50)
+   679→   679→      input.setVirtual('jump', false)
+   680→   680→      for (let i = 0; i < 40; i++) {
+   681→   681→        await sleep(16)
+   682→   682→        peakY = Math.min(peakY, p.y)
+   683→   683→        if (p.grounded && i > 10) break
+   684→   684→      }
+   685→   685→      checks.push({
+   686→   686→        name: 'jump: standing apex clears 2.2× hip height',
+   687→   687→        pass: peakY < -140,
+   688→   688→        detail: `peakY=${peakY.toFixed(0)} (expect < -140)`,
+   689→   689→      })
+   690→   690→      // (b) double jump: press again MID-AIR — the air redirect stacks a
+   691→   691→      // second rise on top of the first
+   692→   692→      {
+   693→   693→        let peak2 = 0
+   694→   694→        input.setVirtual('jump', true)
+   695→   695→        await sleep(60)
+   696→   696→        input.setVirtual('jump', false)
+   697→   697→        await sleep(240) // rise partway (~apex of the first jump)
+   698→   698→        input.setVirtual('jump', true)
+   699→   699→        await sleep(60)
+   700→   700→        input.setVirtual('jump', false)
+   701→   701→        for (let i = 0; i < 40; i++) {
+   702→   702→          await sleep(16)
+   703→   703→          peak2 = Math.min(peak2, p.y)
+   704→   704→          if (p.grounded && i > 10) break
+   705→   705→        }
+   706→   706→        await sleep(400) // land + settle
+   707→   707→        checks.push({
+   708→   708→          name: 'jump: air jump stacks a second rise',
+   709→   709→          pass: peak2 < -170,
+   710→   710→          detail: `peak2=${peak2.toFixed(0)} (expect < -170)`,
+   711→   711→        })
+   712→   712→      }
+   713→   713→      // (c) running leap: momentum converts — the leap clip + carry-over
+   714→   714→      {
+   715→   715→        input.setVirtualAxis(1, 0)
+   716→   716→        await sleep(1000) // build to full run
+   717→   717→        const runVx = Math.abs(p.vx)
+   718→   718→        input.setVirtual('jump', true)
+   719→   719→        await sleep(50)
+   720→   720→        input.setVirtual('jump', false)
+   721→   721→        const leapClip = (p as unknown as { animator: { getClip(): { name: string } | null } })
+   722→   722→          .animator.getClip()?.name
+   723→   723→        await sleep(500)
+   724→   724→        input.setVirtualAxis(0, 0)
+   725→   725→        await sleep(300)
+   726→   726→        checks.push({
+   727→   727→          name: 'jump: run converts into the LEAP (conditioned)',
+   728→   728→          pass: runVx > 300 && leapClip === 'jumpLeap',
+   729→   729→          detail: `runVx=${runVx.toFixed(0)} clip=${leapClip}`,
+   730→   730→        })
+   731→   731→      }
+   732→   732→    }
+   733→   733→
+   734→   734→    // ---- 10. THE SWORD HOME: sheathe / draw system ----
+   735→   735→    // (a) manual sheathe (Q) → steel home after the ritual
+   736→   736→    {
+   737→   737→      input.setVirtual('sheathe', true)
+   738→   738→      await sleep(60)
+   739→   739→      input.setVirtual('sheathe', false)
+   740→   740→      await sleep(1000) // ritual (0.85s) completes
+   741→   741→      const sheathed = !p.swordDrawn
+   742→   742→      // (b) manual draw (Q again) → steel back out
+   743→   743→      input.setVirtual('sheathe', true)
+   744→   744→      await sleep(60)
+   745→   745→      input.setVirtual('sheathe', false)
+   746→   746→      await sleep(500) // draw (0.3s) completes
+   747→   747→      const drawnBack = p.swordDrawn
+   748→   748→      // (c) iai snap-draw: sheathe, then LIGHT → blade out instantly + attack
+   749→   749→      input.setVirtual('sheathe', true)
+   750→   750→      await sleep(60)
+   751→   751→      input.setVirtual('sheathe', false)
+   752→   752→      await sleep(1000)
+   753→   753→      input.setVirtual('light', true)
+   754→   754→      await sleep(80)
+   755→   755→      input.setVirtual('light', false)
+   756→   756→      const snapDrawn = p.swordDrawn
+   757→   757→      const attacking = p.state === 'attack'
+   758→   758→      await sleep(600)
+   759→   759→      checks.push({
+   760→   760→        name: 'sheathe: manual sheathe → steel home',
+   761→   761→        pass: sheathed,
+   762→   762→        detail: `swordDrawn after ritual=${!sheathed}`,
+   763→   763→      })
+   764→   764→      checks.push({
+   765→   765→        name: 'sheathe: manual draw → steel out',
+   766→   766→        pass: drawnBack,
+   767→   767→        detail: `swordDrawn=${drawnBack}`,
+   768→   768→      })
+   769→   769→      checks.push({
+   770→   770→        name: 'sheathe: light input → iai snap-draw + attack',
+   771→   771→        pass: snapDrawn && attacking,
+   772→   772→        detail: `drawn=${snapDrawn} state=${attacking ? 'attack' : 'other'}`,
+   773→   773→      })
+   774→   774→    }
+   775→   775→
+   776→   776→    // ---- cleanup: restore the real game ----
+   777→   777→    game.qaMode = false
+   778→   778→    game.enemies.length = 0
+   779→   779→    input.setVirtualAxis(0, 0)
+   780→   780→    p.reset(400)
+   781→   781→    log.push(`loco log: early=${earlyMode} full=${fullMode} sprint=${sprintMode} combat=${combatMode} back=${backMode}`)
+   782→   782→  } catch (err) {
+   783→   783→    checks.push({ name: 'harness', pass: false, detail: String(err) })
+   784→   784→  } finally {
+   785→   785→    game.qaMode = false
+   786→   786→  }
+   787→   787→
+   788→   788→  const fails = checks.filter((c) => !c.pass)
+   789→   789→  const report = {
+   790→   790→    pass: fails.length === 0,
+   791→   791→    total: checks.length,
+   792→   792→    failed: fails.length,
+   793→   793→    checks,
+   794→   794→    log,
+   795→   795→    at: new Date().toISOString(),
+   796→   796→  }
+   797→   797→  ;(window as unknown as Record<string, unknown>).__qaResult = report
+   798→   798→}
+   799→   799→
+   800→   800→export type { LocoMode, Player }
+   801→   801→
