@@ -1,9 +1,9 @@
-import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
+import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_STILL,DASH_STAMINA_REGEN_SPRINT,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
 import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVelocity,airDragCoefficient} from '../physics/motion-laws'
 import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
 import {rewardsConfirmedHit} from '../combat/hit-resolution'
 import {groundedDashAct} from '../anim/grounded-dash'
-import {POWER_DASH_CLIP,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
+import {DASH_CHARGE_CLIP,POWER_DASH_CLIP,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
 /** STICKMAN RISING — the Player: state machine, dash system, combo machine,
  * parry/riposte, charged attacks, elemental abilities, execution finishers.
  */
@@ -604,6 +604,15 @@ export class Player {
     return clamp01(this.chargeT / 0.55)
   }
 
+  /** The blade's CHARGE for rendering: whichever live charge is driving the
+   * steel — the heavy-hold gather OR the planted dash-charge coil (the blade
+   * charges while the dash charges). Physical, not arcane: this ratio drives
+   * the steel's kinetic language (edge glint, vibration ghost, kissaki star)
+   * in drawSword — never a neon halo. */
+  get bladeChargeRatio(): number {
+    return Math.max(this.chargeRatio, this.state === 'dashCharge' ? this.dashChargeProgress : 0)
+  }
+
   get parryWindowOpen(): boolean {
     return this.parryActive > 0
   }
@@ -647,8 +656,15 @@ export class Player {
     this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
     const staminaWait=this.staminaRegenDelay
     this.staminaRegenDelay=Math.max(0,staminaWait-dt)
-    if(this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dashCharge'&&this.state!=='dead'){
-      this.stamina=Math.min(this.maxStamina,this.stamina+DASH_STAMINA_REGEN*Math.max(0,dt-staminaWait))
+    // STILLNESS LAW: recovery is physical. A planted body (feet down, |vx|
+    // near zero — including the dash-charge stance, where the character is
+    // logically STANDING while the button is held) rests at full rate; a
+    // moving gait recovers slower; a full sprint barely trickles back.
+    // Swinging and dashing are exertion: those states pause the meter.
+    if(this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dead'&&this.state!=='attack'&&this.state!=='dash'){
+      const still=this.grounded&&Math.abs(this.vx)<30
+      const rate=still?DASH_STAMINA_REGEN_STILL:this.loco==='sprint'?DASH_STAMINA_REGEN_SPRINT:DASH_STAMINA_REGEN
+      this.stamina=Math.min(this.maxStamina,this.stamina+rate*Math.max(0,dt-staminaWait))
     }
     // Do not save a failed dash press and unexpectedly fire it after regen.
     if(w.input.pressed('dash')&&this.stamina<DASH_STAMINA_COST){
@@ -883,16 +899,16 @@ export class Player {
     }
     // Charge/stabilization are planted body-language beats, not flight.
     if(this.grounded&&this.state==='dashCharge'){
+      // The planted COIL clip owns the stance (plant → sink → lock — its
+      // keyframes are the choreography). This layer adds only what a clip
+      // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
+      // and a micro tremble in the sword arm itself, the steel visibly
+      // straining under stored tension. IK keeps the soles grounded.
       const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
-      p[CH.rootRot]+=(.18-p[CH.rootRot])*q
-      p[CH.head]+=(-.16-p[CH.head])*q
-      p[CH.rootY]+=3*q
-      p[CH.hipL]-=.18*q;p[CH.hipR]+=.12*q
-      p[CH.kneeL]-=.25*q;p[CH.kneeR]-=.25*q
-      // Small opposing knee and pelvis tremor; IK keeps the soles grounded.
       const tremor=Math.sin(this.now*55)*q
       p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
-      this.dashSink=Math.max(this.dashSink,.55*q)
+      p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
+      this.dashSink=Math.max(this.dashSink,.4*q)
     } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
       const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
       const q=powerDashRecovery(progress),p=this.pose
@@ -1605,7 +1621,10 @@ export class Player {
     this.sheathAct=null;this.dropAction();this.charging=false
     this.state='dashCharge';this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeFxT=0
     this.dashChargeX=ax||this.face
-    this.playAnimation(STOP_CLIP,{blend:.07,speed:.5})
+    // The planted CHARGE COIL itself — not a recycled brake cycle played at
+    // half speed. Standing entries blend from the near-neutral first beat;
+    // running entries arrest through it (traction brakes the real velocity).
+    this.playAnimation(DASH_CHARGE_CLIP,{blend:.07})
   }
 
   private updatePowerDashCharge(dt:number,w:WorldRef):void {
@@ -1614,12 +1633,27 @@ export class Player {
     this.vx=brakeVelocity(this.vx,tractionAcceleration(3200),dt)
     const ax=input.axisX(),ay=input.axisY()
     if(Math.abs(ax)>.2)this.dashChargeX=ax
-    // Charging is an intentional commitment, not an input lock on attacks.
+    // Attack from the charge: a FULLY charged release converts directly into
+    // the power dash attack (the startup was already paid in the coil —
+    // the blade is charged, so the strike rides the release). Early presses
+    // remain plain attacks, exactly as before.
     if(input.pressed('light')||input.buffered('light')){
-      input.takeBuffered('light');this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
+      input.takeBuffered('light')
+      if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
+        this.startDash(w,this.dashChargeX,0,true)
+        this.startAttack(ATTACKS.powerArc,w)
+        return
+      }
+      this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
     }
     if(input.pressed('heavy')||input.buffered('heavy')){
-      input.takeBuffered('heavy');this.startAttack(this.pickHeavy(w),w);return
+      input.takeBuffered('heavy')
+      if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
+        this.startDash(w,this.dashChargeX,0,true)
+        this.startAttack(ATTACKS.powerArc,w)
+        return
+      }
+      this.startAttack(this.pickHeavy(w),w);return
     }
     if(input.pressed('jump')||input.pressed('parry')||input.pressed('sheathe')){
       this.state='move'
@@ -1637,12 +1671,23 @@ export class Player {
     this.dashChargeT=Math.min(POWER_DASH_CHARGE,this.dashChargeT+dt)
     this.dashChargeFxT-=dt
     if(this.dashChargeT>.12&&this.dashChargeFxT<=0){
-      this.dashChargeFxT=.10;w.fx.dust(this.x-this.dashChargeX*12,-1,2)
+      // Foot-pressure grit: the planted feet crush ground debris — small
+      // puffs scatter around the STANCE, thrown off the load line.
+      this.dashChargeFxT=.10
+      w.fx.dust(this.x+rand(-7,7)-this.dashChargeX*10,-1,2)
       w.cam.addTrauma(.022) // camera honors the user's shake setting
     }
     if(!this.dashChargeReady&&this.dashChargeT>=POWER_DASH_CHARGE){
       this.dashChargeReady=true
-      if(this.stamina>=POWER_DASH_STAMINA_COST)w.audio.play('chargeReady',{volume:.32,pitch:1.15})
+      if(this.stamina>=POWER_DASH_STAMINA_COST){
+        w.audio.play('chargeReady',{volume:.32,pitch:1.15})
+        // The LOCK tell is kinetic, not arcane: the trembling steel snaps
+        // taut — a few white glint sparks shed off the kissaki, and the
+        // stance settles one final unit (the coil's own last keyframe).
+        if(this.swordDrawn)w.fx.sparks(this.blade.tx,this.blade.ty,-Math.PI/2,.4,3,'#eaf6ff',240,.2)
+        w.fx.dust(this.x-this.dashChargeX*8,0,3)
+        w.cam.addTrauma(.05)
+      }
     }
   }
 
@@ -1841,9 +1886,12 @@ export class Player {
     }
     this.advanceDashMotor(dt,w)
     // Light and heavy begin immediately while the motor keeps driving.
+    // A live POWER dash converts into its dedicated release — GALE BREAKER —
+    // instead of the standard pass cuts: the charged body earns its own
+    // strike performance, not a retimed phantom cut.
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
-      this.startAttack(ATTACKS.dashSlash, w)
+      this.startAttack(this.dashPower?ATTACKS.powerArc:ATTACKS.dashSlash, w)
       return
     }
     if (input.pressed('heavy') || input.buffered('heavy')) {
@@ -1853,7 +1901,7 @@ export class Player {
         return
       }
       input.takeBuffered('heavy')
-      this.startAttack(ATTACKS.dashHeavy, w)
+      this.startAttack(this.dashPower?ATTACKS.powerArc:ATTACKS.dashHeavy, w)
       return
     }
     if (this.dashT <= 0) {
@@ -2359,14 +2407,16 @@ export class Player {
       this.chargeReady = true
       w.audio.play('chargeReady')
     }
-    // converge particles on the blade
-    if (this.chargeReady && Math.random() < 0.5) {
-      const c = this.sword.colors
-      w.fx.embers(this.blade.tx, this.blade.ty, 2, c.glow, 10)
-      // THUNDER: tesla-crawl — micro-arcs snapping grip→monouchi along the
-      // steel (~15Hz pair cadence — a crackling capacitor, not a laser show)
+    // The charged hold speaks KINETIC, not arcane: the straining steel sheds
+    // occasional tiny glint sparks near the kissaki (drawSword carries the
+    // edge glint / vibration ghost / tip star). The THUNDER sword keeps its
+    // tesla-crawl — that is that blade's element identity, not the charge.
+    if (this.chargeReady) {
+      if (this.swordDrawn && Math.random() < 0.3) {
+        w.fx.sparks(this.blade.tx, this.blade.ty, -Math.PI / 2, .35, 1, '#eaf6ff', 200, .18)
+      }
       if (this.swordDrawn && this.sword.id === 'thunder' && Math.random() < 0.55) {
-        w.fx.lightningCrawl(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, c.trail)
+        w.fx.lightningCrawl(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, this.sword.colors.trail)
       }
     }
     if (this.grounded) this.vx = 0
@@ -3787,7 +3837,7 @@ export class Player {
     // the back blade rather than displaying steel through the ribcage.
     const drawing=this.sheathAct?.mode==='draw'
     const rearCarry=!drawing&&this.swordDrawn&&this.state!=='attack'&&this.geom.tip.x<this.geom.grip.x&&this.geom.bladeYaw<0
-    if(rearCarry)drawSword(ctx,this.sword,{time,charge:this.chargeRatio,alpha,swingGlow:0},
+    if(rearCarry)drawSword(ctx,this.sword,{time,charge:this.bladeChargeRatio,alpha,swingGlow:0},
       this.geom.grip.x,this.geom.grip.y,this.geom.bladeProjAngle,this.geom.bladeProjLen,this.geom.bladeTipZ)
     const currentClip=this.animator.getClip()
     const handPhase=currentClip && currentClip.dur>0
@@ -3804,7 +3854,9 @@ export class Player {
       // Shared renderer accepts weapon lighting; the matte surface ignores it.
       edgeLight: {
         color: this.sword.colors.glow,
-        a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
+        // Rim = light cast by the swinging/glinting steel onto the body —
+        // a reflection, not a body aura.
+        a: clamp01(this.swingGlow * 0.55 + this.bladeChargeRatio * 0.35 + this.bladeZ * 0.25) * alpha,
       },
       scarfNodes: this.scarfSimNodes,
     })
@@ -3896,7 +3948,7 @@ export class Player {
     if (this.swordDrawn && !rearCarry && !drawing) {
       drawSword(ctx, this.sword, {
         time,
-        charge: this.chargeRatio,
+        charge: this.bladeChargeRatio,
         alpha,
         swingGlow: this.swingGlow,
       }, this.geom.grip.x, this.geom.grip.y, this.geom.bladeProjAngle, this.geom.bladeProjLen, this.geom.bladeTipZ)
@@ -3952,9 +4004,10 @@ export class Player {
       ctx.restore()
     }
 
-    // ---- BLADE POINT-LIGHT: the edge emits a real localized light into
-    // the world while swinging/charging (additive radial at blade mid) ----
-    const lightI = clamp01(this.swingGlow * 0.8 + this.chargeRatio * 0.6)
+    // ---- BLADE POINT-LIGHT: while SWINGING, the moving edge throws a real
+    // localized light into the world (additive radial at blade mid). The
+    // charge contributes only a third weight — the glint, not a furnace. ----
+    const lightI = clamp01(this.swingGlow * 0.8 + this.bladeChargeRatio * 0.3)
     if (lightI > 0.25 && this.swordDrawn) {
       const mx = (this.blade.bx + this.blade.tx) / 2
       const my = (this.blade.by + this.blade.ty) / 2
@@ -3981,17 +4034,26 @@ export class Player {
       ctx.stroke()
       ctx.restore()
     }
-    // charge aura
-    if (this.charging && this.chargeReady) {
-      const c = this.sword.colors
+    // CHARGE read — GROUND PRESSURE, not an aura: while either charge holds
+    // its planted stance, the soles crush down and the ground answers with
+    // dark stress smears under the stance line (drawn on the GROUND plane,
+    // in shadow, additive-free). The blade itself carries the kinetic
+    // language (edge glint + vibration ghost + kissaki star — see drawSword);
+    // nothing orbits the body.
+    if ((this.charging || this.state === 'dashCharge') && this.swordDrawn) {
+      const cr = this.bladeChargeRatio
+      const gy = this.y + 2 // ground plane at the soles
+      const stance = 11 + cr * 5 // the stance widens as the coil deepens
       ctx.save()
-      ctx.globalCompositeOperation = 'lighter'
-      const r = 30 + this.chargeRatio * 16 + Math.sin(time * 18) * 4
-      ctx.strokeStyle = rgba(c.glow, 0.3 + 0.2 * Math.sin(time * 14))
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.arc(this.x, this.hipY - 16, r, 0, Math.PI * 2)
-      ctx.stroke()
+      ctx.globalAlpha = clamp01(0.14 + cr * 0.2)
+      ctx.strokeStyle = '#06090d'
+      ctx.lineWidth = 2.2 + cr * 1.6
+      ctx.lineCap = 'round'
+      for (const s of [-1, 1]) {
+        ctx.beginPath()
+        ctx.arc(this.x + s * stance, gy, 6 + cr * 3, s === this.face ? -0.5 : Math.PI - 0.35, s === this.face ? 0.35 : Math.PI + 0.5)
+        ctx.stroke()
+      }
       ctx.restore()
     }
 

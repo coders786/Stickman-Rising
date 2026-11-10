@@ -3,6 +3,51 @@
  * front leg reaches and absorbs the skid. Recovery is authored separately. */
 import {keyframe,makeClip} from './animator'
 
+/** THE PLANTED CHARGE — the sprinter-in-the-blocks coil the dash button
+ * holds while it stores the power dash.
+ *
+ * Physical language only: no channel of this stance implies stored magic.
+ * The body PLANTS (feet widen, hips sink, spine coils forward), the blade
+ * arms chamber back-level (the iai draw position the release explodes from),
+ * and the whole set trembles under isometric load (the 55 Hz tension tremor
+ * is added procedurally in player.ts — see updatePowerDashCharge).
+ *
+ * Choreography law: the t=.32 keyframe is EXACTLY POWER_DASH_CLIP's first
+ * keyframe (root/legs/head/off-arm) so the release crossfade is pose-identical
+ * — the coil hands the dash a seamless body. t=.42 is the LOCK beat: after
+ * full charge the set settles one final unit deeper and stops, the "taut
+ * steel" read that precedes the snap. The clip is non-looping: holding the
+ * button longer rests on the lock pose (the character is STANDING — stamina
+ * regenerates, see stamina.ts stillness rules).
+ *
+ * Name is deliberately OUTSIDE equipmentClip's adaptation whitelist: the
+ * authored arms must survive for both stances (drawn = chambered steel;
+ * sheathed = the same coil with the hand riding the saya). */
+export const DASH_CHARGE_CLIP=makeClip('chargeCoil',[
+ // entry: near-neutral standing arrest — blends clean out of idle/walk/run
+ keyframe(0,{rootX:1.5,rootY:2.5,rootRot:.10,spine:.03,head:-.10,
+   hipR:.45,kneeR:-.55,footR:.12,hipL:-.30,kneeL:-.42,footL:-.06,
+   shR:.05,elR:-.85,wrR:-.55,shL:.30,elL:-.75,wrL:-.15,
+   pelvisYaw:.10,chestYaw:-.10},'inOutSine'),
+ // the plant: feet widen, weight starts to sink, blade chamber deepens
+ keyframe(.14,{rootX:1.2,rootY:3.4,rootRot:.22,spine:.05,head:-.20,
+   hipR:.55,kneeR:-.85,footR:.15,hipL:-.32,kneeL:-.55,footL:-.02,
+   shR:-.02,elR:-1.00,wrR:-.65,shL:.35,elL:-1.0,wrL:-.15,
+   pelvisYaw:.12,chestYaw:-.12},'inOutSine'),
+ // FULL COIL — pose-identical to POWER_DASH_CLIP kf0 (seamless release);
+ // blade chambered back-level, off arm reaching its dash position
+ keyframe(.32,{rootX:1,rootY:4,rootRot:.35,head:-.32,
+   hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,footR:.15,footL:-.04,
+   shR:.16,elR:-.75,wrR:-.62,shL:.4,elL:-1.2,
+   pelvisYaw:.14,chestYaw:-.14},'inOutSine'),
+ // LOCK beat: the set settles one final unit under the load and stops.
+ keyframe(.42,{rootX:1,rootY:4.6,rootRot:.35,head:-.32,
+   hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,footR:.15,footL:-.04,
+   shR:.16,elR:-.75,wrR:-.62,shL:.4,elL:-1.2,
+   pelvisYaw:.14,chestYaw:-.14},'inOutSine'),
+])
+DASH_CHARGE_CLIP.interpolation='monotone'
+
 export const POWER_DASH_CLIP=makeClip('powerDash',[
  keyframe(0,{rootX:1,rootY:4,rootRot:.35,head:-.32,hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,shL:.4,elL:-1.2,shR:.16,elR:-.75},'inOutSine'),
  keyframe(.035,{rootX:3,rootY:4.5,rootRot:.64,head:-.60,hipL:-.56,kneeL:-.50,hipR:.75,kneeR:-1.24,shL:.68,elL:-1.12,shR:.35,elR:-.90},'inOutSine'),

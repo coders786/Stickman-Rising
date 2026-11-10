@@ -451,6 +451,39 @@ const SLIDEKICK = clip('unarmedSlideKick', [
   kf(0.50, G, 'outCubic'),
 ])
 
+/** 17b · POWER DASH ATTACK (sheathed) — CHARGED RAM: the sprinter coil's
+ * empty-hand release. The planted charge already paid the startup, so the
+ * ram ignites inside the drive: shoulder drops, whole body launches level,
+ * and the lunge haymaker rides the pass THROUGH the line, weight reclaiming
+ * only after the follow-through. Mirrors atk_powerArc's beat structure. */
+const POWERRAM = clip('unarmedPowerRam', [
+  // carried coil — pose-continuous with the charge stance's LOCK beat
+  kf(0, { ...G, rootY: 4, rootRot: 0.5, spine: 0.06, head: -0.3,
+    ...legPose('right', 10, 34), kneeR: -1.35, ...legPose('left', -14, 40), kneeL: -0.5,
+    ...handPose('right', -4, 20), ...handPose('left', 12, 2),
+    pelvisYaw: 0.14, chestYaw: -0.14 }, 'outQuad'),
+  // final micro-load: the last coil before the launch
+  kf(0.05, { ...G, rootY: 4.4, rootRot: 0.56, spine: 0.07, head: -0.34,
+    ...legPose('right', 10, 36), kneeR: -1.42, ...legPose('left', -15, 42), kneeL: -0.45,
+    ...handPose('right', -7, 18), ...handPose('left', 13, 1) }, 'outQuad'),
+  // STRIKE: shoulder leads through the pack — full-body commitment
+  kf(0.11, { ...G, rootY: 3.4, rootRot: 0.5, spine: 0.14, head: -0.26, rootX: 6,
+    ...legPose('right', 16, 42), kneeR: -1.45, ...legPose('left', -18, 44), kneeL: -0.4,
+    ...handPose('right', 30, -2), chestYaw: -0.28, pelvisYaw: 0.18 }, 'outQuart'),
+  // follow-through: the haymaker arm whips past, hips unwind
+  kf(0.19, { ...G, rootY: 3.8, rootRot: 0.4, spine: 0.1, head: -0.2, rootX: 7,
+    ...legPose('right', 15, 44), kneeR: -1.5, ...legPose('left', -12, 42), kneeL: -0.62,
+    ...handPose('right', 36, 6), chestYaw: -0.12, pelvisYaw: 0.1 }, 'outCubic'),
+  // settle: the skid catch reclaims the guard
+  kf(0.28, { ...G, rootY: 4.2, rootRot: 0.28, head: -0.16,
+    ...legPose('right', 12, 40), kneeR: -1.5, ...legPose('left', -8, 38), kneeL: -0.9,
+    ...handPose('right', 22, 6), ...handPose('left', 9, 5) }, 'inOutCubic'),
+  mid(0.36, { ...G, rootY: 4.2, rootRot: 0.28, head: -0.16,
+    ...legPose('right', 12, 40), kneeR: -1.5, ...legPose('left', -8, 38), kneeL: -0.9,
+    ...handPose('right', 22, 6), ...handPose('left', 9, 5) }, G),
+  kf(0.44, G),
+])
+
 /* ================================================================== */
 /* SPECIALS                                                            */
 /* ================================================================== */
@@ -791,6 +824,11 @@ const MOVES_SRC: MoveSpec[] = [
   { id: 'dashHeavy', label: 'TIGER SLIDE KICK', kind: 'dash', requires: 'ground', clip: SLIDEKICK, limb: 'right', joint: 'foot',
     hitStart: 0.14, hitEnd: 0.34, dmg: 20, kb: 190, heavy: true,
     groundDrive: { duration: 0.32, acceleration: 900 } },
+  /* power dash attack — the sheathed release of a fully charged dash */
+  { id: 'powerArc', label: 'CHARGED RAM', kind: 'dash', requires: 'ground', clip: POWERRAM, limb: 'right', joint: 'shoulder',
+    hitStart: 0.09, hitEnd: 0.22, dmg: 24, kb: 460, heavy: true, breakGuard: true,
+    stagger: 0.5, hitstop: 0.08, shake: 0.24, multiHit: 0.09, moveX: 240, moveXAt: 0.02,
+    chain: ['h1', 'l1'] },
   /* specials */
   { id: 'riposte', label: 'REKKA COUNTER PALM', kind: 'riposte', requires: 'any', clip: COUNTERPALM, limb: 'right',
     hitStart: 0.13, hitEnd: 0.24, dmg: 24, kb: 215, breakGuard: true },

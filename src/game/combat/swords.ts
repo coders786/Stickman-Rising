@@ -198,7 +198,9 @@ export function drawSword(
   ctx.globalAlpha *= alpha
   ctx.lineCap = 'round'
 
-  const glowW = 5 + charge * 4 + swing * 3.2
+  // CHARGE no longer feeds the glow width — the charged blade speaks
+  // KINETIC (trembling steel + traveling glint), not neon amplitude.
+  const glowW = 5 + swing * 3.2
 
   // ---- 0. tsuka (handle): wrapped grip BEHIND the hand, kashira pommel ----
   ctx.strokeStyle = '#1a2230'
@@ -225,13 +227,15 @@ export function drawSword(
   ctx.ellipse(hx - dx * tsuka, hy - dy * tsuka, 2.0 * zm, 3.4 * zm, a + Math.PI / 2, 0, Math.PI * 2)
   ctx.fill()
 
-  // ---- 1. aura pass (additive) behind the blade ----
+  // ---- 1. aura pass (additive) behind the blade — SWING energy only.
+  // A stored charge adds no aura: it lives in the physical layers below
+  // (vibration ghost, edge glint, kissaki star). ----
   ctx.globalCompositeOperation = 'lighter'
-  ctx.strokeStyle = rgba(sword.colors.glow, 0.16 + charge * 0.3 + swing * 0.25)
+  ctx.strokeStyle = rgba(sword.colors.glow, 0.16 + swing * 0.25)
   ctx.lineWidth = glowW + 5
   strokeBlade(ctx, sword, hx, hy, dx, dy, ex, ey, len, t)
   ctx.stroke()
-  ctx.strokeStyle = rgba(sword.colors.glow, 0.5 + charge * 0.35)
+  ctx.strokeStyle = rgba(sword.colors.glow, 0.5 + swing * 0.15)
   ctx.lineWidth = glowW * 0.55
   strokeBlade(ctx, sword, hx, hy, dx, dy, ex, ey, len, t)
   ctx.stroke()
@@ -256,6 +260,24 @@ export function drawSword(
   const by0 = hy + dy * 3.4
   const bladeLen = len - 3.4
   const wBase = 2.1 * sword.trailWidth * zm
+  // ---- 3a. VIBRATION GHOST — steel under stored tension physically
+  // trembles: two translucent offset copies of the blade body flicker at
+  // frame-aliased ~90Hz (±perpendicular, amplitude grows with charge).
+  // A blur read, never a glow. ----
+  if (charge > .25) {
+    const vg = (charge - .25) / .75
+    const amp = .6 + vg * 1.1
+    for (let i = 0; i < 2; i++) {
+      const off = Math.sin(t * 93 + i * 2.4) * amp
+      ctx.save()
+      ctx.translate(ex * off, ey * off)
+      ctx.beginPath()
+      buildBladePolygon(ctx, sword, bx0, by0, dx, dy, ex, ey, bladeLen, wBase, t)
+      ctx.fillStyle = rgba(sword.colors.blade, 0.26 * vg)
+      ctx.fill()
+      ctx.restore()
+    }
+  }
   // fill body
   ctx.beginPath()
   buildBladePolygon(ctx, sword, bx0, by0, dx, dy, ex, ey, bladeLen, wBase, t)
@@ -284,23 +306,63 @@ export function drawSword(
   ctx.moveTo(edgePts[0], edgePts[1])
   ctx.quadraticCurveTo(edgePts[2], edgePts[3], edgePts[4], edgePts[5])
   ctx.stroke()
+  // ---- 3b. TRAVELING EDGE GLINT — the charge read: a bright specular
+  // band slides along the ha from habaki toward the kissaki as stored
+  // tension rises (steel catching light under inspection). Quadratic eval
+  // of the author's own edge curve, ±10% span, white-steel, additive. ----
+  if (charge > 0.04) {
+    const g = clamp01(charge)
+    const qEval = (s: number): [number, number] => {
+      const u = Math.max(0, Math.min(1, s))
+      const iu = 1 - u
+      return [
+        iu * iu * edgePts[0] + 2 * iu * u * edgePts[2] + u * u * edgePts[4],
+        iu * iu * edgePts[1] + 2 * iu * u * edgePts[3] + u * u * edgePts[5],
+      ]
+    }
+    const u0 = clamp01(0.15 + g * 0.75 + Math.sin(t * 2.6) * 0.06)
+    const [gx0, gy0] = qEval(u0 - 0.09)
+    const [gx1, gy1] = qEval(u0 + 0.09)
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.strokeStyle = rgba(sword.colors.core, 0.35 + 0.45 * g)
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(gx0, gy0)
+    ctx.lineTo(gx1, gy1)
+    ctx.stroke()
+    // the hot head of the glint — a mote of caught light
+    ctx.fillStyle = rgba('#ffffff', 0.5 * g)
+    ctx.beginPath()
+    ctx.arc(gx1, gy1, 1.1 + g * 0.9, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+  }
 
-  // ---- 4. kissaki (tip) glint + charge halo ----
+  // ---- 4. kissaki (tip) glint ----
   const tipX = hx + dx * len
   const tipY = hy + dy * len
   ctx.globalCompositeOperation = 'lighter'
   // the tip flares with depth — a blade driving at the lens blooms
-  const tw = (2.2 + Math.sin(t * 9) * 0.7 + charge * 3 + swing * 3.6) * (1 + Math.max(0, z) * 1.3)
+  const tw = (2.2 + Math.sin(t * 9) * 0.7 + swing * 3.6) * (1 + Math.max(0, z) * 1.3)
   ctx.fillStyle = rgba(sword.colors.core, 0.75 + swing * 0.25)
   ctx.beginPath()
   ctx.arc(tipX, tipY, tw, 0, Math.PI * 2)
   ctx.fill()
-  if (charge > 0.05) {
-    ctx.strokeStyle = rgba(sword.colors.glow, charge * 0.8)
-    ctx.lineWidth = 1.6
-    ctx.beginPath()
-    ctx.arc(tipX, tipY, 7 + charge * 9 + Math.sin(t * 14) * 2, 0, Math.PI * 2)
-    ctx.stroke()
+  // ---- 4b. KISSAKI GLINT STAR — the fully charged read, replacing the
+  // old energy halo: a tight 4-ray specular star at the point (steel-white,
+  // rotating slowly with the blade's own clock — a reflection, not a ring). ----
+  if (charge > 0.15) {
+    const g = clamp01((charge - 0.15) / 0.85)
+    const gs = (3 + g * 3.5 + Math.sin(t * 31) * 0.8) * (1 + Math.max(0, z) * 0.8)
+    ctx.strokeStyle = rgba('#ffffff', 0.55 * g)
+    ctx.lineWidth = 1.1
+    for (let i = 0; i < 4; i++) {
+      const sa = a + Math.PI / 4 + i * Math.PI / 2
+      ctx.beginPath()
+      ctx.moveTo(tipX + Math.cos(sa) * gs * 0.35, tipY + Math.sin(sa) * gs * 0.35)
+      ctx.lineTo(tipX + Math.cos(sa) * gs, tipY + Math.sin(sa) * gs)
+      ctx.stroke()
+    }
   }
   // ---- 5. CAMERA-PIERCE FLARE: when the thrust drives the blade deep
   // toward the lens (z > 0.55), bloom a hard halo + streak ring at the

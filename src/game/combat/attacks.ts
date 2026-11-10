@@ -900,6 +900,76 @@ const dashHeavy: AttackDef = {
   },
 }
 
+/** POWER DASH ATTACK — GALE BREAKER: the dedicated release of a fully
+ * charged dash. The startup was already paid during the planted charge, so
+ * the strike ignites inside the drive: the chambered steel whips through
+ * one committed horizontal arc while the power-dash body carries it
+ * THROUGH the pack; follow-through runs past the blade, then the skid
+ * catch reclaims the stance. Selected ONLY from a live power dash (or a
+ * ready dash-charge release) — never a grounded heavy. */
+const powerArc: AttackDef = {
+  id: 'powerArc', label: 'GALE BREAKER', kind: 'dash', requires: 'ground',
+  clip: makeClip('atk_powerArc', [
+    // carried coil — pose-continuous with the charge stance's LOCK beat and
+    // POWER_DASH_CLIP's opening stride (the release never re-loads)
+    keyframe(0, {
+      rootRot: 0.55, rootY: 4, spine: 0.06, head: -0.5,
+      hipR: 0.85, kneeR: -1.35, footR: 0.2,
+      hipL: -0.75, kneeL: -0.5, footL: -0.05,
+      shR: 0.16, elR: -0.75, wrR: -0.62, // blade chambered back-level
+      shL: 0.4, elL: -1.2,
+    }, 'outQuad'),
+    // final micro-load: the last coil before the whip (anticipation beat)
+    keyframe(0.05, {
+      rootRot: 0.6, rootY: 4.4, spine: 0.07, head: -0.55,
+      hipR: 0.92, kneeR: -1.42, footR: 0.22,
+      hipL: -0.82, kneeL: -0.45, footL: -0.05,
+      shR: -0.05, elR: -1.05, wrR: -0.7,
+      shL: 0.45, elL: -1.15,
+    }, 'outQuad'),
+    // STRIKE: the whole chain uncoils level — hip, spine, arm, blade in one
+    // horizontal sweep through the pass (the charged payoff frame)
+    keyframe(0.11, {
+      rootRot: 0.5, rootY: 3.2, spine: 0.14, head: -0.42,
+      hipR: 1.0, kneeR: -1.45, footR: 0.25,
+      hipL: -0.9, kneeL: -0.4, footL: -0.02,
+      shR: 1.45, elR: 0.12, wrR: 0.05, // level through-cut, full extension
+      shL: 0.35, elL: -1.3,
+      pelvisYaw: 0.18, chestYaw: -0.2,
+    }, 'outQuart'),
+    // follow-through: the blade sweeps PAST the target, arm rides across
+    keyframe(0.19, {
+      rootRot: 0.42, rootY: 3.6, spine: 0.1, head: -0.34,
+      hipR: 0.98, kneeR: -1.5, footR: 0.2,
+      hipL: -0.78, kneeL: -0.62, footL: 0.05,
+      shR: 1.85, elR: 0.45, wrR: -0.5,
+      shL: 0.2, elL: -1.35,
+      pelvisYaw: 0.1, chestYaw: -0.14,
+    }, 'outCubic'),
+    // settle: the skid catch reclaims the stance, arms gather
+    keyframe(0.28, {
+      rootRot: 0.3, rootY: 4.2, spine: 0.05, head: -0.2,
+      hipR: 0.9, kneeR: -1.5, footR: 0.18,
+      hipL: -0.6, kneeL: -0.9, footL: 0.08,
+      shR: 1.0, elR: -0.4, wrR: -0.9,
+      shL: 0.5, elL: -1.1,
+    }, 'inOutCubic'),
+    keyframe(0.42, GUARD, 'inOutCubic'),
+    keyframe(0.5, GUARD, 'inOutCubic'),
+  ]),
+  hit: { start: 0.08, end: 0.2, dmg: 28, stagger: 0.5, kb: 500, hitstop: 0.1, shake: 0.34, heavy: true, multiHit: 0.09, pad: 8 },
+  trail: { start: 0.06, end: 0.24 },
+  swingSfx: { t: 0.05, name: 'swingHeavy' },
+  cancel: 0.3,
+  chain: ['l1', 'h1', 'launcher'],
+  moveX: 240, moveXAt: 0.02, // assist only — the power-dash motor owns the drive
+  grip: 0.35,
+  zArc: 0.55,
+  traj: { // CHARGED PASS family: a wide level arc carried through the sweep
+    a0: -3.0, a1: 0.15, y0: -0.25, y1: 0.2, e0: 0.55, e1: 0.95, band: 52,
+  },
+}
+
 /** CHARGED — OVERLOAD SLASH: element-charged kesa. Huge windup with the
  * blade thrown up-back over the shoulder, then a whipping diagonal. */
 const charged: AttackDef = {
@@ -1256,7 +1326,7 @@ const slam: AttackDef = {
 export const ATTACKS: Record<string, AttackDef> = {
   l1, l2, l3, l4, l5, retreat, spin, stabs,
   h1, h2, h3, launcher,
-  dashSlash, dashHeavy, charged, riposte,
+  dashSlash, dashHeavy, powerArc, charged, riposte,
   a1, a2, a3, dive, slam,
   /* empty-hand command moves — selected ONLY while sheathed
    * (see Player.pickHeavy / Player.pickLight air branch) */
