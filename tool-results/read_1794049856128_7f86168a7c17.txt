@@ -1,0 +1,702 @@
+    32→    32→
+    33→    33→function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): boolean {
+    34→    34→  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2)
+    35→    35→  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3)
+    36→    36→  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1)
+    37→    37→  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0
+    38→    38→  const hasPos = d1 > 0 || d2 > 0 || d3 > 0
+    39→    39→  return !(hasNeg && hasPos)
+    40→    40→}
+    41→    41→
+    42→    42→export type PlayerState =
+    43→    43→  | 'move' | 'attack' | 'dash' | 'parry' | 'charge' | 'hurt' | 'dead'
+    44→    44→  | 'scripted' // driven by Game cinematics (ult / execution)
+    45→    45→
+    46→    46→const SCALE = 1.32
+    47→    47→const HIP_H = 60
+    48→    48→
+    49→    49→const MOVE_MAX = 350
+    50→    50→const ACCEL = 2600
+    51→    51→const FRICTION = 2800
+    52→    52→const AIR_ACCEL = 1800
+    53→    53→const GRAVITY = 2050
+    54→    54→const JUMP_V = -700
+    55→    55→const AIR_JUMP_V = -620
+    56→    56→const DASH_SPEED = 980
+    57→    57→const DASH_TIME = 0.15
+    58→    58→const DASH_CD = 0.1
+    59→    59→const DASH_RECHARGE = 0.32
+    60→    60→
+    61→    61→interface ActionState {
+    62→    62→  def: AttackDef
+    63→    63→  animT: number
+    64→    64→  hitMap: Map<number, number>
+    65→    65→  trail: Trail
+    66→    66→  sfxDone: boolean
+    67→    67→  moveDone: boolean
+    68→    68→  moveYDone: boolean
+    69→    69→  impactDone: boolean
+    70→    70→  fromParry: boolean
+    71→    71→}
+    72→    72→
+    73→    73→interface AbilityState {
+    74→    74→  kind: SwordId
+    75→    75→  t: number
+    76→    76→  step: number
+    77→    77→  targets: number[]
+    78→    78→  x: number
+    79→    79→  y: number
+    80→    80→}
+    81→    81→
+    82→    82→export class Player {
+    83→    83→  x = 400
+    84→    84→  y = 0
+    85→    85→  vx = 0
+    86→    86→  vy = 0
+    87→    87→  face: 1 | -1 = 1
+    88→    88→  grounded = true
+    89→    89→
+    90→    90→  hp = 100
+    91→    91→  maxHp = 100
+    92→    92→  energy = 100
+    93→    93→  maxEnergy = 100
+    94→    94→  meter = 0
+    95→    95→
+    96→    96→  sword: SwordDef = SWORDS.katana
+    97→    97→
+    98→    98→  state: PlayerState = 'move'
+    99→    99→  private animator = new Animator()
+   100→   100→  pose: Pose = makePose()
+   101→   101→  geom: SkelGeom = makeSkelGeom()
+   102→   102→  swingGlow = 0
+   103→   103→  flashT = 0
+   104→   104→  iframes = 0
+   105→   105→
+   106→   106→  private action: ActionState | null = null
+   107→   107→  private ability: AbilityState | null = null
+   108→   108→
+   109→   109→  private lightIndex = 0
+   110→   110→  private airIndex = 0
+   111→   111→  private lastLightAt = -10
+   112→   112→  private lastGrounded = true
+   113→   113→  private landSpring = 0
+   114→   114→
+   115→   115→  private dashT = 0
+   116→   116→  private dashCd = 0
+   117→   117→  private dashConsec = 0
+   118→   118→  private dashRecharge = 0
+   119→   119→  private dashDx = 1
+   120→   120→  private dashDy = 0
+   121→   121→  private airDashUsed = false
+   122→   122→  private jumpsUsed = 0
+   123→   123→  private afterimgTimer = 0
+   124→   124→
+   125→   125→  private parryT = 0
+   126→   126→  private parryActive = 0
+   127→   127→  riposteT = 0
+   128→   128→  private parryPerfect = false
+   129→   129→
+   130→   130→  private chargeT = 0
+   131→   131→  charging = false
+   132→   132→  private chargeReady = false
+   133→   133→
+   134→   134→  private hurtT = 0
+   135→   135→  private deadT = 0
+   136→   136→  /** anime turn accent: brief squash when facing flips */
+   137→   137→  private turnT = 0
+   138→   138→
+   139→   139→  /** world-space blade segment (hit + trail sampling) */
+   140→   140→  blade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   141→   141→  /** soft ground-contact offset (kept outside the pose — clips stay pure) */
+   142→   142→  readonly ground: GroundState = { off: 0 }
+   143→   143→  /** previous frame's blade segment (swept hit detection) */
+   144→   144→  private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   145→   145→  private hasPrevBlade = false
+   146→   146→
+   147→   147→  constructor() {
+   148→   148→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   149→   149→  }
+   150→   150→
+   151→   151→  reset(x: number): void {
+   152→   152→    this.x = x
+   153→   153→    this.y = 0
+   154→   154→    this.vx = 0
+   155→   155→    this.vy = 0
+   156→   156→    this.face = 1
+   157→   157→    this.grounded = true
+   158→   158→    this.hp = this.maxHp
+   159→   159→    this.energy = this.maxEnergy
+   160→   160→    this.meter = 0
+   161→   161→    this.state = 'move'
+   162→   162→    this.action = null
+   163→   163→    this.ability = null
+   164→   164→    this.charging = false
+   165→   165→    this.hurtT = 0
+   166→   166→    this.iframes = 0
+   167→   167→    this.deadT = 0
+   168→   168→    this.exitScriptedSoon = 0
+   169→   169→    this.lightIndex = 0
+   170→   170→    this.airIndex = 0
+   171→   171→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   172→   172→  }
+   173→   173→
+   174→   174→  setSword(id: SwordId): void {
+   175→   175→    this.sword = SWORDS[id]
+   176→   176→  }
+   177→   177→
+   178→   178→  get atkSpeed(): number {
+   179→   179→    return this.sword.stats.spd
+   180→   180→  }
+   181→   181→
+   182→   182→  get busy(): boolean {
+   183→   183→    return this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
+   184→   184→  }
+   185→   185→
+   186→   186→  get chargeRatio(): number {
+   187→   187→    return clamp01(this.chargeT / 0.55)
+   188→   188→  }
+   189→   189→
+   190→   190→  get parryWindowOpen(): boolean {
+   191→   191→    return this.parryActive > 0
+   192→   192→  }
+   193→   193→
+   194→   194→  get isDead(): boolean {
+   195→   195→    return this.state === 'dead'
+   196→   196→  }
+   197→   197→
+   198→   198→  get deadTime(): number {
+   199→   199→    return this.deadT
+   200→   200→  }
+   201→   201→
+   202→   202→  get hipY(): number {
+   203→   203→    return this.y - HIP_H + (this.pose[1] + this.ground.off) * SCALE
+   204→   204→  }
+   205→   205→
+   206→   206→  /** debug/inspection: current clip + local time (used by the F9 inspector) */
+   207→   207→  animDebug(): { clip: Clip | null; time: number } {
+   208→   208→    return { clip: this.animator.getClip(), time: this.animator.getTime() }
+   209→   209→  }
+   210→   210→
+   211→   211→  /* ------------------------------------------------------------------ */
+   212→   212→  /* main update                                                          */
+   213→   213→  /* ------------------------------------------------------------------ */
+   214→   214→
+   215→   215→  update(dt: number, w: WorldRef): void {
+   216→   216→    this.iframes = Math.max(0, this.iframes - dt)
+   217→   217→    this.flashT = Math.max(0, this.flashT - dt * 5)
+   218→   218→    this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
+   219→   219→    this.riposteT = Math.max(0, this.riposteT - dt)
+   220→   220→    this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
+   221→   221→    this.turnT = Math.max(0, this.turnT - dt)
+   222→   222→
+   223→   223→    switch (this.state) {
+   224→   224→      case 'move': this.updateMove(dt, w); break
+   225→   225→      case 'attack': this.updateAttack(dt, w); break
+   226→   226→      case 'dash': this.updateDash(dt, w); break
+   227→   227→      case 'parry': this.updateParry(dt, w); break
+   228→   228→      case 'charge': this.updateCharge(dt, w); break
+   229→   229→      case 'hurt': this.updateHurt(dt, w); break
+   230→   230→      case 'dead': this.updateDead(dt, w); break
+   231→   231→      case 'scripted': this.updateScripted(dt); break
+   232→   232→    }
+   233→   233→
+   234→   234→    // physics integration (shared)
+   235→   235→    if (this.state !== 'dash') {
+   236→   236→      const g = this.state === 'attack' && this.action && this.action.def.float
+   237→   237→        ? GRAVITY * this.action.def.float
+   238→   238→        : GRAVITY
+   239→   239→      this.vy += g * dt
+   240→   240→    }
+   241→   241→    this.x += this.vx * dt
+   242→   242→    this.y += this.vy * dt
+   243→   243→
+   244→   244→    // ground
+   245→   245→    const wasAir = !this.grounded
+   246→   246→    if (this.y >= 0) {
+   247→   247→      this.y = 0
+   248→   248→      if (this.vy > 140) {
+   249→   249→        this.landSpring = clamp(this.vy / 700, 0, 1)
+   250→   250→        if (wasAir) this.onLand(w)
+   251→   251→      } else if (wasAir) {
+   252→   252→        this.landSpring = 0.4
+   253→   253→        this.onLand(w)
+   254→   254→      }
+   255→   255→      this.vy = 0
+   256→   256→      this.grounded = true
+   257→   257→      this.jumpsUsed = 0
+   258→   258→      this.airDashUsed = false
+   259→   259→    } else {
+   260→   260→      this.grounded = false
+   261→   261→    }
+   262→   262→    // arena bounds
+   263→   263→    if (this.x < w.arenaMinX + 20) {
+   264→   264→      this.x = w.arenaMinX + 20
+   265→   265→      if (this.vx < -200) w.fx.dust(this.x - 12, 0, 5)
+   266→   266→      this.vx = Math.max(0, this.vx)
+   267→   267→    }
+   268→   268→    if (this.x > w.arenaMaxX - 20) {
+   269→   269→      this.x = w.arenaMaxX - 20
+   270→   270→      if (this.vx > 200) w.fx.dust(this.x + 12, 0, 5)
+   271→   271→      this.vx = Math.min(0, this.vx)
+   272→   272→    }
+   273→   273→
+   274→   274→    this.dashCd = Math.max(0, this.dashCd - dt)
+   275→   275→    this.dashRecharge = Math.max(0, this.dashRecharge - dt)
+   276→   276→    if (this.dashRecharge <= 0) this.dashConsec = 0
+   277→   277→
+   278→   278→    // ability script
+   279→   279→    if (this.ability) this.updateAbility(dt, w)
+   280→   280→
+   281→   281→    // animation + solve — ROOT-MOTION POLICY: the animator owns the pose
+   282→   282→    // baseline; procedural layers re-apply on the fresh sample each frame
+   283→   283→    // (without this copy, lean/spring adds accumulate into a never-reset
+   284→   284→    // array and the whole torso visibly spins while running)
+   285→   285→    this.animator.update(dt)
+   286→   286→    copyPose(this.pose, this.animator.pose)
+   287→   287→    this.applyProcedural(dt)
+   288→   288→    solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
+   289→   289→    // soft ground contact — plants the feet via a persistent offset without
+   290→   290→    // touching the clip's authored root motion
+   291→   291→    if (this.grounded) {
+   292→   292→      applyGroundConstraint(this.pose, this.geom, PLAYER_SPEC, 47, dt, this.ground)
+   293→   293→    } else {
+   294→   294→      this.ground.off += (0 - this.ground.off) * (1 - Math.exp(-15 * dt))
+   295→   295→    }
+   296→   296→    this.updateBladeWorld()
+   297→   297→  }
+   298→   298→
+   299→   299→  private onLand(w: WorldRef): void {
+   300→   300→    w.audio.play('land', { volume: 0.5 })
+   301→   301→    w.fx.dust(this.x, 0, 7)
+   302→   302→    // slam impact while attacking
+   303→   303→    const a = this.action
+   304→   304→    if (a && a.def.slamImpact && !a.impactDone) {
+   305→   305→      a.impactDone = true
+   306→   306→      this.slamAoe(w, a.def.slamImpact.r, a.def.slamImpact.dmg, a.def.slamImpact.launch)
+   307→   307→    }
+   308→   308→    if (this.state === 'move' && this.lastGrounded === false) {
+   309→   309→      this.animator.play(LAND_CLIP, { blend: 0.03 })
+   310→   310→    }
+   311→   311→    this.airIndex = 0
+   312→   312→  }
+   313→   313→
+   314→   314→  private slamAoe(w: WorldRef, r: number, dmg: number, launch: number): void {
+   315→   315→    const info: AttackRuntimeInfo = {
+   316→   316→      id: 'slam', dmg: dmg * this.sword.stats.dmg, heavy: true,
+   317→   317→      stagger: 0.5, kb: 240, kbY: 0, launch, juggle: 0,
+   318→   318→      hitstop: 0.11, shake: 0.45, aoe: r, breakGuard: true, kind: 'heavy',
+   319→   319→    }
+   320→   320→    const colors = this.sword.colors
+   321→   321→    w.fx.shockwave(this.x, 0, r, colors.glow, 0.5, 8)
+   322→   322→    w.fx.groundCrack(this.x, 0, r * 0.6)
+   323→   323→    w.fx.burst(this.x, -6, 14, colors.glow, 340, 0.5, 'spark')
+   324→   324→    w.fx.screenFlash(colors.trail, 0.16, 5)
+   325→   325→    w.addHitstop(0.09, 0.06)
+   326→   326→    w.cam.addTrauma(0.4)
+   327→   327→    w.audio.play('slam', { intensity: 1 })
+   328→   328→    const bx = this.x
+   329→   329→    for (const e of w.enemies) {
+   330→   330→      if (e.dead || e.spawning) continue
+   331→   331→      const dx = e.x - bx
+   332→   332→      if (Math.abs(dx) < r && e.y > -140) {
+   333→   333→        w.hitEnemy(e.id, { bx: bx - 20, by: -20, tx: bx + 20, ty: -20 }, info)
+   334→   334→      }
+   335→   335→    }
+   336→   336→  }
+   337→   337→
+   338→   338→  /* ------------------------------------------------------------------ */
+   339→   339→  /* locomotion                                                           */
+   340→   340→  /* ------------------------------------------------------------------ */
+   341→   341→
+   342→   342→  private updateMove(dt: number, w: WorldRef): void {
+   343→   343→    const input = w.input
+   344→   344→    const ax = input.axisX()
+   345→   345→    const ay = input.axisY()
+   346→   346→
+   347→   347→    // horizontal movement
+   348→   348→    if (ax !== 0) {
+   349→   349→      const accel = this.grounded ? ACCEL : AIR_ACCEL
+   350→   350→      this.vx += ax * accel * dt
+   351→   351→      this.vx = clamp(this.vx, -MOVE_MAX, MOVE_MAX)
+   352→   352→      if (ax > 0 !== (this.face > 0)) this.turnT = 0.09 // anime turn accent
+   353→   353→      this.face = ax > 0 ? 1 : -1
+   354→   354→    } else if (this.grounded) {
+   355→   355→      const f = FRICTION * dt
+   356→   356→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   357→   357→    } else {
+   358→   358→      this.vx = damp(this.vx, 0, 0.4, dt)
+   359→   359→    }
+   360→   360→
+   361→   361→    // locomotion clip selection — gait tempo matched to ground speed so the
+   362→   362→    // planted foot tracks (stride ≈ 156px/cycle at SCALE 1.32 → vx/311)
+   363→   363→    const speed = Math.abs(this.vx)
+   364→   364→    if (this.grounded) {
+   365→   365→      if (speed > 40) {
+   366→   366→        this.animator.play(RUN_CLIP, { blend: 0.09, speed: clamp(speed / 311, 0.5, 1.45) })
+   367→   367→      } else if (this.vy === 0) {
+   368→   368→        this.animator.play(IDLE_CLIP, { blend: 0.16 })
+   369→   369→      }
+   370→   370→    } else if (this.vy < -60) {
+   371→   371→      this.animator.play(JUMP_CLIP, { blend: 0.06 })
+   372→   372→    } else {
+   373→   373→      this.animator.play(FALL_CLIP, { blend: 0.12 })
+   374→   374→    }
+   375→   375→
+   376→   376→    // ---- actions ----
+   377→   377→    if (this.tryCombatInputs(w, ax, ay)) return
+   378→   378→  }
+   379→   379→
+   380→   380→  /** returns true if a new state was entered */
+   381→   381→  private tryCombatInputs(w: WorldRef, ax: number, ay: number): boolean {
+   382→   382→    const input = w.input
+   383→   383→
+   384→   384→    // dash (anytime, from move)
+   385→   385→    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   386→   386→      this.startDash(w, ax, ay)
+   387→   387→      return true
+   388→   388→    }
+   389→   389→    // jump (grounded = jump 1, plus one air jump)
+   390→   390→    if (input.pressed('jump') || input.buffered('jump', 0.18)) {
+   391→   391→      if (this.jumpsUsed < 2) {
+   392→   392→        this.doJump(w)
+   393→   393→        return false
+   394→   394→      }
+   395→   395→    }
+   396→   396→    // parry
+   397→   397→    if (input.pressed('parry')) {
+   398→   398→      this.enterParry(w)
+   399→   399→      return true
+   400→   400→    }
+   401→   401→    // ability
+   402→   402→    if (input.pressed('ability')) {
+   403→   403→      if (this.energy >= this.sword.ability.cost) {
+   404→   404→        this.startAbility(w)
+   405→   405→        return true
+   406→   406→      }
+   407→   407→    }
+   408→   408→    // ult is handled by Game (cinematic)
+   409→   409→
+   410→   410→    // heavy: charge vs tap
+   411→   411→    if (input.down('heavy') && this.grounded) {
+   412→   412→      this.enterCharge(w)
+   413→   413→      return true
+   414→   414→    }
+   415→   415→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   416→   416→      input.takeBuffered('heavy')
+   417→   417→      this.startAttack(this.pickHeavy(w), w)
+   418→   418→      return true
+   419→   419→    }
+   420→   420→    // light
+   421→   421→    if (input.pressed('light') || input.buffered('light')) {
+   422→   422→      input.takeBuffered('light')
+   423→   423→      const id = this.riposteT > 0 ? 'riposte' : this.pickLight(w, ax, ay)
+   424→   424→      this.startAttack(ATTACKS[id], w)
+   425→   425→      return true
+   426→   426→    }
+   427→   427→    return false
+   428→   428→  }
+   429→   429→
+   430→   430→  private doJump(w: WorldRef): void {
+   431→   431→    w.input.takeBuffered('jump')
+   432→   432→    this.jumpsUsed++
+   433→   433→    this.vy = this.jumpsUsed === 1 ? JUMP_V : AIR_JUMP_V
+   434→   434→    this.grounded = false
+   435→   435→    w.audio.play('jump', { volume: 0.4 })
+   436→   436→    w.fx.dust(this.x, 0, 4)
+   437→   437→    if (this.jumpsUsed === 2) {
+   438→   438→      w.fx.burst(this.x, this.y - 20, 6, '#9fb4c4', 160, 0.4, 'dot')
+   439→   439→    }
+   440→   440→  }
+   441→   441→
+   442→   442→  /* ------------------------------------------------------------------ */
+   443→   443→  /* dash                                                                 */
+   444→   444→  /* ------------------------------------------------------------------ */
+   445→   445→
+   446→   446→  private canDash(): boolean {
+   447→   447→    if (this.dashCd > 0 || this.dashRecharge > 0) return false
+   448→   448→    if (!this.grounded && this.airDashUsed) return false
+   449→   449→    return true
+   450→   450→  }
+   451→   451→
+   452→   452→  startDash(w: WorldRef, ax: number, ay: number): void {
+   453→   453→    w.input.takeBuffered('dash')
+   454→   454→    let dx = ax
+   455→   455→    let dy = ay
+   456→   456→    if (dx === 0 && dy === 0) dx = this.face
+   457→   457→    const len = Math.hypot(dx, dy) || 1
+   458→   458→    dx /= len
+   459→   459→    dy /= len
+   460→   460→    if (dx !== 0) this.face = dx > 0 ? 1 : -1
+   461→   461→    this.dashDx = dx
+   462→   462→    this.dashDy = dy
+   463→   463→    this.state = 'dash'
+   464→   464→    this.dashT = DASH_TIME
+   465→   465→    this.dashCd = DASH_CD
+   466→   466→    this.dashConsec++
+   467→   467→    if (this.dashConsec >= 2) this.dashRecharge = DASH_RECHARGE
+   468→   468→    if (!this.grounded) this.airDashUsed = true
+   469→   469→    this.iframes = Math.max(this.iframes, 0.12)
+   470→   470→    this.action = null
+   471→   471→    this.charging = false
+   472→   472→    this.vx = dx * DASH_SPEED
+   473→   473→    this.vy = dy * DASH_SPEED * (this.grounded && dy < -0.4 ? 0.55 : 1)
+   474→   474→    this.animator.play(this.grounded ? DASH_CLIP : DASH_AIR_CLIP, { blend: 0.03 })
+   475→   475→    w.audio.play('dash', { pitch: rand(0.95, 1.1) })
+   476→   476→    const colors = this.sword.colors
+   477→   477→    w.fx.speedStreaks(this.x, this.y - 40, dx * DASH_SPEED * 0.9, 6, rgba(colors.trail, 1))
+   478→   478→    w.fx.dust(this.x, this.grounded ? 0 : this.y, 5)
+   479→   479→    w.cam.addTrauma(0.06)
+   480→   480→  }
+   481→   481→
+   482→   482→  private updateDash(dt: number, w: WorldRef): void {
+   483→   483→    this.dashT -= dt
+   484→   484→    // afterimages
+   485→   485→    this.afterimgTimer -= dt
+   486→   486→    if (this.afterimgTimer <= 0) {
+   487→   487→      this.afterimgTimer = 0.026
+   488→   488→      w.fx.afterimage(this.pose, this.x, this.hipY, this.face, this.sword.colors.trail, 0.3, SCALE)
+   489→   489→    }
+   490→   490→    // maintain velocity with slight decay
+   491→   491→    const k = 1 - this.dashT / DASH_TIME
+   492→   492→    const sp = DASH_SPEED * (1 - k * 0.25)
+   493→   493→    this.vx = this.dashDx * sp
+   494→   494→    this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)
+   495→   495→
+   496→   496→    // dash attack
+   497→   497→    const input = w.input
+   498→   498→    if (input.pressed('light') || input.buffered('light')) {
+   499→   499→      input.takeBuffered('light')
+   500→   500→      this.startAttack(ATTACKS.dashSlash, w)
+   501→   501→      return
+   502→   502→    }
+   503→   503→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   504→   504→      if (!this.grounded) {
+   505→   505→        input.takeBuffered('heavy')
+   506→   506→        this.startAttack(ATTACKS.slam, w)
+   507→   507→        return
+   508→   508→      }
+   509→   509→      input.takeBuffered('heavy')
+   510→   510→      this.startAttack(ATTACKS.dashHeavy, w)
+   511→   511→      return
+   512→   512→    }
+   513→   513→    if (this.dashT <= 0) {
+   514→   514→      this.state = 'move'
+   515→   515→      this.vx *= 0.55
+   516→   516→      if (!this.grounded) this.vy *= 0.5
+   517→   517→    }
+   518→   518→  }
+   519→   519→
+   520→   520→  /* ------------------------------------------------------------------ */
+   521→   521→  /* attacks / combo machine                                              */
+   522→   522→  /* ------------------------------------------------------------------ */
+   523→   523→
+   524→   524→  private pickLight(w: WorldRef, ax: number, ay: number): string {
+   525→   525→    // contextual branches
+   526→   526→    if (ay < -0.4 && this.grounded) return 'launcher'
+   527→   527→    if (ay > 0.4 && this.grounded) return 'spin'
+   528→   528→    if (this.grounded && ax !== 0 && Math.sign(ax) !== this.face) return 'retreat'
+   529→   529→    if (!this.grounded) {
+   530→   530→      if (ay > 0.4) return 'dive'
+   531→   531→      this.airIndex = (this.airIndex % 3) + 1
+   532→   532→      return `a${this.airIndex}`
+   533→   533→    }
+   534→   534→    // ground light chain (with time decay)
+   535→   535→    if (w.time - this.lastLightAt > 1.1) this.lightIndex = 0
+   536→   536→    this.lightIndex = Math.min(this.lightIndex + 1, 5)
+   537→   537→    return `l${Math.min(this.lightIndex, 5)}`
+   538→   538→  }
+   539→   539→
+   540→   540→  private pickHeavy(_w: WorldRef): AttackDef {
+   541→   541→    return ATTACKS.h1
+   542→   542→  }
+   543→   543→
+   544→   544→  startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
+   545→   545→    if (!def) return
+   546→   546→    // requirement checks
+   547→   547→    if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
+   548→   548→    if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
+   549→   549→
+   550→   550→    // face toward held direction at attack start
+   551→   551→    const ax = w.input.axisX()
+   552→   552→    if (ax !== 0 && !fromParry) this.face = ax > 0 ? 1 : -1
+   553→   553→
+   554→   554→    const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
+   555→   555→    this.hasPrevBlade = false
+   556→   556→    this.action = {
+   557→   557→      def,
+   558→   558→      animT: 0,
+   559→   559→      hitMap: new Map(),
+   560→   560→      trail,
+   561→   561→      sfxDone: false,
+   562→   562→      moveDone: false,
+   563→   563→      moveYDone: false,
+   564→   564→      impactDone: false,
+   565→   565→      fromParry,
+   566→   566→    }
+   567→   567→    if (fromParry) this.riposteT = 0
+   568→   568→    this.state = 'attack'
+   569→   569→    this.charging = false
+   570→   570→    if (def === ATTACKS.l1 || def === ATTACKS.l2 || def === ATTACKS.l3 || def === ATTACKS.l4 || def === ATTACKS.l5) {
+   571→   571→      this.lastLightAt = w.time
+   572→   572→    }
+   573→   573→    this.animator.play(def.clip, { blend: 0.045, speed: this.atkSpeed })
+   574→   574→    // slight ground friction during attacks
+   575→   575→  }
+   576→   576→
+   577→   577→  private updateAttack(dt: number, w: WorldRef): void {
+   578→   578→    const a = this.action
+   579→   579→    if (!a) {
+   580→   580→      this.state = 'move'
+   581→   581→      return
+   582→   582→    }
+   583→   583→    const def = a.def
+   584→   584→    a.animT = this.animator.getTime()
+   585→   585→    const animT = a.animT
+   586→   586→    const spd = this.atkSpeed
+   587→   587→
+   588→   588→    // ground friction / air drag during attack
+   589→   589→    if (this.grounded) {
+   590→   590→      const f = 900 * dt
+   591→   591→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   592→   592→    }
+   593→   593→
+   594→   594→    // sfx event
+   595→   595→    if (!a.sfxDone && animT >= def.swingSfx.t) {
+   596→   596→      a.sfxDone = true
+   597→   597→      w.audio.play(def.swingSfx.name, { pitch: rand(0.94, 1.08) })
+   598→   598→    }
+   599→   599→    // forward impulse
+   600→   600→    if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
+   601→   601→      a.moveDone = true
+   602→   602→      this.vx = this.face * def.moveX * (def.kind === 'dash' ? 1 : 1)
+   603→   603→    }
+   604→   604→    // vertical impulse (launcher hop / slam plunge)
+   605→   605→    if (!a.moveYDone && def.moveY !== undefined && animT >= (def.moveYAt ?? 0)) {
+   606→   606→      a.moveYDone = true
+   607→   607→      this.vy = def.moveY
+   608→   608→      if (def.moveY < 0) {
+   609→   609→        this.grounded = false
+   610→   610→        w.fx.dust(this.x, 0, 6)
+   611→   611→      }
+   612→   612→    }
+   613→   613→
+   614→   614→    // hit window: sample blade segment & test enemies (swept, anti-tunneling)
+   615→   615→    const h = def.hit
+   616→   616→    if (animT >= h.start && animT <= h.end) {
+   617→   617→      this.swingGlow = 1
+   618→   618→      const info = makeRuntimeInfo(def, this.sword.stats.dmg)
+   619→   619→      for (const e of w.enemies) {
+   620→   620→        if (e.dead || e.spawning) continue
+   621→   621→        const last = a.hitMap.get(e.id)
+   622→   622→        const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
+   623→   623→        if (!reArm) continue
+   624→   624→        const cy = e.y - 34 * e.scale
+   625→   625→        const r = 26 * e.scale + 6
+   626→   626→        const hit = this.hasPrevBlade
+   627→   627→          ? circleHitsSweptQuad(e.x, cy, r, this.prevBlade.bx, this.prevBlade.by, this.prevBlade.tx, this.prevBlade.ty, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+   628→   628→          : segHitsCircle(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, e.x, cy, r)
+   629→   629→        if (hit) {
+   630→   630→          a.hitMap.set(e.id, animT)
+   631→   631→          w.hitEnemy(e.id, this.blade, info)
+   632→   632→          this.onLandedHit(w, info, e.x, cy)
+   633→   633→        }
+   634→   634→      }
+   635→   635→      // remember this frame's blade for the next sweep test
+   636→   636→      this.prevBlade.bx = this.blade.bx
+   637→   637→      this.prevBlade.by = this.blade.by
+   638→   638→      this.prevBlade.tx = this.blade.tx
+   639→   639→      this.prevBlade.ty = this.blade.ty
+   640→   640→      this.hasPrevBlade = true
+   641→   641→      // aoe shockwave at strike moment for heavy hits
+   642→   642→      if (h.aoe && h.aoe > 0 && !a.impactDone && this.grounded && animT >= h.start + 0.02) {
+   643→   643→        a.impactDone = true
+   644→   644→        w.fx.shockwave(this.x + this.face * 30, 0, h.aoe, this.sword.colors.glow, 0.4, 6)
+   645→   645→        if (this.grounded) w.fx.groundCrack(this.x + this.face * 34, 0, h.aoe * 0.45)
+   646→   646→      }
+   647→   647→    }
+   648→   648→
+   649→   649→    // trail emission
+   650→   650→    if (animT >= def.trail.start && animT <= def.trail.end) {
+   651→   651→      w.fx.pushTrail(a.trail, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+   652→   652→    } else if (animT > def.trail.end && a.trail.emitting) {
+   653→   653→      w.fx.endTrail(a.trail)
+   654→   654→    }
+   655→   655→
+   656→   656→    // cancel window → allow chaining / dash-cancel / jump-cancel
+   657→   657→    const dashCancel = animT >= h.end * 0.6
+   658→   658→    if (animT >= def.cancel || dashCancel) {
+   659→   659→      const input = w.input
+   660→   660→      if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   661→   661→        w.fx.endTrail(a.trail)
+   662→   662→        this.startDash(w, input.axisX(), input.axisY())
+   663→   663→        return
+   664→   664→      }
+   665→   665→      if (input.pressed('parry')) {
+   666→   666→        w.fx.endTrail(a.trail)
+   667→   667→        this.enterParry(w)
+   668→   668→        return
+   669→   669→      }
+   670→   670→      if (animT >= def.cancel) {
+   671→   671→        // chain next attack
+   672→   672→        const ax = input.axisX()
+   673→   673→        const ay = input.axisY()
+   674→   674→        let next: string | null = null
+   675→   675→        if (input.buffered('light')) {
+   676→   676→          input.takeBuffered('light')
+   677→   677→          next = this.riposteT > 0 && this.grounded ? 'riposte' : this.pickLight(w, ax, ay)
+   678→   678→        } else if (input.buffered('heavy')) {
+   679→   679→          input.takeBuffered('heavy')
+   680→   680→          if (!this.grounded) {
+   681→   681→            next = 'slam'
+   682→   682→          } else if (input.down('heavy')) {
+   683→   683→            // still holding → convert to charge
+   684→   684→            this.enterCharge(w)
+   685→   685→            w.fx.endTrail(a.trail)
+   686→   686→            return
+   687→   687→          } else {
+   688→   688→            next = def.chain.find((c) => c.startsWith('h')) ?? 'h1'
+   689→   689→          }
+   690→   690→        }
+   691→   691→        if (next) {
+   692→   692→          // validate chain (or allow from-parry riposte)
+   693→   693→          if (fromChain(def, next, this)) {
+   694→   694→            w.fx.endTrail(a.trail)
+   695→   695→            this.startAttack(ATTACKS[next], w)
+   696→   696→            return
+   697→   697→          }
+   698→   698→        }
+   699→   699→        // jump cancel on ground
+   700→   700→        if (this.grounded && (input.pressed('jump') || input.buffered('jump', 0.15))) {
+   701→   701→          w.fx.endTrail(a.trail)
+   702→   702→          this.doJump(w)
+   703→   703→          this.state = 'move'
+   704→   704→          return
+   705→   705→        }
+   706→   706→      }
+   707→   707→    }
+   708→   708→
+   709→   709→    // finish
+   710→   710→    if (this.animator.isDone()) {
+   711→   711→      w.fx.endTrail(a.trail, 0.18)
+   712→   712→      this.action = null
+   713→   713→      this.state = 'move'
+   714→   714→    }
+   715→   715→  }
+   716→   716→
+   717→   717→  private onLandedHit(w: WorldRef, info: AttackRuntimeInfo, ex: number, ey: number): void {
+   718→   718→    this.energy = Math.min(this.maxEnergy, this.energy + 5)
+   719→   719→    this.meter = Math.min(100, this.meter + info.dmg * 0.32)
+   720→   720→    // elemental on-hit flourishes
+   721→   721→    const c = this.sword.colors
+   722→   722→    const dir = Math.atan2(ey - this.y + 40, ex - this.x)
+   723→   723→    switch (this.sword.id) {
+   724→   724→      case 'inferno':
+   725→   725→        w.fx.embers(ex, ey, 5, c.accent, 18)
+   726→   726→        break
+   727→   727→      case 'thunder':
+   728→   728→        if (Math.random() < 0.3) w.fx.lightningArc(ex, ey, ex + rand(-40, 40), ey + rand(-30, 30), c.trail)
+   729→   729→        break
+   730→   730→      case 'void':
+   731→   731→        w.fx.burst(ex, ey, 4, c.core, 120, 0.4, 'shard')
+
+[showing lines 32-731 of 1285; use offset=732 with limit to continue reading]

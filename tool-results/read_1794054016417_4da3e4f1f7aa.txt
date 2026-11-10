@@ -1,0 +1,402 @@
+     1→     1→```
+     2→     2→# STICKMAN RISING — DEFINITIVE MASTER SPECIFICATION v3.0
+     3→     3→
+     4→     4→## THE SINGLE SOURCE OF TRUTH. NO ASSUMPTIONS. NO AMBIGUITY. NO MERCY.
+     5→     5→
+     6→     6→---
+     7→     7→
+     8→     8→# TABLE OF CONTENTS
+     9→     9→
+    10→    10→1. Rendering Paradigm — 2.8D Depth-Aware Perspective
+    11→    11→2. Animation Pipeline — Motion Capture Library Integration
+    12→    12→3. Procedural Animation Variation Engine (PAVE)
+    13→    13→4. Contextual Animation Library — 5+ Variants Per Action
+    14→    14→5. Dynamic Combo Generation System
+    15→    15→6. Player Character Design — 2.8D Cybernetic Warrior
+    16→    16→7. Sword System — Six Legendary Weapons (Complete Specs)
+    17→    17→8. Dash System — Hyperspeed Movement Engine
+    18→    18→9. Enemy Design — Complete AI and Animation Specs
+    19→    19→10. Environment Design — 2.8D Stage Construction
+    20→    20→11. Visual Effects — The Spectacle Engine (Exact Specifications)
+    21→    21→12. Camera and Cinematic System
+    22→    22→13. Combo Visualization and Style Ranking
+    23→    23→14. Sound Design — Exact Specifications
+    24→    24→15. Death Animation System — Unique Every Time
+    25→    25→16. Directional Sword Animation System — 360° Slash Space
+    26→    26→17. Visual Micro-Detail Specification — 80+ Items
+    27→    27→18. Animation Inspection Mode — Four Debug Views
+    28→    28→19. Automated QA Cron Jobs — Six Testing Pipelines
+    29→    29→20. Human Eye Appeal Principles — Exact Parameters
+    30→    30→21. Technical Architecture and Performance Budgets
+    31→    31→22. Input System — Exact Frame Data
+    32→    32→23. Damage and Scoring Mathematics
+    33→    33→24. Difficulty Scaling — Exact Parameters
+    34→    34→25. Development Phases — Ordered Implementation
+    35→    35→26. Non-Negotiable Quality Standards
+    36→    36→
+    37→    37→---
+    38→    38→
+    39→    39→# 1. RENDERING PARADIGM — 2.8D DEPTH-AWARE PERSPECTENCE
+    40→    40→
+    41→    41→## 1.1 Dimensional Definition
+    42→    42→
+    43→    43→This is NOT a flat 2D game. This is NOT a 3D game. This is **2.8D** — defined as follows:
+    44→    44→
+    45→    45→- **Gameplay plane:** All gameplay-critical movement, hitbox detection, collision, and combat mechanics operate on a 2D plane (Z = 0). Input is mapped to X (horizontal) and Y (vertical) axes on this plane.
+    46→    46→- **Rendering pipeline:** The entire visual output is rendered using a 3D rendering pipeline with perspective projection. Characters, enemies, and key gameplay objects are 3D meshes rendered with perspective correction.
+    47→    47→- **Depth layering:** The environment extends into Z-space across 6 distinct parallax layers (specified in Section 10). Each layer moves at a defined rate relative to camera motion.
+    48→    48→- **Z-axis excursions:** Characters MAY move along the Z-axis during specific scripted sequences (cinematic dashes, finishers, dodge rolls). These excursions are limited to ±5 units from the combat plane, are camera-controlled, last no more than 1.5 seconds, and do NOT affect gameplay hitboxes (the character's combat hitbox remains locked to Z = 0 during the entire excursion).
+    49→    49→- **Perspective correctness:** Objects closer to the camera render larger. The perspective FOV is 35° (vertical). Camera distance from the combat plane is 18 units. Objects at Z = 0 render at 1.0× scale. Objects at Z = -10 render at 0.78× scale. Objects at Z = +10 render at 1.35× scale.
+    50→    50→
+    51→    51→## 1.2 Rendering Pipeline Specifications
+    52→    52→
+    53→    53→### GPU Requirements:
+    54→    54→- **Minimum:** GPU supporting WebGL 2.0 / OpenGL ES 3.0 / Vulkan 1.0
+    55→    55→- **Recommended:** GPU supporting WebGPU / Vulkan 1.2 / DirectX 12
+    56→    56→- **Target:** 60 FPS at 1920×1080 with all effects enabled (Quality: High)
+    57→    57→
+    58→    58→### Rendering Technique:
+    59→    59→- **Shading model:** Forward+ rendering with deferred light accumulation for dynamic lights
+    60→    60→- **Maximum simultaneous dynamic lights:** 32 (point lights), 8 (spot lights), 2 (directional)
+    61→    61→- **Shadow maps:** Cascaded shadow maps for directional light (3 cascades: 512×512, 1024×1024, 2048×2048). Point light shadows: cubemap at 512×512 per light, maximum 8 simultaneous shadow-casting point lights.
+    62→    62→- **Anti-aliasing:** TAA (Temporal Anti-Aliasing) at High quality, FXAA at Medium, none at Low
+    63→    63→- **HDR rendering:** 16-bit floating point render target (RGBA16F) for proper bloom and exposure
+    64→    64→- **Tone mapping:** ACES filmic tone mapping curve
+    65→    65→- **Color space:** sRGB output, linear internal rendering
+    66→    66→
+    67→    67→### Character Rendering:
+    68→    68→- **Mesh type:** Skinned mesh with GPU vertex skinning (maximum 4 bone influences per vertex)
+    69→    69→- **Material model:** Simplified PBR — metallic/roughness workflow with albedo, metallic, roughness, normal, and emissive maps
+    70→    70→- **Shader complexity budget:** Maximum 150 GPU instructions per character pixel (fragment shader)
+    71→    71→- **Draw calls per character:** 3-5 (body, armor overlays, weapon, glow effects, trail)
+    72→    72→- **Maximum simultaneous characters on screen:** 60 (1 player + up to 59 enemies)
+    73→    73→- **Character LOD levels:** 3 — Full (0-15 units from camera), Medium (15-25 units, 50% bone count, simplified materials), Low (25+ units, billboard sprite replacement)
+    74→    74→
+    75→    75→### Post-Processing Chain (executed in this exact order):
+    76→    76→1. Ambient Occlusion (SSAO) — 1.2ms GPU budget
+    77→    77→2. Bloom — 0.8ms GPU budget
+    78→    78→3. Depth of Field — 0.6ms GPU budget
+    79→    79→4. Motion Blur — 0.7ms GPU budget
+    80→    80→5. Chromatic Aberration — 0.2ms GPU budget
+    81→    81→6. Color Grading (LUT) — 0.3ms GPU budget
+    82→    82→7. Vignette — 0.1ms GPU budget
+    83→    83→8. Film Grain — 0.1ms GPU budget
+    84→    84→9. Tone Mapping — 0.2ms GPU budget
+    85→    85→10. FXAA/TAA (if applicable) — 0.8ms GPU budget
+    86→    86→11. UI rendering — 0.3ms GPU budget
+    87→    87→
+    88→    88→**Total post-processing GPU budget: 5.3ms at 1920×1080**
+    89→    89→
+    90→    90→---
+    91→    91→
+    92→    92→# 2. ANIMATION PIPELINE — MOTION CAPTURE LIBRARY INTEGRATION
+    93→    93→
+    94→    94→## 2.1 Mandatory Directive
+    95→    95→
+    96→    96→**Use the internet to access, download, and integrate motion capture animation libraries for every character animation in the game. Do NOT hand-animate combat sequences. Do NOT use simple procedural movement for combat animations. Every animation must be sourced from real human motion capture data and retargeted onto the stickman skeleton.**
+    97→    97→
+    98→    98→## 2.2 Internet Motion Capture Resources (MANDATORY USE)
+    99→    99→
+   100→   100→| Resource | URL | What to Download | Format | License |
+   101→   101→|----------|-----|-----------------|--------|---------|
+   102→   102→| Mixamo | mixamo.com | ALL combat, sword, locomotion, acrobatic, death animations (minimum 500 clips) | FBX with skeleton | Free with Adobe account |
+   103→   103→| CMU Mocap Database | mocap.cs.cmu.edu | Martial arts, fighting, running, jumping, weapon combat sequences (subjects 13, 14, 15, 108, 111, 128, 138, 144) | BVH, C3D | Free for research |
+   104→   104→| Unity Asset Store | assetstore.unity.com | Search: "sword combat mocap", "martial arts animation pack", "character action combat" | Unity packages | Per-license |
+   105→   105→| Unreal Marketplace | marketplace.epicgames.com | Search: "combat animation pack", "sword melee mocap", "character action" | UE assets | Per-license |
+   106→   106→| Rokoko Motion Library | rokoko.com | Sword combat, martial arts, parkour, cinematic finishing moves | FBX, BVH | Commercial |
+   107→   107→| Move.ai | move.ai | Extract motion from reference video of fight choreography | FBX | Per-license |
+   108→   108→| DeepMotion | deepmotion.com | AI mocap from video for custom sequences | FBX | Per-license |
+   109→   109→| Plask | plask.ai | Browser-based mocap extraction | FBX, BVH | Per-license |
+   110→   110→| Cascadeur | cascadeur.com | Physics-correct combat animation generation | FBX | Free tier available |
+   111→   111→| GitHub: "mocap BVH combat" | github.com | Open-source combat mocap datasets | BVH, JSON | Varies per repo |
+   112→   112→| GitHub: "animation dataset sword" | github.com | Sword animation data collections | Various | Varies per repo |
+   113→   113→| Adobe Mixamo Auto-Rigger | mixamo.com/auto-rigger | Auto-rig the stickman skeleton for retargeting | Online tool | Free |
+   114→   114→
+   115→   115→## 2.3 Retargeting Pipeline (EXACT STEPS)
+   116→   116→
+   117→   117→### Step 1: Skeleton Definition
+   118→   118→Define the stickman bone hierarchy with EXACT measurements:
+   119→   119→
+   120→   120→```
+   121→   121→
+   122→   122→ROOT (position only, no rotation)
+   123→   123→├── PELVIS (y=0.0, reference point)
+   124→   124→│   ├── SPINE_01 (length: 0.15 units, axis: +Y)
+   125→   125→│   │   ├── SPINE_02 (length: 0.15 units, axis: +Y)
+   126→   126→│   │   │   ├── SPINE_03 / CHEST (length: 0.15 units, axis: +Y)
+   127→   127→│   │   │   │   ├── NECK_01 (length: 0.08 units, axis: +Y)
+   128→   128→│   │   │   │   │   └── HEAD (length: 0.12 units, axis: +Y)
+   129→   129→│   │   │   │   ├── CLAVICLE_L (length: 0.10 units, axis: +X)
+   130→   130→│   │   │   │   │   └── UPPER_ARM_L (length: 0.28 units, axis: +X)
+   131→   131→│   │   │   │   │       └── LOWER_ARM_L (length: 0.25 units, axis: +X)
+   132→   132→│   │   │   │   │           └── HAND_L (length: 0.10 units, axis: +X)
+   133→   133→│   │   │   │   │               └── SWORD_ATTACH_POINT (offset: 0.05 units from hand tip)
+   134→   134→│   │   │   │   ├── CLAVICLE_R (length: 0.10 units, axis: -X)
+   135→   135→│   │   │   │   │   └── UPPER_ARM_R (length: 0.28 units, axis: -X)
+   136→   136→│   │   │   │   │       └── LOWER_ARM_R (length: 0.25 units, axis: -X)
+   137→   137→│   │   │   │   │           └── HAND_R (length: 0.10 units, axis: -X)
+   138→   138→│   │   │   │   │               └── SWORD_SOCKET (rotation-aligned to hand forward axis)
+   139→   139→│   │   │   └── (optional) WEAPON_BACK_ATTACH (on upper back for sheathed sword)
+   140→   140→│   ├── HIP_L (offset: +0.08 X, -0.05 Y from pelvis)
+   141→   141→│   │   └── UPPER_LEG_L (length: 0.40 units, axis: -Y)
+   142→   142→│   │       └── LOWER_LEG_L (length: 0.38 units, axis: -Y)
+   143→   143→│   │           └── FOOT_L (length: 0.15 units, axis: +Z / forward)
+   144→   144→│   │               └── TOE_L (length: 0.06 units, axis: +Z)
+   145→   145→│   ├── HIP_R (offset: -0.08 X, -0.05 Y from pelvis)
+   146→   146→│   │   └── UPPER_LEG_R (length: 0.40 units, axis: -Y)
+   147→   147→│   │       └── LOWER_LEG_R (length: 0.38 units, axis: -Y)
+   148→   148→│   │           └── FOOT_R (length: 0.15 units, axis: +Z / forward)
+   149→   149→│   │               └── TOE_R (length: 0.06 units, axis: +Z)
+   150→   150→
+   151→   151→```
+   152→   152→
+   153→   153→Total character height: approximately 1.75 units (head-to-toe).
+   154→   154→
+   155→   155→### Step 2: Bone Rotation Axis Convention
+   156→   156→- Y-axis = up (primary bone direction)
+   157→   157→- X-axis = left (positive = character's left)
+   158→   158→- Z-axis = forward (positive = character's forward)
+   159→   159→- All joint rotations are Euler XYZ order
+   160→   160→- Rotation limits per joint:
+   161→   161→  - Spine joints: ±30° X (flexion/extension), ±20° Z (lateral bend), ±15° Y (twist)
+   162→   162→  - Shoulder/clavicle: ±30° Y, ±20° Z
+   163→   163→  - Upper arm: -180° to +30° X (flexion), ±90° Y (rotation), -90° to +10° Z (abduction)
+   164→   164→  - Lower arm: 0° to -150° X (elbow flexion only), ±20° Y (forearm rotation)
+   165→   165→  - Hand: ±45° X, ±30° Z
+   166→   166→  - Head/neck: ±45° X, ±60° Y, ±30° Z
+   167→   167→  - Upper leg: -120° to +30° X (hip flexion/extension), ±30° Y, ±45° Z
+   168→   168→  - Lower leg: 0° to +150° X (knee flexion ONLY — no backward bending)
+   169→   169→  - Foot: ±30° X, ±20° Z
+   170→   170→
+   171→   171→### Step 3: Retarget Process
+   172→   172→For EVERY downloaded mocap clip:
+   173→   173→1. Import source animation into Blender
+   174→   174→2. Align source skeleton T-pose to stickman T-pose using a mapping file:
+   175→   175→   - source_Hips → PELVIS
+   176→   176→   - source_Spine → SPINE_01
+   177→   177→   - source_Spine1 → SPINE_02
+   178→   178→   - source_Spine2 → SPINE_03
+   179→   179→   - source_Neck → NECK_01
+   180→   180→   - source_Head → HEAD
+   181→   181→   - source_LeftShoulder → CLAVICLE_L
+   182→   182→   - source_LeftArm → UPPER_ARM_L
+   183→   183→   - source_LeftForeArm → LOWER_ARM_L
+   184→   184→   - source_LeftHand → HAND_L
+   185→   185→   - source_RightShoulder → CLAVICLE_R
+   186→   186→   - source_RightArm → UPPER_ARM_R
+   187→   187→   - source_RightForeArm → LOWER_ARM_R
+   188→   188→   - source_RightHand → HAND_R
+   189→   189→   - source_LeftUpLeg → UPPER_LEG_L
+   190→   190→   - source_LeftLeg → LOWER_LEG_L
+   191→   191→   - source_LeftFoot → FOOT_L
+   192→   192→   - source_RightUpLeg → UPPER_LEG_R
+   193→   193→   - source_RightLeg → LOWER_LEG_R
+   194→   194→   - source_RightFoot → FOOT_R
+   195→   195→3. Apply bone-length scaling: source bone rotations are preserved, but translational components are scaled to stickman proportions
+   196→   196→4. Clamp all joint rotations to the limits defined in Step 2
+   197→   197→5. Export as the engine's native animation format
+   198→   198→6. Log any frames where clamping was applied (these need manual review)
+   199→   199→
+   200→   200→### Step 4: Quality Check Per Clip
+   201→   201→After retargeting, each clip must pass:
+   202→   202→- No joint exceeds rotation limits
+   203→   203→- No foot penetrates ground plane (Z=0) during grounded animations
+   204→   204→- No self-intersection (limbs passing through torso)
+   205→   205→- Root position is consistent (no floating or sinking)
+   206→   206→- Loop points are seamless (for looping animations)
+   207→   207→- Animation plays correctly at 30, 60, 120, and 144 FPS without artifacts
+   208→   208→
+   209→   209→## 2.4 Animation Library Requirements (MINIMUM CLIPS NEEDED)
+   210→   210→
+   211→   211→### Player Animations:
+   212→   212→| Category | Minimum Clips | Notes |
+   213→   213→|----------|--------------|-------|
+   214→   214→| Idle/standing | 5 | See Part 2 of Uniqueness Directive |
+   215→   215→| Walking | 3 | Slow walk, standard walk, combat walk |
+   216→   216→| Running | 5 | See Part 2 of Uniqueness Directive |
+   217→   217→| Jumping | 5 | See Part 2 of Uniqueness Directive |
+   218→   218→| Landing | 4 | Light landing, heavy landing, running landing, aerial landing |
+   219→   219→| Dashing | 8 | Forward, backward, left, right, 4 diagonals |
+   220→   220→| Light attacks | 16 | 4 directions × 4 sequence positions (opener, chain, extension, finisher) |
+   221→   221→| Heavy attacks | 12 | 4 directions × 3 variants |
+   222→   222→| Aerial attacks | 10 | Ascending slash, apex slash, descending slash, air combo starters, air finishers |
+   223→   223→| Dash attacks | 8 | One per dash direction |
+   224→   224→| Charged attacks | 6 | Per sword type |
+   225→   225→| Special abilities | 6 | Per sword type |
+   226→   226→| Parry/counter | 4 | Parry block, parry success, counter attack, failed parry recovery |
+   227→   227→| Hit reactions | 12 | 6 directions × 2 intensities (light hit, heavy hit) |
+   228→   228→| Deaths/falling | 4 | Knockback, launched, ground slam, collapsed |
+   229→   229→| Executions/finishers | 6 | Per sword type |
+   230→   230→| Sword draw/sheath | 3 | Quick draw, dramatic draw, sheath |
+   231→   231→| Transitional | 10 | Run-to-attack, attack-to-run, ground-to-air, air-to-ground, etc. |
+   232→   232→| **Player total:** | **~120 base clips** | Before procedural variation |
+   233→   233→
+   234→   234→### Enemy Animations (per enemy type):
+   235→   235→| Enemy Type | Minimum Clips |
+   236→   236→|------------|--------------|
+   237→   237→| Grunt | 30 (idle, run, 4 attacks, 4 hit reactions, 3 deaths, block, dodge, stagger, launch, fall) |
+   238→   238→| Stalker | 35 (above + flip dodge, wall-run, rapid combo, acrobatic recovery) |
+   239→   239→| Phalanx | 25 (slower, fewer attacks, but shield bash, ground pound, charge) |
+   240→   240→| Sentinel | 20 (shield-focused, guard breaks, shield slam) |
+   241→   241→| Archer | 25 (aim, fire, reload, dodge backward, melee fallback) |
+   242→   242→| Wraith | 30 (fly, hover, dive, swoop, retreat upward, aerial dodge) |
+   243→   243→| Elite | 45 (full combat set mirroring player with unique moves) |
+   244→   244→| Colossus | 60 (multi-phase, unique attacks per phase, armor break reactions, death sequence) |
+   245→   245→| **Enemy total:** | **~270 clips** |
+   246→   246→
+   247→   247→### TOTAL MINIMUM: 390 mocap clips sourced, retargeted, and integrated.
+   248→   248→
+   249→   249→---
+   250→   250→
+   251→   251→# 3. PROCEDURAL ANIMATION VARIATION ENGINE (PAVE)
+   252→   252→
+   253→   253→## 3.1 Complete Variable Table
+   254→   254→
+   255→   255→Every animation frame, the following variables are sampled and fed into the variation engine:
+   256→   256→
+   257→   257→| # | Variable | Type | Range | Sampling Rate | Influence Description |
+   258→   258→|---|----------|------|-------|---------------|----------------------|
+   259→   259→| 1 | health_percent | float | 0.00–1.00 | Every frame | Posture: 0.0=collapsed forward 25°, 1.0=upright. Tremor amplitude: 0.0=±5° random joint noise, 1.0=0° |
+   260→   260→| 2 | stamina_percent | float | 0.00–1.00 | Every frame | Breath cycle amplitude: 0.0=±8° spine oscillation, 1.0=±1°. Limb extension: 0.0=80% reach, 1.0=100% reach |
+   261→   261→| 3 | combo_count | int | 0–9999 | On hit | Exaggeration: 0-3=1.0×, 4-7=1.05×, 8-15=1.10×, 16-30=1.20×, 31-50=1.30×, 50+=1.40× max |
+   262→   262→| 4 | combo_diversity | float | 0.00–1.00 | On hit | Novelty factor: 0.0=standard animations, 1.0=unlock acrobatic variants, flip additions, spin extensions |
+   263→   263→| 5 | velocity_x | float | -max to +max | Every frame | Lean angle: velocity/max_velocity × 15° forward lean. Arm trail: velocity-dependent backward offset |
+   264→   264→| 6 | velocity_y | float | -max to +max | Every frame | Vertical lean modifier. Positive=backward lean up to 10°. Negative=forward dive up to 20° |
+   265→   265→| 7 | velocity_magnitude | float | 0.0–max_speed | Every frame | Overall motion exaggeration: 0.0=1.0×, max=1.3×. Cloth/hair intensity multiplier |
+   266→   266→| 8 | is_airborne | bool | true/false | Every frame | When true: disable foot IK, enable aerial pose modifiers, gravity response on limbs |
+   267→   267→| 9 | airborne_time | float | 0.0–10.0 seconds | Every frame | Aerial pose evolution: 0.0-0.3s=compact tuck, 0.3-1.0s=extending, 1.0s+=spread for landing prep |
+   268→   268→| 10 | dash_state | enum | 0=none, 1=startup, 2=active, 3=recovery | Every frame | Startup: body compresses 10%. Active: full extension, horizontal lean 30°. Recovery: 5-frame ease out |
+   269→   269→| 11 | dash_direction | vec2 | unit vector | On dash start | Full body facing override during dash. Leading limb determined by direction |
+   270→   270→| 12 | time_since_hit_taken | float | 0.0–30.0 sec | Every frame | Guardedness: 0-1s=flinch carryover (±3° tremor), 1-5s=defensive posture (+10% crouch), 5s+=neutral |
+   271→   271→| 13 | time_since_hit_dealt | float | 0.0–30.0 sec | Every frame | Aggression: 0-0.5s=follow-through extended 20%, 0.5-2s=confident posture, 2s+=neutral |
+   272→   272→| 14 | consecutive_hits | int | 0–9999 | On hit | Rhythm intensity: every 5 hits adds 2% to attack speed modifier (max +20% at 50 hits) |
+   273→   273→| 15 | last_attack_type | enum | light/heavy/dash/aerial/charged/ability/parry/counter | On attack | Next attack transition style. Light→light=short transition (3 frames). Light→heavy=medium (6 frames). Heavy→light=long (8 frames). |
+   274→   274→| 16 | last_attack_end_rotation | float | 0°–360° | On attack end | Next attack start pose offset. Body continues from where it stopped. |
+   275→   275→| 17 | attack_input_speed | float | 0.0–1.0 | On input | 0.0=slow deliberate press (attack has +20% wind-up, +10% damage telegraph). 1.0=instant snap (attack skips to active frames in minimum time). |
+   276→   276→| 18 | input_rhythm | float[8] | last 8 press intervals | On input | If rhythm is consistent (±50ms between presses): add rhythmic sway to attacks. If irregular: attacks are more aggressive/random. |
+   277→   277→| 19 | nearest_enemy_distance | float | 0.0–max | Every frame | 0-2m=intimate range (shorter attacks, more body rotation). 2-5m=standard. 5m+=extended range (longer stride, more commitment) |
+   278→   278→| 20 | nearest_enemy_angle | float | 0°–360° | Every frame | Head tracking target. Blade readiness direction. Shoulder orientation toward threat. |
+   279→   279→| 21 | enemy_count_nearby | int | 0–60 | Every frame | 0-5=focused stance. 6-15=aware stance (head scans). 16-30=alert (wider stance). 30+=battle-ready (lowest center of gravity) |
+   280→   280→| 22 | equipped_sword | enum | 0-5 | On equip change | COMPLETELY changes movement character (see sword-specific modifiers in Section 7) |
+   281→   281→| 23 | sword_charge_level | float | 0.0–1.0 | Every frame | Body tension: 0.0=relaxed, 1.0=fully coiled (muscles compressed, slight tremor, energy conduits at max) |
+   282→   282→| 24 | environment_zone | enum | 0-4 | On zone change | Breathing fog (zone 4: orbital), sweat particles (zone 0: industrial), cold breath (zone 2: military) |
+   283→   283→| 25 | camera_distance | float | 14–22 units | Every frame | Animation exaggeration: close camera (14)=subtle movements visible, far camera (22)=exaggerate by 20% for readability |
+   284→   284→| 26 | style_rank | enum | 0-8 (D→SSS→STORM) | On rank change | Visual intensity: D=1.0×, C=1.05×, B=1.1×, A=1.15×, S=1.25×, SS=1.35×, SSS=1.5×, STORM=2.0× |
+   285→   285→| 27 | unique_seed | int | full 32-bit | On combo start | Hash of (timestamp + player_position + input_sequence). Feeds perlin noise offsets per joint. |
+   286→   286→| 28 | frame_counter | int | 0–max | Every frame | Used as perlin noise time input for organic variation |
+   287→   287→| 29 | difficulty | int | 1–5 | On change | Movement precision: 1=wasted motion allowed, 5=every movement is efficient and purposeful |
+   288→   288→| 30 | burst_mode_active | bool | true/false | Every frame | When true: all animations get +30% speed, +40% exaggeration, constant energy particle emission, micro-tremor on all limbs |
+   289→   289→
+   290→   290→## 3.2 Per-Bone Variation Formula
+   291→   291→
+   292→   292→For each bone B at frame F:
+   293→   293→
+   294→   294→```
+   295→   295→
+   296→   296→final_rotation(B, F) = 
+   297→   297→    base_mocap_rotation(B, F)                           // The retargeted mocap data
+   298→   298→    + context_offset(B, context_variables)              // From variable influence map
+   299→   299→    + perlin_noise(unique_seed, F, bone_frequency(B))   // Organic variation, ±1-5° per joint
+   300→   300→    + combo_escalation_modifier(B, combo_count)         // Escalating exaggeration
+   301→   301→    + sword_character_modifier(B, equipped_sword)       // Sword-specific body language
+   302→   302→    + transition_blend(B, previous_animation, current)  // Smooth connection to prior anim
+   303→   303→
+   304→   304→```
+   305→   305→
+   306→   306→### Perlin Noise Specifications:
+   307→   307→- **Frequency per bone:** 2-4 Hz (smooth, organic — never jittery)
+   308→   308→- **Amplitude per bone:** ±1° to ±5° (spine gets ±1°, hands get ±5° — distal joints have more variation)
+   309→   309→- **Each bone uses a different noise seed offset** so no two joints move identically
+   310→   310→- **Noise is 3D** (affects X, Y, Z rotation independently with different phase offsets)
+   311→   311→
+   312→   312→## 3.3 Combo Escalation Modifier (EXACT VALUES)
+   313→   313→
+   314→   314→| Combo Count | Speed Modifier | Arc Width Modifier | Flair Addition | Trail Intensity |
+   315→   315→|-------------|---------------|-------------------|----------------|-----------------|
+   316→   316→| 0–3 | 1.00× | 1.00× | None | 1.00× |
+   317→   317→| 4–7 | 1.05× | 1.10× | Slight pose hold at peak (2 frames) | 1.20× |
+   318→   318→| 8–15 | 1.10× | 1.20× | Automatic weapon hand-switch on every 4th hit | 1.50× |
+   319→   319→| 16–30 | 1.15× | 1.35× | Body spins added to 30% of attacks, kicks mixed in | 2.00× |
+   320→   320→| 31–50 | 1.20× | 1.50× | Every attack has secondary spin or direction reversal | 2.50× |
+   321→   321→| 51–100 | 1.25× | 1.60× | Acrobatic elements (flips, handstand slashes) | 3.00× |
+   322→   322→| 100+ | 1.30× | 1.70× | Full expressive — reality-bending flourishes | 4.00× (cap) |
+   323→   323→
+   324→   324→---
+   325→   325→
+   326→   326→# 4. CONTEXTUAL ANIMATION LIBRARY — EXACT SPECIFICATIONS
+   327→   327→
+   328→   328→## 4.1 Running — 5 Variants (Full Frame Data)
+   329→   329→
+   330→   330→### Variant 1: STANDARD RUN
+   331→   331→- **Trigger:** velocity 40-70% max, health > 50%, stamina > 30%, no enemies within 5m, straight-line movement for > 0.5s
+   332→   332→- **Cycle duration:** 0.45 seconds per full stride cycle at 100% speed
+   333→   333→- **Stride length:** 1.2 units per cycle
+   334→   334→- **Body angle:** 8° forward lean from vertical
+   335→   335→- **Pelvis rotation:** ±12° around Y-axis (alternating)
+   336→   336→- **Pelvis vertical oscillation:** ±0.04 units (sine wave, peaks at flight phase)
+   337→   337→- **Knee flexion at contact:** 160° (nearly extended)
+   338→   338→- **Knee flexion at loading:** 120° (deep compression)
+   339→   339→- **Ankle dorsiflexion at toe-off:** 40°
+   340→   340→- **Arm swing:** ±35° from neutral, elbows fixed at 90°
+   341→   341→- **Head stabilization:** counter-rotates ±3° to maintain forward gaze
+   342→   342→- **Foot ground contact time:** 35% of cycle
+   343→   343→- **Flight phase:** 15% of cycle
+   344→   344→- **Transition to other states:** 6-frame crossfade to walk, 4-frame burst to sprint, 3-frame into jump
+   345→   345→
+   346→   346→### Variant 2: COMBAT APPROACH RUN
+   347→   347→- **Trigger:** enemies within 10m, any velocity building, combat state active
+   348→   348→- **Cycle duration:** 0.40 seconds per stride (10% faster than standard)
+   349→   349→- **Body angle:** 15° forward lean
+   350→   350→- **Sword arm:** held at 45° upward behind body, blade pointing back, elbow at 110°
+   351→   351→- **Free arm:** extended forward at shoulder height, fingers spread for balance
+   352→   352→- **Knee flexion:** 10° deeper than standard run at every phase (lower center of gravity)
+   353→   353→- **Stride length:** 0.9 units (shorter, more controlled)
+   354→   354→- **Head:** turns toward nearest enemy every 0.8 seconds (takes 4 frames to turn, 8 frames tracking, 4 frames return)
+   355→   355→- **Lateral movement:** slight weaving pattern — 0.15 units side-to-side per stride cycle
+   356→   356→- **Foot contact:** forefoot-first (no heel contact)
+   357→   357→
+   358→   358→### Variant 3: DESPERATE SPRINT
+   359→   359→- **Trigger:** health < 30% OR stamina < 20% OR fleeing boss attack AND velocity > 80% max
+   360→   360→- **Cycle duration:** 0.30 seconds per stride (fastest possible)
+   361→   361→- **Body angle:** 25° forward lean (nearly horizontal)
+   362→   362→- **Stride length:** 1.8 units (maximum possible)
+   363→   363→- **Knee drive:** knees reach 90° flexion during flight phase (high knee action)
+   364→   364→- **Arm swing:** full range, ±60°, elbows open wider than normal
+   365→   365→- **Head:** ducked low, every 1.2 seconds quick backward glance (3 frames)
+   366→   366→- **Foot contact:** forefoot ONLY, ground contact time: 20% of cycle
+   367→   367→- **Breathing overlay:** chest heaves ±6° rotation, every 0.4 seconds
+   368→   368→- **Instability:** ±3° random body sway per stride (simulates exhaustion)
+   369→   369→- **Stumble recovery:** 5% chance per stride cycle of a micro-stumble (0.2s correction animation)
+   370→   370→
+   371→   371→### Variant 4: TACTICAL RETREAT RUN
+   372→   372→- **Trigger:** velocity is backward relative to nearest enemy angle, any health
+   373→   373→- **Cycle duration:** 0.50 seconds (slower — moving backward is harder)
+   374→   374→- **Body angle:** facing enemy, 0° lean (upright), knees bent 30°
+   375→   375→- **Stride:** short quick steps, 0.5 units per cycle
+   376→   376→- **Sword arm:** blade extended toward enemy at chest height
+   377→   377→- **Free arm:** extended sideways at 45°, palm facing forward
+   378→   378→- **Foot contact:** toe-first, checking ground (slight downward glance every 1.5 seconds, 5 frames)
+   379→   379→- **Weight shift:** continuous side-to-side, ±0.1 units, period 0.8 seconds
+   380→   380→- **Head:** locked on nearest enemy (does not turn away)
+   381→   381→
+   382→   382→### Variant 5: ADRENALINE DASH-RUN
+   383→   383→- **Trigger:** combo_count > 20 AND style_rank >= A AND velocity > 90% max
+   384→   384→- **Cycle duration:** 0.25 seconds (near-superhuman speed)
+   385→   385→- **Body angle:** 35° forward lean
+   386→   386→- **Stride length:** 2.2 units
+   387→   387→- **Foot contact:** barely touching, ground contact time: 10% of cycle
+   388→   388→- **Flight phase:** 50% of cycle (nearly gliding)
+   389→   389→- **Arm position:** trailing behind body, relaxed, fingers streaming
+   390→   390→- **Head:** lifted, looking at next target with what reads as confidence
+   391→   391→- **Energy aura:** constant particle emission from body outline
+   392→   392→- **Afterimage:** permanent 3-frame afterimage trail even without dashing
+   393→   393→- **Ground effect:** energy streak on ground beneath feet, matching sword element color
+   394→   394→- **Skip-step:** every 3rd stride, one leg does a small hop-skip instead of full stride (visual flair)
+   395→   395→
+   396→   396→## 4.2 Jumping — 5 Variants (Full Frame Data)
+   397→   397→
+   398→   398→### Variant 1: STANDARD COMBAT JUMP
+   399→   399→- **Trigger:** jump button from grounded, no strong directional input, velocity < 50% max
+   400→   400→- **Total air time:** 0.70 seconds
+
+[showing lines 1-400 of 1205; use offset=401 with limit to continue reading]

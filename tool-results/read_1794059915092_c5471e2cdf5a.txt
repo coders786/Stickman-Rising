@@ -1,0 +1,1261 @@
+     1→/** STICKMAN RISING — the Player: state machine, dash system, combo machine,
+     2→ * parry/riposte, charged attacks, elemental abilities, execution finishers.
+     3→ */
+     4→
+     5→import { Animator } from '../anim/animator'
+     6→import { makePose, Pose } from '../anim/pose'
+     7→import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+     8→import { CHARGE_CLIP, DASH_AIR_CLIP, DASH_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP } from '../anim/clips'
+     9→import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
+    10→import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
+    11→import { Trail } from '../fx/fx'
+    12→import { WorldRef } from '../core/types'
+    13→import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
+    14→
+    15→/** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
+    16→function circleHitsSweptQuad(
+    17→  cx: number, cy: number, r: number,
+    18→  pbx: number, pby: number, ptx: number, pty: number,
+    19→  bx: number, by: number, tx: number, ty: number,
+    20→): boolean {
+    21→  // current + previous blade segments
+    22→  if (segHitsCircle(bx, by, tx, ty, cx, cy, r)) return true
+    23→  if (segHitsCircle(pbx, pby, ptx, pty, cx, cy, r)) return true
+    24→  // swept edges (tip path + base path)
+    25→  if (segHitsCircle(ptx, pty, tx, ty, cx, cy, r)) return true
+    26→  if (segHitsCircle(pbx, pby, bx, by, cx, cy, r)) return true
+    27→  // circle center inside the swept quad (spins / wide arcs)
+    28→  if (pointInTri(cx, cy, pbx, pby, ptx, pty, tx, ty)) return true
+    29→  if (pointInTri(cx, cy, pbx, pby, tx, ty, bx, by)) return true
+    30→  return false
+    31→}
+    32→
+    33→function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): boolean {
+    34→  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2)
+    35→  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3)
+    36→  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1)
+    37→  const hasNeg = d1 < 0 || d2 < 0 || d3 < 0
+    38→  const hasPos = d1 > 0 || d2 > 0 || d3 > 0
+    39→  return !(hasNeg && hasPos)
+    40→}
+    41→
+    42→export type PlayerState =
+    43→  | 'move' | 'attack' | 'dash' | 'parry' | 'charge' | 'hurt' | 'dead'
+    44→  | 'scripted' // driven by Game cinematics (ult / execution)
+    45→
+    46→const SCALE = 1.32
+    47→const HIP_H = 60
+    48→
+    49→const MOVE_MAX = 350
+    50→const ACCEL = 2600
+    51→const FRICTION = 2800
+    52→const AIR_ACCEL = 1800
+    53→const GRAVITY = 2050
+    54→const JUMP_V = -700
+    55→const AIR_JUMP_V = -620
+    56→const DASH_SPEED = 980
+    57→const DASH_TIME = 0.15
+    58→const DASH_CD = 0.1
+    59→const DASH_RECHARGE = 0.32
+    60→
+    61→interface ActionState {
+    62→  def: AttackDef
+    63→  animT: number
+    64→  hitMap: Map<number, number>
+    65→  trail: Trail
+    66→  sfxDone: boolean
+    67→  moveDone: boolean
+    68→  moveYDone: boolean
+    69→  impactDone: boolean
+    70→  fromParry: boolean
+    71→}
+    72→
+    73→interface AbilityState {
+    74→  kind: SwordId
+    75→  t: number
+    76→  step: number
+    77→  targets: number[]
+    78→  x: number
+    79→  y: number
+    80→}
+    81→
+    82→export class Player {
+    83→  x = 400
+    84→  y = 0
+    85→  vx = 0
+    86→  vy = 0
+    87→  face: 1 | -1 = 1
+    88→  grounded = true
+    89→
+    90→  hp = 100
+    91→  maxHp = 100
+    92→  energy = 100
+    93→  maxEnergy = 100
+    94→  meter = 0
+    95→
+    96→  sword: SwordDef = SWORDS.katana
+    97→
+    98→  state: PlayerState = 'move'
+    99→  private animator = new Animator()
+   100→  pose: Pose = makePose()
+   101→  geom: SkelGeom = makeSkelGeom()
+   102→  swingGlow = 0
+   103→  flashT = 0
+   104→  iframes = 0
+   105→
+   106→  private action: ActionState | null = null
+   107→  private ability: AbilityState | null = null
+   108→
+   109→  private lightIndex = 0
+   110→  private airIndex = 0
+   111→  private lastLightAt = -10
+   112→  private lastGrounded = true
+   113→  private landSpring = 0
+   114→
+   115→  private dashT = 0
+   116→  private dashCd = 0
+   117→  private dashConsec = 0
+   118→  private dashRecharge = 0
+   119→  private dashDx = 1
+   120→  private dashDy = 0
+   121→  private airDashUsed = false
+   122→  private jumpsUsed = 0
+   123→  private afterimgTimer = 0
+   124→
+   125→  private parryT = 0
+   126→  private parryActive = 0
+   127→  riposteT = 0
+   128→  private parryPerfect = false
+   129→
+   130→  private chargeT = 0
+   131→  charging = false
+   132→  private chargeReady = false
+   133→
+   134→  private hurtT = 0
+   135→  private deadT = 0
+   136→
+   137→  /** world-space blade segment (hit + trail sampling) */
+   138→  blade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   139→  /** previous frame's blade segment (swept hit detection) */
+   140→  private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+   141→  private hasPrevBlade = false
+   142→
+   143→  constructor() {
+   144→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   145→  }
+   146→
+   147→  reset(x: number): void {
+   148→    this.x = x
+   149→    this.y = 0
+   150→    this.vx = 0
+   151→    this.vy = 0
+   152→    this.face = 1
+   153→    this.grounded = true
+   154→    this.hp = this.maxHp
+   155→    this.energy = this.maxEnergy
+   156→    this.meter = 0
+   157→    this.state = 'move'
+   158→    this.action = null
+   159→    this.ability = null
+   160→    this.charging = false
+   161→    this.hurtT = 0
+   162→    this.iframes = 0
+   163→    this.deadT = 0
+   164→    this.exitScriptedSoon = 0
+   165→    this.lightIndex = 0
+   166→    this.airIndex = 0
+   167→    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+   168→  }
+   169→
+   170→  setSword(id: SwordId): void {
+   171→    this.sword = SWORDS[id]
+   172→  }
+   173→
+   174→  get atkSpeed(): number {
+   175→    return this.sword.stats.spd
+   176→  }
+   177→
+   178→  get busy(): boolean {
+   179→    return this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
+   180→  }
+   181→
+   182→  get chargeRatio(): number {
+   183→    return clamp01(this.chargeT / 0.55)
+   184→  }
+   185→
+   186→  get parryWindowOpen(): boolean {
+   187→    return this.parryActive > 0
+   188→  }
+   189→
+   190→  get isDead(): boolean {
+   191→    return this.state === 'dead'
+   192→  }
+   193→
+   194→  get deadTime(): number {
+   195→    return this.deadT
+   196→  }
+   197→
+   198→  get hipY(): number {
+   199→    return this.y - HIP_H + this.pose[1] * SCALE
+   200→  }
+   201→
+   202→  /* ------------------------------------------------------------------ */
+   203→  /* main update                                                          */
+   204→  /* ------------------------------------------------------------------ */
+   205→
+   206→  update(dt: number, w: WorldRef): void {
+   207→    this.iframes = Math.max(0, this.iframes - dt)
+   208→    this.flashT = Math.max(0, this.flashT - dt * 5)
+   209→    this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
+   210→    this.riposteT = Math.max(0, this.riposteT - dt)
+   211→    this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
+   212→
+   213→    switch (this.state) {
+   214→      case 'move': this.updateMove(dt, w); break
+   215→      case 'attack': this.updateAttack(dt, w); break
+   216→      case 'dash': this.updateDash(dt, w); break
+   217→      case 'parry': this.updateParry(dt, w); break
+   218→      case 'charge': this.updateCharge(dt, w); break
+   219→      case 'hurt': this.updateHurt(dt, w); break
+   220→      case 'dead': this.updateDead(dt, w); break
+   221→      case 'scripted': this.updateScripted(dt); break
+   222→    }
+   223→
+   224→    // physics integration (shared)
+   225→    if (this.state !== 'dash') {
+   226→      const g = this.state === 'attack' && this.action && this.action.def.float
+   227→        ? GRAVITY * this.action.def.float
+   228→        : GRAVITY
+   229→      this.vy += g * dt
+   230→    }
+   231→    this.x += this.vx * dt
+   232→    this.y += this.vy * dt
+   233→
+   234→    // ground
+   235→    const wasAir = !this.grounded
+   236→    if (this.y >= 0) {
+   237→      this.y = 0
+   238→      if (this.vy > 140) {
+   239→        this.landSpring = clamp(this.vy / 700, 0, 1)
+   240→        if (wasAir) this.onLand(w)
+   241→      } else if (wasAir) {
+   242→        this.landSpring = 0.4
+   243→        this.onLand(w)
+   244→      }
+   245→      this.vy = 0
+   246→      this.grounded = true
+   247→      this.jumpsUsed = 0
+   248→      this.airDashUsed = false
+   249→    } else {
+   250→      this.grounded = false
+   251→    }
+   252→    // arena bounds
+   253→    if (this.x < w.arenaMinX + 20) {
+   254→      this.x = w.arenaMinX + 20
+   255→      if (this.vx < -200) w.fx.dust(this.x - 12, 0, 5)
+   256→      this.vx = Math.max(0, this.vx)
+   257→    }
+   258→    if (this.x > w.arenaMaxX - 20) {
+   259→      this.x = w.arenaMaxX - 20
+   260→      if (this.vx > 200) w.fx.dust(this.x + 12, 0, 5)
+   261→      this.vx = Math.min(0, this.vx)
+   262→    }
+   263→
+   264→    this.dashCd = Math.max(0, this.dashCd - dt)
+   265→    this.dashRecharge = Math.max(0, this.dashRecharge - dt)
+   266→    if (this.dashRecharge <= 0) this.dashConsec = 0
+   267→
+   268→    // ability script
+   269→    if (this.ability) this.updateAbility(dt, w)
+   270→
+   271→    // animation + solve
+   272→    this.animator.update(dt)
+   273→    this.applyProcedural(dt)
+   274→    solveSkeleton(this.pose, PLAYER_SPEC, this.geom)
+   275→    this.updateBladeWorld()
+   276→  }
+   277→
+   278→  private onLand(w: WorldRef): void {
+   279→    w.audio.play('land', { volume: 0.5 })
+   280→    w.fx.dust(this.x, 0, 7)
+   281→    // slam impact while attacking
+   282→    const a = this.action
+   283→    if (a && a.def.slamImpact && !a.impactDone) {
+   284→      a.impactDone = true
+   285→      this.slamAoe(w, a.def.slamImpact.r, a.def.slamImpact.dmg, a.def.slamImpact.launch)
+   286→    }
+   287→    if (this.state === 'move' && this.lastGrounded === false) {
+   288→      this.animator.play(LAND_CLIP, { blend: 0.03 })
+   289→    }
+   290→    this.airIndex = 0
+   291→  }
+   292→
+   293→  private slamAoe(w: WorldRef, r: number, dmg: number, launch: number): void {
+   294→    const info: AttackRuntimeInfo = {
+   295→      id: 'slam', dmg: dmg * this.sword.stats.dmg, heavy: true,
+   296→      stagger: 0.5, kb: 240, kbY: 0, launch, juggle: 0,
+   297→      hitstop: 0.11, shake: 0.45, aoe: r, breakGuard: true, kind: 'heavy',
+   298→    }
+   299→    const colors = this.sword.colors
+   300→    w.fx.shockwave(this.x, 0, r, colors.glow, 0.5, 8)
+   301→    w.fx.groundCrack(this.x, 0, r * 0.6)
+   302→    w.fx.burst(this.x, -6, 14, colors.glow, 340, 0.5, 'spark')
+   303→    w.fx.screenFlash(colors.trail, 0.16, 5)
+   304→    w.addHitstop(0.09, 0.06)
+   305→    w.cam.addTrauma(0.4)
+   306→    w.audio.play('slam', { intensity: 1 })
+   307→    const bx = this.x
+   308→    for (const e of w.enemies) {
+   309→      if (e.dead || e.spawning) continue
+   310→      const dx = e.x - bx
+   311→      if (Math.abs(dx) < r && e.y > -140) {
+   312→        w.hitEnemy(e.id, { bx: bx - 20, by: -20, tx: bx + 20, ty: -20 }, info)
+   313→      }
+   314→    }
+   315→  }
+   316→
+   317→  /* ------------------------------------------------------------------ */
+   318→  /* locomotion                                                           */
+   319→  /* ------------------------------------------------------------------ */
+   320→
+   321→  private updateMove(dt: number, w: WorldRef): void {
+   322→    const input = w.input
+   323→    const ax = input.axisX()
+   324→    const ay = input.axisY()
+   325→
+   326→    // facing follows input
+   327→    if (ax !== 0) this.face = ax > 0 ? 1 : -1
+   328→
+   329→    // horizontal movement
+   330→    if (ax !== 0) {
+   331→      const accel = this.grounded ? ACCEL : AIR_ACCEL
+   332→      this.vx += ax * accel * dt
+   333→      this.vx = clamp(this.vx, -MOVE_MAX, MOVE_MAX)
+   334→    } else if (this.grounded) {
+   335→      const f = FRICTION * dt
+   336→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   337→    } else {
+   338→      this.vx = damp(this.vx, 0, 0.4, dt)
+   339→    }
+   340→
+   341→    // locomotion clip selection
+   342→    const speed = Math.abs(this.vx)
+   343→    if (this.grounded) {
+   344→      if (speed > 40) {
+   345→        this.animator.play(RUN_CLIP, { blend: 0.09, speed: clamp(speed / MOVE_MAX, 0.65, 2.1) })
+   346→      } else if (this.vy === 0) {
+   347→        this.animator.play(IDLE_CLIP, { blend: 0.16 })
+   348→      }
+   349→    } else if (this.vy < -60) {
+   350→      this.animator.play(JUMP_CLIP, { blend: 0.06 })
+   351→    } else {
+   352→      this.animator.play(FALL_CLIP, { blend: 0.12 })
+   353→    }
+   354→
+   355→    // ---- actions ----
+   356→    if (this.tryCombatInputs(w, ax, ay)) return
+   357→  }
+   358→
+   359→  /** returns true if a new state was entered */
+   360→  private tryCombatInputs(w: WorldRef, ax: number, ay: number): boolean {
+   361→    const input = w.input
+   362→
+   363→    // dash (anytime, from move)
+   364→    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   365→      this.startDash(w, ax, ay)
+   366→      return true
+   367→    }
+   368→    // jump (grounded = jump 1, plus one air jump)
+   369→    if (input.pressed('jump') || input.buffered('jump', 0.18)) {
+   370→      if (this.jumpsUsed < 2) {
+   371→        this.doJump(w)
+   372→        return false
+   373→      }
+   374→    }
+   375→    // parry
+   376→    if (input.pressed('parry')) {
+   377→      this.enterParry(w)
+   378→      return true
+   379→    }
+   380→    // ability
+   381→    if (input.pressed('ability')) {
+   382→      if (this.energy >= this.sword.ability.cost) {
+   383→        this.startAbility(w)
+   384→        return true
+   385→      }
+   386→    }
+   387→    // ult is handled by Game (cinematic)
+   388→
+   389→    // heavy: charge vs tap
+   390→    if (input.down('heavy') && this.grounded) {
+   391→      this.enterCharge(w)
+   392→      return true
+   393→    }
+   394→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   395→      input.takeBuffered('heavy')
+   396→      this.startAttack(this.pickHeavy(w), w)
+   397→      return true
+   398→    }
+   399→    // light
+   400→    if (input.pressed('light') || input.buffered('light')) {
+   401→      input.takeBuffered('light')
+   402→      const id = this.riposteT > 0 ? 'riposte' : this.pickLight(w, ax, ay)
+   403→      this.startAttack(ATTACKS[id], w)
+   404→      return true
+   405→    }
+   406→    return false
+   407→  }
+   408→
+   409→  private doJump(w: WorldRef): void {
+   410→    w.input.takeBuffered('jump')
+   411→    this.jumpsUsed++
+   412→    this.vy = this.jumpsUsed === 1 ? JUMP_V : AIR_JUMP_V
+   413→    this.grounded = false
+   414→    w.audio.play('jump', { volume: 0.4 })
+   415→    w.fx.dust(this.x, 0, 4)
+   416→    if (this.jumpsUsed === 2) {
+   417→      w.fx.burst(this.x, this.y - 20, 6, '#9fb4c4', 160, 0.4, 'dot')
+   418→    }
+   419→  }
+   420→
+   421→  /* ------------------------------------------------------------------ */
+   422→  /* dash                                                                 */
+   423→  /* ------------------------------------------------------------------ */
+   424→
+   425→  private canDash(): boolean {
+   426→    if (this.dashCd > 0 || this.dashRecharge > 0) return false
+   427→    if (!this.grounded && this.airDashUsed) return false
+   428→    return true
+   429→  }
+   430→
+   431→  startDash(w: WorldRef, ax: number, ay: number): void {
+   432→    w.input.takeBuffered('dash')
+   433→    let dx = ax
+   434→    let dy = ay
+   435→    if (dx === 0 && dy === 0) dx = this.face
+   436→    const len = Math.hypot(dx, dy) || 1
+   437→    dx /= len
+   438→    dy /= len
+   439→    if (dx !== 0) this.face = dx > 0 ? 1 : -1
+   440→    this.dashDx = dx
+   441→    this.dashDy = dy
+   442→    this.state = 'dash'
+   443→    this.dashT = DASH_TIME
+   444→    this.dashCd = DASH_CD
+   445→    this.dashConsec++
+   446→    if (this.dashConsec >= 2) this.dashRecharge = DASH_RECHARGE
+   447→    if (!this.grounded) this.airDashUsed = true
+   448→    this.iframes = Math.max(this.iframes, 0.12)
+   449→    this.action = null
+   450→    this.charging = false
+   451→    this.vx = dx * DASH_SPEED
+   452→    this.vy = dy * DASH_SPEED * (this.grounded && dy < -0.4 ? 0.55 : 1)
+   453→    this.animator.play(this.grounded ? DASH_CLIP : DASH_AIR_CLIP, { blend: 0.03 })
+   454→    w.audio.play('dash', { pitch: rand(0.95, 1.1) })
+   455→    const colors = this.sword.colors
+   456→    w.fx.speedStreaks(this.x, this.y - 40, dx * DASH_SPEED * 0.9, 6, rgba(colors.trail, 1))
+   457→    w.fx.dust(this.x, this.grounded ? 0 : this.y, 5)
+   458→    w.cam.addTrauma(0.06)
+   459→  }
+   460→
+   461→  private updateDash(dt: number, w: WorldRef): void {
+   462→    this.dashT -= dt
+   463→    // afterimages
+   464→    this.afterimgTimer -= dt
+   465→    if (this.afterimgTimer <= 0) {
+   466→      this.afterimgTimer = 0.026
+   467→      w.fx.afterimage(this.pose, this.x, this.hipY, this.face, this.sword.colors.trail, 0.3, SCALE)
+   468→    }
+   469→    // maintain velocity with slight decay
+   470→    const k = 1 - this.dashT / DASH_TIME
+   471→    const sp = DASH_SPEED * (1 - k * 0.25)
+   472→    this.vx = this.dashDx * sp
+   473→    this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)
+   474→
+   475→    // dash attack
+   476→    const input = w.input
+   477→    if (input.pressed('light') || input.buffered('light')) {
+   478→      input.takeBuffered('light')
+   479→      this.startAttack(ATTACKS.dashSlash, w)
+   480→      return
+   481→    }
+   482→    if (input.pressed('heavy') || input.buffered('heavy')) {
+   483→      if (!this.grounded) {
+   484→        input.takeBuffered('heavy')
+   485→        this.startAttack(ATTACKS.slam, w)
+   486→        return
+   487→      }
+   488→      input.takeBuffered('heavy')
+   489→      this.startAttack(ATTACKS.dashHeavy, w)
+   490→      return
+   491→    }
+   492→    if (this.dashT <= 0) {
+   493→      this.state = 'move'
+   494→      this.vx *= 0.55
+   495→      if (!this.grounded) this.vy *= 0.5
+   496→    }
+   497→  }
+   498→
+   499→  /* ------------------------------------------------------------------ */
+   500→  /* attacks / combo machine                                              */
+   501→  /* ------------------------------------------------------------------ */
+   502→
+   503→  private pickLight(w: WorldRef, ax: number, ay: number): string {
+   504→    // contextual branches
+   505→    if (ay < -0.4 && this.grounded) return 'launcher'
+   506→    if (ay > 0.4 && this.grounded) return 'spin'
+   507→    if (this.grounded && ax !== 0 && Math.sign(ax) !== this.face) return 'retreat'
+   508→    if (!this.grounded) {
+   509→      if (ay > 0.4) return 'dive'
+   510→      this.airIndex = (this.airIndex % 3) + 1
+   511→      return `a${this.airIndex}`
+   512→    }
+   513→    // ground light chain (with time decay)
+   514→    if (w.time - this.lastLightAt > 1.1) this.lightIndex = 0
+   515→    this.lightIndex = Math.min(this.lightIndex + 1, 5)
+   516→    return `l${Math.min(this.lightIndex, 5)}`
+   517→  }
+   518→
+   519→  private pickHeavy(_w: WorldRef): AttackDef {
+   520→    return ATTACKS.h1
+   521→  }
+   522→
+   523→  startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
+   524→    if (!def) return
+   525→    // requirement checks
+   526→    if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
+   527→    if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
+   528→
+   529→    // face toward held direction at attack start
+   530→    const ax = w.input.axisX()
+   531→    if (ax !== 0 && !fromParry) this.face = ax > 0 ? 1 : -1
+   532→
+   533→    const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
+   534→    this.hasPrevBlade = false
+   535→    this.action = {
+   536→      def,
+   537→      animT: 0,
+   538→      hitMap: new Map(),
+   539→      trail,
+   540→      sfxDone: false,
+   541→      moveDone: false,
+   542→      moveYDone: false,
+   543→      impactDone: false,
+   544→      fromParry,
+   545→    }
+   546→    if (fromParry) this.riposteT = 0
+   547→    this.state = 'attack'
+   548→    this.charging = false
+   549→    if (def === ATTACKS.l1 || def === ATTACKS.l2 || def === ATTACKS.l3 || def === ATTACKS.l4 || def === ATTACKS.l5) {
+   550→      this.lastLightAt = w.time
+   551→    }
+   552→    this.animator.play(def.clip, { blend: 0.045, speed: this.atkSpeed })
+   553→    // slight ground friction during attacks
+   554→  }
+   555→
+   556→  private updateAttack(dt: number, w: WorldRef): void {
+   557→    const a = this.action
+   558→    if (!a) {
+   559→      this.state = 'move'
+   560→      return
+   561→    }
+   562→    const def = a.def
+   563→    a.animT = this.animator.getTime()
+   564→    const animT = a.animT
+   565→    const spd = this.atkSpeed
+   566→
+   567→    // ground friction / air drag during attack
+   568→    if (this.grounded) {
+   569→      const f = 900 * dt
+   570→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   571→    }
+   572→
+   573→    // sfx event
+   574→    if (!a.sfxDone && animT >= def.swingSfx.t) {
+   575→      a.sfxDone = true
+   576→      w.audio.play(def.swingSfx.name, { pitch: rand(0.94, 1.08) })
+   577→    }
+   578→    // forward impulse
+   579→    if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
+   580→      a.moveDone = true
+   581→      this.vx = this.face * def.moveX * (def.kind === 'dash' ? 1 : 1)
+   582→    }
+   583→    // vertical impulse (launcher hop / slam plunge)
+   584→    if (!a.moveYDone && def.moveY !== undefined && animT >= (def.moveYAt ?? 0)) {
+   585→      a.moveYDone = true
+   586→      this.vy = def.moveY
+   587→      if (def.moveY < 0) {
+   588→        this.grounded = false
+   589→        w.fx.dust(this.x, 0, 6)
+   590→      }
+   591→    }
+   592→
+   593→    // hit window: sample blade segment & test enemies (swept, anti-tunneling)
+   594→    const h = def.hit
+   595→    if (animT >= h.start && animT <= h.end) {
+   596→      this.swingGlow = 1
+   597→      const info = makeRuntimeInfo(def, this.sword.stats.dmg)
+   598→      for (const e of w.enemies) {
+   599→        if (e.dead || e.spawning) continue
+   600→        const last = a.hitMap.get(e.id)
+   601→        const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
+   602→        if (!reArm) continue
+   603→        const cy = e.y - 34 * e.scale
+   604→        const r = 26 * e.scale + 6
+   605→        const hit = this.hasPrevBlade
+   606→          ? circleHitsSweptQuad(e.x, cy, r, this.prevBlade.bx, this.prevBlade.by, this.prevBlade.tx, this.prevBlade.ty, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+   607→          : segHitsCircle(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, e.x, cy, r)
+   608→        if (hit) {
+   609→          a.hitMap.set(e.id, animT)
+   610→          w.hitEnemy(e.id, this.blade, info)
+   611→          this.onLandedHit(w, info, e.x, cy)
+   612→        }
+   613→      }
+   614→      // remember this frame's blade for the next sweep test
+   615→      this.prevBlade.bx = this.blade.bx
+   616→      this.prevBlade.by = this.blade.by
+   617→      this.prevBlade.tx = this.blade.tx
+   618→      this.prevBlade.ty = this.blade.ty
+   619→      this.hasPrevBlade = true
+   620→      // aoe shockwave at strike moment for heavy hits
+   621→      if (h.aoe && h.aoe > 0 && !a.impactDone && this.grounded && animT >= h.start + 0.02) {
+   622→        a.impactDone = true
+   623→        w.fx.shockwave(this.x + this.face * 30, 0, h.aoe, this.sword.colors.glow, 0.4, 6)
+   624→        if (this.grounded) w.fx.groundCrack(this.x + this.face * 34, 0, h.aoe * 0.45)
+   625→      }
+   626→    }
+   627→
+   628→    // trail emission
+   629→    if (animT >= def.trail.start && animT <= def.trail.end) {
+   630→      w.fx.pushTrail(a.trail, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
+   631→    } else if (animT > def.trail.end && a.trail.emitting) {
+   632→      w.fx.endTrail(a.trail)
+   633→    }
+   634→
+   635→    // cancel window → allow chaining / dash-cancel / jump-cancel
+   636→    const dashCancel = animT >= h.end * 0.6
+   637→    if (animT >= def.cancel || dashCancel) {
+   638→      const input = w.input
+   639→      if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   640→        w.fx.endTrail(a.trail)
+   641→        this.startDash(w, input.axisX(), input.axisY())
+   642→        return
+   643→      }
+   644→      if (input.pressed('parry')) {
+   645→        w.fx.endTrail(a.trail)
+   646→        this.enterParry(w)
+   647→        return
+   648→      }
+   649→      if (animT >= def.cancel) {
+   650→        // chain next attack
+   651→        const ax = input.axisX()
+   652→        const ay = input.axisY()
+   653→        let next: string | null = null
+   654→        if (input.buffered('light')) {
+   655→          input.takeBuffered('light')
+   656→          next = this.riposteT > 0 && this.grounded ? 'riposte' : this.pickLight(w, ax, ay)
+   657→        } else if (input.buffered('heavy')) {
+   658→          input.takeBuffered('heavy')
+   659→          if (!this.grounded) {
+   660→            next = 'slam'
+   661→          } else if (input.down('heavy')) {
+   662→            // still holding → convert to charge
+   663→            this.enterCharge(w)
+   664→            w.fx.endTrail(a.trail)
+   665→            return
+   666→          } else {
+   667→            next = def.chain.find((c) => c.startsWith('h')) ?? 'h1'
+   668→          }
+   669→        }
+   670→        if (next) {
+   671→          // validate chain (or allow from-parry riposte)
+   672→          if (fromChain(def, next, this)) {
+   673→            w.fx.endTrail(a.trail)
+   674→            this.startAttack(ATTACKS[next], w)
+   675→            return
+   676→          }
+   677→        }
+   678→        // jump cancel on ground
+   679→        if (this.grounded && (input.pressed('jump') || input.buffered('jump', 0.15))) {
+   680→          w.fx.endTrail(a.trail)
+   681→          this.doJump(w)
+   682→          this.state = 'move'
+   683→          return
+   684→        }
+   685→      }
+   686→    }
+   687→
+   688→    // finish
+   689→    if (this.animator.isDone()) {
+   690→      w.fx.endTrail(a.trail, 0.18)
+   691→      this.action = null
+   692→      this.state = 'move'
+   693→    }
+   694→  }
+   695→
+   696→  private onLandedHit(w: WorldRef, info: AttackRuntimeInfo, ex: number, ey: number): void {
+   697→    this.energy = Math.min(this.maxEnergy, this.energy + 5)
+   698→    this.meter = Math.min(100, this.meter + info.dmg * 0.32)
+   699→    // elemental on-hit flourishes
+   700→    const c = this.sword.colors
+   701→    const dir = Math.atan2(ey - this.y + 40, ex - this.x)
+   702→    switch (this.sword.id) {
+   703→      case 'inferno':
+   704→        w.fx.embers(ex, ey, 5, c.accent, 18)
+   705→        break
+   706→      case 'thunder':
+   707→        if (Math.random() < 0.3) w.fx.lightningArc(ex, ey, ex + rand(-40, 40), ey + rand(-30, 30), c.trail)
+   708→        break
+   709→      case 'void':
+   710→        w.fx.burst(ex, ey, 4, c.core, 120, 0.4, 'shard')
+   711→        break
+   712→      case 'gravity':
+   713→        w.fx.burst(ex, ey, 3, c.accent, 60, 0.5, 'ember')
+   714→        break
+   715→      case 'phantom':
+   716→        w.fx.slashArc(ex, ey, dir + rand(-0.5, 0.5), 1.4, 30, c.trail, c.trail2)
+   717→        break
+   718→      default:
+   719→        break
+   720→    }
+   721→  }
+   722→
+   723→  /* ------------------------------------------------------------------ */
+   724→  /* parry / riposte                                                      */
+   725→  /* ------------------------------------------------------------------ */
+   726→
+   727→  private enterParry(w: WorldRef): void {
+   728→    w.input.takeBuffered('parry')
+   729→    this.state = 'parry'
+   730→    this.parryT = 0.3
+   731→    this.parryActive = 0.17
+   732→    this.parryPerfect = true
+   733→    this.action = null
+   734→    this.charging = false
+   735→    if (this.grounded) this.vx *= 0.2
+   736→    this.animator.play(PARRY_CLIP, { blend: 0.03 })
+   737→    w.audio.play('parry', { volume: 0.4, pitch: 1.15 })
+   738→  }
+   739→
+   740→  private updateParry(dt: number, w: WorldRef): void {
+   741→    this.parryT -= dt
+   742→    this.parryActive -= dt
+   743→    if (this.grounded) {
+   744→      const f = 1200 * dt
+   745→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   746→    }
+   747→    if (this.parryT <= 0) {
+   748→      this.state = 'move'
+   749→    }
+   750→  }
+   751→
+   752→  /** Called by Game when an enemy strike connects while parry window is open. */
+   753→  onParrySuccess(w: WorldRef, sourceX: number, perfect: boolean): void {
+   754→    const colors = this.sword.colors
+   755→    const px = (this.x + sourceX) / 2
+   756→    const py = this.y - 55
+   757→    w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), true, colors.glow, '#ffffff')
+   758→    w.fx.shockwave(px, py, 90, colors.glow, 0.3, 5)
+   759→    w.fx.screenFlash('#ffffff', 0.22, 6)
+   760→    w.audio.play(perfect ? 'parryPerfect' : 'parry')
+   761→    w.addHitstop(0.11, 0.1)
+   762→    w.addSlowmo(0.25, 0.22)
+   763→    w.cam.addTrauma(0.3)
+   764→    w.cam.zoomPulse(0.12)
+   765→    this.meter = Math.min(100, this.meter + 10)
+   766→    this.energy = Math.min(this.maxEnergy, this.energy + 12)
+   767→    this.riposteT = 0.95
+   768→    this.parryT = 0.12
+   769→    this.parryActive = 0
+   770→    this.flashT = 0.6
+   771→  }
+   772→
+   773→  /* ------------------------------------------------------------------ */
+   774→  /* charge                                                               */
+   775→  /* ------------------------------------------------------------------ */
+   776→
+   777→  private enterCharge(w: WorldRef): void {
+   778→    this.state = 'charge'
+   779→    this.charging = true
+   780→    this.chargeT = 0
+   781→    this.chargeReady = false
+   782→    this.action = null
+   783→    if (this.grounded) this.vx = 0
+   784→    this.animator.play(CHARGE_CLIP, { blend: 0.06 })
+   785→    w.audio.play('charge', { volume: 0.5 })
+   786→  }
+   787→
+   788→  private updateCharge(dt: number, w: WorldRef): void {
+   789→    const input = w.input
+   790→    this.chargeT += dt
+   791→    if (!this.chargeReady && this.chargeT >= 0.55) {
+   792→      this.chargeReady = true
+   793→      w.audio.play('chargeReady')
+   794→    }
+   795→    // converge particles on the blade
+   796→    if (this.chargeReady && Math.random() < 0.5) {
+   797→      const c = this.sword.colors
+   798→      w.fx.embers(this.blade.tx, this.blade.ty, 2, c.glow, 10)
+   799→    }
+   800→    if (this.grounded) this.vx = 0
+   801→
+   802→    // release
+   803→    if (!input.down('heavy')) {
+   804→      this.charging = false
+   805→      if (this.chargeT >= 0.4) {
+   806→        this.startAttack(ATTACKS.charged, w)
+   807→        w.audio.play('chargeReady', { pitch: 0.8 })
+   808→        return
+   809→      }
+   810→      // too short: treat as heavy tap
+   811→      this.startAttack(this.pickHeavy(w), w)
+   812→      return
+   813→    }
+   814→    // dash cancels charge
+   815→    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+   816→      this.charging = false
+   817→      this.startDash(w, input.axisX(), input.axisY())
+   818→    }
+   819→  }
+   820→
+   821→  /* ------------------------------------------------------------------ */
+   822→  /* hurt / death                                                         */
+   823→  /* ------------------------------------------------------------------ */
+   824→
+   825→  takeDamage(w: WorldRef, dmg: number, dir: number, heavy: boolean): boolean {
+   826→    if (this.iframes > 0 || this.state === 'dash' || this.state === 'dead' || this.state === 'scripted') return false
+   827→    this.hp = Math.max(0, this.hp - dmg)
+   828→    this.flashT = 1
+   829→    this.hurtT = 0.34
+   830→    this.iframes = 0.75
+   831→    this.action = null
+   832→    this.charging = false
+   833→    this.ability = null
+   834→    this.state = 'hurt'
+   835→    this.vx = dir * (heavy ? 380 : 240)
+   836→    if (!this.grounded) this.vy = -220
+   837→    else this.vy = heavy ? -320 : -140
+   838→    this.grounded = false
+   839→    this.animator.play(HURT_CLIP, { blend: 0.02 })
+   840→    w.audio.play('hurt', { volume: 0.8, intensity: heavy ? 1 : 0.5 })
+   841→    w.fx.burst(this.x, this.y - 50, 10, '#ff3b57', 300, 0.5, 'spark')
+   842→    w.fx.screenFlash('#ff2a4a', 0.2, 4)
+   843→    w.cam.addTrauma(heavy ? 0.45 : 0.3)
+   844→    w.addHitstop(0.06)
+   845→    if (this.hp <= 0) {
+   846→      this.state = 'dead'
+   847→      this.deadT = 0
+   848→      this.vx = dir * 300
+   849→      this.vy = -420
+   850→    }
+   851→    return true
+   852→  }
+   853→
+   854→  private updateHurt(dt: number, w: WorldRef): void {
+   855→    this.hurtT -= dt
+   856→    if (this.hurtT <= 0) this.state = 'move'
+   857→    if (this.grounded) {
+   858→      const f = 1400 * dt
+   859→      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+   860→    }
+   861→  }
+   862→
+   863→  private updateDead(dt: number, _w: WorldRef): void {
+   864→    this.deadT += dt
+   865→    // ragdoll-ish settle
+   866→    if (this.grounded) this.vx = damp(this.vx, 0, 4, dt)
+   867→  }
+   868→
+   869→  /* ------------------------------------------------------------------ */
+   870→  /* scripted (ult / execution cinematics driven by Game)                 */
+   871→  /* ------------------------------------------------------------------ */
+   872→
+   873→  enterScripted(): void {
+   874→    this.state = 'scripted'
+   875→    this.action = null
+   876→    this.charging = false
+   877→    this.vx = 0
+   878→  }
+   879→
+   880→  exitScripted(): void {
+   881→    if (this.state === 'scripted') this.state = 'move'
+   882→    this.animator.play(IDLE_CLIP, { blend: 0.1 })
+   883→  }
+   884→
+   885→  private updateScripted(_dt: number): void {
+   886→    if (this.grounded) this.vx = 0
+   887→  }
+   888→
+   889→  playClip(clip: Parameters<Animator['play']>[0], speed = 1): void {
+   890→    this.animator.play(clip, { blend: 0.03, speed, restart: true })
+   891→  }
+   892→
+   893→  /* ------------------------------------------------------------------ */
+   894→  /* abilities                                                            */
+   895→  /* ------------------------------------------------------------------ */
+   896→
+   897→  startAbility(w: WorldRef): void {
+   898→    const cost = this.sword.ability.cost
+   899→    this.energy -= cost
+   900→    w.audio.play('energyFull', { volume: 0.4, pitch: 0.9 })
+   901→    this.ability = { kind: this.sword.id, t: 0, step: 0, targets: [], x: this.x, y: this.y }
+   902→    const c = this.sword.colors
+   903→    w.fx.screenFlash(c.trail, 0.14, 4)
+   904→    w.cam.zoomPulse(0.1)
+   905→
+   906→    switch (this.sword.id) {
+   907→      case 'katana': {
+   908→        // BLADE STORM — chain of teleport dashes through nearest enemies
+   909→        this.enterScripted()
+   910→        w.audio.play('dash', { pitch: 1.2 })
+   911→        break
+   912→      }
+   913→      case 'inferno': {
+   914→        // INFERNO WAVE — rolling fire projectile
+   915→        w.audio.play('fire', { intensity: 1 })
+   916→        w.spawnProjectile({
+   917→          kind: 'firewave', x: this.x + this.face * 46, y: -12,
+   918→          vx: this.face * 560, vy: 0, dmg: 38 * this.sword.stats.dmg, life: 1.4,
+   919→        })
+   920→        w.fx.shockwave(this.x + this.face * 40, 0, 120, c.glow, 0.5, 7)
+   921→        w.fx.burst(this.x + this.face * 50, -20, 18, c.trail, 420, 0.6, 'ember')
+   922→        w.cam.addTrauma(0.35)
+   923→        this.animator.play(ATTACKS.l5.clip, { blend: 0.04, speed: 1.15 })
+   924→        break
+   925→      }
+   926→      case 'thunder': {
+   927→        // THUNDER RUSH — instant dash + chain lightning
+   928→        this.enterScripted()
+   929→        this.x = clamp(this.x + this.face * 300, w.arenaMinX + 30, w.arenaMaxX - 30)
+   930→        w.audio.play('lightning', { intensity: 1 })
+   931→        w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.4, SCALE)
+   932→        w.fx.speedStreaks(this.x, this.y - 40, this.face * 900, 10, rgba(c.trail, 1))
+   933→        // chain to nearest enemies
+   934→        const chain = this.collectNearest(w, 5, 360)
+   935→        let px = this.x
+   936→        let py = this.y - 55
+   937→        for (const e of chain) {
+   938→          w.fx.lightningArc(px, py, e.x, e.y - 40, c.trail)
+   939→          w.fx.burst(e.x, e.y - 40, 6, c.accent, 200, 0.4, 'spark')
+   940→          this.dealAbilityDamage(w, e, 24, 0.35, 160, -180)
+   941→          px = e.x
+   942→          py = e.y - 40
+   943→        }
+   944→        w.cam.addTrauma(0.4)
+   945→        w.addHitstop(0.08)
+   946→        this.exitScriptedSoon = 0.35
+   947→        break
+   948→      }
+   949→      case 'void': {
+   950→        // VOID STEP — teleport into densest cluster + implode
+   951→        this.enterScripted()
+   952→        const target = this.findDensest(w, 200)
+   953→        if (target) {
+   954→          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
+   955→          this.x = clamp(target.x + (target.x > this.x ? -70 : 70), w.arenaMinX + 30, w.arenaMaxX - 30)
+   956→          this.face = target.x > this.x ? 1 : -1
+   957→          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
+   958→          w.audio.play('void', { intensity: 1 })
+   959→          w.fx.shockwave(this.x, 0, 160, c.glow, 0.5, 8)
+   960→          for (const e of w.enemies) {
+   961→            if (e.dead || e.spawning) continue
+   962→            if (Math.abs(e.x - this.x) < 130 && e.y > -160) {
+   963→              this.dealAbilityDamage(w, e, 34, 0.5, 100, -420)
+   964→            }
+   965→          }
+   966→          this.animator.play(ATTACKS.charged.clip, { blend: 0.02, speed: 1.3 })
+   967→          w.addHitstop(0.1, 0.12)
+   968→          w.addSlowmo(0.3, 0.3)
+   969→          w.cam.addTrauma(0.5)
+   970→        }
+   971→        this.exitScriptedSoon = 0.4
+   972→        break
+   973→      }
+   974→      case 'gravity': {
+   975→        // GRAVITY CRUSH — pull, suspend, slam
+   976→        this.enterScripted()
+   977→        w.audio.play('gravity', { intensity: 1 })
+   978→        w.fx.shockwave(this.x, 0, 240, c.glow, 0.7, 9)
+   979→        for (const e of w.enemies) {
+   980→          if (e.dead || e.spawning) continue
+   981→          const dx = this.x - e.x
+   982→          if (Math.abs(dx) < 260 && e.y > -200) {
+   983→            e.vx = dx * 3.2
+   984→            e.vy = -rand(380, 480)
+   985→            e.launched = true
+   986→            this.ability.targets.push(e.id)
+   987→          }
+   988→        }
+   989→        this.animator.play(ATTACKS.h3.clip, { blend: 0.04, speed: 1.2 })
+   990→        this.exitScriptedSoon = 0.75
+   991→        break
+   992→      }
+   993→      case 'phantom': {
+   994→        // PHANTOM BARRAGE — delayed echo slashes
+   995→        this.enterScripted()
+   996→        const targets = this.collectNearest(w, 4, 420)
+   997→        this.ability.targets = targets.map((e) => e.id)
+   998→        w.audio.play('phantom', { intensity: 1 })
+   999→        break
+  1000→      }
+  1001→    }
+  1002→  }
+  1003→
+  1004→  /** set > 0 to auto-exit scripted state after t seconds */
+  1005→  exitScriptedSoon = 0
+  1006→
+  1007→  private updateAbility(dt: number, w: WorldRef): void {
+  1008→    const ab = this.ability
+  1009→    if (!ab) return
+  1010→    ab.t += dt
+  1011→    if (this.exitScriptedSoon > 0) {
+  1012→      this.exitScriptedSoon -= dt
+  1013→      if (this.exitScriptedSoon <= 0) {
+  1014→        this.exitScripted()
+  1015→        if (ab.kind !== 'gravity') this.ability = null
+  1016→      }
+  1017→    }
+  1018→
+  1019→    const c = this.sword.colors
+  1020→
+  1021→    switch (ab.kind) {
+  1022→      case 'katana': {
+  1023→        // storm: dash-slash through a new enemy every 0.13s, 6 steps
+  1024→        const interval = 0.13
+  1025→        if (ab.t >= ab.step * interval && ab.step < 6) {
+  1026→          ab.step++
+  1027→          const targets = this.collectNearest(w, 6, 520).filter((e) => !ab.targets.includes(e.id))
+  1028→          const tgt = targets[0]
+  1029→          if (tgt) {
+  1030→            ab.targets.push(tgt.id)
+  1031→            w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.35, SCALE)
+  1032→            w.fx.speedStreaks(this.x, this.y - 40, tgt.x - this.x, 6, rgba(c.trail, 1))
+  1033→            this.x = clamp(tgt.x + (tgt.x > this.x ? -54 : 54), w.arenaMinX + 30, w.arenaMaxX - 30)
+  1034→            this.face = tgt.x > this.x ? 1 : -1
+  1035→            const ang = Math.atan2(tgt.y - 40 - (this.y - 55), tgt.x - this.x)
+  1036→            w.fx.slashArc(tgt.x, tgt.y - 40, ang, 2.6, 66, c.trail, c.trail2)
+  1037→            w.fx.impact(tgt.x, tgt.y - 40, ang, false, c.glow, c.accent)
+  1038→            this.dealAbilityDamage(w, tgt, 16, 0.3, 140, -220)
+  1039→            w.audio.play('swing', { pitch: rand(1.1, 1.3), volume: 0.7 })
+  1040→            this.animator.play(ATTACKS.dashSlash.clip, { blend: 0.02, speed: 1.4 })
+  1041→            w.cam.addTrauma(0.12)
+  1042→            w.addHitstop(0.03)
+  1043→          }
+  1044→        }
+  1045→        if (ab.step >= 6 && ab.t > 6 * interval + 0.2) {
+  1046→          this.ability = null
+  1047→          this.exitScripted()
+  1048→        }
+  1049→        break
+  1050→      }
+  1051→      case 'gravity': {
+  1052→        // suspend hold, then crush at t=0.55
+  1053→        if (ab.step === 0 && ab.t >= 0.55) {
+  1054→          ab.step = 1
+  1055→          w.audio.play('slam', { intensity: 1 })
+  1056→          w.fx.shockwave(this.x, 0, 220, c.glow, 0.5, 10)
+  1057→          w.fx.groundCrack(this.x, 0, 130)
+  1058→          w.addHitstop(0.1)
+  1059→          w.cam.addTrauma(0.5)
+  1060→          for (const e of w.enemies) {
+  1061→            if (e.dead || !ab.targets.includes(e.id)) continue
+  1062→            if (Math.abs(e.x - this.x) < 240) {
+  1063→              e.vy = 520
+  1064→              this.dealAbilityDamage(w, e, 30, 0.5, 0, 0)
+  1065→            }
+  1066→          }
+  1067→          this.animator.play(ATTACKS.h2.clip, { blend: 0.03, speed: 1.25 })
+  1068→        }
+  1069→        if (ab.t >= 1.0) {
+  1070→          this.ability = null
+  1071→          this.exitScripted()
+  1072→        }
+  1073→        break
+  1074→      }
+  1075→      case 'phantom': {
+  1076→        // echoes every 0.2s
+  1077→        const interval = 0.2
+  1078→        if (ab.t >= ab.step * interval && ab.step < ab.targets.length) {
+  1079→          const eid = ab.targets[ab.step]
+  1080→          ab.step++
+  1081→          const e = w.enemies.find((en) => en.id === eid && !en.dead)
+  1082→          if (e) {
+  1083→            const ang = rand(TAU_LIKE)
+  1084→            w.fx.slashArc(e.x, e.y - 40, ang, 2.4, 60, c.trail, c.trail2, 1.2)
+  1085→            w.fx.afterimage(this.pose, e.x - this.face * 60, this.hipY, this.face, c.trail, 0.4, SCALE)
+  1086→            w.fx.impact(e.x, e.y - 40, ang, false, c.glow, c.accent)
+  1087→            this.dealAbilityDamage(w, e, 18, 0.34, 120, -160)
+  1088→            w.audio.play('swing', { pitch: rand(0.9, 1.1), volume: 0.6 })
+  1089→          }
+  1090→        }
+  1091→        if (ab.step >= Math.max(ab.targets.length, 1) && ab.t > ab.targets.length * interval + 0.25) {
+  1092→          this.ability = null
+  1093→          this.exitScripted()
+  1094→        }
+  1095→        break
+  1096→      }
+  1097→      default:
+  1098→        if (ab.t > 1.2) {
+  1099→          this.ability = null
+  1100→        }
+  1101→    }
+  1102→  }
+  1103→
+  1104→  private collectNearest(w: WorldRef, n: number, range: number): EnemyLike[] {
+  1105→    const list: EnemyLike[] = []
+  1106→    for (const e of w.enemies) {
+  1107→      if (e.dead || e.spawning) continue
+  1108→      const d = Math.hypot(e.x - this.x, e.y - this.y)
+  1109→      if (d < range) list.push({ id: e.id, x: e.x, y: e.y, d })
+  1110→    }
+  1111→    list.sort((a, b) => (a.d ?? 0) - (b.d ?? 0))
+  1112→    return list.slice(0, n)
+  1113→  }
+  1114→
+  1115→  private findDensest(w: WorldRef, range: number): EnemyLike | null {
+  1116→    let best: EnemyLike | null = null
+  1117→    let bestScore = -1
+  1118→    for (const e of w.enemies) {
+  1119→      if (e.dead || e.spawning) continue
+  1120→      let score = 0
+  1121→      for (const o of w.enemies) {
+  1122→        if (o.dead || o.spawning) continue
+  1123→        if (Math.abs(o.x - e.x) < range) score++
+  1124→      }
+  1125→      if (score > bestScore) {
+  1126→        bestScore = score
+  1127→        best = { id: e.id, x: e.x, y: e.y, d: 0 }
+  1128→      }
+  1129→    }
+  1130→    return best
+  1131→  }
+  1132→
+  1133→  private dealAbilityDamage(w: WorldRef, e: EnemyLike, dmg: number, stagger: number, kb: number, kbY: number): void {
+  1134→    const info: AttackRuntimeInfo = {
+  1135→      id: 'ability', dmg: dmg * this.sword.stats.dmg, heavy: dmg > 20,
+  1136→      stagger, kb, kbY, launch: kbY < -300 ? kbY : 0, juggle: kbY < -100 ? kbY : 0,
+  1137→      hitstop: dmg > 20 ? 0.07 : 0.03, shake: dmg > 20 ? 0.25 : 0.1,
+  1138→      aoe: 0, breakGuard: true, kind: 'ability',
+  1139→    }
+  1140→    w.hitEnemy(e.id, { bx: e.x - 20, by: e.y - 40, tx: e.x + 20, ty: e.y - 40 }, info)
+  1141→    this.meter = Math.min(100, this.meter + dmg * 0.25)
+  1142→  }
+  1143→
+  1144→  /* ------------------------------------------------------------------ */
+  1145→  /* animation glue                                                       */
+  1146→  /* ------------------------------------------------------------------ */
+  1147→
+  1148→  private applyProcedural(dt: number): void {
+  1149→    const p = this.pose
+  1150→    // velocity lean (proportional, eased)
+  1151→    const speedLean = clamp((this.vx * this.face) / MOVE_MAX, -1, 1)
+  1152→    p[2] += speedLean * 0.14
+  1153→    // vertical pitch while airborne
+  1154→    if (!this.grounded && this.state !== 'attack') {
+  1155→      p[2] += clamp(this.vy / 1400, -0.22, 0.3)
+  1156→    }
+  1157→    // landing spring (squash)
+  1158→    if (this.landSpring > 0) {
+  1159→      this.landSpring = Math.max(0, this.landSpring - dt * 5)
+  1160→      p[1] += this.landSpring * 6
+  1161→    }
+  1162→    // charge tremble
+  1163→    if (this.charging) {
+  1164→      p[0] += rand(-0.8, 0.8) * this.chargeRatio
+  1165→      p[1] += rand(-0.5, 0.5) * this.chargeRatio
+  1166→    }
+  1167→    // hurt shake
+  1168→    if (this.hurtT > 0) {
+  1169→      p[0] += rand(-1.4, 1.4) * this.hurtT
+  1170→    }
+  1171→  }
+  1172→
+  1173→  private updateBladeWorld(): void {
+  1174→    const g = this.geom
+  1175→    const spec = PLAYER_SPEC
+  1176→    const len = spec.blade * this.sword.stats.range * 1.06
+  1177→    const bx = g.handR.x + Math.cos(g.bladeAngle) * 6
+  1178→    const by = g.handR.y + Math.sin(g.bladeAngle) * 6
+  1179→    const tx = g.handR.x + Math.cos(g.bladeAngle) * len
+  1180→    const ty = g.handR.y + Math.sin(g.bladeAngle) * len
+  1181→    this.blade.bx = this.x + this.face * SCALE * bx
+  1182→    this.blade.by = this.hipY + SCALE * by
+  1183→    this.blade.tx = this.x + this.face * SCALE * tx
+  1184→    this.blade.ty = this.hipY + SCALE * ty
+  1185→  }
+  1186→
+  1187→  /* ------------------------------------------------------------------ */
+  1188→  /* render                                                               */
+  1189→  /* ------------------------------------------------------------------ */
+  1190→
+  1191→  draw(ctx: CanvasRenderingContext2D, time: number): void {
+  1192→    if (this.state === 'dead' && this.deadT > 2.6) return
+  1193→    const alpha = this.iframes > 0 && this.state !== 'scripted'
+  1194→      ? 0.55 + 0.25 * Math.sin(time * 40)
+  1195→      : 1
+  1196→    ctx.save()
+  1197→    ctx.translate(this.x, this.hipY)
+  1198→    ctx.scale(this.face * SCALE, SCALE)
+  1199→    drawStick(ctx, this.geom, PLAYER_STYLE, {
+  1200→      time,
+  1201→      alpha,
+  1202→      flash: this.flashT * 0.85,
+  1203→      flashColor: '#ff3b57',
+  1204→    })
+  1205→    drawSword(ctx, this.geom, this.sword, {
+  1206→      time,
+  1207→      charge: this.chargeRatio,
+  1208→      alpha,
+  1209→      swingGlow: this.swingGlow,
+  1210→    })
+  1211→    ctx.restore()
+  1212→
+  1213→    // parry aura
+  1214→    if (this.state === 'parry' && this.parryActive > 0) {
+  1215→      ctx.save()
+  1216→      ctx.globalCompositeOperation = 'lighter'
+  1217→      ctx.strokeStyle = rgba(this.sword.colors.glow, 0.4 + 0.2 * Math.sin(time * 30))
+  1218→      ctx.lineWidth = 2.4
+  1219→      ctx.beginPath()
+  1220→      ctx.arc(this.x, this.hipY - 18, 44 + Math.sin(time * 22) * 3, -1.1, 1.1)
+  1221→      ctx.stroke()
+  1222→      ctx.restore()
+  1223→    }
+  1224→    // charge aura
+  1225→    if (this.charging && this.chargeReady) {
+  1226→      const c = this.sword.colors
+  1227→      ctx.save()
+  1228→      ctx.globalCompositeOperation = 'lighter'
+  1229→      const r = 30 + this.chargeRatio * 16 + Math.sin(time * 18) * 4
+  1230→      ctx.strokeStyle = rgba(c.glow, 0.3 + 0.2 * Math.sin(time * 14))
+  1231→      ctx.lineWidth = 2
+  1232→      ctx.beginPath()
+  1233→      ctx.arc(this.x, this.hipY - 16, r, 0, Math.PI * 2)
+  1234→      ctx.stroke()
+  1235→      ctx.restore()
+  1236→    }
+  1237→  }
+  1238→}
+  1239→
+  1240→/* ------------------------------------------------------------------ */
+  1241→
+  1242→const TAU_LIKE = Math.PI * 2
+  1243→
+  1244→interface EnemyLike {
+  1245→  id: number
+  1246→  x: number
+  1247→  y: number
+  1248→  d?: number
+  1249→}
+  1250→
+  1251→function fromChain(def: AttackDef, next: string, player: Player): boolean {
+  1252→  if (next === 'riposte') return true
+  1253→  // launcher chains naturally into air attacks
+  1254→  if (def.id === 'launcher' && (next.startsWith('a') || next === 'dive' || next === 'slam')) return true
+  1255→  if (def.chain.includes(next)) return true
+  1256→  // any light may restart the chain if the window allows
+  1257→  if (player.grounded && next.startsWith('l') && def.chain.some((c) => c.startsWith('l'))) return true
+  1258→  if (!player.grounded && (next.startsWith('a') || next === 'dive' || next === 'slam') && def.chain.some((c) => c.startsWith('a') || c === 'dive' || c === 'slam')) return true
+  1259→  return false
+  1260→}
+  1261→

@@ -1,0 +1,733 @@
+     1→/** STICKMAN RISING — animation inspection mode + skeletal graphics editor.
+     2→ *
+     3→ * F9 cycles five views; each exposes a class of motion bugs that is invisible
+     4→ * at gameplay speed:
+     5→ *
+     6→ *   1. SKELETON   — bones, joints, pivots, rotation axes, ground line.
+     7→ *                   Exposes wrong pivots / detached attachments.
+     8→ *   2. GHOST      — last 7 solved poses (red fade) + upcoming samples of the
+     9→ *                   current clip (green). Exposes snapping and pose pops.
+    10→ *   3. SLOW-MO    — global 0.25× time. Exposes unnatural transitions.
+    11→ *   4. TRAJECTORY — paths of pelvis, both toes, sword hand and blade tip.
+    12→ *                   Exposes foot slide, arc flatness, hip bob phasing.
+    13→ *   5. EDITOR     — full skeletal graphics editor. Freezes the sim, then:
+    14→ *                     , / .      scrub the current clip ±1 frame (⇧ = ±5)
+    15→ *                     Enter      0.25× play preview of the frozen clip
+    16→ *                     Tab        cycle the selected joint channel (⇧ back)
+    17→ *                     [ / ]      bend the selected joint ∓0.05 rad (⇧ = 0.01)
+    18→ *                     M          mirror L/R channels (symmetric authoring)
+    19→ *                     E          export the authored pose as a keyframe()
+    20→ *                                literal → console + window.__srPoseExport
+    21→ *                     R          reset all channel overrides
+    22→ *                   Draws the live skeleton, the selected-joint pivot marker
+    23→ *                   with a live radian readout, a balance plumb line, the
+    24→ *                   weapon blade segment, and a timeline bar with the clip's
+    25→ *                   real keyframe ticks.
+    26→ *
+    27→ * Purely additive: nothing is drawn while the mode is OFF.
+    28→ */
+    29→
+    30→import { sampleClip, Clip } from '../anim/animator'
+    31→import { CH, CH_COUNT, makePose, Pose } from '../anim/pose'
+    32→import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom } from '../anim/skeleton'
+    33→import type { Camera } from '../core/camera'
+    34→import type { Player } from '../entities/player'
+    35→import type { Enemy } from '../entities/enemy'
+    36→import { rgba } from '../core/utils'
+    37→
+    38→const VIEW_NAMES = ['OFF', 'SKELETON', 'GHOST FRAMES', 'SLOW-MO 0.25x', 'TRAJECTORY', 'SKELETAL EDITOR'] as const
+    39→const VIEW_EDITOR = 5
+    40→const VIEW_COUNT = 6
+    41→
+    42→const TRAJ_N = 140
+    43→
+    44→/** editor-selectable channels (root translation stays physics-owned) */
+    45→const ED_CH: { c: number; name: string }[] = [
+    46→  { c: CH.rootRot, name: 'rootRot' },
+    47→  { c: CH.spine, name: 'spine' },
+    48→  { c: CH.head, name: 'head' },
+    49→  { c: CH.hipL, name: 'hipL' },
+    50→  { c: CH.kneeL, name: 'kneeL' },
+    51→  { c: CH.footL, name: 'footL' },
+    52→  { c: CH.hipR, name: 'hipR' },
+    53→  { c: CH.kneeR, name: 'kneeR' },
+    54→  { c: CH.footR, name: 'footR' },
+    55→  { c: CH.shL, name: 'shL' },
+    56→  { c: CH.elL, name: 'elL' },
+    57→  { c: CH.wrL, name: 'wrL' },
+    58→  { c: CH.shR, name: 'shR' },
+    59→  { c: CH.elR, name: 'elR' },
+    60→  { c: CH.wrR, name: 'wrR' },
+    61→]
+    62→
+    63→const CH_NAMES = [
+    64→  'rootX', 'rootY', 'rootRot', 'spine', 'head',
+    65→  'hipL', 'kneeL', 'footL', 'hipR', 'kneeR', 'footR',
+    66→  'shL', 'elL', 'wrL', 'shR', 'elR', 'wrR',
+    67→]
+    68→
+    69→/** L↔R mirror pairs (channel indices) */
+    70→const MIRROR_PAIRS: [number, number][] = [
+    71→  [CH.hipL, CH.hipR], [CH.kneeL, CH.kneeR], [CH.footL, CH.footR],
+    72→  [CH.shL, CH.shR], [CH.elL, CH.elR], [CH.wrL, CH.wrR],
+    73→]
+    74→
+    75→interface TrajBuf {
+    76→  xs: Float32Array
+    77→  ys: Float32Array
+    78→  head: number
+    79→  count: number
+    80→}
+    81→
+    82→function makeTraj(): TrajBuf {
+    83→  return { xs: new Float32Array(TRAJ_N), ys: new Float32Array(TRAJ_N), head: 0, count: 0 }
+    84→}
+    85→
+    86→function pushTraj(b: TrajBuf, x: number, y: number): void {
+    87→  b.xs[b.head] = x
+    88→  b.ys[b.head] = y
+    89→  b.head = (b.head + 1) % TRAJ_N
+    90→  if (b.count < TRAJ_N) b.count++
+    91→}
+    92→
+    93→function drawTraj(ctx: CanvasRenderingContext2D, b: TrajBuf, color: string, width: number): void {
+    94→  if (b.count < 2) return
+    95→  ctx.strokeStyle = color
+    96→  ctx.lineWidth = width
+    97→  ctx.beginPath()
+    98→  const start = (b.head - b.count + TRAJ_N) % TRAJ_N
+    99→  ctx.moveTo(b.xs[start], b.ys[start])
+   100→  for (let i = 1; i < b.count; i++) {
+   101→    const idx = (start + i) % TRAJ_N
+   102→    ctx.lineTo(b.xs[idx], b.ys[idx])
+   103→  }
+   104→  ctx.stroke()
+   105→}
+   106→
+   107→interface GhostFrame {
+   108→  pose: Pose
+   109→  x: number
+   110→  hipY: number
+   111→  face: 1 | -1
+   112→}
+   113→
+   114→/** local-space pivot position of an editable channel */
+   115→function jointLocal(g: SkelGeom, c: number): { x: number; y: number } {
+   116→  switch (c) {
+   117→    case CH.rootRot: return g.hip
+   118→    case CH.spine: return g.mid
+   119→    case CH.head: return g.headC
+   120→    case CH.hipL: return g.hip
+   121→    case CH.kneeL: return g.kneeL
+   122→    case CH.footL: return g.ankleL
+   123→    case CH.hipR: return g.hip
+   124→    case CH.kneeR: return g.kneeR
+   125→    case CH.footR: return g.ankleR
+   126→    case CH.shL: return g.chest
+   127→    case CH.elL: return g.elbL
+   128→    case CH.wrL: return g.handL
+   129→    case CH.shR: return g.chest
+   130→    case CH.elR: return g.elbR
+   131→    case CH.wrR: return g.handR
+   132→    default: return g.hip
+   133→  }
+   134→}
+   135→
+   136→export class AnimationInspector {
+   137→  private view = 0
+   138→  private boundKey: ((e: KeyboardEvent) => void) | null = null
+   139→  private ghosts: GhostFrame[] = []
+   140→  private trajHip = makeTraj()
+   141→  private trajToeL = makeTraj()
+   142→  private trajToeR = makeTraj()
+   143→  private trajHand = makeTraj()
+   144→  private trajTip = makeTraj()
+   145→  // foot-slide meter (trajectory view)
+   146→  private slideAccum = 0
+   147→  private slideT = 0
+   148→  private slideRate = 0
+   149→  private lastToeX: number | null = null
+   150→  // scratch for upcoming-pose sampling
+   151→  private upPose: Pose = makePose()
+   152→  private upGeom: SkelGeom = makeSkelGeom()
+   153→  private ghostGeom: SkelGeom = makeSkelGeom()
+   154→
+   155→  // ---- skeletal editor state ----
+   156→  private edSel = 0 // index into ED_CH
+   157→  private edT = 0 // scrub time (seconds)
+   158→  private edPlaying = false
+   159→  private edLastNow = 0
+   160→  private subject: Player | null = null
+   161→  private exportScratch: Pose = makePose()
+   162→  private pulseT = 0
+   163→
+   164→  get active(): boolean {
+   165→    return this.view !== 0
+   166→  }
+   167→
+   168→  get viewName(): string {
+   169→    return VIEW_NAMES[this.view]
+   170→  }
+   171→
+   172→  get editing(): boolean {
+   173→    return this.view === VIEW_EDITOR
+   174→  }
+   175→
+   176→  attach(): void {
+   177→    this.boundKey = (e: KeyboardEvent) => {
+   178→      if (e.code === 'F9') {
+   179→        e.preventDefault()
+   180→        this.cycleView(1)
+   181→        return
+   182→      }
+   183→      if (this.view === VIEW_EDITOR) this.editorKey(e)
+   184→    }
+   185→    window.addEventListener('keydown', this.boundKey)
+   186→  }
+   187→
+   188→  detach(): void {
+   189→    if (this.boundKey) window.removeEventListener('keydown', this.boundKey)
+   190→    this.boundKey = null
+   191→    this.onSlowMoChange?.(false)
+   192→    this.exitEditor()
+   193→  }
+   194→
+   195→  /** wired by Game to toggle the global 0.25× time */
+   196→  onSlowMoChange: ((on: boolean) => void) | null = null
+   197→  /** wired by Game to toggle the editor full freeze */
+   198→  onPauseChange: ((on: boolean) => void) | null = null
+   199→
+   200→  /** programmatically switch view (0..5) — used by automated QA passes */
+   201→  setView(v: number): void {
+   202→    const next = ((v % VIEW_COUNT) + VIEW_COUNT) % VIEW_COUNT
+   203→    while (this.view !== next) this.cycleView(1)
+   204→  }
+   205→
+   206→  private cycleView(dir: number): void {
+   207→    const prev = this.view
+   208→    this.view = (this.view + dir + VIEW_COUNT) % VIEW_COUNT
+   209→    // slow-mo flag first — enterEditor's full freeze must be the LAST word
+   210→    // on timing state (onSlowMoChange(false) would otherwise wipe the pause)
+   211→    this.onSlowMoChange?.(this.view === 3)
+   212→    if (prev === VIEW_EDITOR && this.view !== VIEW_EDITOR) this.exitEditor()
+   213→    if (this.view === VIEW_EDITOR) this.enterEditor()
+   214→  }
+   215→
+   216→  private enterEditor(): void {
+   217→    this.edPlaying = false
+   218→    this.edLastNow = performance.now()
+   219→    if (this.subject) {
+   220→      this.edT = this.subject.animDebug().time
+   221→      this.subject.editorResimulate()
+   222→    }
+   223→    this.onPauseChange?.(true)
+   224→  }
+   225→
+   226→  private exitEditor(): void {
+   227→    this.edPlaying = false
+   228→    if (this.subject) this.subject.poseOverride = null
+   229→    this.onPauseChange?.(false)
+   230→  }
+   231→
+   232→  /* ------------------------------------------------------------------ */
+   233→  /* editor key map                                                       */
+   234→  /* ------------------------------------------------------------------ */
+   235→
+   236→  private editorKey(e: KeyboardEvent): void {
+   237→    const shift = e.shiftKey
+   238→    switch (e.code) {
+   239→      case 'Comma':
+   240→        e.preventDefault()
+   241→        this.scrubBy(shift ? -5 : -1)
+   242→        break
+   243→      case 'Period':
+   244→        e.preventDefault()
+   245→        this.scrubBy(shift ? 5 : 1)
+   246→        break
+   247→      case 'Enter':
+   248→        e.preventDefault()
+   249→        this.edPlaying = !this.edPlaying
+   250→        this.edLastNow = performance.now()
+   251→        break
+   252→      case 'Tab':
+   253→        e.preventDefault()
+   254→        this.edSel = (this.edSel + (shift ? -1 : 1) + ED_CH.length) % ED_CH.length
+   255→        break
+   256→      case 'BracketLeft':
+   257→        e.preventDefault()
+   258→        this.nudge(shift ? -0.01 : -0.05)
+   259→        break
+   260→      case 'BracketRight':
+   261→        e.preventDefault()
+   262→        this.nudge(shift ? 0.01 : 0.05)
+   263→        break
+   264→      case 'KeyM':
+   265→        e.preventDefault()
+   266→        this.mirror()
+   267→        break
+   268→      case 'KeyE':
+   269→        e.preventDefault()
+   270→        void this.exportPose()
+   271→        break
+   272→      case 'KeyR':
+   273→        e.preventDefault()
+   274→        this.resetOverrides()
+   275→        break
+   276→      default:
+   277→        break
+   278→    }
+   279→  }
+   280→
+   281→  /* ------------------------------------------------------------------ */
+   282→  /* editor operations (public — automatable via __sr.inspect)           */
+   283→  /* ------------------------------------------------------------------ */
+   284→
+   285→  scrubBy(frames: number): void {
+   286→    const p = this.subject
+   287→    if (!p) return
+   288→    p.scrubAnim(this.edT + frames / 60)
+   289→    this.edT = p.animDebug().time // read back (loop wrap / clamp)
+   290→    p.editorResimulate()
+   291→  }
+   292→
+   293→  scrubTo(t: number): void {
+   294→    const p = this.subject
+   295→    if (!p) return
+   296→    p.scrubAnim(t)
+   297→    this.edT = p.animDebug().time
+   298→    p.editorResimulate()
+   299→  }
+   300→
+   301→  selectChannel(i: number): void {
+   302→    this.edSel = ((i % ED_CH.length) + ED_CH.length) % ED_CH.length
+   303→  }
+   304→
+   305→  get selectedChannel(): { index: number; name: string; ch: number } {
+   306→    const ed = ED_CH[this.edSel]
+   307→    return { index: this.edSel, name: ed.name, ch: ed.c }
+   308→  }
+   309→
+   310→  nudge(delta: number): void {
+   311→    const p = this.subject
+   312→    if (!p) return
+   313→    const ch = ED_CH[this.edSel].c
+   314→    const ov = this.ensureOverride(p)
+   315→    const cur = Number.isFinite(ov[ch]) ? ov[ch] : p.editorPose(this.exportScratch)[ch]
+   316→    ov[ch] = cur + delta
+   317→    p.editorResimulate()
+   318→  }
+   319→
+   320→  mirror(): void {
+   321→    const p = this.subject
+   322→    if (!p) return
+   323→    const final = p.editorPose(this.exportScratch)
+   324→    const ov = this.ensureOverride(p)
+   325→    // torso channels keep their authored values; limbs swap sides
+   326→    ov[CH.rootRot] = final[CH.rootRot]
+   327→    ov[CH.spine] = final[CH.spine]
+   328→    ov[CH.head] = final[CH.head]
+   329→    for (const [l, r] of MIRROR_PAIRS) {
+   330→      ov[l] = final[r]
+   331→      ov[r] = final[l]
+   332→    }
+   333→    p.editorResimulate()
+   334→  }
+   335→
+   336→  resetOverrides(): void {
+   337→    const p = this.subject
+   338→    if (!p) return
+   339→    p.poseOverride = null
+   340→    p.editorResimulate()
+   341→  }
+   342→
+   343→  /** dumps the authored pose as a clips.ts keyframe literal */
+   344→  async exportPose(): Promise<string> {
+   345→    const p = this.subject
+   346→    if (!p) return 'NO SUBJECT'
+   347→    const final = p.editorPose(this.exportScratch)
+   348→    const anim = p.animDebug()
+   349→    const t = anim.time
+   350→    const lines: string[] = []
+   351→    for (let c = 0; c < CH_COUNT; c++) {
+   352→      lines.push(`  ${CH_NAMES[c]}: ${final[c].toFixed(3)},`)
+   353→    }
+   354→    const out = `// clip: ${anim.clip?.name ?? '?'} @ t=${t.toFixed(3)}s (dur ${anim.clip?.dur.toFixed(3) ?? '?'})\nkeyframe(T, {\n${lines.join('\n')}\n}, 'outCubic')`
+   355→    ;(window as unknown as Record<string, unknown>).__srPoseExport = out
+   356→    console.info(`[skeletal editor] pose exported (also at window.__srPoseExport):\n${out}`)
+   357→    try {
+   358→      await navigator.clipboard?.writeText(out)
+   359→    } catch {
+   360→      /* clipboard unavailable in headless contexts — console + window handle suffice */
+   361→    }
+   362→    return out
+   363→  }
+   364→
+   365→  private ensureOverride(p: Player): Pose {
+   366→    if (!p.poseOverride) p.poseOverride = new Float32Array(CH_COUNT).fill(Number.NaN)
+   367→    return p.poseOverride
+   368→  }
+   369→
+   370→  /* ------------------------------------------------------------------ */
+   371→  /* per-frame recording (call before render)                            */
+   372→  /* ------------------------------------------------------------------ */
+   373→
+   374→  record(player: Player, enemies: Enemy[]): void {
+   375→    this.subject = player
+   376→    if (!this.active) return
+   377→    if (this.view === VIEW_EDITOR) {
+   378→      // editor heartbeat: 0.25× preview playback on real time + HUD pulse
+   379→      const now = performance.now()
+   380→      const dt = Math.min(Math.max((now - this.edLastNow) / 1000, 0), 0.05)
+   381→      this.edLastNow = now
+   382→      this.pulseT += dt
+   383→      if (this.edPlaying) {
+   384→        player.scrubAnim(this.edT + dt * 0.25)
+   385→        this.edT = player.animDebug().time
+   386→        player.editorResimulate()
+   387→      }
+   388→      void enemies
+   389→      return
+   390→    }
+   391→    this.pulseT += 1 / 60
+   392→    // ghost ring buffer (player only — the hero is the inspection subject)
+   393→    this.ghosts.push({ pose: makePose(), x: player.x, hipY: player.hipY, face: player.face })
+   394→    const g = this.ghosts[this.ghosts.length - 1]
+   395→    g.pose.set(player.pose)
+   396→    if (this.ghosts.length > 7) this.ghosts.shift()
+   397→
+   398→    // trajectories (world space)
+   399→    const SC = 1.32
+   400→    pushTraj(this.trajHip, player.x, player.hipY)
+   401→    pushTraj(this.trajToeL, player.x + player.face * SC * player.geom.toeL.x, player.hipY + SC * player.geom.toeL.y)
+   402→    pushTraj(this.trajToeR, player.x + player.face * SC * player.geom.toeR.x, player.hipY + SC * player.geom.toeR.y)
+   403→    pushTraj(this.trajHand, player.x + player.face * SC * player.geom.handR.x, player.hipY + SC * player.geom.handR.y)
+   404→    pushTraj(this.trajTip, player.blade.tx, player.blade.ty)
+   405→
+   406→    // foot-slide meter: drift of the lowest near-ground toe while running
+   407→    const toeLY = player.hipY + SC * player.geom.toeL.y
+   408→    const toeRY = player.hipY + SC * player.geom.toeR.y
+   409→    const lowerY = Math.max(toeLY, toeRY)
+   410→    const lowerX = toeLY > toeRY
+   411→      ? player.x + player.face * SC * player.geom.toeL.x
+   412→      : player.x + player.face * SC * player.geom.toeR.x
+   413→    if (lowerY > -10 && Math.abs(player.vx) > 60) {
+   414→      if (this.lastToeX !== null) this.slideAccum += Math.abs(lowerX - this.lastToeX)
+   415→      this.lastToeX = lowerX
+   416→    } else {
+   417→      this.lastToeX = null
+   418→    }
+   419→    this.slideT += 1 / 60
+   420→    if (this.slideT >= 0.5) {
+   421→      this.slideRate = this.slideAccum / this.slideT
+   422→      this.slideAccum = 0
+   423→      this.slideT = 0
+   424→    }
+   425→    void enemies
+   426→  }
+   427→
+   428→  /** world-space overlays (call inside the camera transform) */
+   429→  drawWorld(
+   430→    ctx: CanvasRenderingContext2D,
+   431→    cam: Camera,
+   432→    vw: number,
+   433→    vh: number,
+   434→    time: number,
+   435→    player: Player,
+   436→    enemies: Enemy[],
+   437→  ): void {
+   438→    if (this.view === 0) return
+   439→    ctx.save()
+   440→    ctx.translate(vw / 2, vh / 2)
+   441→    ctx.rotate(cam.rot)
+   442→    ctx.scale(cam.zoom, cam.zoom)
+   443→    ctx.translate(-(cam.x + cam.offX), -(cam.y + cam.offY))
+   444→
+   445→    // ground reference line
+   446→    ctx.strokeStyle = rgba('#46ffb4', 0.8)
+   447→    ctx.lineWidth = 1.5
+   448→    ctx.setLineDash([8, 6])
+   449→    ctx.beginPath()
+   450→    ctx.moveTo(cam.x - vw / cam.zoom, 0)
+   451→    ctx.lineTo(cam.x + vw / cam.zoom, 0)
+   452→    ctx.stroke()
+   453→    ctx.setLineDash([])
+   454→
+   455→    if (this.view === 4) {
+   456→      // trajectory view
+   457→      drawTraj(ctx, this.trajHip, rgba('#ffe14d', 0.9), 2)
+   458→      drawTraj(ctx, this.trajToeL, rgba('#ff8c5c', 0.85), 1.6)
+   459→      drawTraj(ctx, this.trajToeR, rgba('#ff5c7a', 0.85), 1.6)
+   460→      drawTraj(ctx, this.trajHand, rgba('#35f2ff', 0.8), 1.6)
+   461→      drawTraj(ctx, this.trajTip, rgba('#c44dff', 0.8), 1.6)
+   462→      // legend handled in HUD-space label
+   463→    }
+   464→
+   465→    if (this.view === 2) {
+   466→      // ghost frames: past (red) then upcoming (green)
+   467→      for (let i = 0; i < this.ghosts.length; i++) {
+   468→        const f = this.ghosts[i]
+   469→        const a = 0.06 + (i / this.ghosts.length) * 0.2
+   470→        ctx.save()
+   471→        ctx.translate(f.x, f.hipY)
+   472→        ctx.scale(f.face * 1.32, 1.32)
+   473→        solveSkeleton(f.pose, PLAYER_SPEC, this.ghostGeom)
+   474→        this.drawBones(ctx, this.ghostGeom, rgba('#ff5c7a', a), rgba('#ff5c7a', a * 0.9), false)
+   475→        ctx.restore()
+   476→      }
+   477→      const anim = player.animDebug()
+   478→      if (anim.clip && !anim.clip.loop) {
+   479→        for (const dt of [0.06, 0.12]) {
+   480→          sampleClip(anim.clip, anim.time + dt, this.upPose)
+   481→          solveSkeleton(this.upPose, PLAYER_SPEC, this.upGeom)
+   482→          ctx.save()
+   483→          ctx.translate(player.x, player.hipY)
+   484→          ctx.scale(player.face * 1.32, 1.32)
+   485→          this.drawBones(ctx, this.upGeom, rgba('#46ffb4', 0.35), rgba('#46ffb4', 0.3), false)
+   486→          ctx.restore()
+   487→        }
+   488→      }
+   489→    }
+   490→
+   491→    if (this.view === 1 || this.view === 2 || this.view === VIEW_EDITOR) {
+   492→      // live skeleton on top
+   493→      ctx.save()
+   494→      ctx.translate(player.x, player.hipY)
+   495→      ctx.scale(player.face * 1.32, 1.32)
+   496→      this.drawBones(ctx, player.geom, rgba('#ffe14d', 0.95), rgba('#35f2ff', 0.9), true)
+   497→      ctx.restore()
+   498→    }
+   499→    if (this.view === 1) {
+   500→      for (const e of enemies) {
+   501→        if (e.dead || e.spawning) continue
+   502→        ctx.save()
+   503→        ctx.translate(e.x, e.hipY)
+   504→        ctx.scale(e.face * e.scale, e.scale)
+   505→        this.drawBones(ctx, e.geom, rgba('#ffe14d', 0.7), rgba('#35f2ff', 0.7), false)
+   506→        ctx.restore()
+   507→      }
+   508→    }
+   509→
+   510→    if (this.view === VIEW_EDITOR) this.drawEditorWorld(ctx, player)
+   511→
+   512→    ctx.restore()
+   513→    void time
+   514→  }
+   515→
+   516→  /* ------------------------------------------------------------------ */
+   517→  /* editor world overlay                                                 */
+   518→  /* ------------------------------------------------------------------ */
+   519→
+   520→  private drawEditorWorld(ctx: CanvasRenderingContext2D, player: Player): void {
+   521→    const SC = 1.32
+   522→
+   523→    // balance plumb line through the pelvis (animator's CoM check)
+   524→    ctx.strokeStyle = rgba('#ffe14d', 0.35)
+   525→    ctx.lineWidth = 1
+   526→    ctx.setLineDash([3, 5])
+   527→    ctx.beginPath()
+   528→    ctx.moveTo(player.x, player.hipY - 110)
+   529→    ctx.lineTo(player.x, 18)
+   530→    ctx.stroke()
+   531→    ctx.setLineDash([])
+   532→
+   533→    // weapon blade segment (wrR edits move it live)
+   534→    ctx.strokeStyle = rgba('#c44dff', 0.85)
+   535→    ctx.lineWidth = 2
+   536→    ctx.beginPath()
+   537→    ctx.moveTo(player.blade.bx, player.blade.by)
+   538→    ctx.lineTo(player.blade.tx, player.blade.ty)
+   539→    ctx.stroke()
+   540→    ctx.fillStyle = rgba('#c44dff', 1)
+   541→    ctx.beginPath()
+   542→    ctx.arc(player.blade.tx, player.blade.ty, 3, 0, Math.PI * 2)
+   543→    ctx.fill()
+   544→
+   545→    // selected-joint pivot marker + live radian readout
+   546→    const ed = ED_CH[this.edSel]
+   547→    const j = jointLocal(player.geom, ed.c)
+   548→    const jx = player.x + player.face * SC * j.x
+   549→    const jy = player.hipY + SC * j.y
+   550→    const pulse = 8 + Math.sin(this.pulseT * 6) * 1.6
+   551→    ctx.strokeStyle = rgba('#ff5c7a', 0.95)
+   552→    ctx.lineWidth = 2
+   553→    ctx.beginPath()
+   554→    ctx.arc(jx, jy, pulse, 0, Math.PI * 2)
+   555→    ctx.stroke()
+   556→    // crosshair
+   557→    ctx.strokeStyle = rgba('#ff5c7a', 0.7)
+   558→    ctx.lineWidth = 1
+   559→    ctx.beginPath()
+   560→    ctx.moveTo(jx - pulse - 4, jy)
+   561→    ctx.lineTo(jx + pulse + 4, jy)
+   562→    ctx.moveTo(jx, jy - pulse - 4)
+   563→    ctx.lineTo(jx, jy + pulse + 4)
+   564→    ctx.stroke()
+   565→    // value chip
+   566→    const final = player.editorPose(this.exportScratch)
+   567→    const label = `${ed.name} ${final[ed.c].toFixed(2)}rad`
+   568→    ctx.font = '700 11px "Courier New", monospace'
+   569→    ctx.textAlign = 'left'
+   570→    const w = ctx.measureText(label).width + 10
+   571→    ctx.fillStyle = 'rgba(4,6,10,0.8)'
+   572→    ctx.fillRect(jx + pulse + 6, jy - 9, w, 16)
+   573→    ctx.strokeStyle = rgba('#ff5c7a', 0.6)
+   574→    ctx.strokeRect(jx + pulse + 6, jy - 9, w, 16)
+   575→    ctx.fillStyle = '#ff9cb0'
+   576→    ctx.fillText(label, jx + pulse + 11, jy + 3)
+   577→  }
+   578→
+   579→  /** bone overlay in LOCAL skeleton space */
+   580→  private drawBones(
+   581→    ctx: CanvasRenderingContext2D,
+   582→    g: SkelGeom,
+   583→    boneColor: string,
+   584→    jointColor: string,
+   585→    detailed: boolean,
+   586→  ): void {
+   587→    ctx.lineCap = 'round'
+   588→    ctx.strokeStyle = boneColor
+   589→    ctx.lineWidth = 1.6
+   590→    // legs
+   591→    ctx.beginPath()
+   592→    ctx.moveTo(g.hip.x, g.hip.y); ctx.lineTo(g.kneeL.x, g.kneeL.y); ctx.lineTo(g.ankleL.x, g.ankleL.y); ctx.lineTo(g.toeL.x, g.toeL.y)
+   593→    ctx.moveTo(g.hip.x, g.hip.y); ctx.lineTo(g.kneeR.x, g.kneeR.y); ctx.lineTo(g.ankleR.x, g.ankleR.y); ctx.lineTo(g.toeR.x, g.toeR.y)
+   594→    // spine chain (true 2-segment)
+   595→    ctx.moveTo(g.hip.x, g.hip.y); ctx.lineTo(g.mid.x, g.mid.y); ctx.lineTo(g.chest.x, g.chest.y)
+   596→    ctx.lineTo(g.neckBase.x, g.neckBase.y); ctx.lineTo(g.headC.x, g.headC.y)
+   597→    // arms
+   598→    ctx.moveTo(g.chest.x, g.chest.y); ctx.lineTo(g.elbL.x, g.elbL.y); ctx.lineTo(g.handL.x, g.handL.y)
+   599→    ctx.moveTo(g.chest.x, g.chest.y); ctx.lineTo(g.elbR.x, g.elbR.y); ctx.lineTo(g.handR.x, g.handR.y)
+   600→    ctx.stroke()
+   601→
+   602→    // joints
+   603→    ctx.fillStyle = jointColor
+   604→    for (const j of [g.kneeL, g.kneeR, g.elbL, g.elbR, g.ankleL, g.ankleR]) {
+   605→      ctx.beginPath()
+   606→      ctx.arc(j.x, j.y, 2.2, 0, Math.PI * 2)
+   607→      ctx.fill()
+   608→    }
+   609→    // hip pivot cross (root)
+   610→    ctx.strokeStyle = jointColor
+   611→    ctx.lineWidth = 1.2
+   612→    ctx.beginPath()
+   613→    ctx.moveTo(g.hip.x - 4, g.hip.y); ctx.lineTo(g.hip.x + 4, g.hip.y)
+   614→    ctx.moveTo(g.hip.x, g.hip.y - 4); ctx.lineTo(g.hip.x, g.hip.y + 4)
+   615→    ctx.stroke()
+   616→    // mid-spine pivot (the torso bend joint — the audited "torso middle")
+   617→    ctx.beginPath()
+   618→    ctx.arc(g.mid.x, g.mid.y, 2.8, 0, Math.PI * 2)
+   619→    ctx.stroke()
+   620→
+   621→    if (detailed) {
+   622→      // rotation axis ticks on the front knee + shoulder (shows limb angle live)
+   623→      this.axisTick(ctx, g.hip.x, g.hip.y, g.kneeR.x, g.kneeR.y)
+   624→      this.axisTick(ctx, g.chest.x, g.chest.y, g.elbR.x, g.elbR.y)
+   625→    }
+   626→  }
+   627→
+   628→  private axisTick(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number): void {
+   629→    const dx = bx - ax
+   630→    const dy = by - ay
+   631→    const l = Math.hypot(dx, dy) || 1
+   632→    const nx = -dy / l
+   633→    const ny = dx / l
+   634→    ctx.strokeStyle = rgba('#ff5c7a', 0.9)
+   635→    ctx.lineWidth = 1.2
+   636→    ctx.beginPath()
+   637→    ctx.moveTo(ax + nx * 6, ay + ny * 6)
+   638→    ctx.lineTo(ax - nx * 6, ay - ny * 6)
+   639→    ctx.stroke()
+   640→  }
+   641→
+   642→  /* ------------------------------------------------------------------ */
+   643→  /* HUD-space label + readouts                                           */
+   644→  /* ------------------------------------------------------------------ */
+   645→
+   646→  drawHud(ctx: CanvasRenderingContext2D, w: number): void {
+   647→    if (this.view === 0) return
+   648→    ctx.save()
+   649→    ctx.font = '700 12px "Courier New", monospace'
+   650→    ctx.textAlign = 'left'
+   651→    if (this.view === VIEW_EDITOR) {
+   652→      this.drawEditorHud(ctx)
+   653→      void w
+   654→      ctx.restore()
+   655→      return
+   656→    }
+   657→    ctx.fillStyle = 'rgba(4,6,10,0.72)'
+   658→    ctx.fillRect(12, 64, 250, this.view === 4 ? 86 : 64)
+   659→    ctx.strokeStyle = 'rgba(70,255,180,0.5)'
+   660→    ctx.lineWidth = 1
+   661→    ctx.strokeRect(12, 64, 250, this.view === 4 ? 86 : 64)
+   662→    ctx.fillStyle = '#46ffb4'
+   663→    ctx.fillText(`ANIM INSPECT [F9]: ${this.viewName}`, 22, 82)
+   664→    ctx.fillStyle = 'rgba(223,231,238,0.85)'
+   665→    ctx.fillText('1 skeleton  2 ghost  3 slow-mo  4 traj', 22, 100)
+   666→    if (this.view === 4) {
+   667→      ctx.fillStyle = '#ff8c5c'
+   668→      ctx.fillText(`toe slide: ${this.slideRate.toFixed(0)} px/s  (<12 good)`, 22, 118)
+   669→      ctx.fillStyle = 'rgba(223,231,238,0.7)'
+   670→      ctx.fillText('yellow pelvis · toes · hand · tip', 22, 136)
+   671→    }
+   672→    void w
+   673→    ctx.restore()
+   674→  }
+   675→
+   676→  private drawEditorHud(ctx: CanvasRenderingContext2D): void {
+   677→    const p = this.subject
+   678→    const anim = p?.animDebug()
+   679→    const clip = anim?.clip ?? null
+   680→    const dur = clip?.dur ?? 0
+   681→    const x = 12
+   682→    const y = 64
+   683→    const w = 330
+   684→    const h = 168
+   685→    ctx.fillStyle = 'rgba(4,6,10,0.82)'
+   686→    ctx.fillRect(x, y, w, h)
+   687→    ctx.strokeStyle = 'rgba(255,92,122,0.6)'
+   688→    ctx.lineWidth = 1
+   689→    ctx.strokeRect(x, y, w, h)
+   690→
+   691→    ctx.fillStyle = '#ff5c7a'
+   692→    ctx.fillText(`SKELETAL EDITOR [F9] — SIM FROZEN${this.edPlaying ? ' — PREVIEW 0.25x' : ''}`, x + 10, y + 18)
+   693→    ctx.fillStyle = 'rgba(223,231,238,0.9)'
+   694→    ctx.fillText(`clip: ${clip?.name ?? '—'}   t: ${(anim?.time ?? 0).toFixed(3)} / ${dur.toFixed(3)}s`, x + 10, y + 36)
+   695→
+   696→    // timeline bar with the clip's real keyframe ticks
+   697→    const barX = x + 10
+   698→    const barY = y + 48
+   699→    const barW = w - 20
+   700→    ctx.fillStyle = 'rgba(223,231,238,0.12)'
+   701→    ctx.fillRect(barX, barY, barW, 8)
+   702→    if (clip && dur > 0) {
+   703→      ctx.fillStyle = 'rgba(70,255,180,0.55)'
+   704→      for (const f of clip.frames) {
+   705→        const fx = barX + (f.t / dur) * barW
+   706→        ctx.fillRect(fx - 1, barY - 3, 2, 14)
+   707→      }
+   708→      // scrub cursor
+   709→      const cx = barX + ((anim?.time ?? 0) / dur) * barW
+   710→      ctx.fillStyle = '#ffe14d'
+   711→      ctx.fillRect(cx - 1.5, barY - 5, 3, 18)
+   712→    }
+   713→
+   714→    // selected channel + override state
+   715→    const ed = ED_CH[this.edSel]
+   716→    let ovCount = 0
+   717→    const ov = p?.poseOverride
+   718→    if (ov) {
+   719→      for (let c = 0; c < ov.length; c++) if (Number.isFinite(ov[c])) ovCount++
+   720→    }
+   721→    ctx.fillStyle = '#35f2ff'
+   722→    ctx.fillText(`joint: ${ed.name}  [ ${this.edSel + 1}/${ED_CH.length} ]`, x + 10, y + 82)
+   723→    ctx.fillStyle = ovCount > 0 ? '#ffe14d' : 'rgba(223,231,238,0.55)'
+   724→    ctx.fillText(`overrides: ${ovCount} channel${ovCount === 1 ? '' : 's'}${ovCount > 0 ? ' (E exports, R resets)' : ''}`, x + 10, y + 98)
+   725→
+   726→    // key legend
+   727→    ctx.fillStyle = 'rgba(223,231,238,0.75)'
+   728→    ctx.fillText(', . scrub 1f   ⇧ ±5f   ⏎ preview', x + 10, y + 122)
+   729→    ctx.fillText('Tab joint   [ ] bend ±0.05   ⇧ ±0.01', x + 10, y + 138)
+   730→    ctx.fillText('M mirror L/R   E export keyframe   R reset', x + 10, y + 154)
+   731→  }
+   732→}
+   733→

@@ -1,0 +1,602 @@
+    40→    40→  aoe?: number
+    41→    41→  multiHit?: number
+    42→    42→  breakGuard?: boolean
+    43→    43→  /** hit-volume padding in px fattening the blade segment — a katana edge
+    44→    44→   * is a plane, not a line; heavies carve a wider corridor than lights */
+    45→    45→  pad?: number
+    46→    46→}
+    47→    47→
+    48→    48→export interface AttackDef {
+    49→    49→  /** Empty-hand contact uses the visible forearm/fist, never a hidden blade. */
+    50→    50→  strikeHand?: 'left' | 'right'
+    51→    51→  strikeJoint?:'hand'|'elbow'
+    52→    52→  id: string
+    53→    53→  label: string
+    54→    54→  kind: AttackKind
+    55→    55→  clip: Clip
+    56→    56→  hit: AttackHit
+    57→    57→  trail: { start: number; end: number }
+    58→    58→  swingSfx: { t: number; name: SfxName }
+    59→    59→  cancel: number
+    60→    60→  chain: string[]
+    61→    61→  moveX?: number
+    62→    62→  moveXAt?: number
+    63→    63→  /** Opt-in finite ground drive. Legacy moves remain unchanged until qualified. */
+    64→    64→  groundDrive?: {duration:number;acceleration:number}
+    65→    65→  moveY?: number
+    66→    66→  moveYAt?: number
+    67→    67→  requires: 'ground' | 'air' | 'any'
+    68→    68→  /** gravity scale while the attack is active (air-combo float) */
+    69→    69→  float?: number
+    70→    70→  /** AoE + fx fire when the player touches ground mid-attack (slams / dive) */
+    71→    71→  slamImpact?: { r: number; dmg: number; launch: number }
+    72→    72→  /** two-handed grip weight (0..1): how strongly the off-hand IK takes the
+    73→    73→   * tsuka during this attack — real kenjutsu cuts are two-handed */
+    74→    74→  grip?: number
+    75→    75→  /** 2.8D Z-EXCURSION (0..1): legacy visual-only depth pulse — superseded
+    76→    76→   * by `traj` (the real 3D yaw path); still drives the pierce flare for
+    77→    77→   * attacks without a declared trajectory */
+    78→    78→  zArc?: number
+    79→    79→  /** iai snap-draw: spawn the flash-release burst at ignition (blade
+    80→    80→   * clearing the saya reads as a 1-frame light event) */
+    81→    81→  drawFlash?: boolean
+    82→    82→  /** THE 3D TRAJECTORY: the blade's path through real 3D space during the
+    83→    83→   * strike. Every attack family gets a genuinely different combination —
+    84→    84→   * horizontal cuts carve wide depth arcs, diagonals tilt through depth,
+    85→    85→   * thrusts spear the lens, risers reverse the plane. The body follows:
+    86→    86→   * hips rotate with the yaw, the chest counter-rotates further. */
+    87→    87→  traj?: Traj3D
+    88→    88→}
+    89→    89→
+    90→    90→/** Blade path spec (see armarc.ts — the 3D trajectory solver):
+    91→    91→ *  a0→a1  pitch: screen-plane blade angle, chamber → contact
+    92→    92→ *         (0 = level forward, + = tip down, − = tip up)
+    93→    93→ *  y0→y1  yaw: depth-plane rotation, chamber → contact
+    94→    94→ *         (− = kissaki behind the body plane, + = toward the camera)
+    95→    95→ *  e0→e1  arm extension fraction (coil → drive through)
+    96→    96→ *  band   strike height (world px above feet: 14 legs / 48 torso / 78 chest) */
+    97→    97→export interface Traj3D {
+    98→    98→  a0: number
+    99→    99→  a1: number
+   100→   100→  y0: number
+   101→   101→  y1: number
+   102→   102→  e0: number
+   103→   103→  e1: number
+   104→   104→  band?: number
+   105→   105→}
+   106→   106→
+   107→   107→/** Chūdan-no-kamae guard — shared start/end pose for ground chains. */
+   108→   108→const GUARD = {
+   109→   109→  rootRot: 0.1, spine: 0.05, head: -0.1, rootY: 0,
+   110→   110→  hipR: 0.32, kneeR: -0.5, footR: 0.12,
+   111→   111→  hipL: -0.3, kneeL: -0.42, footL: 0.12,
+   112→   112→  shR: 0.85, elR: -0.5, wrR: 1.15,
+   113→   113→  shL: 0.5, elL: -0.85, wrL: -0.3,
+   114→   114→}
+   115→   115→
+   116→   116→/* ------------------------------------------------------------------ */
+   117→   117→/* GROUND LIGHTS — the five cuts of the chain                          */
+   118→   118→/* ------------------------------------------------------------------ */
+   119→   119→
+   120→   120→/** L1 — NUKITSUKE (抜き付け): the iai draw-cut. Sword sheathed at the hip
+   121→   121→ * (blade lying back along the saya), one explosive horizontal draw across
+   122→   122→ * at chest height, powered by hip rotation + a slide step. */
+   123→   123→const l1: AttackDef = {
+   124→   124→  id: 'l1', label: 'IAI DRAW', kind: 'light', requires: 'ground',
+   125→   125→  clip: makeClip('atk_l1', [
+   126→   126→    keyframe(0, {
+   127→   127→      ...GUARD,
+   128→   128→      rootRot: 0.06,
+   129→   129→      // hand resting on the saya mouth — IK-solved onto the REAL mouth
+   130→   130→      // position (3,1 local): shR 0.31/elR −0.93 lands the fist exactly
+   131→   131→      // there; the blade lies back along the scabbard axis (sum ≈ −1.34 →
+   132→   132→      // blade ≈ 166° = the saya line). The old 0.2/−0.3 reached 15+ units
+   133→   133→      // behind the mouth with a near-straight elbow.
+   134→   134→      shR: 0.31, elR: -0.93, wrR: -0.72,
+   135→   135→      shL: 0.35, elL: -0.6,
+   136→   136→    }, 'outQuad'),
+   137→   137→    keyframe(0.08, {
+   138→   138→      rootRot: 0.1, rootY: 1.2,
+   139→   139→      shR: 0.31, elR: -0.93, wrR: -0.72, // grip tightens — stillness beat
+   140→   140→      shL: 0.35, elL: -0.6,
+   141→   141→    }, 'inOutSine'),
+   142→   142→    // ignition: the blade clears the saya mouth, already moving
+   143→   143→    keyframe(0.12, {
+   144→   144→      rootRot: 0.18, rootY: 0.6,
+   145→   145→      hipR: 0.38, kneeR: -0.45,
+   146→   146→      shR: 0.72, elR: -0.3, wrR: 0.02,
+   147→   147→      shL: 0.45, elL: -0.8,
+   148→   148→    }, 'outQuad'),
+   149→   149→    keyframe(0.17, {
+   150→   150→      rootRot: 0.32, spine: 0.12, head: -0.16, rootY: -0.5,
+   151→   151→      hipR: 0.5, kneeR: -0.35, footR: 0.1,
+   152→   152→      hipL: -0.55, kneeL: -0.28, footL: 0.14,
+   153→   153→      shR: 1.0, elR: -0.3, wrR: 0.62, // blade rips out level, elbow stays flexion-side
+   154→   154→      shL: 0.55, elL: -0.95,
+   155→   155→    }, 'outCubic'),
+   156→   156→    keyframe(0.26, {
+   157→   157→      rootRot: 0.38, spine: 0.13, rootY: 0,
+   158→   158→      shR: 1.2, elR: -0.25, wrR: 0.3, // follow-through, arm extends (≤14° flexion floor)
+   159→   159→      shL: 0.5, elL: -1.1,
+   160→   160→    }, 'outCubic'),
+   161→   161→    keyframe(0.44, GUARD, 'inOutCubic'),
+   162→   162→    keyframe(0.52, GUARD, 'inOutCubic'),
+   163→   163→  ]),
+   164→   164→  hit: { start: 0.14, end: 0.26, dmg: 9, stagger: 0.2, kb: 130, hitstop: 0.045, shake: 0.1, heavy: false, pad: 5 },
+   165→   165→  trail: { start: 0.13, end: 0.32 },
+   166→   166→  swingSfx: { t: 0.13, name: 'swing' },
+   167→   167→  cancel: 0.32,
+   168→   168→  chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
+   169→   169→  moveX: 150, moveXAt: 0.13, groundDrive:{duration:.06,acceleration:3000},
+   170→   170→  grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
+   171→   171→  zArc: 0.4, drawFlash: true,
+   172→   172→  traj: { // HORIZONTAL DRAW: steel rips from BEHIND the hip through depth
+   173→   173→    a0: 2.2, a1: 0.05, y0: -0.55, y1: 0.3, e0: 0.5, e1: 0.85, band: 48,
+   174→   174→  },
+   175→   175→}
+   176→   176→
+   177→   177→/** L2 — KESA GIRI (袈裟斬り): the diagonal temple-to-hip cut. Wind high
+   178→   178→ * (blade up-forward), then cut diagonally DOWN through the kesa line. */
+   179→   179→const l2: AttackDef = {
+   180→   180→  id: 'l2', label: 'KESA GIRI', kind: 'light', requires: 'ground',
+   181→   181→  clip: makeClip('atk_l2', [
+   182→   182→    keyframe(0, GUARD, 'outQuad'),
+   183→   183→    keyframe(0.09, {
+   184→   184→      rootRot: -0.14, spine: -0.05, head: -0.06, rootY: -1.5,
+   185→   185→      hipR: -0.1, kneeR: -0.4,
+   186→   186→      shR: 1.9, elR: 0.2, wrR: 0.1, // chambered high — blade up-forward
+   187→   187→      shL: 1.9, elL: -0.5,
+   188→   188→    }, 'outCubic'),
+   189→   189→    // ignition: weight commits, blade tips past vertical
+   190→   190→    keyframe(0.13, {
+   191→   191→      rootRot: 0.05, rootY: 0.5,
+   192→   192→      shR: 1.55, elR: 0.1, wrR: 0.4,
+   193→   193→      shL: 1.2, elL: -0.7,
+   194→   194→    }, 'outQuad'),
+   195→   195→    keyframe(0.18, {
+   196→   196→      rootRot: 0.38, spine: 0.15, head: -0.18, rootY: 2,
+   197→   197→      hipR: 0.6, kneeR: -0.5, footR: 0.16,
+   198→   198→      hipL: -0.55, kneeL: -0.3,
+   199→   199→      shR: 1.15, elR: -0.05, wrR: -0.2, // blade crossing the descending diagonal
+   200→   200→      shL: 0.35, elL: -1.2,
+   201→   201→    }, 'outCubic'),
+   202→   202→    keyframe(0.28, {
+   203→   203→      rootRot: 0.42, spine: 0.16, rootY: 1.5,
+   204→   204→      shR: 0.85, elR: -0.35, wrR: -0.2, // follow-through low
+   205→   205→      shL: 0.3, elL: -1.3,
+   206→   206→    }, 'outCubic'),
+   207→   207→    keyframe(0.47, GUARD, 'inOutCubic'),
+   208→   208→    keyframe(0.55, GUARD, 'inOutCubic'),
+   209→   209→  ]),
+   210→   210→  hit: { start: 0.15, end: 0.27, dmg: 9.5, stagger: 0.22, kb: 150, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
+   211→   211→  trail: { start: 0.14, end: 0.33 },
+   212→   212→  swingSfx: { t: 0.14, name: 'swing' },
+   213→   213→  cancel: 0.31,
+   214→   214→  chain: ['l3', 'h1', 'h2', 'launcher', 'spin', 'retreat'],
+   215→   215→  moveX: 130, moveXAt: 0.14,
+   216→   216→  grip: 0.9, // kesa from jōdan — both hands on the tsuka through the diagonal
+   217→   217→  zArc: 0.5,
+   218→   218→  traj: { // DIAGONAL family: descends temple→hip while the plane TILTS
+   219→   219→    a0: -0.9, a1: 0.75, y0: -0.4, y1: 0.28, e0: 0.6, e1: 0.88, band: 48,
+   220→   220→  },
+   221→   221→}
+   222→   222→
+   223→   223→/** L3 — GYAKU KESA (逆袈裟): the reverse diagonal — hip-to-temple rising
+   224→   224→ * cut. Chamber deep in gedan (blade low), then rip UP through the
+   225→   225→ * opposite diagonal, legs driving the body upward with the blade. */
+   226→   226→const l3: AttackDef = {
+   227→   227→  id: 'l3', label: 'GYAKU KESA', kind: 'light', requires: 'ground',
+   228→   228→  clip: makeClip('atk_l3', [
+   229→   229→    keyframe(0, GUARD, 'outQuad'),
+   230→   230→    keyframe(0.1, {
+   231→   231→      rootRot: 0.2, spine: 0.08, head: -0.08, rootY: 3,
+   232→   232→      hipR: 0.55, kneeR: -0.85, footR: 0.14,
+   233→   233→      hipL: -0.45, kneeL: -0.8, footL: 0.12,
+   234→   234→      shR: 0.35, elR: -0.3, wrR: 0.85, // gedan — blade loaded low
+   235→   235→      shL: 0.4, elL: -1.1,
+   236→   236→    }, 'inOutSine'),
+   237→   237→    // ignition: blade carves up through level as the legs unload
+   238→   238→    keyframe(0.14, {
+   239→   239→      rootRot: 0.08, rootY: 0,
+   240→   240→      hipR: 0.2, kneeR: -0.55,
+   241→   241→      shR: 1.05, elR: 0.15, wrR: 0.4,
+   242→   242→      shL: 0.3, elL: -1.3,
+   243→   243→    }, 'outQuad'),
+   244→   244→    keyframe(0.19, {
+   245→   245→      rootRot: -0.05, spine: -0.02, head: -0.2, rootY: -3.5,
+   246→   246→      hipR: -0.1, kneeR: -0.25,
+   247→   247→      hipL: 0.35, kneeL: -0.5,
+   248→   248→      shR: 1.75, elR: 0.55, wrR: -0.1, // blade rips up the rising diagonal
+   249→   249→      shL: 0.3, elL: -1.4,
+   250→   250→    }, 'outCubic'),
+   251→   251→    keyframe(0.29, {
+   252→   252→      rootRot: -0.08, spine: -0.03, rootY: -3,
+   253→   253→      shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
+   254→   254→      shL: 0.25, elL: -1.45,
+   255→   255→    }, 'outCubic'),
+   256→   256→    keyframe(0.49, GUARD, 'inOutCubic'),
+   257→   257→    keyframe(0.57, GUARD, 'inOutCubic'),
+   258→   258→  ]),
+   259→   259→  hit: { start: 0.11, end: 0.26, dmg: 11, stagger: 0.24, kb: 120, kbY: -140, hitstop: 0.055, shake: 0.14, heavy: false, pad: 5 },
+   260→   260→  trail: { start: 0.1, end: 0.33 },
+   261→   261→  swingSfx: { t: 0.1, name: 'swing' },
+   262→   262→  cancel: 0.33,
+   263→   263→  chain: ['l4', 'h1', 'h2', 'launcher', 'retreat'],
+   264→   264→  moveX: 110, moveXAt: 0.12,
+   265→   265→  grip: 0.9,
+   266→   266→  zArc: 0.5,
+   267→   267→  traj: { // RISING DIAGONAL family: the plane crosses depth upward
+   268→   268→    a0: 0.75, a1: -0.8, y0: 0.22, y1: -0.25, e0: 0.55, e1: 0.9, band: 48,
+   269→   269→  },
+   270→   270→}
+   271→   271→
+   272→   272→/** L4 — YOKO GIRI (横斬り): level horizontal sweep. Coil into waki (blade
+   273→   273→ * back at the hip), then sweep the blade LEVEL through the front plane
+   274→   274→ * with a slide step — hasuji keeps the edge flat through the whole arc. */
+   275→   275→const l4: AttackDef = {
+   276→   276→  id: 'l4', label: 'YOKO GIRI', kind: 'spin', requires: 'ground',
+   277→   277→  clip: makeClip('atk_l4', [
+   278→   278→    keyframe(0, GUARD, 'outQuad'),
+   279→   279→    keyframe(0.1, {
+   280→   280→      rootRot: -0.08, spine: -0.03, head: -0.08, rootY: 1,
+   281→   281→      shR: -0.35, elR: -0.6, wrR: 0.0, // waki: blade back-down at the hip
+   282→   282→      shL: 0.15, elL: -0.9,
+   283→   283→    }, 'inOutCubic'),
+   284→   284→    // ignition: hips open, blade sweeps through the back quarter
+   285→   285→    keyframe(0.14, {
+   286→   286→      rootRot: 0.1, rootY: 0,
+   287→   287→      shR: 0.3, elR: -0.15, wrR: 0.3,
+   288→   288→      shL: 0.3, elL: -1.0,
+   289→   289→    }, 'outQuad'),
+   290→   290→    keyframe(0.2, {
+   291→   291→      rootRot: 0.33, spine: 0.13, head: -0.16, rootY: -0.5,
+   292→   292→      hipR: 0.55, kneeR: -0.4, footR: 0.12,
+   293→   293→      hipL: -0.5, kneeL: -0.3,
+   294→   294→      shR: 1.0, elR: 0.35, wrR: 0.22, // blade sweeps level through the front
+   295→   295→      shL: 0.4, elL: -1.15,
+   296→   296→    }, 'outCubic'),
+   297→   297→    keyframe(0.3, {
+   298→   298→      rootRot: 0.4, spine: 0.15, rootY: 0,
+   299→   299→      shR: 1.5, elR: 0.35, wrR: -0.85, // arc settles forward-low
+   300→   300→      shL: 0.3, elL: -1.25,
+   301→   301→    }, 'outCubic'),
+   302→   302→    keyframe(0.53, GUARD, 'inOutCubic'),
+   303→   303→    keyframe(0.61, GUARD, 'inOutCubic'),
+   304→   304→  ]),
+   305→   305→  hit: { start: 0.17, end: 0.35, dmg: 6, stagger: 0.16, kb: 190, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.12, pad: 6 },
+   306→   306→  trail: { start: 0.15, end: 0.41 },
+   307→   307→  swingSfx: { t: 0.16, name: 'swing' },
+   308→   308→  cancel: 0.37,
+   309→   309→  chain: ['l5', 'h2', 'launcher'],
+   310→   310→  moveX: 90, moveXAt: 0.16,
+   311→   311→  grip: 0.7,
+   312→   312→  zArc: 0.55,
+   313→   313→  traj: { // HORIZONTAL family: the blade carves a WIDE depth arc around
+   314→   314→    // the body — behind the far shoulder, through the target, out the
+   315→   315→    // camera side. The hips drive it (pelvisYaw rides the yaw sweep).
+   316→   316→    a0: 2.5, a1: 0.08, y0: -0.85, y1: 0.7, e0: 0.5, e1: 0.92, band: 48,
+   317→   317→  },
+   318→   318→}
+   319→   319→
+   320→   320→/** L5 — KIRI OROSHI (切り下ろし): the vertical finishing cut. Full jōdan
+   321→   321→ * raise over the head, deliberate beat, then the blade falls straight
+   322→   322→ * through the center line with a deep passing lunge. */
+   323→   323→const l5: AttackDef = {
+   324→   324→  id: 'l5', label: 'KIRI OROSHI', kind: 'finisher', requires: 'ground',
+   325→   325→  clip: makeClip('atk_l5', [
+   326→   326→    keyframe(0, GUARD, 'outQuad'),
+   327→   327→    keyframe(0.12, {
+   328→   328→      rootRot: -0.2, spine: -0.08, head: -0.04, rootY: -2,
+   329→   329→      hipR: -0.15, kneeR: -0.35,
+   330→   330→      shR: 2.7, elR: 0.15, wrR: 0.15, // full jōdan — blade over the head
+   331→   331→      shL: 2.1, elL: -0.4,
+   332→   332→    }, 'inOutCubic'),
+   333→   333→    // ignition: the beat before the fall — blade tips forward a hair
+   334→   334→    keyframe(0.17, {
+   335→   335→      rootRot: -0.1, rootY: -1,
+   336→   336→      shR: 2.1, elR: 0.1, wrR: 0.2,
+   337→   337→      shL: 1.9, elL: -0.45,
+   338→   338→    }, 'outQuad'),
+   339→   339→    // mid-fall: the blade sweeps down through the high diagonal
+   340→   340→    keyframe(0.21, {
+   341→   341→      rootRot: 0.15, rootY: 1,
+   342→   342→      shR: 1.4, elR: -0.15, wrR: 0.0,
+   343→   343→      shL: 1.3, elL: -0.55,
+   344→   344→    }, 'outQuad'),
+   345→   345→    keyframe(0.25, {
+   346→   346→      rootRot: 0.4, spine: 0.16, head: -0.22, rootY: 2,
+   347→   347→      hipR: 0.75, kneeR: -0.55, footR: 0.18,
+   348→   348→      hipL: -0.6, kneeL: -0.25,
+   349→   349→      shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi: hands stay near the
+   350→   350→      shL: 0.9, elL: -0.7,              // body — the blade falls through the
+   351→   351→    }, 'outCubic'),                       // front plane, close enough to cut
+   352→   352→    keyframe(0.37, {
+   353→   353→      rootRot: 0.44, spine: 0.17, rootY: 2.5,
+   354→   354→      shR: 0.7, elR: -0.6, wrR: -0.35, // cut finishes low past the target
+   355→   355→      shL: 0.7, elL: -0.9,
+   356→   356→    }, 'outCubic'),
+   357→   357→    keyframe(0.59, GUARD, 'inOutCubic'),
+   358→   358→    keyframe(0.67, GUARD, 'inOutCubic'),
+   359→   359→  ]),
+   360→   360→  hit: { start: 0.22, end: 0.35, dmg: 22, stagger: 0.4, kb: 460, hitstop: 0.09, shake: 0.32, heavy: true, breakGuard: true, pad: 8 },
+   361→   361→  trail: { start: 0.19, end: 0.41 },
+   362→   362→  swingSfx: { t: 0.2, name: 'swingHeavy' },
+   363→   363→  cancel: 0.37,
+   364→   364→  chain: [],
+   365→   365→  moveX: 240, moveXAt: 0.2,
+   366→   366→  grip: 1, // kiri oroshi — full two-handed vertical
+   367→   367→  zArc: 0.65,
+   368→   368→  traj: { // VERTICAL family: falls through the center line; a whisper of
+   369→   369→    // depth (dips behind the crown at chamber, exits slightly camera-side)
+   370→   370→    a0: -1.55, a1: 1.3, y0: -0.18, y1: 0.15, e0: 0.55, e1: 0.93, band: 48,
+   371→   371→  },
+   372→   372→}
+   373→   373→
+   374→   374→/** Backstep Slash — retreating rising cut (hold back + light): gyaku-kesa
+   375→   375→ * on the retreat — real distance management. */
+   376→   376→const retreat: AttackDef = {
+   377→   377→  id: 'retreat', label: 'BACKSTEP CUT', kind: 'light', requires: 'ground',
+   378→   378→  clip: makeClip('atk_retreat', [
+   379→   379→    keyframe(0, GUARD, 'outQuad'),
+   380→   380→    keyframe(0.08, {
+   381→   381→      rootRot: 0.24, spine: 0.1, rootY: 2.5,
+   382→   382→      hipR: 0.5, kneeR: -0.75,
+   383→   383→      hipL: -0.55, kneeL: -0.5,
+   384→   384→      shR: 0.35, elR: -0.3, wrR: 0.85, // chamber low while stepping back
+   385→   385→      shL: 0.45, elL: -1.0,
+   386→   386→    }, 'inOutSine'),
+   387→   387→    keyframe(0.13, {
+   388→   388→      rootRot: 0.1, rootY: 1,
+   389→   389→      shR: 1.05, elR: 0.15, wrR: 0.4,
+   390→   390→      shL: 0.35, elL: -1.25,
+   391→   391→    }, 'outQuad'),
+   392→   392→    keyframe(0.19, {
+   393→   393→      rootRot: -0.12, spine: -0.05, head: -0.2, rootY: -2,
+   394→   394→      shR: 1.75, elR: 0.55, wrR: -0.1, // rising diagonal on the retreat
+   395→   395→      shL: 0.25, elL: -1.35,
+   396→   396→    }, 'outCubic'),
+   397→   397→    keyframe(0.31, {
+   398→   398→      rootRot: -0.05, spine: -0.02, rootY: -1,
+   399→   399→      shR: 2.0, elR: 0.5, wrR: 0.1,
+   400→   400→      shL: 0.25, elL: -1.4,
+   401→   401→    }, 'outCubic'),
+   402→   402→    keyframe(0.51, GUARD, 'inOutCubic'),
+   403→   403→    keyframe(0.59, GUARD, 'inOutCubic'),
+   404→   404→  ]),
+   405→   405→  hit: { start: 0.16, end: 0.28, dmg: 10, stagger: 0.22, kb: 90, kbY: -160, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
+   406→   406→  trail: { start: 0.15, end: 0.34 },
+   407→   407→  swingSfx: { t: 0.14, name: 'swing' },
+   408→   408→  cancel: 0.31,
+   409→   409→  chain: ['l1', 'l2', 'launcher', 'spin'],
+   410→   410→  moveX: -240, moveXAt: 0.05,
+   411→   411→  grip: 0.85,
+   412→   412→  zArc: 0.45,
+   413→   413→  traj: { // retreating riser — the plane crosses depth while stepping back
+   414→   414→    a0: 0.7, a1: -0.75, y0: -0.3, y1: 0.25, e0: 0.5, e1: 0.8, band: 48,
+   415→   415→  },
+   416→   416→}
+   417→   417→
+   418→   418→/** HASSŌ SWEEP (down + light): crouched low horizontal sweep with a
+   419→   419→ * counter-pass — a sawing double cut. Replaces the 360° cyclone: real
+   420→   420→ * technique cuts ~200° and saws back. */
+   421→   421→const spin: AttackDef = {
+   422→   422→  id: 'spin', label: 'HASSO SWEEP', kind: 'spin', requires: 'ground',
+   423→   423→  clip: makeClip('atk_spin', [
+   424→   424→    keyframe(0, {
+   425→   425→      rootRot: 0.4, rootY: 7, spine: 0.14, head: -0.24,
+   426→   426→      hipR: 0.55, kneeR: -1.15, footR: 0.2,
+   427→   427→      hipL: -0.45, kneeL: -1.05, footL: 0.15,
+   428→   428→      shR: -0.15, elR: -0.5, wrR: -0.7, // coiled back-low
+   429→   429→      shL: 0.3, elL: -0.8,
+   430→   430→    }, 'outQuad'),
+   431→   431→    keyframe(0.06, {
+   432→   432→      rootRot: 0.44, rootY: 6,
+   433→   433→      hipR: 0.45, kneeR: -1.1, footR: 0.18,
+   434→   434→      hipL: -0.5, kneeL: -1.0, footL: 0.15,
+   435→   435→      shR: 0.4, elR: -0.15, wrR: 0.2,
+   436→   436→      shL: 0.28, elL: -0.9,
+   437→   437→    }, 'outQuad'),
+   438→   438→    keyframe(0.11, {
+   439→   439→      rootRot: 0.5, rootY: 5, spine: 0.15, head: -0.26,
+   440→   440→      hipR: 0.6, kneeR: -1.1, footR: 0.18,
+   441→   441→      hipL: -0.5, kneeL: -1.0,
+   442→   442→      shR: 1.0, elR: 0.25, wrR: 0.3, // low level sweep through the front
+   443→   443→      shL: 0.25, elL: -1.0,
+   444→   444→    }, 'outCubic'),
+   445→   445→    keyframe(0.23, {
+   446→   446→      rootRot: 0.42, rootY: 5.5,
+   447→   447→      shR: 1.3, elR: 0.15, wrR: -0.65, // arc settles low
+   448→   448→      shL: 0.2, elL: -1.1,
+   449→   449→    }, 'outCubic'),
+   450→   450→    keyframe(0.35, {
+   451→   451→      rootRot: 0.55, rootY: 4.5, spine: 0.16, head: -0.28,
+   452→   452→      shR: 0.5, elR: 0.1, wrR: 0.97, // counter-pass: level pull-back (sawing)
+   453→   453→      shL: 0.4, elL: -1.0,
+   454→   454→    }, 'outCubic'),
+   455→   455→    keyframe(0.49, {
+   456→   456→      rootRot: 0.3, rootY: 3,
+   457→   457→      shR: 0.7, elR: -0.3, wrR: 1.1,
+   458→   458→    }, 'inOutCubic'),
+   459→   459→    keyframe(0.65, GUARD, 'inOutCubic'),
+   460→   460→  ]),
+   461→   461→  hit: { start: 0.09, end: 0.42, dmg: 5.5, stagger: 0.14, kb: 160, hitstop: 0.028, shake: 0.07, heavy: false, multiHit: 0.11, pad: 6 },
+   462→   462→  trail: { start: 0.08, end: 0.46 },
+   463→   463→  swingSfx: { t: 0.08, name: 'swing' },
+   464→   464→  cancel: 0.4,
+   465→   465→  chain: ['l5', 'launcher', 'h2'],
+   466→   466→  grip: 0.75,
+   467→   467→  zArc: 0.5,
+   468→   468→  traj: { // SPIN family: near-full-circle depth rotation around the body —
+   469→   469→    // the kissaki orbits through BEHIND → target plane → camera → behind.
+   470→   470→    // The pelvis and chest counter-rotate through the whole sweep.
+   471→   471→    a0: 2.6, a1: 0.1, y0: -1.15, y1: 1.1, e0: 0.45, e1: 0.85, band: 14,
+   472→   472→  },
+   473→   473→}
+   474→   474→
+   475→   475→/* ------------------------------------------------------------------ */
+   476→   476→/* GROUND HEAVIES                                                      */
+   477→   477→/* ------------------------------------------------------------------ */
+   478→   478→
+   479→   479→/** H1 — heavy KIRI OROSHI: vertical cut with a full beat of anticipation
+   480→   480→ * at jōdan. The pause at the top is the tell — then everything drops. */
+   481→   481→const h1: AttackDef = {
+   482→   482→  id: 'h1', label: 'KIRI OROSHI', kind: 'heavy', requires: 'ground',
+   483→   483→  clip: makeClip('atk_h1', [
+   484→   484→    keyframe(0, GUARD, 'outQuad'),
+   485→   485→    keyframe(0.14, {
+   486→   486→      rootRot: -0.22, spine: -0.09, head: -0.02, rootY: -2.5,
+   487→   487→      hipR: -0.18, kneeR: -0.3, footR: 0.08,
+   488→   488→      hipL: 0.25, kneeL: -0.35, footL: 0.1,
+   489→   489→      shR: 2.7, elR: 0.15, wrR: 0.15, // jōdan raise — blade up, both hands high
+   490→   490→      shL: 2.1, elL: -0.4,
+   491→   491→    }, 'inOutCubic'),
+   492→   492→    keyframe(0.22, {
+   493→   493→      rootRot: -0.18, spine: -0.07, rootY: -1.5,
+   494→   494→      shR: 2.72, elR: 0.15, wrR: 0.13, // hold beat — blade tips forward a hair
+   495→   495→      shL: 2.05, elL: -0.42,
+   496→   496→    }, 'inOutSine'),
+   497→   497→    // ignition: the fall begins
+   498→   498→    keyframe(0.24, {
+   499→   499→      rootRot: 0.1, rootY: 0,
+   500→   500→      shR: 2.0, elR: 0.0, wrR: 0.3,
+   501→   501→      shL: 1.7, elL: -0.5,
+   502→   502→    }, 'outQuad'),
+   503→   503→    // mid-fall: blade sweeps through the high diagonal
+   504→   504→    keyframe(0.28, {
+   505→   505→      rootRot: 0.25, rootY: 1.2,
+   506→   506→      shR: 1.35, elR: -0.2, wrR: 0.05,
+   507→   507→      shL: 1.25, elL: -0.6,
+   508→   508→    }, 'outQuad'),
+   509→   509→    keyframe(0.32, {
+   510→   510→      rootRot: 0.42, spine: 0.17, head: -0.24, rootY: 2.5,
+   511→   511→      hipR: 0.8, kneeR: -0.6, footR: 0.2,
+   512→   512→      hipL: -0.65, kneeL: -0.22,
+   513→   513→      shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi vertical fall — hands
+   514→   514→      shL: 0.9, elL: -0.7,              // near the body, blade cuts the close plane
+   515→   515→    }, 'outCubic'),
+   516→   516→    keyframe(0.45, {
+   517→   517→      rootRot: 0.46, spine: 0.18, rootY: 3,
+   518→   518→      shR: 0.7, elR: -0.6, wrR: -0.35,
+   519→   519→      shL: 0.7, elL: -0.9,
+   520→   520→    }, 'outCubic'),
+   521→   521→    keyframe(0.71, GUARD, 'inOutCubic'),
+   522→   522→    keyframe(0.79, GUARD, 'inOutCubic'),
+   523→   523→  ]),
+   524→   524→  hit: { start: 0.28, end: 0.42, dmg: 18, stagger: 0.38, kb: 260, hitstop: 0.08, shake: 0.26, heavy: true, pad: 8 },
+   525→   525→  trail: { start: 0.25, end: 0.48 },
+   526→   526→  swingSfx: { t: 0.26, name: 'swingHeavy' },
+   527→   527→  cancel: 0.43,
+   528→   528→  chain: ['h2', 'l1', 'launcher'],
+   529→   529→  moveX: 200, moveXAt: 0.24,
+   530→   530→  grip: 1, // jōdan raise + vertical fall — both hands, te-no-uchi
+   531→   531→  zArc: 0.6,
+   532→   532→  traj: { // HEAVY VERTICAL: deeper chamber, harder fall, full extension
+   533→   533→    a0: -1.6, a1: 1.35, y0: -0.2, y1: 0.18, e0: 0.5, e1: 0.95, band: 48,
+   534→   534→  },
+   535→   535→}
+   536→   536→
+   537→   537→/** H2 — TSUKI (突き): the thrust. Hilt chambered back at the hip, then a
+   538→   538→ * deep passing lunge spears the blade dead-level into the target. */
+   539→   539→const h2: AttackDef = {
+   540→   540→  id: 'h2', label: 'TSUKI', kind: 'heavy', requires: 'ground',
+   541→   541→  clip: makeClip('atk_h2', [
+   542→   542→    keyframe(0, GUARD, 'outQuad'),
+   543→   543→    keyframe(0.12, {
+   544→   544→      rootRot: -0.12, spine: -0.05, head: -0.06, rootY: 1,
+   545→   545→      hipR: -0.15, kneeR: -0.5, footR: 0.08,
+   546→   546→      hipL: -0.3, kneeL: -0.35, footL: 0.1,
+   547→   547→      shR: -0.15, elR: -1.05, wrR: -0.55, // hilt pulled to the hip, blade back-level
+   548→   548→      shL: 0.8, elL: -1.1, // lead hand guards
+   549→   549→    }, 'inOutCubic'),
+   550→   550→    // ignition: the lunge launches, blade sweeping through level
+   551→   551→    keyframe(0.18, {
+   552→   552→      rootRot: 0.2, rootY: 2,
+   553→   553→      hipR: 0.5, kneeR: -0.7,
+   554→   554→      shR: 0.7, elR: -0.5, wrR: 0.3,
+   555→   555→      shL: 1.1, elL: -0.7,
+   556→   556→    }, 'outQuad'),
+   557→   557→    keyframe(0.24, {
+   558→   558→      rootRot: 0.4, spine: 0.16, head: -0.22, rootY: 2.5,
+   559→   559→      hipR: 0.95, kneeR: -0.85, footR: 0.22,
+   560→   560→      hipL: -0.85, kneeL: -0.15,
+   561→   561→      shR: 1.5, elR: 0.05, wrR: 0.02, // blade dead-level, full extension
+   562→   562→      shL: 1.4, elL: -0.35, // second hand joins on the tsuka
+   563→   563→    }, 'outCubic'),
+   564→   564→    keyframe(0.38, {
+   565→   565→      rootRot: 0.42, spine: 0.16, rootY: 2.2,
+   566→   566→      shR: 1.52, elR: 0.06, wrR: 0.0, // hold — full penetration beat
+   567→   567→      shL: 1.42, elL: -0.36,
+   568→   568→    }, 'inOutSine'),
+   569→   569→    keyframe(0.56, {
+   570→   570→      rootRot: 0.18, spine: 0.07, rootY: 0.5,
+   571→   571→      shR: 1.0, elR: -0.3, wrR: 0.85, // retract under control
+   572→   572→      shL: 0.7, elL: -0.8,
+   573→   573→    }, 'inOutCubic'),
+   574→   574→    keyframe(0.72, GUARD, 'inOutCubic'),
+   575→   575→    keyframe(0.8, GUARD, 'inOutCubic'),
+   576→   576→  ]),
+   577→   577→  hit: { start: 0.2, end: 0.34, dmg: 22, stagger: 0.42, kb: 560, hitstop: 0.09, shake: 0.34, heavy: true, breakGuard: true, pad: 10 },
+   578→   578→  trail: { start: 0.18, end: 0.4 },
+   579→   579→  swingSfx: { t: 0.2, name: 'swingHeavy' },
+   580→   580→  cancel: 0.4,
+   581→   581→  chain: ['h3', 'l1'],
+   582→   582→  moveX: 320, moveXAt: 0.2,
+   583→   583→  grip: 1, // tsuki: the thrust is ALWAYS two-handed
+   584→   584→  zArc: 0.85, // the thrust SPEARS the camera — full foreshortening
+   585→   585→  traj: { // THRUST family: the blade TRANSLATES through depth — chambered
+   586→   586→    // back (−0.35), then spears forward through the target plane and AT
+   587→   587→    // the lens (+0.55) at near-full arm extension. The kissaki blooms
+   588→   588→    // huge as it pierces toward the camera (drawSword depth flare).
+   589→   589→    a0: -2.9, a1: 0.05, y0: -0.35, y1: 0.55, e0: 0.45, e1: 0.98, band: 78,
+   590→   590→  },
+   591→   591→}
+   592→   592→
+   593→   593→/** H3 — Grand Slam: leaping kiri oroshi. Jump to jōdan, hang at apex,
+   594→   594→ * then body + blade fall through the center line into the floor. */
+   595→   595→const h3: AttackDef = {
+   596→   596→  id: 'h3', label: 'GRAND SLAM', kind: 'heavy', requires: 'ground',
+   597→   597→  clip: makeClip('atk_h3', [
+   598→   598→    keyframe(0, {
+   599→   599→      rootY: 6, rootRot: 0.35, spine: 0.12, head: -0.2,
+   600→   600→      hipR: 0.55, kneeR: -1.1, footR: 0.2,
+   601→   601→      hipL: -0.45, kneeL: -1.0, footL: 0.15,
+   602→   602→      shR: 2.6, elR: 0.15, wrR: 0.25, // jōdan held through the crouch
+   603→   603→      shL: 2.0, elL: -0.45,
+   604→   604→    }, 'outQuad'),
+   605→   605→    keyframe(0.15, {
+   606→   606→      rootY: -4, rootRot: -0.2, spine: -0.06, head: -0.1,
+   607→   607→      hipR: 0.8, kneeR: -1.4, footR: -0.1,
+   608→   608→      hipL: 0.5, kneeL: -1.2, footL: 0.1,
+   609→   609→      shR: 2.75, elR: 0.15, wrR: 0.1, // apex — blade fully up
+   610→   610→      shL: 2.15, elL: -0.4,
+   611→   611→    }, 'outCubic'),
+   612→   612→    keyframe(0.35, {
+   613→   613→      rootY: -5, rootRot: -0.15,
+   614→   614→      shR: 2.72, elR: 0.15, wrR: 0.1,
+   615→   615→      hipR: 0.7, kneeR: -1.3, hipL: 0.4, kneeL: -1.1,
+   616→   616→    }, 'inOutSine'),
+   617→   617→    // ignition: the plunge begins
+   618→   618→    keyframe(0.42, {
+   619→   619→      rootY: -1, rootRot: 0.3,
+   620→   620→      shR: 2.2, elR: 0.0, wrR: 0.3,
+   621→   621→      hipR: 0.7, kneeR: -0.8,
+   622→   622→    }, 'outQuad'),
+   623→   623→    keyframe(0.5, {
+   624→   624→      rootRot: 0.6, spine: 0.2, head: -0.28, rootY: 3,
+   625→   625→      hipR: 0.7, kneeR: -0.4, footR: 0.25,
+   626→   626→      hipL: -0.6, kneeL: -0.3, footL: 0.2,
+   627→   627→      shR: 0.9, elR: -0.45, wrR: -0.35, // blade plummets through the near plane
+   628→   628→      shL: 0.9, elL: -0.6,
+   629→   629→    }, 'outCubic'),
+   630→   630→    keyframe(0.64, {
+   631→   631→      rootRot: 0.64, rootY: 5, spine: 0.2, head: -0.26,
+   632→   632→      hipR: 0.6, kneeR: -0.9, hipL: -0.5, kneeL: -0.8,
+   633→   633→      shR: 0.75, elR: -0.5, wrR: -0.45, // blade buried low
+   634→   634→      shL: 0.7, elL: -0.85,
+   635→   635→    }, 'outQuad'),
+   636→   636→    keyframe(0.9, GUARD, 'inOutCubic'),
+   637→   637→    keyframe(0.98, GUARD, 'inOutCubic'),
+   638→   638→  ]),
+   639→   639→  hit: { start: 0.48, end: 0.6, dmg: 30, stagger: 0.5, kb: 380, launch: -320, hitstop: 0.12, shake: 0.5, heavy: true, aoe: 135, breakGuard: true, pad: 10 },
+
+[showing lines 40-639 of 1196; use offset=640 with limit to continue reading]

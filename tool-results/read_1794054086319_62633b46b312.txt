@@ -1,0 +1,846 @@
+     1→/** STICKMAN RISING — the modular combo moveset.
+     2→ *
+     3→ * Each attack = a keyframed clip (anticipation → strike → follow-through →
+     4→ * recovery) + hitbox window (the physical blade sweep is the hitbox) + trail
+     5→ * window + cancel window + legal follow-up chain. Directional inputs,
+     6→ * dash-cancels and buffers are resolved by the Player combo machine.
+     7→ *
+     8→ * Angle conventions (see pose.ts): arm angles measured from straight-down,
+     9→ * positive swings toward facing. Blade direction = π/2 − (shR+elR+wrR).
+    10→ */
+    11→
+    12→import { Clip, keyframe, makeClip } from '../anim/animator'
+    13→import { GUARD, GUARD_AIR } from '../anim/clips'
+    14→import type { PoseInput } from '../anim/pose'
+    15→import type { SfxName } from '../audio/audio'
+    16→
+    17→export type AttackKind =
+    18→  | 'light' | 'heavy' | 'launcher' | 'air' | 'slam' | 'dash'
+    19→  | 'spin' | 'charged' | 'riposte' | 'finisher' | 'ability'
+    20→
+    21→export interface AttackHit {
+    22→  start: number
+    23→  end: number
+    24→  dmg: number
+    25→  stagger: number
+    26→  kb: number
+    27→  kbY?: number
+    28→  launch?: number
+    29→  juggle?: number
+    30→  hitstop: number
+    31→  shake: number
+    32→  heavy: boolean
+    33→  aoe?: number
+    34→  multiHit?: number
+    35→  breakGuard?: boolean
+    36→}
+    37→
+    38→export interface AttackDef {
+    39→  id: string
+    40→  label: string
+    41→  kind: AttackKind
+    42→  clip: Clip
+    43→  hit: AttackHit
+    44→  trail: { start: number; end: number }
+    45→  swingSfx: { t: number; name: SfxName }
+    46→  cancel: number
+    47→  chain: string[]
+    48→  moveX?: number
+    49→  moveXAt?: number
+    50→  moveY?: number
+    51→  moveYAt?: number
+    52→  requires: 'ground' | 'air' | 'any'
+    53→  /** gravity scale while the attack is active (air-combo float) */
+    54→  float?: number
+    55→  /** AoE + fx fire when the player touches ground mid-attack (slams / dive) */
+    56→  slamImpact?: { r: number; dmg: number; launch: number }
+    57→}
+    58→
+    59→/* ------------------------------------------------------------------ */
+    60→/* GROUND LIGHTS                                                       */
+    61→/* ------------------------------------------------------------------ */
+    62→
+    63→/** L1 wind-up: torso coiled back, sword arm racked high-behind. Hoisted so
+    64→ * the hold key below can reference the SAME pose (a hold is what makes the
+    65→ * anticipation survive the 45ms crossfade — without it the blend erases the
+    66→ * coil and the swing starts from the guard pose, arc truncated by ~2/3). */
+    67→const L1_ANTIC: PoseInput = {
+    68→  rootRot: -0.28, spine: -0.1, head: 0.02, rootY: 1,
+    69→  hipR: -0.3, kneeR: -0.35, footR: 0.1,
+    70→  hipL: 0.35, kneeL: -0.3, footL: 0.1,
+    71→  shR: -1.15, elR: -0.35, wrR: -0.6,
+    72→  shL: 0.45, elL: -0.55,
+    73→}
+    74→
+    75→/** L1 — Cross Slash: horizontal sweep, back-high → front-low */
+    76→const l1: AttackDef = {
+    77→  id: 'l1', label: 'CROSS SLASH', kind: 'light', requires: 'ground',
+    78→  clip: makeClip('atk_l1', [
+    79→    keyframe(0, L1_ANTIC, 'outQuad'),
+    80→    keyframe(0.03, L1_ANTIC, 'linear'),
+    81→    keyframe(0.08, {
+    82→      rootRot: 0.45, spine: 0.18, head: -0.2, rootY: -1,
+    83→      hipR: 0.6, kneeR: -0.45, footR: 0.1,
+    84→      hipL: -0.55, kneeL: -0.3, footL: 0.15,
+    85→      shR: 1.2, elR: -0.1, wrR: -0.2,
+    86→      shL: -0.3, elL: -0.45,
+    87→    }, 'inCubic'),
+    88→    keyframe(0.14, {
+    89→      rootRot: 0.3, spine: 0.1, head: -0.12, rootY: 0,
+    90→      hipR: 0.45, kneeR: -0.5, footR: 0.1,
+    91→      hipL: -0.45, kneeL: -0.35, footL: 0.12,
+    92→      shR: 0.55, elR: 0.35, wrR: -0.9,
+    93→      shL: -0.15, elL: -0.4,
+    94→    }, 'outCubic'),
+    95→    keyframe(0.34, GUARD, 'inOutCubic'),
+    96→  ]),
+    97→  hit: { start: 0.07, end: 0.17, dmg: 9, stagger: 0.2, kb: 130, hitstop: 0.045, shake: 0.1, heavy: false },
+    98→  trail: { start: 0.05, end: 0.2 },
+    99→  swingSfx: { t: 0.07, name: 'swing' },
+   100→  cancel: 0.2,
+   101→  chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
+   102→  moveX: 190, moveXAt: 0.06,
+   103→}
+   104→
+   105→/** L2 wind-up: wound across the body for the backhand rip */
+   106→const L2_ANTIC: PoseInput = {
+   107→  rootRot: 0.32, spine: 0.12, head: -0.1, rootY: 0,
+   108→  hipR: 0.45, kneeR: -0.5, footR: 0.1,
+   109→  hipL: -0.45, kneeL: -0.35, footL: 0.12,
+   110→  shR: 0.5, elR: 0.4, wrR: -0.85,
+   111→  shL: -0.15, elL: -0.4,
+   112→}
+   113→
+   114→/** L2 — Reverse Slash: backhand cut sweeping up-forward */
+   115→const l2: AttackDef = {
+   116→  id: 'l2', label: 'REVERSE SLASH', kind: 'light', requires: 'ground',
+   117→  clip: makeClip('atk_l2', [
+   118→    keyframe(0, L2_ANTIC, 'outQuad'),
+   119→    keyframe(0.03, L2_ANTIC, 'linear'),
+   120→    keyframe(0.08, {
+   121→      rootRot: -0.12, spine: -0.06, head: -0.14, rootY: -1,
+   122→      hipR: 0.3, kneeR: -0.45, footR: 0.1,
+   123→      hipL: -0.4, kneeL: -0.4, footL: 0.12,
+   124→      shR: 0.9, elR: 0.3, wrR: 1.4,
+   125→      shL: 0.3, elL: -0.5,
+   126→    }, 'inCubic'),
+   127→    keyframe(0.14, {
+   128→      rootRot: -0.22, spine: -0.08, head: -0.16, rootY: -2,
+   129→      shR: 0.25, elR: -0.2, wrR: 2.0,
+   130→      shL: 0.4, elL: -0.45,
+   131→    }, 'outCubic'),
+   132→    keyframe(0.32, GUARD, 'inOutCubic'),
+   133→  ]),
+   134→  hit: { start: 0.06, end: 0.16, dmg: 9.5, stagger: 0.22, kb: 150, hitstop: 0.05, shake: 0.12, heavy: false },
+   135→  trail: { start: 0.045, end: 0.19 },
+   136→  swingSfx: { t: 0.07, name: 'swing' },
+   137→  cancel: 0.19,
+   138→  chain: ['l3', 'h1', 'h2', 'launcher', 'spin', 'retreat'],
+   139→  moveX: 170, moveXAt: 0.05,
+   140→}
+   141→
+   142→/** L3 wind-up: sunk into a crouch, blade pulled low-back */
+   143→const L3_ANTIC: PoseInput = {
+   144→  rootRot: 0.3, spine: 0.1, head: -0.08, rootY: 4,
+   145→  hipR: 0.5, kneeR: -0.9, footR: 0.15,
+   146→  hipL: -0.4, kneeL: -0.8, footL: 0.1,
+   147→  shR: 0.35, elR: 0.5, wrR: -1.2,
+   148→  shL: 0.5, elL: -0.5,
+   149→}
+   150→
+   151→/** L3 — Rising Cross: low crouch cut that rakes upward */
+   152→const l3: AttackDef = {
+   153→  id: 'l3', label: 'RISING CROSS', kind: 'light', requires: 'ground',
+   154→  clip: makeClip('atk_l3', [
+   155→    keyframe(0, L3_ANTIC, 'outQuad'),
+   156→    keyframe(0.035, L3_ANTIC, 'linear'),
+   157→    keyframe(0.095, {
+   158→      rootRot: -0.18, spine: -0.08, head: -0.22, rootY: -3,
+   159→      hipR: -0.35, kneeR: -0.5, footR: -0.1,
+   160→      hipL: 0.45, kneeL: -0.4, footL: 0.2,
+   161→      shR: -1.5, elR: -0.3, wrR: -0.3,
+   162→      shL: 0.7, elL: -0.4,
+   163→    }, 'inCubic'),
+   164→    keyframe(0.16, {
+   165→      rootRot: -0.24, spine: -0.1, head: -0.24, rootY: -4,
+   166→      shR: -1.7, elR: -0.25, wrR: -0.35,
+   167→      shL: 0.75, elL: -0.4,
+   168→    }, 'outCubic'),
+   169→    keyframe(0.36, GUARD, 'inOutCubic'),
+   170→  ]),
+   171→  hit: { start: 0.07, end: 0.18, dmg: 11, stagger: 0.24, kb: 120, kbY: -140, hitstop: 0.055, shake: 0.14, heavy: false },
+   172→  trail: { start: 0.055, end: 0.21 },
+   173→  swingSfx: { t: 0.08, name: 'swing' },
+   174→  cancel: 0.21,
+   175→  chain: ['l4', 'h1', 'h2', 'launcher', 'retreat'],
+   176→  moveX: 120, moveXAt: 0.06,
+   177→}
+   178→
+   179→/** L4 — Whirlwind: full 360° blade cyclone, multi-hit */
+   180→const l4: AttackDef = {
+   181→  id: 'l4', label: 'WHIRLWIND', kind: 'spin', requires: 'ground',
+   182→  clip: makeClip('atk_l4', [
+   183→    keyframe(0, {
+   184→      rootRot: -0.2, spine: -0.05, head: -0.05, rootY: 2,
+   185→      hipR: 0.2, kneeR: -0.55, footR: 0.1,
+   186→      hipL: -0.3, kneeL: -0.5, footL: 0.1,
+   187→      shR: -1.2, elR: -0.3, wrR: -0.4,
+   188→      shL: 0.6, elL: -0.5,
+   189→    }, 'outQuad'),
+   190→    keyframe(0.08, {
+   191→      rootRot: 0.25, rootY: 0,
+   192→      shR: 1.57, elR: -0.05, wrR: 0.02,
+   193→      shL: -0.3, elL: -0.5,
+   194→    }, 'outCubic'),
+   195→    keyframe(0.18, {
+   196→      rootRot: 0.3, rootY: -1,
+   197→      shR: 3.14, elR: -0.02, wrR: 0,
+   198→      shL: 0.5, elL: -0.6,
+   199→    }, 'linear'),
+   200→    keyframe(0.28, {
+   201→      rootRot: 0.25, rootY: 0,
+   202→      shR: 4.71, elR: -0.05, wrR: 0.02,
+   203→      shL: -0.3, elL: -0.5,
+   204→    }, 'linear'),
+   205→    keyframe(0.38, {
+   206→      rootRot: 0.2, rootY: 1,
+   207→      shR: 6.28, elR: -0.05, wrR: 0,
+   208→      shL: 0.5, elL: -0.6,
+   209→    }, 'outCubic'),
+   210→    keyframe(0.52, GUARD, 'inOutCubic'),
+   211→  ]),
+   212→  hit: { start: 0.08, end: 0.4, dmg: 6, stagger: 0.16, kb: 190, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.11 },
+   213→  trail: { start: 0.07, end: 0.42 },
+   214→  swingSfx: { t: 0.07, name: 'swing' },
+   215→  cancel: 0.3,
+   216→  chain: ['l5', 'h2', 'launcher'],
+   217→}
+   218→
+   219→/** L5 wind-up: blade hoisted behind the back for the cleave */
+   220→const L5_ANTIC: PoseInput = {
+   221→  rootRot: -0.38, spine: -0.14, head: 0.06, rootY: 2.5,
+   222→  hipR: -0.25, kneeR: -0.4, footR: 0.1,
+   223→  hipL: 0.3, kneeL: -0.35, footL: 0.1,
+   224→  shR: 3.4, elR: 0.4, wrR: 0.37,
+   225→  shL: 1.2, elL: -0.5,
+   226→}
+   227→
+   228→/** L5 — Cleave Finisher: colossal 260° arcing cut with massive knockback */
+   229→const l5: AttackDef = {
+   230→  id: 'l5', label: 'CLEAVE FINISHER', kind: 'finisher', requires: 'ground',
+   231→  clip: makeClip('atk_l5', [
+   232→    keyframe(0, L5_ANTIC, 'outQuad'),
+   233→    keyframe(0.04, L5_ANTIC, 'linear'),
+   234→    keyframe(0.12, {
+   235→      rootRot: 0.55, spine: 0.2, head: -0.26, rootY: -2,
+   236→      hipR: 0.7, kneeR: -0.5, footR: 0.2,
+   237→      hipL: -0.6, kneeL: -0.3, footL: 0.15,
+   238→      shR: 0.55, elR: 0.1, wrR: 0.25,
+   239→      shL: 0.3, elL: -0.3,
+   240→    }, 'inQuart'),
+   241→    keyframe(0.2, {
+   242→      rootRot: 0.6, spine: 0.22, head: -0.28, rootY: 1,
+   243→      shR: 0.2, elR: -0.1, wrR: 0.1,
+   244→      shL: 0.2, elL: -0.3,
+   245→    }, 'outCubic'),
+   246→    keyframe(0.5, { ...GUARD, rootRot: 0.14, spine: 0.08, shR: 0.6, wrR: 1.5 }, 'inOutCubic'),
+   247→  ]),
+   248→  hit: { start: 0.1, end: 0.21, dmg: 22, stagger: 0.4, kb: 460, hitstop: 0.09, shake: 0.32, heavy: true, breakGuard: true },
+   249→  trail: { start: 0.07, end: 0.26 },
+   250→  swingSfx: { t: 0.1, name: 'swingHeavy' },
+   251→  cancel: 0.3,
+   252→  chain: [],
+   253→  moveX: 260, moveXAt: 0.08,
+   254→}
+   255→
+   256→/** Backstep wind-up: blade drawn across the chest before the retreating cut */
+   257→const RETREAT_ANTIC: PoseInput = {
+   258→  rootRot: 0.3, spine: 0.1, head: -0.08, rootY: 1,
+   259→  shR: 1.1, elR: 0.2, wrR: -1.0,
+   260→  shL: 0.4, elL: -0.5,
+   261→  hipR: 0.4, kneeR: -0.5, hipL: -0.35, kneeL: -0.45,
+   262→}
+   263→
+   264→/** Backstep Slash — retreating rising cut (hold back + light) */
+   265→const retreat: AttackDef = {
+   266→  id: 'retreat', label: 'BACKSTEP SLASH', kind: 'light', requires: 'ground',
+   267→  clip: makeClip('atk_retreat', [
+   268→    keyframe(0, RETREAT_ANTIC, 'outQuad'),
+   269→    keyframe(0.03, RETREAT_ANTIC, 'linear'),
+   270→    keyframe(0.09, {
+   271→      rootRot: -0.3, spine: -0.1, head: -0.2, rootY: -2,
+   272→      shR: 1.0, elR: 0.5, wrR: 1.1,
+   273→      shL: 0.6, elL: -0.6,
+   274→      hipR: 0.15, kneeR: -0.4, hipL: -0.5, kneeL: -0.5,
+   275→    }, 'inCubic'),
+   276→    keyframe(0.36, GUARD, 'inOutCubic'),
+   277→  ]),
+   278→  hit: { start: 0.07, end: 0.17, dmg: 10, stagger: 0.22, kb: 90, kbY: -160, hitstop: 0.05, shake: 0.12, heavy: false },
+   279→  trail: { start: 0.05, end: 0.2 },
+   280→  swingSfx: { t: 0.075, name: 'swing' },
+   281→  cancel: 0.2,
+   282→  chain: ['l1', 'l2', 'launcher', 'spin'],
+   283→  moveX: -240, moveXAt: 0.05,
+   284→}
+   285→
+   286→/** Cyclone wind-up: deep crouch coil before the low spin */
+   287→const SPIN_ANTIC: PoseInput = {
+   288→  rootRot: 0.4, rootY: 7, spine: 0.14, head: -0.24,
+   289→  hipR: 0.55, kneeR: -1.15, footR: 0.2,
+   290→  hipL: -0.45, kneeL: -1.05, footL: 0.15,
+   291→  shR: -0.9, elR: -0.25, wrR: -0.3,
+   292→  shL: 0.6, elL: -0.6,
+   293→}
+   294→
+   295→/** Cyclone — down + light: low multi-hit spin */
+   296→const spin: AttackDef = {
+   297→  id: 'spin', label: 'CYCLONE', kind: 'spin', requires: 'ground',
+   298→  clip: makeClip('atk_spin', [
+   299→    keyframe(0, SPIN_ANTIC, 'outQuad'),
+   300→    keyframe(0.04, SPIN_ANTIC, 'linear'),
+   301→    keyframe(0.11, {
+   302→      rootRot: 0.5, rootY: 5,
+   303→      shR: 1.45, elR: -0.05, wrR: 0,
+   304→      shL: -0.2, elL: -0.5,
+   305→    }, 'inCubic'),
+   306→    keyframe(0.22, {
+   307→      rootRot: 0.55, rootY: 4,
+   308→      shR: 3.0, elR: -0.03, wrR: 0,
+   309→    }, 'linear'),
+   310→    keyframe(0.34, {
+   311→      rootRot: 0.5, rootY: 5,
+   312→      shR: 4.6, elR: -0.05, wrR: 0.02,
+   313→    }, 'linear'),
+   314→    keyframe(0.46, {
+   315→      rootRot: 0.42, rootY: 6,
+   316→      shR: 6.1, elR: -0.05, wrR: 0,
+   317→    }, 'outCubic'),
+   318→    keyframe(0.62, { ...GUARD, rootY: 3, hipR: 0.4, kneeR: -0.7, hipL: -0.35, kneeL: -0.6 }, 'inOutCubic'),
+   319→  ]),
+   320→  hit: { start: 0.1, end: 0.48, dmg: 5.5, stagger: 0.14, kb: 160, hitstop: 0.028, shake: 0.07, heavy: false, multiHit: 0.1 },
+   321→  trail: { start: 0.09, end: 0.5 },
+   322→  swingSfx: { t: 0.1, name: 'swing' },
+   323→  cancel: 0.36,
+   324→  chain: ['l5', 'launcher', 'h2'],
+   325→}
+   326→
+   327→/* ------------------------------------------------------------------ */
+   328→/* GROUND HEAVIES                                                      */
+   329→/* ------------------------------------------------------------------ */
+   330→
+   331→/** H1 — Skull Splitter: overhead with strong anticipation */
+   332→const h1: AttackDef = {
+   333→  id: 'h1', label: 'SKULL SPLITTER', kind: 'heavy', requires: 'ground',
+   334→  clip: makeClip('atk_h1', [
+   335→    // gather: sword rising diagonally — a REAL start pose (the old empty
+   336→    // keyframe snapped every heavy open to the all-zero mannequin first)
+   337→    keyframe(0, {
+   338→      rootRot: 0.05, spine: 0.02, head: -0.04, rootY: 1,
+   339→      hipR: 0.3, kneeR: -0.5, footR: 0.12,
+   340→      hipL: -0.3, kneeL: -0.45, footL: 0.1,
+   341→      shR: 1.9, elR: 0.3, wrR: 0.7,
+   342→      shL: 1.0, elL: -0.5,
+   343→    }, 'outQuad'),
+   344→    keyframe(0.12, {
+   345→      rootRot: -0.4, spine: -0.15, head: 0.1, rootY: 2.5,
+   346→      hipR: -0.3, kneeR: -0.6, footR: 0.1,
+   347→      hipL: -0.3, kneeL: -0.65, footL: 0.05,
+   348→      shR: 3.4, elR: 0.5, wrR: 0.37,
+   349→      shL: 1.4, elL: -0.4,
+   350→    }, 'inOutCubic'),
+   351→    keyframe(0.2, {
+   352→      rootRot: 0.5, spine: 0.2, head: -0.25, rootY: -1,
+   353→      hipR: 0.65, kneeR: -0.55, footR: 0.2,
+   354→      hipL: -0.55, kneeL: -0.3, footL: 0.15,
+   355→      shR: 0.5, elR: 0.15, wrR: 0.25,
+   356→      shL: 0.2, elL: -0.5,
+   357→    }, 'inQuart'),
+   358→    keyframe(0.3, {
+   359→      rootRot: 0.55, spine: 0.22, head: -0.26, rootY: 1,
+   360→      shR: 0.3, elR: 0.05, wrR: 0.1,
+   361→      shL: 0.15, elL: -0.5,
+   362→    }, 'outCubic'),
+   363→    keyframe(0.55, { ...GUARD, rootRot: 0.14, spine: 0.08, shR: 0.6, wrR: 1.5 }, 'inOutCubic'),
+   364→  ]),
+   365→  hit: { start: 0.19, end: 0.3, dmg: 18, stagger: 0.38, kb: 260, hitstop: 0.08, shake: 0.26, heavy: true },
+   366→  trail: { start: 0.16, end: 0.34 },
+   367→  swingSfx: { t: 0.17, name: 'swingHeavy' },
+   368→  cancel: 0.34,
+   369→  chain: ['h2', 'l1', 'launcher'],
+   370→  moveX: 140, moveXAt: 0.17,
+   371→}
+   372→
+   373→/** H2 — Quake Fang: rising re-slam with ground shockwave */
+   374→const h2: AttackDef = {
+   375→  id: 'h2', label: 'QUAKE FANG', kind: 'heavy', requires: 'ground',
+   376→  clip: makeClip('atk_h2', [
+   377→    keyframe(0, {
+   378→      rootRot: -0.3, rootY: 1,
+   379→      shR: 2.6, elR: 0.5, wrR: 0.5,
+   380→      shL: 1.2, elL: -0.45,
+   381→    }, 'outQuad'),
+   382→    keyframe(0.1, {
+   383→      rootRot: -0.38, spine: -0.14, head: 0.08, rootY: 2.5,
+   384→      shR: 3.3, elR: 0.45, wrR: 0.4,
+   385→      shL: 1.35, elL: -0.42,
+   386→    }, 'outCubic'),
+   387→    keyframe(0.17, {
+   388→      rootRot: 0.6, spine: 0.22, head: -0.28, rootY: 2,
+   389→      hipR: 0.7, kneeR: -0.6, footR: 0.2,
+   390→      hipL: -0.6, kneeL: -0.35, footL: 0.15,
+   391→      shR: 0.4, elR: 0.1, wrR: 0.15,
+   392→      shL: 0.2, elL: -0.5,
+   393→    }, 'inQuart'),
+   394→    keyframe(0.28, {
+   395→      rootRot: 0.62, rootY: 3,
+   396→      shR: 0.3, elR: 0.05, wrR: 0.1,
+   397→    }, 'outCubic'),
+   398→    keyframe(0.6, { ...GUARD, rootRot: 0.14, spine: 0.08, shR: 0.6, wrR: 1.5 }, 'inOutCubic'),
+   399→  ]),
+   400→  hit: { start: 0.16, end: 0.27, dmg: 22, stagger: 0.42, kb: 300, hitstop: 0.09, shake: 0.34, heavy: true, aoe: 80, breakGuard: true },
+   401→  trail: { start: 0.13, end: 0.31 },
+   402→  swingSfx: { t: 0.14, name: 'swingHeavy' },
+   403→  cancel: 0.36,
+   404→  chain: ['h3', 'l1'],
+   405→  moveX: 160, moveXAt: 0.15,
+   406→}
+   407→
+   408→/** H3 — Grand Slam: leaping crash with arena-shaking shockwave */
+   409→const h3: AttackDef = {
+   410→  id: 'h3', label: 'GRAND SLAM', kind: 'heavy', requires: 'ground',
+   411→  clip: makeClip('atk_h3', [
+   412→    keyframe(0, {
+   413→      rootY: 6, rootRot: 0.4, spine: 0.12, head: -0.2,
+   414→      hipR: 0.55, kneeR: -1.1, footR: 0.2,
+   415→      hipL: -0.45, kneeL: -1.0, footL: 0.15,
+   416→      shR: 0.6, elR: 0.3, wrR: -0.4,
+   417→      shL: 0.5, elL: -0.6,
+   418→    }, 'outQuad'),
+   419→    keyframe(0.15, {
+   420→      rootY: -4, rootRot: -0.2, spine: -0.06, head: -0.1,
+   421→      hipR: 0.8, kneeR: -1.4, footR: -0.1,
+   422→      hipL: 0.5, kneeL: -1.2, footL: 0.1,
+   423→      shR: 3.4, elR: 0.5, wrR: 0.37,
+   424→      shL: 1.3, elL: -0.4,
+   425→    }, 'outCubic'),
+   426→    keyframe(0.35, {
+   427→      rootY: -5, rootRot: -0.15,
+   428→      shR: 3.5, elR: 0.45, wrR: 0.3,
+   429→      hipR: 0.7, kneeR: -1.3, hipL: 0.4, kneeL: -1.1,
+   430→    }, 'inOutCubic'),
+   431→    keyframe(0.5, {
+   432→      rootRot: 0.7, spine: 0.24, head: -0.3, rootY: 3,
+   433→      hipR: 0.7, kneeR: -0.4, footR: 0.25,
+   434→      hipL: -0.6, kneeL: -0.3, footL: 0.2,
+   435→      shR: 0.45, elR: 0.1, wrR: 0.2,
+   436→      shL: 0.25, elL: -0.5,
+   437→    }, 'inQuart'),
+   438→    keyframe(0.64, {
+   439→      rootRot: 0.72, rootY: 5,
+   440→      shR: 0.3, elR: 0.05, wrR: 0.1,
+   441→      hipR: 0.6, kneeR: -0.9, hipL: -0.5, kneeL: -0.8,
+   442→    }, 'outQuad'),
+   443→    keyframe(0.9, { ...GUARD, rootY: 2, hipR: 0.45, kneeR: -0.7, hipL: -0.4, kneeL: -0.65 }, 'inOutCubic'),
+   444→  ]),
+   445→  hit: { start: 0.48, end: 0.6, dmg: 30, stagger: 0.5, kb: 380, launch: -320, hitstop: 0.12, shake: 0.5, heavy: true, aoe: 135, breakGuard: true },
+   446→  trail: { start: 0.42, end: 0.62 },
+   447→  swingSfx: { t: 0.44, name: 'swingHeavy' },
+   448→  cancel: 0.55,
+   449→  chain: [],
+   450→  moveY: -780, moveYAt: 0.04,
+   451→  slamImpact: { r: 135, dmg: 26, launch: -280 },
+   452→}
+   453→
+   454→/** LAUNCHER — Rising Fang: uppercut slash that hurls foes skyward */
+   455→const launcher: AttackDef = {
+   456→  id: 'launcher', label: 'RISING FANG', kind: 'launcher', requires: 'ground',
+   457→  clip: makeClip('atk_launcher', [
+   458→    keyframe(0, {
+   459→      rootY: 6, rootRot: 0.35, spine: 0.12, head: -0.14,
+   460→      hipR: 0.6, kneeR: -1.2, footR: 0.2,
+   461→      hipL: -0.5, kneeL: -1.1, footL: 0.15,
+   462→      shR: -0.4, elR: -0.05, wrR: 0.05,
+   463→      shL: 0.5, elL: -0.5,
+   464→    }, 'outQuad'),
+   465→    keyframe(0.1, {
+   466→      rootY: -5, rootRot: -0.3, spine: -0.12, head: -0.24,
+   467→      hipR: -0.4, kneeR: -0.8, footR: -0.15,
+   468→      hipL: 0.5, kneeL: -0.4, footL: 0.25,
+   469→      shR: 2.9, elR: -0.05, wrR: -0.1,
+   470→      shL: 0.9, elL: -0.6,
+   471→    }, 'inCubic'),
+   472→    keyframe(0.2, {
+   473→      rootY: -6, rootRot: -0.34,
+   474→      shR: 3.2, elR: -0.1, wrR: -0.3,
+   475→    }, 'outCubic'),
+   476→    keyframe(0.45, GUARD, 'inOutCubic'),
+   477→  ]),
+   478→  hit: { start: 0.09, end: 0.2, dmg: 12, stagger: 0.3, kb: 60, launch: -640, hitstop: 0.07, shake: 0.2, heavy: false },
+   479→  trail: { start: 0.07, end: 0.24 },
+   480→  swingSfx: { t: 0.08, name: 'swing' },
+   481→  cancel: 0.26,
+   482→  chain: ['a1', 'a2', 'a3', 'dive'],
+   483→  moveX: 170, moveXAt: 0.07,
+   484→  moveY: -520, moveYAt: 0.08,
+   485→}
+   486→
+   487→/* ------------------------------------------------------------------ */
+   488→/* DASH ATTACKS                                                        */
+   489→/* ------------------------------------------------------------------ */
+   490→
+   491→/** Dash Slash — pass-through phantom cut (works ground & air) */
+   492→const dashSlash: AttackDef = {
+   493→  id: 'dashSlash', label: 'PHANTOM CUT', kind: 'dash', requires: 'any',
+   494→  clip: makeClip('atk_dashslash', [
+   495→    keyframe(0, {
+   496→      rootRot: 0.55, rootY: 2, spine: 0.12, head: -0.4,
+   497→      hipR: 0.9, kneeR: -1.0, footR: 0.15,
+   498→      hipL: -0.85, kneeL: -0.7, footL: 0.2,
+   499→      shR: -0.8, elR: -0.4, wrR: 0.2,
+   500→      shL: 0.75, elL: -0.5,
+   501→    }, 'outQuad'),
+   502→    keyframe(0.08, {
+   503→      rootRot: 0.62, rootY: 1,
+   504→      shR: 1.1, elR: 0.15, wrR: 0.05,
+   505→      shL: 0.6, elL: -0.4,
+   506→    }, 'inCubic'),
+   507→    keyframe(0.18, {
+   508→      rootRot: 0.5, rootY: 0,
+   509→      shR: 1.8, elR: 0.3, wrR: 0.1,
+   510→      shL: 0.3, elL: -0.4,
+   511→    }, 'outCubic'),
+   512→    keyframe(0.32, GUARD, 'inOutCubic'),
+   513→  ]),
+   514→  hit: { start: 0.06, end: 0.2, dmg: 12, stagger: 0.26, kb: 220, hitstop: 0.05, shake: 0.16, heavy: false, multiHit: 0.1 },
+   515→  trail: { start: 0.04, end: 0.24 },
+   516→  swingSfx: { t: 0.05, name: 'swing' },
+   517→  cancel: 0.2,
+   518→  chain: ['l1', 'l2', 'h1', 'launcher'],
+   519→  moveX: 560, moveXAt: 0.02,
+   520→}
+   521→
+   522→/** Dash Heavy — lunging piercing stab */
+   523→const dashHeavy: AttackDef = {
+   524→  id: 'dashHeavy', label: 'PIERCING FANG', kind: 'dash', requires: 'ground',
+   525→  clip: makeClip('atk_dashheavy', [
+   526→    keyframe(0, {
+   527→      rootRot: 0.2, rootY: 2,
+   528→      shR: -1.4, elR: -0.5, wrR: 0.3,
+   529→      shL: 0.4, elL: -0.5,
+   530→      hipR: 0.4, kneeR: -0.7, hipL: -0.4, kneeL: -0.5,
+   531→    }, 'outQuad'),
+   532→    keyframe(0.12, {
+   533→      rootRot: 0.62, rootY: 2, spine: 0.2, head: -0.34,
+   534→      hipR: 1.1, kneeR: -0.3, footR: 0.2,
+   535→      hipL: -1.0, kneeL: -0.5, footL: 0.1,
+   536→      shR: 1.2, elR: 0.35, wrR: -0.2,
+   537→      shL: -0.8, elL: -0.3,
+   538→    }, 'inQuart'),
+   539→    keyframe(0.24, {
+   540→      rootRot: 0.6, rootY: 2,
+   541→      shR: 1.1, elR: 0.35, wrR: -0.2,
+   542→    }, 'outCubic'),
+   543→    keyframe(0.5, { ...GUARD, rootRot: 0.16, spine: 0.09, shR: 0.65, wrR: 1.4 }, 'inOutCubic'),
+   544→  ]),
+   545→  hit: { start: 0.11, end: 0.24, dmg: 24, stagger: 0.45, kb: 540, hitstop: 0.1, shake: 0.3, heavy: true },
+   546→  trail: { start: 0.08, end: 0.28 },
+   547→  swingSfx: { t: 0.1, name: 'swingHeavy' },
+   548→  cancel: 0.3,
+   549→  chain: [],
+   550→  moveX: 420, moveXAt: 0.08,
+   551→}
+   552→
+   553→/** CHARGED — Overload Slash: colossal 320° element-charged arc */
+   554→const charged: AttackDef = {
+   555→  id: 'charged', label: 'OVERLOAD SLASH', kind: 'charged', requires: 'ground',
+   556→  clip: makeClip('atk_charged', [
+   557→    keyframe(0, {
+   558→      rootRot: -0.45, spine: -0.16, head: 0.08, rootY: 3,
+   559→      hipR: -0.25, kneeR: -0.45, footR: 0.1,
+   560→      hipL: 0.3, kneeL: -0.4, footL: 0.1,
+   561→      shR: 3.6, elR: 0.5, wrR: 0.3,
+   562→      shL: 1.4, elL: -0.4,
+   563→    }, 'outQuad'),
+   564→    keyframe(0.16, {
+   565→      rootRot: 0.6, spine: 0.24, head: -0.3, rootY: -2,
+   566→      hipR: 0.75, kneeR: -0.5, footR: 0.25,
+   567→      hipL: -0.65, kneeL: -0.3, footL: 0.2,
+   568→      shR: -1.0, elR: -0.5, wrR: 0.3,
+   569→      shL: 0.2, elL: -0.4,
+   570→    }, 'inQuart'),
+   571→    keyframe(0.28, {
+   572→      rootRot: 0.5, spine: 0.18, head: -0.24, rootY: 0,
+   573→      shR: -1.6, elR: -0.5, wrR: 0.1,
+   574→      shL: 0.4, elL: -0.5,
+   575→    }, 'outCubic'),
+   576→    keyframe(0.65, { ...GUARD, rootRot: 0.16, spine: 0.09, shR: 0.62, wrR: 1.45 }, 'inOutCubic'),
+   577→  ]),
+   578→  hit: { start: 0.14, end: 0.3, dmg: 46, stagger: 0.6, kb: 420, launch: -380, hitstop: 0.14, shake: 0.55, heavy: true, aoe: 150, breakGuard: true },
+   579→  trail: { start: 0.1, end: 0.38 },
+   580→  swingSfx: { t: 0.12, name: 'swingHeavy' },
+   581→  cancel: 0.4,
+   582→  chain: [],
+   583→  moveX: 220, moveXAt: 0.12,
+   584→}
+   585→
+   586→/** RIPOSTE — Judgment Cut: iai-draw counter after a parry */
+   587→const riposte: AttackDef = {
+   588→  id: 'riposte', label: 'JUDGMENT CUT', kind: 'riposte', requires: 'any',
+   589→  clip: makeClip('atk_riposte', [
+   590→    keyframe(0, {
+   591→      rootRot: 0.12, spine: 0.04, head: -0.06, rootY: 1,
+   592→      hipR: 0.3, kneeR: -0.55, footR: 0.12,
+   593→      hipL: -0.35, kneeL: -0.5, footL: 0.1,
+   594→      shR: 0.4, elR: 0.1, wrR: -0.2,
+   595→      shL: 0.25, elL: -0.45,
+   596→    }, 'outQuad'),
+   597→    keyframe(0.14, {
+   598→      rootRot: -0.2, spine: -0.08, head: -0.22, rootY: -3,
+   599→      hipR: -0.3, kneeR: -0.4, footR: -0.1,
+   600→      hipL: 0.4, kneeL: -0.3, footL: 0.2,
+   601→      shR: 2.4, elR: 0.3, wrR: 0.2,
+   602→      shL: 0.8, elL: -0.5,
+   603→    }, 'inQuart'),
+   604→    keyframe(0.32, {
+   605→      rootRot: -0.16, rootY: -3,
+   606→      shR: 2.5, elR: 0.25, wrR: 0.25,
+   607→    }, 'outCubic'),
+   608→    keyframe(0.55, { ...GUARD, rootRot: 0.1, shR: 0.6, wrR: 1.5 }, 'inOutCubic'),
+   609→  ]),
+   610→  hit: { start: 0.12, end: 0.24, dmg: 34, stagger: 0.55, kb: 380, hitstop: 0.12, shake: 0.42, heavy: true, breakGuard: true },
+   611→  trail: { start: 0.1, end: 0.3 },
+   612→  swingSfx: { t: 0.11, name: 'swingHeavy' },
+   613→  cancel: 0.34,
+   614→  chain: [],
+   615→  moveX: 200, moveXAt: 0.1,
+   616→}
+   617→
+   618→/* ------------------------------------------------------------------ */
+   619→/* AIR ATTACKS                                                         */
+   620→/* ------------------------------------------------------------------ */
+   621→
+   622→const AIR_LEGS = {
+   623→  hipR: 0.5, kneeR: -1.2, footR: -0.05,
+   624→  hipL: -0.4, kneeL: -0.9, footL: 0.1,
+   625→}
+   626→
+   627→const A1_ANTIC: PoseInput = {
+   628→  ...AIR_LEGS, rootRot: -0.24, spine: -0.08, head: 0, rootY: 0,
+   629→  shR: -1.15, elR: -0.35, wrR: -0.6,
+   630→  shL: 0.45, elL: -0.55,
+   631→}
+   632→
+   633→/** A1 — Air Slash */
+   634→const a1: AttackDef = {
+   635→  id: 'a1', label: 'AIR SLASH', kind: 'air', requires: 'air',
+   636→  clip: makeClip('atk_a1', [
+   637→    keyframe(0, A1_ANTIC, 'outQuad'),
+   638→    keyframe(0.025, A1_ANTIC, 'linear'),
+   639→    keyframe(0.075, {
+   640→      ...AIR_LEGS, rootRot: 0.4, spine: 0.14, head: -0.18, rootY: -1,
+   641→      shR: 1.2, elR: -0.1, wrR: -0.2,
+   642→      shL: -0.3, elL: -0.45,
+   643→    }, 'inCubic'),
+   644→    keyframe(0.14, {
+   645→      ...AIR_LEGS, rootRot: 0.28, rootY: 0,
+   646→      shR: 0.55, elR: 0.35, wrR: -0.9,
+   647→    }, 'outCubic'),
+   648→    keyframe(0.32, GUARD_AIR, 'inOutCubic'),
+   649→  ]),
+   650→  hit: { start: 0.06, end: 0.16, dmg: 9, stagger: 0.22, kb: 110, juggle: -420, hitstop: 0.045, shake: 0.1, heavy: false },
+   651→  trail: { start: 0.05, end: 0.19 },
+   652→  swingSfx: { t: 0.06, name: 'swing' },
+   653→  cancel: 0.19,
+   654→  chain: ['a2', 'a3', 'dive', 'slam'],
+   655→  float: 0.42,
+   656→}
+   657→
+   658→const A2_ANTIC: PoseInput = {
+   659→  ...AIR_LEGS, rootRot: 0.3, rootY: 0,
+   660→  shR: 0.5, elR: 0.4, wrR: -0.85,
+   661→  shL: -0.15, elL: -0.4,
+   662→}
+   663→
+   664→/** A2 — Air Reverse Slash */
+   665→const a2: AttackDef = {
+   666→  id: 'a2', label: 'AIR REVERSE', kind: 'air', requires: 'air',
+   667→  clip: makeClip('atk_a2', [
+   668→    keyframe(0, A2_ANTIC, 'outQuad'),
+   669→    keyframe(0.025, A2_ANTIC, 'linear'),
+   670→    keyframe(0.075, {
+   671→      ...AIR_LEGS, rootRot: -0.14, spine: -0.06, head: -0.14, rootY: -1,
+   672→      shR: 0.9, elR: 0.3, wrR: 1.4,
+   673→      shL: 0.3, elL: -0.5,
+   674→    }, 'inCubic'),
+   675→    keyframe(0.14, {
+   676→      ...AIR_LEGS, rootRot: -0.22, rootY: -2,
+   677→      shR: 0.25, elR: -0.2, wrR: 2.0,
+   678→    }, 'outCubic'),
+   679→    keyframe(0.32, GUARD_AIR, 'inOutCubic'),
+   680→  ]),
+   681→  hit: { start: 0.06, end: 0.16, dmg: 9.5, stagger: 0.24, kb: 130, juggle: -460, hitstop: 0.05, shake: 0.12, heavy: false },
+   682→  trail: { start: 0.045, end: 0.19 },
+   683→  swingSfx: { t: 0.06, name: 'swing' },
+   684→  cancel: 0.19,
+   685→  chain: ['a3', 'dive', 'slam'],
+   686→  float: 0.42,
+   687→}
+   688→
+   689→/** A3 — Air Rondo: spinning multi-hit */
+   690→const a3: AttackDef = {
+   691→  id: 'a3', label: 'AIR RONDO', kind: 'spin', requires: 'air',
+   692→  clip: makeClip('atk_a3', [
+   693→    keyframe(0, {
+   694→      ...AIR_LEGS, rootRot: -0.15, rootY: 0,
+   695→      shR: -1.0, elR: -0.3, wrR: -0.3,
+   696→      shL: 0.5, elL: -0.5,
+   697→    }, 'outQuad'),
+   698→    keyframe(0.08, {
+   699→      ...AIR_LEGS, rootRot: 0.2, rootY: -1,
+   700→      shR: 1.5, elR: -0.05, wrR: 0,
+   701→    }, 'outCubic'),
+   702→    keyframe(0.17, {
+   703→      ...AIR_LEGS, rootRot: 0.22,
+   704→      shR: 3.1, elR: -0.02, wrR: 0,
+   705→    }, 'linear'),
+   706→    keyframe(0.26, {
+   707→      ...AIR_LEGS, rootRot: 0.2,
+   708→      shR: 4.7, elR: -0.05, wrR: 0.02,
+   709→    }, 'linear'),
+   710→    keyframe(0.35, {
+   711→      ...AIR_LEGS, rootRot: 0.15,
+   712→      shR: 6.28, elR: -0.05, wrR: 0,
+   713→    }, 'outCubic'),
+   714→    keyframe(0.48, GUARD_AIR, 'inOutCubic'),
+   715→  ]),
+   716→  hit: { start: 0.08, end: 0.36, dmg: 6, stagger: 0.16, kb: 150, juggle: -400, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.1 },
+   717→  trail: { start: 0.07, end: 0.38 },
+   718→  swingSfx: { t: 0.07, name: 'swing' },
+   719→  cancel: 0.28,
+   720→  chain: ['dive', 'slam', 'a1'],
+   721→  float: 0.34,
+   722→}
+   723→
+   724→/** DIVE — Falcon Dive: diagonal plunging multi-cut */
+   725→const dive: AttackDef = {
+   726→  id: 'dive', label: 'FALCON DIVE', kind: 'air', requires: 'air',
+   727→  clip: makeClip('atk_dive', [
+   728→    keyframe(0, {
+   729→      rootRot: 0.2, spine: 0.06, head: -0.1, rootY: -2,
+   730→      hipR: 0.6, kneeR: -1.3, footR: -0.1,
+   731→      hipL: 0.4, kneeL: -1.1, footL: 0.1,
+   732→      shR: 2.8, elR: 0.4, wrR: 0.3,
+   733→      shL: 0.9, elL: -0.5,
+   734→    }, 'outQuad'),
+   735→    keyframe(0.12, {
+   736→      rootRot: 0.75, spine: 0.2, head: -0.3, rootY: 2,
+   737→      hipR: -0.6, kneeR: -0.4, footR: -0.15,
+   738→      hipL: -0.45, kneeL: -0.35, footL: 0.1,
+   739→      shR: 0.6, elR: 0.15, wrR: 0.15,
+   740→      shL: -0.4, elL: -0.4,
+   741→    }, 'inCubic'),
+   742→    keyframe(0.5, {
+   743→      rootRot: 0.78, rootY: 2,
+   744→      shR: 0.5, elR: 0.15, wrR: 0.15,
+   745→    }, 'outQuad'),
+   746→    keyframe(0.62, GUARD, 'inOutCubic'),
+   747→  ]),
+   748→  hit: { start: 0.1, end: 0.5, dmg: 7, stagger: 0.16, kb: 80, juggle: -260, hitstop: 0.035, shake: 0.09, heavy: false, multiHit: 0.13 },
+   749→  trail: { start: 0.08, end: 0.52 },
+   750→  swingSfx: { t: 0.09, name: 'swing' },
+   751→  cancel: 0.2,
+   752→  chain: [],
+   753→  moveY: 620, moveYAt: 0.08,
+   754→  moveX: 260, moveXAt: 0.08,
+   755→  float: 0.9,
+   756→  slamImpact: { r: 80, dmg: 12, launch: -160 },
+   757→}
+   758→
+   759→/** SLAM — Meteor Fall: plunging blade-first crash */
+   760→const slam: AttackDef = {
+   761→  id: 'slam', label: 'METEOR FALL', kind: 'slam', requires: 'air',
+   762→  clip: makeClip('atk_slam', [
+   763→    keyframe(0, {
+   764→      rootRot: 0.3, spine: 0.08, head: -0.1, rootY: -3,
+   765→      hipR: 0.7, kneeR: -1.4, footR: -0.1,
+   766→      hipL: 0.5, kneeL: -1.2, footL: 0.1,
+   767→      shR: -0.7, elR: -0.35, wrR: 0.12,
+   768→      shL: 0.6, elL: -0.5,
+   769→    }, 'outQuad'),
+   770→    keyframe(0.15, {
+   771→      rootRot: 0.85, spine: 0.24, head: -0.34, rootY: 2,
+   772→      hipR: -0.9, kneeR: -0.4, footR: -0.2,
+   773→      hipL: -0.7, kneeL: -0.5, footL: 0.1,
+   774→      shR: -0.15, elR: 0.05, wrR: 0.1,
+   775→      shL: -0.5, elL: -0.3,
+   776→    }, 'inQuad'),
+   777→    keyframe(0.45, {
+   778→      rootRot: 0.88, rootY: 2,
+   779→      shR: -0.15, elR: 0.05, wrR: 0.1,
+   780→    }, 'outQuad'),
+   781→    keyframe(0.56, {
+   782→      rootRot: 0.7, rootY: 6, spine: 0.2, head: -0.26,
+   783→      hipR: 0.65, kneeR: -1.3, footR: 0.25,
+   784→      hipL: -0.55, kneeL: -1.2, footL: 0.2,
+   785→      shR: 0.2, elR: 0.1, wrR: 0.05,
+   786→      shL: 0.3, elL: -0.6,
+   787→    }, 'outQuart'),
+   788→    keyframe(0.78, { ...GUARD, rootY: 2, hipR: 0.45, kneeR: -0.7, hipL: -0.4, kneeL: -0.6 }, 'inOutCubic'),
+   789→  ]),
+   790→  hit: { start: 0.14, end: 0.5, dmg: 10, stagger: 0.2, kb: 60, juggle: -180, hitstop: 0.04, shake: 0.12, heavy: false, multiHit: 0.16 },
+   791→  trail: { start: 0.12, end: 0.55 },
+   792→  swingSfx: { t: 0.12, name: 'swingHeavy' },
+   793→  cancel: 0.3,
+   794→  chain: [],
+   795→  moveY: 1050, moveYAt: 0.1,
+   796→  slamImpact: { r: 145, dmg: 26, launch: -300 },
+   797→}
+   798→
+   799→/* ------------------------------------------------------------------ */
+   800→
+   801→export const ATTACKS: Record<string, AttackDef> = {
+   802→  l1, l2, l3, l4, l5, retreat, spin,
+   803→  h1, h2, h3, launcher,
+   804→  dashSlash, dashHeavy, charged, riposte,
+   805→  a1, a2, a3, dive, slam,
+   806→}
+   807→
+   808→export function getAttack(id: string): AttackDef | undefined {
+   809→  return ATTACKS[id]
+   810→}
+   811→
+   812→/** Runtime info passed to the world when a blade connects. */
+   813→export interface AttackRuntimeInfo {
+   814→  id: string
+   815→  dmg: number
+   816→  heavy: boolean
+   817→  stagger: number
+   818→  kb: number
+   819→  kbY: number
+   820→  launch: number
+   821→  juggle: number
+   822→  hitstop: number
+   823→  shake: number
+   824→  aoe: number
+   825→  breakGuard: boolean
+   826→  kind: AttackKind
+   827→}
+   828→
+   829→export function makeRuntimeInfo(def: AttackDef, dmgMult: number): AttackRuntimeInfo {
+   830→  return {
+   831→    id: def.id,
+   832→    dmg: def.hit.dmg * dmgMult,
+   833→    heavy: def.hit.heavy,
+   834→    stagger: def.hit.stagger,
+   835→    kb: def.hit.kb,
+   836→    kbY: def.hit.kbY ?? 0,
+   837→    launch: def.hit.launch ?? 0,
+   838→    juggle: def.hit.juggle ?? 0,
+   839→    hitstop: def.hit.hitstop,
+   840→    shake: def.hit.shake,
+   841→    aoe: def.hit.aoe ?? 0,
+   842→    breakGuard: def.hit.breakGuard ?? false,
+   843→    kind: def.kind,
+   844→  }
+   845→}
+   846→
