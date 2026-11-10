@@ -281,5 +281,4 @@ lines, zero new errors.
    a coil-into-chamber entry key — both deferred (pose-lock / charge-hold pays it).
 5. JAB 60ms chamber — acceptable for a kizami poke; revisit at Cycle 2 bar.
 
-**COMMIT:** feat(anim): GAP SESSION 1 — anticipation & wind-up (Becker-grade coil)
-(hash recorded in git log; pushed to origin/main)
+**COMMIT:** `407ffeb` — feat(anim): GAP SESSION 1 — anticipation & wind-up (Becker-grade coil) — pushed to origin/main
