@@ -7,7 +7,8 @@
  */
 
 import { makePose, Pose } from '../anim/pose'
-import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
+import { makeFighterGeom, solveFighter3D, drawFighter3D } from '../anim/rig3d'
 import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
 import { LightningSystem, RayOpts, RayWorld } from './lightning'
@@ -29,7 +30,7 @@ interface Particle {
   pts: number[] | null
 }
 
-type PType = 'spark' | 'dot' | 'ember' | 'smoke' | 'streak' | 'arc' | 'shard'
+type PType = 'spark' | 'dot' | 'ember' | 'smoke' | 'streak' | 'arc' | 'shard' | 'rock'
 
 export interface Trail {
   active: boolean
@@ -154,7 +155,7 @@ interface ShadowSmear {
 
 const MAX_PARTICLES = 1500
 const TRAIL_N = 26
-const scrashGeom: SkelGeom = makeSkelGeom()
+const echoGeom = makeFighterGeom()
 const aiPose = makePose()
 
 export class FX {
@@ -341,6 +342,19 @@ export class FX {
       p.grav = -20
       p.drag = 3
       p.rot = 0; p.vrot = 0; p.pts = null
+    }
+  }
+
+  /** Angular ground fragments thrown opposite the power dash, never toward it. */
+  groundShatter(x:number,dir:number,count:number):void {
+    const n=this.scaleCount(count),back=dir>=0?-1:1
+    for(let i=0;i<n;i++){
+      const p=this.nextParticle();if(!p)return
+      p.x=x+rand(-6,6);p.y=-rand(1,5)
+      p.vx=back*rand(100,390);p.vy=-rand(100,310)
+      p.age=0;p.life=rand(.45,.9);p.size=rand(2.5,6)
+      p.color=i%2?'#80909a':'#52606a';p.type='rock'
+      p.grav=900;p.drag=.35;p.rot=rand(TAU);p.vrot=rand(-12,12);p.pts=null
     }
   }
 
@@ -720,6 +734,10 @@ export class FX {
       p.vy *= dr > 0 ? dr : 0
       p.x += p.vx * dt
       p.y += p.vy * dt
+      if(p.type==='rock'){
+        p.rot+=p.vrot*dt
+        if(p.y>0){p.y=0;p.vy=-Math.abs(p.vy)*.25;p.vx*=.7}
+      }
     }
     // trails
     for (let i = this.trails.length - 1; i >= 0; i--) {
@@ -888,6 +906,16 @@ export class FX {
       ctx.lineWidth = 1.2
       drawCrack(ctx, c)
     }
+    // Solid, spinning stone chips, drawn in the ground layer rather than
+    // as glowing sparks. They bounce and settle on the same floor plane.
+    for(const p of this.particles){
+      if(!p.active||p.type!=='rock')continue
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot)
+      ctx.fillStyle=rgba(p.color,1-p.age/p.life);ctx.beginPath()
+      ctx.moveTo(-p.size,-p.size*.25);ctx.lineTo(-p.size*.35,-p.size)
+      ctx.lineTo(p.size*.8,-p.size*.65);ctx.lineTo(p.size,p.size*.25)
+      ctx.lineTo(-p.size*.25,p.size*.6);ctx.closePath();ctx.fill();ctx.restore()
+    }
     // debris
     ctx.lineCap = 'round'
     for (const d of this.debris) {
@@ -926,9 +954,9 @@ export class FX {
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
       aiPose.set(a.pose)
-      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
+      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
       // shadow body — solid dark, source-over (a real cast shadow)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: '#02050b',
         ghostAlpha: (a.a0 ?? 0.44) * k,
       })
@@ -939,17 +967,9 @@ export class FX {
       ctx.globalCompositeOperation = 'lighter'
       ctx.save()
       ctx.translate(rimLocal, 0)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: a.rim,
-        ghostAlpha: 0.2 * k,
-      })
-      ctx.restore()
-      // white-hot inner rim (HDR layering: saturated rim + white core)
-      ctx.save()
-      ctx.translate(rimLocal * 0.5, 0)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
-        ghost: '#f4fbff',
-        ghostAlpha: 0.1 * k,
+        ghostAlpha: 0.07 * k,
       })
       ctx.restore()
       ctx.restore()
@@ -976,8 +996,8 @@ export class FX {
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
       aiPose.set(a.pose)
-      solveSkeleton(aiPose, PLAYER_SPEC, scrashGeom)
-      drawStick(ctx, scrashGeom, PLAYER_STYLE, {
+      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
+      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
         ghost: a.color,
         ghostAlpha: k * 0.5,
         time,
@@ -1059,6 +1079,7 @@ export class FX {
       if (!p.active) continue
       const k = 1 - p.age / p.life
       switch (p.type) {
+        case 'rock': break // rendered as solid chips in the ground layer
         case 'spark': {
           ctx.strokeStyle = rgba(p.color, k)
           ctx.lineWidth = p.size * 0.8

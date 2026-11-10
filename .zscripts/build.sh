@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Next.js 项目路径
-NEXTJS_PROJECT_DIR="/home/z/my-project"
+NEXTJS_PROJECT_DIR="${PROJECT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 # 检查 Next.js 项目目录是否存在
 if [ ! -d "$NEXTJS_PROJECT_DIR" ]; then
@@ -34,6 +34,9 @@ mkdir -p "$BUILD_DIR"
 # 安装依赖
 echo "📦 安装依赖..."
 bun install
+
+# The generated Prisma client is not committed and is required by the build.
+bun run db:generate
 
 # 构建 Next.js 应用
 echo "🔨 构建 Next.js 应用..."

@@ -36,9 +36,10 @@
  *    bladeZ     — grip translated along Z (thrust depth travel)
  */
 
+import { drawHumanoid } from './humanoid'
 import { CH, Pose } from './pose'
 import { SkelSpec, StickStyle } from './skeleton'
-import { clamp, clamp01, lerp, rgba, smoothstep } from '../core/utils'
+import { clamp, clamp01 } from '../core/utils'
 
 /** perspective focal length in character-local units */
 export const FOCUS = 620
@@ -317,7 +318,27 @@ function solveArm(
   const hx = ex + dirScratch.x * spec.foreArm
   const hy = ey + dirScratch.y * spec.foreArm
   const hz = ez + dirScratch.z * spec.foreArm
-  proj(elb, ex, ey, ez)
+  // Anatomical elbow pole: preserve the authored/weapon-constrained HAND
+  // target, but solve the elbow behind/below the reach line. Previously
+  // a negative flexion channel could put the elbow forward and the hand
+  // trailing, producing the backwards forearm seen in locomotion.
+  // Sphere-intersection IK preserves both 3D bone lengths and grip position.
+  const dx = hx - sx, dy = hy - sy, dz = hz - sz
+  const distance = Math.hypot(dx, dy, dz)
+  if (distance > 1e-5) {
+    const ux = dx / distance, uy = dy / distance, uz = dz / distance
+    const along = (spec.upperArm**2 - spec.foreArm**2 + distance**2) / (2 * distance)
+    const height = Math.sqrt(Math.max(0, spec.upperArm**2 - along**2))
+    const side = sz >= 0 ? .18 : -.18
+    const dot = -ux + .35 * uy + side * uz
+    let px = -1 - dot * ux, py = .35 - dot * uy, pz = side - dot * uz
+    let plen = Math.hypot(px, py, pz)
+    if (plen < 1e-5) { px = -uy; py = ux; pz = 0; plen = Math.hypot(px, py) || 1 }
+    proj(elb, sx + ux * along + px / plen * height,
+      sy + uy * along + py / plen * height, sz + uz * along + pz / plen * height)
+  } else {
+    proj(elb, ex, ey, ez)
+  }
   proj(hand, hx, hy, hz)
 }
 
@@ -348,7 +369,9 @@ export function ikArm3D(
   const reach = r / armLen
   // planar projection onto (radial-horizontal, vertical)
   const rh = Math.hypot(dx, dz)
-  const yaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
+  const rawYaw = rh > 1e-4 ? Math.atan2(dz, dx) : 0
+  // martial constraint: tuck elbows close to ribcage, prevent outward abduction
+  const yaw = clamp(rawYaw, -0.65, 0.65)
   // law of cosines in the sagittal-style plane
   const cosB = clamp((upper * upper + r * r - fore * fore) / (2 * upper * r), -1, 1)
   const B = Math.acos(cosB)
@@ -366,515 +389,23 @@ export function ikArm3D(
 /* ------------------------------------------------------------------ */
 
 export interface FighterDrawOpts {
+  motionEnergy?: number
+  hands?: import('./hand-gestures').HandGestures
+  /** Contour-only rim, never interior bone strokes. */
+  rimColor?: string
+  rimAlpha?: number
+  /** Tinted surface echo; shares the live ronin anatomy, never a stick rig. */
+  ghost?: string
+  ghostAlpha?: number
   alpha?: number
   time?: number
   flash?: number
   flashColor?: string
   simple?: boolean
   edgeLight?: { color: string; a: number }
+  scarfNodes?: ReadonlyArray<{ x: number; y: number }>
+  scarfColor?: string
 }
 
-/** width scale from depth: near limbs thicken, far limbs thin */
-function zScale(z: number): number {
-  return FOCUS / (FOCUS - clamp(z, -90, 90))
-}
-
-function fillTaper3(
-  ctx: CanvasRenderingContext2D,
-  a: J3, b: J3,
-  wa: number, wb: number,
-  color: string,
-  alpha = 1,
-): void {
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const len = Math.hypot(dx, dy) || 1
-  const nx = -dy / len
-  const ny = dx / len
-  ctx.save()
-  ctx.globalAlpha *= alpha
-  ctx.fillStyle = color
-  ctx.beginPath()
-  ctx.moveTo(a.x + nx * wa, a.y + ny * wa)
-  ctx.lineTo(b.x + nx * wb, b.y + ny * wb)
-  ctx.lineTo(b.x - nx * wb, b.y - ny * wb)
-  ctx.lineTo(a.x - nx * wa, a.y - ny * wa)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(a.x, a.y, wa, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(b.x, b.y, wb, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
-/** blend two '#rrggbb' tones (t=0 → a, t=1 → b) — the stable limb depth
- * crossfade. Non-hex inputs fall back to a hard step (only hex styles
- * reach this path in practice). */
-function mixHex(a: string, b: string, t: number): string {
-  if (a.charCodeAt(0) !== 35 || b.charCodeAt(0) !== 35 || a.length < 7 || b.length < 7) return t > 0.5 ? b : a
-  const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16)
-  const br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16)
-  const r = (ar + (br - ar) * t + 0.5) | 0
-  const gg = (ag + (bg - ag) * t + 0.5) | 0
-  const bl = (ab + (bb - ab) * t + 0.5) | 0
-  return '#' + ((1 << 24) | (r << 16) | (gg << 8) | bl).toString(16).slice(1)
-}
-
-function fillFoot3(
-  ctx: CanvasRenderingContext2D,
-  a: J3, b: J3,
-  color: string,
-  alpha = 1,
-  k = 1,
-): void {
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  const len = Math.hypot(dx, dy) || 1
-  const nx = -dy / len
-  const ny = dx / len
-  ctx.save()
-  ctx.globalAlpha *= alpha
-  ctx.fillStyle = color
-  ctx.beginPath()
-  ctx.moveTo(a.x + nx * 3.4 * k, a.y + ny * 3.4 * k)
-  ctx.lineTo(b.x + nx * 2.5 * k, b.y + ny * 2.5 * k)
-  ctx.lineTo(b.x - nx * 2.5 * k, b.y - ny * 2.5 * k)
-  ctx.lineTo(a.x - nx * 3.4 * k, a.y - ny * 3.4 * k)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(a.x, a.y, 3.4 * k, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(b.x, b.y, 2.3 * k, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
-function fillFist3(
-  ctx: CanvasRenderingContext2D,
-  p: J3,
-  ax: number, ay: number, // projected grip axis (unit)
-  size: number,
-  color: string,
-  alpha = 1,
-): void {
-  const px = -ay
-  const py = ax
-  ctx.save()
-  ctx.globalAlpha *= alpha
-  ctx.fillStyle = color
-  ctx.beginPath()
-  ctx.moveTo(p.x + px * size, p.y + py * size)
-  ctx.lineTo(p.x + ax * size * 0.55 + px * size * 0.8, p.y + ay * size * 0.55 + py * size * 0.8)
-  ctx.lineTo(p.x + ax * size * 0.55 - px * size * 0.8, p.y + ay * size * 0.55 - py * size * 0.8)
-  ctx.lineTo(p.x - px * size, p.y - py * size)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(p.x, p.y, size * 0.92, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
-}
-
-const LIMB = 5 // lineW base
-
-/**
- * Draws the fighter in full 3D depth language, same silhouette style as
- * the classic renderer: rim → BEHIND limbs (depth shade) → torso + NECK →
- * FRONT limbs (near-black, halo-separated) → fists → head → flash.
- * Each limb's tone follows its OWN depth relative to the torso plane
- * (smoothstep crossfade — no near/far race, no color pop when limbs cross
- * in Z mid-stride). Anatomy reads: the neck column renders in the
- * back-plane shade between the trapezius slopes and the skull; front
- * limbs carry a rim halo so they read as limbs LAYERED on the black torso
- * (arms attach at the deltoid, never at the neck); rear hinge creases
- * mark the knees and elbows as JOINTS.
- */
-export function drawFighter3D(
-  ctx: CanvasRenderingContext2D,
-  g: FighterGeom,
-  style: StickStyle,
-  opts: FighterDrawOpts = {},
-): void {
-  const alpha = opts.alpha ?? 1
-  if (alpha <= 0.01) return
-  const t = opts.time ?? 0
-  const black = style.body
-  const rim = style.outline
-  const back = style.dark !== black ? style.dark : rgba(black, 0.82)
-  const lineW = style.lineW
-
-  // ---- depth sort keys (mid-joint means) ----
-  const zTorso = (g.hip.z + g.waist.z + g.chest.z) / 3
-  const zLegR = (g.hipPtR.z + g.kneeR.z + g.ankleR.z) / 3
-  const zLegL = (g.hipPtL.z + g.kneeL.z + g.ankleL.z) / 3
-  const zArmR = (g.shoulderR.z + g.elbR.z + g.handR.z) / 3
-  const zArmL = (g.shoulderL.z + g.elbL.z + g.handL.z) / 3
-
-  // ---- STABLE limb shading (the back-leg glitch fix) ----
-  // Each limb's tone follows its OWN depth relative to the torso plane —
-  // never a winner-takes-all race between the pair. The old binary near/far
-  // swap flipped colors + widths in a single frame whenever the legs
-  // crossed in Z mid-stride (the "glitching back leg"). A ±4-unit smoothstep
-  // window around the torso plane crossfades the tone through crossings.
-  const near01 = (z: number) => smoothstep((z - zTorso + 4) / 8)
-  const legRn = near01(zLegR)
-  const legLn = near01(zLegL)
-  const armRn = near01(zArmR)
-  const armLn = near01(zArmL)
-  // limb draw sets — full PROPORTION PARITY per side: the far side loses
-  // only 4% width (the old 10% + same-size feet read as a shrunken "fake
-  // shadow" duplicate of the leg). Colors crossfade back-shade → black.
-  const legR = { hip: g.hipPtR, knee: g.kneeR, ankle: g.ankleR, toe: g.toeR, z: zLegR, col: mixHex(back, black, legRn), k: lerp(0.96, 1, legRn), n: legRn }
-  const legL = { hip: g.hipPtL, knee: g.kneeL, ankle: g.ankleL, toe: g.toeL, z: zLegL, col: mixHex(back, black, legLn), k: lerp(0.96, 1, legLn), n: legLn }
-  const armR = { sh: g.shoulderR, elb: g.elbR, hand: g.handR, z: zArmR, col: mixHex(back, black, armRn), k: lerp(0.96, 1, armRn), n: armRn }
-  const armL = { sh: g.shoulderL, elb: g.elbL, hand: g.handL, z: zArmL, col: mixHex(back, black, armLn), k: lerp(0.96, 1, armLn), n: armLn }
-  // z-ascending order per pair: behind-limbs render before the torso
-  const backLeg = zLegR <= zLegL ? legR : legL
-  const frontLeg = zLegR <= zLegL ? legL : legR
-  const backArm = zArmR <= zArmL ? armR : armL
-  const frontArm = zArmR <= zArmL ? armL : armR
-
-  // width factors from depth
-  const wf = (z: number) => zScale(z)
-  const nearK = 1 + Math.max(0, zTorso) * 0.004
-
-  ctx.save()
-  ctx.globalAlpha *= alpha
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  // ---- 0. rim pass ----
-  if (!opts.simple) {
-    ctx.save()
-    ctx.globalAlpha *= 0.78
-    ctx.strokeStyle = rim
-    ctx.lineWidth = lineW + 3.6
-    ctx.beginPath()
-    ctx.moveTo(g.hipPtR.x, g.hipPtR.y); ctx.lineTo(g.kneeR.x, g.kneeR.y); ctx.lineTo(g.ankleR.x, g.ankleR.y)
-    ctx.moveTo(g.hipPtL.x, g.hipPtL.y); ctx.lineTo(g.kneeL.x, g.kneeL.y); ctx.lineTo(g.ankleL.x, g.ankleL.y)
-    ctx.moveTo(g.shoulderR.x, g.shoulderR.y); ctx.lineTo(g.elbR.x, g.elbR.y); ctx.lineTo(g.handR.x, g.handR.y)
-    ctx.moveTo(g.shoulderL.x, g.shoulderL.y); ctx.lineTo(g.elbL.x, g.elbL.y); ctx.lineTo(g.handL.x, g.handL.y)
-    ctx.stroke()
-    ctx.lineWidth = (lineW + 3.6) * 1.5
-    ctx.beginPath()
-    ctx.moveTo(g.hip.x, g.hip.y)
-    ctx.lineTo(g.waist.x, g.waist.y)
-    ctx.lineTo(g.chest.x, g.chest.y)
-    ctx.lineTo(g.neckTop.x, g.neckTop.y)
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  // ---- 1. BEHIND limbs (depth-shaded, full proportion parity: same base
-  // widths as the front side — deltoid .055H → elbow .035H → wrist .020H —
-  // only the TONE and a 4% width whisper mark the depth) ----
-  {
-    const L = backLeg
-    const w = wf(L.z) * L.k
-    fillTaper3(ctx, L.hip, L.knee, 6.5 * w, 4.7 * w, L.col)
-    fillTaper3(ctx, L.knee, L.ankle, 4.4 * w, 2.9 * w, L.col)
-    fillFoot3(ctx, L.ankle, L.toe, L.col, 1, L.k * wf(L.z))
-    ctx.fillStyle = L.col
-    ctx.beginPath()
-    ctx.arc(L.knee.x, L.knee.y, 4.6 * w, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  {
-    const A = backArm
-    const w = wf(A.z) * A.k
-    ctx.fillStyle = A.col
-    ctx.beginPath()
-    ctx.arc(A.sh.x, A.sh.y, 5.6 * w, 0, Math.PI * 2)
-    ctx.fill()
-    fillTaper3(ctx, A.sh, A.elb, 5.7 * w, 3.6 * w, A.col)
-    fillTaper3(ctx, A.elb, A.hand, 3.4 * w, 2.1 * w, A.col)
-    ctx.beginPath()
-    ctx.arc(A.elb.x, A.elb.y, 3.9 * w, 0, Math.PI * 2)
-    ctx.fill()
-    // FAR-ARM LIFT (the "invisible off arm" fix): the back-shade arm all
-    // but vanishes against the night background at gameplay contrast —
-    // its pump silhouette is HALF the run/sprint arm read. A whisper rim
-    // along the far arm's upper edge (below the main rim pass alpha, above
-    // nothing) keeps the limb readable without breaking the depth tone.
-    if (!opts.simple) {
-      ctx.save()
-      ctx.globalAlpha *= 0.34
-      ctx.strokeStyle = rim
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(A.sh.x, A.sh.y)
-      ctx.lineTo(A.elb.x, A.elb.y)
-      ctx.lineTo(A.hand.x, A.hand.y)
-      ctx.stroke()
-      ctx.restore()
-    }
-  }
-
-  // ---- 2. torso: pelvis basin → abdomen → ribcage → trapezius → NECK ----
-  fillTaper3(ctx, g.hip, g.waist, 9.6 * wf(zTorso), 6.6 * wf(zTorso), black)
-  // ribcage: widest at the mid-chest line, 9.4 at the top (the old 10.4
-  // end-cap swallowed the ENTIRE neck column — the "head fused to torso"
-  // read; the deltoid caps + trapezius now own the shoulder-line width)
-  fillTaper3(ctx, g.waist, g.chest, 6.6 * wf(zTorso), 9.4 * wf(zTorso), black)
-  // trapezius: out to BOTH deltoid caps — but its top vertices sit at the
-  // neck MIDPOINT (30% up the column), NOT the atlas: the upper neck stays
-  // clean so the neck reads as structure between skull and shoulders. The
-  // projected shoulder line still foreshortens as the girdle yaws (THE 3D
-  // torso read).
-  {
-    const ndx = g.neckTop.x - g.chest.x
-    const ndy = g.neckTop.y - g.chest.y
-    const nl = Math.hypot(ndx, ndy) || 1
-    const px = -ndy / nl
-    const py = ndx / nl
-    const k = 0.3
-    const tx = g.chest.x + ndx * k
-    const ty = g.chest.y + ndy * k
-    ctx.fillStyle = black
-    ctx.beginPath()
-    ctx.moveTo(tx + px * 3.0, ty + py * 3.0)
-    ctx.lineTo(tx - px * 3.0, ty - py * 3.0)
-    ctx.lineTo(g.shoulderL.x - px * 3.4, g.shoulderL.y - py * 3.4)
-    ctx.lineTo(g.shoulderL.x + px * 4.8, g.shoulderL.y + py * 4.8)
-    ctx.lineTo(g.shoulderR.x - px * 5.2, g.shoulderR.y - py * 5.2)
-    ctx.lineTo(g.shoulderR.x + px * 5.8, g.shoulderR.y + py * 5.8)
-    ctx.closePath()
-    ctx.fill()
-  }
-  // THE VISIBLE NECK — the column that makes the head READ as separate
-  // structure. Three readability layers (the old single dark fill was
-  // invisible against the night background — "no neck, arms attached to
-  // the neck"):
-  //   1. MID-TONE fill — between the black torso and the rim steel, so the
-  //      column separates from BOTH the body mass and the dark sky;
-  //   2. BOTH-EDGE rim strokes — the same halo language as the front
-  //      limbs: a bright outline down each side of the column;
-  //   3. the trapezius slopes below and the jaw crease above frame it.
-  {
-    const ndx = g.neckTop.x - g.chest.x
-    const ndy = g.neckTop.y - g.chest.y
-    const nl = Math.hypot(ndx, ndy) || 1
-    const px = -ndy / nl
-    const py = ndx / nl
-    const neckCol = mixHex(back, black, 0.42)
-    fillTaper3(ctx, g.chest, g.neckTop, 5.4, 4.0, neckCol)
-    if (!opts.simple) {
-      // both cervical edges — the outline that reads at gameplay zoom
-      ctx.strokeStyle = rgba(rim, 0.55)
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(g.chest.x - px * 4.8, g.chest.y - py * 4.8)
-      ctx.lineTo(g.neckTop.x - px * 3.4, g.neckTop.y - py * 3.4)
-      ctx.moveTo(g.chest.x + px * 4.8, g.chest.y + py * 4.8)
-      ctx.lineTo(g.neckTop.x + px * 3.4, g.neckTop.y + py * 3.4)
-      ctx.stroke()
-    }
-  }
-
-  // ---- 3. FRONT limbs (over the torso) with SEPARATION HALO ----
-  // The halo is a rim capsule ~1.3 wider UNDER the limb's own fill: a light
-  // edge peeks around the silhouette, so the limb reads as a LAYERED arm
-  // attached at the deltoid — not a growth of the black torso mass (the
-  // old 0.34-alpha whisper line was invisible at gameplay zoom, and the
-  // arm's emergence point read at the neck). Halo strength follows the
-  // limb's nearness → fades smoothly at depth crossings.
-  {
-    const L = frontLeg
-    const w = wf(L.z) * L.k * nearK
-    const ha = 0.5 * L.n
-    if (!opts.simple && ha > 0.04) {
-      fillTaper3(ctx, L.hip, L.knee, 6.5 * w + 1.3, 4.7 * w + 1.2, rim, ha)
-      fillTaper3(ctx, L.knee, L.ankle, 4.4 * w + 1.2, 2.9 * w + 1.1, rim, ha)
-    }
-    fillTaper3(ctx, L.hip, L.knee, 6.5 * w, 4.7 * w, L.col)
-    fillTaper3(ctx, L.knee, L.ankle, 4.4 * w, 2.9 * w, L.col)
-    fillFoot3(ctx, L.ankle, L.toe, L.col, 1, L.k * wf(L.z) * nearK)
-    ctx.fillStyle = L.col
-    ctx.beginPath()
-    ctx.arc(L.knee.x, L.knee.y, 4.6 * w, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  {
-    const A = frontArm
-    const w = wf(A.z) * A.k * nearK
-    const ha = 0.55 * A.n
-    if (!opts.simple && ha > 0.04) {
-      fillTaper3(ctx, A.sh, A.elb, 5.7 * w + 1.4, 3.6 * w + 1.3, rim, ha)
-      fillTaper3(ctx, A.elb, A.hand, 3.4 * w + 1.2, 2.1 * w + 1.1, rim, ha)
-    }
-    ctx.fillStyle = A.col
-    ctx.beginPath()
-    ctx.arc(A.sh.x, A.sh.y, 5.9 * w, 0, Math.PI * 2)
-    ctx.fill()
-    fillTaper3(ctx, A.sh, A.elb, 5.7 * w, 3.6 * w, A.col)
-    fillTaper3(ctx, A.elb, A.hand, 3.4 * w, 2.1 * w, A.col)
-    ctx.beginPath()
-    ctx.arc(A.elb.x, A.elb.y, 3.9 * w, 0, Math.PI * 2)
-    ctx.fill()
-    // DELTOID RING — the explicit shoulder anchor: a rim arc around the
-    // glenohumeral cap that says "the arm starts HERE" (the elbow ring
-    // lower down was being misread as the attachment point in review)
-    if (!opts.simple) {
-      ctx.strokeStyle = rgba(rim, 0.32 + 0.3 * A.n)
-      ctx.lineWidth = 1.2
-      ctx.beginPath()
-      ctx.arc(A.sh.x, A.sh.y, 5.9 * w + 0.7, Math.PI * 0.55, Math.PI * 1.45)
-      ctx.stroke()
-    }
-  }
-  // ---- 3.5 HINGE CREASES — a rear arc on every knee + elbow cap: the
-  // joints read as JOINTS (bends articulate) instead of rubber-hose tubes
-  if (!opts.simple) {
-    ctx.save()
-    ctx.strokeStyle = rim
-    ctx.lineWidth = 1.3
-    for (const L of [backLeg, frontLeg]) {
-      const w = wf(L.z) * L.k
-      ctx.globalAlpha *= 0.28 + 0.34 * L.n
-      ctx.beginPath()
-      ctx.arc(L.knee.x, L.knee.y, 4.6 * w + 0.9, Math.PI * 0.62, Math.PI * 1.38)
-      ctx.stroke()
-      ctx.globalAlpha /= 0.28 + 0.34 * L.n
-    }
-    for (const A of [backArm, frontArm]) {
-      const w = wf(A.z) * A.k
-      ctx.globalAlpha *= 0.34 + 0.4 * A.n
-      ctx.beginPath()
-      ctx.arc(A.elb.x, A.elb.y, 3.9 * w + 0.85, Math.PI * 0.6, Math.PI * 1.4)
-      ctx.stroke()
-      ctx.globalAlpha /= 0.34 + 0.4 * A.n
-    }
-    ctx.restore()
-  }
-
-  // ---- 4. fists on the projected blade axis ----
-  const bax = Math.cos(g.bladeProjAngle)
-  const bay = Math.sin(g.bladeProjAngle)
-  // off-hand fist — follows its own arm's depth tone (stable blend)
-  fillFist3(ctx, g.handL, bax, bay, 2.9, armL.col)
-  // sword fist — ON the grip (follows bladeZ thrust travel), toned with
-  // its arm so a depth-swung sword arm never pops a pure-black fist
-  fillFist3(ctx, g.grip, bax, bay, 3.4 * wf(g.grip.z), armR.col)
-  if (!opts.simple) {
-    ctx.save()
-    ctx.strokeStyle = rgba(rim, 0.55)
-    ctx.lineWidth = 1.2
-    ctx.beginPath()
-    ctx.arc(g.grip.x, g.grip.y, 3.6 * wf(g.grip.z), -1.2, 0.9)
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  // ---- 4.5 BLADE-CAST RIM LIGHT ----
-  const el = opts.edgeLight
-  if (el && el.a > 0.03) {
-    ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.lineCap = 'round'
-    ctx.strokeStyle = rgba(el.color, Math.min(0.85, el.a))
-    ctx.lineWidth = 2
-    // sword arm chain — whichever side it's on
-    ctx.beginPath()
-    ctx.moveTo(g.shoulderR.x, g.shoulderR.y)
-    ctx.lineTo(g.elbR.x, g.elbR.y)
-    ctx.lineTo(g.grip.x, g.grip.y)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(g.hip.x + 5.2, g.hip.y - 1)
-    ctx.quadraticCurveTo(g.waist.x + 6.5, g.waist.y - 1, g.chest.x + 8.2, g.chest.y + 1.5)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(g.hipPtR.x + 4.4, g.hipPtR.y + 1)
-    ctx.lineTo(g.kneeR.x + 3.4, g.kneeR.y - 1)
-    ctx.stroke()
-    ctx.lineWidth = 1.4
-    ctx.beginPath()
-    ctx.arc(g.handL.x, g.handL.y, 2.6, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  // ---- 5. head ----
-  ctx.save()
-  ctx.fillStyle = black
-  ctx.translate(g.headC.x, g.headC.y)
-  ctx.rotate(g.headAng * 0.35)
-  ctx.beginPath()
-  ctx.ellipse(0, -0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(2.6, 5.6)
-  ctx.quadraticCurveTo(1.2, 8.6, -1.8, 8.2)
-  ctx.quadraticCurveTo(-4.2, 7.6, -4.6, 4.4)
-  ctx.closePath()
-  ctx.fill()
-  ctx.beginPath()
-  ctx.moveTo(-2.0, -8.2)
-  ctx.quadraticCurveTo(-7.5, -12.6, -12.6, -9.4)
-  ctx.quadraticCurveTo(-8.8, -6.4, -5.2, -5.2)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-  if (!opts.simple) {
-    ctx.save()
-    ctx.strokeStyle = rgba(rim, 0.5)
-    ctx.lineWidth = 1.6
-    ctx.beginPath()
-    ctx.arc(g.headC.x - 1.5, g.headC.y - 0.5, 8.6, Math.PI * 0.62, Math.PI * 1.32)
-    ctx.stroke()
-    // jaw line — the chin edge that separates skull from the neck column
-    // (anatomy: the mandible overhangs the cervical column's front in
-    // profile; this crease is what makes the neck read as NECK)
-    ctx.strokeStyle = rgba(rim, 0.5)
-    ctx.lineWidth = 1.3
-    ctx.beginPath()
-    ctx.arc(g.headC.x + 0.6, g.headC.y - 0.5, 8.3, Math.PI * 0.08, Math.PI * 0.52)
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  // ---- 6. glowing eyes ----
-  if (!opts.simple) {
-    const blink = 0.85 + 0.15 * Math.sin(t * 3.1)
-    ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.fillStyle = rgba(style.glow, 0.95 * blink)
-    ctx.beginPath()
-    ctx.ellipse(g.headC.x + 3.4, g.headC.y - 1.4, 2.0, 1.15, -0.18, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.ellipse(g.headC.x + 6.4, g.headC.y - 2.2, 1.25, 0.9, -0.18, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
-  }
-
-  // ---- 7. hit flash ----
-  const flash = clamp01(opts.flash ?? 0)
-  if (flash > 0.02) {
-    const fc = opts.flashColor ?? '#ffffff'
-    const flw = wf(frontLeg.z) * frontLeg.k * nearK
-    const faw = wf(frontArm.z) * frontArm.k * nearK
-    fillTaper3(ctx, frontLeg.hip, frontLeg.knee, 6.5 * flw, 4.7 * flw, fc, flash)
-    fillTaper3(ctx, frontLeg.knee, frontLeg.ankle, 4.4 * flw, 2.9 * flw, fc, flash)
-    fillTaper3(ctx, backLeg.hip, backLeg.knee, 6.5 * wf(backLeg.z) * backLeg.k, 4.7 * wf(backLeg.z) * backLeg.k, fc, flash * 0.8)
-    fillTaper3(ctx, frontArm.sh, frontArm.elb, 5.7 * faw, 3.6 * faw, fc, flash)
-    fillTaper3(ctx, frontArm.elb, frontArm.hand, 3.4 * faw, 2.5 * faw, fc, flash)
-    fillTaper3(ctx, g.waist, g.chest, 6.6, 9.4, fc, flash)
-    fillTaper3(ctx, g.hip, g.waist, 9.6, 6.6, fc, flash)
-    ctx.fillStyle = fc
-    ctx.save()
-    ctx.globalAlpha *= flash
-    ctx.beginPath()
-    ctx.ellipse(g.headC.x, g.headC.y - 0.4, 8.2, 9.5, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
-  }
-
-  ctx.restore()
-  void LIMB
-}
+/** The old capsule-and-joint-cap renderer has been deleted. */
+export const drawFighter3D = drawHumanoid

@@ -1,0 +1,865 @@
+{
+  "assumptions": "Earliest cancel followed by next startup; symmetric hitstop excluded; no armor, vulnerability, collision, reach, travel, slowed world or moving target. Late-contact bound uses end of active window. Stun floor .18 from Enemy.hit. Not playable combo proof.",
+  "rows": [
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1.18,
+      "earlyGapMs": 79.66101694915251,
+      "lateGapMs": -22.033898305084787,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1.18,
+      "earlyGapMs": 8.813559322033898,
+      "lateGapMs": -92.88135593220342,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1.18,
+      "earlyGapMs": 90.5084745762712,
+      "lateGapMs": -36.610169491525404,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1.18,
+      "earlyGapMs": 175.9322033898305,
+      "lateGapMs": 23.389830508474596,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1.18,
+      "earlyGapMs": 189.83050847457633,
+      "lateGapMs": 88.13559322033903,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1.18,
+      "earlyGapMs": -83.38983050847459,
+      "lateGapMs": -202.03389830508473,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "sword",
+      "weapon": "katana",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1.18,
+      "earlyGapMs": 156.271186440678,
+      "lateGapMs": 37.627118644067814,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "l1",
+      "to": "l2",
+      "speed": 0.96,
+      "earlyGapMs": 143.75,
+      "lateGapMs": 18.749999999999932,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "l2",
+      "to": "l3",
+      "speed": 0.96,
+      "earlyGapMs": 61.25,
+      "lateGapMs": -63.75000000000006,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "l3",
+      "to": "l4",
+      "speed": 0.96,
+      "earlyGapMs": 166.25,
+      "lateGapMs": 10.000000000000009,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "l4",
+      "to": "l5",
+      "speed": 0.96,
+      "earlyGapMs": 257.5,
+      "lateGapMs": 70.00000000000006,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "l1",
+      "to": "h1",
+      "speed": 0.96,
+      "earlyGapMs": 279.16666666666674,
+      "lateGapMs": 154.16666666666674,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "h1",
+      "to": "h2",
+      "speed": 0.96,
+      "earlyGapMs": -15.41666666666669,
+      "lateGapMs": -161.25,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "sword",
+      "weapon": "inferno",
+      "from": "h2",
+      "to": "h3",
+      "speed": 0.96,
+      "earlyGapMs": 288.33333333333337,
+      "lateGapMs": 142.50000000000003,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1.08,
+      "earlyGapMs": 105.55555555555546,
+      "lateGapMs": -5.555555555555619,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1.08,
+      "earlyGapMs": 29.99999999999997,
+      "lateGapMs": -81.11111111111116,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1.08,
+      "earlyGapMs": 121.11111111111106,
+      "lateGapMs": -17.77777777777781,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1.08,
+      "earlyGapMs": 208.88888888888886,
+      "lateGapMs": 42.22222222222227,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1.08,
+      "earlyGapMs": 225.92592592592592,
+      "lateGapMs": 114.81481481481487,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1.08,
+      "earlyGapMs": -55.92592592592599,
+      "lateGapMs": -185.55555555555557,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "sword",
+      "weapon": "thunder",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1.08,
+      "earlyGapMs": 209.62962962962956,
+      "lateGapMs": 79.99999999999996,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1.02,
+      "earlyGapMs": 123.52941176470583,
+      "lateGapMs": 5.88235294117645,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1.02,
+      "earlyGapMs": 44.705882352941124,
+      "lateGapMs": -72.94117647058826,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1.02,
+      "earlyGapMs": 142.35294117647058,
+      "lateGapMs": -4.70588235294117,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1.02,
+      "earlyGapMs": 231.76470588235287,
+      "lateGapMs": 55.294117647058826,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1.02,
+      "earlyGapMs": 250.98039215686285,
+      "lateGapMs": 133.33333333333346,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1.02,
+      "earlyGapMs": -36.86274509803922,
+      "lateGapMs": -174.11764705882348,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "sword",
+      "weapon": "void",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1.02,
+      "earlyGapMs": 246.66666666666674,
+      "lateGapMs": 109.41176470588238,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "l1",
+      "to": "l2",
+      "speed": 0.86,
+      "earlyGapMs": 183.7209302325581,
+      "lateGapMs": 44.18604651162783,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "l2",
+      "to": "l3",
+      "speed": 0.86,
+      "earlyGapMs": 93.95348837209302,
+      "lateGapMs": -45.58139534883723,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "l3",
+      "to": "l4",
+      "speed": 0.86,
+      "earlyGapMs": 213.4883720930233,
+      "lateGapMs": 39.06976744186047,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "l4",
+      "to": "l5",
+      "speed": 0.86,
+      "earlyGapMs": 308.3720930232558,
+      "lateGapMs": 99.06976744186046,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "l1",
+      "to": "h1",
+      "speed": 0.86,
+      "earlyGapMs": 334.8837209302326,
+      "lateGapMs": 195.34883720930242,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "h1",
+      "to": "h2",
+      "speed": 0.86,
+      "earlyGapMs": 26.976744186046453,
+      "lateGapMs": -135.8139534883721,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "gravity",
+      "from": "h2",
+      "to": "h3",
+      "speed": 0.86,
+      "earlyGapMs": 370.6976744186047,
+      "lateGapMs": 207.90697674418607,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1.12,
+      "earlyGapMs": 94.64285714285708,
+      "lateGapMs": -12.500000000000039,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1.12,
+      "earlyGapMs": 21.07142857142852,
+      "lateGapMs": -86.07142857142863,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1.12,
+      "earlyGapMs": 108.21428571428571,
+      "lateGapMs": -25.71428571428572,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1.12,
+      "earlyGapMs": 194.9999999999999,
+      "lateGapMs": 34.28571428571425,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1.12,
+      "earlyGapMs": 210.7142857142857,
+      "lateGapMs": 103.5714285714286,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1.12,
+      "earlyGapMs": -67.5,
+      "lateGapMs": -192.49999999999994,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "sword",
+      "weapon": "phantom",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1.12,
+      "earlyGapMs": 187.1428571428571,
+      "lateGapMs": 62.14285714285717,
+      "classification": "gap even after late contact"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "katana",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "inferno",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "thunder",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "void",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "gravity",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "l1",
+      "to": "l2",
+      "speed": 1,
+      "earlyGapMs": 23.599999999999984,
+      "lateGapMs": -42.40000000000002,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "l2",
+      "to": "l3",
+      "speed": 1,
+      "earlyGapMs": 51.59999999999992,
+      "lateGapMs": -23.20000000000008,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "l3",
+      "to": "l4",
+      "speed": 1,
+      "earlyGapMs": 66,
+      "lateGapMs": -17.600000000000033,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "l4",
+      "to": "l5",
+      "speed": 1,
+      "earlyGapMs": 79.59999999999995,
+      "lateGapMs": -4.000000000000087,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "l1",
+      "to": "h1",
+      "speed": 1,
+      "earlyGapMs": 57.60000000000004,
+      "lateGapMs": -8.399999999999991,
+      "classification": "depends on contact timing"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "h1",
+      "to": "h2",
+      "speed": 1,
+      "earlyGapMs": -105.19999999999996,
+      "lateGapMs": -201.99999999999997,
+      "classification": "timing permits; reach untested"
+    },
+    {
+      "stance": "unarmed",
+      "weapon": "phantom",
+      "from": "h2",
+      "to": "h3",
+      "speed": 1,
+      "earlyGapMs": -84.39999999999998,
+      "lateGapMs": -185.60000000000005,
+      "classification": "timing permits; reach untested"
+    }
+  ],
+  "apex": [
+    {
+      "gravity": 1350,
+      "launch": -640,
+      "idealApexPixels": 151.7037037037037,
+      "idealTimeToApex": 0.4740740740740741
+    },
+    {
+      "gravity": 1900,
+      "launch": -640,
+      "idealApexPixels": 107.78947368421052,
+      "idealTimeToApex": 0.3368421052631579
+    },
+    {
+      "gravity": 3250,
+      "launch": -640,
+      "idealApexPixels": 63.01538461538462,
+      "idealTimeToApex": 0.19692307692307692
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "errors": [],
+  "simulationHz": 120,
+  "updates": 720,
+  "frames": 360,
+  "allPosesFinite": true,
+  "clips": [
+    "idle",
+    "jump",
+    "fall",
+    "land",
+    "walk",
+    "run",
+    "jumpLeap",
+    "stop",
+    "sheathe",
+    "draw",
+    "dashLaunch"
+  ],
+  "drawVisibilityGate": true,
+  "drawDashInterrupt": true
+}

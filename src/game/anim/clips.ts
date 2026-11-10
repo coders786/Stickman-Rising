@@ -22,6 +22,7 @@
 
 import { keyframe, makeClip, Clip } from './animator'
 import { PoseInput } from './pose'
+import { PLAYER_SPEC } from './skeleton'
 
 /** swaps left/right LEG channels only — the arms keep their authored
  * channels (the sword stays in the right hand across both strides). */
@@ -61,167 +62,251 @@ function mirrorStride(src: PoseInput): PoseInput {
   return out
 }
 
+/** Hand-space authoring for human gait. This fixes the old shoulder-only
+ * mirroring, which moved both hands behind the torso instead of producing
+ * a genuine contralateral arm swing. The elbow pole is solved by the rig.
+ */
+function humanFreeArm(x: number, y: number): PoseInput {
+  const upper = PLAYER_SPEC.upperArm, fore = PLAYER_SPEC.foreArm
+  const r = Math.max(12, Math.min(upper + fore - 2, Math.hypot(x, y)))
+  const angle = Math.acos(Math.max(-1, Math.min(1, (upper*upper + r*r - fore*fore) / (2*upper*r))))
+  const flex = -(Math.PI - Math.acos(Math.max(-1, Math.min(1, (upper*upper + fore*fore - r*r) / (2*upper*fore)))))
+  return { shL: Math.atan2(x, y) + angle, elL: flex }
+}
+function mirrorHumanStride(src: PoseInput): PoseInput {
+  const sh = src.shL ?? 0, el = src.elL ?? -.45
+  const x = PLAYER_SPEC.upperArm*Math.sin(sh) + PLAYER_SPEC.foreArm*Math.sin(sh + el)
+  const y = PLAYER_SPEC.upperArm*Math.cos(sh) + PLAYER_SPEC.foreArm*Math.cos(sh + el)
+  // Sprint backswing drops the hand toward the hip; reflecting only X
+  // would put the rear fist unnaturally up behind the shoulder.
+  const mirroredY = (src.rootRot ?? 0) > .13
+    ? y + (-x < 0 ? Math.min(12, Math.abs(x) * .8) : -Math.min(8, Math.abs(x) * .4)) : y
+  return { ...mirrorStride(src), ...humanFreeArm(-x, mirroredY) }
+}
+
 /* ------------------------------- IDLE ------------------------------- */
 
-/* Safe-idle breathing (NO threat): arms authored in GUARD space — the
- * relax layer (player.ts) drops the sword into the side carry and hangs
- * the off arm by the thigh when this clip plays, so the keys stay in the
- * continuity contract with every other clip (all blends pass through the
- * chūdan base). The two-hand grip read lives in COMBAT_IDLE_CLIP below. */
+/* Upright Shadow Ronin standing: proud posture, naturally aligned spine,
+ * hand resting on the tsuka at the hip, off-hand resting on the saya,
+ * tucked elbows. Gentle diaphragmatic breathing cycle. */
+/** Quiet hanmi / iai readiness: lowered center, rear foot back, angled
+ * pelvis/chest and chin tucked. Breathing never unlocks the knees. */
+const RONIN_REST: PoseInput = {
+  rootX: 2.0, rootY: 3.3, rootRot: .12, spine: .025, head: -.055,
+  shR: .12, elR: -.56, wrR: 1.18,
+  ...humanFreeArm(7, 29), wrL: -.15,
+  hipR: .48, kneeR: -.56, footR: .14,
+  hipL: -.32, kneeL: -.34, footL: -.08,
+  pelvisYaw: .15, chestYaw: -.16, armLz: -.07, armRz: .04,
+}
 export const IDLE_CLIP: Clip = makeClip('idle', [
-  keyframe(0, {}, 'inOutCubic'),
-  keyframe(1.25, {
-    rootY: -1.7, rootRot: 0.09, spine: 0.07, head: -0.12,
-    shR: 0.82, elR: -0.55, wrR: 1.18,
-    shL: 0.45, elL: -0.9, wrL: -0.3,
-    hipR: 0.34, hipL: -0.31,
-  }, 'inOutCubic'),
-  keyframe(1.8, {
-    rootY: -1.6, rootRot: 0.085, spine: 0.065, head: -0.11,
-    shR: 0.81, elR: -0.56, wrR: 1.2,
-    shL: 0.44, elL: -0.91, wrL: -0.31,
-    hipR: 0.33, hipL: -0.31,
-  }, 'inOutCubic'),
-  keyframe(2.6, {
-    rootY: -0.9, rootRot: 0.095, spine: 0.05, head: -0.09,
-    shR: 0.78, elR: -0.58, wrR: 1.24,
-    shL: 0.42, elL: -0.93, wrL: -0.32,
-    hipR: 0.32, hipL: -0.3,
+  keyframe(0, RONIN_REST, 'inOutSine'),
+  keyframe(.85,{...RONIN_REST,rootX:2.12,rootY:3.05,rootRot:.116,
+    spine:.03,head:-.057,chestYaw:-.155,shL:.87,elL:-1.35},'inOutSine'),
+  keyframe(1.75,{...RONIN_REST,rootX:2.25,rootY:2.6,rootRot:.11,
+    spine:.038,head:-.06,pelvisYaw:.143,chestYaw:-.142,
+    shR:.105,elR:-.59,shL:.88,elL:-1.37},'inOutSine'),
+  keyframe(2.55,{...RONIN_REST,rootX:2.28,rootY:2.65,rootRot:.112,
+    spine:.035,head:-.058,pelvisYaw:.14,chestYaw:-.145,
+    shR:.11,elR:-.60,shL:.89,elL:-1.38},'inOutSine'),
+  keyframe(3.65,{...RONIN_REST,rootX:1.88,rootY:3.48,rootRot:.124,
+    spine:.022,head:-.053,pelvisYaw:.154,chestYaw:-.166,
+    shR:.13,elR:-.55,shL:.855,elL:-1.32},'inOutSine'),
+  keyframe(4.5,{...RONIN_REST,rootX:1.92,rootY:3.4,rootRot:.122,
+    spine:.023,head:-.054,chestYaw:-.164,shL:.85,elL:-1.325},'inOutSine'),
+  keyframe(5.4, RONIN_REST, 'inOutSine'),
+], true)
+IDLE_CLIP.interpolation = 'monotone'
+
+/* ------------------------------- IDLE FLOURISHES --------------------- */
+
+/** Flourish 1: Tsuba Thumb-Pop (Iai ready check). */
+export const FLOURISH_TSUBA_POP_CLIP: Clip = makeClip('flourishTsubaPop', [
+  keyframe(0, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+    hipR: 0.10, kneeR: -0.14, footR: 0.04,
+    hipL: -0.10, kneeL: -0.14, footL: 0.04,
   }, 'inOutSine'),
-  keyframe(3.6, {}, 'inOutSine'),
-], true)
+  keyframe(0.25, {
+    rootY: 0.1, rootRot: 0.015, spine: 0.01, head: 0.02,
+    shR: 0.14, elR: -0.55, wrR: 1.22,
+    shL: 0.08, elL: -0.55, wrL: -0.05,
+    pelvisYaw: 0.08, chestYaw: -0.04,
+  }, 'outQuad'),
+  keyframe(0.45, {
+    rootY: 0.15, rootRot: 0.02, spine: 0.015, head: 0.03,
+    shR: 0.20, elR: -0.62, wrR: 1.30, bladeZ: 1.8,
+    shL: 0.06, elL: -0.52, wrL: -0.08,
+    pelvisYaw: 0.10, chestYaw: -0.05,
+  }, 'outCubic'),
+  keyframe(0.65, {
+    rootY: 0.05, rootRot: 0.01, spine: 0.005, head: 0.01,
+    shR: 0.14, elR: -0.54, wrR: 1.20, bladeZ: 0,
+    shL: 0.05, elL: -0.47, wrL: -0.12,
+    pelvisYaw: 0.06, chestYaw: -0.03,
+  }, 'inOutCubic'),
+  keyframe(0.95, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+    hipR: 0.10, kneeR: -0.14, footR: 0.04,
+    hipL: -0.10, kneeL: -0.14, footL: 0.04,
+  }, 'inOutSine'),
+])
 
-/* ------------------------------- WALK -------------------------------- */
+/** Flourish 2: Hilt Spin / Grip Readjustment. */
+export const FLOURISH_HILT_SPIN_CLIP: Clip = makeClip('flourishHiltSpin', [
+  keyframe(0, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'inOutSine'),
+  keyframe(0.3, {
+    rootY: -0.2, rootRot: -0.01, spine: 0.01, head: -0.02,
+    shR: 0.16, elR: -0.65, wrR: 1.55, foreRz: 0.22,
+    shL: 0.03, elL: -0.43, wrL: -0.16,
+  }, 'inOutCubic'),
+  keyframe(0.65, {
+    rootY: -0.1, rootRot: 0.0, spine: 0.005, head: 0.0,
+    shR: 0.13, elR: -0.56, wrR: 1.25, foreRz: 0.08,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'outCubic'),
+  keyframe(1.1, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'inOutSine'),
+])
 
-/* Relaxed open-space walking (Condition A): upright posture, ~2 steps/s,
- * DOUBLE-SUPPORT stance (both feet grounded between strides — the walk
- * signature no other gait has), heel-to-toe roll, small stride, pelvis
- * settling over the support leg, arms swinging low and easy. The katana
- * carries in a steep down-BACK diagonal (wrR ≡ −0.95 mod 2π → blade ≈ 138°:
- * hand forward at the hip, kissaki sweeping behind the heel — the only
- * down-pointing orientation where a 56-unit blade clears the ground plane
- * from a hip-level hand).
- *
- * WINDING CONVENTION: locomotion carries are authored UP-WOUND (wrR + 2π
- * where needed) so every carry-to-carry crossfade sweeps the blade through
- * the UP hemisphere — never through straight-down, which would drive the
- * kissaki through the floor for ~10 blend frames. */
-const WALK_Q: PoseInput[] = [
-  { // CONTACT-R — right heel strikes forward; left toe still planted.
-    // Off-arm elbow carries more flexion (VLM audit: near-straight swing
-    // read as stiff) and the sword carry rides a touch higher (wrR +0.15:
-    // the kissaki grazed the front shin at swing-through).
-    rootRot: 0.07, rootY: 0.5, spine: 0.04, head: -0.08,
-    hipR: 0.34, kneeR: -0.06, footR: 0.12,
-    hipL: -0.26, kneeL: -0.34, footL: -0.04,
-    shR: 0.55, elR: -0.45, wrR: 5.3,
-    shL: -0.28, elL: -0.42,
-  },
-  { // LOAD-R — weight accepts onto the bending right leg (double support)
-    rootRot: 0.085, rootY: 1.1, spine: 0.05, head: -0.09,
-    hipR: 0.14, kneeR: -0.32, footR: 0.08,
-    hipL: -0.3, kneeL: -0.44, footL: -0.06,
-    shR: 0.57, elR: -0.45, wrR: 5.33,
-    shL: -0.05, elL: -0.5,
-  },
-  { // PASSING — left knee lifts through; right leg extends under the hip
-    rootRot: 0.075, rootY: 0.8, spine: 0.045, head: -0.08,
-    hipR: -0.08, kneeR: -0.12, footR: 0.06,
-    hipL: 0.12, kneeL: -0.62, footL: 0.1,
-    shR: 0.53, elR: -0.44, wrR: 5.27,
-    shL: 0.22, elL: -0.68,
-  },
-  { // TOE-OFF-R — right calf pushes; left reaches for its contact
-    rootRot: 0.08, rootY: 1.0, spine: 0.05, head: -0.09,
-    hipR: -0.3, kneeR: -0.3, footR: -0.14,
-    hipL: 0.3, kneeL: -0.12, footL: 0.12,
-    shR: 0.5, elR: -0.42, wrR: 5.25,
-    shL: 0.3, elL: -0.72,
-  },
-]
+/** Flourish 3: Collar / Scarf Adjustment. */
+export const FLOURISH_SCARF_ADJUST_CLIP: Clip = makeClip('flourishScarfAdjust', [
+  keyframe(0, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'inOutSine'),
+  keyframe(0.35, {
+    rootY: -0.3, rootRot: -0.02, spine: 0.02, head: -0.04,
+    shL: 0.85, elL: -1.75, wrL: 0.45, armLz: 0.25,
+    shR: 0.10, elR: -0.50, wrR: 1.18,
+  }, 'outQuad'),
+  keyframe(0.7, {
+    rootY: -0.2, rootRot: -0.01, spine: 0.015, head: -0.02,
+    shL: 0.92, elL: -1.65, wrL: 0.25, armLz: 0.20,
+    shR: 0.11, elR: -0.51, wrR: 1.18,
+  }, 'inOutCubic'),
+  keyframe(1.0, {
+    rootY: -0.1, rootRot: 0.0, spine: 0.005, head: 0.0,
+    shL: 0.35, elL: -0.85, wrL: -0.05, armLz: 0.08,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+  }, 'inOutSine'),
+  keyframe(1.3, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'inOutSine'),
+])
 
-const WALK_DUR = 1.0
-export const WALK_CLIP: Clip = makeClip('walk', [
-  keyframe(0, WALK_Q[0], 'outQuad'),
-  keyframe(WALK_DUR * 0.12, WALK_Q[1], 'inOutCubic'),
-  keyframe(WALK_DUR * 0.26, WALK_Q[2], 'inOutCubic'),
-  keyframe(WALK_DUR * 0.4, WALK_Q[3], 'inOutSine'),
-  keyframe(WALK_DUR * 0.5, mirrorStride(WALK_Q[0]), 'inQuad'),
-  keyframe(WALK_DUR * 0.62, mirrorStride(WALK_Q[1]), 'inOutCubic'),
-  keyframe(WALK_DUR * 0.76, mirrorStride(WALK_Q[2]), 'inOutCubic'),
-  keyframe(WALK_DUR * 0.9, mirrorStride(WALK_Q[3]), 'inOutSine'),
-  keyframe(WALK_DUR, WALK_Q[0], 'inOutCubic'),
-], true)
+/** Flourish 4: Martial Stance Settle / Ground Tap. */
+export const FLOURISH_STANCE_SETTLE_CLIP: Clip = makeClip('flourishStanceSettle', [
+  keyframe(0, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+    hipR: 0.10, kneeR: -0.14, footR: 0.04,
+    hipL: -0.10, kneeL: -0.14, footL: 0.04,
+  }, 'inOutSine'),
+  keyframe(0.3, {
+    rootY: 0.4, rootRot: 0.02, spine: 0.01, head: 0.01,
+    hipR: 0.18, kneeR: -0.22, footR: 0.15,
+    hipL: -0.14, kneeL: -0.18, footL: 0.02,
+    shR: 0.13, elR: -0.54, wrR: 1.19,
+    shL: 0.05, elL: -0.46, wrL: -0.15,
+  }, 'outQuad'),
+  keyframe(0.6, {
+    rootY: 0.6, rootRot: 0.01, spine: 0.005, head: 0.0,
+    hipR: 0.12, kneeR: -0.18, footR: 0.05,
+    hipL: -0.12, kneeL: -0.16, footL: 0.03,
+    shR: 0.12, elR: -0.53, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+  }, 'inOutCubic'),
+  keyframe(1.0, {
+    rootY: 0, rootRot: 0.0, spine: 0.0, head: 0.0,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45, wrL: -0.15,
+    hipR: 0.10, kneeR: -0.14, footR: 0.04,
+    hipL: -0.10, kneeL: -0.14, footL: 0.04,
+  }, 'inOutSine'),
+])
+
+// Rituals inherit the same relaxed-but-ready center of mass as the rest.
+for (const clip of [FLOURISH_TSUBA_POP_CLIP, FLOURISH_HILT_SPIN_CLIP,
+  FLOURISH_SCARF_ADJUST_CLIP, FLOURISH_STANCE_SETTLE_CLIP]) {
+  for (const frame of clip.frames) {
+    frame.p[0] += 2; frame.p[1] += 3.3; frame.p[2] += .12
+    frame.p[3] += .025; frame.p[4] -= .055
+    frame.p[5] -= .22; frame.p[6] -= .20; frame.p[7] -= .14
+    frame.p[8] += .38; frame.p[9] -= .42; frame.p[10] += .08
+    frame.p[11] += .12; frame.p[12] -= .27; frame.p[15] -= .04
+    frame.p[18] += .11; frame.p[19] -= .14
+  }
+}
+
+/** Walk is authored independently; the former WALK_Q implementation was removed. */
+export {WALK_CLIP,WALK_EXPOSURES} from './patrol-walk'
 
 /* ------------------------------- RUN -------------------------------- */
 
-/* Five-phase gait (Williams, Animator's Survival Kit): CONTACT → LOADING
- * (absorb) → PUSH-OFF → FLIGHT → REACH, mirrored per stride. Every span is
- * eased — never linear: the fall INTO contact accelerates (inQuad), the
- * absorb decelerates (outQuad), the drive is smooth (inOutSine), the launch
- * explodes (outCubic). The hip bob is authored SMALL because the foot-ground
- * lock in player.ts derives hip height from the planted leg — real weight
- * transfer instead of a painted bob. Off-arm pumps in counter-phase (the
- * stride mirror negates it); the sword trails in a deep down-back diagonal
- * (wrR ≡ −0.25 mod 2π → blade ≈ 144°: kissaki sweeping well behind the
- * heel, clearing the ground by ~15 local units even with the wrist-lag
- * sway — up-wound per the clips.ts winding convention).
- * The pelvis SURGES forward through the cycle (rootX 2→7): the hips ride
- * over the stance foot — the leg geometry is authored as diagonal struts,
- * and the 3D channels twist the gait (pelvisYaw ±0.2, chest counter). */
+/* Athletic martial run: controlled core, tucked elbows, sword stabilized at hip. */
 const RUN_Q: PoseInput[] = [
-  { // CONTACT — lead heel strikes FAR forward, trail toe still down.
-    // ARM PUMP PHASE FIX: the sword arm now swings ANTI-phase to its own
-    // (right) leg — BACK at right-leg contact, FORWARD at right-leg
-    // push-off (in-phase with the left leg). The old authored values
-    // (0.3 → 0.55 → 0.72) only ever drifted forward: no back-swing phase,
-    // a frozen forward arm across the whole cycle (the "dead sword arm"
-    // read). Off-arm keeps the contralateral swing with a REAL back-swing
-    // extreme at push-off (shL −0.35, was a limp 0.08).
-    rootX: 2, rootY: 0.6, rootRot: 0.21, spine: 0.05, head: -0.19,
-    hipR: 0.88, kneeR: -0.08, footR: 0.24,
-    hipL: -0.8, kneeL: -0.62, footL: -0.06,
-    shR: -0.15, elR: -1.0, wrR: 5.62,
-    shL: 0.7, elL: -1.15, wrL: -0.24,
-    pelvisYaw: 0.2, chestYaw: -0.14, armLz: 0.28, foreLz: 0.12,
+  { // CONTACT
+    rootX: 1.5, rootY: 0.4, rootRot: 0.08, spine: 0.02, head: -0.04,
+    hipR: 0.72, kneeR: -0.18, footR: 0.20,
+    hipL: -0.65, kneeL: -0.52, footL: -0.06,
+    shR: 0.08, elR: -0.72, wrR: 1.20,
+    shL: 0.45, elL: -0.85, wrL: -0.15,
+    pelvisYaw: 0.16, chestYaw: -0.10, armLz: 0.20, foreLz: 0.08,
   },
-  { // LOADING — weight absorbs over the bending lead leg, big stride split
-    rootX: 4.5, rootY: 2.2, rootRot: 0.24, spine: 0.075, head: -0.26,
-    hipR: 0.5, kneeR: -0.72, footR: 0.06,
-    hipL: -0.95, kneeL: -0.3, footL: 0.02,
-    shR: 0.1, elR: -1.02, wrR: 5.6,
-    shL: 0.32, elL: -1.0, wrL: -0.2,
-    pelvisYaw: 0.06, chestYaw: -0.04, armLz: 0.1, foreLz: 0.04,
+  { // LOADING
+    rootX: 3.2, rootY: 1.6, rootRot: 0.09, spine: 0.025, head: -0.045,
+    hipR: 0.40, kneeR: -0.58, footR: 0.05,
+    hipL: -0.78, kneeL: -0.26, footL: 0.02,
+    shR: 0.12, elR: -0.75, wrR: 1.20,
+    shL: 0.22, elL: -0.78, wrL: -0.15,
+    pelvisYaw: 0.05, chestYaw: -0.03, armLz: 0.08, foreLz: 0.04,
   },
-  { // PUSH-OFF — lead leg drives back hard, trail knee punches through high.
-    // Right leg BACK → sword arm punches FORWARD (same-side anti-phase);
-    // left arm sweeps to its back-swing extreme
-    rootX: 7, rootY: 1.0, rootRot: 0.21, spine: 0.09, head: -0.3,
-    hipR: -0.3, kneeR: -0.38, footR: -0.1,
-    hipL: 0.52, kneeL: -1.32, footL: 0.2,
-    shR: 0.6, elR: -1.05, wrR: 5.66,
-    shL: -0.35, elL: -0.95, wrL: -0.16,
-    pelvisYaw: -0.18, chestYaw: 0.12, armLz: -0.26, foreLz: -0.12,
+  { // PUSH-OFF
+    rootX: 5.0, rootY: 0.8, rootRot: 0.08, spine: 0.03, head: -0.04,
+    hipR: -0.25, kneeR: -0.32, footR: -0.08,
+    hipL: 0.45, kneeL: -1.15, footL: 0.16,
+    shR: 0.18, elR: -0.76, wrR: 1.20,
+    shL: -0.24, elL: -0.72, wrL: -0.15,
+    pelvisYaw: -0.14, chestYaw: 0.08, armLz: -0.18, foreLz: -0.08,
   },
 ]
 
+const runHands = [[13,23],[4,26],[-10,29]]
+RUN_Q.forEach((pose,i)=>Object.assign(pose,humanFreeArm(...runHands[i] as [number,number])))
+for (const pose of RUN_Q) {
+  pose.armLz = (pose.armLz ?? 0) * .25
+  pose.foreLz = (pose.foreLz ?? 0) * .25
+  pose.rootRot = (pose.rootRot ?? 0) + .0555
+  pose.rootX = (pose.rootX ?? 0) + 1
+  pose.head = .035 - (pose.rootRot ?? 0) - (pose.spine ?? 0)
+}
 const RUN_DUR = 0.5
-/** stride-B sword-arm pump: the right arm completes ONE oscillation per
- * full clip (its own leg's cycle) — carried forward at the LEFT-leg
- * contact, swinging home to the back-swing by the next right contact. */
 const runB = (q: PoseInput, shR: number, elR: number): PoseInput => ({
-  ...mirrorStride(q), shR, elR,
+  ...mirrorHumanStride(q), shR, elR,
 })
 const runFrames = [
-  // stride A — right leg contact (0.0) → absorb (13%) → push (30%) → flight (50%)
-  keyframe(0, RUN_Q[0], 'inQuad'),               // fall into contact
-  keyframe(RUN_DUR * 0.13, RUN_Q[1], 'outQuad'), // absorb
-  keyframe(RUN_DUR * 0.3, RUN_Q[2], 'inOutSine'), // drive
-  // stride B — left leg contact: legs mirrored, off-arm counter-negated,
-  // sword arm rides its own pump (forward through L-contact, home by 1.0)
-  keyframe(RUN_DUR * 0.5, runB(RUN_Q[0], 0.5, -1.0), 'outCubic'), // launch/reach
-  keyframe(RUN_DUR * 0.63, runB(RUN_Q[1], 0.2, -1.0), 'inQuad'),
-  keyframe(RUN_DUR * 0.8, runB(RUN_Q[2], -0.1, -1.0), 'outQuad'),
+  keyframe(0, RUN_Q[0], 'inQuad'),
+  keyframe(RUN_DUR * 0.13, RUN_Q[1], 'outQuad'),
+  keyframe(RUN_DUR * 0.3, RUN_Q[2], 'inOutSine'),
+  keyframe(RUN_DUR * 0.5, runB(RUN_Q[0], 0.18, -0.74), 'outCubic'),
+  keyframe(RUN_DUR * 0.63, runB(RUN_Q[1], 0.14, -0.75), 'inQuad'),
+  keyframe(RUN_DUR * 0.8, runB(RUN_Q[2], 0.08, -0.72), 'outQuad'),
   keyframe(RUN_DUR, RUN_Q[0], 'inOutSine'),
 ]
 
@@ -229,109 +314,119 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
 
 /* ------------------------------- SPRINT ------------------------------ */
 
-/* Condition C — maximum-effort sprint. NOT a faster run: a different
- * mechanical system entirely. THE MAX-VELOCITY POSTURE (research: elite
- * sprinters hold ~15–20° trunk lean at top speed — the 35°+ lean belongs
- * to ACCELERATION, which is what the DASH family owns now; sprint stays
- * tall so the two states read instantly apart):
- *  · torso pitch ~20–23° (rootRot 0.36–0.40) + lumbar continuation —
- *    clearly above run, clearly below dash
- *  · PELVIS SURGES FORWARD (rootX 5→10 local): the hips ride over the
- *    toes ahead of the planted feet; the legs solve as DIAGONAL struts
- *    (stance leg compressed under the COG, trail leg fully extended)
- *  · COG swings 3.4 → 5.4 local (lowest at load absorb) — dropped hips
- *  · HEEL-TO-BUTT recovery: the swing shin folds past −1.9 rad under a
- *    back-swing thigh — the heel physically approaches the glutes
- *  · KNEE PUNCH-THROUGH: hip swings to 1.25+ rad (thigh nearly
- *    horizontal) before the next overstriding toe-up contact
- *  · big bent-elbow arm drive with DEPTH: the off-arm punches forward
- *    through +Z (armLz 0.42 — toward the camera), the sword arm trails
- *    back through −Z — the arms scissor THROUGH depth, not just the plane
- *  · katana tucked hard back (sum ≈ 0.4, bladeYaw −0.28: the steel
- *    swings behind the torso plane — the MGR Raiden sprint carry)
- *  · 3D gait twist: pelvisYaw ±0.26 with chest counter ±0.38 (research:
- *    shoulder counter-rotation ≈ 2× pelvis at sprint cadence) — the hips
- *    drive the stride, the shoulders counter-rotate against them
- * Cadence ≈ 5.5 steps/s. */
+/** SHADOW RONIN / SPRINT — forefoot strike, compression, drive, toe-off,
+ * flight and recovery. Sustained speed uses a modest 10–12° pitch, not
+ * a permanent acceleration fold. A short bent sword-side arm stabilizes the hilt;
+ * the free arm drives through a full counter-swing. Avoid rigid arms.
+ */
 const SPRINT_Q: PoseInput[] = [
-  { // CONTACT — right foot strikes FAR forward, toe UP (dorsiflexed).
-    // ARM DEPTH BUDGET: authored armLz trimmed ±0.42 → ±0.30 — the yaw
-    // stacked with the girdle inheritance + carry into a ~47%-depth
-    // forearm whose bent elbow projected to a straight stub ("dead arms
-    // at sprint"). The 3D scissor read survives at ±0.30; the silhouette
-    // survives too. The katana tuck lives in bladeYaw alone.
-    rootX: 5, rootRot: 0.26, rootY: 3.4, spine: 0.09, head: -0.3,
-    hipR: 1.18, kneeR: -0.3, footR: 0.34,
-    hipL: -0.95, kneeL: -0.45, footL: -0.12,
-    shR: -0.45, elR: -1.15, wrR: 6.45,
-    shL: 1.05, elL: -1.25,
-    pelvisYaw: 0.26, chestYaw: -0.38, armLz: 0.3, armRz: -0.08, bladeYaw: -0.26,
+  { // 01 / forefoot strike: foot lands under the advancing center of mass
+    rootX: 5.0, rootY: 1.2, rootRot: 0.32, spine: 0.045, head: -0.27,
+    hipR: 0.78, kneeR: -0.46, footR: 0.14,
+    hipL: -0.55, kneeL: -1.10, footL: -0.16,
+    shR: 0.03, elR: -1.10, wrR: 1.26,
+    shL: -0.50, elL: -1.25, wrL: -0.12,
+    pelvisYaw: 0.15, chestYaw: -0.19, armLz: -0.12, armRz: -0.03, bladeYaw: -0.22,
   },
-  { // SCISSOR — weight absorbs (COG LOWEST); trail heel kicks INTO the butt
-    rootX: 7, rootRot: 0.28, rootY: 5.4, spine: 0.1, head: -0.32,
-    hipR: 0.22, kneeR: -1.05, footR: 0.06,
-    hipL: -0.85, kneeL: -1.9, footL: 0.3,
-    shR: -0.35, elR: -1.1, wrR: 6.42,
-    shL: 0.7, elL: -1.15,
-    pelvisYaw: 0.08, chestYaw: -0.1, armLz: 0.1, armRz: -0.06, bladeYaw: -0.22,
+  { // 02 / compression: spring load, trailing heel recovers
+    rootX: 5.6, rootY: 3.0, rootRot: 0.35, spine: 0.05, head: -0.30,
+    hipR: 0.43, kneeR: -0.78, footR: 0.04,
+    hipL: -0.22, kneeL: -1.62, footL: 0.08,
+    shR: 0.07, elR: -1.14, wrR: 1.26,
+    shL: -0.32, elL: -1.36, wrL: -0.12,
+    pelvisYaw: 0.09, chestYaw: -0.12, armLz: -0.07, armRz: -0.03, bladeYaw: -0.20,
   },
-  { // TOE-OFF — full hip extension behind; left knee PUNCHES through HIGH
-    rootX: 10, rootRot: 0.27, rootY: 3.8, spine: 0.09, head: -0.3,
-    hipR: -0.72, kneeR: -0.4, footR: -0.18,
-    hipL: 1.25, kneeL: -1.15, footL: 0.12,
-    shR: -0.3, elR: -1.0, wrR: 6.4,
-    shL: 0.34, elL: -1.05,
-    pelvisYaw: -0.26, chestYaw: 0.38, armLz: -0.28, armRz: -0.04, bladeYaw: -0.18,
+  { // 03 / drive: stance hip extends, swing knee folds high
+    rootX: 6.3, rootY: 2.1, rootRot: 0.36, spine: 0.045, head: -0.31,
+    hipR: 0.02, kneeR: -0.57, footR: -0.10,
+    hipL: 0.25, kneeL: -1.90, footL: 0.16,
+    shR: 0.11, elR: -1.17, wrR: 1.26,
+    shL: 0.04, elL: -1.43, wrL: -0.12,
+    pelvisYaw: 0, chestYaw: 0, armLz: 0, armRz: -0.02, bladeYaw: -0.18,
   },
-  { // FLIGHT — hips stay HIGH, legs SCISSOR-EXTENDED (stride split — a
-    // sprinter lengthens in the air; a tucked flight reads as a crouch)
-    rootX: 8, rootRot: 0.25, rootY: 0.6, spine: 0.08, head: -0.28,
-    hipR: -0.5, kneeR: -0.75, footR: -0.1,
-    hipL: 1.1, kneeL: -0.5, footL: 0.32,
-    shR: -0.4, elR: -1.12, wrR: 6.43,
-    shL: 0.88, elL: -1.2,
-    pelvisYaw: -0.1, chestYaw: 0.14, armLz: -0.12, armRz: -0.07, bladeYaw: -0.24,
+  { // 04 / toe-off: release stored energy, opposite thigh punches forward
+    rootX: 6.6, rootY: 0.3, rootRot: 0.34, spine: 0.04, head: -0.29,
+    hipR: -0.38, kneeR: -0.30, footR: -0.21,
+    hipL: 0.73, kneeL: -1.58, footL: 0.18,
+    shR: 0.13, elR: -1.15, wrR: 1.26,
+    shL: 0.40, elL: -1.42, wrL: -0.12,
+    pelvisYaw: -0.09, chestYaw: 0.12, armLz: 0.07, armRz: -0.02, bladeYaw: -0.19,
+  },
+  { // 05 / flight: both feet released, long silhouette with clear knee separation
+    rootX: 6.0, rootY: -1.8, rootRot: 0.31, spine: 0.04, head: -0.26,
+    hipR: -0.58, kneeR: -0.72, footR: -0.15,
+    hipL: 1.00, kneeL: -1.02, footL: 0.15,
+    shR: 0.09, elR: -1.12, wrR: 1.26,
+    shL: 0.59, elL: -1.34, wrL: -0.12,
+    pelvisYaw: -0.15, chestYaw: 0.19, armLz: 0.12, armRz: -0.03, bladeYaw: -0.22,
+  },
+  { // 06 / recovery: reach down, not forward; prepare the next forefoot strike
+    rootX: 5.4, rootY: -0.4, rootRot: 0.31, spine: 0.045, head: -0.26,
+    hipR: -0.58, kneeR: -0.98, footR: -0.16,
+    hipL: 0.90, kneeL: -0.67, footL: 0.14,
+    shR: 0.05, elR: -1.10, wrR: 1.26,
+    shL: 0.55, elL: -1.27, wrL: -0.12,
+    pelvisYaw: -0.16, chestYaw: 0.20, armLz: 0.12, armRz: -0.03, bladeYaw: -0.23,
   },
 ]
 
-const SPRINT_DUR = 0.36
-const SPH = SPRINT_DUR / 2 // one stride
+export const SPRINT_EXPOSURES = [0, 0.09, 0.19, 0.29, 0.39, 0.45, 0.50, 0.59, 0.69, 0.79, 0.89, 0.95] as const
+const sprintHands = [[13,20],[9,22],[0,25],[-10,28],[-12,29],[-2,24]]
+SPRINT_Q.forEach((pose, i) => Object.assign(pose, humanFreeArm(...sprintHands[i] as [number, number])))
+// Anime ninja sprint: supported whole-core diagonal, NOT a folded waist.
+// Pump the arms naturally; the head counter-pitches to keep eyes level.
+for (const pose of SPRINT_Q) {
+  pose.rootRot = (pose.rootRot ?? 0) + .20
+  pose.rootX = 2 + ((pose.rootX ?? 0) - 5) * .3
+  pose.spine = .04
+  pose.head = .045 - (pose.rootRot ?? 0) - pose.spine
+  pose.pelvisYaw = (pose.pelvisYaw ?? 0)*.55
+  pose.chestYaw = (pose.chestYaw ?? 0)*.55
+  pose.armLz = (pose.armLz ?? 0)*.3
+}
+const SPRINT_DUR = 0.56
 export const SPRINT_CLIP: Clip = makeClip('sprint', [
-  // stride A — right contact → scissor → toe-off → flight
-  keyframe(0, SPRINT_Q[0], 'inQuad'),
-  keyframe(SPH * 0.28, SPRINT_Q[1], 'outQuad'),
-  keyframe(SPH * 0.5, SPRINT_Q[2], 'inOutSine'),
-  keyframe(SPH * 0.78, SPRINT_Q[3], 'outCubic'),
-  // stride B — left contact (mirrored legs + counter-negated off-arm pump,
-  // same tucked sword carry)
-  keyframe(SPH, mirrorStride(SPRINT_Q[0]), 'inQuad'),
-  keyframe(SPH + SPH * 0.28, mirrorStride(SPRINT_Q[1]), 'outQuad'),
-  keyframe(SPH + SPH * 0.5, mirrorStride(SPRINT_Q[2]), 'inOutSine'),
-  keyframe(SPH + SPH * 0.78, mirrorStride(SPRINT_Q[3]), 'outCubic'),
+  ...SPRINT_Q.map((pose, i) => keyframe(SPRINT_EXPOSURES[i] * SPRINT_DUR, pose, 'inOutSine')),
+  ...SPRINT_Q.map((pose, i) => keyframe(SPRINT_EXPOSURES[i + 6] * SPRINT_DUR, mirrorHumanStride(pose), 'inOutSine')),
   keyframe(SPRINT_DUR, SPRINT_Q[0], 'inOutSine'),
 ], true)
 
+SPRINT_CLIP.interpolation = 'monotone'
+RUN_CLIP.interpolation = 'monotone'
+
+/** Double-tap sprint POWER STRIDE: a separate bilateral cycle, selected only
+ * while the held sprint is actually accelerating. Shared gait phase prevents
+ * inserting extra steps. The lean relaxes from power stride into the cruising diagonal. */
+const SPRINT_DRIVE_Q=SPRINT_Q.map(p=>({...p,
+  rootRot:(p.rootRot??0)+.055,head:(p.head??0)-.055,
+  rootY:(p.rootY??0)+.65,elL:(p.elL??-1)-.08,
+}))
+export const SPRINT_DRIVE_CLIP:Clip=makeClip('sprintDrive',[
+  ...SPRINT_DRIVE_Q.map((p,i)=>keyframe(SPRINT_EXPOSURES[i]*SPRINT_DUR,p,'inOutSine')),
+  ...SPRINT_DRIVE_Q.map((p,i)=>keyframe(SPRINT_EXPOSURES[i+6]*SPRINT_DUR,mirrorHumanStride(p),'inOutSine')),
+  keyframe(SPRINT_DUR,SPRINT_DRIVE_Q[0],'inOutSine'),
+],true)
+SPRINT_DRIVE_CLIP.interpolation='monotone'
+
 /* ------------------------------- COMBAT STEP ------------------------- */
 
-/* Condition B — combat-ready shuffle while enemies are near. COG lowered
- * (rootY ≈ 3.6), knees always flexed, torso coiled over the hips, short
- * quick steps (no flight phase), and the blade NEVER leaves the chūdan
- * guard: it stays level at the enemy's throat through the entire cycle.
- * The off-hand balances forward. This is how you circle a threat. */
+/* Disciplined combat shuffle: bladed profile, knees flexed, hand poised on tsuka/saya. */
 const COMBAT_Q: PoseInput[] = [
-  { // STEP-R — right foot plants forward under the guard
-    rootRot: 0.18, rootY: 3.4, spine: 0.08, head: -0.14,
-    hipR: 0.48, kneeR: -0.6, footR: 0.18,
-    hipL: -0.38, kneeL: -0.52, footL: 0.12,
-    shR: 0.8, elR: -0.5, wrR: 1.1,
-    shL: 0.55, elL: -0.55, wrL: -0.3,
+  {
+    rootRot: 0.04, rootY: 2.2, spine: 0.015, head: -0.015,
+    hipR: 0.35, kneeR: -0.46, footR: 0.14,
+    hipL: -0.28, kneeL: -0.40, footL: 0.10,
+    shR: 0.16, elR: -0.62, wrR: 1.25,
+    shL: 0.08, elL: -0.75, wrL: -0.20,
+    pelvisYaw: 0.22, chestYaw: -0.12,
   },
-  { // PASS — feet pass close under the hips, quick weight transfer
-    rootRot: 0.19, rootY: 3.8, spine: 0.085, head: -0.14,
-    hipR: 0.3, kneeR: -0.75, footR: 0.1,
-    hipL: -0.1, kneeL: -0.7, footL: 0.1,
-    shR: 0.82, elR: -0.5, wrR: 1.12,
-    shL: 0.5, elL: -0.6, wrL: -0.28,
+  {
+    rootRot: 0.045, rootY: 2.4, spine: 0.02, head: -0.015,
+    hipR: 0.22, kneeR: -0.56, footR: 0.08,
+    hipL: -0.08, kneeL: -0.52, footL: 0.08,
+    shR: 0.16, elR: -0.62, wrR: 1.25,
+    shL: 0.08, elL: -0.75, wrL: -0.20,
+    pelvisYaw: 0.18, chestYaw: -0.10,
   },
 ]
 
@@ -346,77 +441,54 @@ export const COMBAT_STEP_CLIP: Clip = makeClip('combatStep', [
 
 /* ------------------------------- COMBAT IDLE ------------------------- */
 
-/* Condition B at REST — the ROOTED live guard. Standing still with a
- * threat engaged is NOT walking: the feet stay PLANTED while the weight
- * shifts between the stance legs (pelvis sway), the COG breathes, and the
- * kissaki drifts on a tiny figure around the threat's throat line — a
- * coiled spring that never steps. (The old selector fell back to the
- * combat SHUFFLE here — the player visibly marched in place while idle.) */
+/* Coiled Iai / Battō ready stance: bladed profile, knees spring-loaded,
+ * right hand gripped on tsuka, left locking the saya mouth. Zero zombie reach. */
 export const COMBAT_IDLE_CLIP: Clip = makeClip('combatIdle', [
   keyframe(0, {
-    rootRot: 0.16, rootY: 3, spine: 0.07, head: -0.13,
-    hipR: 0.4, kneeR: -0.68, footR: 0.14,
-    hipL: -0.38, kneeL: -0.6, footL: 0.13,
-    // TWO-HAND CHŪDAN GRIP (researched keyframes, ref-gen-chudan.png):
-    // both hands stacked on the tsuka at chest height — the off arm
-    // COMPACT (elbow ~76° flexion, upper arm against the ribs), the
-    // sword elbow ~36°. The grip IK (player.ts) refines the live pommel
-    // contact on top of these keys.
-    shR: 0.72, elR: -0.62, wrR: 1.22,
-    shL: 0.38, elL: -1.32, wrL: -0.55,
-    pelvisYaw: 0.05,
+    rootRot: 0.10, rootY: 4.0, spine: 0.015, head: -0.01,
+    hipR: 0.40, kneeR: -0.60, footR: 0.10,
+    hipL: -0.30, kneeL: -0.46, footL: 0.08,
+    shR: 0.16, elR: -0.62, wrR: 1.25,
+    shL: 0.08, elL: -0.75, wrL: -0.20,
+    pelvisYaw: 0.22, chestYaw: -0.12, armRz: 0.10, armLz: -0.08,
   }, 'inOutSine'),
-  keyframe(0.8, { // weight settles onto the rear leg; blade dips a breath
-    rootRot: 0.15, rootY: 3.6, spine: 0.065, head: -0.15,
-    kneeR: -0.6, kneeL: -0.66,
-    shR: 0.68, elR: -0.66, wrR: 1.12,
-    shL: 0.35, elL: -1.36,
-    pelvisYaw: -0.06,
+  keyframe(0.9, { // subtle coiled weight shift onto rear leg
+    rootRot: 0.095, rootY: 4.3, spine: 0.012, head: -0.01,
+    hipR: 0.36, kneeR: -0.58, footR: 0.08,
+    hipL: -0.32, kneeL: -0.45, footL: 0.06,
+    shR: 0.15, elR: -0.63, wrR: 1.24,
+    shL: 0.07, elL: -0.76, wrL: -0.20,
+    pelvisYaw: 0.20, chestYaw: -0.10,
   }, 'inOutSine'),
-  keyframe(1.6, { // weight rides forward; the kissaki re-centers on the line
-    rootRot: 0.17, rootY: 3.1, spine: 0.07, head: -0.12,
-    kneeR: -0.7, kneeL: -0.56,
-    shR: 0.76, elR: -0.6, wrR: 1.3,
-    shL: 0.4, elL: -1.3,
-    pelvisYaw: 0.06,
-  }, 'inOutSine'),
-  keyframe(2.4, {
-    rootRot: 0.16, rootY: 3.3, spine: 0.07, head: -0.13,
-    kneeR: -0.66, kneeL: -0.6,
-    shR: 0.72, elR: -0.63, wrR: 1.24,
-    shL: 0.37, elL: -1.33,
-    pelvisYaw: 0.02,
-  }, 'inOutSine'),
-  keyframe(3.2, {
-    rootRot: 0.16, rootY: 3, spine: 0.07, head: -0.13,
-    hipR: 0.4, kneeR: -0.68, footR: 0.14,
-    hipL: -0.38, kneeL: -0.6, footL: 0.13,
-    shR: 0.72, elR: -0.62, wrR: 1.22,
-    shL: 0.38, elL: -1.32, wrL: -0.55,
-    pelvisYaw: 0.05,
+  keyframe(1.8, { // return smoothly
+    rootRot: 0.10, rootY: 4.0, spine: 0.015, head: -0.01,
+    hipR: 0.40, kneeR: -0.60, footR: 0.10,
+    hipL: -0.30, kneeL: -0.46, footL: 0.08,
+    shR: 0.16, elR: -0.62, wrR: 1.25,
+    shL: 0.08, elL: -0.75, wrL: -0.20,
+    pelvisYaw: 0.22, chestYaw: -0.12, armRz: 0.10, armLz: -0.08,
   }, 'inOutSine'),
 ], true)
 
 /* ------------------------------- BACKPEDAL --------------------------- */
 
-/* Guarded retreat — moving backward while still facing the threat. Legs
- * reach BACK toe-first (hip negative = leg back), knees stay bent and
- * loaded, COG sits back slightly (rootRot ≈ −0.05) but the guard NEVER
- * drops. Short quick steps, ~3.5 steps/s. */
+/* Guarded retreat — moving backward while maintaining the iai ready guard. */
 const BACK_Q: PoseInput[] = [
-  { // TOE-CONTACT-R — right toe reaches back, heel high
-    rootRot: -0.05, rootY: 2.6, spine: 0.02, head: -0.05,
-    hipR: -0.5, kneeR: -0.55, footR: 0.25,
-    hipL: 0.3, kneeL: -0.5, footL: 0.1,
-    shR: 0.85, elR: -0.5, wrR: 1.05,
-    shL: 0.5, elL: -0.6, wrL: -0.3,
+  {
+    rootRot: -0.02, rootY: 2.0, spine: 0.01, head: 0.0,
+    hipR: -0.40, kneeR: -0.42, footR: 0.20,
+    hipL: 0.24, kneeL: -0.40, footL: 0.08,
+    shR: 0.16, elR: -0.60, wrR: 1.22,
+    shL: 0.08, elL: -0.72, wrL: -0.20,
+    pelvisYaw: 0.20, chestYaw: -0.10,
   },
-  { // LOAD — weight accepts onto the rear leg, front foot lightens
-    rootRot: -0.04, rootY: 3.0, spine: 0.025, head: -0.06,
-    hipR: -0.25, kneeR: -0.8, footR: 0.12,
-    hipL: 0.1, kneeL: -0.75, footL: 0.08,
-    shR: 0.83, elR: -0.52, wrR: 1.08,
-    shL: 0.48, elL: -0.62, wrL: -0.28,
+  {
+    rootRot: -0.015, rootY: 2.3, spine: 0.01, head: 0.0,
+    hipR: -0.20, kneeR: -0.62, footR: 0.10,
+    hipL: 0.08, kneeL: -0.58, footL: 0.06,
+    shR: 0.16, elR: -0.60, wrR: 1.22,
+    shL: 0.08, elL: -0.72, wrL: -0.20,
+    pelvisYaw: 0.16, chestYaw: -0.08,
   },
 ]
 
@@ -431,33 +503,49 @@ export const BACKPEDAL_CLIP: Clip = makeClip('backpedal', [
 
 /* ------------------------------- BRAKE ------------------------------- */
 
-/* One-shot hard stop from sprint/run (input reversal or release at speed):
- * the body pitches BACK over the braking leg, arms fly up for balance,
- * the sword swings up to counter the momentum — then settles into the
- * guard. Dust + skid FX fire from player.ts on the same trigger. */
+/* One-shot hard stop: deceleration sinks into knees, posture recovers to upright. */
 export const BRAKE_CLIP: Clip = makeClip('brake', [
   keyframe(0, {
-    rootRot: -0.18, rootY: 4.5, spine: -0.02, head: 0.1,
-    hipR: 0.55, kneeR: -0.85, footR: 0.3,
-    hipL: -0.35, kneeL: -0.6, footL: -0.05,
-    shR: 0.5, elR: -0.6, wrR: 1.3,
-    shL: 1.0, elL: -0.9,
+    rootRot: -0.08, rootY: 3.2, spine: -0.01, head: 0.04,
+    hipR: 0.45, kneeR: -0.68, footR: 0.22,
+    hipL: -0.28, kneeL: -0.48, footL: -0.04,
+    shR: 0.18, elR: -0.65, wrR: 1.25,
+    shL: 0.10, elL: -0.78,
   }, 'outQuad'),
   keyframe(0.12, {
-    rootRot: 0.02, rootY: 3.4, spine: 0.03, head: -0.05,
-    hipR: 0.4, kneeR: -0.7, footR: 0.2,
-    hipL: -0.3, kneeL: -0.55, footL: 0.05,
-    shR: 0.7, elR: -0.55, wrR: 1.2,
-    shL: 0.7, elL: -0.7,
+    rootRot: -0.01, rootY: 2.2, spine: 0.01, head: 0.0,
+    hipR: 0.32, kneeR: -0.52, footR: 0.14,
+    hipL: -0.22, kneeL: -0.42, footL: 0.04,
+    shR: 0.15, elR: -0.58, wrR: 1.20,
+    shL: 0.06, elL: -0.62,
   }, 'inOutCubic'),
   keyframe(0.24, {
-    rootRot: 0.1, rootY: 2.5, spine: 0.05, head: -0.1,
-    hipR: 0.3, kneeR: -0.5, footR: 0.12,
-    hipL: -0.28, kneeL: -0.45, footL: 0.1,
-    shR: 0.8, elR: -0.5, wrR: 1.15,
-    shL: 0.5, elL: -0.8,
+    rootRot: 0.0, rootY: 1.0, spine: 0.0, head: 0.0,
+    hipR: 0.18, kneeR: -0.28, footR: 0.08,
+    hipL: -0.16, kneeL: -0.26, footL: 0.06,
+    shR: 0.12, elR: -0.52, wrR: 1.18,
+    shL: 0.04, elL: -0.45,
   }, 'outCubic'),
 ])
+
+/** Seven explicit deceleration exposures: catch, load, absorb, rebound,
+ * settle, follow-through, rest. The hands counterbalance rather than freeze. */
+export const STOP_CLIP:Clip=makeClip('stop',[
+  keyframe(0,{...RONIN_REST,rootRot:.06,rootY:3.8,hipR:.55,kneeR:-.65,
+    ...humanFreeArm(13,25),shR:.32,elR:-1.05},'inOutSine'),
+  keyframe(.05,{...RONIN_REST,rootRot:-.025,rootY:5,hipR:.65,kneeR:-.85,
+    hipL:-.35,kneeL:-.5,...humanFreeArm(16,23),shR:.35,elR:-1.15},'inOutSine'),
+  keyframe(.11,{...RONIN_REST,rootRot:-.015,rootY:6.2,hipR:.52,kneeR:-1.0,
+    hipL:-.25,kneeL:-.65,...humanFreeArm(14,24),shR:.34,elR:-1.18},'inOutSine'),
+  keyframe(.18,{...RONIN_REST,rootRot:.035,rootY:5.5,hipR:.4,kneeR:-.85,
+    ...humanFreeArm(11,26),shR:.30,elR:-1.1},'inOutSine'),
+  keyframe(.27,{...RONIN_REST,rootRot:.085,rootY:4.2,
+    ...humanFreeArm(9,28),shR:.25,elR:-.95},'inOutSine'),
+  keyframe(.38,{...RONIN_REST,rootRot:.115,rootY:3.1,
+    ...humanFreeArm(7,29),shR:.18,elR:-.75},'inOutSine'),
+  keyframe(.50,{...RONIN_REST,...humanFreeArm(7,29)},'inOutSine'),
+])
+STOP_CLIP.interpolation='monotone'
 
 /* ------------------------------- JUMP / FALL / LAND ---------------- */
 
@@ -484,23 +572,29 @@ export const JUMP_CLIP: Clip = makeClip('jump', [
     rootRot: 0.3, rootY: -2, spine: 0.1, head: -0.24,
     hipR: 0.85, kneeR: -1.55, footR: 0.32,
     hipL: -0.55, kneeL: -0.25, footL: -0.1,
-    shR: 2.75, elR: -0.25, wrR: 6.95,
-    shL: 2.55, elL: -0.3,
+    shR: 1.85, elR: -1.05, wrR: 6.95,
+    shL: 1.65, elL: -1.10,
     pelvisYaw: 0.08,
   }, 'outQuad'),
+  keyframe(.065, {
+    rootRot:.24,rootY:-2.8,spine:.055,head:-.23,
+    hipR:.78,kneeR:-1.65,footR:.24,hipL:-.05,kneeL:-.75,footL:.08,
+    shR:1.75,elR:-.9,wrR:6.96,shL:1.5,elL:-1.0,
+    pelvisYaw:.06,chestYaw:-.025,
+  }, 'inOutSine'),
   keyframe(0.16, { // RISE — arms sweep out toward the balance spread
     rootRot: 0.18, rootY: -3, spine: 0.06, head: -0.18,
     hipR: 0.55, kneeR: -1.5, footR: 0.18,
     hipL: 0.32, kneeL: -1.05, footL: 0.22,
-    shR: 2.15, elR: -0.2, wrR: 6.98,
-    shL: 1.95, elL: -0.25, armLz: 0.45,
+    shR: 1.6, elR: -.75, wrR: 6.98,
+    shL: 1.25, elL: -.85, armLz: 0.45,
   }, 'outCubic'),
   keyframe(0.34, { // APEX — knees tuck high, hands level at the shoulders
     rootRot: 0.12, rootY: -3.6, spine: 0.05, head: -0.14,
     hipR: 0.6, kneeR: -1.9, footR: 0.1,
     hipL: 0.45, kneeL: -1.75, footL: 0.16,
-    shR: 1.75, elR: -0.35, wrR: 7.02,
-    shL: 1.6, elL: -0.4, armLz: 0.3,
+    shR: 1.35, elR: -.80, wrR: 7.02,
+    shL: 1.05, elL: -.95, armLz: 0.3,
   }, 'inOutCubic'),
 ])
 
@@ -510,23 +604,29 @@ export const JUMP_CLIP: Clip = makeClip('jump', [
  * at the arc top. */
 export const JUMP_LEAP_CLIP: Clip = makeClip('jumpLeap', [
   keyframe(0, { // BOARDING — momentum converts through the drive leg
-    rootRot: 0.5, rootY: -1.5, spine: 0.14, head: -0.3,
+    rootRot: 0.5, rootY: -1.5, spine: 0.04, head: -0.44,
     hipR: 1.0, kneeR: -0.9, footR: 0.28,
     hipL: -0.85, kneeL: -0.2, footL: -0.18,
     shR: -0.5, elR: -0.4, wrR: 5.05,
     shL: -0.35, elL: -0.5,
     pelvisYaw: 0.14, chestYaw: -0.08,
   }, 'outQuad'),
+  keyframe(.085, { // passing knee; no frozen long-jump split
+    rootRot:.57,rootY:-2.1,spine:.04,head:-.50,
+    hipR:1.12,kneeR:-1.15,footR:.22,hipL:-.8,kneeL:-.45,footL:-.12,
+    shR:-.35,elR:-.85,wrR:5.08,shL:-.20,elL:-1.05,
+    pelvisYaw:.12,chestYaw:-.07,
+  }, 'inOutSine'),
   keyframe(0.2, { // FLIGHT — the long horizontal body, hands flat down-back
-    rootRot: 0.62, rootY: -2.6, spine: 0.12, head: -0.34,
+    rootRot: 0.62, rootY: -2.6, spine: 0.04, head: -0.56,
     hipR: 1.25, kneeR: -0.5, footR: 0.3,
-    hipL: -1.05, kneeL: -0.15, footL: -0.22,
-    shR: -0.65, elR: -0.35, wrR: 5.1,
-    shL: -0.5, elL: -0.45,
+    hipL: -.95, kneeL: -0.30, footL: -0.22,
+    shR: -.4, elR: -.8, wrR: 5.1,
+    shL: -.25, elL: -1.0,
     pelvisYaw: 0.1, chestYaw: -0.06,
   }, 'outCubic'),
   keyframe(0.42, { // ARC TOP — hands flare wide, lead knee reaches for landing
-    rootRot: 0.5, rootY: -3, spine: 0.1, head: -0.26,
+    rootRot: 0.5, rootY: -3, spine: 0.04, head: -0.44,
     hipR: 0.9, kneeR: -0.85, footR: 0.2,
     hipL: -0.7, kneeL: -0.5, footL: -0.1,
     shR: 1.4, elR: -0.3, wrR: 5.4,
@@ -587,13 +687,23 @@ export const FALL_CLIP: Clip = makeClip('fall', [
 ], true)
 
 export const LAND_CLIP: Clip = makeClip('land', [
-  keyframe(0, { // IMPACT — deep squat, BOTH HANDS reach down past the knees
+  keyframe(0, {
+    rootY:2,rootRot:.24,spine:.06,head:-.23,
+    hipR:.48,kneeR:-.8,footR:.14,hipL:-.32,kneeL:-.7,footL:.12,
+    shR:1.2,elR:-.75,wrR:6.3,shL:.9,elL:-.85,armLz:.15,
+  }, 'inOutSine'),
+  keyframe(.045, { // IMPACT — deep squat, BOTH HANDS reach down past the knees
     rootY: 7, rootRot: 0.4, spine: 0.14, head: -0.22,
     hipR: 0.62, kneeR: -1.4, footR: 0.24,
     hipL: -0.5, kneeL: -1.3, footL: 0.18,
     shR: 0.85, elR: -0.35, wrR: 6.1,
     shL: 0.7, elL: -0.4, armLz: 0.2,
   }, 'outQuad'),
+  keyframe(.12, { // rebound: hands follow the core, not a second squat
+    rootY:4.5,rootRot:.29,spine:.07,head:-.25,
+    hipR:.52,kneeR:-1.0,footR:.18,hipL:-.4,kneeL:-.95,footL:.14,
+    shR:.95,elR:-.65,wrR:6.2,shL:.65,elL:-.85,
+  }, 'inOutSine'),
   keyframe(0.26, { // RECOVER — rise, hands settle back toward the carry
     rootY: 1.5, rootRot: 0.16, spine: 0.05, head: -0.1,
     hipR: 0.35, kneeR: -0.5, footR: 0.12,
@@ -630,6 +740,11 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     shR: 0.85, elR: -0.5, wrR: 1.15,
     shL: 0.5, elL: -0.85,
   }, 'inOutCubic'),
+  keyframe(0.11, { // added ritual breakdown
+    rootRot:.105,rootY:.2,spine:.04,head:-.06,
+    hipR:.32,kneeR:-.57,footR:.11,hipL:-.305,kneeL:-.52,footL:.12,
+    shR:1.15,elR:-.62,wrR:1.85,shL:.4,elL:-.7,armLz:-.08
+  }, 'inOutSine'),
   keyframe(0.22, { // PRESENT — blade rises to the vertical carry, gaze softens
     rootRot: 0.09, rootY: 0.5, spine: 0.03, head: -0.04,
     hipR: 0.3, kneeR: -0.6, footR: 0.1,
@@ -638,12 +753,27 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     shL: 0.25, elL: -0.5, // left hand drifts toward the saya mouth
     armLz: -0.2,
   }, 'inOutCubic'),
+  keyframe(0.3, { // added ritual breakdown
+    rootRot:.085,rootY:.64,spine:.026,head:-.033,
+    hipR:.29,kneeR:-.62,footR:.1,hipL:-.3,kneeL:-.565,footL:.12,
+    shR:1.31,elR:-.88,wrR:3.05,shL:.12,elL:-.47,armLz:-.24
+  }, 'inOutSine'),
+  keyframe(0.37, { // added ritual breakdown
+    rootRot:.082,rootY:.75,spine:.022,head:-.025,
+    hipR:.285,kneeR:-.64,footR:.1,hipL:-.3,kneeL:-.575,footL:.12,
+    shR:1.07,elR:-1.06,wrR:3.57,shL:-.02,elL:-.39,armLz:-.28
+  }, 'inOutSine'),
   keyframe(0.42, { // MEET — tsuka tips back to the saya mouth
     rootRot: 0.08, rootY: 0.8, spine: 0.02, head: -0.02,
     hipR: 0.28, kneeR: -0.65, footR: 0.1,
     hipL: -0.3, kneeL: -0.58, footL: 0.12,
     shR: 0.9, elR: -1.15, wrR: 3.9, // blade laid back along the scabbard line
     shL: -0.1, elL: -0.35, armLz: -0.3,
+  }, 'inOutSine'),
+  keyframe(0.5, { // added ritual breakdown
+    rootRot:.08,rootY:.76,spine:.02,head:-.01,
+    hipR:.28,kneeR:-.64,footR:.1,hipL:-.3,kneeL:-.58,footL:.12,
+    shR:.84,elR:-1.12,wrR:4.36,shL:-.13,elL:-.32,armLz:-.30
   }, 'inOutSine'),
   keyframe(0.62, { // SLIDE — steel runs home to the kojiri. The right
     // fist rides the tsuka ~at the kashira line (IK: shR 0.8/elR −1.05
@@ -655,6 +785,16 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     shR: 0.8, elR: -1.05, wrR: 4.9, // hand follows the blade in, ON the grip
     shL: -0.15, elL: -0.3, armLz: -0.28,
   }, 'inOutCubic'),
+  keyframe(0.7, { // added ritual breakdown
+    rootRot:.073,rootY:.52,spine:.017,head:-.006,
+    hipR:.286,kneeR:-.605,footR:.1,hipL:-.3,kneeL:-.57,footL:.12,
+    shR:.83,elR:-1.03,wrR:4.95,shL:.07,elL:-.53,armLz:-.12
+  }, 'inOutSine'),
+  keyframe(0.78, { // added ritual breakdown
+    rootRot:.065,rootY:.44,spine:.012,head:-.015,
+    hipR:.295,kneeR:-.59,footR:.1,hipL:-.3,kneeL:-.558,footL:.12,
+    shR:.90,elR:-.99,wrR:4.985,shL:.36,elL:-.86,armLz:.11
+  }, 'inOutSine'),
   keyframe(0.85, { // REST — fist settles on the pommel; the body quiet.
     // IK-solved anatomical rest (matches the sheath home-arm layer):
     // hand EXACTLY on the kashira 22 units forward of the hip, elbow
@@ -678,6 +818,11 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
     shR: 0.93, elR: -0.98, wrR: 5.0,
     shL: 0.49, elL: -1.0, armLz: 0.2,
   }, 'outQuad'),
+  keyframe(0.035, { // added ritual breakdown
+    rootRot:.045,rootY:.95,spine:.018,head:-.07,
+    hipR:.35,kneeR:-.65,footR:.13,hipL:-.32,kneeL:-.61,footL:.115,
+    shR:.89,elR:-.90,wrR:4.92,shL:.4,elL:-.85,armLz:-.02,pelvisYaw:-.04
+  }, 'inOutSine'),
   keyframe(0.07, { // GRIP — the hand closes on the tsuka and lifts it out
     // of the mouth (sayabiki: the LEFT arm pulls the saya back instead)
     rootRot: 0.02, rootY: 1.6, spine: 0.03, head: -0.14,
@@ -687,19 +832,56 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
     shL: 0.25, elL: -0.6, armLz: -0.3,
     pelvisYaw: -0.12,
   }, 'inQuad'),
+  keyframe(0.085, { // added ritual breakdown
+    rootRot:.065,rootY:1.42,spine:.033,head:-.15,
+    hipR:.455,kneeR:-.81,footR:.19,hipL:-.39,kneeL:-.64,footL:.08,
+    shR:.92,elR:-.71,wrR:5.16,shL:.18,elL:-.72,armLz:-.27,pelvisYaw:-.09,chestYaw:.025
+  }, 'inOutSine'),
+  keyframe(.105, { // extraction breakdown / left hand actively retracts saya
+    rootRot:.15,rootY:.8,spine:.04,head:-.16,
+    hipR:.5,kneeR:-.88,footR:.2,hipL:-.43,kneeL:-.55,footL:.05,
+    shR:1.1,elR:-.65,wrR:5.65,
+    shL:.12,elL:-.85,armLz:-.22,pelvisYaw:-.04,chestYaw:.04,
+  }, 'inOutSine'),
+  keyframe(0.12, { // added ritual breakdown
+    rootRot:.205,rootY:.22,spine:.065,head:-.20,
+    hipR:.54,kneeR:-.94,footR:.22,hipL:-.47,kneeL:-.48,footL:.01,
+    shR:1.25,elR:-.51,wrR:6.02,shL:.16,elL:-.86,armLz:-.185,pelvisYaw:.02,chestYaw:.01
+  }, 'inOutSine'),
   keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
     rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
     hipR: 0.6, kneeR: -1.05, footR: 0.26,
     hipL: -0.55, kneeL: -0.35, footL: -0.08,
-    shR: 1.55, elR: -0.3, wrR: 0.45, // edge flashing forward-up, elbow extending
+    shR: 1.55, elR: -0.3, wrR: 6.733185307, // edge flashing forward-up, elbow extending
     shL: 0.3, elL: -0.8, armLz: -0.1,
     pelvisYaw: 0.14, chestYaw: -0.08,
   }, 'outQuart'),
+  keyframe(0.185, { // added ritual breakdown
+    rootRot:.266,rootY:-1.0,spine:.10,head:-.27,
+    hipR:.55,kneeR:-.94,footR:.23,hipL:-.5,kneeL:-.39,footL:-.035,
+    shR:1.43,elR:-.39,wrR:6.9,shL:.32,elL:-.91,armLz:-.07,pelvisYaw:.12,chestYaw:-.07
+  }, 'inOutSine'),
+  keyframe(.215, { // controlled follow-through before the guard
+    rootRot:.2,rootY:-.5,spine:.07,head:-.21,
+    hipR:.46,kneeR:-.75,footR:.18,hipL:-.4,kneeL:-.45,footL:.04,
+    shR:1.2,elR:-.55,wrR:7.05,
+    shL:.38,elL:-.95,armLz:-.04,pelvisYaw:.08,chestYaw:-.04,
+  }, 'inOutSine'),
+  keyframe(0.245, { // added ritual breakdown
+    rootRot:.145,rootY:-.22,spine:.06,head:-.15,
+    hipR:.4,kneeR:-.64,footR:.15,hipL:-.35,kneeL:-.48,footL:.08,
+    shR:1.02,elR:-.56,wrR:7.24,shL:.44,elL:-.92,armLz:-.015,pelvisYaw:.04,chestYaw:-.02
+  }, 'inOutSine'),
+  keyframe(0.275, { // added ritual breakdown
+    rootRot:.112,rootY:-.04,spine:.052,head:-.112,
+    hipR:.36,kneeR:-.575,footR:.125,hipL:-.32,kneeL:-.495,footL:.11,
+    shR:.89,elR:-.52,wrR:7.38,shL:.48,elL:-.87,armLz:-.003,pelvisYaw:.01,chestYaw:-.005
+  }, 'inOutSine'),
   keyframe(0.3, { // SETTLE — chūdan guard, the breath after the draw
     rootRot: 0.1, rootY: 0, spine: 0.05, head: -0.1,
     hipR: 0.34, kneeR: -0.55, footR: 0.12,
     hipL: -0.31, kneeL: -0.5, footL: 0.12,
-    shR: 0.85, elR: -0.5, wrR: 1.15,
+    shR: 0.85, elR: -0.5, wrR: 7.433185307,
     shL: 0.5, elL: -0.85,
   }, 'outCubic'),
 ])
@@ -728,7 +910,7 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
  *  · CHAIN   the second chained dash: the MIRRORED stride of LAUNCH —
  *            dash-spam reads as alternating drives, not a loop.
  *  · CARRY   initiated from a run/sprint: NO re-coil — the run feeds the
- *            dash (momentum-matched entry, the shunshin / ninja run:
+ *            dash (momentum-matched entry, a low forward carry:
  *            torso deep, BOTH arms trailing back, legs mid-scissor).
  *  · HUNT    gap-closing an enemy 240–640 ahead (fencing drive / Sekiro
  *            chase): lower, longer, gaze LOCKED on the target — the head
@@ -754,172 +936,102 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
  * so every carry-to-carry crossfade sweeps the UP hemisphere — never
  * through straight-down (the kissaki would dig the floor mid-blend). */
 const DASH_LAUNCH_Q: PoseInput[] = [
-  { // COIL — weight crashes onto the rear leg, hips coil away (counter-wind)
-    rootX: -1, rootRot: 0.02, rootY: 8.5, spine: 0.02, head: -0.02,
-    hipR: 0.55, kneeR: -0.35, footR: 0.3,
-    hipL: -0.35, kneeL: -1.15, footL: 0.05,
-    shR: -0.05, elR: -0.85, wrR: 5.15,
-    shL: 0.35, elL: -1.05,
-    pelvisYaw: -0.12, chestYaw: 0.1,
+  { // LOAD: center drops; knees store the burst. Arms remain compact.
+    rootX: -1, rootY: 8, rootRot: .14, spine: .025, head: -.12,
+    hipR: .65, kneeR: -1.05, footR: .08, hipL: -.25, kneeL: -.70, footL: -.10,
+    shR: .26, elR: -1.35, wrR: 5.15, ...humanFreeArm(13,23),
+    pelvisYaw: -.06, chestYaw: .04, armRz: -.035, armLz: .025,
   },
-  { // EXPLODE — the POWER LINE: rear toe→hip→shoulder→crown on one ~45°
-    // diagonal; the deepest committed pitch in the locomotion set
-    rootX: 8, rootRot: 0.78, rootY: 4.2, spine: 0.17, head: -0.55,
-    hipR: 1.3, kneeR: -1.45, footR: 0.35,
-    hipL: -1.15, kneeL: -0.12, footL: -0.22,
-    shR: -0.5, elR: -0.4, wrR: 5.25,
-    shL: 0.35, elL: -0.75,
-    pelvisYaw: 0.16, chestYaw: -0.1,
-    armLz: 0.25, armRz: -0.35, bladeYaw: -0.5,
+  { // PUSH: rear support and core form a diagonal; no lumbar collapse.
+    rootX: 8, rootY: 4.5, rootRot: .58, spine: .045, head: -.60,
+    hipR: 1.12, kneeR: -1.52, footR: .16, hipL: -.65, kneeL: -.20, footL: -.18,
+    shR: -.08, elR: -1.25, wrR: 5.25, ...humanFreeArm(-10,24),
+    pelvisYaw: .05, chestYaw: -.04, armRz: -.035, armLz: .025, bladeYaw: -.22,
   },
-  { // GLIDE — hold the committed line (~38–40°); rear heel recovers toward
-    // the butt
-    rootX: 11, rootRot: 0.7, rootY: 3.6, spine: 0.16, head: -0.52,
-    hipR: 1.05, kneeR: -0.7, footR: 0.3,
-    hipL: -0.6, kneeL: -1.35, footL: 0.25,
-    shR: -0.4, elR: -0.45, wrR: 5.3,
-    shL: 0.3, elL: -0.7,
-    pelvisYaw: 0.1, chestYaw: -0.06,
-    armLz: 0.18, armRz: -0.3, bladeYaw: -0.42,
+  { // PASS: one leg recovers while the lead thigh reaches for the catch.
+    rootX: 9, rootY: -.5, rootRot: .56, spine: .045, head: -.58,
+    hipR: .95, kneeR: -1.18, footR: .13, hipL: -.40, kneeL: -1.40, footL: .10,
+    shR: -.04, elR: -1.28, wrR: 5.30, ...humanFreeArm(-15,25),
+    pelvisYaw: .035, chestYaw: -.025, armRz: -.03, armLz: -.025, bladeYaw: -.22,
   },
-  { // CATCH — lead foot brakes FAR forward; COG absorbs over the bending
-    // leg — the pitch unwinds hard toward upright (the brake counter-lean)
-    rootX: 8, rootRot: 0.36, rootY: 5.2, spine: 0.1, head: -0.3,
-    hipR: 0.8, kneeR: -1.05, footR: 0.18,
-    hipL: -0.75, kneeL: -0.5, footL: 0.1,
-    shR: -0.1, elR: -0.5, wrR: 5.5,
-    shL: 0.45, elL: -0.8,
-    armRz: -0.18, bladeYaw: -0.26,
+  { // CATCH: foot reaches beneath the advancing body; knee accepts weight.
+    rootX: 3.5, rootY: 7, rootRot: .27, spine: .025, head: -.25,
+    hipR: .58, kneeR: -.90, footR: .10, hipL: -.42, kneeL: -.55, footL: -.08,
+    shR: .18, elR: -1.2, wrR: 5.5, ...humanFreeArm(10,25),
+    pelvisYaw: .03, chestYaw: -.02, armRz: -.025, bladeYaw: -.12,
   },
-  { // SETTLE — rise toward the guard, blade presenting forward
-    rootX: 4.5, rootRot: 0.24, rootY: 3.2, spine: 0.06, head: -0.18,
-    hipR: 0.45, kneeR: -0.7, footR: 0.14,
-    hipL: -0.45, kneeL: -0.55, footL: 0.12,
-    shR: 0.4, elR: -0.5, wrR: 5.75,
-    shL: 0.5, elL: -0.85,
-    armRz: -0.1, bladeYaw: -0.12,
+  { // SETTLE: core rises, no extra running cycle inside the dash.
+    rootX: 2, rootY: 3.3, rootRot: .12, spine: .025, head: -.055,
+    hipR: .48, kneeR: -.56, footR: .14, hipL: -.32, kneeL: -.34, footL: -.08,
+    shR: .25, elR: -1.1, wrR: 5.75, ...humanFreeArm(11,26),
+    pelvisYaw: .06, chestYaw: -.04, armRz: -.025, bladeYaw: -.08,
   },
 ]
 
-export const DASH_LAUNCH_CLIP: Clip = makeClip('dashLaunch', [
-  keyframe(0, DASH_LAUNCH_Q[0], 'outCubic'),
-  keyframe(0.035, DASH_LAUNCH_Q[1], 'outQuad'),
-  keyframe(0.11, DASH_LAUNCH_Q[2], 'outQuad'),
-  keyframe(0.165, DASH_LAUNCH_Q[3], 'inOutCubic'),
-  keyframe(0.24, DASH_LAUNCH_Q[4], 'inOutCubic'),
+/** Nine core drawings; four additional transitions are inserted below.
+ * The compact drive is timed independently of the physical motor. */
+const DASH_ANIME_Q:PoseInput[]=[
+  DASH_LAUNCH_Q[0],
+  {...DASH_LAUNCH_Q[0],rootX:2,rootY:6.5,rootRot:.46,spine:.04,head:-.43,
+    hipR:.9,kneeR:-1.3,hipL:-.48,kneeL:-.44,...humanFreeArm(1,23)}, // release
+  DASH_LAUNCH_Q[1],
+  {...DASH_LAUNCH_Q[1],rootX:9,rootY:2,rootRot:.58,spine:.045,head:-.60,
+    hipR:1.06,kneeR:-1.4,hipL:-.72,kneeL:-.48,...humanFreeArm(-13,24)}, // stretch
+  DASH_LAUNCH_Q[2],
+  {...DASH_LAUNCH_Q[2],rootX:7,rootY:2,rootRot:.50,spine:.04,head:-.51,
+    hipR:.86,kneeR:-1.05,hipL:-.35,kneeL:-1.1,...humanFreeArm(-7,25)}, // gather
+  DASH_LAUNCH_Q[3],
+  {...DASH_LAUNCH_Q[3],rootX:2.7,rootY:5,rootRot:.19,spine:.03,head:-.17,
+    hipR:.52,kneeR:-.73,hipL:-.36,kneeL:-.46,...humanFreeArm(12,25)}, // rebound
+  DASH_LAUNCH_Q[4],
+]
+// Four additional, individually authored transitions: a quick toe-off,
+// a passing step, a foot plant, and a balanced recovery. They enrich the
+// silhouette without extending the dash or holding a near-horizontal pose.
+DASH_ANIME_Q.splice(2,0,{...DASH_ANIME_Q[1],rootX:5,rootY:5.5,rootRot:.52,head:-.54,
+  hipR:1.02,kneeR:-1.42,hipL:-.57,kneeL:-.31,...humanFreeArm(-5,23)})
+DASH_ANIME_Q.splice(5,0,{...DASH_ANIME_Q[4],rootX:9,rootY:1,rootRot:.57,head:-.59,
+  hipR:1.01,kneeR:-1.33,hipL:-.56,kneeL:-.82,...humanFreeArm(-14,24)})
+DASH_ANIME_Q.splice(8,0,{...DASH_ANIME_Q[7],rootX:5,rootY:4,rootRot:.39,head:-.41,
+  hipR:.7,kneeR:-.98,hipL:-.40,kneeL:-.80,...humanFreeArm(2,25)})
+DASH_ANIME_Q.splice(11,0,{...DASH_ANIME_Q[10],rootX:2.4,rootY:4,rootRot:.15,head:-.12,
+  hipR:.50,kneeR:-.64,hipL:-.34,kneeL:-.40,...humanFreeArm(11,26)})
+export const DASH_ANIME_TIMES=[0,.028,.044,.060,.103,.132,.160,.195,.210,.225,.265,.282,.300] as const
+export const DASH_LAUNCH_CLIP:Clip=makeClip('dashLaunch',
+  DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i],q,'inOutSine')))
+DASH_LAUNCH_CLIP.interpolation='monotone'
+
+/** Inertia reversal: brace against incoming travel before pushing in the
+ * requested direction. No roll/spin; the support leg accepts the turn. */
+export const DASH_PIVOT_CLIP:Clip=makeClip('dashPivot',[
+  keyframe(0,{...DASH_LAUNCH_Q[0],rootX:-3,rootRot:-.17,head:.14,
+    hipR:.9,kneeR:-.95,hipL:-.45,kneeL:-.65},'inOutSine'),
+  keyframe(.058,{...DASH_LAUNCH_Q[1],rootX:3.5,rootRot:.40,head:-.40},'inOutSine'),
+  keyframe(.1334,{...DASH_LAUNCH_Q[2],rootX:4,rootRot:.34,head:-.34},'inOutSine'),
+  keyframe(.2117,{...DASH_LAUNCH_Q[3],rootRot:.18,head:-.16},'inOutSine'),
+  keyframe(.29,DASH_LAUNCH_Q[4],'inOutSine'),
 ])
 
 /** chained second dash — the MIRRORED stride (left leg leads): dash-spam
  * reads as alternating drives. Sword arm keeps the same carry. */
-export const DASH_CHAIN_CLIP: Clip = makeClip('dashChain', [
-  keyframe(0, mirrorLegs(DASH_LAUNCH_Q[0]), 'outCubic'),
-  keyframe(0.035, mirrorLegs(DASH_LAUNCH_Q[1]), 'outQuad'),
-  keyframe(0.11, mirrorLegs(DASH_LAUNCH_Q[2]), 'outQuad'),
-  keyframe(0.165, mirrorLegs(DASH_LAUNCH_Q[3]), 'inOutCubic'),
-  keyframe(0.24, mirrorLegs(DASH_LAUNCH_Q[4]), 'inOutCubic'),
-])
+export const DASH_CHAIN_CLIP:Clip=makeClip('dashChain',
+  DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i],mirrorLegs(q),'inOutSine')))
+DASH_CHAIN_CLIP.interpolation='monotone'
 
-const DASH_CARRY_Q: PoseInput[] = [
-  { // STRIDE — enters MID-SCISSOR (momentum-matched: the run feeds the
-    // dash; NO coil from standing). The shunshin: BOTH arms trail back,
-    // torso driven DEEP (~46°) — the strongest sustained lean in the game,
-    // clearly past the sprint's max-velocity posture.
-    rootX: 9, rootRot: 0.8, rootY: 4.5, spine: 0.17, head: -0.6,
-    hipR: 1.15, kneeR: -0.55, footR: 0.32,
-    hipL: -0.8, kneeL: -1.6, footL: 0.28,
-    shR: -0.55, elR: -0.35, wrR: 5.35,
-    shL: -0.35, elL: -0.55,
-    pelvisYaw: 0.14, chestYaw: -0.08,
-    armLz: -0.3, armRz: -0.45, bladeYaw: -0.55,
-  },
-  { // SCISSOR PASS — the other knee punches through; arms stay trailing
-    rootX: 11, rootRot: 0.76, rootY: 4, spine: 0.16, head: -0.58,
-    hipR: 0.3, kneeR: -1.15, footR: 0.18,
-    hipL: 0.9, kneeL: -0.9, footL: 0.3,
-    shR: -0.5, elR: -0.38, wrR: 5.38,
-    shL: -0.3, elL: -0.55,
-    pelvisYaw: -0.06, chestYaw: 0.04,
-    armLz: -0.28, armRz: -0.42, bladeYaw: -0.5,
-  },
-  { // CATCH — brake beat far forward, torso still committed
-    rootX: 8.5, rootRot: 0.5, rootY: 5, spine: 0.12, head: -0.4,
-    hipR: 0.85, kneeR: -1.0, footR: 0.2,
-    hipL: -0.7, kneeL: -0.55, footL: 0.12,
-    shR: -0.25, elR: -0.45, wrR: 5.45,
-    shL: 0.0, elL: -0.65,
-    armRz: -0.2, bladeYaw: -0.28,
-  },
-  { // SETTLE — momentum hands off into the run
-    rootX: 5, rootRot: 0.3, rootY: 3.4, spine: 0.08, head: -0.24,
-    hipR: 0.5, kneeR: -0.7, footR: 0.14,
-    hipL: -0.4, kneeL: -0.58, footL: 0.12,
-    shR: 0.2, elR: -0.5, wrR: 5.7,
-    shL: 0.3, elL: -0.75,
-    armRz: -0.1, bladeYaw: -0.15,
-  },
-]
+// Momentum-matched entry uses twelve breakdowns, with a
+// slightly more committed first stride; no added airtime or pose plateau.
+const DASH_CARRY_Q:PoseInput[]=DASH_ANIME_Q.filter((_,i)=>i!==11).map((q,i)=>({
+  ...q, rootRot:i===0?.40:q.rootRot, head:i===0?-.42:q.head,
+}))
+export const DASH_CARRY_CLIP:Clip=makeClip('dashCarry',
+ DASH_CARRY_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i<11?i:i+1]*.29/.30,q,'inOutSine')))
+DASH_CARRY_CLIP.interpolation='monotone'
 
-export const DASH_CARRY_CLIP: Clip = makeClip('dashCarry', [
-  keyframe(0, DASH_CARRY_Q[0], 'outQuad'),
-  keyframe(0.06, DASH_CARRY_Q[1], 'inOutSine'),
-  keyframe(0.14, DASH_CARRY_Q[2], 'inOutCubic'),
-  keyframe(0.21, DASH_CARRY_Q[3], 'inOutCubic'),
-])
-
-const DASH_HUNT_Q: PoseInput[] = [
-  { // WIND — a heartbeat of load (shorter than LAUNCH: the hunger is urgent)
-    rootX: 0, rootRot: 0.06, rootY: 7.5, spine: 0.03, head: -0.04,
-    hipR: 0.5, kneeR: -0.3, footR: 0.32,
-    hipL: -0.3, kneeL: -1.05, footL: 0.05,
-    shR: -0.1, elR: -0.8, wrR: 5.2,
-    shL: 0.3, elL: -1.0,
-    pelvisYaw: -0.1, chestYaw: 0.08,
-  },
-  { // THE DRIVE — maximum lunge silhouette (~47° pitch — the predator
-    // read): stride split WIDE, hips LOW, gaze riding HIGH above the
-    // shoulders — locked on prey
-    rootX: 10, rootRot: 0.84, rootY: 5, spine: 0.18, head: -0.38,
-    hipR: 1.4, kneeR: -0.6, footR: 0.34,
-    hipL: -1.05, kneeL: -0.15, footL: -0.2,
-    shR: -0.45, elR: -0.4, wrR: 5.25,
-    shL: 0.25, elL: -0.7,
-    pelvisYaw: 0.14, chestYaw: -0.1,
-    armLz: 0.2, armRz: -0.4, bladeYaw: -0.55,
-  },
-  { // GLIDE — the wide split holds (~42°); the kissaki trains through depth
-    rootX: 13, rootRot: 0.76, rootY: 4.6, spine: 0.17, head: -0.34,
-    hipR: 1.2, kneeR: -0.75, footR: 0.32,
-    hipL: -0.75, kneeL: -1.2, footL: 0.22,
-    shR: -0.4, elR: -0.42, wrR: 5.3,
-    shL: 0.2, elL: -0.68,
-    pelvisYaw: 0.08, chestYaw: -0.06,
-    armRz: -0.32, bladeYaw: -0.45,
-  },
-  { // CATCH — brake far forward; the blade is already rising to strike
-    rootX: 9.5, rootRot: 0.46, rootY: 5.4, spine: 0.1, head: -0.3,
-    hipR: 0.85, kneeR: -1.1, footR: 0.2,
-    hipL: -0.8, kneeL: -0.5, footL: 0.1,
-    shR: -0.05, elR: -0.5, wrR: 5.55,
-    shL: 0.4, elL: -0.8,
-    armRz: -0.16, bladeYaw: -0.22,
-  },
-  { // SETTLE — into strike range, blade at the mid line, coiled
-    rootX: 5.5, rootRot: 0.26, rootY: 3.4, spine: 0.07, head: -0.2,
-    hipR: 0.5, kneeR: -0.72, footR: 0.14,
-    hipL: -0.42, kneeL: -0.58, footL: 0.12,
-    shR: 0.45, elR: -0.5, wrR: 5.7,
-    shL: 0.5, elL: -0.85,
-    armRz: -0.08, bladeYaw: -0.1,
-  },
-]
-
-export const DASH_HUNT_CLIP: Clip = makeClip('dashHunt', [
-  keyframe(0, DASH_HUNT_Q[0], 'outCubic'),
-  keyframe(0.04, DASH_HUNT_Q[1], 'outQuad'),
-  keyframe(0.13, DASH_HUNT_Q[2], 'outQuad'),
-  keyframe(0.19, DASH_HUNT_Q[3], 'inOutCubic'),
-  keyframe(0.27, DASH_HUNT_Q[4], 'inOutCubic'),
-])
+export const DASH_HUNT_CLIP:Clip=makeClip('dashHunt',
+ DASH_ANIME_Q.map((q,i)=>keyframe(DASH_ANIME_TIMES[i]*.32/.30,{
+  ...q,rootX:(q.rootX??0)+(DASH_ANIME_TIMES[i]>=.044&&DASH_ANIME_TIMES[i]<=.195?1.5:0),
+ },'inOutSine')))
+DASH_HUNT_CLIP.interpolation='monotone'
 
 const DASH_PIERCE_Q: PoseInput[] = [
   { // CHAMBER — compact: weight back, blade drawn to the hip, body small
@@ -1066,7 +1178,7 @@ export const DASH_AIR_CLIP: Clip = makeClip('dashAir', [
     shL: 0.75, elL: -0.5, armLz: 0.35,
     armRz: -0.25, bladeYaw: -0.3,
   }, 'outCubic'),
-  keyframe(0.08, { // SCISSOR — front knee punches, rear trails; chamber
+  keyframe(0.1, { // SCISSOR — front knee punches, rear trails; chamber
     // rides deeper through depth (the air-dash tell)
     rootRot: 0.6, rootY: 1, spine: 0.13, head: -0.42,
     hipR: 1.05, kneeR: -0.85, footR: 0.18,
@@ -1134,6 +1246,14 @@ const DASH_CARVE_Q: PoseInput[] = [
   },
 ]
 
+// Surrounded escape: a low diagonal weave, not a near-upright spin.
+// Keep a readable shoulder gap and stay inside the depth joint envelope.
+DASH_CARVE_Q.forEach((q,i)=>{
+ q.rootRot=[.38,.64,.70,.34,.08][i];q.spine=.035
+ q.head=Math.max(-.75,.035-q.rootRot-q.spine)
+ q.pelvisYaw=[.18,.38,.48,.25,.05][i]
+ q.chestYaw=[-.12,-.24,-.32,-.17,0][i]
+})
 export const DASH_CARVE_CLIP: Clip = makeClip('dashCarve', [
   keyframe(0, DASH_CARVE_Q[0], 'inOutSine'),
   keyframe(0.05, DASH_CARVE_Q[1], 'inOutSine'),
@@ -1217,3 +1337,9 @@ export const EXECUTE_POSE_CLIP: Clip = makeClip('execPose', [
     shL: 0.25, elL: -0.4,
   }, 'outCubic'),
 ])
+
+// Air arcs and ritual extraction use shape-preserving C1 in-betweens.
+// Keep combat/dash authored impact eases and sprint's 10 Hz exposures intact.
+for(const clip of [JUMP_CLIP,JUMP_LEAP_CLIP,AIR_JUMP_CLIP,LAND_CLIP,DRAW_CLIP,SHEATHE_CLIP]){
+  clip.interpolation='monotone'
+}

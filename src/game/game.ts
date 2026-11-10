@@ -1,3 +1,4 @@
+import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolution} from './combat/hit-resolution'
 /** STICKMAN RISING — the Game orchestrator: loop, timing (hitstop/slow-mo),
  * combat resolution, combo & score, executions, ultimates, waves, events.
  */
@@ -9,6 +10,7 @@ import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground } from './world/background'
+import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
 import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
 import { Player } from './entities/player'
@@ -108,7 +110,8 @@ export class Game {
   audio = new AudioEngine()
   cam = new Camera()
   fx = new FX()
-  bg = new CyberBackground('high')
+  readonly storm=new StormEngine('high')
+  bg = new CyberBackground('high',this.storm)
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
@@ -117,7 +120,7 @@ export class Game {
   private renderer = new Renderer()
   player = new Player()
   /** animation inspection lab (skeleton viz / contact sheets / QA) */
-  inspect: Inspect
+  inspect!: Inspect
   /** QA harness mode: suppresses wave spawning + death→gameover so
    * scripted sequences run in a controlled empty arena */
   qaMode = false
@@ -206,6 +209,7 @@ export class Game {
   mount(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
     this.ctx = canvas.getContext('2d', { alpha: false })
+    if (!this.ctx) throw new Error('Your browser could not initialize the game canvas.')
     this.input.attach()
     this.resize()
     this.visibilityBound = () => {
@@ -222,10 +226,11 @@ export class Game {
     // state readout + scripted QA harness
     this.inspect = new Inspect()
     const srAny = window as unknown as Record<string, unknown>
+    const inspect = this.inspect
     srAny.__srInspect = {
-      setView: (m: InspectMode) => this.inspect.setMode(m),
-      toggleBones: () => this.inspect.toggleBones(),
-      get mode() { return this.inspect.mode },
+      setView: (m: InspectMode) => inspect.setMode(m),
+      toggleBones: () => inspect.toggleBones(),
+      get mode() { return inspect.mode },
     }
     srAny.__srQA = { run: () => runQA(this) }
   }
@@ -235,7 +240,14 @@ export class Game {
     cancelAnimationFrame(this.raf)
     this.input.detach()
     if (this.visibilityBound) document.removeEventListener('visibilitychange', this.visibilityBound)
-    this.audio.stopMusic()
+    this.audio.destroy()
+    this.listeners.length = 0
+    const debug = window as unknown as Record<string, unknown>
+    if (debug.__sr === this) {
+      delete debug.__sr
+      delete debug.__srInspect
+      delete debug.__srQA
+    }
   }
 
   resize(): void {
@@ -336,7 +348,8 @@ export class Game {
     this.audio.setMusicVolume(s.musicVolume)
     this.audio.setMuted(s.muted)
     if (qualityChanged) {
-      this.bg = new CyberBackground(s.quality)
+      this.storm.setQuality(s.quality)
+      this.bg = new CyberBackground(s.quality,this.storm)
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
@@ -433,6 +446,16 @@ export class Game {
   /* ------------------------------------------------------------------ */
 
   private loop = (now: number): void => {
+    try { this.frame(now) } catch (error) {
+      console.error('Game loop stopped after an unexpected error', error)
+      cancelAnimationFrame(this.raf)
+      this.input.setEnabled(false)
+      this.audio.destroy()
+      this.emit({ type: 'error' })
+    }
+  }
+
+  private frame(now: number): void {
     if (this.destroyed) return
     this.raf = requestAnimationFrame(this.loop)
     let dtRaw = (now - this.lastFrame) / 1000
@@ -444,6 +467,8 @@ export class Game {
     this.wall = now / 1000
     this.govern(dtRaw)
     this.detectCliff(dtRaw)
+    // Weather has its own real visual clock, independent of combat hitstop.
+    if(this.phase!=='paused')this.storm.update(dtRaw)
 
     const ctx = this.ctx
     if (!ctx) return
@@ -701,11 +726,11 @@ export class Game {
     onEnemyKilled: (e) => this.onEnemyKilled(e),
   }
 
-  private hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: AttackRuntimeInfo): void {
+  private hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: AttackRuntimeInfo): HitResolution {
     const e = this.enemies.find((en) => en.id === enemyId)
-    if (!e || e.dead) return
+    if (!e || e.dead) return missedHit(enemyId)
     const sword = this.player.sword
-    const dir = Math.sign(blade.tx - blade.bx) || this.player.face
+    const dir = atk.unarmed?this.player.face:Math.sign(blade.tx - blade.bx) || this.player.face
     const hx = (blade.bx + blade.tx) / 2
     const hy = (blade.by + blade.ty) / 2
     const ex = e.x
@@ -722,21 +747,25 @@ export class Game {
       this.addHitstop(0.05)
       this.cam.addTrauma(0.15)
       this.fx.text(ex, ey - 50, 'PARRY!', '#ff5c7a', 12)
-      return
+      return parriedHit(enemyId)
     }
 
-    const res = e.takeHit(atk, dir, this.player.x)
+    const resolution=resolveEnemyHit(e,atk,dir,this.player.x)
+    const res=resolution.outcome
 
-    // combo & score
+    // Contact is not automatically a hit-confirm (block/chip/parry earn none).
+    if(rewardsConfirmedHit(resolution)){
     this.combo.onHit()
     this.stats.maxCombo = Math.max(this.stats.maxCombo, this.combo.hits)
     if (this.combo.rankUpT > 0.6) {
       this.audio.play('rankup', { pitch: 1 + this.combo.hits * 0.002 })
       this.emit({ type: 'rank', rank: this.combo.lastRank })
     }
-    this.stats.score += Math.round(atk.dmg * this.combo.mult * 0.8)
+    this.stats.score += Math.round(resolution.actualDamage * this.combo.mult * 0.8)
+    }
 
     switch (res) {
+      case 'miss':break
       case 'killed': {
         this.onEnemyKilled(e)
         break
@@ -764,7 +793,7 @@ export class Game {
           intensity: clamp01(atk.dmg / 30),
         })
         this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), atk.heavy, sword.colors.glow, sword.colors.accent)
-        const dmgShown = Math.round(atk.dmg * (e.vulnerableT > 0 ? 2 : 1) * (e.kind === 'heavy' || e.kind === 'boss' ? 0.72 : 1))
+        const dmgShown = Math.round(resolution.actualDamage)
         this.fx.text(ex, ey - 46, `${dmgShown}`, atk.heavy ? sword.colors.accent : '#f4f9fc', atk.heavy ? 17 : 13)
         // crash-zoom punch on heavies (Z-axis push-pull) + impact frames on
         // the big connects — the anime kill-frame language
@@ -779,6 +808,7 @@ export class Game {
         break
       }
     }
+    return resolution
   }
 
   private onEnemyKilled(e: Enemy): void {
@@ -868,6 +898,12 @@ export class Game {
   }
 
   private startExecution(target: Enemy): void {
+    if(!this.player.swordDrawn){
+      this.player.face=target.x>this.player.x?1:-1
+      this.player.startUnarmedFinisher(this.worldRef)
+      return
+    }
+
     this.exec = { enemy: target, t: 0, step: 0 }
     this.player.enterScripted()
     this.player.face = (target.x > this.player.x ? 1 : -1) as 1 | -1
@@ -1022,6 +1058,8 @@ export class Game {
   }
 
   private startUlt(): void {
+    if(!this.player.swordDrawn){this.player.startUnarmedFinisher(this.worldRef,true);return}
+
     this.player.meter = 0
     this.ult = { t: 0, step: 0 }
     this.player.enterScripted()
@@ -1056,10 +1094,14 @@ export class Game {
       maxHp: p.maxHp,
       energy: p.energy,
       maxEnergy: p.maxEnergy,
+      stamina: p.stamina,
+      maxStamina: p.maxStamina,
+      dashCharge: p.dashChargeProgress,
+      staminaCooldown: p.staminaCooldown,
       meter: p.meter,
-      swordName: p.sword.name,
+      swordName: p.swordDrawn?p.sword.name+' / DRAWN':'EMPTY HAND / SHEATHED',
       swordColor: p.sword.colors.accent,
-      abilityName: p.sword.ability.name,
+      abilityName: p.swordDrawn?p.sword.ability.name:'FOCUSED PALM',
       abilityCost: p.sword.ability.cost,
       combo: {
         hits: this.combo.hits,

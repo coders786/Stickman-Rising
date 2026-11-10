@@ -74,42 +74,40 @@ export type ChannelKey = keyof typeof CH
 export type PoseInput = Partial<Record<ChannelKey, number>>
 export type Pose = Float32Array
 
-/** Chūdan-no-kamae combat baseline — the guard every attack starts from and
- * returns to. Blade sum (shR+elR+wrR) ≈ 1.5 → blade points at the enemy's
- * throat, tip level. This is the in-between continuity anchor: partial
- * keyframes inherit these channels, so every clip blends guard→guard. */
+/** Authentic Shadow Ronin martial baseline — upright posture, naturally
+ * aligned spine, hand resting on tsuka at the hip with tucked elbows.
+ * Eliminates the reaching zombie arms and hunched slouch: every partial
+ * keyframe inherits these balanced anatomical channels. */
 const NEUTRAL_SRC: PoseInput = {
   rootX: 0,
   rootY: 0,
-  rootRot: 0.1,
-  spine: 0.05,
-  head: -0.1,
-  hipL: -0.3,
-  kneeL: -0.42,
-  footL: 0.12,
-  hipR: 0.32,
-  kneeR: -0.5,
-  footR: 0.12,
-  shL: 0.5,
-  elL: -0.85,
-  wrL: -0.3,
-  shR: 0.85,
-  elR: -0.5,
-  wrR: 1.15,
-  // 3D depth channels: the guard is square-on (0 depth articulation) apart
-  // from the anatomical carrying angle (~10° valgus: the extended forearm
-  // rides slightly toward the camera off the humerus line)
+  rootRot: 0.03,
+  spine: 0.015,
+  head: -0.06,
+  hipL: -0.10,
+  kneeL: -0.24,
+  footL: 0.04,
+  hipR: 0.10,
+  kneeR: -0.28,
+  footR: 0.04,
+  shL: 0.04,
+  elL: -0.45,
+  wrL: -0.15,
+  shR: 0.12,
+  elR: -0.52,
+  wrR: 1.18,
+  // 3D depth channels: bladed martial alignment, natural carrying valgus
   rootZ: 0,
-  pelvisYaw: 0,
-  chestYaw: 0,
+  pelvisYaw: 0.04,
+  chestYaw: -0.02,
   hipLz: 0,
   hipRz: 0,
-  armLz: 0,
-  armRz: 0,
+  armLz: -0.04,
+  armRz: 0.06,
   bladeYaw: 0,
   bladeZ: 0,
-  foreLz: -0.04,
-  foreRz: 0.1,
+  foreLz: 0.02,
+  foreRz: 0.06,
 }
 
 export const NEUTRAL: Pose = (() => {

@@ -1,0 +1,45 @@
+{
+  "updates": 720,
+  "simulationHz": 120,
+  "browserErrors": [],
+  "allPosesFinite": true,
+  "singleHoldSpeed": 350,
+  "doubleTapHoldSpeed": 480,
+  "clips": [
+    "idle",
+    "run",
+    "sprintDrive",
+    "sprint",
+    "dashCarry",
+    "dashPivot",
+    "dashAir",
+    "fall",
+    "land",
+    "stop"
+  ],
+  "forcePhases": [
+    "load",
+    "drive",
+    "coast",
+    "catch",
+    "wall"
+  ],
+  "reverseDashInitiallyRetainsForwardVelocity": true,
+  "reverseDashLaterMovesBackward": true,
+  "horizontalAirDashRetainsFall": true,
+  "wallAbsorbsHorizontalVelocity": true,
+  "capture": {
+    "sampleHz": 60,
+    "frames": 240,
+    "review": "half-speed, 8 seconds"
+  },
+  "note": "Offline Chromium simulation with DOM A/D/Shift key events; not a device FPS benchmark. Captured before the final jump-overspeed and outward-depenetration edge-case fixes, which are covered by regression tests.",
+  "latestBuildSmoke": {
+    "realKeyboard": true,
+    "normal": 350,
+    "sprint": 480,
+    "sprintClip": "sprintDrive",
+    "releaseReturnsToRest": true,
+    "javascriptErrors": []
+  }
+}

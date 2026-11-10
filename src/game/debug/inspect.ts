@@ -19,7 +19,8 @@
 import { Game } from '../game'
 import { Player, LocoMode } from '../entities/player'
 import { makePose, Pose } from '../anim/pose'
-import { makeSkelGeom, solveSkeleton, PLAYER_SPEC, SkelGeom, drawStick, PLAYER_STYLE } from '../anim/skeleton'
+import { PLAYER_SPEC, SkelGeom, PLAYER_STYLE } from '../anim/skeleton'
+import { makeFighterGeom, solveFighter3D, drawFighter3D, type FighterGeom } from '../anim/rig3d'
 import { sampleClip } from '../anim/animator'
 import {
   WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_STEP_CLIP, COMBAT_IDLE_CLIP,
@@ -43,7 +44,7 @@ export class Inspect {
   showFeet = true
 
   private scratchPose: Pose = makePose()
-  private scratchGeom: SkelGeom = makeSkelGeom()
+  private scratchGeom: FighterGeom = makeFighterGeom()
 
   setMode(m: InspectMode): void {
     this.mode = m
@@ -73,7 +74,7 @@ export class Inspect {
     const lines = [
       `INSPECT: ${this.mode}${this.showBones ? ' +bones' : ''}`,
       `state=${p.state}  loco=${p.loco}  locoT=${Number(priv.locoT ?? 0).toFixed(2)}s`,
-      `dash=${p.dashVariant}${p.dashHandoff ? ' (handoff)' : ''}  cd=${Number(priv.dashCd ?? 0).toFixed(2)}  rec=${Number(priv.dashRecharge ?? 0).toFixed(2)}`,
+      `dash=${p.dashVariant}${p.dashHandoff ? ' (handoff)' : ''}  cd=${Number(priv.dashCd ?? 0).toFixed(2)}`,
       `vx=${p.vx.toFixed(0)}  vy=${p.vy.toFixed(0)}  grounded=${p.grounded}  face=${p.face}`,
       `enemyW=${p.enemyNearW.toFixed(2)}  threat=${p.hasThreat ? 'yes' : 'no'}  surrounded=${Boolean(priv.surrounded)}`,
       `postAtk=${Number(priv.postAttackT ?? 0).toFixed(2)}  turn=${Number(priv.turnT ?? 0).toFixed(2)}`,
@@ -114,7 +115,7 @@ export class Inspect {
     ctx.save()
     ctx.translate(cx, hipScreenY)
     ctx.scale(p.face * PSCALE, PSCALE)
-    drawStick(ctx, p.geom, PLAYER_STYLE, { time })
+    drawFighter3D(ctx, p.geom, PLAYER_STYLE, { time })
     this.drawSkeleton(ctx, p.geom)
     ctx.restore()
     // ground line + foot contact markers at their true screen positions
@@ -227,7 +228,7 @@ export class Inspect {
       ['IDLE', IDLE_CLIP],
       ['JUMP', JUMP_CLIP],
       ['DASH LAUNCH (iai)', DASH_LAUNCH_CLIP],
-      ['DASH CARRY (shunshin)', DASH_CARRY_CLIP],
+      ['DASH CARRY (momentum)', DASH_CARRY_CLIP],
       ['DASH HUNT (gap-close)', DASH_HUNT_CLIP],
       ['DASH PIERCE (lunge)', DASH_PIERCE_CLIP],
       ['DASH RETREAT (guard)', DASH_RETREAT_CLIP],
@@ -259,7 +260,7 @@ export class Inspect {
       for (let c = 0; c < cols; c++) {
         const t = (clip.dur * c) / cols
         sampleClip(clip, t, this.scratchPose)
-        const g = solveSkeleton(this.scratchPose, PLAYER_SPEC, this.scratchGeom)
+        const g = solveFighter3D(this.scratchPose, PLAYER_SPEC, this.scratchGeom, PLAYER_SPEC.blade)
         // normalize: lowest foot contact sits ON this cell's ground line
         const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y)
         const cx = group * (w / groupsPerRow) + cellW * (c + 0.5)
@@ -267,7 +268,7 @@ export class Inspect {
         ctx.save()
         ctx.translate(cx, groundY - (lowContact + 2.4) * S)
         ctx.scale(S, S)
-        drawStick(ctx, g, PLAYER_STYLE, { time: t, simple: true })
+        drawFighter3D(ctx, g, PLAYER_STYLE, { time: t })
         ctx.restore()
         // per-cell ground line
         ctx.strokeStyle = 'rgba(40,80,110,0.45)'
@@ -472,7 +473,7 @@ export async function runQA(game: Game): Promise<void> {
         detail: `vx@exit=${tailVx.toFixed(0)} handoff=${p.dashHandoff}`,
       })
     }
-    // (b) CARRY: dash initiated from a run → the momentum-matched shunshin
+    // (b) CARRY: dash initiated from a run → the momentum-matched carry
     // (no re-coil from standing — the run feeds the dash)
     {
       game.enemies.length = 0
@@ -558,7 +559,7 @@ export async function runQA(game: Game): Promise<void> {
       }
     }
     // (f) CHAIN: the second dash within the chain window mirrors the
-    // stride + recharge gates the spam
+    // stride, without a separate recharge penalty
     {
       game.enemies.length = 0
       input.setVirtualAxis(0, 0)
@@ -573,15 +574,12 @@ export async function runQA(game: Game): Promise<void> {
       const chainVariant = p.dashVariant // second dash → mirrored stride
       input.setVirtual('dash', false)
       await sleep(150)
-      // second dash fired consec=2 → recharge window must be active
-      const privP = p as unknown as { dashRecharge: number }
-      const recharging = privP.dashRecharge > 0
       input.setVirtualAxis(0, 0)
       await sleep(500)
       checks.push({
-        name: 'dash: chain mirrors stride, recharge gates',
-        pass: chainVariant === 'chain' && recharging,
-        detail: `variant=${chainVariant} recharge=${recharging}`,
+        name: 'dash: chain mirrors stride',
+        pass: chainVariant === 'chain',
+        detail: `variant=${chainVariant}`,
       })
     }
     // (g) CARVE: surrounded pocket converts the retreat into the

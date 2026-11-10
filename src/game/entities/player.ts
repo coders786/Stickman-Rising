@@ -1,29 +1,74 @@
+import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
+import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVelocity,airDragCoefficient} from '../physics/motion-laws'
+import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
+import {rewardsConfirmedHit} from '../combat/hit-resolution'
+import {groundedDashAct} from '../anim/grounded-dash'
+import {POWER_DASH_CLIP,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
 /** STICKMAN RISING — the Player: state machine, dash system, combo machine,
  * parry/riposte, charged attacks, elemental abilities, execution finishers.
  */
 
+import {drawArticulatedHand} from '../anim/humanoid'
+import {drawDetail,DRAW_CLEAR,DRAW_GRIP} from '../anim/draw-detail'
+import {equipmentClip} from '../anim/equipment-motion'
+import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY} from '../combat/unarmed'
+import type {Clip,PlayOpts} from '../anim/animator'
+import { DashBody } from '../physics/dash-body'
+import { SprintExposure,SPRINT_EXPOSURE_CHANNELS } from '../anim/sprint-exposure'
 import { Animator } from '../anim/animator'
+import { handGestures } from '../anim/hand-gestures'
+import { ContextMotion,DEFAULT_CONTEXT,type MotionContext } from '../anim/context-motion'
 import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
+import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
-import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
+import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
-  DRAW_CLIP, FALL_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP, JUMP_LEAP_CLIP, LAND_CLIP,
-  PARRY_CLIP, RUN_CLIP, SHEATHE_CLIP, SPRINT_CLIP, WALK_CLIP,
+  DRAW_CLIP, FALL_CLIP, FLOURISH_HILT_SPIN_CLIP, FLOURISH_SCARF_ADJUST_CLIP,
+  FLOURISH_STANCE_SETTLE_CLIP, FLOURISH_TSUBA_POP_CLIP, HURT_CLIP, IDLE_CLIP, JUMP_CLIP,
+  JUMP_LEAP_CLIP, LAND_CLIP, PARRY_CLIP, RUN_CLIP, SHEATHE_CLIP, SPRINT_CLIP, SPRINT_DRIVE_CLIP, STOP_CLIP, WALK_CLIP,
 } from '../anim/clips'
 import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../combat/attacks'
 import {
-  DashVariant, DashVariantCfg, DASH_SPEED, DASH_VARIANTS, dashEnvelope, evaluateDash,
+  DashVariant, DashVariantCfg, DASH_VARIANTS, evaluateDash,
 } from '../combat/dash'
 import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
 import { Trail } from '../fx/fx'
 import { WorldRef } from '../core/types'
 import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
+
+/** The reference finish: upright chest, extended trailing leg and a bent
+ * forward support leg. Keep attack arms authored by the attack itself. */
+function dashFinishPose(p:Pose,weight:number,mirrored:boolean,arms:boolean,armWeight=weight,armed=false):void {
+  const rear=mirrored?CH.hipR:CH.hipL,lead=mirrored?CH.hipL:CH.hipR
+  const rearKnee=mirrored?CH.kneeR:CH.kneeL,leadKnee=mirrored?CH.kneeL:CH.kneeR
+  p[rear]+=(-.65-p[rear])*weight;p[lead]+=(.88-p[lead])*weight
+  p[rearKnee]+=(-.35-p[rearKnee])*weight;p[leadKnee]+=(-1.28-p[leadKnee])*weight
+  if(arms){
+    const bladeArm=p[CH.shR]+p[CH.elR]
+    p[CH.shL]+=(.65-p[CH.shL])*armWeight;p[CH.elL]+=(-1.05-p[CH.elL])*armWeight
+    p[CH.shR]+=(.35-p[CH.shR])*armWeight;p[CH.elR]+=(-.85-p[CH.elR])*armWeight
+    if(armed)p[CH.wrR]+=bladeArm-p[CH.shR]-p[CH.elR]
+  }
+}
+
+/** Keep dash arms bent and near the chest, with an independent front hand.
+ * Targets are shoulder-relative and use the rig's true upper/forearm lengths. */
+function dashGuardPose(p:Pose,weight:number,progress:number,power:boolean,armed:boolean):void {
+  const arc=Math.sin(Math.PI*clamp01(progress))
+  const left=handPose('left',power?17+2*arc:14+2*arc,power?13:19)
+  const right=handPose('right',power?10:6,power?17:23)
+  p[CH.shL]+=(left.shL!-p[CH.shL])*weight;p[CH.elL]+=(left.elL!-p[CH.elL])*weight
+  const old=p[CH.shR]+p[CH.elR]
+  p[CH.shR]+=(right.shR!-p[CH.shR])*weight;p[CH.elR]+=(right.elR!-p[CH.elR])*weight
+  // The drawn weapon keeps the same orientation as the authored carry.
+  if(armed)p[CH.wrR]+=old-p[CH.shR]-p[CH.elR]
+}
 
 /** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
 function circleHitsSweptQuad(
@@ -53,7 +98,7 @@ function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, 
 }
 
 export type PlayerState =
-  | 'move' | 'attack' | 'dash' | 'parry' | 'charge' | 'hurt' | 'dead'
+  | 'move' | 'attack' | 'dash' | 'dashCharge' | 'parry' | 'charge' | 'hurt' | 'dead'
   | 'scripted' // driven by Game cinematics (ult / execution)
 
 /** Locomotion styles — each a genuinely distinct authored cycle (never a
@@ -122,7 +167,7 @@ const ACCEL = 2600
 const FRICTION = 2800
 /** braking deceleration when reversing at speed (skid → BRAKE_CLIP + dust) */
 const BRAKE_DECEL = 4600
-const AIR_ACCEL = 1800
+const AIR_ACCEL = 650
 const GRAVITY = 2050
 /** ANTI-FLOAT gravity shaping (Sekiro-weight): apex decay ×2.2 kills the
  * moon-hover; the fall accelerates ×3.5 so the body plummets; terminal
@@ -139,10 +184,12 @@ const TERMINAL_VY = 1650
 const JUMP_V = -950
 const AIR_JUMP_V = -820
 const DASH_CD = 0.1
-const DASH_RECHARGE = 0.32
+const POWER_DASH_CHARGE = 0.32
+const POWER_DASH_RECOVERY = 0.34
+const DASH_FINISH_RISE = 0.24
 /** dash ghost beats: fire times as fractions of dash duration (research:
  * cap 3, exponential spacing) + the per-ghost starting darkness */
-const DASH_GHOST_BEATS = [0.18, 0.5, 0.85]
+const DASH_GHOST_BEATS = [0.24, 0.48, 0.72]
 // first ghost toned 0.5 → 0.38: it fires closest to the live body and the
 // half-dark overlay + rim double-draw swallowed the SOLID figure's own
 // anatomy at the dash apex (limbs/joints became unreadable under the trail)
@@ -154,6 +201,7 @@ interface ActionState {
   hitMap: Map<number, number>
   trail: Trail
   sfxDone: boolean
+  driveRemaining:number
   moveDone: boolean
   moveYDone: boolean
   impactDone: boolean
@@ -183,12 +231,28 @@ export class Player {
   maxHp = 100
   energy = 100
   maxEnergy = 100
+  readonly maxStamina = DASH_STAMINA_MAX
+  stamina = DASH_STAMINA_MAX
+  private staminaRegenDelay = 0
   meter = 0
 
   sword: SwordDef = SWORDS.katana
 
   state: PlayerState = 'move'
-  private animator = new Animator()
+  private animator = new Animator(true)
+  private contextMotion = new ContextMotion()
+  sprintExposure=new SprintExposure()
+  private motionContext:MotionContext = {...DEFAULT_CONTEXT}
+  private contextClip = ''
+  private contextEntrySpeed = 0
+  private stopEntrySpeed = 0
+  /** Last contact load, captured before the ground removes normal velocity. */
+  readonly physicsMetrics={mass:PLAYER_MASS,momentumX:0,momentumY:0,energy:0,forceX:0,forceY:0,supportLoad:0}
+  landingLoad:LandingLoad=landingLoad(0)
+  private landingImpact = 0
+  private landingRecoveryT = 0
+  /** Deterministic condition readout for the animation inspector. */
+  animationVariation = 'rest-open'
 
   /* ---------------------------------------------------------------- */
   /* CONTEXT-AWARE LOCOMOTION (spec §4–§7)                              */
@@ -202,11 +266,7 @@ export class Player {
   private locoT = 0
   /** explicit sprint latch: double-tap-and-hold a direction (DMC-style) */
   private sprintLatch = false
-  private lastTapDir = 0
-  private lastTapT = -10
-  /** last-seen PRESS EVENT stamps (event-driven: frame-rate independent) */
-  private stampR = -1
-  private stampL = -1
+  private sprintDriveT = 0
   /** damped enemy-proximity weight 0..1 — hysteresis via asymmetric rates
    * (in k=7, out k=2.2): drives combat crouch, guard raise, combat shuffle */
   enemyNearW = 0
@@ -223,13 +283,12 @@ export class Player {
   private turnDir = 1
   /** POST-ATTACK MOMENTUM: the body preserves the last swing's rotational
    * momentum into locomotion (follow-through + recovery), decaying */
+  private emptyTrail:Trail={active:false,pts:new Float32Array(4),head:0,count:0,N:1,age:0,life:0,color:'#000',color2:'#000',width:0,emitting:false}
   private postAttackT = 0
   private postArmVel = 0
   /** smoothed acceleration → anticipatory lean (previous-frame awareness) */
   private accelSm = 0
   private prevVx = 0
-  /** damped dash lean weight (velocity-envelope driven — see applyProcedural) */
-  private dashLeanS = 0
   /** damped head-aim toward the threat (alive even while retreating) */
   private headTrackW = 0
   /** wall-clock seconds (input rhythm: double-tap sprint detection) */
@@ -246,22 +305,40 @@ export class Player {
   private lightIndex = 0
   private airIndex = 0
   private lastLightAt = -10
-  private lastGrounded = true
   private landSpring = 0
+  private landSpringDecay=5
 
+  private dashChargeT=0
+  private dashChargeReady=false
+  private dashChargeFxT=0
+  private dashChargeX=1
+  private dashPower=false
+  private dashPendingCharge=false
+  private dashPendingJump=false
+  private dashRecoverT=0
+  private dashFinishT=0
+  private dashDodgeGranted=false
+  private dashDodgeWindow=0
   private dashT = 0
+  /** Force telemetry is exposed for the animation/physics inspector. */
+  dashDisplayPitch=0
+  dashBody:DashBody|null=null
+  private dashMotionActive=false
+  private dashBoostFxFired=false
+  private dashSink=0
+  private dashSkim=0
+  private dashLift=0
+  private dashWakeTimer=0
+  private dashWakeCount=0
+  private dashCatchFxFired=false
+  private dashDisplacement:{x:number;y:number}|null=null
   private dashDur = DASH_VARIANTS.launch.dur
-  private dashSpd = DASH_SPEED
   /** active variant config (clip + tuning) — set on startDash */
   private dashCfg: DashVariantCfg = DASH_VARIANTS.launch
   private dashCd = 0
   private dashConsec = 0
-  /** chain window: dashes within this span of the last one link into a
-   * chain (see update() — the old code zeroed dashConsec EVERY frame
-   * while recharge was 0, so consecutive dashes never accumulated and
-   * the recharge gate never fired) */
+  /** Chain animation follows recent dashes; it does not impose a recharge lock. */
   private dashChainT = 0
-  private dashRecharge = 0
   private dashDx = 1
   private dashDy = 0
   /** current dash variant — public for the inspection lab + QA harness */
@@ -275,6 +352,7 @@ export class Player {
    * read as acceleration), each successively darker. Replaces the old
    * uniform 6–8-ghost cadence (visual clutter). */
   private dashGhostIdx = 0
+  private dashBurstFired = false
   /** when the last dash ended — the momentum tail window feeds the
    * dash-strike conversion (attacking on dash momentum = through-cut) */
   private dashEndedAt = -10
@@ -285,6 +363,7 @@ export class Player {
    * the guard up; the turn develops after the lock, if still held. */
   private retreatLockT = 0
 
+  private parryBraceT=0
   private parryT = 0
   private parryActive = 0
   riposteT = 0
@@ -292,14 +371,31 @@ export class Player {
 
   /* ---- SWORD HOME (notō / iai): the sheath system. swordDrawn=false →
    * the steel rides inside the saya, locomotion arms are HANDS-ONLY, and
-   * any combat input snaps it back out with the iai flash. */
-  swordDrawn = true
+   * any combat input snaps it back out with the iai flash. Defaults to
+   * sheathed Iai / Battōjutsu mode. */
+  swordDrawn = false
   /** the active one-shot sheath/draw ritual (runs inside state 'move') */
+  private carryRelaxW=0
   private sheathAct: { t: number; dur: number; mode: 'sheathe' | 'draw' } | null = null
   /** seconds of standing peace (no threat, no combat) — feeds auto-sheathe */
   private peaceT = 0
   /** damped weight of the sheathed pommel-rest arm layer */
   private sheathW = 0
+
+  /* ---- IDLE FLOURISHES & SCARF SIMULATION ---- */
+  private standstillT = 0
+  private lastFlourish = -1
+  private isFlourishActive = false
+  private flourishDur = 0
+  private flourishT = 0
+
+  private scarfSimNodes = [
+    { x: 0, y: 0, ox: 0, oy: 0 },
+    { x: -5, y: 3, ox: -5, oy: 3 },
+    { x: -11, y: 8, ox: -11, oy: 8 },
+    { x: -18, y: 14, ox: -18, oy: 14 },
+    { x: -26, y: 20, ox: -26, oy: 20 },
+  ]
 
   private chargeT = 0
   charging = false
@@ -310,6 +406,7 @@ export class Player {
 
   /* ---- WEIGHT: hip height derives from the planted foot (foot-ground
    * lock) — no floating, no digging, real weight transfer for every pose. */
+  private motion = new AnatomicalMotion()
   private footLock = HIP_H
 
   /* ---- GROUND-CONTACT GAIT (legik): a real gait planner + 2-bone leg IK
@@ -391,18 +488,28 @@ export class Player {
   private hasPrevBlade = false
 
   constructor() {
-    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+    this.playAnimation(IDLE_CLIP, { blend: 0.05 })
   }
 
   reset(x: number): void {
+    this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeX=1;this.dashPower=false;this.dashPendingCharge=false;this.dashPendingJump=false;this.dashRecoverT=0;this.dashFinishT=0
+    this.dashBody=null;this.dashDisplacement=null;this.dashMotionActive=false;this.dashBoostFxFired=false;this.dashSink=0;this.dashSkim=0;this.dashLift=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
+    this.motion.reset()
     this.x = x
     this.y = 0
     this.vx = 0
     this.vy = 0
+    this.physicsMetrics.momentumX=0;this.physicsMetrics.momentumY=0;this.physicsMetrics.energy=0
+    this.physicsMetrics.forceX=0;this.physicsMetrics.forceY=0;this.physicsMetrics.supportLoad=this.physicsMetrics.mass*SUPPORT_GRAVITY
     this.face = 1
     this.grounded = true
+    this.gait.reseed(x,1);this.gaitW=0;this.footLock=HIP_H
+    this.contextMotion.reset()
+    this.sprintExposure.reset()
+    this.contextClip='';this.landingRecoveryT=0;this.landingImpact=0;this.landingLoad=landingLoad(0);this.landSpring=0;this.landSpringDecay=5;this.parryBraceT=0;this.stopEntrySpeed=0
     this.hp = this.maxHp
     this.energy = this.maxEnergy
+    this.stamina = this.maxStamina;this.staminaRegenDelay=0
     this.meter = 0
     this.state = 'move'
     this.action = null
@@ -426,8 +533,7 @@ export class Player {
     this.loco = 'idle'
     this.locoT = 0
     this.sprintLatch = false
-    this.lastTapDir = 0
-    this.lastTapT = -10
+    this.sprintDriveT=0
     // NOTE: stampR/stampL deliberately NOT reset — re-syncing against the
     // input's live press-stamps on the next frame avoids a phantom press
     this.enemyNearW = 0
@@ -449,17 +555,18 @@ export class Player {
     this.dashHandoff = false
     this.dashT = 0
     this.dashDur = DASH_VARIANTS.launch.dur
-    this.dashSpd = DASH_SPEED
     this.dashConsec = 0
     this.dashChainT = 0
-    this.dashRecharge = 0
     this.dashCd = 0
     this.retreatLockT = 0
-    this.swordDrawn = true
+    this.swordDrawn = false
     this.sheathAct = null
+    this.carryRelaxW=0
     this.peaceT = 0
     this.sheathW = 0
-    this.animator.play(IDLE_CLIP, { blend: 0.05 })
+    this.standstillT = 0
+    this.isFlourishActive = false
+    this.playAnimation(IDLE_CLIP, { blend: 0.05 })
   }
 
   setSword(id: SwordId): void {
@@ -471,7 +578,7 @@ export class Player {
   }
 
   get busy(): boolean {
-    return this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
+    return this.state === 'dashCharge' || this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
   }
 
   get chargeRatio(): number {
@@ -490,10 +597,13 @@ export class Player {
     return this.deadT
   }
 
+  get dashChargeProgress():number {return this.state==='dashCharge'?clamp01(this.dashChargeT/POWER_DASH_CHARGE):0}
+  get staminaCooldown():number {return this.staminaRegenDelay}
+
   get hipY(): number {
     // footLock (damped) IS the hip height: planted-foot-derived → weight.
     // (geom already contains pose rootY, so no double count.)
-    return this.y - this.footLock
+    return this.y - this.footLock - this.dashLift
   }
 
   /* ------------------------------------------------------------------ */
@@ -501,16 +611,53 @@ export class Player {
   /* ------------------------------------------------------------------ */
 
   update(dt: number, w: WorldRef): void {
+    const incomingVx=this.vx,incomingVy=this.vy
+    this.dashDisplacement=null
+    // Quadratic air resistance acts on the real velocity outside the dash
+    // motor too. Ground movement can still actively replace the lost speed.
+    if(this.state!=='dash'&&!this.dashMotionActive){
+      const lean=this.grounded&&this.loco==='sprint'&&this.vx*this.face>0?.35:0
+      this.vx=quadraticDragVelocity(this.vx,airDragCoefficient(lean),dt)
+    }
     this.iframes = Math.max(0, this.iframes - dt)
     this.armorT = Math.max(0, this.armorT - dt)
     this.flashT = Math.max(0, this.flashT - dt * 5)
     this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
     this.riposteT = Math.max(0, this.riposteT - dt)
     this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
+    const staminaWait=this.staminaRegenDelay
+    this.staminaRegenDelay=Math.max(0,staminaWait-dt)
+    if(this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dashCharge'&&this.state!=='dead'){
+      this.stamina=Math.min(this.maxStamina,this.stamina+DASH_STAMINA_REGEN*Math.max(0,dt-staminaWait))
+    }
+    // Do not save a failed dash press and unexpectedly fire it after regen.
+    if(w.input.pressed('dash')&&this.stamina<DASH_STAMINA_COST){
+      w.input.takeBuffered('dash');this.dashPendingCharge=false
+    }
+
+    // A held press during the short power recovery is remembered only while
+    // it remains held. Releasing or losing focus cancels it, never auto-fires.
+    if(w.input.pressed('dash') && this.stamina>=DASH_STAMINA_COST && (this.dashRecoverT>0||this.dashFinishT>0||(this.dashPower&&this.dashMotionActive))){
+      this.dashPendingCharge=w.input.down('dash')
+      w.input.takeBuffered('dash')
+    }
+    if(!w.input.down('dash')||this.state==='hurt'||this.state==='dead'||this.state==='scripted')this.dashPendingCharge=false
+    if(this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)&&w.input.pressed('jump')){
+      this.dashPendingJump=true;w.input.takeBuffered('jump')
+    }
+    if(this.state!=='move')this.dashPendingJump=false
+    if(this.dashPendingJump&&this.dashRecoverT<=0&&this.dashFinishT<=0&&!this.dashMotionActive&&this.state==='move'&&this.grounded){
+      this.dashPendingJump=false;this.dashPendingCharge=false;this.doJump(w)
+    }
+    if(this.dashPendingCharge&&this.dashRecoverT<=0&&this.dashFinishT<=0&&!this.dashMotionActive&&this.state==='move'&&this.grounded){
+      this.dashPendingCharge=false
+      this.requestDash(w,w.input.axisX(),w.input.axisY())
+    }
 
     // context-system clocks
     this.now += dt
     this.locoT += dt
+    this.sprintDriveT=Math.max(0,this.sprintDriveT-dt)
     if (this.turnT > 0) this.turnT = Math.max(0, this.turnT - dt * 6) // ~0.17s pivot
     if (this.postAttackT > 0) this.postAttackT = Math.max(0, this.postAttackT - dt)
     // the sword-home ritual only lives in the move state — any external
@@ -519,8 +666,16 @@ export class Player {
 
     switch (this.state) {
       case 'move': this.updateMove(dt, w); break
-      case 'attack': this.updateAttack(dt, w); break
+      case 'attack':
+        if ((w.input.pressed('dash') || w.input.buffered('dash')) && this.canDash()) {
+          this.requestDash(w,w.input.axisX(),w.input.axisY())
+        } else {
+          if(this.dashMotionActive)this.advanceDashMotor(dt,w)
+          this.updateAttack(dt, w)
+        }
+        break
       case 'dash': this.updateDash(dt, w); break
+      case 'dashCharge': this.updatePowerDashCharge(dt,w); break
       case 'parry': this.updateParry(dt, w); break
       case 'charge': this.updateCharge(dt, w); break
       case 'hurt': this.updateHurt(dt, w); break
@@ -528,8 +683,23 @@ export class Player {
       case 'scripted': this.updateScripted(dt); break
     }
 
+    // A jump pressed on the exact landing frame is queued as well.
+    if(this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)&&w.input.pressed('jump')){
+      this.dashPendingJump=true;w.input.takeBuffered('jump')
+    }
+
+    // A dash activated from movement participates in THIS physics step too.
+    if(this.state==='dash'&&!this.dashDisplacement)this.updateDash(dt,w)
+    // The charged burst has a real, short momentum-absorption tradeoff.
+    // It never locks sword inputs and it cannot reverse velocity.
+    if((this.dashRecoverT>0||this.dashFinishT>0) && this.grounded && !this.dashMotionActive){
+      const progress=this.dashRecoverT>0?POWER_DASH_RECOVERY-this.dashRecoverT:DASH_FINISH_RISE-this.dashFinishT
+      const u=clamp01(progress/.08),blend=u*u*(3-2*u)
+      const brake=1400+((this.dashRecoverT>0?3000:3600)-1400)*blend
+      this.vx=brakeVelocity(this.vx,tractionAcceleration(brake),dt)
+    }
     // physics integration (shared)
-    if (this.state !== 'dash') {
+    if (this.state !== 'dash' && !this.dashDisplacement) {
       let g: number
       if (this.state === 'attack' && this.action && this.action.def.float) {
         // authored air-combo float overrides the shaping (juggle windows)
@@ -544,8 +714,9 @@ export class Player {
       this.vy += g * dt
       if (this.vy > TERMINAL_VY) this.vy = TERMINAL_VY
     }
-    this.x += this.vx * dt
-    this.y += this.vy * dt
+    const dashTravel=this.dashDisplacement as {x:number;y:number}|null
+    this.x += dashTravel?.x ?? this.vx * dt
+    this.y += dashTravel?.y ?? this.vy * dt
 
     // ground
     const wasAir = !this.grounded
@@ -569,30 +740,40 @@ export class Player {
     if (this.x < w.arenaMinX + 20) {
       this.x = w.arenaMinX + 20
       if (this.vx < -200) w.fx.dust(this.x - 12, 0, 5)
-      this.vx = Math.max(0, this.vx)
+      if(this.vx<0)this.absorbDashWall()
+      this.vx = contactVelocity(this.vx,1)
     }
     if (this.x > w.arenaMaxX - 20) {
       this.x = w.arenaMaxX - 20
       if (this.vx > 200) w.fx.dust(this.x + 12, 0, 5)
-      this.vx = Math.min(0, this.vx)
+      if(this.vx>0)this.absorbDashWall()
+      this.vx = contactVelocity(this.vx,-1)
     }
 
+    const m=this.physicsMetrics
+    m.momentumX=m.mass*this.vx;m.momentumY=m.mass*this.vy
+    m.energy=.5*m.mass*(this.vx*this.vx+this.vy*this.vy)
+    m.forceX=m.mass*(this.vx-incomingVx)/Math.max(dt,1e-8)
+    m.forceY=m.mass*(this.vy-incomingVy)/Math.max(dt,1e-8)
+    m.supportLoad=this.grounded?m.mass*SUPPORT_GRAVITY:0
+    this.landingRecoveryT=Math.max(0,this.landingRecoveryT-dt)
     this.dashCd = Math.max(0, this.dashCd - dt)
-    this.dashRecharge = Math.max(0, this.dashRecharge - dt)
+    this.dashRecoverT = Math.max(0, this.dashRecoverT - dt)
+    this.dashFinishT = Math.max(0, this.dashFinishT - dt)
     this.retreatLockT = Math.max(0, this.retreatLockT - dt)
-    if (this.dashRecharge <= 0) {
-      // chain bookkeeping: the counter survives for the chain window after
-      // the LAST dash — reset only when the window closes (or the recharge
-      // punishment completes), never unconditionally every frame
-      this.dashChainT = Math.max(0, this.dashChainT - dt)
-      if (this.dashChainT <= 0) this.dashConsec = 0
-    }
+    this.dashChainT = Math.max(0, this.dashChainT - dt)
+    if (this.dashChainT <= 0) this.dashConsec = 0
 
     // ability script
     if (this.ability) this.updateAbility(dt, w)
 
     // animation + solve
-    this.animator.update(dt)
+    this.updateGait(dt, w)
+    const gaitClip = this.animator.getClip()?.name
+    const syncGait = this.state === 'move' && this.grounded && !this.braking
+      && !this.sheathAct && ['walk','run','sprint','sprintDrive','combatStep','backpedal'].includes(gaitClip ?? '')
+    this.animator.update(dt, syncGait ? this.gait.phase : undefined,
+      this.dashDisplacement&&this.dashBody&&this.animator.getClip()?.name===(this.dashPower?POWER_DASH_CLIP:this.dashCfg.clip).name?(this.dashPower?this.dashBody.progress*POWER_DASH_CLIP.dur:this.dashBody.poseProgress*this.dashCfg.clip.dur):undefined)
     // Base layer: the clip FULLY owns the pose each frame (write, never
     // accumulate). applyProcedural() is a bounded additive layer on top.
     // Without this copy, procedural += deltas integrate unbounded → spine
@@ -600,6 +781,108 @@ export class Player {
     // Godot AnimationTree → Skeleton2D.)
     this.pose.set(this.animator.pose)
     this.applyProcedural(dt)
+    if(this.state==='dash'&&this.dashBody){
+      const b=this.dashBody
+      const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
+      this.pose[CH.rootRot]+=forcePitch
+      this.pose[CH.head]-=forcePitch
+      if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
+      this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
+    }
+    const motionClip=this.animator.getClip()
+    if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
+    const motionPhase=motionClip&&motionClip.dur>0
+      ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
+    Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
+      speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
+      threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
+      grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
+      landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
+      attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
+    this.contextMotion.apply(this.pose,this.motionContext,dt)
+    this.animationVariation=this.contextMotion.variation
+    this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
+    // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
+    // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
+    this.animator.applyPreparedTransition(this.pose,dt)
+    const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
+      &&/^sprint/.test(motionClip?.name??'')
+    if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
+    this.sprintExposure.apply(this.pose,
+      this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
+      motionPhase,dt,sprintActing)
+    if(this.sprintExposure.active){
+      this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
+      this.motion.adoptDisplayArms(this.pose)
+    }
+    // Final low-drive acting lives after entry smoothing, but its own
+    // quintic envelope starts/ends at zero with zero velocity/acceleration.
+    // Never tip a backward guard or an aerial dodge onto the floor.
+    this.dashSink=0;this.dashSkim=0;this.dashLift=0
+    if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
+      const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
+      const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
+      const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
+      // Normal dash remains upright throughout; its own footwork, not a
+      // scaled copy of the power lean, supplies the sense of speed.
+      p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
+      this.dashDisplayPitch=p[CH.rootRot]
+      p[CH.spine]+=(.02-p[CH.spine])*a.weight
+      p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
+      const brace=a.compression*a.weight,reach=a.rearReach*a.weight
+      const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
+      const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
+      p[CH.rootX]+=1.5*brace
+      p[rear]-=.16*reach;p[lead]+=.08*reach
+      p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
+      if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
+      dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
+      this.dashSink=a.drop*a.weight
+    }
+    // A charged release uses its own authored performance; dash strikes keep
+    // their attack arms, while the grounded body follows the same power arc.
+    if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
+      const a=powerDashAct(this.dashBody.progress),p=this.pose
+      const pitch=.35+1.0*a.drive-.31*a.catch
+      p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
+      this.dashDisplayPitch=p[CH.rootRot]
+      p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
+      // The moving guard remains separate from the dash-attack arm layer.
+      if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
+      dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
+      this.dashSink=a.drop
+      this.dashLift=powerDashLift(this.dashBody.age)
+      // Both soles follow the low ballistic body arc before returning to the
+      // close-to-ground skim and then the planted braking catch.
+      this.dashSkim=7*a.drive+this.dashLift
+    }
+    // Charge/stabilization are planted body-language beats, not flight.
+    if(this.grounded&&this.state==='dashCharge'){
+      const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
+      p[CH.rootRot]+=(.18-p[CH.rootRot])*q
+      p[CH.head]+=(-.16-p[CH.head])*q
+      p[CH.rootY]+=3*q
+      p[CH.hipL]-=.18*q;p[CH.hipR]+=.12*q
+      p[CH.kneeL]-=.25*q;p[CH.kneeR]-=.25*q
+      // Small opposing knee and pelvis tremor; IK keeps the soles grounded.
+      const tremor=Math.sin(this.now*55)*q
+      p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
+      this.dashSink=Math.max(this.dashSink,.55*q)
+    } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
+      const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
+      const q=powerDashRecovery(progress),p=this.pose
+      // A bounded, damped joint response absorbs impact before standing.
+      const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
+      p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
+      p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
+      // Upper body settles just after the legs, rather than every joint
+      // snapping to idle on the same frame. Sword attacks still own their arms.
+      const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
+      dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
+      p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
+      p[CH.rootY]+=1.5*Math.max(0,wobble)
+      this.dashSink=q
+    }
     this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
     // procedural layers (bounded, frame-local — never accumulate):
     // SWORD-LED ARC first: it rewrites the arm channels, so the blade
@@ -611,7 +894,7 @@ export class Player {
       shoulderZ: this.geom.shoulderR.z,
       handX: this.geom.handR.x, handY: this.geom.handR.y,
       handZ: this.geom.handR.z,
-      def: this.state === 'attack' ? this.action?.def ?? null : null,
+      def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
       animT: this.action ? this.action.animT : 0,
       enemies: w.enemies,
       face: this.face,
@@ -625,23 +908,65 @@ export class Player {
     // layers, crossfades and every IK all pass through the same human ROM
     // gate — elbows never cross their flexion side, knees never fold
     // forward, shoulders stay in the glenohumeral envelope.
-    applyJointLimits(this.pose)
+    applyJointLimits(this.pose,(this.state==='dash'||(this.state==='attack'&&this.dashPower&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.dashDx*this.face>.5?1.58:1.1)
     // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
     solveFighter3D(
       this.pose, PLAYER_SPEC, this.geom,
       PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
       this.swingScale,
     )
-    this.updateGait(dt, w)             // ground-contact foot planner (legik)
+    this.applyDrawContact()
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
+    this.animator.captureDisplayPose(this.pose,dt)
     this.updateBladeWorld()
     this.updateSwingScale(dt)
+    this.updateScarf(dt, w.time)
+  }
+
+  private drawSocket(){
+    const act=this.sheathAct,seconds=act?.mode==='draw'?act.dur-act.t:0
+    const d=drawDetail(seconds),ang=.24+(this.pose[CH.rootRot]+this.pose[CH.spine]*.35)*.6+.30*d.extraction*(1-d.turn)
+    return{...d,ang,x:this.geom.hip.x+3-Math.cos(ang)*d.retract,
+      y:this.geom.hip.y+1+Math.sin(ang)*d.retract-d.lift}
+  }
+
+  /** Final projected hand contact, after smoothing. Small bounded Jacobian
+   * solves preserve arm lengths; no hand teleport or stretched bone. */
+  private applyDrawContact():void{
+    if(this.sheathAct?.mode!=='draw')return
+    const socket=this.drawSocket(),p=this.pose
+    const length=PLAYER_SPEC.blade*this.sword.stats.range*1.06
+    const resolve=()=>solveFighter3D(p,PLAYER_SPEC,this.geom,length,this.swingScale)
+    for(const side of ['R','L'] as const){
+      const sh=side==='R'?CH.shR:CH.shL,el=side==='R'?CH.elR:CH.elL
+      const pull=side==='R'?length*socket.extraction:0
+      const tx=socket.x+Math.cos(socket.ang)*pull,ty=socket.y-Math.sin(socket.ang)*pull
+      const weight=socket.contact
+      const hand=()=>side==='R'?this.geom.handR:this.geom.handL
+      const initialSh=p[sh],initialEl=p[el]
+      for(let i=0;i<6;i++){
+        resolve();const x=hand().x,y=hand().y,ex=tx-x,ey=ty-y
+        if(Math.hypot(ex,ey)<.15)break
+        p[sh]+=.001;resolve();const ax=(hand().x-x)/.001,ay=(hand().y-y)/.001;p[sh]-=.001
+        p[el]+=.001;resolve();const bx=(hand().x-x)/.001,by=(hand().y-y)/.001;p[el]-=.001
+        const det=ax*by-ay*bx;if(Math.abs(det)<.001)break
+        p[sh]+=clamp((ex*by-ey*bx)/det,-.24,.24)
+        p[el]+=clamp((ax*ey-ay*ex)/det,-.24,.24);applyJointLimits(p)
+      }
+      p[sh]=initialSh+(p[sh]-initialSh)*weight;p[el]=initialEl+(p[el]-initialEl)*weight
+    }
+    applyJointLimits(p);resolve()
   }
 
   private onLand(w: WorldRef): void {
-    w.audio.play('land', { volume: 0.5 })
-    w.fx.dust(this.x, 0, 7)
+    this.landingImpact=Math.max(0,this.vy)
+    this.landingLoad=landingLoad(this.landingImpact)
+    this.landSpring=this.landingLoad.compression
+    this.landSpringDecay=this.landSpring/this.landingLoad.absorptionTime
+    if(this.state==='move')this.landingRecoveryT=Math.abs(this.vx)>250?.08:this.landingImpact>700?.20:.12
+    w.audio.play('land', { volume: .25+.4*this.landingLoad.pressure })
+    w.fx.dust(this.x, 0, Math.round(4+6*this.landingLoad.pressure))
     // re-seed the gait anchors under the landing position — the squash
     // parks both feet flat through the absorb, then stepping resumes
     this.gait.reseed(this.x, this.face)
@@ -651,8 +976,8 @@ export class Player {
       a.impactDone = true
       this.slamAoe(w, a.def.slamImpact.r, a.def.slamImpact.dmg, a.def.slamImpact.launch)
     }
-    if (this.state === 'move' && this.lastGrounded === false) {
-      this.animator.play(LAND_CLIP, { blend: 0.06 })
+    if (this.state === 'move') {
+      this.playAnimation(LAND_CLIP, { blend: 0.06 })
     }
     this.airIndex = 0
   }
@@ -741,7 +1066,7 @@ export class Player {
     // retreating while a threat is engaged → guarded backpedal
     if (fwd < -60 && this.enemyNearW > 0.4) return 'backpedal'
     // explicit sprint outranks proximity awareness (player intent wins)
-    if (this.sprintLatch && speed > 300) return 'sprint'
+    if ((this.sprintLatch && speed > 300) || speed > 420) return 'sprint'
     // Condition B: combat shuffle while enemies are near (but full-speed
     // committed running still uses the run mechanics)
     if (this.enemyNearW > 0.55 && speed < 310 && ax !== 0) return 'combat'
@@ -767,7 +1092,7 @@ export class Player {
 
     // ---- SWORD HOME ritual: an active sheathe/draw owns the body (rooted,
     // planted — you do not walk while feeding steel home). Danger inputs
-    // interrupt instantly with the combat snap-draw. ----
+    // interrupt instantly, preserving the current equipment stance. ----
     if (this.sheathAct) {
       this.updateSheathAct(dt, w, ax, ay)
       return
@@ -778,7 +1103,7 @@ export class Player {
     // backpedal instead of a civilian turn-away. Full-speed escape or
     // open-space movement flips freely — EXCEPT inside the post-retreat
     // guard lock: a dash-back never converts into a fleeing turn.)
-    if (ax !== 0 && this.face !== (ax > 0 ? 1 : -1)) {
+    if (this.dashRecoverT<=0 && this.dashFinishT<=0 && ax !== 0 && this.face !== (ax > 0 ? 1 : -1)) {
       const engaged = this.enemyNearW > 0.55 && this.hasThreat
       const slow = Math.abs(this.vx) < 260 && !this.sprintLatch
       if (!(engaged && slow) && this.retreatLockT <= 0) {
@@ -791,45 +1116,38 @@ export class Player {
       }
     }
 
-    // ---- double-tap direction → sprint latch (DMC-style, event-driven) ----
-    // Press stamps come from the keydown EVENTS (input clock), so a rapid
-    // tap-release-tap registers even if the release window contained zero
-    // game frames (low fps / throttled rAF).
-    {
-      const sr = w.input.pressStamp('right')
-      const sl = w.input.pressStamp('left')
-      const newR = sr !== this.stampR && sr >= 0
-      const newL = sl !== this.stampL && sl >= 0
-      if (newR || newL) {
-        const stamp = newR ? sr : sl
-        const dir = newR ? 1 : -1
-        if (stamp - this.lastTapT < 0.3 && dir === this.lastTapDir) {
-          this.sprintLatch = true
-        }
-        this.lastTapDir = dir
-        this.lastTapT = stamp
-      }
-      this.stampR = sr
-      this.stampL = sl
+    // Sprint intent belongs to the event-level input recognizer. Release,
+    // opposing direction, blur and pause cannot leave a stale latch behind.
+    const heldSprint=(input.sprintDirection?.()??0)===Math.sign(ax)&&ax!==0
+    if(heldSprint&&!this.sprintLatch)this.sprintDriveT=.22 // first propulsive support beat
+    if(!heldSprint)this.sprintDriveT=0
+    this.sprintLatch=heldSprint
+
+    // Resolve dash from the incoming state BEFORE applying this frame's
+    // walking/braking forces. Otherwise reversal classification varies by Hz.
+    if(!input.pressed('sheathe')&&(input.pressed('dash')||input.buffered('dash'))&&this.canDash()){
+      this.requestDash(w,ax,ay)
+      return
     }
-    if (ax === 0) this.sprintLatch = false
 
     // ---- horizontal movement (sprint has its own accel curve + ceiling) ----
     const sprinting = this.sprintLatch && this.grounded && ax !== 0 && Math.sign(ax) === Math.sign(this.vx || ax)
     const vMax = sprinting ? SPRINT_MAX : MOVE_MAX
-    if (ax !== 0) {
+    if ((this.dashRecoverT>0||this.dashFinishT>0) && this.grounded) {
+      // Inertia owns the skid: direction input cannot steer until settled.
+    } else if (ax !== 0) {
       // input reversal at speed → BRAKE (skid decel + one-shot clip + dust)
-      const reversing = Math.sign(ax) !== Math.sign(this.vx) && Math.abs(this.vx) > 240
+      const reversing = this.grounded && Math.sign(ax) !== Math.sign(this.vx) && Math.abs(this.vx) > 240
       if (reversing && this.grounded && !this.braking) {
         this.braking = true
-        this.animator.play(BRAKE_CLIP, { blend: 0.04 })
+        this.stopEntrySpeed=Math.abs(this.vx)
+        this.playAnimation(BRAKE_CLIP, { blend: 0.04 })
         w.fx.dust(this.x - this.face * 10, 0, 7)
         w.audio.play('land', { volume: 0.35 })
       }
       if (reversing || this.braking) {
         // hard skid deceleration toward zero before re-accelerating
-        const d = BRAKE_DECEL * dt
-        this.vx = Math.abs(this.vx) <= d ? 0 : this.vx - Math.sign(this.vx) * d
+        this.vx = brakeVelocity(this.vx,tractionAcceleration(BRAKE_DECEL),dt)
       } else {
         // analog target speed: axis magnitude maps to a target velocity —
         // partial input = partial speed (walk reachable; touch-friendly),
@@ -837,31 +1155,39 @@ export class Player {
         const targetV = ax * vMax
         const movingToward = Math.sign(this.vx) === Math.sign(targetV) || this.vx === 0
         if (!movingToward || Math.abs(this.vx) < Math.abs(targetV)) {
-          const accel = sprinting ? SPRINT_ACCEL : this.grounded ? ACCEL : AIR_ACCEL
-          this.vx += ax * accel * dt
+          const accel = !this.grounded ? AIR_ACCEL : sprinting ? SPRINT_ACCEL : ACCEL
+          this.vx += (this.grounded?tractionAcceleration(ax*accel):ax*accel)*dt
           if (Math.sign(this.vx) === Math.sign(targetV) && Math.abs(this.vx) > Math.abs(targetV)) {
             this.vx = targetV
           }
         } else if (Math.sign(this.vx) === Math.sign(targetV) && Math.abs(this.vx) > Math.abs(targetV)) {
           // ease down toward the lower analog target (stick pushed softer)
-          const f = FRICTION * dt
-          const dv = Math.min(f, Math.abs(this.vx) - Math.abs(targetV))
-          this.vx -= Math.sign(this.vx) * dv
+          // Overspeed is momentum, not invalid input. Dissipate it rather
+          // than snapping dash exits / airborne travel to the run ceiling.
+          const desired=targetV+(this.vx-targetV)*Math.exp(-(this.grounded?6:.55)*dt)
+          // At extreme carry speeds, traction bounds braking rather than
+          // allowing exponential target seeking to demand infinite force.
+          this.vx+=this.grounded?tractionAcceleration((desired-this.vx)/Math.max(dt,1e-8))*dt:desired-this.vx
         }
       }
-      this.vx = clamp(this.vx, -vMax, vMax)
     } else if (this.grounded) {
-      const f = FRICTION * dt
-      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+      if(!this.braking && Math.abs(this.vx)>35 && !this.sheathAct){
+        this.braking=true
+        this.stopEntrySpeed=Math.abs(this.vx)
+        this.playAnimation(STOP_CLIP,{blend:.085})
+      }
+      this.vx = brakeVelocity(this.vx,tractionAcceleration(FRICTION),dt)
     } else {
-      this.vx = damp(this.vx, 0, 0.4, dt)
+      this.vx = dragVelocity(this.vx,.4,dt)
     }
 
     // ---- locomotion clip selection (context-aware, hysteresis) ----
     const speed = Math.abs(this.vx)
     if (this.grounded) {
-      if (this.braking) {
-        if (this.animator.isDone() || speed < 90) this.braking = false
+      if(this.landingRecoveryT>0 && this.animator.getClip()?.name===LAND_CLIP.name){
+        // Preserve the impact/rolling landing instead of stomping it next frame.
+      } else if (this.braking) {
+        if (this.animator.isDone() || (ax !== 0 && speed < 90)) this.braking = false
       } else {
         this.setLoco(this.pickLoco(speed, ax))
         // GAIT-CADENCE SYNC: clip playback speed follows the legik planner's
@@ -869,28 +1195,61 @@ export class Player {
         // pump land on the SAME beat as the IK-planted feet — the stride
         // length itself derives from velocity, so planted feet never skate.
         const cad = Math.max(0.001, this.gait.cadence)
-        const cadSpeed = (dur: number) => clamp(cad * dur / 2, 0.5, 2.4)
+        const cadSpeed = (dur: number) => cad * dur
         switch (this.loco) {
           case 'walk':
-            this.animator.play(WALK_CLIP, { blend: 0.18, speed: cadSpeed(1.0) })
+            this.playAnimation(WALK_CLIP, { blend: 0.18, syncPhase: true, speed: cadSpeed(WALK_CLIP.dur) })
             break
           case 'run':
-            this.animator.play(RUN_CLIP, { blend: 0.12, speed: cadSpeed(0.5) })
+            this.playAnimation(RUN_CLIP, { blend: 0.12, syncPhase: true, speed: cadSpeed(RUN_CLIP.dur) })
             break
           case 'sprint':
-            this.animator.play(SPRINT_CLIP, { blend: 0.1, speed: cadSpeed(0.36) })
+            this.playAnimation(this.sprintDriveT>0||this.accelSm*this.face>500?SPRINT_DRIVE_CLIP:SPRINT_CLIP, { blend: 0.08, syncPhase: true, speed: cadSpeed(SPRINT_CLIP.dur) })
             break
           case 'combat':
-            this.animator.play(COMBAT_STEP_CLIP, { blend: 0.16, speed: cadSpeed(0.44) })
+            this.playAnimation(COMBAT_STEP_CLIP, { blend: 0.16, speed: cadSpeed(0.44) })
             break
           case 'combatIdle':
-            this.animator.play(COMBAT_IDLE_CLIP, { blend: 0.18 })
+            this.playAnimation(COMBAT_IDLE_CLIP, { blend: 0.18 })
             break
           case 'backpedal':
-            this.animator.play(BACKPEDAL_CLIP, { blend: 0.14, speed: cadSpeed(0.56) })
+            this.playAnimation(BACKPEDAL_CLIP, { blend: 0.14, speed: cadSpeed(0.56) })
             break
           default:
-            this.animator.play(IDLE_CLIP, { blend: 0.16 })
+            if (speed < 12 && Math.abs(ax) < 0.05 && !this.hasThreat) {
+              this.standstillT += dt
+              if (this.isFlourishActive) {
+                this.flourishT += dt
+                if (this.flourishT >= this.flourishDur || this.animator.isDone()) {
+                  this.isFlourishActive = false
+                  this.standstillT = 0
+                  this.playAnimation(IDLE_CLIP, { blend: 0.18 })
+                }
+              } else if (this.standstillT > 7.2 && !this.swordDrawn) {
+                const flourishes = [
+                  { clip: FLOURISH_TSUBA_POP_CLIP, dur: 0.95 },
+                  { clip: FLOURISH_HILT_SPIN_CLIP, dur: 1.1 },
+                  { clip: FLOURISH_SCARF_ADJUST_CLIP, dur: 1.3 },
+                  { clip: FLOURISH_STANCE_SETTLE_CLIP, dur: 1.0 },
+                ]
+                let idx = Math.floor(Math.random() * flourishes.length)
+                if (idx === this.lastFlourish) idx = (idx + 1) % flourishes.length
+                this.lastFlourish = idx
+                const fl = flourishes[idx]
+                this.isFlourishActive = true
+                this.flourishDur = fl.dur
+                this.flourishT = 0
+                this.playAnimation(fl.clip, { blend: 0.16 })
+              } else if (!this.isFlourishActive) {
+                this.playAnimation(IDLE_CLIP, { blend: 0.16 })
+              }
+            } else {
+              if (this.isFlourishActive) {
+                this.isFlourishActive = false
+              }
+              this.standstillT = 0
+              this.playAnimation(IDLE_CLIP, { blend: 0.16 })
+            }
         }
       }
     } else if (this.vy < -60) {
@@ -900,21 +1259,19 @@ export class Player {
       // flight (e.g. exiting an air dash or an attack float)
       const cn = this.animator.getClip()?.name
       if (cn !== 'jump' && cn !== 'jumpLeap' && cn !== 'airJump') {
-        this.animator.play(JUMP_CLIP, { blend: 0.06 })
+        this.playAnimation(JUMP_CLIP, { blend: 0.06 })
       }
     } else {
-      this.animator.play(FALL_CLIP, { blend: 0.12 })
+      this.playAnimation(FALL_CLIP, { blend: 0.12 })
     }
 
     // ---- actions ----
     if (this.tryCombatInputs(w, ax, ay)) return
 
-    // ---- AUTO-SHEATHE (the quiet beat): grounded, no threat, standing
-    // still with the blade out for 3.5s → the samurai-film ending. Any
-    // movement or threat resets the dwell. ----
-    if (this.swordDrawn && this.grounded && !this.hasThreat && Math.abs(this.vx) < 24) {
+    // Quiet-time bookkeeping; chosen equipment mode persists until Q.
+    if (this.swordDrawn && this.grounded && !this.hasThreat && Math.abs(this.vx) < 32) {
       this.peaceT += dt
-      if (this.peaceT > 3.5) this.startSheath(w)
+      // Equipment intent is explicit: only Q starts a sheath ritual.
     } else {
       this.peaceT = 0
     }
@@ -931,15 +1288,14 @@ export class Player {
       return true
     }
 
-    // dash (anytime, from move) — the steel snaps out with it
+    // Dash preserves the selected equipment stance.
     if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
-      if (!this.swordDrawn) this.snapDraw(w)
-      this.startDash(w, ax, ay)
+      this.requestDash(w, ax, ay)
       return true
     }
     // jump (grounded = jump 1, plus one air jump) — HANDS-ONLY: the steel
     // can stay home through the whole airborne family
-    if (input.pressed('jump') || input.buffered('jump', 0.18)) {
+    if (this.dashRecoverT<=0 && this.dashFinishT<=0 && (input.pressed('jump') || input.buffered('jump', 0.18))) {
       if (this.jumpsUsed < 2) {
         this.doJump(w)
         return false
@@ -947,15 +1303,13 @@ export class Player {
     }
     // parry
     if (input.pressed('parry')) {
-      if (!this.swordDrawn) this.snapDraw(w)
       this.enterParry(w)
       return true
     }
     // ability
     if (input.pressed('ability')) {
       if (this.energy >= this.sword.ability.cost) {
-        if (!this.swordDrawn) this.snapDraw(w)
-        this.startAbility(w)
+          this.startAbility(w)
         return true
       }
     }
@@ -963,20 +1317,17 @@ export class Player {
 
     // heavy: charge vs tap
     if (input.down('heavy') && this.grounded) {
-      if (!this.swordDrawn) this.snapDraw(w)
       this.enterCharge(w)
       return true
     }
     if (input.pressed('heavy') || input.buffered('heavy')) {
       input.takeBuffered('heavy')
-      if (!this.swordDrawn) this.snapDraw(w)
-      this.startAttack(this.pickHeavy(w), w)
+      this.startAttack(this.grounded?this.pickHeavy(w):ATTACKS.slam, w)
       return true
     }
     // light
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
-      if (!this.swordDrawn) this.snapDraw(w)
       // DASH MOMENTUM STRIKE: attacking while the last dash's momentum
       // still carries the body converts into the through-cut — the
       // dash-strike feel (Hades). Without this, the 150ms in-dash input
@@ -1005,7 +1356,7 @@ export class Player {
     this.sheathAct = { t: SHEATHE_CLIP.dur, dur: SHEATHE_CLIP.dur, mode: 'sheathe' }
     this.peaceT = 0
     this.vx *= 0.3
-    this.animator.play(SHEATHE_CLIP, { blend: 0.09 })
+    this.playAnimation(SHEATHE_CLIP, { blend: 0.09 })
     w.audio.play('swordSwitch', { volume: 0.3, pitch: 0.7 })
   }
 
@@ -1013,17 +1364,7 @@ export class Player {
   private startDraw(w: WorldRef): void {
     if (this.sheathAct || this.swordDrawn) return
     this.sheathAct = { t: DRAW_CLIP.dur, dur: DRAW_CLIP.dur, mode: 'draw' }
-    this.animator.play(DRAW_CLIP, { blend: 0.06 })
-  }
-
-  /** instant combat draw: the ritual is abandoned, steel out NOW — every
-   * combat input while sheathed routes through here (iai snap-draw). */
-  private snapDraw(w: WorldRef): void {
-    this.sheathAct = null
-    if (!this.swordDrawn) {
-      this.swordDrawn = true
-      this.drawBurst(w)
-    }
+    this.playAnimation(DRAW_CLIP, { blend: 0.06 })
   }
 
   /** the iai draw flash — ONE clean light event along the draw line (the
@@ -1049,6 +1390,9 @@ export class Player {
       const f = FRICTION * dt
       this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
     }
+    if(act.mode==='draw'&&before>act.dur-DRAW_GRIP&&act.t<=act.dur-DRAW_GRIP){
+      w.audio.play('swordSwitch',{volume:.16,pitch:1.12}) // grip/collar release, before steel sound
+    }
     // ---- the steel crossing the saya mouth (visual gate events) ----
     if (act.mode === 'sheathe') {
       // the slide home begins at ~0.42 into the clip (the MEET beat)
@@ -1057,22 +1401,22 @@ export class Player {
         w.audio.play('swordSwitch', { volume: 0.4, pitch: 0.85 })
       }
     } else {
-      // the steel rips out at the explosion beat (~0.12 in)
-      if (before > act.dur - 0.12 && act.t <= act.dur - 0.12) {
+      // the tip clears after progressive extraction (not a visibility pop)
+      if (before > act.dur - DRAW_CLEAR && act.t <= act.dur - DRAW_CLEAR) {
         this.swordDrawn = true
         this.drawBurst(w)
       }
     }
-    // ---- danger interrupts: the steel snaps out, the ritual dies ----
+    // ---- interrupts preserve whichever side of the steel gate was reached ----
     if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
-      this.snapDraw(w)
-      this.startDash(w, ax, ay)
+      this.sheathAct = null
+      this.requestDash(w, ax, ay)
       return
     }
     if (input.pressed('jump') || input.buffered('jump', 0.18)) {
       if (this.jumpsUsed < 2) {
         // jumping keeps the steel home — the airborne family is hands-only;
-        // any combat input snaps the blade back out on landing
+        // subsequent combat uses the current equipment stance
         this.sheathAct = null
         this.doJump(w)
         return
@@ -1080,18 +1424,18 @@ export class Player {
     }
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
-      this.snapDraw(w)
+      this.sheathAct = null
       this.startAttack(ATTACKS.l1, w) // the iai draw-cut
       return
     }
     if (input.pressed('heavy') || input.buffered('heavy')) {
       input.takeBuffered('heavy')
-      this.snapDraw(w)
+      this.sheathAct = null
       this.startAttack(this.pickHeavy(w), w)
       return
     }
     if (input.pressed('parry')) {
-      this.snapDraw(w)
+      this.sheathAct = null
       this.enterParry(w)
       return
     }
@@ -1118,17 +1462,17 @@ export class Player {
       // carry-over speed), a standstill gets the vertical hands-only jump.
       const speed = Math.abs(this.vx)
       if (wasGrounded && speed > 300) {
-        this.vx = Math.sign(this.vx) * Math.min(speed * 1.12, 560)
-        this.animator.play(JUMP_LEAP_CLIP, { blend: 0.05 })
+        this.vx = Math.sign(this.vx) * Math.max(speed, Math.min(speed * 1.12, 560))
+        this.playAnimation(JUMP_LEAP_CLIP, { blend: 0.05 })
       } else {
-        this.animator.play(JUMP_CLIP, { blend: 0.05 })
+        this.playAnimation(JUMP_CLIP, { blend: 0.05 })
       }
       w.audio.play('jump', { volume: 0.4 })
       w.fx.dust(this.x, 0, 4)
     } else {
       // AIR JUMP — the mid-air redirect. Clean read: ONE small vertical
       // light streak under the boots (no particle puff cloud).
-      this.animator.play(AIR_JUMP_CLIP, { blend: 0.05 })
+      this.playAnimation(AIR_JUMP_CLIP, { blend: 0.05 })
       w.fx.motionLine(this.x, this.y - 12, 0, -1, 48, 0.2, '#dff3ff')
       w.audio.play('jump', { volume: 0.3, pitch: 1.18 })
     }
@@ -1137,11 +1481,11 @@ export class Player {
   /* ------------------------------------------------------------------ */
   /* dash — the CONDITIONED ACTIVATION SYSTEM                            */
   /* (variant resolution + tuning live in combat/dash.ts; clips.ts       */
-  /*  authors the nine reference silhouettes)                            */
+  /*  authors the ten conditioned silhouettes)                            */
   /* ------------------------------------------------------------------ */
 
   private canDash(): boolean {
-    if (this.dashCd > 0 || this.dashRecharge > 0) return false
+    if (this.stamina < DASH_STAMINA_COST || this.dashCd > 0 || this.dashRecoverT > 0 || this.dashFinishT > 0 || (this.dashPower && this.dashMotionActive)) return false
     if (!this.grounded && this.airDashUsed) return false
     return true
   }
@@ -1151,13 +1495,15 @@ export class Player {
    * geometry (nearest live enemy AHEAD of the dash vector: pocket <170 /
    * hunt band 240–640), surrounded flag, chain count — and hand it to the
    * pure evaluator (combat/dash.ts). Different conditions activate
-   * genuinely different animations of the same movement. */
+   * genuinely different animations of the same movement (including inertia reversal). */
   private pickDashVariant(w: WorldRef, dx: number, dy: number): DashVariant {
     const dirX = Math.sign(dx || this.face)
-    let aheadD = Infinity
+    let aheadD = Infinity,behindD=Infinity
     for (const e of w.enemies) {
       if (e.dead || e.spawning) continue
+      if(Math.abs(e.y-this.y)>150)continue
       const d = Math.abs(e.x - this.x)
+      if(Math.sign(e.x-this.x)!==dirX)behindD=Math.min(behindD,d)
       if (Math.sign(e.x - this.x) === dirX && d < aheadD) aheadD = d
     }
     const hasAhead = aheadD !== Infinity
@@ -1165,16 +1511,76 @@ export class Player {
       grounded: this.grounded,
       dx, dy, face: this.face,
       speed: Math.abs(this.vx),
+      forwardMomentum:this.vx*dx+this.vy*dy,
       pocketTarget: hasAhead && aheadD < 170,
       huntTarget: hasAhead && aheadD > 240 && aheadD < 640,
-      surrounded: this.surrounded,
+      surrounded: aheadD<220&&behindD<220,
+      rearTarget:behindD<220,
       enemyNearW: this.enemyNearW,
       chain: this.dashConsec,
     })
   }
 
-  startDash(w: WorldRef, ax: number, ay: number): void {
+  /** Grounded neutral/locomotion presses charge; early release is a normal
+   * dash. Air/vertical and active combat cancels remain immediate. */
+  private requestDash(w:WorldRef,ax:number,ay:number):void {
+    const input=w.input
+    if(this.state!=='move'||!this.grounded||Math.abs(ay)>.5){this.startDash(w,ax,ay);return}
+    if(!input.down('dash')){
+      // Only a real same-frame tap may fire; stale buffered releases and
+      // focus resets must never launch after the stabilization lockout.
+      input.takeBuffered('dash')
+      if(input.released('dash'))this.startDash(w,ax,ay)
+      return
+    }
+    input.takeBuffered('dash')
+    this.sheathAct=null;this.dropAction();this.charging=false
+    this.state='dashCharge';this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeFxT=0
+    this.dashChargeX=ax||this.face
+    this.playAnimation(STOP_CLIP,{blend:.07,speed:.5})
+  }
+
+  private updatePowerDashCharge(dt:number,w:WorldRef):void {
+    const input=w.input
+    if(!this.grounded){this.state='move';return}
+    this.vx=brakeVelocity(this.vx,tractionAcceleration(3200),dt)
+    const ax=input.axisX(),ay=input.axisY()
+    if(Math.abs(ax)>.2)this.dashChargeX=ax
+    // Charging is an intentional commitment, not an input lock on attacks.
+    if(input.pressed('light')||input.buffered('light')){
+      input.takeBuffered('light');this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
+    }
+    if(input.pressed('heavy')||input.buffered('heavy')){
+      input.takeBuffered('heavy');this.startAttack(this.pickHeavy(w),w);return
+    }
+    if(input.pressed('jump')||input.pressed('parry')||input.pressed('sheathe')){
+      this.state='move'
+      if(input.pressed('jump'))this.doJump(w)
+      else if(input.pressed('parry'))this.enterParry(w)
+      else if(this.swordDrawn)this.startSheath(w);else this.startDraw(w)
+      return
+    }
+    if(!input.down('dash')){
+      // Input reset/blur is cancellation, not an accidental power shot.
+      if(!input.released('dash')){this.state='move';return}
+      this.startDash(w,this.dashChargeX,0,this.dashChargeReady)
+      return
+    }
+    this.dashChargeT=Math.min(POWER_DASH_CHARGE,this.dashChargeT+dt)
+    this.dashChargeFxT-=dt
+    if(this.dashChargeT>.12&&this.dashChargeFxT<=0){
+      this.dashChargeFxT=.10;w.fx.dust(this.x-this.dashChargeX*12,-1,2)
+      w.cam.addTrauma(.022) // camera honors the user's shake setting
+    }
+    if(!this.dashChargeReady&&this.dashChargeT>=POWER_DASH_CHARGE){
+      this.dashChargeReady=true
+      if(this.stamina>=POWER_DASH_STAMINA_COST)w.audio.play('chargeReady',{volume:.32,pitch:1.15})
+    }
+  }
+
+  startDash(w: WorldRef, ax: number, ay: number, power=false): void {
     w.input.takeBuffered('dash')
+    if(this.stamina<DASH_STAMINA_COST){if(this.state==='dashCharge')this.state='move';return}
     this.peaceT = 0
     this.sheathAct = null
     let dx = ax
@@ -1187,16 +1593,21 @@ export class Player {
     // ---- conditioned variant + its tuned config ----
     const variant = this.pickDashVariant(w, dx, dy)
     this.dashVariant = variant
-    const cfg = DASH_VARIANTS[variant]
+    const powerDash=power&&this.stamina>=POWER_DASH_STAMINA_COST&&this.grounded&&Math.abs(dx)>.5&&Math.abs(dy)<.5
+    this.stamina=Math.max(0,this.stamina-(powerDash?POWER_DASH_STAMINA_COST:DASH_STAMINA_COST))
+    this.staminaRegenDelay=DASH_STAMINA_REGEN_DELAY
+    // Power uses its own motor timing even in a pocket/retreat context;
+    // a short standard-dash variant must not cut off the power performance.
+    const cfg=powerDash?{...DASH_VARIANTS[variant],dur:.27,driveDuration:.095,catchBrake:1400}:DASH_VARIANTS[variant]
     this.dashCfg = cfg
 
     // facing rules: forward-family/air dashes follow travel; retreats keep
     // the guard trained on the threat (the MGR dash-in / dash-out rhythm —
     // attack after a backdash lunges back toward the enemy)
-    const forwardFamily = variant === 'launch' || variant === 'chain'
+    const forwardFamily = variant === 'pivot' || variant === 'launch' || variant === 'chain'
       || variant === 'carry' || variant === 'hunt' || variant === 'pierce'
       || variant === 'air'
-    if (forwardFamily && dx !== 0) {
+    if ((forwardFamily||powerDash) && dx !== 0) {
       if (dx > 0 !== (this.face > 0)) {
         // carve the flip: the body unwinds through the 180° pivot
         this.turnT = 1
@@ -1212,58 +1623,123 @@ export class Player {
       if (this.nearestEnemy(w, 170)) iframes += 0.04
     }
 
+    this.dashPower=powerDash
+    this.dashDisplayPitch=this.pose[CH.rootRot]
     this.dashDx = dx
     this.dashDy = dy
     this.state = 'dash'
     this.dashDur = cfg.dur
     this.dashT = cfg.dur
     this.dashGhostIdx = 0
-    this.dashSpd = DASH_SPEED * cfg.spd
+    this.dashBurstFired = false
     this.dashCd = DASH_CD
     this.dashConsec++
     this.dashChainT = 0.45 // dashes within 0.45s link into a chain
-    if (this.dashConsec >= 2) this.dashRecharge = DASH_RECHARGE
     if (!this.grounded) this.airDashUsed = true
-    this.iframes = Math.max(this.iframes, iframes)
+    this.dashDodgeGranted=false
+    this.dashDodgeWindow=iframes
     this.dropAction()
     this.charging = false
     this.dashHandoff = false
-    this.vx = dx * this.dashSpd
-    this.vy = dy * this.dashSpd * (this.grounded && dy < -0.4 ? 0.55 : 1)
+    // Entry preserves incoming momentum. The motor must earn a reversal.
+    this.dashBody=new DashBody(cfg,this.vx,this.vy,dx,dy,this.grounded)
+    this.dashFinishT=0;this.dashMotionActive=true;this.dashBoostFxFired=false;this.dashSink=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
 
     // ---- clip + presentation per variant (entry blend is momentum-
     // matched: carry blends longer because the run already matches) ----
-    const colors = this.sword.colors
-    this.animator.play(cfg.clip, { blend: cfg.blend, speed: variant === 'chain' ? 1.12 : 1 })
+    const dashClip=this.dashPower?POWER_DASH_CLIP:cfg.clip
+    this.playAnimation(dashClip, { blend: cfg.blend, speed: dashClip.dur / (cfg.dur+(this.dashPower?.18:0)) })
 
-    w.audio.play('dash', { pitch: rand(cfg.pitch[0], cfg.pitch[1]) })
+    // Dash audio follows the real propulsion event, not button-down.
 
-    // ---- LAUNCH FX — THE CLEAN READ (replaces the old particle clutter):
-    // ONE HDR velocity line along the true travel vector + a ground shadow
-    // smear under the path. Shadow & light language, no confetti. The
-    // per-variant afterimages (shadow silhouettes, updateDash) do the rest.
-    {
-      const reach = cfg.dur * this.dashSpd
-      const long = variant === 'hunt' || variant === 'pierce'
-        ? 1.28 : variant === 'carry' || variant === 'chain' ? 1.12 : 1
-      const lineLen = Math.min(200, reach * 0.6) * long
-      w.fx.motionLine(
-        this.x + dx * 20, this.y - 46 + dy * 20,
-        dx, dy, lineLen, 0.26, colors.core,
-      )
-      if (this.grounded) {
-        w.fx.shadowSmear(this.x + dx * reach * 0.42, reach * 0.34, 0.4)
-      }
-    }
+    // Burst FX wait for real propulsion (updateDash). No pretend travel
+    // vector while an opposite-direction dash is still overcoming inertia.
 
     // lens strain + camera bite scale with aggression
     w.fx.chroma(cfg.chroma)
     w.cam.addTrauma(cfg.trauma)
   }
 
-  private updateDash(dt: number, w: WorldRef): void {
-    this.dashT -= dt
-    const k = 1 - this.dashT / this.dashDur
+  private absorbDashWall():void {
+    if(!this.dashMotionActive||!this.dashBody||this.dashBody.phase==='wall')return
+    this.dashBody.blockX()
+    if(this.dashPower)this.dashRecoverT=POWER_DASH_RECOVERY
+    else if(this.grounded&&this.dashDx*this.face>.5)this.dashFinishT=DASH_FINISH_RISE
+    // Ground reaction owns the recovery, not a dash pose running in place.
+    if(this.grounded&&this.state==='dash')this.playAnimation(STOP_CLIP,{blend:.035,speed:3})
+  }
+
+  private advanceDashMotor(dt: number, w: WorldRef): void {
+    const body=this.dashBody??new DashBody(this.dashCfg,this.vx,this.vy,this.dashDx,this.dashDy,this.grounded)
+    this.dashBody=body
+    const travel=body.step(dt,this.grounded,this.vx,this.vy,this.dashPower)
+    this.dashDisplacement=travel
+    this.vx=body.vx;this.vy=body.vy
+    if(travel.takeoff)this.grounded=false
+    this.dashDur=body.duration
+    this.dashT=body.phase==='wall'?0:Math.max(0,body.duration-body.age)
+    if(!this.dashDodgeGranted&&body.phase==='drive'){
+      this.iframes=Math.max(this.iframes,this.dashDodgeWindow)
+      this.dashDodgeGranted=true
+    }
+    // One propulsion accent, not a progress-timer puff. Reversals must
+    // actually travel toward intent before emitting the forward burst.
+    const speed=Math.hypot(this.vx,this.vy)
+    if(!this.dashBurstFired&&body.phase==='drive'&&speed>220
+      &&this.vx*this.dashDx+this.vy*this.dashDy>180){
+      this.dashBurstFired=true
+      w.audio.play('dash',{pitch:rand(this.dashCfg.pitch[0],this.dashCfg.pitch[1])})
+      const ux=this.vx/speed,uy=this.vy/speed,color=this.sword.colors.core
+      w.fx.motionLine(this.x-ux*28,this.y-38,ux,uy,Math.min(130,speed*.18),.11,color)
+      w.fx.motionLine(this.x-ux*42,this.y-23,ux,uy,Math.min(85,speed*.12),.09,color)
+      const escape=this.dashVariant==='carve',hunt=this.dashVariant==='hunt'
+      w.fx.speedStreaks(this.x-ux*20,this.y-20,-ux*speed*.35,escape?7:hunt?6:4,color)
+      // Propulsion-only accents: no fake flash while bracing a reversal.
+      w.fx.motionLine(this.x-ux*12,this.y-52,ux,uy,Math.min(170,speed*.21),.075,'#e6faff')
+      if(escape){
+        w.fx.motionLine(this.x,this.y-30,-uy,ux,65,.12,color)
+        w.fx.motionLine(this.x,this.y-30,uy,-ux,65,.12,color)
+      }
+      if(this.grounded){
+        w.fx.dust(this.x-ux*22,0,7)
+        w.fx.shadowSmear(this.x-ux*20,Math.min(85,speed*.11),.42)
+        if(this.dashPower){
+          w.fx.groundShatter(this.x-ux*20,Math.sign(ux),12)
+          w.fx.groundCrack(this.x-ux*20,0,55)
+          w.cam.addTrauma(.32)
+        }
+      }
+      w.cam.addTrauma(this.dashCfg.trauma*.55)
+      w.fx.chroma(this.dashCfg.chroma)
+    }
+    // Accent the real second thrust once; never a full-screen strobe.
+    if(body.boosting&&this.vx*this.dashDx>180&&!this.dashBoostFxFired){
+      this.dashBoostFxFired=true
+      const dir=Math.sign(this.vx)||this.dashDx, color=this.sword.colors.core
+      w.audio.play('dash',{pitch:1.15,volume:.65})
+      w.fx.shockwave(this.x-dir*15,this.y-25,55,color,.22,3)
+      w.fx.speedStreaks(this.x-dir*20,this.y-25,-dir*Math.abs(this.vx)*.4,7,color)
+      w.fx.motionLine(this.x-dir*35,this.y-32,dir,0,150,.14,color)
+      w.fx.dust(this.x-dir*24,0,6)
+      w.fx.chroma(.45);w.cam.addTrauma(.14)
+    }
+    if(body.boosting && this.vx*this.dashDx>180 && this.dashWakeCount<3){
+      this.dashWakeTimer-=dt
+      if(this.dashWakeTimer<=0){
+        this.dashWakeTimer=.065;this.dashWakeCount++
+        const dir=Math.sign(this.vx)||this.dashDx,color=this.sword.colors.core
+        w.fx.dust(this.x-dir*24,0,4)
+        w.fx.shadowSmear(this.x-dir*20,Math.min(105,speed*.08),.24)
+        w.fx.speedStreaks(this.x-dir*28,this.y-22,-dir*speed*.28,3,color)
+        w.fx.motionLine(this.x-dir*38,this.y-18,dir,0,Math.min(120,speed*.09),.1,color)
+      }
+    }
+    if(body.boostEngaged&&!body.boosting&&!this.dashCatchFxFired&&this.grounded&&body.age>=body.duration*.7&&body.phase!=='wall'){
+      this.dashCatchFxFired=true
+      w.fx.dust(this.x+this.dashDx*12,0,5)
+      w.fx.shadowSmear(this.x,55,.22)
+    }
+    const k=body.progress
     // SHADOW-SILHOUETTE afterimages — the dark ghost trail with the backlit
     // rim. THREE beats only (research cap), fired as dash-progress fractions
     // [0.18, 0.5, 0.85]: spacing widens down the trail (acceleration read)
@@ -1272,20 +1748,31 @@ export class Player {
     while (this.dashGhostIdx < 3 && k >= DASH_GHOST_BEATS[this.dashGhostIdx]) {
       const gi = this.dashGhostIdx
       w.fx.shadowGhost(
-        this.pose, this.x, this.hipY, this.face, this.dashDx,
+        this.pose, this.x, this.hipY, this.face, Math.sign(this.vx)||this.dashDx,
         this.sword.colors.core, 0.3 - gi * 0.05, SCALE, DASH_GHOST_A0[gi],
       )
       this.dashGhostIdx++
     }
-    // velocity envelope (combat/dash.ts): entry burst → sustain plateau →
-    // quadratic tail bleed. Hunt/pierce HOLD full speed through the mid
-    // dash (the hunger); launch bleeds immediately into the exit handoff.
-    const sp = this.dashSpd * dashEnvelope(k, this.dashCfg.sustain)
-    this.vx = this.dashDx * sp
-    this.vy = this.dashDy * sp * (this.grounded ? (this.dashDy < 0 ? 0.4 : 1) : 1)
+    if(this.dashT<=0 || body.phase==='wall'){
+      if(this.dashPower&&this.dashMotionActive){
+        this.dashRecoverT=POWER_DASH_RECOVERY
+        if(this.grounded){w.fx.dust(this.x+this.dashDx*10,0,3);w.fx.shadowSmear(this.x,38,.16)}
+      }
+      if(!this.dashPower&&this.grounded&&body.phase!=='wall'&&this.dashDx*this.face>.5)this.dashFinishT=DASH_FINISH_RISE
+      this.dashMotionActive=false
+    }
+  }
 
-    // dash attack (kept: light = through-cut, heavy = piercing fang)
+  private updateDash(dt: number, w: WorldRef): void {
     const input = w.input
+    // A fresh press can reverse or redirect the dash without waiting for
+    // its animation to finish. A held press cannot auto-repeat.
+    if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
+      this.requestDash(w,input.axisX(),input.axisY())
+      return
+    }
+    this.advanceDashMotor(dt,w)
+    // Light and heavy begin immediately while the motor keeps driving.
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
       this.startAttack(ATTACKS.dashSlash, w)
@@ -1309,40 +1796,10 @@ export class Player {
       if (this.dashVariant === 'retreat' || this.dashVariant === 'carve' || this.dashVariant === 'vault') {
         this.retreatLockT = 0.45
       }
-      // ---- MOMENTUM EXIT (the smoothness law): never a dead stop ----
-      const ax = input.axisX()
-      const dirHeld = Math.sign(ax) === Math.sign(this.dashDx) && Math.abs(ax) > 0.25
-      const retreat = this.dashVariant === 'retreat' || this.dashVariant === 'carve'
-      if (this.grounded) {
-        if (dirHeld && Math.abs(this.dashDx) > 0.35) {
-          // HANDOFF: dash speed decays into locomotion. The forward lunge
-          // hands off sprint-worthy speed (the player FEELS carried, not
-          // braked); the retreat variants hand off at BACKPEDAL pace — a
-          // guarded retreat must never convert into a full-speed fleeing
-          // run with the guard dropped (the facing logic would flip the
-          // body away from the threat mid-retreat)
-          const cap = retreat ? 250 : SPRINT_MAX
-          const exitSp = Math.min(Math.abs(this.vx), cap)
-          this.vx = Math.sign(this.dashDx) * exitSp
-          this.dashHandoff = true
-        } else if (retreat) {
-          // retreat brake: a short hop cuts DEEP and settles through the
-          // clip's own guard tail — never the forward landing skid (the
-          // guarded retreat would visually pitch chest-first into a crouch)
-          this.vx *= 0.45
-        } else {
-          // forward brake: soften the cut, then the physical skid takes over
-          this.vx *= 0.72
-          if (Math.abs(this.vx) > 240) {
-            // dark skid streak (shadow language — not a dust puff cloud)
-            w.fx.shadowSmear(this.x - Math.sign(this.vx) * 20, 26, 0.4)
-            this.landSpring = 0.35
-            this.animator.play(LAND_CLIP, { blend: 0.05 })
-          }
-        }
-      } else {
-        this.vy *= 0.5
-      }
+      // Forces already supplied the catch. No exit multipliers, horizontal
+      // cap or vertical halving: locomotion friction and gravity take over.
+      this.dashHandoff=Math.abs(input.axisX())>.25&&Math.sign(input.axisX())===Math.sign(this.vx)
+
     }
   }
 
@@ -1390,22 +1847,29 @@ export class Player {
     this.action = null
   }
 
+  private playAnimation(clip:Clip,opts:PlayOpts={}):void{
+    this.animator.play(equipmentClip(clip,this.swordDrawn),opts)
+  }
+
   startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
     if (!def) return
     this.peaceT = 0
     this.sheathAct = null
-    // IN-BETWEEN LAW: capture the source state BEFORE switching — chained
-    // attacks crossfade slower (0.11s) than fresh entries (0.07s) so every
-    // transition between animation instances gets real in-betweens.
+    // Preserve current motion through the shared inertial transition.
+    // Empty-hand arm residuals clear before the damage window begins.
     const wasAttack = this.state === 'attack'
     // requirement checks
     if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
     if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
+    if(!this.swordDrawn)def=unarmedAttack(def)
 
     // face toward held direction at attack start
     const ax = w.input.axisX()
     if (ax !== 0 && !fromParry) {
       this.face = ax > 0 ? 1 : -1
+    } else if (!fromParry && def.kind === 'dash' && this.dashMotionActive && this.dashDx !== 0) {
+      // A through-cut follows its travel, not a closer enemy left behind.
+      this.face = this.dashDx > 0 ? 1 : -1
     } else if (!fromParry) {
       // SOFT AIM: no direction held → face the nearest threat. Every swing
       // commits toward a real target — the root of "aimed at different
@@ -1428,7 +1892,7 @@ export class Player {
     // cause of "charged never hits" — enemies struck mid-swing cancelled it)
     if (def.id === 'charged') this.armorT = 0.5
 
-    const trail = w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
+    const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
     this.hasPrevAng = false
     this.action = {
@@ -1437,6 +1901,7 @@ export class Player {
       hitMap: new Map(),
       trail,
       sfxDone: false,
+      driveRemaining:0,
       moveDone: false,
       moveYDone: false,
       impactDone: false,
@@ -1448,10 +1913,9 @@ export class Player {
     this.swordArc.begin() // sword-led arc: reset the engage capture
     this.state = 'attack'
     this.charging = false
-    // ANIME TIMING: attack bodies play "on twos" (24Hz stepped keys —
-    // crisp, keyframed combat beats à la GG Strive) while blade physics,
-    // smears, and trails run full-rate on the procedural layers.
-    this.animator.play(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: this.atkSpeed, stepRate: 24 })
+    // Authored startup/contact/recovery clocks remain independent of
+    // visual entry residuals; do not smear the fist past its contact beat.
+    this.playAnimation(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: def.strikeHand?1:this.atkSpeed,armBlendLimit:def.strikeHand?def.hit.start*.75:undefined })
     // slight ground friction during attacks
   }
 
@@ -1464,12 +1928,10 @@ export class Player {
     const def = a.def
     a.animT = this.animator.getTime()
     const animT = a.animT
-    const spd = this.atkSpeed
 
-    // ground friction / air drag during attack
-    if (this.grounded) {
-      const f = 900 * dt
-      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+    // A through-cut rides the live dash motor instead of braking it.
+    if (this.grounded && !this.dashMotionActive) {
+      this.vx = brakeVelocity(this.vx,900,dt)
     }
 
     // sfx event
@@ -1490,7 +1952,15 @@ export class Player {
     // forward impulse
     if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
       a.moveDone = true
-      this.vx = this.face * def.moveX * (def.kind === 'dash' ? 1 : 1)
+      if(def.groundDrive&&this.grounded)a.driveRemaining=def.groundDrive.duration
+      else if(!def.groundDrive && !(def.kind==='dash' && (this.dashMotionActive || this.vx*this.face>def.moveX)))this.vx=this.face*def.moveX
+    }
+    // Drive follows the authored ignition beat without erasing running carry.
+    // The finite budget belongs to this action and is discarded on cancel.
+    if(a.driveRemaining>0&&def.groundDrive&&def.moveX!==undefined){
+      const driveDt=Math.min(dt,a.driveRemaining)
+      if(this.grounded)this.vx=attackDriveVelocity(this.vx,this.face*def.moveX,def.groundDrive.acceleration,driveDt)
+      a.driveRemaining=Math.max(0,a.driveRemaining-dt)
     }
     // vertical impulse (launcher hop / slam plunge)
     if (!a.moveYDone && def.moveY !== undefined && animT >= (def.moveYAt ?? 0)) {
@@ -1506,7 +1976,7 @@ export class Player {
     const h = def.hit
     if (animT >= h.start && animT <= h.end) {
       this.swingGlow = 1
-      const info = makeRuntimeInfo(def, this.sword.stats.dmg)
+      const info = makeRuntimeInfo(def, def.strikeHand?1:this.sword.stats.dmg)
       // DASH THROUGH-CUT: the iai pass cuts everything the dash swept
       // through — the player crosses the target at 980px/s BEFORE the
       // attack anim even starts, so the blade-only segment points past
@@ -1517,14 +1987,14 @@ export class Player {
       // volume of the through-cut.
       let curSeg = this.blade
       let usePrev = this.hasPrevBlade
-      if (def.kind === 'dash') {
+      if (def.kind === 'dash' && !def.strikeHand) {
         curSeg = {
           bx: this.x - this.face * 124,
           by: this.y - 55,
           tx: this.x + this.face * 66,
           ty: this.y - 55,
         }
-        usePrev = false
+        usePrev = this.hasPrevBlade
       }
       for (const e of w.enemies) {
         // spawning enemies within blade reach (landing pods, y > -90) are
@@ -1535,15 +2005,15 @@ export class Player {
         if (!reArm) continue
         if (bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)) {
           a.hitMap.set(e.id, animT)
-          w.hitEnemy(e.id, this.blade, info)
-          this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
+          const result=w.hitEnemy(e.id, this.blade, info)
+          if(rewardsConfirmedHit(result))this.onLandedHit(w, {...info,dmg:result.actualDamage}, e.x, e.y - 48 * e.scale)
         }
       }
       // remember this frame's blade for the next sweep test
-      this.prevBlade.bx = this.blade.bx
-      this.prevBlade.by = this.blade.by
-      this.prevBlade.tx = this.blade.tx
-      this.prevBlade.ty = this.blade.ty
+      this.prevBlade.bx = curSeg.bx
+      this.prevBlade.by = curSeg.by
+      this.prevBlade.tx = curSeg.tx
+      this.prevBlade.ty = curSeg.ty
       this.hasPrevBlade = true
       // aoe shockwave at strike moment for heavy hits — the wave is REAL:
       // enemies inside the radius eat the strike (the charged/h3 promise:
@@ -1557,8 +2027,8 @@ export class Player {
           if (a.hitMap.has(e.id) && !h.multiHit) continue
           if (Math.abs(e.x - this.x) < h.aoe && e.y > -140) {
             a.hitMap.set(e.id, animT)
-            w.hitEnemy(e.id, this.blade, info)
-            this.onLandedHit(w, info, e.x, e.y - 48 * e.scale)
+            const result=w.hitEnemy(e.id, this.blade, info)
+            if(rewardsConfirmedHit(result))this.onLandedHit(w, {...info,dmg:result.actualDamage}, e.x, e.y - 48 * e.scale)
           }
         }
       }
@@ -1567,27 +2037,22 @@ export class Player {
     // OVERSHOOT (follow-through law): as the active window closes, inject a
     // 2-frame rotational impulse — the tip pushes PAST the stop point and
     // the wrist spring elastic-snaps it back. Stopping dead reads weightless.
-    if (!a.overshootDone && animT > h.end && this.armVel !== 0) {
+    if (!def.strikeHand && !a.overshootDone && animT > h.end && this.armVel !== 0) {
       a.overshootDone = true
       this.bladeLagVel += Math.sign(this.armVel) * 2.4
     }
 
     // trail emission
-    if (animT >= def.trail.start && animT <= def.trail.end) {
+    if (!def.strikeHand && animT >= def.trail.start && animT <= def.trail.end) {
       w.fx.pushTrail(a.trail, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
     } else if (animT > def.trail.end && a.trail.emitting) {
       w.fx.endTrail(a.trail)
     }
 
-    // cancel window → allow chaining / dash-cancel / jump-cancel
+    // Normal combo / parry / jump windows; dash cancels are handled before this update.
     const dashCancel = animT >= h.end * 0.6
     if (animT >= def.cancel || dashCancel) {
       const input = w.input
-      if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
-        w.fx.endTrail(a.trail)
-        this.startDash(w, input.axisX(), input.axisY())
-        return
-      }
       if (input.pressed('parry')) {
         w.fx.endTrail(a.trail)
         this.enterParry(w)
@@ -1639,7 +2104,7 @@ export class Player {
     if (this.animator.isDone()) {
       w.fx.endTrail(a.trail, 0.18)
       this.postAttackT = 0.34
-      this.postArmVel = this.armVel
+      this.postArmVel = def.strikeHand?0:this.armVel
       this.action = null
       this.state = 'move'
     }
@@ -1654,6 +2119,7 @@ export class Player {
     if (info.hitstop >= 0.07 && this.impactFlashT <= 0) {
       this.impactFlashT = 0.085
     }
+    if(!this.swordDrawn)return
     // elemental on-hit flourishes
     const c = this.sword.colors
     const dir = Math.atan2(ey - this.y + 40, ex - this.x)
@@ -1707,6 +2173,7 @@ export class Player {
   /* ------------------------------------------------------------------ */
 
   private enterParry(w: WorldRef): void {
+    this.dashMotionActive=false
     w.input.takeBuffered('parry')
     this.state = 'parry'
     this.parryT = 0.3
@@ -1714,17 +2181,20 @@ export class Player {
     this.parryPerfect = true
     this.dropAction()
     this.charging = false
-    if (this.grounded) this.vx *= 0.2
-    this.animator.play(PARRY_CLIP, { blend: 0.06 })
+    // Defense opens immediately; finite support braking catches the body.
+    this.parryBraceT=.05
+    this.playAnimation(this.swordDrawn?PARRY_CLIP:UNARMED_PARRY, { blend: 0.06 })
     w.audio.play('parry', { volume: 0.4, pitch: 1.15 })
   }
 
   private updateParry(dt: number, w: WorldRef): void {
     this.parryT -= dt
     this.parryActive -= dt
+    const braceDt=Math.min(dt,this.parryBraceT)
+    this.parryBraceT=Math.max(0,this.parryBraceT-dt)
     if (this.grounded) {
-      const f = 1200 * dt
-      this.vx = Math.abs(this.vx) <= f ? 0 : this.vx - Math.sign(this.vx) * f
+      this.vx=brakeVelocity(this.vx,8000,braceDt)
+      this.vx=brakeVelocity(this.vx,1200,dt-braceDt)
     }
     if (this.parryT <= 0) {
       this.state = 'move'
@@ -1777,13 +2247,14 @@ export class Player {
   /* ------------------------------------------------------------------ */
 
   private enterCharge(w: WorldRef): void {
+    this.dashMotionActive=false
     this.state = 'charge'
     this.charging = true
     this.chargeT = 0
     this.chargeReady = false
     this.dropAction()
     if (this.grounded) this.vx = 0
-    this.animator.play(CHARGE_CLIP, { blend: 0.08 })
+    this.playAnimation(this.swordDrawn?CHARGE_CLIP:UNARMED_CHARGE, { blend: 0.08 })
     w.audio.play('charge', { volume: 0.5 })
   }
 
@@ -1800,7 +2271,7 @@ export class Player {
       w.fx.embers(this.blade.tx, this.blade.ty, 2, c.glow, 10)
       // THUNDER: tesla-crawl — micro-arcs snapping grip→monouchi along the
       // steel (~15Hz pair cadence — a crackling capacitor, not a laser show)
-      if (this.sword.id === 'thunder' && Math.random() < 0.55) {
+      if (this.swordDrawn && this.sword.id === 'thunder' && Math.random() < 0.55) {
         w.fx.lightningCrawl(this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty, c.trail)
       }
     }
@@ -1821,7 +2292,7 @@ export class Player {
     // dash cancels charge
     if ((input.pressed('dash') || input.buffered('dash')) && this.canDash()) {
       this.charging = false
-      this.startDash(w, input.axisX(), input.axisY())
+      this.requestDash(w, input.axisX(), input.axisY())
     }
   }
 
@@ -1854,6 +2325,7 @@ export class Player {
     this.hurtT = 0.34
     this.iframes = 0.75
     this.dropAction()
+    this.dashMotionActive=false
     this.charging = false
     this.ability = null
     this.state = 'hurt'
@@ -1861,7 +2333,7 @@ export class Player {
     if (!this.grounded) this.vy = -220
     else this.vy = heavy ? -320 : -140
     this.grounded = false
-    this.animator.play(HURT_CLIP, { blend: 0.05 })
+    this.playAnimation(HURT_CLIP, { blend: 0.05 })
     w.audio.play('hurt', { volume: 0.8, intensity: heavy ? 1 : 0.5 })
     w.fx.burst(this.x, this.y - 50, 10, '#ff3b57', 300, 0.5, 'spark')
     w.fx.screenFlash('#ff2a4a', 0.2, 4)
@@ -1896,6 +2368,7 @@ export class Player {
   /* ------------------------------------------------------------------ */
 
   enterScripted(): void {
+    this.dashMotionActive=false
     this.state = 'scripted'
     this.dropAction()
     this.charging = false
@@ -1904,7 +2377,7 @@ export class Player {
 
   exitScripted(): void {
     if (this.state === 'scripted') this.state = 'move'
-    this.animator.play(IDLE_CLIP, { blend: 0.1 })
+    this.playAnimation(IDLE_CLIP, { blend: 0.1 })
   }
 
   private updateScripted(_dt: number): void {
@@ -1912,14 +2385,31 @@ export class Player {
   }
 
   playClip(clip: Parameters<Animator['play']>[0], speed = 1): void {
-    this.animator.play(clip, { blend: 0.03, speed, restart: true })
+    const intent=Object.values(ATTACKS).find(a=>a.clip===clip)
+    if(!this.swordDrawn&&intent)clip=unarmedAttack(intent).clip
+    this.playAnimation(clip, { blend: 0.03, speed, restart: true })
   }
 
   /* ------------------------------------------------------------------ */
   /* abilities                                                            */
   /* ------------------------------------------------------------------ */
 
+  startUnarmedFinisher(w:WorldRef,ultimate=false):void{
+    if(this.swordDrawn)return
+    if(ultimate){if(this.meter<100)return;this.meter=0}
+    const base=unarmedAttack(!this.grounded?ATTACKS.a2:ultimate?ATTACKS.charged:ATTACKS.l5)
+    this.startAttack({...base,label:ultimate?'FOCUSED PALM':'GUARD BREAK',
+      hit:{...base.hit,dmg:ultimate?65:40,heavy:true,breakGuard:true,stagger:.6}},w)
+  }
+
   startAbility(w: WorldRef): void {
+    if(!this.swordDrawn){
+      if(this.energy<this.sword.ability.cost)return
+      this.energy-=this.sword.ability.cost
+      const base=unarmedAttack(this.grounded?ATTACKS.charged:ATTACKS.a2)
+      this.startAttack({...base,label:'FOCUSED PALM',hit:{...base.hit,dmg:30,heavy:true,breakGuard:true}},w)
+      return
+    }
     const cost = this.sword.ability.cost
     this.energy -= cost
     w.audio.play('energyFull', { volume: 0.4, pitch: 0.9 })
@@ -1945,7 +2435,7 @@ export class Player {
         w.fx.shockwave(this.x + this.face * 40, 0, 120, c.glow, 0.5, 7)
         w.fx.burst(this.x + this.face * 50, -20, 18, c.trail, 420, 0.6, 'ember')
         w.cam.addTrauma(0.35)
-        this.animator.play(ATTACKS.l5.clip, { blend: 0.04, speed: 1.15 })
+        this.playAnimation(ATTACKS.l5.clip, { blend: 0.04, speed: 1.15 })
         break
       }
       case 'thunder': {
@@ -1995,7 +2485,7 @@ export class Player {
               this.dealAbilityDamage(w, e, 34, 0.5, 100, -420)
             }
           }
-          this.animator.play(ATTACKS.charged.clip, { blend: 0.02, speed: 1.3 })
+          this.playAnimation(ATTACKS.charged.clip, { blend: 0.02, speed: 1.3 })
           w.addHitstop(0.1, 0.12)
           w.addSlowmo(0.3, 0.3)
           w.cam.addTrauma(0.5)
@@ -2018,7 +2508,7 @@ export class Player {
             this.ability.targets.push(e.id)
           }
         }
-        this.animator.play(ATTACKS.h3.clip, { blend: 0.04, speed: 1.2 })
+        this.playAnimation(ATTACKS.h3.clip, { blend: 0.04, speed: 1.2 })
         this.exitScriptedSoon = 0.75
         break
       }
@@ -2069,7 +2559,7 @@ export class Player {
             w.fx.impact(tgt.x, tgt.y - 40, ang, false, c.glow, c.accent)
             this.dealAbilityDamage(w, tgt, 16, 0.3, 140, -220)
             w.audio.play('swing', { pitch: rand(1.1, 1.3), volume: 0.7 })
-            this.animator.play(ATTACKS.dashSlash.clip, { blend: 0.02, speed: 1.4 })
+            this.playAnimation(ATTACKS.dashSlash.clip, { blend: 0.02, speed: 1.4 })
             w.cam.addTrauma(0.12)
             w.addHitstop(0.03)
           }
@@ -2096,7 +2586,7 @@ export class Player {
               this.dealAbilityDamage(w, e, 30, 0.5, 0, 0)
             }
           }
-          this.animator.play(ATTACKS.h2.clip, { blend: 0.03, speed: 1.25 })
+          this.playAnimation(ATTACKS.h2.clip, { blend: 0.03, speed: 1.25 })
         }
         if (ab.t >= 1.0) {
           this.ability = null
@@ -2169,8 +2659,8 @@ export class Player {
       hitstop: dmg > 20 ? 0.07 : 0.03, shake: dmg > 20 ? 0.25 : 0.1,
       aoe: 0, breakGuard: true, kind: 'ability',
     }
-    w.hitEnemy(e.id, { bx: e.x - 20, by: e.y - 40, tx: e.x + 20, ty: e.y - 40 }, info)
-    this.meter = Math.min(100, this.meter + dmg * 0.25)
+    const result=w.hitEnemy(e.id, { bx: e.x - 20, by: e.y - 40, tx: e.x + 20, ty: e.y - 40 }, info)
+    if(rewardsConfirmedHit(result))this.meter = Math.min(100, this.meter + result.actualDamage * 0.25)
   }
 
   /* ------------------------------------------------------------------ */
@@ -2186,14 +2676,15 @@ export class Player {
    * other state (attacks, dashes, air, hurt) parks the planner so the FK
    * clip legs apply, with only the plant-snap/clamp pass fixing contact. */
   private updateGait(dt: number, w: WorldRef): void {
-    const active = this.state === 'move' && this.grounded && !this.braking && !this.sheathAct
-    const tune = PLAYER_GAIT[this.loco] ?? PLAYER_GAIT.idle
+    const ritualSupport=!!this.sheathAct&&Math.abs(this.vx)<35
+    const active = this.state === 'move' && this.grounded && !this.braking && this.dashRecoverT<=0 && this.dashFinishT<=0 && (!this.sheathAct||ritualSupport)
+    const tune = ritualSupport?PLAYER_GAIT.idle:PLAYER_GAIT[this.loco] ?? PLAYER_GAIT.idle
     const speed = Math.abs(this.vx)
     // femoral midpoint in world space (geom solved this frame)
     const hipX = this.x + this.face * SCALE * this.geom.hip.x
     this.gait.update(hipX, this.vx, this.face, speed, tune, dt, active, Player.SOLE_W, this.grounded)
     // authority blend: in over ~90ms, out over ~180ms (hands off gently)
-    this.gaitW = damp(this.gaitW, active ? 1 : 0, active ? 18 : 8, dt)
+    this.gaitW = damp(this.gaitW, active ? 1 : 0, active ? 18 : (this.state === 'dash'||this.state === 'dashCharge'||this.dashMotionActive||this.dashRecoverT>0||this.dashFinishT>0) ? 60 : this.braking ? 15 : 8, dt)
     // footfall feedback: a whisper of dust at real heel strikes (run+ only)
     if (this.gait.footfall && speed > 230) {
       w.fx.dust(this.gait.footfallX, 0, 2)
@@ -2237,12 +2728,12 @@ export class Player {
       // bound saturates instead of collapsing to ankle height
       const dxMax = reach * 0.72
       let bound = -Infinity
-      const feet: { x: number; y: number; fx: number }[] = [
-        { x: this.gait.footL.x, y: this.gait.footL.y, fx: this.x + this.face * SCALE * g.hipPtL.x },
-        { x: this.gait.footR.x, y: this.gait.footR.y, fx: this.x + this.face * SCALE * g.hipPtR.x },
+      const feet: { x: number; y: number; fx: number; planted: boolean }[] = [
+        { x: this.gait.footL.x, y: this.gait.footL.y, fx: this.x + this.face * SCALE * g.hipPtL.x, planted: this.gait.footL.planted },
+        { x: this.gait.footR.x, y: this.gait.footR.y, fx: this.x + this.face * SCALE * g.hipPtR.x, planted: this.gait.footR.planted },
       ]
       for (const f of feet) {
-        if (f.y > -0.5) continue // swing foot target — not load-bearing
+        if (!f.planted) continue // A raised swing foot must NEVER set pelvis support height.
         const dx = clamp(Math.abs(f.x - f.fx), 0, dxMax)
         const vert = Math.sqrt(reach * reach - dx * dx)
         bound = Math.max(bound, f.y - vert)
@@ -2259,7 +2750,7 @@ export class Player {
       // against the y-down sign convention: a stand (−66.9) passes both
       // untouched; a collapse (−4.4) is floored to −47.9.)
       femurT = Math.max(femurT, -HIP_H * 1.0)
-      femurT = Math.min(femurT, -HIP_H * 0.74)
+      femurT = Math.min(femurT, -HIP_H * (this.loco==='walk'&&!this.sheathAct ? .88 : .74))
       // footLock ↔ hipY: effective femur = hipY + SCALE·hipPt.y = femurT
       target = SCALE * g.hipPtR.y - femurT
     } else if (this.grounded && this.state !== 'dead') {
@@ -2274,10 +2765,16 @@ export class Player {
       // it against the geom's own rootY, killing the clip bob outright)
       target = HIP_H
     }
+    if(this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0)))target=Math.max(HIP_H*.67,target-13*this.dashSink)
     // critically-damped tracking (k=24): follows a 0.3s stride with ~2px
     // residual, and because the target itself is now bounded, the spring
     // can never be flung by a degenerate bound again
     this.footLock = damp(this.footLock, target, 24, dt)
+    if(this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))){
+      const hip=g.ankleL.y>g.ankleR.y?g.hipPtL:g.hipPtR
+      // The support leg must be able to reach the floor during low drive.
+      this.footLock=Math.min(this.footLock,SCALE*(hip.y+(PLAYER_SPEC.thigh+PLAYER_SPEC.shin)*.96)+Player.SOLE_W)
+    }
   }
 
   /** GROUND IK — the leg writer. Two passes:
@@ -2309,11 +2806,12 @@ export class Player {
         // world target → local (facing) space
         const tx = (fp.x - this.x) / (this.face * SCALE)
         const ty = (fp.y - this.hipY) / SCALE
-        solveLegIK(hipPt.x, hipPt.y, tx, ty, l1, l2, 1, this.ikOut)
-        knee.x += (this.ikOut.kx - knee.x) * w
-        knee.y += (this.ikOut.ky - knee.y) * w
-        ankle.x += (this.ikOut.ax - ankle.x) * w
-        ankle.y += (this.ikOut.ay - ankle.y) * w
+        // Blend the TARGET, then solve. Blending solved knee positions
+        // shortened the femur/shin during every gait transition.
+        solveLegIK(hipPt.x, hipPt.y, ankle.x + (tx - ankle.x) * w,
+          ankle.y + (ty - ankle.y) * w, l1, l2, 1, this.ikOut)
+        knee.x = this.ikOut.kx; knee.y = this.ikOut.ky
+        ankle.x = this.ikOut.ax; ankle.y = this.ikOut.ay
         toeFromPitch(ankle.x, ankle.y, fp.pitch, PLAYER_SPEC.foot, this.toeScratch)
         // the floor is solid: a plantarflexed toe-off toe never digs below it
         const groundLy = (-1.2 - this.hipY) / SCALE
@@ -2330,26 +2828,33 @@ export class Player {
         [g.hipPtR, g.kneeR, g.ankleR, g.toeR],
       ]
       const iw = 1 - w // authority complement
+      const support=this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))
+        ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR):null
       for (const [hipPt, knee, ankle, toe] of legs) {
         const ankleWy = this.hipY + SCALE * ankle.y
         const toeWy = this.hipY + SCALE * toe.y
         const extended = ankle.y > legLen * 0.52
         // capture band: sole within ~12px of the line, or already below it
         const nearGround = ankleWy > -12 && toeWy < 6
-        if (extended && nearGround) {
+        if ((extended && nearGround)||ankle===support||this.dashSkim>.05) {
           // snap: keep the authored stance x, pin the sole exactly
-          const ty = (-Player.SOLE_W - this.hipY) / SCALE
-          solveLegIK(hipPt.x, hipPt.y, ankle.x, ty, l1, l2, 1, this.ikOut)
-          knee.x += (this.ikOut.kx - knee.x) * iw
-          knee.y += (this.ikOut.ky - knee.y) * iw
-          ankle.x += (this.ikOut.ax - ankle.x) * iw
-          ankle.y += (this.ikOut.ay - ankle.y) * iw
+          // Stagger the two feet slightly during the power skim; both remain
+          // close to the roof, but they do not move as one rigid shape.
+          const skimWave=this.dashBody?Math.sin(this.dashBody.progress*Math.PI*3)*.13:0
+          const skim=this.dashSkim*(1+(ankle===g.ankleL?skimWave:-skimWave))
+          const ty = (-Player.SOLE_W - skim - this.hipY) / SCALE
+          const forced=ankle===support||this.dashSkim>.05
+          const maxDx=Math.sqrt(Math.max(0,(legLen*.98)**2-(ty-hipPt.y)**2))
+          const tx=forced?hipPt.x+clamp(ankle.x-hipPt.x,-maxDx,maxDx):ankle.x
+          solveLegIK(hipPt.x, hipPt.y, tx, forced?ty:ankle.y+(ty-ankle.y)*iw, l1, l2, 1, this.ikOut)
+          knee.x = this.ikOut.kx; knee.y = this.ikOut.ky
+          ankle.x = this.ikOut.ax; ankle.y = this.ikOut.ay
           // flat toe forward
           toeFromPitch(ankle.x, ankle.y, 0.12, PLAYER_SPEC.foot, this.toeScratch)
           toe.x += (this.toeScratch.x - toe.x) * iw
           toe.y += (this.toeScratch.y - toe.y) * iw
           // register the exact contact point for the shadow AO core
-          if (iw > 0.5) this.snapContacts.push(this.x + this.face * SCALE * ankle.x)
+          if (iw > 0.5&&this.dashSkim<.5) this.snapContacts.push(this.x + this.face * SCALE * ankle.x)
         } else {
           // floor clamp — the ground is solid: toes never render below it
           const groundLy = (-1.2 - this.hipY) / SCALE
@@ -2380,6 +2885,10 @@ export class Player {
     const armVel = (armSum - this.prevArmSum) / dt
     this.armVel = armVel
     this.prevArmSum = armSum
+    if(!this.swordDrawn&&!this.sheathAct){
+      this.bladeLag=0;this.bladeLagVel=0;this.chainLag=0;this.chainLagVel=0
+      return
+    }
     // lag target: proportional to angular velocity (inertia resisting)
     const target = w.timeScale < 0.5
       ? clamp(-Math.sign(armVel || this.bladeLag || 1) * 0.09, -0.15, 0.15) // impact resistance ~5°
@@ -2399,12 +2908,16 @@ export class Player {
     // The upper body can never again rotate independently of the hips.
     const k2 = 90
     const c2 = 7.5
-    const chainTarget = clamp(-armVel * 0.02, -0.14, 0.14)
+    const chainTarget = this.state === 'attack' ? clamp(-armVel * 0.02, -0.14, 0.14) : 0
     this.chainLagVel += (k2 * (chainTarget - this.chainLag) - c2 * this.chainLagVel) * dt
     this.chainLag = clamp(this.chainLag + this.chainLagVel * dt, -0.16, 0.16)
-    p[CH.rootRot] += -this.chainLag * 0.3
-    p[CH.spine] += -this.chainLag * 0.5
-    p[CH.shR] += this.chainLag * 0.2
+    // Carry/wrist interpolation is not a sword impact. Feeding it back into
+    // locomotion folded the spine on every stride, even with steel sheathed.
+    if (this.state === 'attack') {
+      p[CH.rootRot] += -this.chainLag * 0.3
+      p[CH.spine] += -this.chainLag * 0.5
+      p[CH.shR] += this.chainLag * 0.2
+    }
 
     // GROUND CLEARANCE — the floor is SOLID: the kissaki can never pass
     // below the ground plane. Clip-blends between carries (guard ↔ walk
@@ -2415,7 +2928,7 @@ export class Player {
     // preserving the carry direction), rate-limited so the lowering reads
     // as the kissaki TAPPING the floor and sliding along it.
     // (Attacks exempt: their tips target enemy bodies above the floor.)
-    if (this.state !== 'attack') {
+    if (this.swordDrawn && this.state !== 'attack') {
       const sum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
       const bladeA = Math.PI / 2 - sum
       const sinA = Math.sin(bladeA)
@@ -2520,30 +3033,30 @@ export class Player {
    *    enemyNearW — threat engaged = full two-hand chūdan grip; safe =
    *    the arm hangs (the relax layer owns it). Sheathed = never. */
   private applyTwoHandGrip(dt: number): void {
-    // desired grip weight by state
+    // desired grip weight by state — strictly eliminates floating zombie arms
     let target = 0
     switch (this.state) {
       case 'move':
-        if (!this.swordDrawn) target = 0
-        else if (Math.abs(this.vx) < 60) target = this.enemyNearW // threat = grip
-        else target = 0.1
+        if (!this.swordDrawn || this.isFlourishActive) target = 0
+        else if (Math.abs(this.vx) < 40) target = Math.min(0.2, this.enemyNearW * 0.2)
+        else target = 0
         break
       case 'attack':
         target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
         break
       case 'charge':
       case 'parry':
-        target = this.swordDrawn ? 1 : 0
+        target = this.swordDrawn ? 0.85 : 0
         break
       case 'scripted':
-        target = 0.5
+        target = 0.4
         break
       default:
         target = 0
     }
     this.twoHandW = damp(this.twoHandW, target, 11, dt)
     const w = this.twoHandW
-    if (w < 0.03 || !this.swordDrawn) return
+    if (w < 0.03 || !this.swordDrawn || this.isFlourishActive || this.sheathAct) return
 
     const g = this.geom // last frame's solve — continuous, 1-frame stale
     // ---- 3D target: tsuka butt, pulled toward the far shoulder's depth ----
@@ -2619,17 +3132,8 @@ export class Player {
     // replacing most of the old backward lean
     const brakeDip = braking ? clamp(-this.accelSm * this.face / 4200, 0, 1.6) : 0
 
-    /* ---- DASH LEAN (replaces the old hard exemption): a damped additive
-     * driven by the dash's own velocity envelope — NOT the raw accel
-     * spike (that was the "dash fights itself" jitter source). Ramps in
-     * over ~80ms, decays out through the catch/settle beats as the
-     * envelope falls, and hands off smoothly to the locomotion lean at
-     * exit — the authored silhouette still owns the peak shape, this
-     * layer owns the entry surge + exit continuity. */
-    const dashVelFrac = clamp(Math.abs(this.vx) / DASH_SPEED, 0, 1)
-    const dashTarget = this.state === 'dash' ? dashVelFrac * dashVelFrac * 0.22 : 0
-    this.dashLeanS = damp(this.dashLeanS, dashTarget, 10, dt)
-    const dashLean = this.dashLeanS * (this.face * Math.sign(this.vx || this.face * 1) > 0 ? 1 : -0.5)
+    // Dash keyframes own the support-line pitch. Never stack a second
+    // velocity-driven torso tilt on top of the authored launch/catch.
 
     // ---- FULL-BODY LEAN (THE "torso-only bend" fix): the forward pitch
     // is distributed through the ENTIRE articulation — and crucially the
@@ -2641,24 +3145,23 @@ export class Player {
     // that leans only from the chest reads as a puppet; a body that leans
     // from the ground up reads as an athlete.
     if (this.state !== 'dead') {
-      const l = this.state === 'dash' ? dashLean : lean
-      p[CH.rootRot] += l * 0.6
-      p[CH.spine] += l * 0.22
-      p[CH.rootX] += l * 7 // pelvis surge: hips ride forward over the stance
-      p[CH.hipR] += l * 0.5
-      p[CH.hipL] -= l * 0.38
-      p[CH.kneeR] -= l * 0.3
-      p[CH.kneeL] -= l * 0.2
-      p[CH.footR] += l * 0.18
-      p[CH.rootY] += Math.abs(l) * 2.2
-      // braking weight acceptance: the stop sinks into the knees
+      const l = this.state === 'dash' ? 0 : lean
+      // Martial upright alignment: subtle core tilt without zombie slouch
+      p[CH.rootRot] += l * 0.14
+      p[CH.spine] += l * 0.06
+      p[CH.rootX] += l * 1.2
+      p[CH.hipR] += l * 0.22
+      p[CH.hipL] -= l * 0.18
+      p[CH.kneeR] -= l * 0.12
+      p[CH.kneeL] -= l * 0.08
+      p[CH.footR] += l * 0.08
+      p[CH.rootY] += Math.abs(l) * 1.0
+      // braking weight acceptance: the stop sinks cleanly into knees
       p[CH.rootY] += brakeDip
       p[CH.kneeR] -= brakeDip * 0.22
       p[CH.kneeL] -= brakeDip * 0.16
-      // head counter-pitches to keep the eyes on the horizon (the sprint
-      // tell: body flat, gaze level — MGR:R Raiden's forward drive;
-      // research: cervical extension ≈ trunk lean − a few degrees)
-      p[CH.head] -= l * 0.35
+      // head stays level on horizon
+      p[CH.head] -= l * 0.12
     }
 
     // vertical pitch while airborne
@@ -2683,9 +3186,9 @@ export class Player {
         // research (gait biomechanics): pelvis transverse rotation at sprint
         // 12–18°, shoulder counter-rotation 25–40° — the chest counter is
         // ~1.3× pelvis at walk and approaches ~2× at sprint cadence
-        case 'walk': amp = 0.12; cAmp = 1.3; break
-        case 'run': amp = 0.21; cAmp = 1.55; break
-        case 'sprint': amp = 0.3; cAmp = 1.85; break
+        case 'walk': amp = 0.04; cAmp = 1.3; break
+        case 'run': amp = 0.055; cAmp = 1.1; break
+        case 'sprint': amp = 0.045; cAmp = 1.15; break
         case 'combat': case 'backpedal': amp = 0.05; cAmp = 1.2; break
         default: break
       }
@@ -2727,9 +3230,9 @@ export class Player {
         }
       } else if (this.state === 'dash') {
         switch (this.dashVariant) {
-          case 'launch': case 'chain': carryYaw = -0.42; carryArm = -0.3; carryFore = -0.26; break
-          case 'carry': carryYaw = -0.46; carryArm = -0.34; carryFore = -0.3; break
-          case 'hunt': carryYaw = -0.45; carryArm = -0.3; carryFore = -0.26; break
+          case 'pivot': case 'launch': case 'chain': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
+          case 'carry': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
+          case 'hunt': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
           case 'air': carryYaw = -0.3; carryArm = -0.24; carryFore = -0.18; break
           case 'pierce': carryYaw = 0; carryArm = 0; carryFore = 0; break // clip owns the thrust line
           case 'vault': carryYaw = 0.02; carryArm = 0.04; carryFore = 0.02; break
@@ -2766,7 +3269,7 @@ export class Player {
         p[CH.chestYaw] += spin * 0.6
       } else if (this.dashVariant === 'vault') {
         p[CH.head] -= 0.12 * Math.sin(clamp01(k) * Math.PI)
-      } else if (this.dashVariant === 'launch' || this.dashVariant === 'chain'
+      } else if (this.dashVariant === 'pivot' || this.dashVariant === 'launch' || this.dashVariant === 'chain'
         || this.dashVariant === 'carry' || this.dashVariant === 'hunt'
         || this.dashVariant === 'pierce') {
         // pelvis squares into the dash vector (diagonal dashes yaw the hips)
@@ -2844,8 +3347,10 @@ export class Player {
     // (see applyTwoHandGrip) and this layer OWNS the hang.
     // (SHEATHED: skipped — no blade to relax; the pommel-rest layer below
     // owns the arms.)
-    if (this.swordDrawn && this.state === 'move' && this.grounded && Math.abs(this.vx) < 60) {
-      const relax = 1 - wC
+    const relaxedCarry=this.swordDrawn && this.state === 'move' && !this.sheathAct && this.grounded && Math.abs(this.vx)<60
+    this.carryRelaxW=damp(this.carryRelaxW,relaxedCarry?1:0,10,dt)
+    if (relaxedCarry) {
+      const relax = (1 - wC)*this.carryRelaxW
       // THE BENT-CARRY READ (reference panel 1 conformance): a relaxed sword
       // carry holds ~53° elbow flexion (interior ~127°) with the hand at
       // hip-front — "low carry WITH control", not a limp straight arm. The
@@ -2890,14 +3395,14 @@ export class Player {
     {
       const paceFade = 1 - clamp01((Math.abs(this.vx) - 110) / 90)
       const sheathTarget = !this.swordDrawn && this.state === 'move'
-        && this.grounded && !this.sheathAct ? paceFade : 0
+        && this.grounded && !this.braking && !this.sheathAct && !this.isFlourishActive && !this.hasThreat ? paceFade*(1-clamp01(Math.abs(this.vx)/45)) : 0
       this.sheathW = damp(this.sheathW, sheathTarget, 9, dt)
-      if (this.sheathW > 0.02) {
+      if (this.sheathW > 0.02 && !this.sheathAct && this.state==='move' && this.grounded && !this.hasThreat) {
         const k = this.sheathW
         // the saya geometry (local space — mirror of the draw path)
         const pelvisPitch = p[CH.rootRot] + p[CH.spine] * 0.35
         const sayAng = 0.24 + pelvisPitch * 0.6
-        const tl = PLAYER_SPEC.blade * 0.36
+        const tl = PLAYER_SPEC.blade * 0.28
         const mx = p[CH.rootX] + 3
         const my = p[CH.rootY] + 1
         const kx = mx + Math.cos(sayAng) * tl
@@ -2921,12 +3426,8 @@ export class Player {
           // — the fist reads as wrapping the tsuka, never pointing backward
           p[CH.wrR] += (Math.PI / 2 + sayAng - shIk - elIk - p[CH.wrR]) * k
         }
-        // left hand steadies the saya mouth — static near-mouth targets at
-        // 0.8 weight (the far arm is depth-occluded; a full cross-body IK
-        // onto the mouth would yaw the arm ~72° through the torso)
-        p[CH.shL] += (0.45 - p[CH.shL]) * k * 0.8
-        p[CH.elL] += (-0.95 - p[CH.elL]) * k * 0.8
-        p[CH.armLz] += (0.2 - p[CH.armLz]) * k * 0.8
+        // The off-arm retains the authored counter-swing. Pinning BOTH
+        // arms to the waist erased the gait and made walking look lifeless.
       }
     }
 
@@ -2941,17 +3442,17 @@ export class Player {
 
     // landing spring (squash)
     if (this.landSpring > 0) {
-      this.landSpring = Math.max(0, this.landSpring - dt * 5)
+      this.landSpring = Math.max(0, this.landSpring - dt * this.landSpringDecay)
       p[1] += this.landSpring * 6
     }
     // charge tremble
     if (this.charging) {
-      p[0] += rand(-0.8, 0.8) * this.chargeRatio
-      p[1] += rand(-0.5, 0.5) * this.chargeRatio
+      p[0] += Math.sin(this.animClock*23)*.18*this.chargeRatio
+      p[1] += Math.sin(this.animClock*19+.7)*.12*this.chargeRatio
     }
     // hurt shake
     if (this.hurtT > 0) {
-      p[0] += rand(-1.4, 1.4) * this.hurtT
+      p[0] += Math.sin(this.animClock*36)*.45*this.hurtT
     }
     // ARM LIFE: the guard breathes — out-of-phase micro sway on the sword
     // arm joints (research: even "idle" reference poses hold live tension).
@@ -2968,6 +3469,20 @@ export class Player {
   }
 
   private updateBladeWorld(): void {
+    const strike=this.action?.def.strikeHand
+    if(!this.swordDrawn&&strike){
+      const g=this.geom,elbow=strike==='left'?g.elbL:g.elbR
+      const elbowStrike=this.action?.def.strikeJoint==='elbow'
+      const hand=elbowStrike?elbow:strike==='left'?g.handL:g.handR
+      const proximal=elbowStrike?(strike==='left'?g.shoulderL:g.shoulderR):elbow
+      // Distal forearm to knuckles, not the full shoulder-to-fist reach.
+      this.blade.bx=this.x+this.face*SCALE*(hand.x*.7+proximal.x*.3)
+      this.blade.by=this.hipY+SCALE*(hand.y*.7+proximal.y*.3)
+      this.blade.tx=this.x+this.face*SCALE*hand.x
+      this.blade.ty=this.hipY+SCALE*hand.y
+      this.hasPrevAng=false
+      return
+    }
     if (!this.swordDrawn) {
       // steel home: no live blade segment in the world — no trail, no
       // smear, no hitbox. The saya owns the geometry until the next draw.
@@ -3010,7 +3525,6 @@ export class Player {
   /* strobe rim state — set by the renderer each frame from the key light */
   strobeLight: KeyLight | null = null
   strobeK = 0
-  private rimChains: number[][] = [[], [], [], [], []]
   /** contact-AO anchors from the plant-snap pass (non-gait stances:
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
@@ -3038,9 +3552,10 @@ export class Player {
     // head + blade
     this.shHead.x = this.x + f * g.headC.x
     this.shHead.y = hy + SCALE * g.headC.y
-    this.shHead.r = 9.4 * SCALE
+    this.shHead.r = PLAYER_SPEC.headR * 1.05 * SCALE
     this.shBlade.x0 = this.x + f * g.grip.x; this.shBlade.y0 = hy + SCALE * g.grip.y
     this.shBlade.x1 = this.x + f * g.tip.x; this.shBlade.y1 = hy + SCALE * g.tip.y
+    this.shFig.blade = this.swordDrawn ? this.shBlade : null
     // contact AO: the legik planted anchors (exact ground-contact points)
     // PLUS any plant-snap contacts from non-gait stances (dash/attacks/brake)
     const contacts: number[] = []
@@ -3048,10 +3563,8 @@ export class Player {
       if (this.gaitW > 0.5) {
         if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
         if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-        if (contacts.length) contacts.push(this.x + f * g.hip.x)
       }
       for (const c of this.snapContacts) contacts.push(c)
-      if (!contacts.length && this.gaitW > 0.5) contacts.push(this.x + f * g.hip.x)
     }
     drawCastShadow(ctx, this.shFig, light, {
       alpha: 0.58, width: 6.4, passes: 3, scale: SCALE,
@@ -3059,9 +3572,43 @@ export class Player {
     })
   }
 
-  draw(ctx: CanvasRenderingContext2D, time: number): void {
+  private updateScarf(dt: number, time: number): void {
+    const collarX = (this.geom.chest.x + this.geom.neckTop.x) * 0.5
+    const collarY = (this.geom.chest.y + this.geom.neckTop.y) * 0.5
+    const nodes = this.scarfSimNodes
+    nodes[0].x = collarX
+    nodes[0].y = collarY
+    nodes[0].ox = collarX
+    nodes[0].oy = collarY
+
+    // Movement response in character-local space
+    const relVx = -(this.vx / SCALE) * this.face
+    const relVy = -(this.vy / SCALE)
+    const wind = Math.sin(time * 6.5) * 0.4
+
+    for (let i = 1; i < nodes.length; i++) {
+      const n = nodes[i]
+      const vx = (n.x - n.ox) * 0.82 + relVx * 0.05 + wind * (i * 0.25)
+      const vy = (n.y - n.oy) * 0.82 + relVy * 0.04 + 0.35
+      n.ox = n.x
+      n.oy = n.y
+      n.x += vx
+      n.y += vy
+
+      const p = nodes[i - 1]
+      const dx = n.x - p.x
+      const dy = n.y - p.y
+      const dist = Math.hypot(dx, dy) || 1e-4
+      const segLen = 5.2
+      const diff = (dist - segLen) / dist
+      n.x -= dx * diff * 0.85
+      n.y -= dy * diff * 0.85
+    }
+  }
+
+  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
-    const alpha = this.iframes > 0 && this.state !== 'scripted'
+    const alpha = this.iframes > 0 && this.state !== 'scripted' && this.state !== 'dash'
       ? 0.55 + 0.25 * Math.sin(time * 40)
       : 1
     ctx.save()
@@ -3072,28 +3619,30 @@ export class Player {
     // draw-cuts (l1 / riposte) pull the steel from exactly here.
     {
       const hp = this.geom.hip
-      const sayLen = PLAYER_SPEC.blade * 0.88
+      const sayLen = PLAYER_SPEC.blade * this.sword.stats.range * 1.06
       // the scabbard rides the PELVIS: its angle follows the hip pitch
       // (rootRot) + a slice of the pelvis yaw, so it stays glued to the
       // body through leans, lunges and twists — a world-fixed angle read
       // as a floating rod whenever the fighter committed forward
       const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
-      const ang = 0.24 + pelvisPitch * 0.6
-      const tipX = hp.x - Math.cos(ang) * sayLen
-      const tipY = hp.y + Math.sin(ang) * sayLen
+      const detail=this.sheathAct?.mode==='draw'?this.drawSocket():null
+      const ang = detail?.ang??Math.min(0.24+pelvisPitch*.6,this.state==='dash'&&this.grounded?.5:2)
+      const mouthX=detail?.x??hp.x+3,mouthY=detail?.y??hp.y+1
+      const tipX = mouthX - Math.cos(ang) * sayLen
+      const tipY = mouthY + Math.sin(ang) * sayLen
       // saya body (slightly lighter than the body so it reads on the hip)
       ctx.strokeStyle = '#0d1219'
       ctx.lineWidth = 4.6
       ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(hp.x + 3, hp.y + 1)
+      ctx.moveTo(mouthX, mouthY)
       ctx.lineTo(tipX, tipY)
       ctx.stroke()
       // rim highlight along the top edge — sells it as a scabbard
       ctx.strokeStyle = '#465a7a'
       ctx.lineWidth = 1.6
       ctx.beginPath()
-      ctx.moveTo(hp.x + 2.4, hp.y - 1.2)
+      ctx.moveTo(mouthX-.6, mouthY-2.2)
       ctx.lineTo(tipX + Math.cos(ang) * 2, tipY - Math.sin(ang) * 2)
       ctx.stroke()
       // sageo knot + kojiri (end cap) accents
@@ -3122,19 +3671,30 @@ export class Player {
       // the old behind-body draw swallowed it into the black pelvis blob
       // ("the hand rests on nothing" read). See the front pass below.
     }
+    // Rear-up carry belongs behind the torso. The opaque body occludes
+    // the back blade rather than displaying steel through the ribcage.
+    const drawing=this.sheathAct?.mode==='draw'
+    const rearCarry=!drawing&&this.swordDrawn&&this.state!=='attack'&&this.geom.tip.x<this.geom.grip.x&&this.geom.bladeYaw<0
+    if(rearCarry)drawSword(ctx,this.sword,{time,charge:this.chargeRatio,alpha,swingGlow:0},
+      this.geom.grip.x,this.geom.grip.y,this.geom.bladeProjAngle,this.geom.bladeProjLen,this.geom.bladeTipZ)
+    const currentClip=this.animator.getClip()
+    const handPhase=currentClip && currentClip.dur>0
+      ? (currentClip.loop ? (this.animator.getTime()/currentClip.dur)%1 : Math.min(1,this.animator.getTime()/currentClip.dur)) : 0
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
+      motionEnergy:Math.min(1,Math.abs(this.vx)/480),
+      hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
+      rimColor:'#000000',rimAlpha:0,
       alpha,
-      // flash: hurt red OR the anime impact-frame white beat (whichever
-      // is stronger this frame — impact wins during hit-stop)
-      flash: Math.max(this.flashT * 0.85, this.impactFlashT > 0 ? 0.92 : 0),
+      // Null-black face/body stays black through hurt and impact frames.
+      flash: 0, // null-black body; impacts remain in weapon/scene FX
       flashColor: this.impactFlashT > this.flashT * 0.85 ? '#eafcff' : '#ff3b57',
-      // BLADE-CAST LIGHT: the swinging/charging edge lights the body —
-      // a rim pass on the sword-side silhouette (spec: dynamic blade light)
+      // Shared renderer accepts weapon lighting; the matte surface ignores it.
       edgeLight: {
         color: this.sword.colors.glow,
         a: clamp01(this.swingGlow * 0.55 + this.chargeRatio * 0.5 + this.bladeZ * 0.25) * alpha,
       },
+      scarfNodes: this.scarfSimNodes,
     })
     // ---- SHEATHED TSUKA — FRONT PASS (the readable hilt): the grip
     // continues the saya axis out of the mouth, tsuba seated at the
@@ -3144,13 +3704,13 @@ export class Player {
     // dark scene and the black body — "hand resting on the sheathed
     // katana" is the single most-held pose in the game; it cannot be a
     // whisper-dark stroke.
-    if (!this.swordDrawn) {
+    if (!this.swordDrawn && !drawing) {
       const hp = this.geom.hip
       const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
-      const ang = 0.24 + pelvisPitch * 0.6
+      const ang = Math.min(0.24+pelvisPitch*.6,this.state==='dash'&&this.grounded?.5:2)
       const mx = hp.x + 3
       const my = hp.y + 1
-      const tl = PLAYER_SPEC.blade * 0.36
+      const tl = PLAYER_SPEC.blade * 0.28
       const kx = mx + Math.cos(ang) * tl
       const ky = my - Math.sin(ang) * tl
       // grip body
@@ -3194,7 +3754,34 @@ export class Player {
     // == hitbox blade (updateBladeWorld consumes the same numbers).
     // Sheathed → the steel is inside the saya: only the resting tsuka stub
     // renders (the saya block above); the live weapon pass is skipped.
-    if (this.swordDrawn) {
+    if(drawing){
+      const d=this.drawSocket(),g=this.geom
+      // The saya is an occluder: only the steel physically past its mouth
+      // is visible. Grip and blade stay one rigid object in the right fist.
+      const home=Math.PI-d.ang
+      let delta=g.bladeProjAngle-home;while(delta>Math.PI)delta-=Math.PI*2;while(delta< -Math.PI)delta+=Math.PI*2
+      const angle=home+delta*d.turn
+      ctx.save()
+      if(d.extraction<.999){
+        ctx.translate(d.x,d.y);ctx.rotate(-d.ang)
+        ctx.beginPath();ctx.rect(0,-200,300,400);ctx.clip()
+        ctx.rotate(d.ang);ctx.translate(-d.x,-d.y)
+      }
+      const pull=PLAYER_SPEC.blade*this.sword.stats.range*1.06*d.extraction
+      const gx=d.x+Math.cos(d.ang)*pull,gy=d.y-Math.sin(d.ang)*pull
+      drawSword(ctx,this.sword,{time,charge:0,alpha,swingGlow:0},
+        gx+(g.handR.x-gx)*d.grip,gy+(g.handR.y-gy)*d.grip,angle,
+        PLAYER_SPEC.blade*this.sword.stats.range*1.06*(1-d.turn)+g.bladeProjLen*d.turn,g.bladeTipZ)
+      ctx.restore()
+      // Fingers wrap in FRONT of the tsuka. Rendering steel over the palm
+      // made a correctly positioned grip look like a floating sword.
+      if(d.grip>.95){
+        ctx.save();ctx.translate(g.handR.x,g.handR.y)
+        ctx.rotate(Math.atan2(g.handR.y-g.elbR.y,g.handR.x-g.elbR.x))
+        drawArticulatedHand(ctx,'#000000',d.rightOpen);ctx.restore()
+      }
+    }
+    if (this.swordDrawn && !rearCarry && !drawing) {
       drawSword(ctx, this.sword, {
         time,
         charge: this.chargeRatio,
@@ -3204,6 +3791,9 @@ export class Player {
     }
     ctx.restore()
 
+    // Reflection contains geometry, not lens-space aura/smear duplicates.
+    if(reflection)return
+
     // ---- ANIME SMEAR (two-layer, research-applied): when tip velocity
     // explodes, the blade stretches across this frame's angular sweep as
     // translucent wedges — a COOL WAKE over the full span plus a HOT
@@ -3212,7 +3802,7 @@ export class Player {
     // space, drawn here so it composites over the body with additive glow.
     const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
     const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
-    if (tipSpd > 950 && this.state !== 'dead' && this.swordDrawn) {
+    if (tipSpd > 950 && this.state==='attack' && this.swordDrawn) {
       // pivot = the weapon grip (the blade's true rotation center), world space
       const px = this.x + this.face * SCALE * this.geom.grip.x
       const py = this.hipY + SCALE * this.geom.grip.y
@@ -3293,30 +3883,7 @@ export class Player {
       ctx.restore()
     }
 
-    // ---- STROBE RIM LIGHT (lighting engine): the bolt that casts the
-    // shadow also lights the caster — an additive edge pass on the lit
-    // side of the silhouette, flickering with the restrike cadence. ----
-    if (this.strobeLight && this.strobeK > 0.04) {
-      const g = this.geom
-      ctx.save()
-      ctx.translate(this.x, this.hipY)
-      ctx.scale(this.face * SCALE, SCALE)
-      const rc = this.rimChains
-      const L = (j: { x: number; y: number }, out: number[]) => { out.push(j.x, j.y) }
-      rc[0].length = 0
-      L(g.hipPtL, rc[0]); L(g.kneeL, rc[0]); L(g.ankleL, rc[0])
-      rc[1].length = 0
-      L(g.hipPtR, rc[1]); L(g.kneeR, rc[1]); L(g.ankleR, rc[1])
-      rc[2].length = 0
-      L(g.hip, rc[2]); L(g.waist, rc[2]); L(g.chest, rc[2]); L(g.neckTop, rc[2])
-      rc[3].length = 0
-      L(g.shoulderL, rc[3]); L(g.elbL, rc[3]); L(g.handL, rc[3])
-      rc[4].length = 0
-      L(g.shoulderR, rc[4]); L(g.elbR, rc[4]); L(g.handR, rc[4])
-      drawStrobeRim(ctx, this.strobeLight, this.strobeK * alpha, rc,
-        { x: g.headC.x, y: g.headC.y, r: 9.2 }, this.face, 5)
-      ctx.restore()
-    }
+
   }
 }
 

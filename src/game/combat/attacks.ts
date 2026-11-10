@@ -46,6 +46,9 @@ export interface AttackHit {
 }
 
 export interface AttackDef {
+  /** Empty-hand contact uses the visible forearm/fist, never a hidden blade. */
+  strikeHand?: 'left' | 'right'
+  strikeJoint?:'hand'|'elbow'
   id: string
   label: string
   kind: AttackKind
@@ -57,6 +60,8 @@ export interface AttackDef {
   chain: string[]
   moveX?: number
   moveXAt?: number
+  /** Opt-in finite ground drive. Legacy moves remain unchanged until qualified. */
+  groundDrive?: {duration:number;acceleration:number}
   moveY?: number
   moveYAt?: number
   requires: 'ground' | 'air' | 'any'
@@ -161,7 +166,7 @@ const l1: AttackDef = {
   swingSfx: { t: 0.13, name: 'swing' },
   cancel: 0.32,
   chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
-  moveX: 150, moveXAt: 0.13,
+  moveX: 150, moveXAt: 0.13, groundDrive:{duration:.06,acceleration:3000},
   grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
   zArc: 0.4, drawFlash: true,
   traj: { // HORIZONTAL DRAW: steel rips from BEHIND the hip through depth
@@ -716,7 +721,7 @@ const dashSlash: AttackDef = {
       shR: 0.5, elR: -0.2, wrR: 0.2,
       shL: 0.6, elL: -0.7,
     }, 'outQuad'),
-    keyframe(0.1, {
+    keyframe(0.102, {
       rootRot: 0.6, rootY: 1, spine: 0.14, head: -0.42,
       hipR: 1.0, kneeR: -0.85,
       hipL: -0.95, kneeL: -0.55,
@@ -1154,6 +1159,7 @@ export function getAttack(id: string): AttackDef | undefined {
 
 /** Runtime info passed to the world when a blade connects. */
 export interface AttackRuntimeInfo {
+  unarmed?:boolean
   id: string
   dmg: number
   heavy: boolean
@@ -1172,6 +1178,7 @@ export interface AttackRuntimeInfo {
 export function makeRuntimeInfo(def: AttackDef, dmgMult: number): AttackRuntimeInfo {
   return {
     id: def.id,
+    unarmed:!!def.strikeHand,
     dmg: def.hit.dmg * dmgMult,
     heavy: def.hit.heavy,
     stagger: def.hit.stagger,

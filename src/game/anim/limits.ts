@@ -34,10 +34,12 @@
  * limits are the safety net, not the steering.
  */
 
-import { CH, Pose } from './pose'
+import { CH, Pose, makePose } from './pose'
 import { clamp } from '../core/utils'
 
 /* ---- limit constants (radians) — see table above ---- */
+const SAFE_POSE = makePose()
+
 const EL_FLEX_MIN = 0.26 // ≥15° flexion: never a locked-straight elbow read
 const EL_FLEX_MAX = 2.62 // ≤150° flexion
 const KNEE_FLEX_MIN = 0.17 // ≥10°: knees never lock (spring-loaded stance)
@@ -63,7 +65,16 @@ const SPINE_FWD = 1.1 // dash acceleration posture peaks ~0.9+share
  * then refolds" transient). Genuine micro-positives still floor at the
  * minimum flexion.
  */
-export function applyJointLimits(p: Pose): Pose {
+export function applyJointLimits(p: Pose, wholeBodyPitch = SPINE_FWD): Pose {
+  // Never allow a corrupt input/spring state to poison the entire rig.
+  for (let i = 0; i < p.length; i++) if (!Number.isFinite(p[i])) p[i] = SAFE_POSE[i]
+  p[CH.head] = clamp(p[CH.head], -.75, .75)
+  p[CH.pelvisYaw] = clamp(p[CH.pelvisYaw], -.8, .8)
+  p[CH.chestYaw] = clamp(p[CH.chestYaw], -1.2, 1.2)
+  for (const ch of [CH.hipLz, CH.hipRz]) p[ch] = clamp(p[ch], -.7, .7)
+  for (const ch of [CH.armLz, CH.armRz]) p[ch] = clamp(p[ch], -1.5, 1.5)
+  for (const ch of [CH.foreLz, CH.foreRz]) p[ch] = clamp(p[ch], -1.35, 1.35)
+
   // ---- elbows: sign-locked flexion (soft reflection) ----
   for (const ch of [CH.elL, CH.elR] as const) {
     p[ch] = p[ch] > 0
@@ -86,8 +97,8 @@ export function applyJointLimits(p: Pose): Pose {
   // rootRot carries ~70% of the trunk pitch, spine the lumbar remainder;
   // bound the SUM so no stack of additive layers can jackknife the torso.
   const spineTotal = p[CH.rootRot] + p[CH.spine] * 0.43
-  if (spineTotal > SPINE_FWD) {
-    const over = spineTotal - SPINE_FWD
+  if (spineTotal > wholeBodyPitch) {
+    const over = spineTotal - wholeBodyPitch
     p[CH.rootRot] -= over * 0.7
     p[CH.spine] -= (over * 0.3) / 0.43
   } else if (spineTotal < -SPINE_BACK) {

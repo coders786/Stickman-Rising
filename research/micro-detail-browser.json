@@ -1,0 +1,15 @@
+{
+  "errors": [],
+  "updates": 180,
+  "simulationHz": 120,
+  "frames": 90,
+  "captureHz": 60,
+  "allPosesFinite": true,
+  "progressiveSteelBeforeArmed": true,
+  "maxGripErrorDuringExtraction": 2.6430186824472734,
+  "dashSound": {
+    "tick": 81,
+    "name": "dash",
+    "phase": "drive"
+  }
+}
