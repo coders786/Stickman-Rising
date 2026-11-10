@@ -2,6 +2,7 @@
  * compute the worst per-frame channel delta at 60fps given the ease's
  * first-frame concentration. Flags snaps (> 0.72 rad, > 14 px root). */
 import { ATTACKS } from '../src/game/combat/attacks'
+import { MOVES, UNARMED_PARRY_CLIP, UNARMED_CHARGE_CLIP, UNARMED_FLOURISH_CLIP } from '../src/game/combat/moveset'
 import {
   IDLE_CLIP, WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
   JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_LAUNCH_CLIP, DASH_AIR_CLIP, PARRY_CLIP,
@@ -59,6 +60,19 @@ function checkClip(clip: { name: string; frames: { t: number; p: Float32Array; e
 
 const all: string[] = []
 for (const def of Object.values(ATTACKS)) all.push(...checkClip(def.clip as never, 'ATK'))
+// The empty-hand moveset: every gameplay-reachable clip is audited (the
+// mapped l1..slam swaps live in MOVES, not ATTACKS — audited explicitly).
+const seen = new Set<string>()
+for (const def of Object.values(MOVES)) {
+  if (seen.has(def.clip.name)) continue
+  seen.add(def.clip.name)
+  all.push(...checkClip(def.clip as never, 'UNA'))
+}
+for (const c of [UNARMED_PARRY_CLIP, UNARMED_CHARGE_CLIP, UNARMED_FLOURISH_CLIP]) {
+  if (seen.has(c.name)) continue
+  seen.add(c.name)
+  all.push(...checkClip(c as never, 'UNA'))
+}
 for (const c of [
   IDLE_CLIP, WALK_CLIP, RUN_CLIP, SPRINT_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
   JUMP_CLIP, FALL_CLIP, LAND_CLIP, DASH_LAUNCH_CLIP, DASH_AIR_CLIP, PARRY_CLIP,

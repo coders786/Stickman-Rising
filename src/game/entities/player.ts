@@ -11,7 +11,7 @@ import {POWER_DASH_CLIP,powerDashAct,powerDashRecovery,powerDashLift} from '../a
 import {drawArticulatedHand} from '../anim/humanoid'
 import {drawDetail,DRAW_CLEAR,DRAW_GRIP} from '../anim/draw-detail'
 import {equipmentClip} from '../anim/equipment-motion'
-import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY} from '../combat/unarmed'
+import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP} from '../combat/unarmed'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
 import { SprintExposure,SPRINT_EXPOSURE_CHANNELS } from '../anim/sprint-exposure'
@@ -1296,6 +1296,8 @@ export class Player {
                   { clip: FLOURISH_HILT_SPIN_CLIP, dur: 1.1 },
                   { clip: FLOURISH_SCARF_ADJUST_CLIP, dur: 1.3 },
                   { clip: FLOURISH_STANCE_SETTLE_CLIP, dur: 1.0 },
+                  // empty-hand taunt: the fist-palm martial salute (sheathed only)
+                  { clip: UNARMED_FLOURISH_CLIP, dur: 1.05 },
                 ]
                 let idx = Math.floor(Math.random() * flourishes.length)
                 if (idx === this.lastFlourish) idx = (idx + 1) % flourishes.length
@@ -1880,6 +1882,11 @@ export class Player {
     if (this.grounded && ax !== 0 && Math.sign(ax) !== this.face) return 'retreat'
     if (!this.grounded) {
       if (ay > 0.4) return 'dive'
+      // Empty-hand air command moves (twist kick / flying elbow) — sheathed
+      // only; the drawn air family keeps its a1–a3 cycle untouched.
+      if (!this.swordDrawn && ax !== 0) {
+        return Math.sign(ax) !== this.face ? 'airTwist' : 'airElbow'
+      }
       this.airIndex = (this.airIndex % 3) + 1
       return `a${this.airIndex}`
     }
@@ -1893,6 +1900,14 @@ export class Player {
    * light chain, with time decay — heavy attacks finally have combo
    * pairing instead of one animation forever. */
   private pickHeavy(w: WorldRef): AttackDef {
+    // Empty-hand command heavies (sheathed only — the drawn heavy chain is
+    // unchanged): K+down axe kick · K+back spinning hook · K+forward stop kick.
+    if (!this.swordDrawn && this.grounded) {
+      const ax = w.input.axisX(), ay = w.input.axisY()
+      if (ay > 0.4) return ATTACKS.axeKick
+      if (ax !== 0 && Math.sign(ax) !== this.face) return ATTACKS.spinHook
+      if (ax !== 0 && Math.sign(ax) === this.face) return ATTACKS.stepKick
+    }
     if (w.time - this.lastHeavyAt > 1.15) this.heavyIndex = 0
     this.heavyIndex = Math.min(this.heavyIndex + 1, 3)
     return ATTACKS[`h${this.heavyIndex}`] ?? ATTACKS.h1
@@ -2479,7 +2494,10 @@ export class Player {
   startUnarmedFinisher(w:WorldRef,ultimate=false):void{
     if(this.swordDrawn)return
     if(ultimate){if(this.meter<100)return;this.meter=0}
-    const base=unarmedAttack(!this.grounded?ATTACKS.a2:ultimate?ATTACKS.charged:ATTACKS.l5)
+    // Grounded ultimate = the dedicated THOUSAND PALM BARRAGE (six confirmed
+    // contacts); air ults and the ability slot keep their existing moves.
+    if(ultimate&&this.grounded){this.startAttack(UNARMED_ULT,w);return}
+    const base=unarmedAttack(!this.grounded?ATTACKS.a2:ATTACKS.l5)
     this.startAttack({...base,label:ultimate?'FOCUSED PALM':'GUARD BREAK',
       hit:{...base.hit,dmg:ultimate?65:40,heavy:true,breakGuard:true,stagger:.6}},w)
   }
@@ -3553,15 +3571,27 @@ export class Player {
   private updateBladeWorld(): void {
     const strike=this.action?.def.strikeHand
     if(!this.swordDrawn&&strike){
-      const g=this.geom,elbow=strike==='left'?g.elbL:g.elbR
-      const elbowStrike=this.action?.def.strikeJoint==='elbow'
-      const hand=elbowStrike?elbow:strike==='left'?g.handL:g.handR
-      const proximal=elbowStrike?(strike==='left'?g.shoulderL:g.shoulderR):elbow
-      // Distal forearm to knuckles, not the full shoulder-to-fist reach.
-      this.blade.bx=this.x+this.face*SCALE*(hand.x*.7+proximal.x*.3)
-      this.blade.by=this.hipY+SCALE*(hand.y*.7+proximal.y*.3)
-      this.blade.tx=this.x+this.face*SCALE*hand.x
-      this.blade.ty=this.hipY+SCALE*hand.y
+      const g=this.geom
+      // The hit segment IS the striking limb: fist / elbow / ankle / knee /
+      // shoulder — resolved from the same projected skeleton the renderer
+      // draws, so visual contact == gameplay contact for every joint type.
+      const joint=this.action?.def.strikeJoint??'hand'
+      const L=strike==='left'
+      const distal=joint==='elbow'?(L?g.elbL:g.elbR)
+        :joint==='foot'?(L?g.ankleL:g.ankleR)
+        :joint==='knee'?(L?g.kneeL:g.kneeR)
+        :joint==='shoulder'?(L?g.shoulderL:g.shoulderR)
+        :(L?g.handL:g.handR)
+      const proximal=joint==='elbow'?(L?g.shoulderL:g.shoulderR)
+        :joint==='foot'?(L?g.kneeL:g.kneeR)
+        :joint==='knee'?(L?g.hipPtL:g.hipPtR)
+        :joint==='shoulder'?g.chest
+        :(L?g.elbL:g.elbR)
+      // Distal joint toward the contact point (70% distal + 30% proximal).
+      this.blade.bx=this.x+this.face*SCALE*(distal.x*.7+proximal.x*.3)
+      this.blade.by=this.hipY+SCALE*(distal.y*.7+proximal.y*.3)
+      this.blade.tx=this.x+this.face*SCALE*distal.x
+      this.blade.ty=this.hipY+SCALE*distal.y
       this.hasPrevAng=false
       return
     }

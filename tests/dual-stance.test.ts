@@ -70,7 +70,12 @@ test('unarmed ability and ultimate keep steel home and use contact, not a phanto
  assert.equal(p.swordDrawn,false);assert.ok(probe.action?.def.strikeHand);assert.ok(p.energy<energy)
  p.meter=100;p.startUnarmedFinisher(w,true)
  assert.equal(p.meter,0);assert.equal(p.swordDrawn,false);assert.equal(p.state,'attack')
- assert.equal(probe.action?.def.hit.dmg,65);assert.ok(!probe.action?.def.hit.aoe)
+ // grounded ult = THOUSAND PALM BARRAGE: 5 confirmed contacts × 13 dmg
+ assert.equal(probe.action?.def.id,'ultPalm')
+ assert.equal(probe.action?.def.hit.dmg,13)
+ assert.equal(probe.action?.def.hit.multiHit,0.12)
+ assert.equal(probe.action?.def.hit.dmg*5,65)
+ assert.ok(!probe.action?.def.hit.aoe)
 })
 test('jab reaches the authored contact pose inside its damage window, not after recovery',()=>{
  const {p,w,step,probe}=setup();step(.2);p.startAttack(ATTACKS.l1,w)
@@ -79,7 +84,9 @@ test('jab reaches the authored contact pose inside its damage window, not after 
  for(let i=0;i<35;i++){
   const time=probe.animator.getTime();step(1/120)
   if(time>=def.hit.start&&time<=def.hit.end){
-   const sh=p.pose[CH.shL],el=p.pose[CH.elL]
+   // read the STRIKING arm (the moveset assigns a lead/rear limb per move)
+   const left=def.strikeHand==='left'
+   const sh=p.pose[left?CH.shL:CH.shR],el=p.pose[left?CH.elL:CH.elR]
    const x=20*Math.sin(sh)+18*Math.sin(sh+el)
    furthest=Math.max(furthest,x)
   }

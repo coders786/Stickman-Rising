@@ -190,3 +190,94 @@ procedural sine gait already never repeats exactly.
   (no fake features).
 - Foot-plant drift tolerance: measured by QA check B (≤18 px band incl. 4 px
   line thickness) and inspect's trajectory view; not a formal unit test.
+
+---
+
+## 8. THE HAND-TO-HAND MOVSET — 30 unique full-body empty-hand animations [this pass]
+
+Tekken-3-style authored moveset (`combat/moveset.ts`) inspired by the craft
+principles of high-grade stick animation (strong silhouette arcs, anticipation
+→ snap → follow-through) — **100% original authorship, no traced frames**.
+Every clip: FIGHT_GUARD → chamber → ignition → strike → follow → settle →
+FIGHT_GUARD, IK-authored contacts (`handPose`/`legPose`/`kickPose` law-of-
+cosines solvers verified against the FK), monotone C1 interpolation, author-
+time ROM clamping, and explicit midpoint in-betweens (`lerpPose`) that halve
+every per-frame channel delta (`.qa/continuity-check.ts` audits **all 30**).
+
+| # | id | label | trigger | joint | notes |
+|---|---|---|---|---|---|
+| 1 | l1 | KIZAMI JAB | J (chain 1) | hand | lead-right straight, hip flick |
+| 2 | l2 | GYAKU CROSS | J (chain 2) | hand | rear-left power straight, pelvis drive |
+| 3 | l3 | KAGI HOOK | J (chain 3) | hand | depth-plane hook (armRz/foreRz sweep) |
+| 4 | l4 | SLIP BODY ELBOW | J (chain 4) | elbow | dropped level, elbow IS the hitbox |
+| 5 | l5 | TWIN SHOTEI | J (chain 5) | hand | lunging double-palm, breakGuard |
+| 6 | retreat | HOP-BACK BACKFIST | J + back | hand | backward hop, spinning backknuckle |
+| 7 | spin | CROUCHING SWEEP | J + down | foot | full-body drop, low heel arc, launch |
+| 8 | launcher | RISING DRAGON | J + up | hand | leaping uppercut, launch 420 |
+| 9 | stabs | RENZOKU KNEE RUSH | fwd + J in l2/l3 chain | knee | triple driving knees, multiHit 3 |
+| 10 | h1 | RIPPLING ELBOW | K (chain 1) | elbow | horizontal empi slash |
+| 11 | h2 | TORNADO ROUNDHOUSE | K (chain 2) | foot | mawashi-geri, full pelvis/chest rotation |
+| 12 | h3 | SKYHAMMER FIST | K (chain 3) | hand | overhead double hammer, slamdown kbY |
+| 13 | axeKick | KAKATO AXE KICK | K + down | foot | heel chamber overhead, axe chop, **new** |
+| 14 | spinHook | SPINNING HOOK KICK | K + back | foot | 360 uden-geri, depth-plane hook, **new** |
+| 15 | stepKick | MAE-GERI STOP KICK | K + forward | foot | thrust stop-kick, kb 260 pushback, **new** |
+| 16 | dashSlash | SHOULDER TACKLE | dash + J | shoulder | lowered-shoulder check, **new joint** |
+| 17 | dashHeavy | TIGER SLIDE KICK | dash + K | foot | sliding low kick + ground drive, **new** |
+| 18 | riposte | REKKA COUNTER PALM | parry-convert | hand | cross-step palm burst |
+| 19 | charged | SHINRA PALM | K hold release | hand | coiled twin-palm shockwave |
+| 20 | parry | FLOWING DEFLECT | O/F | hands | inward deflect sweep (re-authored) |
+| 21 | charge | COILED DRAGON | K hold (loop) | — | deep chamber with tension sway (re-authored) |
+| 22 | a1 | FLYING KNEE | air J | knee | tucked air dash, knee leads |
+| 23 | a2 | AIR CROSS | air J (2) | hand | jumping rear straight |
+| 24 | a3 | CRESCENT ARC KICK | air J (3) | foot | mikazuki depth-arc kick |
+| 25 | dive | METEOR DROPKICK | air J + down | foot | two-foot torpedo, moveY 650 |
+| 26 | slam | SEISMIC HEEL DROP | air K | foot | both-heel stamp, slamImpact preserved |
+| 27 | airTwist | TWIST KICK | air J + back | foot | spinning air hook through depth, **new** |
+| 28 | airElbow | FLYING ELBOW | air J + forward | elbow | pitched dive elbow, moveY 320, **new** |
+| 29 | ultPalm | THOUSAND PALM BARRAGE | I ult (meter) | hand | 5 contacts × 13 dmg alternating palms, **new** |
+| 30 | flourish | FIST-PALM SALUTE | standstill >7.2 s sheathed | hands | martial bow-in + beckon, **new** |
+
+### Wiring changed [this pass]
+
+- `combat/moveset.ts` — **new**: the 30 clips + limb solvers + `MOVES` table +
+  `UNARMED_ULT`; all new command defs registered in `ATTACKS` (type-only
+  import back — no runtime cycle).
+- `combat/unarmed.ts` — rewritten as the thin mapping layer (same public API:
+  `handPose` re-exported, `unarmedAttack` swaps any sword def for its move;
+  unknown ids fall back to a re-labeled jab clone).
+- `attacks.ts` — `strikeJoint` widened to `'hand'|'elbow'|'foot'|'knee'|'shoulder'`;
+  `atk_stabs` retimed (3 pre-existing continuity violations fixed).
+- `player.ts` — hitbox routing for all five joint types (visible limb IS the
+  hit segment); unarmed directional heavy branches in `pickHeavy` (sheathed
+  only); air command branches in `pickLight`; grounded ult → `UNARMED_ULT`;
+  unarmed flourish added to the sheathed flourish rotation.
+- `debug/animQA.ts` — QA handle now carries the live `game` (dev-only debug
+  global, consistent with `__srPoseLib`).
+- `.qa/continuity-check.ts` — extended to audit **all** 30 gameplay-reachable
+  unarmed clips (previously only ATTACKS-registered ones were checked).
+
+### Verification [this pass]
+
+- `bun run lint` clean; `tsc --noEmit` at the 2-error environment baseline.
+- `bun run test` — 173 pass; only the documented `tests/scores.test.ts`
+  database-fixture baseline failure remains (pre-existing, unchanged).
+- `.qa/continuity-check.ts` — **ALL CLEAN** across sword + all 30 unarmed clips.
+- `.qa/audit-player-anim.ts` — all remodel/posture checks pass.
+- `window.__srQA.run()` in the live game — checks A–I all pass (NaN joints 0,
+  foot penetration 1.08 px, pose continuity 0 violations, PAVE alive, FX pools clean).
+- Live browser E2E: every command branch fired and verified by action label —
+  J chain (JAB→CROSS→HOOK), W+J RISING DRAGON, S+J CROUCHING SWEEP, K RIPPLING
+  ELBOW, S+K KAKATO AXE KICK `[foot]`, D+K MAE-GERI STOP KICK, dash+J SHOULDER
+  TACKLE `[shoulder]`, dash+K TIGER SLIDE KICK `[foot]`, air family (FLYING
+  KNEE / SEISMIC HEEL DROP `[foot]` / METEOR DROPKICK), I ult THOUSAND PALM
+  BARRAGE (meter consumed), O parry; elbow strike connected with damage popup
+  + hit sparks; ran to wave 5 with zero page errors.
+
+### Remaining limitations [this pass]
+
+- Air directional branches (twist vs flying elbow) read the CURRENT facing —
+  correct relative behavior, but the label shown in docs assumes facing right.
+- The heavies' charge-release tap vs hold: a held K enters the charge state
+  (pre-existing mechanic); command kicks fire on quick taps or charge release.
+- Enemy PAVE / hurt-reaction variety for kick impacts (band-specific stagger
+  heights) — candidate for a future pass.

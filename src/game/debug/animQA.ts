@@ -44,11 +44,14 @@ const clipName = (p: unknown): string => animOf(p).getClip()?.name ?? '?'
 export interface QAHandle {
   run: () => Promise<{ pass: boolean; results: QAResult[] }>
   last: { pass: boolean; results: QAResult[] } | null
+  /** dev-only debug handle: live Game instance (poses, moveset probes) */
+  game: Game
 }
 
 export function installQA(game: Game): void {
   const handle: QAHandle = {
     last: null,
+    game,
     run: () => runQA(game).then((r) => {
       handle.last = r
       console.table(r.results)
