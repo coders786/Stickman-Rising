@@ -48,6 +48,52 @@ export const DASH_CHARGE_CLIP=makeClip('chargeCoil',[
 ])
 DASH_CHARGE_CLIP.interpolation='monotone'
 
+/** THE DUAL CHAMBER — the second, deeper gather the HEAVY hold stacks on
+ * the planted coil while the dash button stays held: THE POWER DASH SLASH
+ * charge (dash hold + heavy hold = the blade loads). Physical language
+ * only — the stance sinks one more grade under the added blade load, the
+ * hips coil back, and the sword arm chambers the steel back-level along
+ * the saya line (the full iai draw position the dual release detonates
+ * from). No channel implies stored magic.
+ *
+ * Choreography law: the first keyframe is EXACTLY DASH_CHARGE_CLIP's LOCK
+ * beat (t=.42), so the deepen crossfades off the resting coil
+ * pose-identically. t=.22 is the TAUT LOCK — after the full dual charge
+ * the set settles one final unit and stops (the drawn-steel read that
+ * precedes the release). Non-looping: the hold rests on the chamber pose.
+ * The name stays OUTSIDE equipmentClip's adaptation whitelist so the
+ * authored arms survive for both stances. */
+export const DUAL_CHARGE_CLIP=makeClip('dualChargeCoil',[
+ // entry: the dash-charge LOCK beat, verbatim — seamless handoff
+ keyframe(0,{rootX:1,rootY:4.6,rootRot:.35,head:-.32,
+   hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,footR:.15,footL:-.04,
+   shR:.16,elR:-.75,wrR:-.62,shL:.4,elL:-1.2,
+   pelvisYaw:.14,chestYaw:-.14},'inOutSine'),
+ // the plant deepens under the added blade load — hips sink, coil tightens,
+ // the sword arm starts pulling the steel back
+ keyframe(.08,{rootX:1,rootY:5.2,rootRot:.41,head:-.38,
+   hipL:-.38,kneeL:-.72,hipR:.64,kneeR:-1.2,footR:.16,footL:-.05,
+   shR:.02,elR:-.88,wrR:-.66,shL:.32,elL:-1.08,wrL:-.2,
+   pelvisYaw:.17,chestYaw:-.17},'inOutSine'),
+ // THE BLADE CHAMBER: steel pulled back-level along the saya line, off
+ // hand riding the saya mouth, eyes leveled down the travel line
+ keyframe(.15,{rootX:1,rootY:5.6,rootRot:.46,head:-.42,
+   hipL:-.38,kneeL:-.78,hipR:.66,kneeR:-1.3,footR:.16,footL:-.05,
+   shR:-.22,elR:-1.02,wrR:-.72,shL:.22,elL:-.95,wrL:-.25,
+   pelvisYaw:.2,chestYaw:-.2},'inOutSine'),
+ // TAUT LOCK: the set settles one final unit and stops — drawn steel
+ keyframe(.22,{rootX:1,rootY:5.8,rootRot:.46,head:-.42,
+   hipL:-.38,kneeL:-.8,hipR:.66,kneeR:-1.32,footR:.16,footL:-.05,
+   shR:-.24,elR:-1.04,wrR:-.73,shL:.22,elL:-.95,wrL:-.25,
+   pelvisYaw:.2,chestYaw:-.2},'inOutSine'),
+])
+DUAL_CHARGE_CLIP.interpolation='monotone'
+
+/** Blade-segment charge time the HEAVY hold adds on top of the dash charge
+ * (POWER_DASH_CHARGE=.32). The dash coil locks at .42 (settle beat), then
+ * the dual chamber loads for this long before RAIJIN ZAN is armed. */
+export const POWER_DASH_SLASH_CHARGE=.22
+
 export const POWER_DASH_CLIP=makeClip('powerDash',[
  keyframe(0,{rootX:1,rootY:4,rootRot:.35,head:-.32,hipL:-.35,kneeL:-.65,hipR:.62,kneeR:-1.1,shL:.4,elL:-1.2,shR:.16,elR:-.75},'inOutSine'),
  keyframe(.035,{rootX:3,rootY:4.5,rootRot:.64,head:-.60,hipL:-.56,kneeL:-.50,hipR:.75,kneeR:-1.24,shL:.68,elL:-1.12,shR:.35,elR:-.90},'inOutSine'),

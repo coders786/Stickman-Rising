@@ -1148,6 +1148,7 @@ export class Game {
       stamina: p.stamina,
       maxStamina: p.maxStamina,
       dashCharge: p.dashChargeProgress,
+      slashCharge: p.slashChargeProgress,
       staminaCooldown: p.staminaCooldown,
       meter: p.meter,
       swordName: p.swordDrawn?p.sword.name+' / DRAWN':'EMPTY HAND / SHEATHED',

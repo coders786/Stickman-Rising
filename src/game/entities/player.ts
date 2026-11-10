@@ -3,7 +3,7 @@ import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVeloci
 import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
 import {rewardsConfirmedHit} from '../combat/hit-resolution'
 import {groundedDashAct} from '../anim/grounded-dash'
-import {DASH_CHARGE_CLIP,POWER_DASH_CLIP,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
+import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,POWER_DASH_CLIP,POWER_DASH_SLASH_CHARGE,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
 /** STICKMAN RISING — the Player: state machine, dash system, combo machine,
  * parry/riposte, charged attacks, elemental abilities, execution finishers.
  */
@@ -187,6 +187,15 @@ const AIR_JUMP_V = -820
 const DASH_CD = 0.1
 const POWER_DASH_CHARGE = 0.32
 const POWER_DASH_RECOVERY = 0.34
+/** THE DUAL CHARGE (POWER DASH SLASH / RAIJIN ZAN): the dash coil locks at
+ * POWER_DASH_CHARGE+.10 (DASH_CHARGE_CLIP's settle beat) before the blade
+ * segment may chamber; HEAVY_HOLD_ARM classifies tap vs hold on the sword
+ * button during the charge; DUAL_RELEASE_GRACE is how long the dash key's
+ * release waits for the heavy to join it before the invested charge
+ * converts into the standing blade gather. */
+const DASH_CHARGE_LOCK_BEAT = POWER_DASH_CHARGE + .10
+const HEAVY_HOLD_ARM = .15
+const DUAL_RELEASE_GRACE = .18
 const DASH_FINISH_RISE = 0.24
 /** dash ghost beats: fire times as fractions of dash duration (research:
  * cap 3, exponential spacing) + the per-ghost starting darkness */
@@ -313,6 +322,20 @@ export class Player {
   private dashChargeReady=false
   private dashChargeFxT=0
   private dashChargeX=1
+  /** uncapped elapsed clock — the coil's settle (LOCK) beat gates the dual
+   * chamber's entry, not the capped gameplay charge (dashChargeT stops at
+   * POWER_DASH_CHARGE while DASH_CHARGE_CLIP still settles to .42) */
+  private dashChargeElapsedT=0
+  /** THE DUAL CHARGE: dash hold + heavy hold loads the blade for RAIJIN ZAN. */
+  private dashDualArmed=false
+  private dashDualT=0
+  private dashDualClipOn=false
+  private dualLockTold=false
+  /** tap-vs-hold classifier for the sword button inside the dash charge */
+  private dashHeavyArmT=-1
+  /** dash key released while the heavy still holds: grace beat before the
+   * invested charge converts into the standing blade gather */
+  private dualDashRelT=0
   private dashPower=false
   private dashPendingCharge=false
   private dashPendingJump=false
@@ -606,12 +629,30 @@ export class Player {
 
   /** The blade's CHARGE for rendering: whichever live charge is driving the
    * steel — the heavy-hold gather OR the planted dash-charge coil (the blade
-   * charges while the dash charges). Physical, not arcane: this ratio drives
-   * the steel's kinetic language (edge glint, vibration ghost, kissaki star)
-   * in drawSword — never a neon halo. */
+   * charges while the dash charges), OR the DEEPER dual chamber (dash hold +
+   * heavy hold: the blade segment loads past the coil toward RAIJIN ZAN).
+   * Physical, not arcane: this ratio drives the steel's kinetic language
+   * (edge glint, vibration ghost, kissaki star) in drawSword — never a
+   * neon halo. */
   get bladeChargeRatio(): number {
-    return Math.max(this.chargeRatio, this.state === 'dashCharge' ? this.dashChargeProgress : 0)
+    const dual=this.dualBladeChargeRatio
+    return Math.max(this.chargeRatio, dual, this.state === 'dashCharge' ? this.dashChargeProgress : 0)
   }
+
+  /** Combined dual-charge level (0..1 across POWER_DASH_CHARGE + the blade
+   * segment): the steel's own loading ramp while both keys are held. */
+  get dualBladeChargeRatio(): number {
+    return this.state==='dashCharge'&&this.dashDualArmed
+      ? clamp01((Math.min(this.dashChargeT,POWER_DASH_CHARGE)+this.dashDualT)/(POWER_DASH_CHARGE+POWER_DASH_SLASH_CHARGE))
+      : 0
+  }
+
+  get dashChargeProgress():number {return this.state==='dashCharge'?clamp01(this.dashChargeT/POWER_DASH_CHARGE):0}
+  /** Blade-segment progress of the dual charge (0..1) — the HUD meter. */
+  get slashChargeProgress():number {return this.state==='dashCharge'&&this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0}
+  /** RAIJIN ZAN is armed: both charges locked, both keys still held. */
+  get slashReady():boolean {return this.dashDualArmed&&this.dashDualT>=POWER_DASH_SLASH_CHARGE}
+  get staminaCooldown():number {return this.staminaRegenDelay}
 
   get parryWindowOpen(): boolean {
     return this.parryActive > 0
@@ -624,9 +665,6 @@ export class Player {
   get deadTime(): number {
     return this.deadT
   }
-
-  get dashChargeProgress():number {return this.state==='dashCharge'?clamp01(this.dashChargeT/POWER_DASH_CHARGE):0}
-  get staminaCooldown():number {return this.staminaRegenDelay}
 
   get hipY(): number {
     // footLock (damped) IS the hip height: planted-foot-derived → weight.
@@ -904,11 +942,14 @@ export class Player {
       // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
       // and a micro tremble in the sword arm itself, the steel visibly
       // straining under stored tension. IK keeps the soles grounded.
+      // THE DUAL CHAMBER strains under the fuller load: amplitude grows
+      // with the blade segment (the body carries steel, not static weight).
       const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
-      const tremor=Math.sin(this.now*55)*q
+      const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
+      const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
       p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
       p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
-      this.dashSink=Math.max(this.dashSink,.4*q)
+      this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
     } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
       const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
       const q=powerDashRecovery(progress),p=this.pose
@@ -1621,15 +1662,62 @@ export class Player {
     this.sheathAct=null;this.dropAction();this.charging=false
     this.state='dashCharge';this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeFxT=0
     this.dashChargeX=ax||this.face
+    this.dashChargeElapsedT=0;this.dropDualCharge()
     // The planted CHARGE COIL itself — not a recycled brake cycle played at
     // half speed. Standing entries blend from the near-neutral first beat;
     // running entries arrest through it (traction brakes the real velocity).
     this.playAnimation(DASH_CHARGE_CLIP,{blend:.07})
   }
 
+  /** Resets every dual-charge flag (RAIJIN ZAN bookkeeping) — safe to call
+   * from any state; the next charge re-arms cleanly. */
+  private dropDualCharge():void{
+    this.dashDualArmed=false
+    this.dashDualT=0
+    this.dashDualClipOn=false
+    this.dualLockTold=false
+    this.dashHeavyArmT=-1
+    this.dualDashRelT=0
+  }
+
+  /** The HEAVY hold inside the planted dash charge arms THE DUAL CHARGE —
+   * dash hold + heavy hold loads the blade (POWER DASH SLASH). */
+  private armDualCharge(w:WorldRef):void{
+    if(this.dashDualArmed)return
+    this.dashDualArmed=true
+    // the hand settling back onto the steel: one soft physical grip note
+    w.audio.play('swordSwitch',{volume:.14,pitch:.95})
+  }
+
+  /** THE DUAL RELEASE — both keys up, both charges locked: RAIJIN ZAN. The
+   * startup was fully paid inside the planted chamber, so the payoff is one
+   * committed hyper-armored drive with the steel ripping its horizontal
+   * draw-cut THROUGH the whole pack — the corridor sweep is the hit. */
+  private firePowerDashSlash(w:WorldRef):void{
+    this.dropDualCharge()
+    this.startDash(w,this.dashChargeX,0,true)
+    this.startAttack(ATTACKS.powerSlash,w)
+    // detonation accents — physical: the ground releases the planted load
+    w.fx.dust(this.x-this.dashChargeX*10,0,9)
+    w.cam.addTrauma(.18)
+  }
+
+  /** The dash key was released but the heavy KEPT holding: the invested dual
+   * charge converts into the standing blade gather — the sword arm finishes
+   * what the legs started (releasing the heavy now swings OVERLOAD SLASH,
+   * the steel never re-loads from zero). */
+  private convertToBladeCharge(w:WorldRef):void{
+    const invested=this.dashDualT/POWER_DASH_SLASH_CHARGE
+    this.dropDualCharge()
+    this.enterCharge(w)
+    // preserve the investment: a full dual charge is a READY blade instantly
+    this.chargeT=Math.min(.55,.4+invested*.15)
+    if(this.chargeT>=.55)this.chargeReady=true
+  }
+
   private updatePowerDashCharge(dt:number,w:WorldRef):void {
     const input=w.input
-    if(!this.grounded){this.state='move';return}
+    if(!this.grounded){this.state='move';this.dropDualCharge();return}
     this.vx=brakeVelocity(this.vx,tractionAcceleration(3200),dt)
     const ax=input.axisX(),ay=input.axisY()
     if(Math.abs(ax)>.2)this.dashChargeX=ax
@@ -1639,6 +1727,7 @@ export class Player {
     // remain plain attacks, exactly as before.
     if(input.pressed('light')||input.buffered('light')){
       input.takeBuffered('light')
+      this.dropDualCharge()
       if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
         this.startDash(w,this.dashChargeX,0,true)
         this.startAttack(ATTACKS.powerArc,w)
@@ -1646,29 +1735,118 @@ export class Player {
       }
       this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
     }
-    if(input.pressed('heavy')||input.buffered('heavy')){
-      input.takeBuffered('heavy')
-      if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
-        this.startDash(w,this.dashChargeX,0,true)
-        this.startAttack(ATTACKS.powerArc,w)
-        return
+    // HEAVY inside the charge: HOLD arms THE DUAL CHARGE (dash hold + heavy
+    // hold = the blade loads for RAIJIN ZAN); a quick TAP keeps the legacy
+    // strike path (GALE BREAKER on a ready charge, a plain heavy otherwise).
+    // Classification waits one hold beat so taps still resolve on release.
+    if(this.dashHeavyArmT>=0){
+      this.dashHeavyArmT+=dt
+      if(!input.down('heavy')){
+        const wasReady=this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST
+        this.dashHeavyArmT=-1
+        this.dropDualCharge()
+        if(wasReady){
+          this.startDash(w,this.dashChargeX,0,true)
+          this.startAttack(ATTACKS.powerArc,w)
+          return
+        }
+        this.startAttack(this.pickHeavy(w),w);return
       }
-      this.startAttack(this.pickHeavy(w),w);return
+      if(this.dashHeavyArmT>=HEAVY_HOLD_ARM){
+        this.dashHeavyArmT=-1
+        // the sword-button mechanic needs the steel; a sheathed heavy stays
+        // on the legacy tap path (it already resolved above on release)
+        if(this.swordDrawn)this.armDualCharge(w)
+      }
+    } else if(input.pressed('heavy')||input.buffered('heavy')){
+      input.takeBuffered('heavy')
+      if(!this.swordDrawn){
+        // sheathed: no dual chamber — the plain legacy behavior stands
+        if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
+          this.startDash(w,this.dashChargeX,0,true)
+          this.startAttack(ATTACKS.powerArc,w)
+          return
+        }
+        this.startAttack(this.pickHeavy(w),w);return
+      }
+      this.dashHeavyArmT=0 // begin hold classification
     }
     if(input.pressed('jump')||input.pressed('parry')||input.pressed('sheathe')){
-      this.state='move'
+      this.state='move';this.dropDualCharge()
       if(input.pressed('jump'))this.doJump(w)
       else if(input.pressed('parry'))this.enterParry(w)
       else if(this.swordDrawn)this.startSheath(w);else this.startDraw(w)
       return
     }
+    // ---- THE DUAL RELEASE LAW (both keys held): RAIJIN ZAN fires when BOTH
+    // keys are up — whichever releases first, one grace beat apart. Releasing
+    // the dash while still holding the heavy defers one beat (the release
+    // may be completing); holding past it converts the investment into the
+    // standing blade gather. ----
+    if(this.dashDualArmed){
+      const dashUp=!input.down('dash'),heavyUp=!input.down('heavy')
+      if(dashUp&&heavyUp){
+        // Input reset/blur is cancellation, not an accidental power shot.
+        if(!input.released('dash')&&!input.released('heavy')){this.dropDualCharge();this.state='move';return}
+        // read the armed state BEFORE the bookkeeping drop clears it
+        const armed=this.slashReady
+        this.dropDualCharge()
+        if(armed&&this.stamina>=POWER_DASH_STAMINA_COST){
+          this.firePowerDashSlash(w);return
+        }
+        // undercharged (or exhausted): the plain release stands
+        this.startDash(w,this.dashChargeX,0,this.dashChargeReady)
+        return
+      }
+      if(dashUp&&!heavyUp){
+        if(this.dualDashRelT<=0){
+          if(input.released('dash'))this.dualDashRelT=DUAL_RELEASE_GRACE
+          else{this.dropDualCharge();this.state='move';return} // blur reset
+        } else {
+          this.dualDashRelT-=dt
+          if(this.dualDashRelT<=0){this.convertToBladeCharge(w);return}
+        }
+        return // stay planted; the blade is still loading under the heavy hold
+      }
+      if(!dashUp)this.dualDashRelT=0 // dash re-held: the grace is off
+      if(heavyUp&&!this.slashReady){
+        // the heavy surrendered before the blade finished: relax the chamber
+        // back to the plain coil (the dash charge keeps what it already has)
+        const relax=this.dashDualClipOn // capture before the drop clears it
+        this.dropDualCharge()
+        if(relax)this.playAnimation(DASH_CHARGE_CLIP,{blend:.18})
+      }
+      // heavyUp && slashReady: the loaded chamber holds until the dash key
+      // joins the release (both keys up fires it — see above)
+    }
     if(!input.down('dash')){
       // Input reset/blur is cancellation, not an accidental power shot.
-      if(!input.released('dash')){this.state='move';return}
+      if(!input.released('dash')){this.state='move';this.dropDualCharge();return}
+      this.dropDualCharge()
       this.startDash(w,this.dashChargeX,0,this.dashChargeReady)
       return
     }
+    this.dashChargeElapsedT+=dt
     this.dashChargeT=Math.min(POWER_DASH_CHARGE,this.dashChargeT+dt)
+    // the coil's LOCK beat hands the stance to the deeper dual chamber
+    if(this.dashDualArmed&&!this.dashDualClipOn&&this.dashChargeElapsedT>=DASH_CHARGE_LOCK_BEAT){
+      this.dashDualClipOn=true
+      this.playAnimation(DUAL_CHARGE_CLIP,{blend:.09})
+    }
+    if(this.dashDualArmed&&this.dashDualClipOn){
+      this.dashDualT=Math.min(POWER_DASH_SLASH_CHARGE,this.dashDualT+dt)
+      if(this.dashDualT>=POWER_DASH_SLASH_CHARGE&&!this.dualLockTold){
+        this.dualLockTold=true
+        if(this.stamina>=POWER_DASH_STAMINA_COST){
+          // the TAUT tell — drawn steel: the same kinetic language as the
+          // coil lock, one grade deeper (heavier spark, one notch more bite)
+          w.audio.play('chargeReady',{volume:.36,pitch:.95})
+          if(this.swordDrawn)w.fx.sparks(this.blade.tx,this.blade.ty,-Math.PI/2,.5,3,'#f2fbff',260,.22)
+          w.fx.dust(this.x-this.dashChargeX*10,0,4)
+          w.cam.addTrauma(.065)
+        }
+      }
+    }
     this.dashChargeFxT-=dt
     if(this.dashChargeT>.12&&this.dashChargeFxT<=0){
       // Foot-pressure grit: the planted feet crush ground debris — small
@@ -2020,9 +2198,11 @@ export class Player {
     }
     if (/^l[1-5]$/.test(def.id)) this.lastLightAt = w.time
 
-    // HYPER-ARMOR: the charged release cannot be interrupted (the root
-    // cause of "charged never hits" — enemies struck mid-swing cancelled it)
+    // HYPER-ARMOR: charged releases cannot be interrupted (the root cause
+    // of "charged never hits" — enemies struck mid-swing cancelled it).
+    // RAIJIN ZAN's commitment spans the whole drive: the body is locked in.
     if (def.id === 'charged') this.armorT = 0.5
+    if (def.id === 'powerSlash') this.armorT = 0.62
 
     const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
@@ -2121,9 +2301,9 @@ export class Player {
       let usePrev = this.hasPrevBlade
       if (def.kind === 'dash' && !def.strikeHand) {
         curSeg = {
-          bx: this.x - this.face * 124,
+          bx: this.x - this.face * (h.corridorBack ?? 124),
           by: this.y - 55,
-          tx: this.x + this.face * 66,
+          tx: this.x + this.face * (h.corridorFront ?? 66),
           ty: this.y - 55,
         }
         usePrev = this.hasPrevBlade
@@ -2473,6 +2653,7 @@ export class Player {
     this.dropAction()
     this.dashMotionActive=false
     this.charging = false
+    this.dropDualCharge()
     this.ability = null
     this.state = 'hurt'
     this.vx = dir * (heavy ? 380 : 240)

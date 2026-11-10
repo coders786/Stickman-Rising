@@ -48,6 +48,12 @@ export interface AttackHit {
   /** hit-volume padding in px fattening the blade segment — a katana edge
    * is a plane, not a line; heavies carve a wider corridor than lights */
   pad?: number
+  /** DASH THROUGH-CUT corridor: the swept volume behind/ahead of the body
+   * along the travel line (px). Defaults live in Player.updateAttack; a
+   * wider corridor is a deeper pass — the dual-charged release carves the
+   * widest lane in the moveset. */
+  corridorBack?: number
+  corridorFront?: number
 }
 
 export interface AttackDef {
@@ -970,6 +976,109 @@ const powerArc: AttackDef = {
   },
 }
 
+/** POWER DASH SLASH — RAIJIN ZAN (雷神斬, thunder-god cut): THE DUAL
+ * RELEASE. Hold the dash (the planted coil) and HOLD the heavy — the blade
+ * chambers the steel back-level along the saya line (DUAL_CHARGE_CLIP) —
+ * then release BOTH keys: one committed power-dash drive with the steel
+ * ripping its horizontal draw-cut THROUGH the whole pack. The startup was
+ * fully paid inside the planted chamber (no windup on the payoff — the
+ * first frame IS the detonation), and the move is hyper-armored: the
+ * committed body cannot be interrupted, it can only bleed.
+ *
+ * Choreography (Alan Becker language — squash, lag, smear, follow-through):
+ *   SIT (.035) the last compression beat before detonation ·
+ *   DETONATION (.08) the legs fire — the body is GONE before the steel
+ *     (the blade still chambered: motion leads, the weapon lags) ·
+ *   THE CUT (.14) the blade rips through the full horizontal arc as the
+ *     hips unwind — full extension, the smear apex ·
+ *   CARRY (.21–.30) follow-through whips the blade past the plane while
+ *     stride-flight rides the corridor through the pack ·
+ *   CATCH (.40) the front leg reaches far ahead and plants the skid ·
+ *   ZANSHIN (.52–.70) the settle back to the middle guard.
+ * The first keyframe is EXACTLY DUAL_CHARGE_CLIP's TAUT LOCK so the
+ * release hands off pose-identically — the chamber detonates, it never
+ * re-loads. Selected ONLY from a locked dual charge — never a grounded
+ * heavy, never a live dash press. */
+const powerSlash: AttackDef = {
+  id: 'powerSlash', label: 'RAIJIN ZAN', kind: 'dash', requires: 'ground',
+  clip: makeClip('atk_powerSlash', [
+    // the dual-chamber TAUT LOCK, verbatim — seamless detonation handoff
+    keyframe(0, {
+      rootX: 1, rootY: 5.8, rootRot: .46, head: -.42,
+      hipL: -.38, kneeL: -.8, hipR: .66, kneeR: -1.32, footR: .16, footL: -.05,
+      shR: -.24, elR: -1.04, wrR: -.73, shL: .22, elL: -.95, wrL: -.25,
+      pelvisYaw: .2, chestYaw: -.2,
+    }, 'outQuad'),
+    // THE SIT: one final compression beat — squash before the snap
+    keyframe(.035, {
+      rootX: .8, rootY: 6.1, rootRot: .5, spine: .07, head: -.46,
+      hipL: -.4, kneeL: -.86, hipR: .68, kneeR: -1.4, footR: .16, footL: -.05,
+      shR: -.26, elR: -1.08, wrR: -.75, shL: .2, elL: -1.0, wrL: -.25,
+      pelvisYaw: .22, chestYaw: -.22,
+    }, 'outQuad'),
+    // DETONATION: legs fire — the body leaves before the steel (lag beat)
+    keyframe(.08, {
+      rootX: 3, rootY: 4.6, rootRot: .95, spine: .06, head: -.85,
+      hipL: -.7, kneeL: -.55, footL: 0, hipR: .85, kneeR: -1.0, footR: .18,
+      shR: -.2, elR: -.9, wrR: -.7, shL: .75, elL: -.9,
+      pelvisYaw: .12, chestYaw: -.1,
+    }, 'outQuad'),
+    // THE CUT: the blade rips through the full horizontal arc — hips
+    // unwind through the swing, arm at full extension (the smear apex)
+    keyframe(.14, {
+      rootX: 5.5, rootY: 4.2, rootRot: 1.1, spine: .1, head: -.8,
+      hipL: -.9, kneeL: -.4, footL: .06, hipR: 1.0, kneeR: -1.3, footR: .2,
+      shR: 1.5, elR: .15, wrR: .1, shL: .9, elL: -.6,
+      pelvisYaw: -.18, chestYaw: .18,
+    }, 'outQuart'),
+    // CARRY: follow-through whips the blade past the plane; stride-flight
+    keyframe(.21, {
+      rootX: 8, rootY: 4.0, rootRot: 1.3, spine: .1, head: -.88,
+      hipL: -1.0, kneeL: -.32, footL: .1, hipR: 1.12, kneeR: -1.5, footR: .22,
+      shR: 1.6, elR: .35, wrR: -.75, shL: 1.0, elL: -.45,
+      pelvisYaw: -.12, chestYaw: .1,
+    }, 'outCubic'),
+    // RIDE: blade extended, trailing the travel line through the pack
+    keyframe(.3, {
+      rootX: 7.6, rootY: 4.2, rootRot: 1.28, spine: .09, head: -.85,
+      hipL: -.8, kneeL: -.5, footL: .08, hipR: 1.05, kneeR: -1.42, footR: .21,
+      shR: 1.45, elR: .3, wrR: -.85, shL: .85, elL: -.55,
+      pelvisYaw: -.06, chestYaw: .05,
+    }, 'inOutSine'),
+    // THE CATCH: the front leg reaches far ahead and plants the skid
+    keyframe(.4, {
+      rootX: 6, rootY: 5.2, rootRot: .6, spine: .05, head: -.5,
+      hipL: -.55, kneeL: -1.0, footL: .08, hipR: 1.05, kneeR: -1.5, footR: .25,
+      shR: .9, elR: -.1, wrR: -.9, shL: .55, elL: -.8,
+      pelvisYaw: -.05, chestYaw: .02,
+    }, 'outCubic'),
+    // SKID ABSORB: weight sits back, the steel settles low
+    keyframe(.52, {
+      rootX: 3, rootY: 5.6, rootRot: .3, spine: .05, head: -.2,
+      hipL: -.5, kneeL: -.9, footL: .1, hipR: .6, kneeR: -1.35, footR: .18,
+      shR: .5, elR: -.4, wrR: -.6, shL: .4, elL: -.7, wrL: -.2,
+      pelvisYaw: .02, chestYaw: 0,
+    }, 'inOutCubic'),
+    // ZANSHIN: the settle back to the middle guard
+    keyframe(.64, GUARD, 'inOutCubic'),
+    keyframe(.7, GUARD, 'inOutCubic'),
+  ]),
+  hit: { start: .1, end: .44, dmg: 38, stagger: .55, kb: 640, kbY: -70, hitstop: .11, shake: .38, heavy: true, breakGuard: true, multiHit: .13, pad: 10, corridorBack: 150, corridorFront: 88 },
+  trail: { start: .07, end: .5 },
+  swingSfx: { t: .1, name: 'swingHeavy' },
+  cancel: .42,
+  chain: ['l1', 'h1', 'launcher'],
+  moveX: 240, moveXAt: .02, // assist only — the power-dash motor owns the drive
+  grip: .35, // the iai draw rides one hand; the saya hand finished its ride
+  zArc: .5,
+  drawFlash: true, // the ignition light event when the draw detonates
+  traj: { // DUAL-CHARGE PASS family: the deepest gather in the moveset — the
+    // steel collects along the saya line, then rips through the whole depth
+    // corridor as the body carries it across the pack
+    a0: -3.1, a1: .2, y0: -.3, y1: .28, e0: .5, e1: .97, band: 52,
+  },
+}
+
 /** CHARGED — OVERLOAD SLASH: element-charged kesa. Huge windup with the
  * blade thrown up-back over the shoulder, then a whipping diagonal. */
 const charged: AttackDef = {
@@ -1326,7 +1435,7 @@ const slam: AttackDef = {
 export const ATTACKS: Record<string, AttackDef> = {
   l1, l2, l3, l4, l5, retreat, spin, stabs,
   h1, h2, h3, launcher,
-  dashSlash, dashHeavy, powerArc, charged, riposte,
+  dashSlash, dashHeavy, powerArc, powerSlash, charged, riposte,
   a1, a2, a3, dive, slam,
   /* empty-hand command moves — selected ONLY while sheathed
    * (see Player.pickHeavy / Player.pickLight air branch) */

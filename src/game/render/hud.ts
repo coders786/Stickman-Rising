@@ -23,6 +23,9 @@ export interface HudState {
   stamina: number
   maxStamina: number
   dashCharge: number
+  /** THE DUAL CHARGE blade-segment (RAIJIN ZAN): 0..1 while dash + heavy
+   * are both held in the planted charge — the HUD's release prompt. */
+  slashCharge: number
   staminaCooldown: number
   meter: number
   swordName: string
@@ -128,7 +131,7 @@ export class HUD {
     const stamina=clamp01(s.stamina/s.maxStamina),hp=clamp01(s.hp/s.maxHp)
     const energy=clamp01(s.energy/s.maxEnergy),ult=clamp01(s.meter/100)
     const canDash=s.stamina>=DASH_STAMINA_COST,canPower=s.stamina>=POWER_DASH_STAMINA_COST
-    const charge=clamp01(s.dashCharge),compact=pw<215
+    const charge=clamp01(s.dashCharge),slash=clamp01(s.slashCharge),compact=pw<215
     ctx.save()
     // One backing surface instead of separately clipped, overlapping plates.
     ctx.fillStyle='rgba(5,11,18,.88)';ctx.fillRect(x,y,pw,154)
@@ -158,14 +161,18 @@ export class HUD {
     }
     ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left'
     ctx.fillStyle=canDash?'rgba(207,236,222,.95)':'#ffaaa0'
-    const status=charge>0?(charge>=.999?(canPower?'RELEASE: POWER':'RELEASE: NORMAL'):`CHARGING ${Math.round(charge*100)}%`)
+    const status=slash>0?(slash>=.999?(canPower?'RELEASE BOTH: RAIJIN ZAN':'BLADE LOCKED — STAMINA LOW'):`BLADE CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`)
+      :charge>0?(charge>=.999?(canPower?'RELEASE: POWER':'RELEASE: NORMAL'):`CHARGING ${Math.round(charge*100)}%`)
       :!canDash?'EXHAUSTED':!canPower?'POWER LOW':s.staminaCooldown>0?'RECOVERING':'POWER READY'
     ctx.fillText(status,bx,y+103,bw*.53)
     ctx.textAlign='right';ctx.fillStyle='rgba(187,211,200,.95)'
     ctx.fillText(compact?'45 / 120':'DASH 45  |  POWER 120',bx+bw,y+103,bw*.43)
     // Charge indicator is distinct from stamina: holding is not spending.
+    // The dual (blade) segment draws on the same strip, one grade hotter —
+    // drawn steel reads white.
     ctx.fillStyle='rgba(34,48,47,.95)';ctx.fillRect(bx,y+107,bw,3)
-    if(charge>0){ctx.fillStyle=canPower?'#d5ff8c':'#f2bc69';ctx.fillRect(bx,y+107,bw*charge,3)}
+    if(slash>0){ctx.fillStyle=canPower?(slash>=.999?'#ffffff':'#d5ffe0'):'#f2bc69';ctx.fillRect(bx,y+107,bw*slash,3)}
+    else if(charge>0){ctx.fillStyle=canPower?'#d5ff8c':'#f2bc69';ctx.fillRect(bx,y+107,bw*charge,3)}
     ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(207,218,228,.9)'
     ctx.fillText(compact?'ULT':'ULTIMATE',bx,y+123,bw*.35)
     ctx.textAlign='right';ctx.fillStyle=s.ultReady?'#ff80bd':'#cda0b8'
@@ -371,7 +378,7 @@ export class HUD {
     ctx.font = `10px ${MONO}`
     ctx.fillStyle = 'rgba(200,215,225,0.95)'
     ctx.fillText(
-      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   1-6 SWORDS',
+      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   HOLD L+K, RELEASE BOTH: RAIJIN ZAN   1-6 SWORDS',
       w / 2,
       h - 16,
       w-24,
