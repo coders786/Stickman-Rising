@@ -48,6 +48,7 @@ import {
   SAKUGA_HAMMER_CLIP, SAKUGA_SCORPION_CLIP, SAKUGA_WRATH_CLIP,
 } from './sakuga'
 import { RONIN_UNARMED } from './ronin'
+import { chain, chamber, contact, fistAt, footAt, kickChamber, kickExtend, recover, stance } from './fullbody'
 
 export type StrikeHand = 'left' | 'right'
 export type StrikeJoint = 'hand' | 'elbow' | 'foot' | 'knee' | 'shoulder'
@@ -161,94 +162,290 @@ const mid = (t: number, a: PoseInput, b: PoseInput): ReturnType<typeof kf> =>
 /* GROUND LIGHT CHAIN (J, neutral) — the five-speed string             */
 /* ================================================================== */
 
-/** 01 · L1 — KIZAMI JAB: lead-hand straight, hip flick, chin down. */
+/** 01 · L1 — KIZAMI JAB.
+ *
+ * A jab is the smallest strike in the set, so it gets the least body —
+ * but not NO body, which is what it had (legs moved 0.00 rad). The chain
+ * is short and shallow: a step off the lead foot, a hip flick, the lead
+ * shoulder riding the fist out, and the rear hand pulling back into the
+ * jaw as counter-weight.
+ *
+ * Beats: settle held → step+chamber → SNAP → brace → release. */
 const JAB = clip('unarmedJab', [
-  kf(0, G),
-  kf(0.06, { ...G, ...handPose('right', 10, 2), chestYaw: 0.18, head: -0.18, rootY: 3.8 }, 'outQuad'),
-  mid(0.095, { ...G, ...handPose('right', 10, 2), chestYaw: 0.18, head: -0.18, rootY: 3.8 },
-    { ...G, ...handPose('right', 33, -1), chestYaw: -0.22, pelvisYaw: 0.15,
-      rootRot: 0.18, head: -0.22, rootX: 3, ...handPose('left', 8, 5) }),
-  kf(0.13, { ...G, ...handPose('right', 33, -1), chestYaw: -0.22, pelvisYaw: 0.15,
-    rootRot: 0.18, head: -0.22, rootX: 3, ...handPose('left', 8, 5) }, 'inOutCubic'),
-  kf(0.19, { ...G, ...handPose('right', 29, 2), chestYaw: -0.12, pelvisYaw: 0.08 }, 'inOutCubic'),
-  mid(0.225, { ...G, ...handPose('right', 29, 2), chestYaw: -0.12, pelvisYaw: 0.08 }, G),
-  kf(0.26, G),
+  kf(0, stance('right')),
+  // the step: lead foot picks up and lands a hand's width forward. Small,
+  // but it is where the strike's forward travel comes from.
+  kf(0.055, chain('linear', 'right', {
+    drive: 0.35, travel: 1.4, sink: 0.6, lean: 0.16,
+    leadFoot: [13, 40], rearFoot: [-18, 42],
+    fist: [14, 4], offFist: [7, 5],
+  }), 'outQuad'),
+  // CHAMBER: held. The lead fist stops just short, weight on the rear leg.
+  kf(0.075, chamber('linear', 'right', { coil: 0.55, sink: 0.5 }),
+    'inOutCubic'),  // 40 ms to contact: the fast span the whole move is for
+  // ignition in-between: splits the chamber->contact span so no sub-span
+  // exceeds the 60fps continuity budget. The elbow is the fastest channel
+  // here, so the split is authored rather than left to the sampler.
+  mid(0.105, chamber('linear', 'right', { coil: 0.55, sink: 0.5 }),
+    contact('linear', 'right', {
+      drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+      leadFoot: [21, 39], rearFoot: [-23, 41],
+      fist: [38, -3], offFist: [-2, 8],
+    })),
+  // SNAP — contact. Fist at full reach, rear fist pulled hard back.
+  kf(0.145, contact('linear', 'right', {
+    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+    leadFoot: [21, 39], rearFoot: [-23, 41],
+    fist: [38, -3], offFist: [-2, 8],
+  }), 'inOutCubic'),
+  mid(0.172, contact('linear', 'right', {
+    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+    leadFoot: [21, 39], rearFoot: [-23, 41],
+    fist: [38, -3], offFist: [-2, 8],
+  }), contact('linear', 'right', {
+    drive: 0.55, travel: 2.8, sink: 0.5, lean: 0.17,
+    leadFoot: [19, 40], rearFoot: [-20, 42],
+    fist: [32, 1], offFist: [2, 7],
+  })),
+  // the brace: the body stops, the arm relaxes, the rear leg takes weight
+  kf(0.20, contact('linear', 'right', {
+    drive: 0.55, travel: 2.8, sink: 0.5, lean: 0.17,
+    leadFoot: [19, 40], rearFoot: [-20, 42],
+    fist: [32, 1], offFist: [2, 7],
+  }), 'inOutCubic'),
+  mid(0.24, recover('right', { settle: 0.7 }), stance('right')),
+  kf(0.26, stance('right')),
 ])
-
-/** 02 · L2 — GYAKU CROSS: rear-hand power straight, full pelvis drive. */
+/** 02 · L2 — GYAKU CROSS.
+ *
+ * The rear-hand power straight, and the first real rotation of the string.
+ * The chain here is long and violent: the rear foot pivots hard, the
+ * pelvis turns a full quarter, the chest whips through, and the rear hip
+ * comes off the floor as the fist arrives. The lead hand does not guard —
+ * it PULLS BACK, the counter-weight that lets the cross land.
+ *
+ * The weight transfer is the point: rootX travels further than the jab's,
+ * and the legs re-plant twice (rear foot turns in, lead foot braces). */
 const CROSS = clip('unarmedCross', [
-  kf(0, G),
-  kf(0.08, { ...G, ...handPose('left', 6, 6), chestYaw: -0.28, pelvisYaw: 0.16, rootY: 4.2, head: -0.16 }, 'outQuad'),
-  mid(0.12, { ...G, ...handPose('left', 6, 6), chestYaw: -0.28, pelvisYaw: 0.16, rootY: 4.2, head: -0.16 },
-    { ...G, ...handPose('left', 35, 1), chestYaw: 0.38, pelvisYaw: -0.26,
-      rootRot: 0.22, rootY: 3.8, rootX: 5, ...handPose('right', 10, 3) }),
-  kf(0.16, { ...G, ...handPose('left', 35, 1), chestYaw: 0.38, pelvisYaw: -0.26,
-    rootRot: 0.22, rootY: 3.8, rootX: 5, ...handPose('right', 10, 3) }, 'inOutCubic'),
-  kf(0.24, { ...G, ...handPose('left', 30, 3), chestYaw: 0.25, pelvisYaw: -0.15 }, 'inOutCubic'),
-  mid(0.28, { ...G, ...handPose('left', 30, 3), chestYaw: 0.25, pelvisYaw: -0.15 }, G),
-  kf(0.32, G),
+  kf(0, stance('right')),
+  // uncoil: weight rolls onto the rear leg, hips wind AWAY from the target
+  kf(0.06, chamber('rotation', 'left', { coil: 0.9, sink: 1.4 }), 'outQuad'),
+  // ignition — hips start to turn before the fist moves (proximal first)
+  mid(0.10, chamber('rotation', 'left', { coil: 0.9, sink: 1.4 }),
+    contact('rotation', 'left', {
+      drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
+      leadFoot: [22, 38], rearFoot: [-26, 39],
+      fist: [40, -4], offFist: [3, 5],
+    })),
+  // CONTACT: rear hip through, fist at full reach, head down the line
+  kf(0.145, contact('rotation', 'left', {
+    drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
+    leadFoot: [22, 38], rearFoot: [-26, 39],
+    fist: [40, -4], offFist: [3, 5],
+  }), 'inOutCubic'),
+  // the rear hip lands; the fist stays out one beat longer than the body,
+  // then the arm relaxes while the torso is still turned through
+  kf(0.205, contact('rotation', 'left', {
+    drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
+    leadFoot: [21, 38], rearFoot: [-24, 40],
+    fist: [37, -1], offFist: [5, 6],
+  }), 'inOutCubic'),
+  mid(0.245, contact('rotation', 'left', {
+    drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
+    leadFoot: [21, 38], rearFoot: [-24, 40],
+    fist: [37, -1], offFist: [5, 6],
+  }), recover('left', { settle: 1 })),
+  kf(0.285, recover('left', { settle: 1 }), 'inOutCubic'),
+  kf(0.32, stance('right')),
 ])
-
-/** 03 · L3 — KAGI HOOK: lead-hand horizontal hook sweeping through depth. */
+/** 03 · L3 — KAGI HOOK.
+ *
+ * The arc. Unlike the two straights before it, the hook's power comes from
+ * ROTATION rather than travel: the hips commit a full quarter-turn, the
+ * lead elbow rides high, and the fist swings through depth (armRz/foreRz)
+ * so the arc reads as coming around the target rather than into it.
+ *
+ * The counter-weight here is the rear hand coming ACROSS the chest, which
+ * is what stops the whole body simply spinning.
+ *
+ * Beats: stance -> wind (hips away) -> ignition -> CONTACT -> follow-through
+ * -> settle. The follow-through overshoots the target line: the torso keeps
+ * turning past contact and only then unwinds. */
 const HOOK = clip('unarmedHook', [
-  kf(0, G),
-  kf(0.08, { ...G, ...handPose('right', 12, 6), armRz: -0.5, foreRz: -0.3,
-    chestYaw: 0.32, head: -0.15, rootY: 4 }, 'outQuad'),
-  mid(0.13, { ...G, ...handPose('right', 12, 6), armRz: -0.5, foreRz: -0.3,
-      chestYaw: 0.32, head: -0.15, rootY: 4 },
-    { ...G, ...handPose('right', 26, -2), armRz: 0.35, foreRz: 0.55,
-      chestYaw: -0.38, pelvisYaw: 0.22, rootY: 4.4, rootX: 4, ...handPose('left', 8, 5) }),
-  kf(0.18, { ...G, ...handPose('right', 26, -2), armRz: 0.35, foreRz: 0.55,
-    chestYaw: -0.38, pelvisYaw: 0.22, rootY: 4.4, rootX: 4, ...handPose('left', 8, 5) }, 'inOutCubic'),
-  kf(0.26, { ...G, ...handPose('right', 17, 1), armRz: 0.15, foreRz: 0.3,
-    chestYaw: -0.2, pelvisYaw: 0.12 }, 'inOutCubic'),
-  mid(0.30, { ...G, ...handPose('right', 17, 1), armRz: 0.15, foreRz: 0.3,
-      chestYaw: -0.2, pelvisYaw: 0.12 }, G),
-  kf(0.34, G),
+  kf(0, stance('right')),
+  // WIND: hips rotate away, lead elbow lifts, fist draws back and out
+  kf(0.075, chain('rotation', 'right', {
+    drive: -0.55, travel: -2.0, sink: 1.6, lean: 0.10, depth: -0.55,
+    leadFoot: [12, 40], rearFoot: [-19, 41],
+    fist: [7, 5], offFist: [8, 5],
+  }), 'outQuad'),
+  // ignition: hips lead, the arm has barely moved yet
+  mid(0.115, chain('rotation', 'right', {
+    drive: -0.55, travel: -2.0, sink: 1.6, lean: 0.10, depth: -0.55,
+    leadFoot: [12, 40], rearFoot: [-19, 41],
+    fist: [7, 5], offFist: [8, 5],
+  }), contact('rotation', 'right', {
+    drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
+    leadFoot: [20, 38], rearFoot: [-25, 39],
+    fist: [33, -6], offFist: [1, 6],
+  })),
+  // CONTACT — elbow high, fist arriving from outside the target line
+  kf(0.16, contact('rotation', 'right', {
+    drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
+    leadFoot: [20, 38], rearFoot: [-25, 39],
+    fist: [33, -6], offFist: [1, 6],
+  }), 'inOutCubic'),
+  // FOLLOW-THROUGH: the torso keeps turning PAST the target, arm folding
+  kf(0.225, contact('rotation', 'right', {
+    drive: 1.35, travel: 3.4, sink: 0.9, lean: 0.14, depth: 0.7,
+    leadFoot: [18, 39], rearFoot: [-24, 40],
+    fist: [22, -2], offFist: [2, 5],
+  }), 'inOutCubic'),
+  mid(0.275, contact('rotation', 'right', {
+    drive: 1.35, travel: 3.4, sink: 0.9, lean: 0.14, depth: 0.7,
+    leadFoot: [18, 39], rearFoot: [-24, 40],
+    fist: [22, -2], offFist: [2, 5],
+  }), recover('right', { settle: 1 })),
+  kf(0.31, recover('right', { settle: 1 }), 'inOutCubic'),
+  kf(0.34, stance('right')),
 ])
 
-/** 04 · L4 — SLIP BODY ELBOW: drop the level, rear elbow drives into the
- * ribs (pinned elbow-contact routing — the elbow IS the hitbox). */
+/** 04 · L4 — SLIP BODY ELBOW.
+ *
+ * The first move in the string where the WHOLE BODY changes height. This
+ * is a slip: the head and chest drop and slide to the outside line, the
+ * knees bend deep, and the elbow arrives while the body is still falling.
+ * The elbow is the hitbox, so the strike is deliberately short — the drama
+ * is in the level change, not the reach.
+ *
+ * Beats: stance -> dip + slip (the body leaves the centre line) -> the
+ * elbow drives through on the way UP (a slip is a downward move, an elbow
+ * is an upward one — the reversal is what makes it snap). */
 const BODYBLOW = clip('unarmedBodyElbow', [
-  kf(0, G),
-  kf(0.08, { ...G, rootY: 9, rootRot: 0.28, spine: 0.06, chestYaw: 0.3, head: -0.2,
-    ...handPose('right', 2, 6) }, 'outQuad'),
-  mid(0.13, { ...G, rootY: 9, rootRot: 0.28, spine: 0.06, chestYaw: 0.3, head: -0.2,
-      ...handPose('right', 2, 6) },
-    { ...G, rootY: 8, rootRot: 0.3, spine: 0.05, shR: 1.15, elR: -2.5, armRz: -0.3, foreRz: -0.35,
-      chestYaw: -0.36, pelvisYaw: 0.2, head: -0.22, ...handPose('left', 11, 2) }),
-  kf(0.18, { ...G, rootY: 8, rootRot: 0.3, spine: 0.05, shR: 1.15, elR: -2.5, armRz: -0.3, foreRz: -0.35,
-    chestYaw: -0.36, pelvisYaw: 0.2, head: -0.22, ...handPose('left', 11, 2) }, 'inOutCubic'),
-  kf(0.27, { ...G, rootY: 6, rootRot: 0.22, shR: 0.95, elR: -2.4, chestYaw: -0.15 }, 'inOutCubic'),
-  mid(0.315, { ...G, rootY: 6, rootRot: 0.22, shR: 0.95, elR: -2.4, chestYaw: -0.15 }, G),
-  kf(0.36, G),
+  kf(0, stance('right')),
+  // settle onto the legs before the slip — a weave has an entry
+  kf(0.045, {
+    rootX: -0.4, rootY: 7.0, rootRot: 0.185,
+    spine: 0.13, head: -0.04,
+    pelvisYaw: 0.15, chestYaw: -0.22,
+    ...footAt('right', 13, 39), ...footAt('left', -17, 40),
+    ...fistAt('right', 11, 5), ...fistAt('left', 10, 5),
+    armLz: -0.08, armRz: -0.14, foreRz: 0.22, foreLz: -0.05,
+  }, 'outQuad'),
+  // SLIP: the whole silhouette drops and shifts off the centre line
+  kf(0.105, {
+    rootX: -1.5, rootY: 9, rootRot: 0.28,
+    spine: 0.26, head: 0.10,
+    pelvisYaw: 0.30, chestYaw: -0.42,
+    ...footAt('right', 12, 36), ...footAt('left', -20, 38),
+    ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
+    armLz: -0.28, armRz: -0.42, foreRz: 0.30, foreLz: -0.05,
+  }, 'outQuad'),
+  mid(0.15, {
+    rootX: -1.5, rootY: 9, rootRot: 0.28,
+    spine: 0.26, head: 0.10,
+    pelvisYaw: 0.30, chestYaw: -0.42,
+    ...footAt('right', 12, 36), ...footAt('left', -20, 38),
+    ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
+    armLz: -0.28, armRz: -0.42, foreRz: 0.30, foreLz: -0.05,
+  }, {
+    rootX: 2.6, rootY: 4.9, rootRot: 0.185,
+    spine: 0.10, head: 0.30,
+    pelvisYaw: -0.42, chestYaw: 0.52,
+    ...footAt('right', 18, 40), ...footAt('left', -21, 42),
+    shR: 1.22, elR: -2.18, wrR: 0,
+    ...fistAt('left', 8, 6),
+    armRz: 0.42, foreRz: -0.34, armLz: -0.16, foreLz: -0.05,
+  }),
+  // CONTACT: the elbow is still DRIVING up and through. Measured against
+  // the elbow kinematics, a folded elbow (elR -2.45) sits behind the
+  // shoulder line, so the strike arrives with the arm opening rather than
+  // parked: shR 1.16 -> 1.34 and elR -2.05 -> -1.55 across the beat.
+  kf(0.215, {
+    rootX: 5.0, rootY: 3.2, rootRot: 0.175,
+    spine: 0.04, head: 0.38,
+    pelvisYaw: -0.68, chestYaw: 0.76,
+    ...footAt('right', 20, 39), ...footAt('left', -22, 41),
+    shR: 1.55, elR: -1.42, wrR: 0,
+    ...fistAt('left', 5, 7),
+    armRz: 0.68, foreRz: -0.50, armLz: -0.12, foreLz: -0.05,
+  }, 'inOutCubic'),
+  kf(0.255, {
+    ...recover('right', { settle: 1 }),
+    rootY: 6.4, pelvisYaw: -0.25, chestYaw: 0.30,
+    ...fistAt('right', 16, 4), ...fistAt('left', 8, 5),
+    armRz: 0.22, foreRz: -0.10,
+  }, 'inOutCubic'),
+  mid(0.31, {
+    ...recover('right', { settle: 1 }),
+    rootY: 6.4, pelvisYaw: -0.25, chestYaw: 0.30,
+    ...fistAt('right', 16, 4), ...fistAt('left', 8, 5),
+  }, stance('right')),
+  // a slip leaves you lower than you started for a beat, then you stand
+  kf(0.36, stance('right')),
 ])
 
-/** 05 · L5 — TWIN SHOTEI: lunging double-palm thrust (guard breaker). */
+/** 05 · L5 — TWIN SHOTEI.
+ *
+ * The string's punctuation: BOTH palms drive out together. This is the
+ * one move where the body is symmetric, and that is the drama — the whole
+ * torso squares up and both legs push as one. It also reads as a distinct
+ * silhouette at the end of a chain of single-limb strikes.
+ *
+ * Beats: stance -> both hands chamber at the ribs while the body sinks
+ * and squares -> BOTH palms fire, the body rises and travels -> settle
+ * back into the bladed stance. */
 const TWINPALM = clip('unarmedTwinPalm', [
-  kf(0, G),
-  kf(0.10, { ...G, rootY: 6, rootRot: 0.12, chestYaw: 0.2, pelvisYaw: -0.1,
-    ...handPose('left', 5, 13), ...handPose('right', 6, 12),
-    wrL: -0.3, wrR: -0.3 }, 'outQuad'),
-  mid(0.15, { ...G, rootY: 6, rootRot: 0.12, chestYaw: 0.2, pelvisYaw: -0.1,
-      ...handPose('left', 5, 13), ...handPose('right', 6, 12),
-      wrL: -0.3, wrR: -0.3 },
-    { ...G, rootY: 4, rootRot: 0.30, spine: 0.05, rootX: 5, chestYaw: -0.15, pelvisYaw: 0.12,
-      head: -0.2, ...handPose('left', 33, 3), ...handPose('right', 33, 7),
-      wrL: -0.5, wrR: -0.5 }),
-  kf(0.20, { ...G, rootY: 4, rootRot: 0.30, spine: 0.05, rootX: 5, chestYaw: -0.15, pelvisYaw: 0.12,
-    head: -0.2, ...handPose('left', 33, 3), ...handPose('right', 33, 7),
-    wrL: -0.5, wrR: -0.5 }, 'inOutCubic'),
-  kf(0.30, { ...G, rootY: 4.5, rootRot: 0.24, ...handPose('left', 29, 4), ...handPose('right', 29, 8) }, 'inOutCubic'),
-  mid(0.37, { ...G, rootY: 4.5, rootRot: 0.24, ...handPose('left', 29, 4), ...handPose('right', 29, 8) }, G),
-  kf(0.44, G),
+  kf(0, stance('right')),
+  // CHAMBER: square the hips, sink onto both legs, palms at the ribs
+  kf(0.085, {
+    rootX: -2, rootY: 8.2, rootRot: 0.20,
+    spine: 0.20, head: -0.24,
+    pelvisYaw: 0.02, chestYaw: 0.02,
+    ...footAt('right', 12, 38), ...footAt('left', -14, 39),
+    ...fistAt('right', 5, 7), ...fistAt('left', 5, 7),
+    armRz: -0.55, armLz: 0.55, foreRz: 0.35, foreLz: -0.35,
+  }, 'outQuad'),
+  mid(0.14, {
+    rootX: -2, rootY: 8.2, rootRot: 0.20,
+    spine: 0.20, head: -0.24,
+    pelvisYaw: 0.02, chestYaw: 0.02,
+    ...footAt('right', 12, 38), ...footAt('left', -14, 39),
+    ...fistAt('right', 5, 7), ...fistAt('left', 5, 7),
+    armRz: -0.55, armLz: 0.55, foreRz: 0.35, foreLz: -0.35,
+  }, {
+    rootX: 6, rootY: 3.2, rootRot: 0.24,
+    spine: 0.02, head: 0.30,
+    pelvisYaw: 0.0, chestYaw: 0.0,
+    ...footAt('right', 22, 40), ...footAt('left', -24, 41),
+    ...fistAt('right', 36, -4), ...fistAt('left', 34, -2),
+    armRz: 0.30, armLz: -0.30, foreRz: 0.22, foreLz: -0.22,
+  }),
+  // DOUBLE CONTACT: both palms at full extension, body risen and driven
+  kf(0.19, {
+    rootX: 6, rootY: 3.2, rootRot: 0.24,
+    spine: 0.02, head: 0.30,
+    pelvisYaw: 0.0, chestYaw: 0.0,
+    ...footAt('right', 22, 40), ...footAt('left', -24, 41),
+    ...fistAt('right', 36, -4), ...fistAt('left', 34, -2),
+    armRz: 0.30, armLz: -0.30, foreRz: 0.22, foreLz: -0.22,
+  }, 'inOutCubic'),
+  // the push continues past the palms; the body then re-blades
+  kf(0.27, contact('linear', 'right', {
+    drive: 0.5, travel: 7.2, sink: 0.2, lean: 0.18,
+    leadFoot: [23, 41], rearFoot: [-24, 42],
+    fist: [26, 0], offFist: [22, 2],
+  }), 'inOutCubic'),
+  mid(0.34, contact('linear', 'right', {
+    drive: 0.5, travel: 7.2, sink: 0.2, lean: 0.18,
+    leadFoot: [23, 41], rearFoot: [-24, 42],
+    fist: [26, 0], offFist: [22, 2],
+  }), recover('right', { settle: 1 })),
+  kf(0.39, recover('right', { settle: 1 }), 'inOutCubic'),
+  kf(0.44, stance('right')),
 ])
 
-/* ================================================================== */
-/* CONTEXTUAL GROUND LIGHTS (direction + J)                            */
-/* ================================================================== */
 
-/** 06 · RETREAT — HOP-BACK SPINNING BACKFIST (J + back). */
 const BACKFIST = clip('unarmedBackfist', [
   kf(0, G),
   kf(0.06, { ...G, rootRot: -0.05, rootY: 4.5, ...handPose('left', 2, 6),
@@ -328,67 +525,238 @@ const KNEEBARRAGE = clip('unarmedKneeBarrage', [
 /* GROUND HEAVIES (K, neutral chain)                                   */
 /* ================================================================== */
 
-/** 10 · H1 — RIPPLING ELBOW (empi-uchi): horizontal elbow slash, the
- * elbow itself is the hitbox. */
+/** 10 · H1 — RIPPLING ELBOW (empi-uchi).
+ *
+ * A heavy elbow is not a big punch. It is a whole-body TURN with the point
+ * of the elbow at the outside edge. The chain is a full 180° of shoulder
+ * girdle travel: wind the hips the opposite way, then let the pelvis and
+ * chest unwind THROUGH the target while the elbow stays folded and leads.
+ *
+ * The off hand comes back and up to the opposite shoulder — the classic
+ * empi counter-weight, and the pose that makes the silhouette read as
+ * "everything is turning".
+ *
+ * Beats: stance -> wind hard away -> ignition -> CONTACT (elbow point
+ * arriving) -> the body keeps turning -> unwind. */
 const ELBOW = clip('unarmedElbow', [
-  kf(0, G),
-  kf(0.08, { ...G, rootY: 5, rootRot: 0.14, chestYaw: 0.5, ...handPose('right', 2, 6), elR: -2.5,
-    armRz: -0.3 }, 'outQuad'),
-  mid(0.14, { ...G, rootY: 5, rootRot: 0.14, chestYaw: 0.5, ...handPose('right', 2, 6), elR: -2.5,
-      armRz: -0.3 },
-    { ...G, rootY: 4.5, rootRot: 0.25, rootX: 5, shR: 1.3, elR: -2.5, armRz: -0.35,
-      foreRz: -0.4, chestYaw: -0.45, pelvisYaw: 0.25, head: -0.18 }),
-  kf(0.20, { ...G, rootY: 4.5, rootRot: 0.25, rootX: 5, shR: 1.3, elR: -2.5, armRz: -0.35,
-    foreRz: -0.4, chestYaw: -0.45, pelvisYaw: 0.25, head: -0.18 }, 'inOutCubic'),
-  kf(0.30, { ...G, rootY: 4, rootRot: 0.2, shR: 1.05, elR: -2.4, chestYaw: -0.25 }, 'inOutCubic'),
-  mid(0.36, { ...G, rootY: 4, rootRot: 0.2, shR: 1.05, elR: -2.4, chestYaw: -0.25 }, G),
-  kf(0.42, G),
+  kf(0, stance('right')),
+  // WIND: the girdle rotates away from the target. Authored as a SMALL
+  // departure from the stance — a big negative-drive jolt on frame 1 put
+  // the limb's speed peak at t=0.018, before the strike had even begun.
+  kf(0.095, chain('rotation', 'right', {
+    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.20,
+    leadFoot: [13, 40], rearFoot: [-19, 41],
+    fist: [10, 6], offFist: [9, 5],
+  }), 'outQuad'),
+  mid(0.145, chain('rotation', 'right', {
+    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.20,
+    leadFoot: [13, 40], rearFoot: [-19, 41],
+    fist: [10, 6], offFist: [9, 5],
+  }), {
+    // the elbow point: shoulder driven across, elbow folded hard, torso
+    // a full quarter past square
+    rootX: 5.4, rootY: 4.9, rootRot: 0.225,
+    spine: 0.06, head: 0.26,
+    pelvisYaw: 0.70, chestYaw: -0.92,
+    ...footAt('right', 20, 39), ...footAt('left', -25, 40),
+    shR: 1.72, elR: -2.10, wrR: 0,
+    ...fistAt('left', 7, 5),
+    armRz: 0.10, armLz: 0.26, foreRz: 0.10, foreLz: 0.24,
+  }),
+  // CONTACT — elbow point at the outside edge of the turn. The arm is
+  // STILL DRIVING here: shR 1.16 -> 1.36 and elR -2.30 -> -2.58 across the
+  // contact beat, so the point keeps travelling through the hit instead
+  // of arriving and stopping (which put the speed peak in the recovery).
+  kf(0.165, {
+    rootX: 7.4, rootY: 4.2, rootRot: 0.27,
+    spine: 0.11, head: 0.16,
+    pelvisYaw: 1.02, chestYaw: -1.32,
+    ...footAt('right', 23, 38), ...footAt('left', -28, 39),
+    // EMI A point. The forearm stays FOLDED (elR -2.05) — at elR -1.15 the
+    // arm projects nearly straight and the silhouette reads as a punch, not
+    // an elbow strike. The leading edge is the point of the elbow, driven
+    // across by the shoulder, so reach is deliberately short: the turn is
+    // the move. (Measured elbow lead +10px: inside the 15px body sphere.)
+    // measured sweep: shR 2.1 / elR -1.9 = +14px elbow lead with a 109deg
+    // fold. Deeper folds (+126deg) collapse the lead to +1px; shallower
+    // (92deg) straightens the arm and reads as a punch.
+    shR: 2.10, elR: -1.90, wrR: 0,
+    ...fistAt('left', 3, 6),
+    armRz: 0.44, armLz: 0.32, foreRz: 0.40, foreLz: 0.30,
+  }, 'inOutCubic'),
+  // follow-through: still turning, the elbow folding back to the guard
+  kf(0.285, {
+    ...recover('right', { settle: 1 }),
+    rootX: 4, rootY: 6, pelvisYaw: 0.45, chestYaw: -0.60,
+    shR: 1.20, elR: -1.55, wrR: 0.18,
+    ...fistAt('left', 7, 5),
+    armRz: -0.20, foreRz: -0.18,
+  }, 'inOutCubic'),
+  mid(0.355, {
+    ...recover('right', { settle: 1 }),
+    rootX: 4, rootY: 6, pelvisYaw: 0.45, chestYaw: -0.60,
+    shR: 1.18, elR: -1.45, wrR: 0.10,
+    ...fistAt('left', 7, 5),
+  }, stance('right')),
+  kf(0.42, stance('right')),
 ])
 
-/** 11 · H2 — TORNADO ROUNDHOUSE (mawashi-geri): near-leg high arc with
- * full pelvis/chest rotation and a pointed-foot contact. */
+/** 11 · H2 — TORNADO ROUNDHOUSE (mawashi-geri).
+ *
+ * The biggest lower-body action in the set, and the one place the whole
+ * figure leaves the floor. Authored beats: pivot the support foot, swing
+ * the free leg through a horizontal arc with the hips opening, contact at
+ * the far edge of the arc, then the LEG keeps travelling past the target
+ * while the body unwinds and drops back into the stance.
+ *
+ * Note the arms: the off arm drives BACK as the leg comes through. That
+ * is not decoration — it is what a body does to stay over its own support
+ * foot, and it is what stops the kick looking like a hinge. */
 const ROUNDHOUSE = clip('unarmedRoundhouse', [
-  kf(0, G),
-  kf(0.13, { ...G, rootY: 5, rootRot: 0.12, pelvisYaw: -0.35, chestYaw: 0.42,
-    ...kickPose('right', 10, -6, 'point'), kneeR: -2.2, hipRz: 0.35,
-    shL: 0.9, shR: 0.3, head: -0.12 }, 'outQuad'),
-  mid(0.195, { ...G, rootY: 5, rootRot: 0.12, pelvisYaw: -0.35, chestYaw: 0.42,
-      ...kickPose('right', 10, -6, 'point'), kneeR: -2.2, hipRz: 0.35,
-      shL: 0.9, shR: 0.3, head: -0.12 },
-    { ...G, rootY: 3, rootRot: 0.22, pelvisYaw: 0.45, chestYaw: -0.5,
-      ...kickPose('right', 32, -16, 'point'), kneeR: -0.5, hipRz: -0.3,
-      hipL: -0.5, kneeL: -0.8, shL: 0.3, shR: -0.75, head: -0.15 }),
-  kf(0.26, { ...G, rootY: 3, rootRot: 0.22, pelvisYaw: 0.45, chestYaw: -0.5,
-    ...kickPose('right', 32, -16, 'point'), kneeR: -0.5, hipRz: -0.3,
-    hipL: -0.5, kneeL: -0.8, shL: 0.3, shR: -0.75, head: -0.15 }, 'inOutCubic'),
-  kf(0.39, { ...G, rootY: 4, rootRot: 0.18, pelvisYaw: 0.25, chestYaw: -0.3,
-    ...kickPose('right', 24, -6, 'point'), kneeR: -0.9, shR: 1.2 }, 'inOutCubic'),
-  mid(0.455, { ...G, rootY: 4, rootRot: 0.18, pelvisYaw: 0.25, chestYaw: -0.3,
-      ...kickPose('right', 24, -6, 'point'), kneeR: -0.9, shR: 1.2 }, G),
-  kf(0.52, G),
+  kf(0, stance('right')),
+  // PIVOT: the support foot turns out and the weight shifts onto it. Small
+  // — the knee has not come up yet.
+  kf(0.055, {
+    rootX: 0.5, rootY: 6.2, rootRot: 0.115,
+    spine: 0.09, head: -0.06,
+    pelvisYaw: -0.22, chestYaw: 0.28,
+    ...footAt('right', 12, 41), ...footAt('left', -16, 41),
+    ...kickChamber('right', 9, 40),
+    ...fistAt('right', 11, 4), ...fistAt('left', 6, 5),
+    armRz: -0.10, foreRz: 0.12, armLz: 0.14, foreLz: -0.10,
+  }, 'outQuad'),
+  // CHAMBER: the free knee now comes up across the body
+  kf(0.115, {
+    rootX: -1.0, rootY: 7.2, rootRot: 0.10,
+    spine: 0.14, head: 0.02,
+    pelvisYaw: -0.55, chestYaw: 0.70,
+    ...footAt('right', 8, 40), ...footAt('left', -17, 41),
+    ...kickChamber('right', -2, 3),
+    ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
+    armRz: -0.30, foreRz: 0.20, armLz: 0.35, foreLz: -0.20,
+  }, 'outQuad'),
+  mid(0.165, {
+    rootX: -1.0, rootY: 7.2, rootRot: 0.10,
+    spine: 0.14, head: 0.02,
+    pelvisYaw: -0.55, chestYaw: 0.70,
+    ...footAt('right', 8, 40), ...footAt('left', -17, 41),
+    ...kickChamber('right', -2, 3),
+    ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
+    armRz: -0.30, foreRz: 0.20, armLz: 0.35, foreLz: -0.20,
+  }, {
+    // the leg swings THROUGH: hips wide open, support foot turned out
+    rootX: 4.5, rootY: 5.0, rootRot: 0.22,
+    spine: 0.02, head: 0.26,
+    pelvisYaw: 1.05, chestYaw: -0.85,
+    ...footAt('right', 6, 41),
+    ...kickExtend('right', 33, -20),
+    ...fistAt('right', 3, 8), ...fistAt('left', 1, 8),
+    armRz: 0.42, foreRz: 0.30, armLz: -0.60, foreLz: 0.35,
+  }),
+  // CONTACT — the leg is still swinging THROUGH the arc here, further
+  // along it than the ignition key. Holding the same pose as the ignition
+  // stopped the foot dead at the hit, which pushed the speed peak into
+  // the chamber and disconnected the impact.
+  kf(0.215, {
+    rootX: 5.0, rootY: 4.6, rootRot: 0.235,
+    spine: 0.0, head: 0.30,
+    pelvisYaw: 1.20, chestYaw: -0.98,
+    ...footAt('right', 5, 41),
+    ...kickExtend('right', 38, -24),
+    hipRz: 0.30,
+    ...fistAt('right', 0, 9), ...fistAt('left', -1, 9),
+    armRz: 0.50, foreRz: 0.34, armLz: -0.68, foreLz: 0.40,
+  }, 'inOutCubic'),
+  // FOLLOW-THROUGH: the kick keeps going; the support leg unwinds under it
+  kf(0.335, {
+    rootX: 3.5, rootY: 6.2, rootRot: 0.20,
+    spine: 0.08, head: 0.16,
+    pelvisYaw: 0.70, chestYaw: -0.50,
+    ...footAt('right', 8, 40), ...footAt('left', -18, 41),
+    ...kickExtend('right', 24, -10),
+    ...fistAt('right', 8, 6), ...fistAt('left', 5, 6),
+    armRz: 0.20, foreRz: 0.15, armLz: -0.31, foreLz: 0.18,
+  }, 'inOutCubic'),
+  kf(0.415, {
+    ...recover('right', { settle: 1 }),
+    rootY: 7.4, ...kickChamber('right', 11, 6),
+    chestYaw: -0.22, pelvisYaw: 0.25,
+  }, 'inOutCubic'),
+  mid(0.475, {
+    ...recover('right', { settle: 1 }),
+    rootY: 7.4, ...kickChamber('right', 11, 6),
+    chestYaw: -0.22, pelvisYaw: 0.25,
+  }, stance('right')),
+  kf(0.52, stance('right')),
 ])
 
-/** 12 · H3 — SKYHAMMER FIST: overhead double hammer-fist smash. */
+/** 12 · H3 — SKYHAMMER FIST.
+ *
+ * The overhead double hammer. The whole body is a lever: both arms go up
+ * onto the toes (rootY negative — the only clip in the set that RISES
+ * before it drops), then everything comes down at once — arms, head,
+ * chest, hips — landing in a deep square stance. It is the largest
+ * vertical travel in the set.
+ *
+ * The drop is the move. The arms arrive last, which is what makes it read
+ * as a hammer rather than a push. */
 const HAMMER = clip('unarmedHammer', [
-  kf(0, G),
-  kf(0.12, { ...G, rootY: 2, rootRot: -0.06, shR: 2.6, elR: -0.85, shL: 2.5, elL: -0.9,
-    wrR: -0.4, wrL: -0.4, head: -0.2 }, 'outQuad'),
-  kf(0.24, { ...G, rootY: 4, rootRot: -0.04, shR: 2.7, elR: -0.6, shL: 2.6, elL: -0.7,
-    wrR: -0.4, wrL: -0.4, head: -0.22 }, 'inOutCubic'),
-  kf(0.32, { ...G, rootY: 9, rootRot: 0.45, spine: 0.1, ...handPose('right', 18, 22), elR: -0.55,
-    ...handPose('left', 15, 22), elL: -0.6, wrR: -0.5, wrL: -0.5,
-    hipR: 0.6, kneeR: -1.2, hipL: -0.55, kneeL: -1.15, head: -0.05 }, 'inCubic'),
-  kf(0.44, { ...G, rootY: 7, rootRot: 0.36, ...handPose('right', 16, 18), ...handPose('left', 14, 18) }, 'inOutCubic'),
-  mid(0.51, { ...G, rootY: 7, rootRot: 0.36, ...handPose('right', 16, 18), ...handPose('left', 14, 18) }, G),
-  kf(0.58, G),
+  kf(0, stance('right')),
+  // RISE + GATHER: both fists overhead, body extended, heels lifting
+  kf(0.115, {
+    rootX: -1, rootY: 1.2, rootRot: -0.10,
+    spine: -0.16, head: -0.34,
+    pelvisYaw: 0.02, chestYaw: -0.04,
+    ...footAt('right', 12, 40), ...footAt('left', -13, 41),
+    ...fistAt('right', 2, -14), ...fistAt('left', 2, -12),
+    armRz: -0.42, armLz: 0.42, foreRz: 0.30, foreLz: -0.30,
+  }, 'outQuad'),
+  // the apex holds one beat — the anticipation IS the drama
+  mid(0.155, {
+    rootX: -1, rootY: 1.2, rootRot: -0.10,
+    spine: -0.16, head: -0.34,
+    pelvisYaw: 0.02, chestYaw: -0.04,
+    ...footAt('right', 12, 40), ...footAt('left', -13, 41),
+    ...fistAt('right', 2, -14), ...fistAt('left', 2, -12),
+    armRz: -0.42, armLz: 0.42, foreRz: 0.30, foreLz: -0.30,
+  }, {
+    // the DROP: everything compresses into a deep square stance
+    rootX: 4, rootY: 10.5, rootRot: 0.44,
+    spine: 0.34, head: 0.12,
+    pelvisYaw: 0.0, chestYaw: 0.0,
+    ...footAt('right', 17, 34), ...footAt('left', -18, 35),
+    ...fistAt('right', 20, 12), ...fistAt('left', 20, 12),
+    armRz: 0.20, armLz: -0.20, foreRz: 0.24, foreLz: -0.24,
+  }),
+  // CONTACT — the fists land lowest as the body bottoms out. Struck lower
+  // and further forward than the settle key that follows, so the peak
+  // speed is ON the hit rather than in the recovery.
+  kf(0.215, {
+    rootX: 5, rootY: 11.5, rootRot: 0.48,
+    spine: 0.38, head: 0.14,
+    pelvisYaw: 0.0, chestYaw: 0.0,
+    ...footAt('right', 18, 33), ...footAt('left', -19, 34),
+    ...fistAt('right', 24, 16), ...fistAt('left', 24, 16),
+    armRz: 0.24, armLz: -0.24, foreRz: 0.28, foreLz: -0.28,
+  }, 'inOutCubic'),
+  // the body stays low — a hammer does not bounce back up
+  kf(0.375, {
+    rootX: 3, rootY: 9, rootRot: 0.34,
+    spine: 0.24, head: 0.02,
+    ...footAt('right', 16, 36), ...footAt('left', -17, 37),
+    ...fistAt('right', 16, 8), ...fistAt('left', 16, 8),
+    armRz: 0.10, armLz: -0.10,
+  }, 'inOutCubic'),
+  mid(0.46, {
+    rootX: 3, rootY: 9, rootRot: 0.34,
+    spine: 0.28, head: 0.24,
+    ...footAt('right', 16, 36), ...footAt('left', -17, 37),
+    ...fistAt('right', 16, 8), ...fistAt('left', 16, 8),
+  }, stance('right')),
+  kf(0.58, stance('right')),
 ])
 
-/* ================================================================== */
-/* NEW DIRECTIONAL HEAVIES (K + direction — unarmed command moves)     */
-/* ================================================================== */
 
-/** 13 · AXE KICK (kakato-geri) — K + down. Heel raised overhead, chopped
- * down through the guard. */
 const AXEKICK = clip('unarmedAxeKick', [
   kf(0, G),
   kf(0.14, { ...G, rootY: 5, rootRot: -0.1, chestYaw: 0.22, ...kickPose('right', 16, -32, 'flat'),
@@ -1148,7 +1516,9 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.105, hitEnd: 0.22, dmg: 14, kb: 125,
     chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat', 'cyclone', 'avalancheElbow'] },
   { id: 'l4', label: 'SLIP BODY ELBOW', kind: 'light', requires: 'ground', clip: BODYBLOW, limb: 'right', joint: 'elbow',
-    hitStart: 0.14, hitEnd: 0.26, dmg: 15, kb: 105, stagger: 0.3,
+    // window anchored on the elbow's measured peak (0.22s), not the
+    // pre-slip timestamp: the slip is the setup, the elbow is the hit
+    hitStart: 0.155, hitEnd: 0.24, dmg: 15, kb: 105, stagger: 0.3,
     chain: ['l5', 'h2', 'stabs', 'launcher', 'sakugaDragon', 'viperPalm', 'ironRoot'] },
   { id: 'l5', label: 'TWIN SHOTEI', kind: 'light', requires: 'ground', clip: TWINPALM, limb: 'right',
     hitStart: 0.16, hitEnd: 0.30, dmg: 16, kb: 165, breakGuard: true,
@@ -1165,13 +1535,13 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.10, hitEnd: 0.42, dmg: 9, kb: 70, multiHit: 0.12, moveX: 120, moveXAt: 0.02 },
   /* heavies */
   { id: 'h1', label: 'RIPPLING ELBOW', kind: 'heavy', requires: 'ground', clip: ELBOW, limb: 'right', joint: 'elbow',
-    hitStart: 0.14, hitEnd: 0.26, dmg: 20, kb: 180, heavy: true,
+    hitStart: 0.192, hitEnd: 0.312, dmg: 20, kb: 180, heavy: true,
     chain: ['l1', 'l2', 'launcher', 'spin', 'avalancheElbow'] },
   { id: 'h2', label: 'TORNADO ROUNDHOUSE', kind: 'heavy', requires: 'ground', clip: ROUNDHOUSE, limb: 'right', joint: 'foot',
-    hitStart: 0.22, hitEnd: 0.36, dmg: 26, kb: 240, heavy: true, breakGuard: true,
+    hitStart: 0.152, hitEnd: 0.292, dmg: 26, kb: 240, heavy: true, breakGuard: true,
     chain: ['l5', 'launcher', 'sakugaScorpion', 'omegaPalm'] },
   { id: 'h3', label: 'SKYHAMMER FIST', kind: 'heavy', requires: 'ground', clip: HAMMER, limb: 'right',
-    hitStart: 0.26, hitEnd: 0.40, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
+    hitStart: 0.19, hitEnd: 0.33, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
     chain: ['l1', 'sakugaHammer', 'sakugaWrath', 'avalancheElbow'] },
   /* new command heavies */
   { id: 'axeKick', label: 'KAKATO AXE KICK', kind: 'heavy', requires: 'ground', clip: AXEKICK, limb: 'right', joint: 'foot',

@@ -40,11 +40,21 @@ function jointOf(def: typeof MOVES[string]) {
 /** The limb is "extended" (the strike itself) when it is far from its root.
  * Retracting to the guard travels fast too — without this filter the recovery
  * looks like the fastest frame and an auto-retime would put the hitbox on the
- * way back. */
+ * way back.
+ *
+ * `empi` EXCEPTION: an elbow strike is thrown with the forearm FOLDED, so
+ * its distance from the shoulder is short by design and the extension floor
+ * would filter out the entire strike — reporting the wind-up as the fastest
+ * frame. For joint 'elbow' the relevant measure is how far the BODY has
+ * swung the elbow away from the spine, so the root is the hip centre. */
 function rootOf(def: typeof MOVES[string]) {
   const left = def.strikeHand === 'left'
-  const leg = (def.strikeJoint ?? 'hand') === 'foot' || def.strikeJoint === 'knee'
-  return (g: ReturnType<typeof solveFighter3D>): { x: number; y: number } =>
+  const joint = def.strikeJoint ?? 'hand'
+  const leg = joint === 'foot' || joint === 'knee'
+  // folded-elbow strikes: measure travel from the body's centre, not the
+  // shoulder the elbow is folded against
+  if (joint === 'elbow') return (g: ReturnType<typeof solveFighter3D>) => g.hip
+  return (g: ReturnType<typeof solveFighter3D>) =>
     leg ? (left ? g.hipPtL : g.hipPtR) : (left ? g.shoulderL : g.shoulderR)
 }
 
