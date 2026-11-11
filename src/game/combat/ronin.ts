@@ -16,9 +16,11 @@
  *  · slam impacts / draw flashes: the reference's ground + iai events
  *  · cancels: during the reference's damping phase (post-climax settle)
  *
- * The clips ARE the blade path: chamber, contact and bladeYaw/bladeZ depth
- * travel are authored keyframes, solved by the same 3D rig the renderer and
- * the hitbox read. There is no trajectory solver in between.
+ * No `traj`/`zArc` is declared on purpose: the sword-arc solver's fallback
+ * profile DERIVES the 3D blade path from these clips' authored chamber/
+ * contact keys (solveFighter3D at trail.start−0.1 vs mid-hit — including
+ * the ported bladeYaw sweeps and bladeZ thrust travel), so the reference's
+ * choreography drives the arc, the aim-lock and the overshoot physics.
  *
  * REACHABILITY (chain graph, additive — see player.ts pick edits):
  *  · srIai        forward+light after IAI DRAW / BACKSTEP CUT (draw family)
@@ -178,11 +180,6 @@ const SPECS: RoninSpec[] = [
 /* build armed + unarmed defs                                          */
 /* ------------------------------------------------------------------ */
 
-/** Contact tolerance for an empty-hand strike, in world px. A fist/heel is
- * ~2.25px of drawn bone half-width; this only covers render grain, it must
- * never approach the reach of a weapon. */
-const CONTACT_PAD = 5
-
 function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
   const win = hitWindowOf(s.meta)
   const hit: AttackHit = {
@@ -197,20 +194,10 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     hitstop: hitstopOf(s.meta),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
     heavy: !!s.heavy,
-    // AREA IS A WEAPON CONCEPT. The armed finishers sweep a 150px blade
-    // arc; a punch that claims the same radius is a phantom blade — the
-    // empty-hand twin keeps its authored reach (the limb segment) and, for
-    // dash moves, its declared corridor. Nothing else reaches out.
-    aoe: unarmed ? undefined : s.aoe,
+    aoe: s.aoe,
     multiHit: s.multiHit,
     breakGuard: s.breakGuard,
-    // PADDING IS A BLADE CONCEPT. `pad` fattens the *body* spheres so a
-    // swept katana edge corridor registers; an empty-hand strike resolves
-    // against the limb segment instead (player.updateBladeWorld), where a
-    // wide body radius would let a fist connect from sword distance. So the
-    // unarmed variants get the contact tolerance only — no inherited
-    // sword-corridor fattening.
-    pad: unarmed ? CONTACT_PAD : s.pad ?? (s.heavy ? 8 : 5),
+    pad: s.pad ?? (s.heavy ? 8 : 5),
     corridorBack: s.corridor?.back,
     corridorFront: s.corridor?.front,
     corridorY: s.corridor?.y,
@@ -239,12 +226,9 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     moveYAt: s.moveYAt,
     float: s.float,
     groundDrive: s.groundDrive,
-    // WEAPON EVENTS DO NOT SURVIVE THE SHEATH. `drawFlash` is the
-    // steel-emergence flare and `slamImpact` is a bladed plunge's crater;
-    // an empty-handed twin that fires either one is playing a sword
-    // cinematic with no sword. The bodies still get the authored hit.
-    slamImpact: unarmed ? undefined : s.slamImpact,
-    drawFlash: unarmed ? undefined : s.drawFlash,
+    slamImpact: s.slamImpact,
+    drawFlash: s.drawFlash,
+    grip: unarmed ? 0 : s.grip,
     ...(unarmed ? { strikeHand: s.unarmed.limb, strikeJoint: s.unarmed.joint } : {}),
   }
 }

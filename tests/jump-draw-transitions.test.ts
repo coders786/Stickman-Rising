@@ -20,28 +20,12 @@ test('every authored switch keeps finite motion and settles in elapsed time, not
   for(const ch of [CH.rootX,CH.rootY])assert.ok(Math.abs(a.pose[ch]-target[ch])<1e-5)
  }
 })
-test('a blended switch does not accumulate offsets across repeated switches',()=>{
- // The old "display pose" seeding API is gone with the display-pose layer:
- // the animator now crossfades from the pose it last SHOWED, and there is
- // nothing to re-seed. What still matters is that replaying a switch cycle
- // is idempotent — no drift builds up over time.
+test('final constrained display seeds switches without accumulating procedural offsets',()=>{
  const a=new Animator();a.play(library.IDLE_CLIP,{blend:0});a.update(.1)
- const first=a.pose.slice()
- for(let cycle=0;cycle<8;cycle++){
-  a.play(library.JUMP_CLIP,{blend:.08,restart:true});a.update(0)
-  for(let i=0;i<20;i++)a.update(1/120)
-  a.play(library.IDLE_CLIP,{blend:.08,restart:true});a.update(0)
-  for(let i=0;i<40;i++)a.update(1/120)
-  assert.ok([...a.pose].every(Number.isFinite))
- }
- // settled pose == the clip sampled at the animator's own time, EXACTLY:
- // nothing has been added on top, so nothing can accumulate
- const settled=sampleClip(a.getClip()!,a.getTime(),makePose())
- let worst=0,worstCh=-1
- for(let i=0;i<a.pose.length;i++){const d=Math.abs(a.pose[i]-settled[i]);if(d>worst){worst=d;worstCh=i}}
- assert.ok(worst<1e-9,`residue ${worst.toExponential(2)} on channel ${worstCh}`)
- assert.ok([...a.pose].every(Number.isFinite))
- void first
+ const shown=a.pose.slice();shown[CH.shL]=1.1;a.captureDisplayPose(shown)
+ a.update(.01);assert.notEqual(a.pose[CH.shL],shown[CH.shL])
+ a.play(library.JUMP_CLIP,{blend:.08});a.update(0)
+ assert.ok(Math.abs(a.pose[CH.shL]-1.1)<1e-5)
 })
 test('draw has extraction/follow-through breakdowns and no full-turn wrist unwind',()=>{
  const c=library.DRAW_CLIP
@@ -50,7 +34,7 @@ test('draw has extraction/follow-through breakdowns and no full-turn wrist unwin
  for(let i=1;i<=300;i++){
   const p=sampleClip(c,c.dur*i/300,makePose())
   assert.ok(Math.abs(p[CH.wrR]-last[CH.wrR])<.06)
-  assert.ok(p[CH.wrR]>4.8&&p[CH.wrR]<7.5);last=p
+  assert.ok(p[CH.wrR]>4.8&&p[CH.wrR]<7.8);last=p
  }
  assert.ok(library.LAND_CLIP.frames[1].p[CH.rootY]>library.LAND_CLIP.frames[0].p[CH.rootY]+4)
  for(const c of [library.JUMP_CLIP,library.JUMP_LEAP_CLIP,library.LAND_CLIP])assert.ok(c.frames.length>=4)

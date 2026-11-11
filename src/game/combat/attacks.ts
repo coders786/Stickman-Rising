@@ -87,11 +87,40 @@ export interface AttackDef {
   float?: number
   /** AoE + fx fire when the player touches ground mid-attack (slams / dive) */
   slamImpact?: { r: number; dmg: number; launch: number }
-  /** iai snap-draw: the flash-release burst at ignition */
+  /** two-handed grip weight (0..1): how strongly the off-hand IK takes the
+   * tsuka during this attack — real kenjutsu cuts are two-handed */
+  grip?: number
+  /** 2.8D Z-EXCURSION (0..1): legacy visual-only depth pulse — superseded
+   * by `traj` (the real 3D yaw path); still drives the pierce flare for
+   * attacks without a declared trajectory */
+  zArc?: number
+  /** iai snap-draw: spawn the flash-release burst at ignition (blade
+   * clearing the saya reads as a 1-frame light event) */
   drawFlash?: boolean
+  /** THE 3D TRAJECTORY: the blade's path through real 3D space during the
+   * strike. Every attack family gets a genuinely different combination —
+   * horizontal cuts carve wide depth arcs, diagonals tilt through depth,
+   * thrusts spear the lens, risers reverse the plane. The body follows:
+   * hips rotate with the yaw, the chest counter-rotates further. */
+  traj?: Traj3D
 }
 
-
+/** Blade path spec (see armarc.ts — the 3D trajectory solver):
+ *  a0→a1  pitch: screen-plane blade angle, chamber → contact
+ *         (0 = level forward, + = tip down, − = tip up)
+ *  y0→y1  yaw: depth-plane rotation, chamber → contact
+ *         (− = kissaki behind the body plane, + = toward the camera)
+ *  e0→e1  arm extension fraction (coil → drive through)
+ *  band   strike height (world px above feet: 14 legs / 48 torso / 78 chest) */
+export interface Traj3D {
+  a0: number
+  a1: number
+  y0: number
+  y1: number
+  e0: number
+  e1: number
+  band?: number
+}
 
 /** Chūdan-no-kamae guard — shared start/end pose for ground chains. */
 const GUARD = {
@@ -172,7 +201,11 @@ const l1: AttackDef = {
   cancel: 0.32,
   chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat', 'srIai'],
   moveX: 150, moveXAt: 0.13, groundDrive:{duration:.06,acceleration:3000},
- drawFlash: true,
+  grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
+  zArc: 0.4, drawFlash: true,
+  traj: { // HORIZONTAL DRAW: steel rips from BEHIND the hip through depth
+    a0: 2.2, a1: 0.05, y0: -0.55, y1: 0.3, e0: 0.5, e1: 0.85, band: 48,
+  },
 }
 
 /** L2 — KESA GIRI (袈裟斬り): the diagonal temple-to-hip cut. Wind high
@@ -231,7 +264,11 @@ const l2: AttackDef = {
   cancel: 0.31,
   chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat'],
   moveX: 130, moveXAt: 0.14,
-
+  grip: 0.9, // kesa from jōdan — both hands on the tsuka through the diagonal
+  zArc: 0.5,
+  traj: { // DIAGONAL family: descends temple→hip while the plane TILTS
+    a0: -0.9, a1: 0.75, y0: -0.4, y1: 0.28, e0: 0.6, e1: 0.88, band: 48,
+  },
 }
 
 /** L3 — GYAKU KESA (逆袈裟): the reverse diagonal — hip-to-temple rising
@@ -291,8 +328,11 @@ const l3: AttackDef = {
   cancel: 0.33,
   chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat'],
   moveX: 110, moveXAt: 0.12,
-
-
+  grip: 0.9,
+  zArc: 0.5,
+  traj: { // RISING DIAGONAL family: the plane crosses depth upward
+    a0: 0.75, a1: -0.8, y0: 0.22, y1: -0.25, e0: 0.55, e1: 0.9, band: 48,
+  },
 }
 
 /** L4 — YOKO GIRI (横斬り): level horizontal sweep. Coil into waki (blade
@@ -350,8 +390,13 @@ const l4: AttackDef = {
   cancel: 0.37,
   chain: ['l5', 'h2', 'stabs', 'launcher', 'srCross'],
   moveX: 90, moveXAt: 0.16,
-
-
+  grip: 0.7,
+  zArc: 0.55,
+  traj: { // HORIZONTAL family: the blade carves a WIDE depth arc around
+    // the body — behind the far shoulder, through the target, out the
+    // camera side. The hips drive it (pelvisYaw rides the yaw sweep).
+    a0: 2.5, a1: 0.08, y0: -0.85, y1: 0.7, e0: 0.5, e1: 0.92, band: 48,
+  },
 }
 
 /** L5 — KIRI OROSHI (切り下ろし): the vertical finishing cut. Full jōdan
@@ -417,7 +462,12 @@ const l5: AttackDef = {
   cancel: 0.37,
   chain: ['srOnslaught'],
   moveX: 240, moveXAt: 0.2,
-
+  grip: 1, // kiri oroshi — full two-handed vertical
+  zArc: 0.65,
+  traj: { // VERTICAL family: falls through the center line; a whisper of
+    // depth (dips behind the crown at chamber, exits slightly camera-side)
+    a0: -1.55, a1: 1.3, y0: -0.18, y1: 0.15, e0: 0.55, e1: 0.93, band: 48,
+  },
 }
 
 /** Backstep Slash — retreating rising cut (hold back + light): gyaku-kesa
@@ -457,8 +507,11 @@ const retreat: AttackDef = {
   cancel: 0.31,
   chain: ['l1', 'l2', 'launcher', 'spin', 'srIai'],
   moveX: -240, moveXAt: 0.05,
-
-
+  grip: 0.85,
+  zArc: 0.45,
+  traj: { // retreating riser — the plane crosses depth while stepping back
+    a0: 0.7, a1: -0.75, y0: -0.3, y1: 0.25, e0: 0.5, e1: 0.8, band: 48,
+  },
 }
 
 /** HASSŌ SWEEP (down + light): crouched low horizontal sweep with a
@@ -509,8 +562,13 @@ const spin: AttackDef = {
   swingSfx: { t: 0.08, name: 'swing' },
   cancel: 0.4,
   chain: ['l5', 'launcher', 'h2', 'srVortex'],
-
-
+  grip: 0.75,
+  zArc: 0.5,
+  traj: { // SPIN family: near-full-circle depth rotation around the body —
+    // the kissaki orbits through BEHIND → target plane → camera → behind.
+    // The pelvis and chest counter-rotate through the whole sweep.
+    a0: 2.6, a1: 0.1, y0: -1.15, y1: 1.1, e0: 0.45, e1: 0.85, band: 14,
+  },
 }
 
 /** STABS — RENZOKU TSUKI (連続突き): the rapid triple thrust. Chamber the
@@ -550,6 +608,7 @@ const stabs: AttackDef = {
       shR: 0.7, elR: -0.5, wrR: 0.3,
       shL: 1.1, elL: -0.7,
     }, 'outQuad'),
+    // THRUST 1 — level, full extension (sum ≈ 1.57 → blade dead-level)
     keyframe(0.17, {
       rootRot: 0.38, spine: 0.14, head: -0.2, rootY: 2.5,
       hipR: 0.9, kneeR: -0.8, footR: 0.2,
@@ -575,6 +634,7 @@ const stabs: AttackDef = {
       // GAP-2 · re-coil: the retract re-winds the hips past neutral
       pelvisYaw: -0.06, chestYaw: 0.05,
     }, 'outQuad'),
+    // THRUST 2 — a touch deeper, chest rotating through
     keyframe(0.35, {
       rootRot: 0.4, spine: 0.15, head: -0.21, rootY: 2.5,
       hipR: 0.92, kneeR: -0.82, footR: 0.21,
@@ -601,6 +661,7 @@ const stabs: AttackDef = {
       // GAP-2 · re-coil deepens with the escalation
       pelvisYaw: -0.07, chestYaw: 0.055,
     }, 'outQuad'),
+    // THRUST 3 — deep passing lunge, hips fully open, full penetration
     keyframe(0.555, {
       rootRot: 0.42, spine: 0.16, head: -0.22, rootY: 2.5,
       hipR: 0.95, kneeR: -0.85, footR: 0.22,
@@ -629,7 +690,12 @@ const stabs: AttackDef = {
   cancel: 0.66,
   chain: ['l5', 'h2', 'launcher', 'spin', 'srViper'],
   moveX: 250, moveXAt: 0.13,
- // the string is always two-handed — h2's tsuki law
+  grip: 1, // the string is always two-handed — h2's tsuki law
+  zArc: 0.8, // thrusts spear the lens
+  traj: { // THRUST family (string variant): the blade re-spears through
+    // depth on every beat — chambered back, pierce at the lens, repeat
+    a0: -2.8, a1: 0.05, y0: -0.3, y1: 0.5, e0: 0.45, e1: 0.97, band: 78,
+  },
 }
 
 /* ------------------------------------------------------------------ */
@@ -704,7 +770,11 @@ const h1: AttackDef = {
   cancel: 0.43,
   chain: ['h2', 'l1', 'launcher'],
   moveX: 200, moveXAt: 0.24,
-
+  grip: 1, // jōdan raise + vertical fall — both hands, te-no-uchi
+  zArc: 0.6,
+  traj: { // HEAVY VERTICAL: deeper chamber, harder fall, full extension
+    a0: -1.6, a1: 1.35, y0: -0.2, y1: 0.18, e0: 0.5, e1: 0.95, band: 48,
+  },
 }
 
 /** H2 — TSUKI (突き): the thrust. Hilt chambered back at the hip, then a
@@ -770,7 +840,14 @@ const h2: AttackDef = {
   cancel: 0.4,
   chain: ['h3', 'stabs', 'l1', 'srViper'],
   moveX: 320, moveXAt: 0.2,
- // tsuki: the thrust is ALWAYS two-handed
+  grip: 1, // tsuki: the thrust is ALWAYS two-handed
+  zArc: 0.85, // the thrust SPEARS the camera — full foreshortening
+  traj: { // THRUST family: the blade TRANSLATES through depth — chambered
+    // back (−0.35), then spears forward through the target plane and AT
+    // the lens (+0.55) at near-full arm extension. The kissaki blooms
+    // huge as it pierces toward the camera (drawSword depth flare).
+    a0: -2.9, a1: 0.05, y0: -0.35, y1: 0.55, e0: 0.45, e1: 0.98, band: 78,
+  },
 }
 
 /** H3 — Grand Slam: leaping kiri oroshi. Jump to jōdan, hang at apex,
@@ -833,8 +910,11 @@ const h3: AttackDef = {
   chain: ['srOmega'],
   moveY: -780, moveYAt: 0.04,
   slamImpact: { r: 135, dmg: 26, launch: -280 },
-
-
+  grip: 1,
+  zArc: 0.7,
+  traj: { // SLAM family: overhead apex → ground-shattering fall
+    a0: -1.5, a1: 1.6, y0: -0.12, y1: 0.2, e0: 0.5, e1: 0.92, band: 14,
+  },
 }
 
 /** LAUNCHER — Rising Fang: gedan chamber, then the whole body rips upward
@@ -895,8 +975,12 @@ const launcher: AttackDef = {
   chain: ['a1', 'a2', 'a3', 'dive'],
   moveX: 170, moveXAt: 0.05,
   moveY: -520, moveYAt: 0.1,
-
-
+  grip: 0.9,
+  zArc: 0.5,
+  traj: { // LAUNCHER family: huge riser from a low coil — sweeps upward
+    // through depth as the legs drive the body with the blade
+    a0: 0.7, a1: -0.8, y0: -0.25, y1: 0.35, e0: 0.5, e1: 0.95, band: 14,
+  },
 }
 
 /* ------------------------------------------------------------------ */
@@ -942,7 +1026,11 @@ const dashSlash: AttackDef = {
   cancel: 0.23,
   chain: ['l1', 'l2', 'h1', 'launcher'],
   moveX: 560, moveXAt: 0.02,
- drawFlash: true,
+  grip: 0.3, // iai through-cut on the pass — one hand, saya hand back
+  zArc: 0.6, drawFlash: true,
+  traj: { // DASH THROUGH-CUT: level blade carried through the pass
+    a0: -2.9, a1: 0.05, y0: -0.2, y1: 0.15, e0: 0.6, e1: 0.95, band: 48,
+  },
 }
 
 /** Dash Heavy — PIERCING FANG: tsuki from the dash. */
@@ -998,6 +1086,11 @@ const dashHeavy: AttackDef = {
   cancel: 0.3,
   chain: [],
   moveX: 420, moveXAt: 0.08,
+  grip: 1,
+  zArc: 0.85, // piercing fang: dead at the lens
+  traj: { // THRUST family (dash variant): spears through depth at the lens
+    a0: -2.85, a1: 0.05, y0: -0.25, y1: 0.45, e0: 0.5, e1: 0.97, band: 48,
+  },
 }
 
 /** POWER DASH ATTACK — GALE BREAKER: the dedicated release of a fully
@@ -1063,8 +1156,11 @@ const powerArc: AttackDef = {
   cancel: 0.3,
   chain: ['l1', 'h1', 'launcher'],
   moveX: 240, moveXAt: 0.02, // assist only — the power-dash motor owns the drive
-
-
+  grip: 0.35,
+  zArc: 0.55,
+  traj: { // CHARGED PASS family: a wide level arc carried through the sweep
+    a0: -3.0, a1: 0.15, y0: -0.25, y1: 0.2, e0: 0.55, e1: 0.95, band: 52,
+  },
 }
 
 /** POWER DASH SLASH — RAIJIN ZAN (雷神斬, thunder-god cut): THE DUAL
@@ -1160,8 +1256,14 @@ const powerSlash: AttackDef = {
   cancel: .42,
   chain: ['l1', 'h1', 'launcher'],
   moveX: 240, moveXAt: .02, // assist only — the power-dash motor owns the drive
-
+  grip: .35, // the iai draw rides one hand; the saya hand finished its ride
+  zArc: .5,
   drawFlash: true, // the ignition light event when the draw detonates
+  traj: { // DUAL-CHARGE PASS family: the deepest gather in the moveset — the
+    // steel collects along the saya line, then rips through the whole depth
+    // corridor as the body carries it across the pack
+    a0: -3.1, a1: .2, y0: -.3, y1: .28, e0: .5, e1: .97, band: 52,
+  },
 }
 
 /** CHARGED — OVERLOAD SLASH: element-charged kesa. Huge windup with the
@@ -1203,7 +1305,13 @@ const charged: AttackDef = {
   cancel: 0.41,
   chain: [],
   moveX: 260, moveXAt: 0.1,
-
+  grip: 1, // element-charged kesa — a full-body two-handed diagonal
+  zArc: 0.75,
+  traj: { // CHARGED family: the widest depth sweep in the moveset — the
+    // blade gathers deep behind the body, then rips through the entire
+    // depth corridor to the camera side
+    a0: -1.75, a1: 0.7, y0: -0.5, y1: 0.5, e0: 0.45, e1: 0.95, band: 48,
+  },
 }
 
 /** RIPOSTE — JUDGMENT CUT: the counter is a true iai nukitsuke. Perfect
@@ -1256,7 +1364,12 @@ const riposte: AttackDef = {
   cancel: 0.35,
   chain: [],
   moveX: 200, moveXAt: 0.1,
- drawFlash: true,
+  grip: 0.5, // iai nukitsuke: draw one-handed, settle two-handed on noto
+  zArc: 0.5, drawFlash: true,
+  traj: { // IAI family (riposte): draw from the scabbard plane straight
+    // through the throat line — deep-behind → camera-side exit
+    a0: 2.25, a1: 0.0, y0: -0.6, y1: 0.4, e0: 0.5, e1: 0.9, band: 78,
+  },
 }
 
 /* ------------------------------------------------------------------ */
@@ -1303,8 +1416,11 @@ const a1: AttackDef = {
   cancel: 0.21,
   chain: ['a2', 'a3', 'dive', 'slam'],
   float: 0.42,
-
-
+  grip: 0.9,
+  zArc: 0.45,
+  traj: { // AIR DIAGONAL family: descends through a depth-tilted plane
+    a0: -0.85, a1: 0.7, y0: -0.3, y1: 0.25, e0: 0.55, e1: 0.9, band: 48,
+  },
 }
 
 /** A2 — AIR REVERSE: rising gyaku kesa — the follow-up rising diagonal. */
@@ -1342,8 +1458,11 @@ const a2: AttackDef = {
   cancel: 0.21,
   chain: ['a3', 'dive', 'slam'],
   float: 0.42,
-
-
+  grip: 0.9,
+  zArc: 0.45,
+  traj: { // AIR RISING DIAGONAL family: reverse plane crossing while airborne
+    a0: 0.7, a1: -0.75, y0: 0.25, y1: -0.2, e0: 0.5, e1: 0.88, band: 48,
+  },
 }
 
 /** A3 — AIR YOKO: level horizontal sweep with a counter-pass — no aerial
@@ -1387,8 +1506,11 @@ const a3: AttackDef = {
   cancel: 0.31,
   chain: ['dive', 'slam', 'a1', 'srMeteor'],
   float: 0.34,
-
-
+  grip: 0.8,
+  zArc: 0.5,
+  traj: { // AIR HORIZONTAL family: wide depth arc while airborne
+    a0: 2.6, a1: 0.05, y0: -0.7, y1: 0.6, e0: 0.5, e1: 0.9, band: 48,
+  },
 }
 
 /** DIVE — Falcon Dive: blade-first diagonal plunge, tip locked on the
@@ -1433,8 +1555,11 @@ const dive: AttackDef = {
   moveX: 260, moveXAt: 0.08,
   float: 0.9,
   slamImpact: { r: 80, dmg: 12, launch: -160 },
-
-
+  grip: 0.6,
+  zArc: 0.6,
+  traj: { // DIVE family: tip locked down-forward through the plunge
+    a0: 0.6, a1: 1.05, y0: 0, y1: 0.1, e0: 0.6, e1: 0.95, band: 48,
+  },
 }
 
 /** SLAM — Meteor Fall: vertical plunging kiri — the blade points at the
@@ -1485,8 +1610,11 @@ const slam: AttackDef = {
   chain: [],
   moveY: 1050, moveYAt: 0.1,
   slamImpact: { r: 145, dmg: 26, launch: -300 },
-
-
+  grip: 1,
+  zArc: 0.7,
+  traj: { // METEOR family: blade pointed at the floor, body pitched over
+    a0: -1.45, a1: 1.4, y0: -0.1, y1: 0.18, e0: 0.5, e1: 0.9, band: 14,
+  },
 }
 
 /* ------------------------------------------------------------------ */
@@ -1517,6 +1645,15 @@ export const ATTACKS: Record<string, AttackDef> = {
   sakugaHammer: MOVES.sakugaHammer,
   sakugaScorpion: MOVES.sakugaScorpion,
   sakugaWrath: MOVES.sakugaWrath,
+  /* THE KINETIC-CHAIN SET — the five empty-hand techniques authored to the
+   * reference studio's proximal-to-distal beat law (clips in moveset.ts).
+   * Chosen by the COMBO DIRECTOR (combat/combo-director.ts) over the
+   * authored chain graph; sheathed only. */
+  viperPalm: MOVES.viperPalm,
+  avalancheElbow: MOVES.avalancheElbow,
+  cyclone: MOVES.cyclone,
+  ironRoot: MOVES.ironRoot,
+  omegaPalm: MOVES.omegaPalm,
   /* THE SHADOW RONIN SET — the dual-blade study transcribed 1:1 (clips in
    * combat/ronin-sakuga.ts); cinematic finisher tier for BOTH stances
    * (empty-hand variants live in MOVES — unarmedAttack swaps by id) */

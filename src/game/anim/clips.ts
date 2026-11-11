@@ -101,19 +101,21 @@ const RONIN_REST: PoseInput = {
 }
 export const IDLE_CLIP: Clip = makeClip('idle', [
   keyframe(0, RONIN_REST, 'inOutSine'),
+  // shL/elL re-solved for the 42-unit arm so the off-hand stays on the
+  // saya (hand target 7,29 preserved; see humanFreeArm).
   keyframe(.85,{...RONIN_REST,rootX:2.12,rootY:3.05,rootRot:.116,
-    spine:.03,head:-.057,chestYaw:-.155,shL:.87,elL:-1.35},'inOutSine'),
+    spine:.03,head:-.057,chestYaw:-.155,shL:.976,elL:-1.573},'inOutSine'),
   keyframe(1.75,{...RONIN_REST,rootX:2.25,rootY:2.6,rootRot:.11,
     spine:.038,head:-.06,pelvisYaw:.143,chestYaw:-.142,
-    shR:.105,elR:-.59,shL:.88,elL:-1.37},'inOutSine'),
+    shR:.105,elR:-.59,shL:.984,elL:-1.589},'inOutSine'),
   keyframe(2.55,{...RONIN_REST,rootX:2.28,rootY:2.65,rootRot:.112,
     spine:.035,head:-.058,pelvisYaw:.14,chestYaw:-.145,
-    shR:.11,elR:-.60,shL:.89,elL:-1.38},'inOutSine'),
+    shR:.11,elR:-.60,shL:.993,elL:-1.597},'inOutSine'),
   keyframe(3.65,{...RONIN_REST,rootX:1.88,rootY:3.48,rootRot:.124,
     spine:.022,head:-.053,pelvisYaw:.154,chestYaw:-.166,
-    shR:.13,elR:-.55,shL:.855,elL:-1.32},'inOutSine'),
+    shR:.13,elR:-.55,shL:.964,elL:-1.550},'inOutSine'),
   keyframe(4.5,{...RONIN_REST,rootX:1.92,rootY:3.4,rootRot:.122,
-    spine:.023,head:-.054,chestYaw:-.164,shL:.85,elL:-1.325},'inOutSine'),
+    spine:.023,head:-.054,chestYaw:-.164,shL:.959,elL:-1.554},'inOutSine'),
   keyframe(5.4, RONIN_REST, 'inOutSine'),
 ], true)
 IDLE_CLIP.interpolation = 'monotone'
@@ -262,7 +264,7 @@ export {WALK_CLIP,WALK_EXPOSURES} from './patrol-walk'
 /* Athletic martial run: controlled core, tucked elbows, sword stabilized at hip. */
 const RUN_Q: PoseInput[] = [
   { // CONTACT
-    rootX: 1.5, rootY: 9.39, rootRot: 0.08, spine: 0.02, head: -0.04,
+    rootX: 1.5, rootY: 0.4, rootRot: 0.08, spine: 0.02, head: -0.04,
     hipR: 0.72, kneeR: -0.18, footR: 0.20,
     hipL: -0.65, kneeL: -0.52, footL: -0.06,
     shR: 0.08, elR: -0.72, wrR: 1.20,
@@ -270,7 +272,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.16, chestYaw: -0.10, armLz: 0.20, foreLz: 0.08,
   },
   { // LOADING
-    rootX: 3.2, rootY: 1.80, rootRot: 0.09, spine: 0.025, head: -0.045,
+    rootX: 3.2, rootY: 1.6, rootRot: 0.09, spine: 0.025, head: -0.045,
     hipR: 0.40, kneeR: -0.58, footR: 0.05,
     hipL: -0.78, kneeL: -0.26, footL: 0.02,
     shR: 0.12, elR: -0.75, wrR: 1.20,
@@ -278,7 +280,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.05, chestYaw: -0.03, armLz: 0.08, foreLz: 0.04,
   },
   { // PUSH-OFF
-    rootX: 5.0, rootY: 1.96, rootRot: 0.08, spine: 0.03, head: -0.04,
+    rootX: 5.0, rootY: 0.8, rootRot: 0.08, spine: 0.03, head: -0.04,
     hipR: -0.25, kneeR: -0.32, footR: -0.08,
     hipL: 0.45, kneeL: -1.15, footL: 0.16,
     shR: 0.18, elR: -0.76, wrR: 1.20,
@@ -321,7 +323,7 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
  */
 const SPRINT_Q: PoseInput[] = [
   { // 01 / forefoot strike: foot lands under the advancing center of mass
-    rootX: 5.0, rootY: 8.26, rootRot: 0.32, spine: 0.045, head: -0.27,
+    rootX: 5.0, rootY: 1.2, rootRot: 0.32, spine: 0.045, head: -0.27,
     hipR: 0.78, kneeR: -0.46, footR: 0.14,
     hipL: -0.55, kneeL: -1.10, footL: -0.16,
     shR: 0.03, elR: -1.10, wrR: 1.26,
@@ -329,7 +331,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.15, chestYaw: -0.19, armLz: -0.12, armRz: -0.03, bladeYaw: -0.22,
   },
   { // 02 / compression: spring load, trailing heel recovers
-    rootX: 5.6, rootY: 2.53, rootRot: 0.35, spine: 0.05, head: -0.30,
+    rootX: 5.6, rootY: 3.0, rootRot: 0.35, spine: 0.05, head: -0.30,
     hipR: 0.43, kneeR: -0.78, footR: 0.04,
     hipL: -0.22, kneeL: -1.62, footL: 0.08,
     shR: 0.07, elR: -1.14, wrR: 1.26,
@@ -337,7 +339,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.09, chestYaw: -0.12, armLz: -0.07, armRz: -0.03, bladeYaw: -0.20,
   },
   { // 03 / drive: stance hip extends, swing knee folds high
-    rootX: 6.3, rootY: 0.96, rootRot: 0.36, spine: 0.045, head: -0.31,
+    rootX: 6.3, rootY: 2.1, rootRot: 0.36, spine: 0.045, head: -0.31,
     hipR: 0.02, kneeR: -0.57, footR: -0.10,
     hipL: 0.25, kneeL: -1.90, footL: 0.16,
     shR: 0.11, elR: -1.17, wrR: 1.26,
@@ -345,7 +347,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0, chestYaw: 0, armLz: 0, armRz: -0.02, bladeYaw: -0.18,
   },
   { // 04 / toe-off: release stored energy, opposite thigh punches forward
-    rootX: 6.6, rootY: 3.56, rootRot: 0.34, spine: 0.04, head: -0.29,
+    rootX: 6.6, rootY: 0.3, rootRot: 0.34, spine: 0.04, head: -0.29,
     hipR: -0.38, kneeR: -0.30, footR: -0.21,
     hipL: 0.73, kneeL: -1.58, footL: 0.18,
     shR: 0.13, elR: -1.15, wrR: 1.26,
@@ -353,7 +355,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: -0.09, chestYaw: 0.12, armLz: 0.07, armRz: -0.02, bladeYaw: -0.19,
   },
   { // 05 / flight: both feet released, long silhouette with clear knee separation
-    rootX: 6.0, rootY: 8.30, rootRot: 0.31, spine: 0.04, head: -0.26,
+    rootX: 6.0, rootY: -1.8, rootRot: 0.31, spine: 0.04, head: -0.26,
     hipR: -0.58, kneeR: -0.72, footR: -0.15,
     hipL: 1.00, kneeL: -1.02, footL: 0.15,
     shR: 0.09, elR: -1.12, wrR: 1.26,
@@ -361,7 +363,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: -0.15, chestYaw: 0.19, armLz: 0.12, armRz: -0.03, bladeYaw: -0.22,
   },
   { // 06 / recovery: reach down, not forward; prepare the next forefoot strike
-    rootX: 5.4, rootY: 10.20, rootRot: 0.31, spine: 0.045, head: -0.26,
+    rootX: 5.4, rootY: -0.4, rootRot: 0.31, spine: 0.045, head: -0.26,
     hipR: -0.58, kneeR: -0.98, footR: -0.16,
     hipL: 0.90, kneeL: -0.67, footL: 0.14,
     shR: 0.05, elR: -1.10, wrR: 1.26,
@@ -737,43 +739,43 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     rootRot: 0.12, rootY: 0, spine: 0.05, head: -0.08,
     hipR: 0.34, kneeR: -0.55, footR: 0.12,
     hipL: -0.31, kneeL: -0.5, footL: 0.12,
-    shR: 0.85, elR: -0.5, wrR: 1.15,
-    shL: 0.5, elL: -0.85,
+    shR: 1.090, elR: -1.005, wrR: 1.415,
+    shL: 0.668, elL: -1.205,
   }, 'inOutCubic'),
   keyframe(0.11, { // added ritual breakdown
     rootRot:.105,rootY:.2,spine:.04,head:-.06,
     hipR:.32,kneeR:-.57,footR:.11,hipL:-.305,kneeL:-.52,footL:.12,
-    shR:1.15,elR:-.62,wrR:1.85,shL:.4,elL:-.7,armLz:-.08
+    shR:1.362,elR:-1.066,wrR:2.084,shL:.595,elL:-1.111,armLz:-.08
   }, 'inOutSine'),
   keyframe(0.22, { // PRESENT — blade rises to the vertical carry, gaze softens
     rootRot: 0.09, rootY: 0.5, spine: 0.03, head: -0.04,
     hipR: 0.3, kneeR: -0.6, footR: 0.1,
     hipL: -0.3, kneeL: -0.55, footL: 0.12,
-    shR: 1.45, elR: -0.75, wrR: 2.6, // blade up — kissaki over the shoulder
-    shL: 0.25, elL: -0.5, // left hand drifts toward the saya mouth
+    shR: 1.636, elR: -1.141, wrR: 2.805, // blade up — kissaki over the shoulder
+    shL: 0.490, elL: -1.005, // left hand drifts toward the saya mouth
     armLz: -0.2,
   }, 'inOutCubic'),
   keyframe(0.3, { // added ritual breakdown
     rootRot:.085,rootY:.64,spine:.026,head:-.033,
     hipR:.29,kneeR:-.62,footR:.1,hipL:-.3,kneeL:-.565,footL:.12,
-    shR:1.31,elR:-.88,wrR:3.05,shL:.12,elL:-.47,armLz:-.24
+    shR:1.474,elR:-1.224,wrR:3.231,shL:.368,elL:-.991,armLz:-.24
   }, 'inOutSine'),
   keyframe(0.37, { // added ritual breakdown
     rootRot:.082,rootY:.75,spine:.022,head:-.025,
     hipR:.285,kneeR:-.64,footR:.1,hipL:-.3,kneeL:-.575,footL:.12,
-    shR:1.07,elR:-1.06,wrR:3.57,shL:-.02,elL:-.39,armLz:-.28
+    shR:1.208,elR:-1.351,wrR:3.723,shL:.250,elL:-.958,armLz:-.28
   }, 'inOutSine'),
   keyframe(0.42, { // MEET — tsuka tips back to the saya mouth
     rootRot: 0.08, rootY: 0.8, spine: 0.02, head: -0.02,
     hipR: 0.28, kneeR: -0.65, footR: 0.1,
     hipL: -0.3, kneeL: -0.58, footL: 0.12,
-    shR: 0.9, elR: -1.15, wrR: 3.9, // blade laid back along the scabbard line
-    shL: -0.1, elL: -0.35, armLz: -0.3,
+    shR: 1.027, elR: -1.418, wrR: 4.041, // blade laid back along the scabbard line
+    shL: 0.182, elL: -0.944, armLz: -0.3,
   }, 'inOutSine'),
   keyframe(0.5, { // added ritual breakdown
     rootRot:.08,rootY:.76,spine:.02,head:-.01,
     hipR:.28,kneeR:-.64,footR:.1,hipL:-.3,kneeL:-.58,footL:.12,
-    shR:.84,elR:-1.12,wrR:4.36,shL:-.13,elL:-.32,armLz:-.30
+    shR:.971,elR:-1.395,wrR:4.505,shL:.161,elL:-.934,armLz:-.30
   }, 'inOutSine'),
   keyframe(0.62, { // SLIDE — steel runs home to the kojiri. The right
     // fist rides the tsuka ~at the kashira line (IK: shR 0.8/elR −1.05
@@ -782,18 +784,18 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     rootRot: 0.08, rootY: 0.6, spine: 0.02, head: 0,
     hipR: 0.28, kneeR: -0.62, footR: 0.1,
     hipL: -0.3, kneeL: -0.58, footL: 0.12,
-    shR: 0.8, elR: -1.05, wrR: 4.9, // hand follows the blade in, ON the grip
-    shL: -0.15, elL: -0.3, armLz: -0.28,
+    shR: 0.939, elR: -1.344, wrR: 5.054, // hand follows the blade in, ON the grip
+    shL: 0.148, elL: -0.928, armLz: -0.28,
   }, 'inOutCubic'),
   keyframe(0.7, { // added ritual breakdown
     rootRot:.073,rootY:.52,spine:.017,head:-.006,
     hipR:.286,kneeR:-.605,footR:.1,hipL:-.3,kneeL:-.57,footL:.12,
-    shR:.83,elR:-1.03,wrR:4.95,shL:.07,elL:-.53,armLz:-.12
+    shR:.972,elR:-1.329,wrR:5.107,shL:.302,elL:-1.019,armLz:-.12
   }, 'inOutSine'),
   keyframe(0.78, { // added ritual breakdown
     rootRot:.065,rootY:.44,spine:.012,head:-.015,
     hipR:.295,kneeR:-.59,footR:.1,hipL:-.3,kneeL:-.558,footL:.12,
-    shR:.90,elR:-.99,wrR:4.985,shL:.36,elL:-.86,armLz:.11
+    shR:1.047,elR:-1.300,wrR:5.148,shL:.527,elL:-1.211,armLz:.11
   }, 'inOutSine'),
   keyframe(0.85, { // REST — fist settles on the pommel; the body quiet.
     // IK-solved anatomical rest (matches the sheath home-arm layer):
@@ -802,8 +804,8 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
     hipR: 0.3, kneeR: -0.58, footR: 0.1,
     hipL: -0.3, kneeL: -0.55, footL: 0.12,
-    shR: 0.93, elR: -0.98, wrR: 5.0, // hand on the kashira at navel height
-    shL: 0.49, elL: -1.0, armLz: 0.2, // left hand on the saya mouth
+    shR: 1.079, elR: -1.293, wrR: 5.165, // hand on the kashira at navel height
+    shL: 0.636, elL: -1.308, armLz: 0.2, // left hand on the saya mouth
   }, 'outCubic'),
 ])
 
@@ -815,74 +817,74 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
     rootRot: 0.06, rootY: 0.4, spine: 0.01, head: -0.02,
     hipR: 0.3, kneeR: -0.58, footR: 0.1,
     hipL: -0.3, kneeL: -0.55, footL: 0.12,
-    shR: 0.93, elR: -0.98, wrR: 5.0,
-    shL: 0.49, elL: -1.0, armLz: 0.2,
+    shR: 1.079, elR: -1.293, wrR: 5.165,
+    shL: 0.636, elL: -1.308, armLz: 0.2,
   }, 'outQuad'),
   keyframe(0.035, { // added ritual breakdown
     rootRot:.045,rootY:.95,spine:.018,head:-.07,
     hipR:.35,kneeR:-.65,footR:.13,hipL:-.32,kneeL:-.61,footL:.115,
-    shR:.89,elR:-.90,wrR:4.92,shL:.4,elL:-.85,armLz:-.02,pelvisYaw:-.04
+    shR:1.050,elR:-1.238,wrR:5.097,shL:.568,elL:-1.205,armLz:-.02,pelvisYaw:-.04
   }, 'inOutSine'),
   keyframe(0.07, { // GRIP — the hand closes on the tsuka and lifts it out
     // of the mouth (sayabiki: the LEFT arm pulls the saya back instead)
     rootRot: 0.02, rootY: 1.6, spine: 0.03, head: -0.14,
     hipR: 0.42, kneeR: -0.75, footR: 0.18,
     hipL: -0.36, kneeL: -0.7, footL: 0.1,
-    shR: 0.82, elR: -0.75, wrR: 4.85, // tsuka lifts out of the mouth
-    shL: 0.25, elL: -0.6, armLz: -0.3,
+    shR: 1.006, elR: -1.141, wrR: 5.055, // tsuka lifts out of the mouth
+    shL: 0.466, elL: -1.055, armLz: -0.3,
     pelvisYaw: -0.12,
   }, 'inQuad'),
   keyframe(0.085, { // added ritual breakdown
     rootRot:.065,rootY:1.42,spine:.033,head:-.15,
     hipR:.455,kneeR:-.81,footR:.19,hipL:-.39,kneeL:-.64,footL:.08,
-    shR:.92,elR:-.71,wrR:5.16,shL:.18,elL:-.72,armLz:-.27,pelvisYaw:-.09,chestYaw:.025
+    shR:1.113,elR:-1.117,wrR:5.374,shL:.371,elL:-1.123,armLz:-.27,pelvisYaw:-.09,chestYaw:.025
   }, 'inOutSine'),
   keyframe(.105, { // extraction breakdown / left hand actively retracts saya
     rootRot:.15,rootY:.8,spine:.04,head:-.16,
     hipR:.5,kneeR:-.88,footR:.2,hipL:-.43,kneeL:-.55,footL:.05,
-    shR:1.1,elR:-.65,wrR:5.65,
-    shL:.12,elL:-.85,armLz:-.22,pelvisYaw:-.04,chestYaw:.04,
+    shR:1.305,elR:-1.082,wrR:5.877,
+    shL:.288,elL:-1.205,armLz:-.22,pelvisYaw:-.04,chestYaw:.04,
   }, 'inOutSine'),
   keyframe(0.12, { // added ritual breakdown
     rootRot:.205,rootY:.22,spine:.065,head:-.20,
     hipR:.54,kneeR:-.94,footR:.22,hipL:-.47,kneeL:-.48,footL:.01,
-    shR:1.25,elR:-.51,wrR:6.02,shL:.16,elL:-.86,armLz:-.185,pelvisYaw:.02,chestYaw:.01
+    shR:1.487,elR:-1.010,wrR:6.282,shL:.327,elL:-1.211,armLz:-.185,pelvisYaw:.02,chestYaw:.01
   }, 'inOutSine'),
   keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
     rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
     hipR: 0.6, kneeR: -1.05, footR: 0.26,
     hipL: -0.55, kneeL: -0.35, footL: -0.08,
-    shR: 1.55, elR: -0.3, wrR: 6.733185307, // edge flashing forward-up, elbow extending
-    shL: 0.3, elL: -0.8, armLz: -0.1,
+    shR: 1.848, elR: -0.928, wrR: 7.063, // edge flashing forward-up, elbow extending
+    shL: 0.477, elL: -1.172, armLz: -0.1,
     pelvisYaw: 0.14, chestYaw: -0.08,
   }, 'outQuart'),
   keyframe(0.185, { // added ritual breakdown
     rootRot:.266,rootY:-1.0,spine:.10,head:-.27,
     hipR:.55,kneeR:-.94,footR:.23,hipL:-.5,kneeL:-.39,footL:-.035,
-    shR:1.43,elR:-.39,wrR:6.9,shL:.32,elL:-.91,armLz:-.07,pelvisYaw:.12,chestYaw:-.07
+    shR:1.700,elR:-.958,wrR:7.198,shL:.479,elL:-1.245,armLz:-.07,pelvisYaw:.12,chestYaw:-.07
   }, 'inOutSine'),
   keyframe(.215, { // controlled follow-through before the guard
     rootRot:.2,rootY:-.5,spine:.07,head:-.21,
     hipR:.46,kneeR:-.75,footR:.18,hipL:-.4,kneeL:-.45,footL:.04,
-    shR:1.2,elR:-.55,wrR:7.05,
-    shL:.38,elL:-.95,armLz:-.04,pelvisYaw:.08,chestYaw:-.04,
+    shR:1.427,elR:-1.029,wrR:7.302,
+    shL:.533,elL:-1.272,armLz:-.04,pelvisYaw:.08,chestYaw:-.04,
   }, 'inOutSine'),
   keyframe(0.245, { // added ritual breakdown
     rootRot:.145,rootY:-.22,spine:.06,head:-.15,
     hipR:.4,kneeR:-.64,footR:.15,hipL:-.35,kneeL:-.48,footL:.08,
-    shR:1.02,elR:-.56,wrR:7.24,shL:.44,elL:-.92,armLz:-.015,pelvisYaw:.04,chestYaw:-.02
+    shR:1.245,elR:-1.034,wrR:7.489,shL:.597,elL:-1.252,armLz:-.015,pelvisYaw:.04,chestYaw:-.02
   }, 'inOutSine'),
   keyframe(0.275, { // added ritual breakdown
     rootRot:.112,rootY:-.04,spine:.052,head:-.112,
     hipR:.36,kneeR:-.575,footR:.125,hipL:-.32,kneeL:-.495,footL:.11,
-    shR:.89,elR:-.52,wrR:7.38,shL:.48,elL:-.87,armLz:-.003,pelvisYaw:.01,chestYaw:-.005
+    shR:1.125,elR:-1.014,wrR:7.640,shL:.645,elL:-1.218,armLz:-.003,pelvisYaw:.01,chestYaw:-.005
   }, 'inOutSine'),
   keyframe(0.3, { // SETTLE — chūdan guard, the breath after the draw
     rootRot: 0.1, rootY: 0, spine: 0.05, head: -0.1,
     hipR: 0.34, kneeR: -0.55, footR: 0.12,
     hipL: -0.31, kneeL: -0.5, footL: 0.12,
-    shR: 0.85, elR: -0.5, wrR: 7.433185307,
-    shL: 0.5, elL: -0.85,
+    shR: 1.090, elR: -1.005, wrR: 7.698,
+    shL: 0.668, elL: -1.205,
   }, 'outCubic'),
 ])
 
@@ -1050,7 +1052,7 @@ const DASH_PIERCE_Q: PoseInput[] = [
     // the arm LOCKED OUT straight along the travel vector (throat height)
     rootX: 6, rootRot: 0.14, rootY: 5.5, spine: 0.03, head: -0.08,
     hipR: 0.85, kneeR: -1.55, footR: 0.15,
-    hipL: -1.05, kneeL: -0.12, footL: -0.25,
+    hipL: -1.05, kneeL: -0.08, footL: -0.25,
     shR: 1.4, elR: 0.0, wrR: 0.3,
     shL: -0.7, elL: -0.35,
     pelvisYaw: 0.1, chestYaw: -0.06,
@@ -1308,21 +1310,21 @@ export const CHARGE_CLIP: Clip = makeClip('charge', [
     rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
     hipR: 0.55, kneeR: -1.15, footR: 0.2,
     hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: -0.15, wrR: 0.25,
+    shR: 2.6, elR: 0.15, wrR: 0.25,
     shL: 1.85, elL: -0.5, wrL: -0.2,
   }, 'linear'),
   keyframe(0.3, {
     rootY: 6.9, rootRot: 0.36, spine: 0.11, head: -0.2,
     hipR: 0.58, kneeR: -1.2, footR: 0.2,
     hipL: -0.42, kneeL: -1.0, footL: 0.15,
-    shR: 2.65, elR: -0.15, wrR: 0.2,
+    shR: 2.65, elR: 0.15, wrR: 0.2,
     shL: 1.9, elL: -0.5, wrL: -0.22,
   }, 'linear'),
   keyframe(0.6, {
     rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
     hipR: 0.55, kneeR: -1.15, footR: 0.2,
     hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: -0.15, wrR: 0.25,
+    shR: 2.6, elR: 0.15, wrR: 0.25,
     shL: 1.85, elL: -0.5, wrL: -0.2,
   }, 'linear'),
 ], true)
@@ -1336,7 +1338,7 @@ export const EXECUTE_POSE_CLIP: Clip = makeClip('execPose', [
     rootRot: 0.1, spine: 0.06, head: -0.12, rootY: 0,
     hipR: 0.3, kneeR: -0.55, footR: 0.15,
     hipL: -0.35, kneeL: -0.5, footL: 0.12,
-    shR: 0.75, elR: -0.15, wrR: -1.0,
+    shR: 0.75, elR: 0.15, wrR: -1.0,
     shL: 0.25, elL: -0.4,
   }, 'outCubic'),
 ])

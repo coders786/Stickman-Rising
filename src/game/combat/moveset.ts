@@ -35,6 +35,7 @@
  */
 
 import { keyframe, makeClip, type Clip } from '../anim/animator'
+import { bakeClip, BAKE_FPS } from '../anim/bake'
 import { CH, makePose, type ChannelKey, type PoseInput } from '../anim/pose'
 import { applyJointLimits } from '../anim/limits'
 import { PLAYER_SPEC } from '../anim/skeleton'
@@ -57,9 +58,17 @@ export type StrikeJoint = 'hand' | 'elbow' | 'foot' | 'knee' | 'shoulder'
 /** Solve SHOULDER/ELBOW channels so the hand reaches (x,y) relative to
  * the shoulder joint. Elbow hangs below/behind the shoulder→hand line
  * (human pole). Moved here as the moveset's own arm author (unarmed.ts
- * re-exports it for player.ts compatibility). */
+ * re-exports it for player.ts compatibility).
+ *
+ * REACH RESCALE: authored targets were composed for the old 38-unit arm.
+ * They are rescaled by (reach/38) so punches keep their extension ratio
+ * on the recomposed 42-unit arm (jab 33 → 36.5 forward) instead of
+ * arriving with a needlessly bent elbow. Guard targets (r ≤ 12) are
+ * pinned by the floor clamp and do not move. */
 export function handPose(side: StrikeHand, x: number, y: number): PoseInput {
   const a = PLAYER_SPEC.upperArm, b = PLAYER_SPEC.foreArm
+  const k = (a + b) / 38
+  x *= k; y *= k
   const r = Math.max(12, Math.min(a + b - 2, Math.hypot(x, y)))
   const sh = Math.atan2(x, y) + Math.acos(Math.max(-1, Math.min(1, (a * a + r * r - b * b) / (2 * a * r))))
   const el = -Math.acos(Math.max(-1, Math.min(1, (r * r - a * a - b * b) / (2 * a * b))))
@@ -120,12 +129,16 @@ const kf = (t: number, d: PoseInput, ease?: string) => {
   applyJointLimits(f.p)
   return f
 }
-/** monotone (shape-preserving C1) clip — strikes never wobble. */
-const clip = (name: string, frames: ReturnType<typeof kf>[]): Clip => {
-  const c = makeClip(name, frames)
-  c.interpolation = 'monotone'
-  return c
-}
+/** Bake-then-resample clip — the reference studio's pipeline.
+ *
+ * Authored keys carry per-key eases (`in` accelerating INTO a contact, `out`
+ * releasing out of a chamber). Burning those onto a 24 fps grid and then
+ * resampling with the shape-preserving spline is what makes a strike snap:
+ * the contact frame remains the fastest frame, and holds stay dead still.
+ * Skipping the bake (sampling the sparse keys directly) makes the engine
+ * ignore every ease and smear the whole move into one uniform blur. */
+const clip = (name: string, frames: ReturnType<typeof kf>[], contact: number | null = null): Clip =>
+  bakeClip(makeClip(name, frames), BAKE_FPS, contact)
 /** Exact pose-space midpoint of two authored keyframe inputs. Inserted
  * between beats as the explicit in-between ("ignition"/"settle") key —
  * halving every channel's delta across the split keeps each sub-span
@@ -427,6 +440,200 @@ const STEPKICK = clip('unarmedStepKick', [
 ])
 
 /* ================================================================== */
+/* RONIN HAND-TO-HAND — THE KINETIC-CHAIN SET                          */
+/*                                                                     */
+/* Five empty-hand techniques authored to the reference studio's       */
+/* biomechanical beat law (proximal-to-distal: ground force → hips →   */
+/* trunk torque → shoulder lead → elbow snap → impact):                */
+/*   · CHAMBER — weight shifts, hips drop, torso coils (pelvisYaw /    */
+/*     chestYaw counter-rotation), elbows clamp to the ribs            */
+/*   · STILLNESS FRAME — a near-duplicate key 1–2 frames before the    */
+/*     release: zero velocity, tension peaked (the reference's f9–10)  */
+/*   · SNAP — the strike key: rootX drive, full extension, inCubic /   */
+/*     outQuart ignition                                               */
+/*   · IMPACT HOLD — a near-duplicate of the strike key: the body      */
+/*     braces through the contact instead of bouncing off it           */
+/*   · SETTLE — mid() back to the shared fight guard                   */
+/* ================================================================== */
+
+/** 15a · VIPER PALM — the VIPER CROSS-PIERCE read as empty hand: the
+ * rear leg pistons, the palm drives a single linear line through the
+ * center of mass, elbows tucked so no energy leaks sideways. */
+const VIPERPALM = clip('unarmedViperPalm', [
+  kf(0.0, G),
+  // CHAMBER: weight loads onto the rear leg, torso coils open
+  kf(0.117, { ...G, rootY: 4.5, chestYaw: 0.3, pelvisYaw: -0.18,
+    hipL: -0.5, kneeL: -0.75, footR: -0.06, footL: 0.42, rootZ: -0.5,
+    ...handPose('right', 8, 10), head: -0.16 }, 'outQuad'),
+  // STILLNESS FRAME: tension peaks, zero velocity before the release
+  kf(0.167, { ...G, rootY: 4.6, chestYaw: 0.32, pelvisYaw: -0.19,
+    hipL: -0.5, kneeL: -0.75, footR: -0.06, footL: 0.42, rootZ: -0.5,
+    ...handPose('right', 8, 10), head: -0.17 }, 'outQuad'),
+  mid(0.242, { ...G, rootY: 4.6, chestYaw: 0.32, pelvisYaw: -0.19,
+      hipL: -0.5, kneeL: -0.75, footR: -0.06, footL: 0.42, rootZ: -0.5,
+    ...handPose('right', 8, 10), head: -0.17 },
+    { ...G, rootX: 6, rootY: 3.6, rootRot: 0.24, chestYaw: -0.34, pelvisYaw: 0.24,
+      ...handPose('right', 36, 0), wrR: -0.4, ...handPose('left', 9, 4),
+      ...legPose('left', -16, 34), footR: 0.16, footL: 0.9, rootZ: 0.55, head: -0.2 }),
+  // SNAP: the piston fires — palm on one line, rear leg extended
+  kf(0.317, { ...G, rootX: 6, rootY: 3.6, rootRot: 0.24, chestYaw: -0.34, pelvisYaw: 0.24,
+    ...handPose('right', 36, 0), wrR: -0.4, ...handPose('left', 9, 4),
+    ...legPose('left', -16, 34), footR: 0.16, footL: 0.9, rootZ: 0.55, head: -0.2 }, 'inOutCubic'),
+  // IMPACT HOLD: the body braces through the contact
+  kf(0.358, { ...G, rootX: 6.5, rootY: 3.8, rootRot: 0.24, chestYaw: -0.32, pelvisYaw: 0.22,
+    ...handPose('right', 36, 0), wrR: -0.4, ...handPose('left', 9, 4),
+    ...legPose('left', -16, 34), footR: 0.16, footL: 0.9, rootZ: 0.55, head: -0.2 }, 'inOutCubic'),
+  kf(0.45, { ...G, rootX: 3.2, rootY: 4, ...handPose('right', 30, 2), chestYaw: -0.2 }, 'inOutCubic'),
+  mid(0.525, { ...G, rootX: 1.4, rootY: 3.8, ...handPose('right', 24, 3), chestYaw: -0.12 }, G),
+  kf(0.6, G),
+], 0.275)
+
+/** 15b · AVALANCHE HAMMER — the METEOR DROP impact read standing: both
+ * hands clasp overhead, the whole mass plunges (rootY 6.5 → 11.5) and the
+ * hammer drives DOWN-forward to hip height, ahead of the body. The impact
+ * hold is the longest in the set — the body lands ON the blow. */
+const AVALANCHE = clip('unarmedAvalancheHammer', [
+  kf(0.0, G),
+  // GATHER: arms rise overhead, hips sink under the load
+  kf(0.197, { ...G, rootY: 6, rootRot: 0.06, ...handPose('right', 14, -30),
+    ...handPose('left', 9, -25), wrR: -0.5, wrL: -0.5,
+    hipR: 0.3, kneeR: -0.8, hipL: -0.26, kneeL: -0.76,
+    footR: -0.04, footL: 0.3, rootZ: -0.45, head: -0.16 }, 'outQuad'),
+  // STILLNESS FRAME: coiled at the apex, one breath before the drop
+  kf(0.273, { ...G, rootY: 6.5, rootRot: 0.08, ...handPose('right', 15, -32),
+    ...handPose('left', 10, -27), wrR: -0.5, wrL: -0.5,
+    hipR: 0.3, kneeR: -0.85, hipL: -0.26, kneeL: -0.8,
+    footR: -0.04, footL: 0.3, rootZ: -0.45, head: -0.17 }, 'outQuad'),
+  mid(0.342, { ...G, rootY: 6.5, rootRot: 0.08, ...handPose('right', 15, -32),
+      ...handPose('left', 10, -27), wrR: -0.5, wrL: -0.5,
+      hipR: 0.3, kneeR: -0.85, hipL: -0.26, kneeL: -0.8,
+    footR: -0.04, footL: 0.3, rootZ: -0.45, head: -0.17 },
+    { ...G, rootY: 10, rootRot: 0.36, spine: 0.08, ...handPose('right', 38, 26),
+      ...handPose('left', 32, 24), wrR: -0.7, wrL: -0.7,
+      hipR: 0.7, kneeR: -1.3, hipL: -0.6, kneeL: -1.2,
+    footR: 0.06, footL: 0.78, rootZ: 0.5, head: -0.05 }),
+  // SNAP: the avalanche lands — mass, spine and hands in one line
+  kf(0.41, { ...G, rootY: 10, rootRot: 0.36, spine: 0.08, ...handPose('right', 38, 26),
+    ...handPose('left', 32, 24), wrR: -0.7, wrL: -0.7,
+    hipR: 0.7, kneeR: -1.3, hipL: -0.6, kneeL: -1.2,
+    footR: 0.06, footL: 0.78, rootZ: 0.5, head: -0.05 }, 'inCubic'),
+  // IMPACT HOLD: knees compress, the blow stays buried
+  kf(0.479, { ...G, rootY: 10.5, rootRot: 0.38, spine: 0.08, ...handPose('right', 37, 27),
+    ...handPose('left', 31, 25), wrR: -0.7, wrL: -0.7,
+    hipR: 0.7, kneeR: -1.35, hipL: -0.6, kneeL: -1.25,
+    footR: 0.06, footL: 0.8, rootZ: 0.55, head: -0.04 }, 'inOutCubic'),
+  kf(0.592, { ...G, rootY: 8, rootRot: 0.3, ...handPose('right', 28, 12), ...handPose('left', 24, 10) }, 'inOutCubic'),
+  mid(0.684, { ...G, rootY: 8, rootRot: 0.3, ...handPose('right', 28, 12), ...handPose('left', 24, 10) }, G),
+  kf(0.79, G),
+], 0.38)
+
+const CYCLONE = clip('unarmedCyclone', [
+  kf(0.0, G),
+  // WIND: shoulders counter-rotate against the hips — elastic load
+  kf(0.229, { ...G, rootY: 5, pelvisYaw: 0.5, chestYaw: 0.55, head: 0.3,
+    shL: 0.6, hipR: 0.34, kneeR: -1.05, hipL: -0.3, kneeL: -0.95,
+    armRz: 0.35, foreRz: 0.5, hipLz: 0.3, footR: 0.22, footL: -0.08 }, 'outQuad'),
+  // STILLNESS FRAME: wound to the stop, zero velocity
+  kf(0.3, { ...G, rootY: 5, pelvisYaw: 0.55, chestYaw: 0.6, head: 0.3,
+    shL: 0.6, hipR: 0.34, kneeR: -1.1, hipL: -0.3, kneeL: -1.0,
+    armRz: 0.35, foreRz: 0.5, hipLz: 0.3, footR: 0.22, footL: -0.08 }, 'outQuad'),
+  mid(0.371, { ...G, rootY: 5, pelvisYaw: 0.55, chestYaw: 0.6, head: 0.3,
+      shL: 0.6, hipR: 0.34, kneeR: -1.1, hipL: -0.3, kneeL: -1.0,
+      armRz: 0.35, foreRz: 0.5, hipLz: 0.3, footR: 0.22, footL: -0.08 },
+    { ...G, rootY: 4, pelvisYaw: -0.55, chestYaw: -0.7, head: -0.1,
+      ...handPose('left', 34, -2), wrL: -0.4, armLz: 0.3, foreLz: 0.4,
+      hipRz: 0.3, hipR: 0.4, kneeR: -0.95, hipL: -0.32, kneeL: -0.9,
+      armRz: -0.28, foreRz: -0.4, hipLz: -0.18, footR: -0.04, footL: 0.7 }),
+  // SNAP: the unwind — backfist crosses the depth plane at full radius
+  kf(0.443, { ...G, rootY: 4, pelvisYaw: -0.55, chestYaw: -0.7, head: -0.1,
+    ...handPose('left', 34, -2), wrL: -0.4, armLz: 0.3, foreLz: 0.4,
+    hipRz: 0.3, hipR: 0.4, kneeR: -0.95, hipL: -0.32, kneeL: -0.9,
+      armRz: -0.28, foreRz: -0.4, hipLz: -0.18, footR: -0.04, footL: 0.7 }, 'inCubic'),
+  // IMPACT HOLD: centrifugal extension braces through the arc
+  kf(0.507, { ...G, rootY: 4, pelvisYaw: -0.5, chestYaw: -0.6, head: -0.1,
+    ...handPose('left', 34, -2), wrL: -0.4, armLz: 0.3, foreLz: 0.4,
+    hipRz: 0.3, hipR: 0.4, kneeR: -0.95, hipL: -0.32, kneeL: -0.9,
+      armRz: -0.28, foreRz: -0.4, hipLz: -0.18, footR: -0.04, footL: 0.7 }, 'inOutCubic'),
+  kf(0.629, { ...G, rootY: 4.2, pelvisYaw: -0.2, chestYaw: -0.25, ...handPose('left', 24, 2) }, 'inOutCubic'),
+  mid(0.714, { ...G, rootY: 4.2, pelvisYaw: -0.2, chestYaw: -0.25, ...handPose('left', 24, 2) }, G),
+  kf(0.8, G),
+], 0.429)
+
+const IRONROOT = clip('unarmedIronRoot', [
+  kf(0.0, G),
+  // SINK: the root drops — hips to the floor, palms chambered low
+  kf(0.135, { ...G, rootY: 7.5, rootRot: 0.24, spine: 0.05,
+    ...handPose('left', 6, 13), ...handPose('right', 8, 12), wrL: -0.3, wrR: -0.3,
+    hipR: 0.6, kneeR: -1.2, hipL: -0.52, kneeL: -1.12,
+    footR: 0.26, footL: 0.34, rootZ: -0.4, head: -0.16 }, 'outQuad'),
+  // STILLNESS FRAME: rooted, loaded, zero velocity
+  kf(0.21, { ...G, rootY: 8, rootRot: 0.26, spine: 0.05,
+    ...handPose('left', 6, 13), ...handPose('right', 8, 12), wrL: -0.3, wrR: -0.3,
+    hipR: 0.62, kneeR: -1.26, hipL: -0.54, kneeL: -1.16,
+    footR: 0.26, footL: 0.34, rootZ: -0.4, head: -0.17 }, 'outQuad'),
+  mid(0.285, { ...G, rootY: 8, rootRot: 0.26, spine: 0.05,
+      ...handPose('left', 6, 13), ...handPose('right', 8, 12), wrL: -0.3, wrR: -0.3,
+      hipR: 0.62, kneeR: -1.26, hipL: -0.54, kneeL: -1.16,
+    footR: 0.26, footL: 0.34, rootZ: -0.4, head: -0.17 },
+    { ...G, rootY: 5, rootRot: 0.34, rootX: 5, ...handPose('left', 30, 13),
+      ...handPose('right', 36, 2), wrL: -0.55, wrR: -0.55,
+      chestYaw: -0.3, pelvisYaw: 0.18, footR: 0.02, footL: 0.22, rootZ: 0.45, head: -0.2 }),
+  // SNAP: both palms on one line, the root behind them
+  kf(0.36, { ...G, rootY: 5, rootRot: 0.34, rootX: 5, ...handPose('left', 30, 13),
+    ...handPose('right', 36, 2), wrL: -0.55, wrR: -0.55,
+    chestYaw: -0.3, pelvisYaw: 0.18, footR: 0.02, footL: 0.22, rootZ: 0.45, head: -0.2 }, 'inOutCubic'),
+  // IMPACT HOLD: the stance absorbs the reaction
+  kf(0.435, { ...G, rootY: 5.5, rootRot: 0.34, rootX: 5.5, ...handPose('left', 30, 13),
+    ...handPose('right', 36, 2), wrL: -0.55, wrR: -0.55,
+    chestYaw: -0.28, pelvisYaw: 0.16, footR: 0.02, footL: 0.24, rootZ: 0.5, head: -0.2 }, 'inOutCubic'),
+  kf(0.57, { ...G, rootX: 3.4, rootY: 5, rootRot: 0.26, ...handPose('left', 28, 5), ...handPose('right', 28, 9) }, 'inOutCubic'),
+  mid(0.645, { ...G, rootX: 1.6, rootY: 4.4, rootRot: 0.2, ...handPose('left', 20, 6), ...handPose('right', 21, 7) }, G),
+  kf(0.72, G),
+], 0.315)
+
+/** 15e · OMEGA PALM — the OMEGA HORIZON read as empty hand: condensation
+ * (deep crouch, arms drawn to the core), a long singularity stillness,
+ * then the horizon flash — both palms burst forward on the lunge line
+ * and the body rides the deceleration home. The string closer. */
+const OMEGAPALM = clip('unarmedOmegaPalm', [
+  kf(0.0, G),
+  // CONDENSE: center of gravity drops, arms drawn to the core
+  kf(0.168, { ...G, rootY: 7, rootRot: 0.2, ...handPose('left', 6, 11),
+    ...handPose('right', 8, 11), pelvisYaw: -0.2, chestYaw: 0.25, head: -0.18,
+    hipR: 0.58, kneeR: -1.16, hipL: -0.5, kneeL: -1.06,
+    footL: 0.36, footR: 0.14, rootZ: -0.5 }, 'outQuad'),
+  // SINGULARITY: absolute stillness — the longest hold in the set
+  kf(0.336, { ...G, rootY: 7.4, rootRot: 0.22, ...handPose('left', 6, 12),
+    ...handPose('right', 8, 12), pelvisYaw: -0.2, chestYaw: 0.26, head: -0.19,
+    hipR: 0.58, kneeR: -1.2, hipL: -0.5, kneeL: -1.1,
+    footL: 0.36, footR: 0.14, rootZ: -0.5 }, 'inOutSine'),
+  kf(0.42, { ...G, rootY: 7.5, rootRot: 0.22, ...handPose('left', 6, 12),
+    ...handPose('right', 8, 12), pelvisYaw: -0.2, chestYaw: 0.26, head: -0.19,
+    hipR: 0.58, kneeR: -1.2, hipL: -0.5, kneeL: -1.1,
+    footL: 0.36, footR: 0.14, rootZ: -0.5 }, 'inOutSine'),
+  mid(0.504, { ...G, rootY: 7.5, rootRot: 0.22, ...handPose('left', 6, 12),
+      ...handPose('right', 8, 12), pelvisYaw: -0.2, chestYaw: 0.26, head: -0.19,
+      hipR: 0.58, kneeR: -1.2, hipL: -0.5, kneeL: -1.1,
+      footL: 0.36, footR: 0.14, rootZ: -0.5 },
+    { ...G, rootY: 3.5, rootRot: 0.4, rootX: 8, ...handPose('left', 32, 13),
+      ...handPose('right', 38, 0), wrL: -0.6, wrR: -0.6,
+      chestYaw: -0.4, pelvisYaw: 0.3, footL: 0.85, footR: 0.02, rootZ: 0.5, head: -0.22 }),
+  // THE FLASH: both palms past the guard line, hips unwound through it
+  kf(0.588, { ...G, rootY: 3.5, rootRot: 0.4, rootX: 8, ...handPose('left', 32, 13),
+    ...handPose('right', 38, 0), wrL: -0.6, wrR: -0.6,
+    chestYaw: -0.4, pelvisYaw: 0.3, footL: 0.85, footR: 0.02, rootZ: 0.5, head: -0.22 }, 'outQuart'),
+  // IMPACT HOLD: majestic deceleration begins, palms stay buried
+  kf(0.672, { ...G, rootY: 4, rootRot: 0.38, rootX: 8.5, ...handPose('left', 32, 13),
+    ...handPose('right', 38, 0), wrL: -0.6, wrR: -0.6,
+    chestYaw: -0.36, pelvisYaw: 0.26, footL: 0.85, footR: 0.02, rootZ: 0.5, head: -0.22 }, 'inOutCubic'),
+  // SETTLE: the body RIDES the lunge home (rootX decays through the keys —
+  // spreading the guard pose would teleport it back 8 px in five frames)
+  kf(0.812, { ...G, rootX: 4.5, rootY: 4.5, rootRot: 0.26, ...handPose('left', 28, 4), ...handPose('right', 28, 8) }, 'inOutCubic'),
+  mid(0.896, { ...G, rootX: 2, rootY: 4.1, rootRot: 0.2, ...handPose('left', 20, 6), ...handPose('right', 21, 7) }, G),
+  kf(0.98, G),
+], 0.504)
+
+/* ================================================================== */
 /* DASH ATTACKS                                                        */
 /* ================================================================== */
 
@@ -517,7 +724,7 @@ const POWERRAM = clip('unarmedPowerRam', [
  * pelvis unwinds through depth (pelvisYaw +.22 → −.20, the fist crossing
  * the depth plane on armRz/foreRz) · CARRY (.21) the torso winds OVER the
  * punched arm · RIDE (.3) · CATCH (.4) the skid plant · SKID (.52) ·
- * settle to the fight guard. kf0 = FIST_DUAL_CHARGE_CLIP's TAUT LOCK,
+ * settle to the fight guard. kf(0 = FIST_DUAL_CHARGE_CLIP's TAUT LOCK,
  * verbatim — the seamless-handoff law. */
 const TAUT_LOCK: PoseInput = {
   rootX: 1, rootY: 5.5, rootRot: 0.48, head: -0.42, spine: 0.04,
@@ -895,19 +1102,8 @@ interface MoveSpec {
   corridorY?: number
 }
 
-/** Contact tolerance for an empty-hand strike, in world px.
- *
- * DERIVED, NOT CHOSEN: a drawn bone is `lineW: 4.5` wide (skeleton.ts), so
- * a limb is 2.25px to each side of its centre line. `pad` is added to the
- * BODY sphere radius (21px torso), so a fist needs `≤ 2.25` px to match its
- * own drawn footprint plus ~2.75px of render grain and swept-segment
- * tolerance — 5. Anything wider makes a fist connect from a distance the
- * player can see is empty. This is also the ceiling the module contract
- * names, and the value every other unarmed move already uses. */
-export const CONTACT_PAD = 5
-
 /** Enforce the empty-hand contract: visible-limb hitbox (strikeHand set,
- * no blade grip — fists never draw steel), trail == hit window, ≤7 px contact
+ * grip 0 — fists never draw steel), trail == hit window, ≤7 px contact
  * pad (a fist/heel is narrower than any blade), heavy sfx. */
 function move(s: MoveSpec): AttackDef {
   const hit: AttackDef['hit'] = {
@@ -916,14 +1112,17 @@ function move(s: MoveSpec): AttackDef {
     kb: s.kb ?? (s.heavy ? 200 : 95), kbY: s.kbY, launch: s.launch, juggle: s.juggle,
     hitstop: s.hitstop ?? (s.heavy ? 0.06 : 0.035),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
-    heavy: !!s.heavy, pad: s.pad ?? CONTACT_PAD, breakGuard: s.breakGuard,
+    heavy: !!s.heavy, pad: s.pad ?? (s.heavy ? 7 : 5), breakGuard: s.breakGuard,
     multiHit: s.multiHit, aoe: s.aoe,
     corridorBack: s.corridorBack, corridorFront: s.corridorFront, corridorY: s.corridorY,
   }
   return {
     id: s.id, label: s.label, kind: s.kind, requires: s.requires,
-    clip: s.clip, strikeHand: s.limb, strikeJoint: s.joint ?? 'hand',
-    chain: s.chain ?? [], cancel: s.hitEnd + (s.heavy ? 0.12 : 0.06),
+    clip: s.clip, strikeHand: s.limb, strikeJoint: s.joint ?? 'hand', grip: 0,
+    // the cancel window can never outrun the clip: an authored recovery pad
+    // past the last keyframe would leave the chain window open on a clip that
+    // has already ended (audit-combat-map's cancel ≤ duration contract).
+    chain: s.chain ?? [], cancel: Math.min(s.hitEnd + (s.heavy ? 0.12 : 0.06), s.clip.dur),
     hit, trail: { start: s.hitStart, end: s.hitEnd },
     swingSfx: { t: s.sfxT ?? Math.max(0.02, s.hitStart - 0.04), name: (s.heavySfx ?? s.heavy) ? 'swingHeavy' : 'swing' },
     moveX: s.moveX, moveXAt: s.moveXAt, moveY: s.moveY, moveYAt: s.moveYAt,
@@ -934,20 +1133,20 @@ function move(s: MoveSpec): AttackDef {
 const MOVES_SRC: MoveSpec[] = [
   /* ground light chain */
   { id: 'l1', label: 'KIZAMI JAB', kind: 'light', requires: 'ground', clip: JAB, limb: 'right',
-    hitStart: 0.08, hitEnd: 0.15, dmg: 10, kb: 95,
-    chain: ['sakugaJabCross'] },
+    hitStart: 0.095, hitEnd: 0.15, dmg: 10, kb: 95,
+    chain: ['sakugaJabCross', 'viperPalm'] },
   { id: 'l2', label: 'GYAKU CROSS', kind: 'light', requires: 'ground', clip: CROSS, limb: 'left',
     hitStart: 0.11, hitEnd: 0.20, dmg: 13, kb: 115,
-    chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat', 'sakugaBarrage'] },
+    chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat', 'sakugaBarrage', 'viperPalm', 'cyclone'] },
   { id: 'l3', label: 'KAGI HOOK', kind: 'light', requires: 'ground', clip: HOOK, limb: 'right',
-    hitStart: 0.12, hitEnd: 0.22, dmg: 14, kb: 125,
-    chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat'] },
+    hitStart: 0.105, hitEnd: 0.22, dmg: 14, kb: 125,
+    chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat', 'cyclone', 'avalancheElbow'] },
   { id: 'l4', label: 'SLIP BODY ELBOW', kind: 'light', requires: 'ground', clip: BODYBLOW, limb: 'right', joint: 'elbow',
     hitStart: 0.14, hitEnd: 0.26, dmg: 15, kb: 105, stagger: 0.3,
-    chain: ['l5', 'h2', 'stabs', 'launcher', 'sakugaDragon'] },
+    chain: ['l5', 'h2', 'stabs', 'launcher', 'sakugaDragon', 'viperPalm', 'ironRoot'] },
   { id: 'l5', label: 'TWIN SHOTEI', kind: 'light', requires: 'ground', clip: TWINPALM, limb: 'right',
     hitStart: 0.16, hitEnd: 0.30, dmg: 16, kb: 165, breakGuard: true,
-    chain: ['srOnslaught'] },
+    chain: ['srOnslaught', 'omegaPalm'] },
   /* contextual lights */
   { id: 'retreat', label: 'HOP-BACK BACKFIST', kind: 'light', requires: 'ground', clip: BACKFIST, limb: 'left',
     hitStart: 0.10, hitEnd: 0.22, dmg: 13, kb: 130, moveX: -110, moveXAt: 0.02 },
@@ -961,13 +1160,13 @@ const MOVES_SRC: MoveSpec[] = [
   /* heavies */
   { id: 'h1', label: 'RIPPLING ELBOW', kind: 'heavy', requires: 'ground', clip: ELBOW, limb: 'right', joint: 'elbow',
     hitStart: 0.14, hitEnd: 0.26, dmg: 20, kb: 180, heavy: true,
-    chain: ['l1', 'l2', 'launcher', 'spin'] },
+    chain: ['l1', 'l2', 'launcher', 'spin', 'avalancheElbow'] },
   { id: 'h2', label: 'TORNADO ROUNDHOUSE', kind: 'heavy', requires: 'ground', clip: ROUNDHOUSE, limb: 'right', joint: 'foot',
     hitStart: 0.22, hitEnd: 0.36, dmg: 26, kb: 240, heavy: true, breakGuard: true,
-    chain: ['l5', 'launcher', 'sakugaScorpion'] },
+    chain: ['l5', 'launcher', 'sakugaScorpion', 'omegaPalm'] },
   { id: 'h3', label: 'SKYHAMMER FIST', kind: 'heavy', requires: 'ground', clip: HAMMER, limb: 'right',
     hitStart: 0.26, hitEnd: 0.40, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
-    chain: ['l1', 'sakugaHammer', 'sakugaWrath'] },
+    chain: ['l1', 'sakugaHammer', 'sakugaWrath', 'avalancheElbow'] },
   /* new command heavies */
   { id: 'axeKick', label: 'KAKATO AXE KICK', kind: 'heavy', requires: 'ground', clip: AXEKICK, limb: 'right', joint: 'foot',
     hitStart: 0.24, hitEnd: 0.36, dmg: 24, kb: 175, heavy: true, breakGuard: true,
@@ -994,14 +1193,36 @@ const MOVES_SRC: MoveSpec[] = [
    * corridor is the dash path itself, so the pass tears the pack. */
   { id: 'powerPunch', label: 'RAIJIN KEN', kind: 'dash', requires: 'ground', clip: POWERCROSS, limb: 'right', joint: 'hand',
     hitStart: 0.10, hitEnd: 0.44, dmg: 30, kb: 560, kbY: -40, heavy: true, breakGuard: true,
-    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: CONTACT_PAD,
+    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: 10,
     corridorBack: 150, corridorFront: 88, corridorY: 55,
     moveX: 240, moveXAt: 0.02, chain: ['h1', 'l1'] },
   { id: 'powerKick', label: 'FUJIN KYAKU', kind: 'dash', requires: 'ground', clip: POWERKICK, limb: 'right', joint: 'foot',
     hitStart: 0.10, hitEnd: 0.44, dmg: 26, kb: 640, kbY: -90, launch: 260, heavy: true, breakGuard: true,
-    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: CONTACT_PAD,
+    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: 10,
     corridorBack: 150, corridorFront: 88, corridorY: 40,
     moveX: 240, moveXAt: 0.02, chain: ['h2', 'l1'] },
+  /* THE KINETIC-CHAIN SET — five empty-hand techniques authored to the
+   * reference studio's proximal-to-distal beat law (chamber → stillness
+   * frame → snap → impact hold → settle). Clips above; the combo director
+   * (combat/combo-director.ts) walks these branches. */
+  { id: 'viperPalm', label: 'VIPER PALM PIERCE', kind: 'light', requires: 'ground', clip: VIPERPALM, limb: 'right',
+    hitStart: 0.275, hitEnd: 0.4, dmg: 15, kb: 130, stagger: 0.22, hitstop: 0.045,
+    moveX: 70, moveXAt: 0.25,
+    chain: ['l3', 'l4', 'ironRoot', 'h1', 'launcher'] },
+  { id: 'avalancheElbow', label: 'AVALANCHE HAMMER DROP', kind: 'heavy', requires: 'ground', clip: AVALANCHE, limb: 'right', joint: 'hand',
+    hitStart: 0.38, hitEnd: 0.517, dmg: 27, kb: 190, kbY: 90, heavy: true, breakGuard: true,
+    stagger: 0.35, hitstop: 0.11, shake: 0.26, moveX: 55, moveXAt: 0.319,
+    chain: ['l1', 'l2', 'omegaPalm', 'h2'] },
+  { id: 'cyclone', label: 'CYCLONE BACKFIST', kind: 'light', requires: 'ground', clip: CYCLONE, limb: 'left',
+    hitStart: 0.429, hitEnd: 0.543, dmg: 18, kb: 155, stagger: 0.3, hitstop: 0.06, shake: 0.12,
+    moveX: 40, moveXAt: 0.343, chain: ['l2', 'l4', 'spin', 'viperPalm'] },
+  { id: 'ironRoot', label: 'IRON ROOT PALM', kind: 'light', requires: 'ground', clip: IRONROOT, limb: 'right',
+    hitStart: 0.315, hitEnd: 0.45, dmg: 19, kb: 175, breakGuard: true, stagger: 0.4, hitstop: 0.07,
+    moveX: 60, moveXAt: 0.255, chain: ['l1', 'h1', 'omegaPalm'] },
+  { id: 'omegaPalm', label: 'OMEGA HORIZON PALM', kind: 'finisher', requires: 'ground', clip: OMEGAPALM, limb: 'right',
+    hitStart: 0.504, hitEnd: 0.7, dmg: 34, kb: 430, kbY: -50, heavy: true, breakGuard: true,
+    stagger: 0.55, hitstop: 0.13, shake: 0.36, multiHit: 0.14,
+    moveX: 150, moveXAt: 0.476, chain: ['l1', 'l2'] },
   /* specials */
   { id: 'riposte', label: 'REKKA COUNTER PALM', kind: 'riposte', requires: 'any', clip: COUNTERPALM, limb: 'right',
     hitStart: 0.13, hitEnd: 0.24, dmg: 24, kb: 215, breakGuard: true },
@@ -1064,6 +1285,17 @@ const MOVES_SRC: MoveSpec[] = [
 
 export const MOVES: Record<string, AttackDef> = {}
 for (const s of MOVES_SRC) MOVES[s.id] = move(s)
+/* The hitbox follows the animation, never the other way round: a re-timed
+ * clip reports the instant its pose actually snaps, so any move whose clip
+ * was baked around a contact gets its window re-anchored onto that frame
+ * (same width, so damage-per-window and cancel maths are unchanged). */
+for (const m of Object.values(MOVES)) {
+  const snapAt = m.clip?.snapAt
+  if (snapAt == null) continue
+  const width = Math.max(1 / 60, m.hit.end - m.hit.start)
+  const start = Math.max(0, Math.round((snapAt - 1 / 24) * 1000) / 1000)
+  m.hit = { ...m.hit, start, end: Math.round((start + width) * 1000) / 1000 }
+}
 /* THE SHADOW RONIN SET — empty-hand variants of the transcribed dual-blade
  * sequences (combat/ronin.ts): same body choreography, fist/heel hitboxes.
  * Registered here so unarmedAttack() maps every sr id in the sheathed

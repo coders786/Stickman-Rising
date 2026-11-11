@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {createCanvas} from '@napi-rs/canvas'
 import {HUD, type HudState} from '../src/game/render/hud'
 
-const base:HudState={hp:100,maxHp:100,energy:100,maxEnergy:100,stamina:600,maxStamina:600,dashCharge:0,staminaCooldown:0,meter:100,swordName:'EMPTY HAND / SHEATHED',swordColor:'#0ff',abilityName:'STRIKE',abilityCost:20,combo:{hits:21,mult:2,rank:'A',timer:2,timerMax:4,rankUpT:0,lastHitT:0},wave:3,enemiesLeft:5,kills:12,score:123,boss:{hp:50,maxHp:100,name:'BOSS'},banner:null,executePrompt:null,ultReady:true,abilityReady:true,fps:60,showFps:false,runTime:30,attract:false}
+const base:HudState={hp:100,maxHp:100,energy:100,maxEnergy:100,stamina:600,maxStamina:600,dashCharge:0,slashCharge:0,swordDrawn:false,fistStrike:'punch',staminaCooldown:0,meter:100,swordName:'EMPTY HAND / SHEATHED',swordColor:'#0ff',abilityName:'STRIKE',abilityCost:20,combo:{hits:21,mult:2,rank:'A',timer:2,timerMax:4,rankUpT:0,lastHitT:0},wave:3,enemiesLeft:5,kills:12,score:123,boss:{hp:50,maxHp:100,name:'BOSS'},banner:null,executePrompt:null,ultReady:true,abilityReady:true,fps:60,showFps:false,runTime:30,attract:false}
 
 test('HUD reserves separate resource, boss and score areas at common widths',()=>{
  for(const w of [320,390,640,800,1100]){

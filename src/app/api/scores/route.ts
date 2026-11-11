@@ -9,11 +9,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   try {
-    const rows = await getDb().score.findMany({
-      orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
-      take: 15,
-    })
-    return NextResponse.json(rows)
+    return NextResponse.json(getDb().topScores(15))
   } catch (error) {
     console.error('Failed to load leaderboard', error)
     return NextResponse.json({ error: 'Leaderboard is temporarily unavailable' }, { status: 503 })
@@ -68,10 +64,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid score data', details: result.error.flatten().fieldErrors }, { status: 400 })
   }
   try {
-    const row = key
-      ? await getDb().score.upsert({ where: { id: key }, create: { id: key, ...result.data }, update: {} })
-      : await getDb().score.create({ data: result.data })
-    if (key && (Object.keys(result.data) as (keyof typeof result.data)[]).some(field => row[field] !== result.data[field])) {
+    const db = getDb()
+    if (!key) return NextResponse.json(db.insertScore(result.data), { status: 201 })
+    const { row, inserted } = db.upsertScore(key, result.data)
+    // A reused key is only a replay if the payload is identical; a different
+    // payload under the same key is a client bug, not an update.
+    if (!inserted && (Object.keys(result.data) as (keyof typeof result.data)[]).some(field => row[field] !== result.data[field])) {
       return NextResponse.json({ error: 'Idempotency-Key was already used with different score data' }, { status: 409 })
     }
     return NextResponse.json(row, { status: 201 })

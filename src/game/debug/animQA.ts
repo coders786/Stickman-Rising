@@ -11,8 +11,8 @@
  *   D. Enemy state deadlocks — transient states must resolve < 12s
  *   E. Frame-rate invariance — analytic jump apex at 30Hz vs 120Hz substeps
  *   F. FX hygiene — particle/trail pools fully recycle after the sequence
- *   G. authoring fidelity — the rendered pose IS the sampled clip (+ROM
- *      gate); a clip edit can never be replaced by a later layer
+ *   G. PAVE variation — a held idle must keep micro-motion (moving holds);
+ *      no two idle frames render identically (non-negotiable #1)
  *   H. Afterimage pool hygiene — dead ghosts must be spliced, never leaked
  *      into the draw list (regression: full-opacity ghost clusters)
  *   I. Combo escalation monotonicity — spec §3.3 table is pure + ordered
@@ -22,9 +22,8 @@
 
 import type { Game } from '../game'
 import { isPoseValid } from '../anim/skeleton'
-import { CH, CH_COUNT, makePose } from '../anim/pose'
-import { sampleClip } from '../anim/animator'
-import { applyJointLimits } from '../anim/limits'
+import { CH_COUNT } from '../anim/pose'
+import { escalation } from '../anim/pave'
 
 interface QAResult {
   name: string
@@ -38,7 +37,7 @@ const KEY = (code: string, type: 'keydown' | 'keyup'): void => {
 
 /** Player.animator is private; debug tooling reads it through the same
  * structural cast convention inspect.ts uses. */
-type AnimProbe = { getClip(): import('../anim/animator').Clip | null; getTime(): number }
+type AnimProbe = { getClip(): { name: string } | null; getTime(): number }
 const animOf = (p: unknown): AnimProbe => (p as unknown as { animator: AnimProbe }).animator
 const clipName = (p: unknown): string => animOf(p).getClip()?.name ?? '?'
 
@@ -81,6 +80,8 @@ async function runQA(game: Game): Promise<{ pass: boolean; results: QAResult[] }
   let violationCtx = ''
   let frames = 0
   let prevPose: Float32Array | null = null
+  let idleMaxDelta = 0
+  let idleFrames = 0
 
   const observe = (): void => {
     frames++
@@ -106,6 +107,17 @@ async function runQA(game: Game): Promise<{ pass: boolean; results: QAResult[] }
     // translation channels (0,1) are UNITS and legitimately move fast
     // (run bob, land squash), so they get a looser 5.0 snap bound
     if (prevPose) {
+      // G. PAVE — micro-motion must persist while idle (moving holds);
+      // a frozen idle means the variation engine died
+      if (player.state === 'move' && Math.abs(player.vx) < 5) {
+        idleFrames++
+        const d = Math.max(
+          Math.abs(player.pose[2] - prevPose[2]),
+          Math.abs(player.pose[3] - prevPose[3]),
+          Math.abs(player.pose[11] - prevPose[11]),
+        )
+        if (d > idleMaxDelta) idleMaxDelta = d
+      }
       const launched = game.enemies.some((e) => e.state === 'launched')
       const spinning = clipName(player) === 'atk_l4' || clipName(player) === 'atk_spin'
       // OMEGA HORIZON FLASH: the authored lens-burst translation (z −180 →
@@ -218,24 +230,10 @@ async function runQA(game: Game): Promise<{ pass: boolean; results: QAResult[] }
   const fxAi = game.fx as unknown as { afterimages: { active: boolean; age: number; life: number }[] }
   const ghostLeak = fxAi.afterimages.length
 
-  // G. AUTHORING FIDELITY — the visible pose must equal the sampled clip,
-  // ROM-gated, with no hidden layer in between. This is the regression
-  // guard for the whole point of the refactor: editing a clip changes the
-  // character. (Sampled on a static clip so nothing legitimately moves.)
-  let fidelity = 0
-  {
-    const probe = makePose()
-    const anim = animOf(player)
-    const clip = anim.getClip()
-    if (clip && clip.frames.length) {
-      sampleClip(clip, anim.getTime(), probe)
-      applyJointLimits(probe)
-      for (let c = 0; c < CH_COUNT; c++) {
-        if (c === CH.rootX || c === CH.rootY) continue // rig translation is applied at draw
-        fidelity = Math.max(fidelity, Math.abs(probe[c] - player.pose[c]))
-      }
-    }
-  }
+  // I. combo escalation (spec §3.3) — monotonic tiers, exact caps
+  const escSpeeds = [0, 4, 8, 16, 31, 51, 101].map((h) => escalation(h).speed)
+  const escMono = escSpeeds.every((v, i) => i === 0 || v >= escSpeeds[i - 1])
+  const escCap = escalation(999).speed === 1.3 && escalation(0).speed === 1.0
 
   results.push(
     { name: 'A. NaN joint channels', pass: nanFrames === 0, detail: `${nanFrames} bad frames / ${frames}` },
@@ -245,8 +243,9 @@ async function runQA(game: Game): Promise<{ pass: boolean; results: QAResult[] }
     // substep capping bounds integration drift; raw uncapped would be ~8.5px
     { name: 'E. jump apex @30Hz vs 120Hz', pass: apexDelta < 2, detail: `Δ ${apexDelta.toFixed(3)}px (${apex30.toFixed(1)} / ${apex120.toFixed(1)})` },
     { name: 'F. FX pool hygiene', pass: leaked === 0, detail: `${leaked} leaked particles` },
-    { name: 'G. pose fidelity (clip → screen)', pass: fidelity < 1e-5, detail: `max |rendered − sampled clip| = ${fidelity.toExponential(2)} rad` },
+    { name: 'G. PAVE idle micro-motion', pass: idleMaxDelta > 0.0004 && idleFrames > 30, detail: `max idle Δ/frame ${idleMaxDelta.toFixed(5)} over ${idleFrames} idle frames (moving holds alive)` },
     { name: 'H. afterimage pool hygiene', pass: ghostLeak === 0, detail: `${ghostLeak} dead ghosts still in draw list` },
+    { name: 'I. combo escalation table', pass: escMono && escCap, detail: `speeds ${escSpeeds.map((s) => s.toFixed(2)).join('→')} — monotonic: ${escMono}, caps: ${escCap}` },
   )
 
   const pass = results.every((r) => r.pass)

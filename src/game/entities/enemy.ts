@@ -8,6 +8,7 @@
 
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
+import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
@@ -134,6 +135,15 @@ export class Enemy {
   pose: Pose = makePose()
   geom: SkelGeom = makeSkelGeom()
 
+  /* ---- GROUND-CONTACT GAIT (legik): the chase/strafe/aim walk gets real
+   * planted feet — world-locked stance anchors exactly on the ground line,
+   * swing arcs, stride alternating with velocity. This kills the legacy
+   * sine-FK walk where BOTH feet hovered 5–30px above the floor. */
+  private gait = new GaitPlanner()
+  private gaitW = 0
+  private ikOut: LegIKOut = { kx: 0, ky: 0, ax: 0, ay: 0, clamped: false }
+  private toeScratch = { x: 0, y: 0 }
+  private gaitTune = { ...ENEMY_GAIT }
 
   constructor(kind: EnemyKind, x: number, waveScale: number) {
     this.kind = kind
@@ -149,10 +159,7 @@ export class Enemy {
   }
 
   get hipY(): number {
-    // 49 local = thigh + shin: the solver's own leg length. pose.rootY then
-    // shows through exactly once, so knee flexion lowers the body the way
-    // the authored pose says it should.
-    return this.y - 49 * this.scale + this.pose[1] * this.scale
+    return this.y - 47 * this.scale + this.pose[1] * this.scale
   }
 
   /* ------------------------------------------------------------------ */
@@ -424,11 +431,126 @@ export class Enemy {
     }
     this.x = clamp(this.x, w.arenaMinX + 16, w.arenaMaxX - 16)
 
-    // build + solve pose — the authored channels ARE the body. No gait
-    // planner, no post-projection leg IK: enemy feet land where the pose
-    // animator put them, on the same ground line as the player's.
+    // build + solve pose
     this.buildPose(dt, w.time)
+    // ground-contact gait: drive the planner + write the gait hip bob into
+    // the pose root BEFORE the solve (the femoral head must ride the bob)
+    this.updateGait(dt)
     solveSkeleton(this.pose, ENEMY_SPEC, this.geom)
+    // leg IK: feet exactly where feet go (gait legs + stance snap/clamp)
+    this.applyGroundIK()
+  }
+
+  /** gait drive — engaged while walking (chase/strafe/aim, grounded). The
+   * gait owns pose[1] for these states: hips ride at 44·scale with a 2-per-
+   * stride dip (the old sine bob fought the double-counted hipY formula).
+   * The pelvis also lowers if a planted anchor is beyond leg reach. */
+  private updateGait(dt: number): void {
+    const s = this.scale
+    const walking = (this.state === 'chase' || this.state === 'strafe' || this.state === 'aim')
+      && this.kind !== 'drone' && this.y > -0.5
+    const speed = Math.abs(this.vx)
+    // scale the tune to the body
+    this.gaitTune.stride = ENEMY_GAIT.stride * s
+    this.gaitTune.clearance = ENEMY_GAIT.clearance * s
+    this.gaitTune.stepAhead = ENEMY_GAIT.stepAhead * s
+    this.gaitTune.lift = ENEMY_GAIT.lift * s
+    this.gait.update(this.x, this.vx, this.face, speed, this.gaitTune, dt, walking, 2.2 * s, this.y > -0.5)
+    this.gaitW = damp(this.gaitW, walking ? 1 : 0, walking ? 14 : 7, dt)
+    if (this.gaitW > 0.01) {
+      const bob = 1.3 * Math.abs(Math.sin(Math.PI * 2 * this.gait.phase)) * s
+      // effective femur height target: 44·s (3 units of knee reserve) with
+      // the mid-stance dip; pose[1] shows it exactly once through hipY+geom
+      let eff = -44 * s + bob
+      // pelvis bound: the most-extended planted leg limits the hip
+      if (this.gait.hasPlanted) {
+        const reach = 46 * s * 0.999
+        let bound = -Infinity
+        for (const f of [this.gait.footL, this.gait.footR]) {
+          if (f.y > -0.5) continue
+          const dx = Math.abs(f.x - this.x)
+          const vert = Math.sqrt(Math.max(0, reach * reach - dx * dx))
+          bound = Math.max(bound, f.y - vert)
+        }
+        if (isFinite(bound) && bound > eff) eff = bound
+      }
+      // pose[1] ↔ effective femur: eff = hipY + s·p1 = (y − 47s + p1·s) + s·p1
+      // (y = 0 grounded) → p1 = (47s + eff) / (2s)
+      const p1 = (47 * s + eff) / (2 * s)
+      const w = this.gaitW
+      this.pose[1] = this.pose[1] * (1 - w) + p1 * w
+      // subtle live-lean while walking, scaled by actual speed (a stalking
+      // enemy leans less than a charging one)
+      this.pose[2] += 0.14 * clamp01(speed / 220) * w
+    }
+  }
+
+  /** leg IK writer — gait legs (world targets → local, knee-forward) plus
+   * the stance snap + floor clamp for other grounded states (windup/strike/
+   * recover/stun/pattern/dive/getup). Lying-down and airborne states keep
+   * their FK legs. */
+  private applyGroundIK(): void {
+    const s = this.scale
+    const g = this.geom
+    const l1 = ENEMY_SPEC.thigh
+    const l2 = ENEMY_SPEC.shin
+    const legLen = l1 + l2
+    const grounded = this.y > -0.5 && this.state !== 'launched' && this.state !== 'enter'
+    const w = this.gaitW
+    this.snapContacts.length = 0
+
+    if (w > 0.01) {
+      const legs: [typeof this.gait.footL, typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
+        [this.gait.footL, g.hipPtL, g.kneeL, g.ankleL, g.toeL],
+        [this.gait.footR, g.hipPtR, g.kneeR, g.ankleR, g.toeR],
+      ]
+      for (const [fp, hipPt, knee, ankle, toe] of legs) {
+        const tx = (fp.x - this.x) / (this.face * s)
+        const ty = (fp.y - this.hipY) / s
+        solveLegIK(hipPt.x, hipPt.y, tx, ty, l1, l2, 1, this.ikOut)
+        knee.x += (this.ikOut.kx - knee.x) * w
+        knee.y += (this.ikOut.ky - knee.y) * w
+        ankle.x += (this.ikOut.ax - ankle.x) * w
+        ankle.y += (this.ikOut.ay - ankle.y) * w
+        toeFromPitch(ankle.x, ankle.y, fp.pitch, ENEMY_SPEC.foot, this.toeScratch)
+        // the floor is solid — a plantarflexed toe never digs below it
+        const groundLy = (-1 - this.hipY) / s
+        if (this.toeScratch.y > groundLy) this.toeScratch.y = groundLy
+        toe.x += (this.toeScratch.x - toe.x) * w
+        toe.y += (this.toeScratch.y - toe.y) * w
+      }
+    }
+
+    // stance snap + floor clamp for the remaining grounded states
+    if (w < 0.99 && grounded && this.state !== 'down') {
+      const iw = 1 - w
+      const pairs: [typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
+        [g.hipPtL, g.kneeL, g.ankleL, g.toeL],
+        [g.hipPtR, g.kneeR, g.ankleR, g.toeR],
+      ]
+      for (const [hipPt, knee, ankle, toe] of pairs) {
+        const ankleWy = this.hipY + s * ankle.y
+        const toeWy = this.hipY + s * toe.y
+        const extended = ankle.y > legLen * 0.52
+        const nearGround = ankleWy > -12 * s && toeWy < 6 * s
+        if (extended && nearGround) {
+          const ty = (-2.2 * s - this.hipY) / s
+          solveLegIK(hipPt.x, hipPt.y, ankle.x, ty, l1, l2, 1, this.ikOut)
+          knee.x += (this.ikOut.kx - knee.x) * iw
+          knee.y += (this.ikOut.ky - knee.y) * iw
+          ankle.x += (this.ikOut.ax - ankle.x) * iw
+          ankle.y += (this.ikOut.ay - ankle.y) * iw
+          toeFromPitch(ankle.x, ankle.y, 0.12, ENEMY_SPEC.foot, this.toeScratch)
+          toe.x += (this.toeScratch.x - toe.x) * iw
+          toe.y += (this.toeScratch.y - toe.y) * iw
+          if (iw > 0.5) this.snapContacts.push(this.x + this.face * s * ankle.x)
+        } else if (toeWy > -0.5) {
+          // the floor is solid — toes never render below it
+          const groundLy = (-1 - this.hipY) / s
+          if (toe.y > groundLy) toe.y = groundLy
+        }
+      }
+    }
   }
 
   private countEngaged(w: WorldRef): number {
@@ -832,6 +954,8 @@ export class Enemy {
   strobeLight: KeyLight | null = null
   strobeK = 0
   private rimChains: number[][] = [[], [], [], [], []]
+  /** contact-AO anchors from the plant-snap pass (non-gait stances) */
+  private snapContacts: number[] = []
 
   drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight): void {
     const g = this.geom
@@ -867,13 +991,13 @@ export class Enemy {
     } else {
       this.shFig.blade = null
     }
-    // contact AO from the AUTHORED stance: a foot gets a core only when the
-    // solved pose actually put it on the ground line.
     const contacts: number[] = []
     if (this.y > -0.5) {
-      for (const [toe, ankle] of [[g.toeL, g.ankleL], [g.toeR, g.ankleR]] as const) {
-        if (Math.max(toe.y, ankle.y) * s > 40 * s) contacts.push(this.x + f * toe.x)
+      if (this.gaitW > 0.5) {
+        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
+        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
       }
+      for (const c of this.snapContacts) contacts.push(c)
     }
     const flying = this.kind === 'drone' ? this.y : this.y
     drawCastShadow(ctx, this.shFig, light, {
@@ -1204,8 +1328,11 @@ const ENEMY_SPEC = {
   headR: 8,
   shoulderFwd: 2.7,
   shoulderDrop: 2.8,
-  upperArm: 20,
-  foreArm: 18,
+  // Enemies share the recomposed bulky-arm read (reach 40 vs player 42 —
+  // the player keeps the reach edge; enemies gain the same mass so their
+  // windups read at the same weight class).
+  upperArm: 21,
+  foreArm: 19,
   hand: 6,
   thigh: 24,
   shin: 22,

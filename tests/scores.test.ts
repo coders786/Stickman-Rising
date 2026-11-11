@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { NextRequest } from 'next/server'
 import { scoreSubmissionSchema } from '../src/lib/scores'
-import { getDb } from '../src/lib/db'
+import { getDb, closeDb } from '../src/lib/db'
 import { GET, POST } from '../src/app/api/scores/route'
 import { checkScoreRateLimit, scoreClientKey, CLIENT_SCORE_LIMIT, GLOBAL_SCORE_LIMIT } from '../src/lib/score-rate-limit'
 
@@ -16,15 +16,13 @@ const request = (body: unknown) => new NextRequest('http://localhost/api/scores'
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
 })
 before(async () => {
+  // The store creates its own schema on open (src/lib/db.ts) — no generated
+  // client, no migration step. Just point it at a scratch file.
   process.env.DATABASE_URL = `file:${directory}/nested/scores.db`
-  await getDb().$executeRawUnsafe(`CREATE TABLE Score (
-    id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, score INTEGER NOT NULL,
-    wave INTEGER NOT NULL, maxCombo INTEGER NOT NULL, kills INTEGER NOT NULL,
-    sword TEXT NOT NULL, createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`)
+  getDb()
 })
 after(async () => {
-  await getDb().$disconnect()
+  closeDb()
   if (previousUrl === undefined) delete process.env.DATABASE_URL
   else process.env.DATABASE_URL = previousUrl
   rmSync(directory, { recursive: true, force: true })
@@ -42,7 +40,7 @@ test('POST distinguishes invalid JSON, invalid scores, unsupported types and ove
   assert.equal((await POST(request({ ...valid, name: 'x'.repeat(5000) }))).status, 413)
 })
 test('scores persist to SQLite and leaderboard is ordered and limited', async () => {
-  await getDb().score.deleteMany()
+  getDb().exec('DELETE FROM "Score"')
   for (let i = 0; i < 17; i++) {
     const response = await POST(request({ ...valid, score: i }))
     assert.equal(response.status, 201)
@@ -62,7 +60,7 @@ test('retrying with the same idempotency key does not duplicate a score', async 
   }))
   assert.equal((await send()).status, 201)
   assert.equal((await send()).status, 201)
-  assert.equal(await getDb().score.count({ where: { id: key } }), 1)
+  assert.ok(getDb().findScore(key), 'replay must not duplicate the row')
 })
 
 test('an idempotency key cannot silently accept a different score payload', async () => {
@@ -81,7 +79,7 @@ test('rate limit is durable, atomic, and ignores untrusted client IP headers', a
   const headers = new Headers({ 'x-real-ip': '192.0.2.1' })
   assert.equal(scoreClientKey(headers), null)
   try {
-    await getDb().$executeRawUnsafe('DELETE FROM ScoreRateLimit')
+    getDb().exec('DELETE FROM "ScoreRateLimit"')
     const now = 1_800_000_000_000
     const results = await Promise.all(Array.from({ length: GLOBAL_SCORE_LIMIT + 5 }, () => checkScoreRateLimit(headers, now)))
     assert.equal(results.filter(x => x.allowed).length, GLOBAL_SCORE_LIMIT)
@@ -94,17 +92,17 @@ test('rate limit is durable, atomic, and ignores untrusted client IP headers', a
     for (let i = 0; i < CLIENT_SCORE_LIMIT; i++) assert.equal((await checkScoreRateLimit(headers, later)).allowed, true)
     assert.equal((await checkScoreRateLimit(headers, later)).allowed, false)
     assert.equal((await checkScoreRateLimit(new Headers({ 'x-real-ip': '192.0.2.2' }), later)).allowed, true)
-    const stored = await getDb().$queryRawUnsafe<{ key: string }[]>('SELECT key FROM ScoreRateLimit')
+    const stored = getDb().query<{ key: string }>('SELECT "key" AS key FROM "ScoreRateLimit"')
     assert.ok(stored.every(row => !row.key.includes('192.0.2.')))
   } finally {
     if (old === undefined) delete process.env.SCORES_TRUSTED_IP_HEADER
     else process.env.SCORES_TRUSTED_IP_HEADER = old
-    await getDb().$executeRawUnsafe('DELETE FROM ScoreRateLimit')
+    getDb().exec('DELETE FROM "ScoreRateLimit"')
   }
 })
 
 test('POST returns 429 and Retry-After after the shared limit is reached', async () => {
-  await getDb().$executeRawUnsafe('DELETE FROM ScoreRateLimit')
+  getDb().exec('DELETE FROM "ScoreRateLimit"')
   const clock = mock.method(Date, 'now', () => 1_800_000_000_000)
   try {
     for (let i = 0; i < GLOBAL_SCORE_LIMIT; i++) await checkScoreRateLimit(new Headers())
@@ -113,14 +111,14 @@ test('POST returns 429 and Retry-After after the shared limit is reached', async
     assert.ok(Number(response.headers.get('retry-after')) > 0)
   } finally {
     clock.mock.restore()
-    await getDb().$executeRawUnsafe('DELETE FROM ScoreRateLimit')
+    getDb().exec('DELETE FROM "ScoreRateLimit"')
   }
 })
 
 test('database failures return 503 rather than empty successes or internal details', async () => {
   const log = mock.method(console, 'error', () => {})
   try {
-    await getDb().$executeRawUnsafe('DROP TABLE Score')
+    getDb().exec('DROP TABLE "Score"')
     const response = await GET()
     assert.equal(response.status, 503)
     const body = JSON.stringify(await response.json())

@@ -19,28 +19,20 @@ export function scoreClientKey(headers: Headers): string | null {
 }
 
 /** SQLite counters are shared across workers using the same database and
- * survive restarts. Each increment is atomic; expired entries are removed. */
+ * survive restarts. Each increment is atomic (single upsert); expired
+ * entries are pruned on the way through. */
 export async function checkScoreRateLimit(headers: Headers, now = Date.now()): Promise<{ allowed: boolean; retryAfter: number }> {
   const db = getDb()
   const seconds = Math.floor(now / 1000)
   const expiresAt = (Math.floor(seconds / WINDOW_SECONDS) + 1) * WINDOW_SECONDS
-  await db.$executeRaw`CREATE TABLE IF NOT EXISTS ScoreRateLimit (key TEXT PRIMARY KEY NOT NULL, count INTEGER NOT NULL, expiresAt INTEGER NOT NULL)`
-  await db.$executeRaw`DELETE FROM ScoreRateLimit WHERE expiresAt <= ${seconds}`
+  db.pruneRateLimit(seconds)
 
-  async function increment(key: string): Promise<number> {
-    const rows = await db.$queryRaw<{ count: number | bigint }[]>`
-      INSERT INTO ScoreRateLimit (key, count, expiresAt) VALUES (${key}, 1, ${expiresAt})
-      ON CONFLICT(key) DO UPDATE SET
-        count = CASE WHEN expiresAt <= ${seconds} THEN 1 ELSE count + 1 END,
-        expiresAt = CASE WHEN expiresAt <= ${seconds} THEN ${expiresAt} ELSE expiresAt END
-      RETURNING count`
-    return Number(rows[0].count)
-  }
+  const increment = (key: string): number => db.bumpRateLimit(key, expiresAt, seconds)
 
   const retryAfter = Math.max(1, expiresAt - seconds)
-  const global = await increment('global')
+  const global = increment('global')
   if (global > GLOBAL_SCORE_LIMIT) return { allowed: false, retryAfter }
   const client = scoreClientKey(headers)
-  const clientCount = client ? await increment(client) : 0
+  const clientCount = client ? increment(client) : 0
   return { allowed: clientCount <= CLIENT_SCORE_LIMIT, retryAfter }
 }

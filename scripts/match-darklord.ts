@@ -261,8 +261,12 @@ function emitAttack(a: Atk): string {
   const acc: Record<string, number>[] = []
   let prev: Record<string, number> | null = null
   for (const k of a.keys) {
-    prev = prev ? { ...prev, ...k.o } : { ...k.o }
-    acc.push({ ...prev })
+    // explicit merge — spreading a nullable accumulator trips TS2698
+    const merged: Record<string, number> = {}
+    if (prev) for (const key of Object.keys(prev)) merged[key] = prev[key]
+    for (const key of Object.keys(k.o)) merged[key] = k.o[key]
+    prev = merged
+    acc.push({ ...merged })
   }
   const x0 = acc[0].x
   const conv = acc.map(o => convertPose(o, x0))
@@ -404,6 +408,13 @@ export const SAKUGA_WRATH_CLIP = SAKUGA_WRATH
 `
 
 const out = header + clips + footer
+
+// This converter runs under Bun (top-level await + Bun.write); declare just the
+// surface it uses so the repo's TypeScript pass stays clean without Bun types.
+declare const Bun: { write(path: string, contents: string): Promise<number> }
+
 await Bun.write('/home/z/my-project/src/game/combat/sakuga.ts', out)
 console.log('WROTE src/game/combat/sakuga.ts (' + out.split('\n').length + ' lines)')
 console.log(report)
+
+export {}
