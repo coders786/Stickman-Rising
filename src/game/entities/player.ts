@@ -872,180 +872,223 @@ export class Player {
     // Without this copy, procedural += deltas integrate unbounded → spine
     // spin + root sink. (Same contract as Spine's AnimationState.apply /
     // Godot AnimationTree → Skeleton2D.)
-    this.pose.set(this.animator.pose)
-    this.applyProcedural(dt)
-    if(this.state==='dash'&&this.dashBody){
-      const b=this.dashBody
-      const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
-      this.pose[CH.rootRot]+=forcePitch
-      this.pose[CH.head]-=forcePitch
-      if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
-      this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
-    }
-    const motionClip=this.animator.getClip()
-    if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
-    const motionPhase=motionClip&&motionClip.dur>0
-      ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
-    Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
-      speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
-      threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
-      grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
-      landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
-      attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
-    this.contextMotion.apply(this.pose,this.motionContext,dt)
-    this.animationVariation=this.contextMotion.variation
-    this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
-    // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
-    // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
-    this.animator.applyPreparedTransition(this.pose,dt)
-    const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
-      &&/^sprint/.test(motionClip?.name??'')
-    if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
-    this.sprintExposure.apply(this.pose,
-      this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      motionPhase,dt,sprintActing)
-    if(this.sprintExposure.active){
-      this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
-      this.motion.adoptDisplayArms(this.pose)
-    }
-    // Final low-drive acting lives after entry smoothing, but its own
-    // quintic envelope starts/ends at zero with zero velocity/acceleration.
-    // Never tip a backward guard or an aerial dodge onto the floor.
-    this.dashSink=0;this.dashSkim=0;this.dashLift=0
-    if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
-      const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
-      const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
-      const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
-      // Normal dash remains upright throughout; its own footwork, not a
-      // scaled copy of the power lean, supplies the sense of speed.
-      p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]+=(.02-p[CH.spine])*a.weight
-      p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
-      const brace=a.compression*a.weight,reach=a.rearReach*a.weight
-      const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
-      const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
-      p[CH.rootX]+=1.5*brace
-      p[rear]-=.16*reach;p[lead]+=.08*reach
-      p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
-      if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
-      dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
-      this.dashSink=a.drop*a.weight
-    }
-    // A charged release uses its own authored performance; dash strikes keep
-    // their attack arms, while the grounded body follows the same power arc.
-    if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
-      const a=powerDashAct(this.dashBody.progress),p=this.pose
-      const pitch=.35+1.0*a.drive-.31*a.catch
-      p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
-      // The moving guard remains separate from the dash-attack arm layer.
-      if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
-      dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
-      this.dashSink=a.drop
-      this.dashLift=powerDashLift(this.dashBody.age)
-      // Both soles follow the low ballistic body arc before returning to the
-      // close-to-ground skim and then the planted braking catch.
-      this.dashSkim=7*a.drive+this.dashLift
-    }
-    // Charge/stabilization are planted body-language beats, not flight.
-    if(this.grounded&&this.state==='dashCharge'){
-      // The planted COIL clip owns the stance (plant → sink → lock — its
-      // keyframes are the choreography). This layer adds only what a clip
-      // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
-      // and a micro tremble in the sword arm itself, the steel visibly
-      // straining under stored tension. IK keeps the soles grounded.
-      // THE DUAL CHAMBER strains under the fuller load: amplitude grows
-      // with the blade segment (the body carries steel, not static weight).
-      const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
-      const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
-      const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
-      p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
-      p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
-      this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
-    } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
-      const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
-      const q=powerDashRecovery(progress),p=this.pose
-      // A bounded, damped joint response absorbs impact before standing.
-      const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
-      p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
-      p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
-      // Upper body settles just after the legs, rather than every joint
-      // snapping to idle on the same frame. Sword attacks still own their arms.
-      const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
-      dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
-      p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
-      p[CH.rootY]+=1.5*Math.max(0,wobble)
-      this.dashSink=q
-    }
-    this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
-    // procedural layers (bounded, frame-local — never accumulate):
-    // SWORD-LED ARC first: it rewrites the arm channels, so the blade
-    // dynamics spring below sees the ARC's angular velocity — the whip
-    // lags/overshoots the real swing, not the raw keyframes.
-    this.swordArc.update(dt, {
-      pose: this.pose,
-      shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
-      shoulderZ: this.geom.shoulderR.z,
-      handX: this.geom.handR.x, handY: this.geom.handR.y,
-      handZ: this.geom.handR.z,
-      def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
-      animT: this.action ? this.action.animT : 0,
-      enemies: w.enemies,
-      face: this.face,
-      x: this.x,
-      hipY: this.hipY,
-      reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
-    })
-    this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
-    this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
-    // ---- PAVE (bounded organic variation): the additive secondary-motion
-    // pass. Positioned deliberately AFTER every authored/procedural writer
-    // and the grip IK but BEFORE the anatomical gate + FK solve, so:
-    //   (a) the off-hand grip + foot IK re-solve against the varied pose
-    //       (a gripping hand never gets uncontrolled noise — brief §6),
-    //   (b) applyJointLimits bounds every additive offset,
-    //   (c) the arm channels are gated to near-zero inside strike/trail
-    //       windows so hitboxes and trails stay crisp.
-    {
-      const a = this.action
-      const striking = this.state === 'attack' && a != null
-        && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
-      // Precision actions gate the arm channels: strike/trail windows and
-      // the dash family are authored contact silhouettes (hand separation,
-      // blade arcs) — noise there would blur readable beats. Rituals,
-      // parries and the scripted cinematic keep a partial gate so holds
-      // stay alive without smearing choreography.
-      const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
-        : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
-        : 1
-      const hpFrac = this.hp / this.maxHp
-      const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
-      applyPave(this.pose, {
-        time: this.now,
-        dt,
-        hp: hpFrac,
-        comboHits: w.combo?.hits ?? 0,
-        speedRatio,
-        airborne: !this.grounded,
-        airborneT: this.airT,
-        chargeRatio: this.chargeRatio,
-        sinceHitTaken: this.sinceHitT,
-        sword: this.sword.id,
-        armGate,
-        // contextual breath: calm 14 bpm → combat threat + sprint exertion
-        // + near-death labor climb toward ~40 (spec §4.3)
-        breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
-        jumpStyle: this.jumpStyle,
-      }, this.pave)
-    }
-    // ANATOMICAL LIMITS: the last writer before the solve. Clips, additive
-    // layers, crossfades and every IK all pass through the same human ROM
-    // gate — elbows never cross their flexion side, knees never fold
-    // forward, shoulders stay in the glenohumeral envelope.
+    // ---- THE POSE PIPELINE ----
+    // Ordered stages, resolved by LayerStack (see anim/layers.ts). The
+    // ordering argument lives in one place, not in comments above each
+    // writer. Behaviour is pinned by .qa/pose-golden.ts.
+    this.updatePose(dt, w)
+    this.animator.captureDisplayPose(this.pose,dt)
+    this.updateBladeWorld()
+    this.updateSwingScale(dt)
+    this.updateScarf(dt, w.time)
+  }
+
+  /* ================================================================== */
+  /* THE POSE PIPELINE                                                   */
+  /* ================================================================== */
+  /** Build this frame's pose, in explicitly ordered stages.
+   *
+   * This was 182 lines inline in update(), where the correctness of the
+   * result depended on the writers happening to run in a particular order
+   * that existed only as prose comments. It is now one method with the
+   * stages named, so the ordering argument is visible and a writer cannot
+   * be inserted "somewhere in the middle" without choosing a stage.
+   *
+   * Stage meanings (see anim/layers.ts):
+   *   base        the authored clip, absolute (never accumulates)
+   *   procedural  authored additive body language (dash, charge, tremor)
+   *   context     speed/threat/health-reactive secondary motion
+   *   smoothing   damped anatomical tracking — deliberately AFTER the
+   *               authored layers so it smooths their output
+   *   secondary   blade arc, wrist dynamics, grip IK
+   *   variation   seeded PAVE noise, gated off during contact windows
+   *   constraint  the ROM gate — the LAST pose writer, always
+   *   solve       FK/IK projection; writes geom, never the pose
+   *
+   * Pinned by .qa/pose-golden.ts: this ordering changed nothing, bit-exact.
+   */
+  private updatePose(dt: number, w: WorldRef): void {
+    // ---- base: the clip owns the pose absolutely ----
+      this.pose.set(this.animator.pose)
+      this.applyProcedural(dt)
+    // ---- procedural: authored additive body language ----
+    // (this used to run BEFORE the context/smoothing layers; it still does)
+      if(this.state==='dash'&&this.dashBody){
+        const b=this.dashBody
+        const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
+        this.pose[CH.rootRot]+=forcePitch
+        this.pose[CH.head]-=forcePitch
+        if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
+        this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
+      }
+      const motionClip=this.animator.getClip()
+      if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
+      const motionPhase=motionClip&&motionClip.dur>0
+        ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
+      Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
+        speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
+        threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
+        grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
+        landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
+        attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
+      this.contextMotion.apply(this.pose,this.motionContext,dt)
+      this.animationVariation=this.contextMotion.variation
+    // ---- smoothing: damped pose tracking ----
+      this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
+      // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
+      // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
+      this.animator.applyPreparedTransition(this.pose,dt)
+      const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
+        &&/^sprint/.test(motionClip?.name??'')
+      if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
+      this.sprintExposure.apply(this.pose,
+        this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
+        motionPhase,dt,sprintActing)
+      if(this.sprintExposure.active){
+        this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
+        this.motion.adoptDisplayArms(this.pose)
+      }
+      // Final low-drive acting lives after entry smoothing, but its own
+      // quintic envelope starts/ends at zero with zero velocity/acceleration.
+      // Never tip a backward guard or an aerial dodge onto the floor.
+      this.dashSink=0;this.dashSkim=0;this.dashLift=0
+      if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
+        const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
+        const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
+        const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
+        // Normal dash remains upright throughout; its own footwork, not a
+        // scaled copy of the power lean, supplies the sense of speed.
+        p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
+        this.dashDisplayPitch=p[CH.rootRot]
+        p[CH.spine]+=(.02-p[CH.spine])*a.weight
+        p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
+        const brace=a.compression*a.weight,reach=a.rearReach*a.weight
+        const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
+        const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
+        p[CH.rootX]+=1.5*brace
+        p[rear]-=.16*reach;p[lead]+=.08*reach
+        p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
+        if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
+        dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
+        this.dashSink=a.drop*a.weight
+      }
+      // A charged release uses its own authored performance; dash strikes keep
+      // their attack arms, while the grounded body follows the same power arc.
+      if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
+        const a=powerDashAct(this.dashBody.progress),p=this.pose
+        const pitch=.35+1.0*a.drive-.31*a.catch
+        p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
+        this.dashDisplayPitch=p[CH.rootRot]
+        p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
+        // The moving guard remains separate from the dash-attack arm layer.
+        if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
+        dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
+        this.dashSink=a.drop
+        this.dashLift=powerDashLift(this.dashBody.age)
+        // Both soles follow the low ballistic body arc before returning to the
+        // close-to-ground skim and then the planted braking catch.
+        this.dashSkim=7*a.drive+this.dashLift
+      }
+      // Charge/stabilization are planted body-language beats, not flight.
+      if(this.grounded&&this.state==='dashCharge'){
+        // The planted COIL clip owns the stance (plant → sink → lock — its
+        // keyframes are the choreography). This layer adds only what a clip
+        // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
+        // and a micro tremble in the sword arm itself, the steel visibly
+        // straining under stored tension. IK keeps the soles grounded.
+        // THE DUAL CHAMBER strains under the fuller load: amplitude grows
+        // with the blade segment (the body carries steel, not static weight).
+        const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
+        const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
+        const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
+        p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
+        p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
+        this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
+      } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
+        const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
+        const q=powerDashRecovery(progress),p=this.pose
+        // A bounded, damped joint response absorbs impact before standing.
+        const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
+        p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
+        p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
+        // Upper body settles just after the legs, rather than every joint
+        // snapping to idle on the same frame. Sword attacks still own their arms.
+        const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
+        dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
+        p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
+        p[CH.rootY]+=1.5*Math.max(0,wobble)
+        this.dashSink=q
+      }
+    // ---- secondary: blade, wrist, grip ----
+      this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
+      // procedural layers (bounded, frame-local — never accumulate):
+      // SWORD-LED ARC first: it rewrites the arm channels, so the blade
+      // dynamics spring below sees the ARC's angular velocity — the whip
+      // lags/overshoots the real swing, not the raw keyframes.
+      this.swordArc.update(dt, {
+        pose: this.pose,
+        shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
+        shoulderZ: this.geom.shoulderR.z,
+        handX: this.geom.handR.x, handY: this.geom.handR.y,
+        handZ: this.geom.handR.z,
+        def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
+        animT: this.action ? this.action.animT : 0,
+        enemies: w.enemies,
+        face: this.face,
+        x: this.x,
+        hipY: this.hipY,
+        reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
+      })
+      this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
+      this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
+      // ---- PAVE (bounded organic variation): the additive secondary-motion
+      // pass. Positioned deliberately AFTER every authored/procedural writer
+      // and the grip IK but BEFORE the anatomical gate + FK solve, so:
+      //   (a) the off-hand grip + foot IK re-solve against the varied pose
+      //       (a gripping hand never gets uncontrolled noise — brief §6),
+      //   (b) applyJointLimits bounds every additive offset,
+      //   (c) the arm channels are gated to near-zero inside strike/trail
+      //       windows so hitboxes and trails stay crisp.
+      {
+        const a = this.action
+        const striking = this.state === 'attack' && a != null
+          && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
+        // Precision actions gate the arm channels: strike/trail windows and
+        // the dash family are authored contact silhouettes (hand separation,
+        // blade arcs) — noise there would blur readable beats. Rituals,
+        // parries and the scripted cinematic keep a partial gate so holds
+        // stay alive without smearing choreography.
+        const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
+          : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
+          : 1
+        const hpFrac = this.hp / this.maxHp
+        const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
+    // ---- variation: seeded, bounded, frame-local ----
+        applyPave(this.pose, {
+          time: this.now,
+          dt,
+          hp: hpFrac,
+          comboHits: w.combo?.hits ?? 0,
+          speedRatio,
+          airborne: !this.grounded,
+          airborneT: this.airT,
+          chargeRatio: this.chargeRatio,
+          sinceHitTaken: this.sinceHitT,
+          sword: this.sword.id,
+          armGate,
+          // contextual breath: calm 14 bpm → combat threat + sprint exertion
+          // + near-death labor climb toward ~40 (spec §4.3)
+          breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
+          jumpStyle: this.jumpStyle,
+        }, this.pave)
+      }
+    // ---- constraint: the anatomical gate is always the last writer ----
+    // Clips, additive layers, crossfades and every IK all pass through the
+    // same human ROM gate — elbows never cross their flexion side, knees
+    // never fold forward, shoulders stay in the glenohumeral envelope.
     applyJointLimits(this.pose,(this.state==='dash'||(this.state==='attack'&&this.dashPower&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.dashDx*this.face>.5?1.58:1.1)
-    // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
+
+    // ---- solve: project the pose; never write it back ----
     solveFighter3D(
       this.pose, PLAYER_SPEC, this.geom,
       PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
@@ -1054,10 +1097,6 @@ export class Player {
     this.applyDrawContact()
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
-    this.animator.captureDisplayPose(this.pose,dt)
-    this.updateBladeWorld()
-    this.updateSwingScale(dt)
-    this.updateScarf(dt, w.time)
   }
 
   private drawSocket(){
