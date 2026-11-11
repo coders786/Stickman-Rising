@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THE DARK LORD — Sakuga Study</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+  :root{
+    --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --text-muted: #77766f;
+    --ink: #111;
+    --paper: #f2f1ee;
+    --red: #e5231b;
+  }
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-mono);}
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 16px 40px;}
+  header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 18px;margin-bottom:10px;}
+  header h1{font-size:1rem;letter-spacing:.22em;font-weight:800;margin:0;}
+  header h1 i{color:var(--red);font-style:normal;}
+  #meta{font-size:.68rem;color:var(--text-muted);letter-spacing:.06em;}
+  .stage{border:2px solid var(--ink);background:#fff;line-height:0;position:relative;}
+  #stage{width:100%;display:block;}
+  #timeline{width:100%;display:block;margin-top:8px;border:1.5px solid var(--ink);background:#fff;cursor:ew-resize;touch-action:none;}
+  .controls-row{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px;align-items:center;}
+  .btn-group{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+  button{font-family:var(--font-mono);font-size:.72rem;font-weight:700;letter-spacing:.04em;padding:7px 11px;border:1.5px solid var(--ink);
+    background:#fff;color:var(--ink);cursor:pointer;transition:background .08s,color .08s,transform .08s;}
+  button:hover{background:#e9e8e3;}
+  button:active{transform:translateY(1px);}
+  button.active{background:var(--ink);color:#fff;}
+  .toggle-btn.active{background:var(--red);border-color:var(--red);color:#fff;}
+  .atk-btn{font-size:.66rem;padding:6px 9px;}
+  .attack-row{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:10px;align-items:center;}
+  .lbl{font-size:.72rem;color:var(--text-muted);margin-right:4px;}
+  .annotation-box{margin-top:12px;border:1.5px solid var(--ink);border-left:6px solid var(--red);background:#fff;padding:11px 14px;
+    font-size:.78rem;line-height:1.55;min-height:96px;}
+  .annotation-box b{letter-spacing:.08em;}
+  #annStats{display:block;margin-top:6px;color:var(--text-muted);font-size:.7rem;}
+  .kbd{font-size:.64rem;color:var(--text-muted);margin-top:8px;letter-spacing:.05em;}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <h1>THE <i>DARK LORD</i> // SAKUGA STUDY</h1>
+    <div id="meta">7 ATTACKS × 32 BAKED FRAMES · CATMULL-ROM INTERPOLATOR → DISPLAY Hz · 5 LIMBS</div>
+  </header>
+
+  <div class="stage"><canvas id="stage"></canvas></div>
+  <canvas id="timeline"></canvas>
+
+<div class="controls-row">
+  <div class="btn-group">
+    <button id="btnPlayPause">■ PAUSE</button>
+    <button id="btnPrev">◄ STEP</button>
+    <button id="btnNext">STEP ►</button>
+  </div>
+
+  <div class="btn-group">
+    <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); margin-right: 4px;">FPS:</span>
+    <button class="fps-btn" data-fps="6">06 [SLOW]</button>
+    <button class="fps-btn" data-fps="12">12 [TWOS]</button>
+    <button class="fps-btn active" data-fps="24">24 [SAKUGA]</button>
+    <button class="fps-btn" data-fps="60">60 [INTERP]</button>
+  </div>
+
+  <div class="btn-group">
+    <button id="btnOnion" class="toggle-btn active">ONION SKIN [O]</button>
+    <button id="btnSmear" class="toggle-btn active">SMEAR HULLS [S]</button>
+    <button id="btnPhysics" class="toggle-btn active">PHYSICS VECTORS [P]</button>
+  </div>
+</div>
+
+  <div class="attack-row">
+    <div class="btn-group" id="atkGroup"><span class="lbl">SEQ:</span></div>
+    <div class="btn-group" id="spdGroup">
+      <span class="lbl">SPEED:</span>
+      <button class="spd-btn" data-spd="0.1">0.1×</button>
+      <button class="spd-btn" data-spd="0.25">0.25×</button>
+      <button class="spd-btn" data-spd="0.5">0.5×</button>
+      <button class="spd-btn active" data-spd="1">1×</button>
+    </div>
+  </div>
+
+<div class="annotation-box" id="annotation">
+  <b>Biomechanical Reference:</b> Initializing frame coordinates...
+  <span id="annStats"></span>
+</div>
+  <div class="kbd">SPACE play/pause · ←/→ step · O / S / P overlays · 1–7 jump to attack · click/drag timeline to scrub</div>
+</main>
+
+<script>
+/* =====================================================================
+   THE DARK LORD — procedural sakuga rig
+   - 15 animatable channels / frame, IK legs (planted feet), FK arms, 5th limb = tail
+   - Authored key poses -> baked to 32 frames per attack (per-segment eased in-betweens)
+   - Runtime interpolator: Catmull-Rom across baked frames at display refresh (60 INTERP)
+   - Hitstop weights, camera punch/shake, impact-frame inversion, smear hulls, spacing arcs
+   ===================================================================== */
+const RAD = Math.PI/180, FR = 32, BASE_FPS = 24;
+const PN = ['x','hy','bfx','bfy','ffx','ffy','sp','hd','bau','baf','lau','laf','tb','tc','pw'];
+const I = {}; PN.forEach((n,i)=>I[n]=i);
+const NP = PN.length;
+const RED = '#e5231b', RED_BACK = '#a8120c';
+
+/* ---------- pose helpers ---------- */
+const G = (dx=0,o={}) => Object.assign({x:dx,hy:70,bfx:dx-34,bfy:0,ffx:dx+34,ffy:0,sp:10,hd:0,bau:20,baf:165,lau:42,laf:150,tb:-80,tc:6,pw:0},o);
+const S = (dx=0,o={}) => Object.assign({x:dx,hy:80,bfx:dx-16,bfy:0,ffx:dx+16,ffy:0,sp:18,hd:26,bau:-6,baf:6,lau:8,laf:12,tb:-22,tc:2.5,pw:0},o);
+const K = (f,e,o) => ({f,e,o});
+
+/* ---------- choreography ---------- */
+const ATTACKS = [
+ { name:'AWAKENING', short:'AWAKEN',
+   keys:[
+    K(0,'lin',S(0)),
+    K(7,'io',{hy:83,sp:6,hd:20,bau:-4,baf:4,lau:6,laf:8,tb:-30,pw:.1}),
+    K(11,'out',{hd:-24,sp:2,hy:84,tb:-48,tc:4,pw:.2}),
+    K(13,'in',{hd:16,sp:6,hy:82}),
+    K(16,'io',{hd:2,sp:8,hy:78,bau:24,baf:75,lau:30,laf:85,tb:-70,tc:5,pw:.4}),
+    K(19,'out',{x:-4,ffy:12,ffx:30,bfy:6,bfx:-24,hy:74,bau:28,baf:120,lau:44,laf:130,pw:.65}),
+    K(21,'in',{x:2,ffy:0,ffx:40,bfy:0,bfx:-38,hy:62,sp:14,hd:-2,bau:22,baf:166,lau:44,laf:152,tb:-96,tc:9,pw:1}),
+    K(25,'out',{x:0,hy:71,bfx:-36,ffx:36,sp:10,hd:0,pw:.8}),
+    K(32,'io',G(0))
+   ],
+   events:[{f:21,limb:'ffoot',p:.6,ground:true}],
+   slow:{11:2,12:3,13:2,21:2,22:3,23:2},
+   notes:[
+    [0,6,'Rest state: cervical flexion + thoracic kyphosis, zero muscular tension. The tail hangs as a passive pendulum. Weight reads as dread before any motion.'],
+    [7,10,'Diaphragmatic inhale: sternum rises ~2 cm, scapulae retract. Slow breath = gathering menace (stillness-before-violence beat, Miyazaki ma).'],
+    [11,15,'Cervical axial rotation snap ≈ 80° in < 90 ms, hitstop on the crack. The second side overshoots so the reversal never reads robotic.'],
+    [16,20,'Fingers close, forearms flex. Wristbands of Power ignite: hands go black (pw > 0.35), as in AvA II. Front hip flexion loads the stomp.'],
+    [21,25,'Stomp: ground-reaction force spikes ≈ 3× bodyweight; base widens to ~2× shoulder width for lateral stability. Aura flares to full.'],
+    [26,31,'Settle into guard with a 2-frame overshoot-bounce. Chin tucked, fists at jaw line, rear hand shielding the mandible.']
+   ]},
+
+ { name:'JAB — CROSS — SLIP', short:'JAB/CROSS',
+   keys:[
+    K(0,'lin',G(0)),
+    K(3,'out',{x:-4,hy:66,sp:14,lau:38,laf:162,bau:26,baf:162,tb:-92,tc:7}),
+    K(5,'out',{x:2,ffy:10,ffx:42,lau:50,laf:140}),
+    K(7,'in',{x:10,ffy:0,ffx:50,lau:88,laf:92,sp:16,hd:-3,pw:.3,tb:-96}),
+    K(8,'out',{lau:86,laf:90,x:11}),
+    K(10,'io',{x:8,hy:63,sp:6,hd:2,lau:48,laf:150,bau:26,baf:170,tb:-70,tc:6,pw:.2}),
+    K(13,'in',{x:24,hy:66,bfx:-31,bfy:5,ffx:52,sp:28,hd:4,bau:93,baf:97,lau:28,laf:160,tb:-112,tc:10,pw:.6}),
+    K(15,'out',{x:29,hy:64,bfy:0,sp:31,bau:86,baf:90}),
+    K(19,'io',{x:22,hy:60,bfx:-26,bfy:8,sp:-6,hd:8,bau:30,baf:160,lau:46,laf:150,tb:-85,tc:6,pw:.1}),
+    K(24,'io',{x:16,hy:66,bfx:-20,bfy:0,ffx:48,sp:18,hd:-4,bau:24,baf:164,lau:42,laf:150,tb:-80}),
+    K(32,'io',G(14))
+   ],
+   events:[{f:7,limb:'la',p:.45},{f:13,limb:'ba',p:.8}],
+   slow:{7:2,8:2.5,13:2.5,14:3},
+   notes:[
+    [0,4,'Counter-movement: CoM drops ~4 cm, loading the stretch-shortening cycle in quads and calves (+15–20% force). Weight shifts rearward before it can go forward.'],
+    [5,9,'Step-jab: lead foot lands as the fist arrives. ~8 m/s fist, elbow extends last (proximal → distal sequencing). Fist is only 2 frames from chamber to full extension.'],
+    [10,12,'Retraction is faster than extension (antagonist braking). Hips coil and the rear heel starts to drive.'],
+    [13,18,'Rear cross: ankle → knee → hip → trunk → shoulder → fist. Trunk lean 28°, rear heel lifts, tail counter-whips for angular momentum balance.'],
+    [19,24,'Slip: head travels ~1 head-width in 5 frames while eyes stay on target (lean-back keeps the cervical line tracking).'],
+    [25,31,'Reset to guard, both fists back to the chin. Feet re-square before the next phrase.']
+   ]},
+
+ { name:'HAMMERFIST LEAP', short:'HAMMER',
+   keys:[
+    K(0,'lin',G(0)),
+    K(4,'out',{x:-8,hy:52,sp:30,bfx:-34,ffx:30,bau:-35,baf:15,lau:-25,laf:20,tb:-112,tc:6,pw:.35}),
+    K(6,'io',{hy:50,sp:34,tb:-125,pw:.5}),
+    K(8,'in',{x:6,hy:96,bfy:14,ffy:20,bfx:-22,ffx:28,sp:6,hd:-6,bau:150,baf:168,lau:160,laf:172,tb:-95,tc:8,pw:.6}),
+    K(12,'out',{x:34,hy:150,bfy:78,ffy:84,bfx:20,ffx:60,sp:-6,hd:-12,bau:168,baf:150,lau:172,laf:155,tb:-150,tc:-8,pw:.85}),
+    K(14,'io',{x:46,hy:156,bfy:84,ffy:90,bfx:30,ffx:70,sp:-14,hd:-14,bau:205,baf:190,lau:208,laf:195,tb:-176,tc:-10,pw:1}),
+    K(16,'in',{x:58,hy:112,bfy:48,ffy:56,bfx:36,ffx:82,sp:14,hd:6,bau:110,baf:105,lau:114,laf:108,tb:-120,tc:2}),
+    K(18,'in',{x:68,hy:44,bfy:0,ffy:0,bfx:36,ffx:100,sp:52,hd:14,bau:22,baf:26,lau:18,laf:22,tb:-50,tc:6,pw:1}),
+    K(20,'out',{x:72,hy:48,sp:46,hd:10,bau:24,baf:30,lau:20,laf:28,tb:-14,tc:5,pw:.9}),
+    K(24,'io',{x:70,hy:58,sp:30,hd:0,bau:35,baf:120,lau:40,laf:110,tb:-60,pw:.5,bfx:36,ffx:102}),
+    K(32,'io',G(70))
+   ],
+   events:[{f:18,limb:'la',p:1,ground:true}],
+   slow:{16:1.2,17:1.5,18:2.5,19:5,20:3,21:2},
+   notes:[
+    [0,7,'Deep counter-movement: hips drop ~18 cm, trunk flexes 30°, arms swing behind. Stretch-shortening cycle charges the vertical leap.'],
+    [8,12,'Takeoff: triple extension (ankle-knee-hip) + arm swing adds ≈ 10% to jump height. Legs tuck to shorten the moment of inertia.'],
+    [13,15,'Apex hang: vertical velocity → 0, so the spacing chart bunches up. A 2-frame float sells the weight. Spine hyper-extends, hands cocked behind the head.'],
+    [16,18,'Descent defies g on purpose: ≈ 3 g implied acceleration, 2 frames of smear. Hammerfist arc = shoulder flexion 205° → 20° through the sagittal plane.'],
+    [19,24,'Impact absorption: deep squat, hip + knee flexion dissipates momentum. 5-frame hitstop, camera punch, shockwave and floor cracks. The tail whips down and drags.'],
+    [25,31,'Rise and recover. Follow-through is delayed 3 frames down the tail (overlapping action). Hands are still black from the wristbands.']
+   ]},
+
+ { name:'RISING DRAGON', short:'DRAGON',
+   keys:[
+    K(0,'lin',G(0)),
+    K(5,'out',{x:-6,hy:48,sp:24,bfx:-42,ffx:30,lau:10,laf:2,bau:60,baf:135,tb:-100,tc:8,pw:.45}),
+    K(7,'out',{hy:46,sp:28,lau:-5,laf:-10}),
+    K(9,'in',{x:8,hy:92,bfy:14,ffy:10,bfx:-22,ffx:30,sp:-2,hd:-14,lau:174,laf:179,bau:-40,baf:-20,tb:-60,tc:10,pw:.8}),
+    K(11,'out',{x:18,hy:124,bfy:50,ffy:46,bfx:-4,ffx:42,sp:2,hd:-6,bau:-25,baf:5,lau:60,laf:150,tb:-90,tc:8}),
+    K(14,'in',{x:28,hy:138,bfy:64,ffy:56,bfx:6,ffx:50,sp:14,hd:2,bau:140,baf:146,lau:40,laf:150,tb:-110,tc:6,pw:.9}),
+    K(15,'out',{x:31,hy:140,sp:16,bau:146,baf:150,lau:20,laf:140}),
+    K(18,'io',{x:38,hy:124,bfy:44,ffy:42,bfx:14,ffx:62,sp:8,hd:0,bau:100,baf:90,lau:-60,laf:-70,tb:-130,tc:-6,pw:.6}),
+    K(21,'in',{x:46,hy:58,bfy:0,ffy:0,bfx:16,ffx:72,sp:26,hd:6,bau:40,baf:60,lau:30,laf:44,tb:-70,tc:5,pw:.5}),
+    K(26,'io',{x:48,hy:68,bfx:14,ffx:82,sp:14,hd:0,bau:22,baf:164,lau:42,laf:150,tb:-82,pw:.1}),
+    K(32,'io',G(48))
+   ],
+   events:[{f:9,limb:'la',p:.9},{f:14,limb:'ba',p:.8},{f:21,limb:'feet',p:.5,ground:true}],
+   slow:{9:2,10:3,14:2,15:3,21:2,22:2.5},
+   notes:[
+    [0,8,'Load: lead hand drops below the hip, knees 110°. The uppercut is powered by leg extension, not the arm. Anticipation is 7 frames, the strike 2.'],
+    [9,10,'Lead uppercut: leg drive → trunk extension → shoulder flexion 175°. Launch hitstop; the opponent is implied by the shockwave, not drawn.'],
+    [11,13,'Rear hand chambers low during the rise. Opposing arm swings like a counterweight, as in a vertical jump.'],
+    [14,17,'Second strike in the air: diagonal uppercut with a trunk crunch (+14°) that rotates the body about its CoM. A tail wave follows 2 frames later.'],
+    [18,20,'Peak and descent. Arms spread to raise the moment of inertia and slow the rotation. Pure ballistic flight, so the path is a parabola.'],
+    [21,31,'Landing absorbed over 5 frames (hip/knee/ankle flexion). Rise back into guard with a downward tail settle.']
+   ]},
+
+ { name:'SCORPION TAIL STRIKE', short:'SCORPION',
+   keys:[
+    K(0,'lin',G(0)),
+    K(4,'out',{x:-10,hy:56,sp:24,bfx:-40,ffx:24,bau:60,baf:130,lau:70,laf:120,tb:-128,tc:-8,pw:.4}),
+    K(8,'io',{x:-14,hy:52,sp:30,hd:-14,bfx:-44,ffx:22,bau:-50,baf:-30,lau:60,laf:110,tb:-165,tc:-14,pw:.75}),
+    K(11,'out',{x:-15,hy:49,sp:32,tb:-174,tc:-15,pw:.9}),
+    K(13,'in',{x:8,ffy:14,ffx:50,bfx:-40,bfy:3,hy:52,sp:35,hd:-16,tb:-208,tc:-9,pw:1,lau:85,laf:95,bau:-65,baf:-50}),
+    K(14,'in',{x:20,ffy:0,ffx:68,bfx:-34,sp:38,hd:-18,bau:-80,baf:-62,lau:100,laf:80,tb:-258,tc:-2}),
+    K(16,'out',{x:24,sp:40,tb:-270,tc:9}),
+    K(20,'io',{x:26,hy:56,sp:28,hd:-8,bau:-40,baf:-20,lau:70,laf:100,bfx:-30,tb:-205,tc:-9}),
+    K(25,'io',{x:30,hy:64,sp:18,hd:0,bau:30,baf:150,lau:50,laf:140,bfx:-14,bfy:6,tb:-120,tc:4,pw:.4}),
+    K(32,'io',G(34))
+   ],
+   events:[{f:18,limb:'tail',p:1},{f:20,limb:'tail',p:.5}],
+   slow:{14:1.5,16:2,18:3,19:4,20:3},
+   notes:[
+    [0,7,'Fifth limb enters. Tail base angle -128° → -165°: it curls over the spine like a scorpion. Both arms cross-guard so the torso hides the wind-up.'],
+    [8,12,'Coil: trunk flexion 30°, tail curl peaks (-15° per segment). A 3-frame shiver on the hold telegraphs stored elastic energy.'],
+    [13,16,'Strike: base angle sweeps 90° in 3 frames. Each segment is delayed 0.45 frame, so the tail unrolls like a bullwhip. Lunge step adds 0.6 m of reach.'],
+    [17,20,'Whip crack: the tip passes ~Mach-adjacent anime speed. Hitstop on the tip, a second ring on the crack as curl reverses (tc → +9°).'],
+    [21,25,'Retract along an arc, never a straight line (arcs = organic). Arms swing back for counter-torque.'],
+    [26,31,'Reset: tail droops back to resting angle, 2-frame ease-out.']
+   ]},
+
+ { name:'BARRAGE — SIX-POINT FLURRY', short:'BARRAGE',
+   keys:[
+    K(0,'lin',G(0)),
+    K(2,'out',{x:4,ffy:12,ffx:40,hy:66,sp:14,lau:50,laf:145,bau:26,baf:166,tb:-90,tc:6,pw:.3}),
+    K(4,'in',{x:8,ffy:0,ffx:46,lau:89,laf:93,sp:18,hd:-3,pw:.4,tb:-98}),
+    K(6,'out',{x:10,bfy:8,bfx:-22,lau:50,laf:150,bau:26,baf:168,sp:12}),
+    K(8,'in',{x:16,bfy:0,bfx:-18,bau:92,baf:98,lau:34,laf:160,sp:26,hd:3,hy:64,tb:-112,tc:9,pw:.55}),
+    K(10,'out',{x:18,ffy:10,ffx:54,bau:28,baf:166,lau:30,laf:195,sp:12,hy:66,tb:-88}),
+    K(12,'in',{x:24,ffy:0,ffx:58,lau:95,laf:140,bau:30,baf:168,sp:30,hd:6,hy:62,tb:-70,tc:7,pw:.65}),
+    K(14,'out',{x:28,bfy:8,bfx:-4,lau:50,laf:160,bau:-22,baf:8,sp:14,hy:56,tb:-100}),
+    K(16,'in',{x:32,bfy:0,bfx:0,hy:72,sp:12,hd:-8,bau:152,baf:166,lau:40,laf:150,tb:-125,tc:8,pw:.75}),
+    K(18,'out',{x:36,ffy:10,ffx:66,bau:30,baf:150,lau:158,laf:198,hy:66,sp:14,hd:2,tb:-95}),
+    K(20,'in',{x:40,ffy:0,ffx:72,lau:100,laf:68,bau:28,baf:160,sp:36,hd:8,hy:60,tb:-60,tc:6,pw:.85}),
+    K(22,'out',{x:42,bfy:8,bfx:10,ffy:10,ffx:80,lau:-30,laf:30,bau:-40,baf:20,sp:-6,hd:-6,hy:54,tb:-112,tc:10}),
+    K(26,'in',{x:56,bfy:0,bfx:22,ffy:0,ffx:90,hy:58,sp:38,hd:-4,bau:92,baf:96,lau:98,laf:94,tb:-132,tc:12,pw:1}),
+    K(28,'out',{x:58,sp:42,bau:86,baf:90,lau:92,laf:90,hy:56}),
+    K(32,'io',G(56))
+   ],
+   events:[
+    {f:4,limb:'la',p:.4},{f:8,limb:'ba',p:.55},{f:12,limb:'la',p:.6},
+    {f:16,limb:'ba',p:.7},{f:20,limb:'la',p:.8},{f:26,limb:'la',p:1,inv:true}
+   ],
+   slow:{4:1.6,8:1.6,12:1.6,16:1.8,20:1.8,26:2,27:4,28:2.5},
+   notes:[
+    [0,5,'Jab (lead straight): shuffle step, fist reaches full extension in 2 frames. Each strike in the string is a different mechanism, so no motion repeats.'],
+    [6,9,'Cross (rear straight): hips and shoulders rotate, trunk leans 26°, rear heel off the ground. The shuffle keeps the base compact.'],
+    [10,13,'Lead hook: elbow flares to ~90°, humerus horizontal, forearm swings through. Trunk rotation supplies ≈ 60% of the power.'],
+    [14,17,'Rear uppercut: knees dip ~8 cm and the legs drive up; the fist travels a vertical arc past the chin line.'],
+    [18,21,'Overhand: high chamber behind the ear, the fist descends diagonally. Torso lean 36° adds body weight behind the fist.'],
+    [22,25,'Coil and chamber: both hands at the ribs, chest sinks back (-6°). A 4-frame anticipation for the finisher, the longest pause in the string.'],
+    [26,31,'Double palm: both arms extend together, a lunge adds ≈ 0.6 m of reach, impact-frame inversion + 4-frame hitstop. Recoil settles back to guard.']
+   ]},
+
+ { name:'FINISHER — DARK LORD’S WRATH', short:'WRATH',
+   keys:[
+    K(0,'lin',G(0)),
+    K(4,'out',{x:-6,hy:76,bfx:-40,ffx:34,sp:-8,hd:-20,bau:-100,baf:-106,lau:100,laf:106,tb:-148,tc:-10,pw:.8}),
+    K(7,'io',{pw:1,tb:-152,hd:-24,hy:77,sp:-12}),
+    K(11,'io',{hy:77,sp:-16,hd:-26,bau:-172,baf:-178,lau:172,laf:178,tb:-170,tc:-12}),
+    K(14,'lin',{hy:76,sp:-20,hd:-30,tb:-176}),
+    K(18,'io',{x:-14,hy:52,sp:30,hd:-10,bfx:-44,ffx:22,bau:-138,baf:-150,lau:96,laf:100,tb:-178,tc:-14}),
+    K(19,'in',{x:22,hy:60,bfy:18,ffy:12,bfx:-20,ffx:44,sp:26,hd:-6,bau:-20,baf:-10,lau:20,laf:30,tb:-236,tc:-8}),
+    K(20,'in',{x:52,hy:58,bfy:0,ffy:0,bfx:10,ffx:86,sp:46,hd:-4,bau:92,baf:95,lau:-60,laf:-50,tb:-296,tc:-3,pw:1}),
+    K(22,'out',{x:58,sp:50,tb:-300,tc:-3}),
+    K(26,'io',{x:58,hy:70,sp:20,hd:-12,bfy:8,bfx:26,ffx:80,bau:-10,baf:-5,lau:15,laf:10,tb:-150,tc:6,pw:.6}),
+    K(29,'out',{hy:78,sp:12,hd:10,bfy:0,bfx:36,ffx:74,bau:-8,baf:2,lau:10,laf:8,tb:-60,tc:4,pw:.2}),
+    K(32,'io',S(58))
+   ],
+   events:[{f:20,limb:'ba',p:1,inv:true},{f:23,limb:'tail',p:1,ground:true}],
+   slow:{19:1.5,20:2,21:4,22:1.5,23:3,24:4,25:2},
+   notes:[
+    [0,7,'Invocation: T-pose with the spine slightly hyper-extended and the head tilted skyward (hd -24°). Hands are black, the aura climbs. Pure silhouette read, as in the AvA II reveal.'],
+    [8,14,'Gather: both arms rise overhead along the frontal plane. Chest opens, breath holds. The hold is 3 frames so the audience leans in.'],
+    [15,18,'Wind-up: hips sink to 52 cm, the rear arm cocks behind the head (shoulder ext. 150°), the lead arm aims. Tail coils skyward. Loaded to the maximum.'],
+    [19,20,'Lunge: 0.6 m in 2 frames (≈ 17 m/s pelvis). Feet leave the floor, the rear arm throws through a full 230° windmill arc. Impact-frame inversion on contact.'],
+    [21,25,'Double tap: the tail arrives 3 frames after the fist and spikes into the floor (overhead arc, 130° in 2 frames). 4-frame hitstop, ground fractures.'],
+    [26,31,'Cool-down: trunk uprights, breath released. Body falls back to the resting slouch so the loop reads as one continuous character study.']
+   ]}
+];
+
+/* ---------- bake: authored keys -> 32 frames / attack ---------- */
+const EASE = {
+  lin: t=>t,
+  io:  t=>t*t*(3-2*t),
+  in:  t=>Math.pow(t,2.6),
+  out: t=>1-Math.pow(1-t,2.4)
+};
+const NA = ATTACKS.length, N = NA*FR;
+const B = new Float32Array(N*NP);
+const KEYF = new Uint8Array(N);
+const WGT = new Float32Array(N).fill(1);
+const XCH = new Set([I.x,I.bfx,I.ffx]);
+const EVENTS = [];
+const INVSET = new Set();
+
+(function bake(){
+  let offX = 0;
+  ATTACKS.forEach((A,ai)=>{
+    const full = [];
+    let prev = null;
+    A.keys.forEach(k=>{
+      const o = prev ? Object.assign({}, prev, k.o) : Object.assign({}, k.o);
+      full.push({f:k.f,e:k.e,v:o}); prev = o;
+    });
+    for(let fr=0; fr<FR; fr++){
+      let s=0; while(s<full.length-2 && full[s+1].f<=fr) s++;
+      const a=full[s], b=full[s+1];
+      let t = (fr-a.f)/(b.f-a.f); t = Math.max(0,Math.min(1,t));
+      t = EASE[b.e||'lin'](t);
+      const gi=(ai*FR+fr)*NP;
+      for(let k=0;k<NP;k++){
+        const n=PN[k];
+        let v = a.v[n] + (b.v[n]-a.v[n])*t;
+        if(XCH.has(k)) v += offX;
+        B[gi+k]=v;
+      }
+      if(full.some(q=>q.f===fr)) KEYF[ai*FR+fr]=1;
+    }
+    A.keyCount = full.length-1;
+    offX += full[full.length-1].v.x;
+    Object.keys(A.slow||{}).forEach(f=>{ WGT[ai*FR+(+f)] = A.slow[f]; });
+  });
+})();
+
+/* ---------- interpolator (Catmull-Rom across baked frames) ---------- */
+function paramAt(f,k){
+  if(f<0) f=0; if(f>N-1) f=N-1;
+  const i=Math.floor(f), t=f-i;
+  const p1=B[i*NP+k];
+  if(t<1e-6) return p1;
+  const p0=B[Math.max(i-1,0)*NP+k], p2=B[Math.min(i+1,N-1)*NP+k], p3=B[Math.min(i+2,N-1)*NP+k];
+  const t2=t*t, t3=t2*t;
+  return 0.5*((2*p1)+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3);
+}
+function sampleP(f){ const o=new Array(NP); for(let k=0;k<NP;k++) o[k]=paramAt(f,k); return o; }
+
+/* ---------- rig ---------- */
+const UA=34, FA=34, TH=44, SH_=44, TORSO=60, HEADR=13, TSEG=14, TN=7;
+function arm(sh,u,f){
+  const ua=u*RAD, fa=f*RAD;
+  const e=[sh[0]+UA*Math.sin(ua), sh[1]+UA*Math.cos(ua)];
+  const h=[e[0]+FA*Math.sin(fa), e[1]+FA*Math.cos(fa)];
+  return [e,h];
+}
+function leg(hip,tx,ty){
+  let vx=tx-hip[0], vy=ty-hip[1], d=Math.hypot(vx,vy);
+  const mx=(TH+SH_)*0.9985;
+  if(d>mx){ vx*=mx/d; vy*=mx/d; d=mx; }
+  if(d<2){ d=2; }
+  const mxp=hip[0]+vx/2, myp=hip[1]+vy/2;
+  const h=Math.sqrt(Math.max(0,TH*TH-d*d/4));
+  const p1=[-vy/d,vx/d], p2=[vy/d,-vx/d];
+  const s1=p1[0]*1+p1[1]*-0.25, s2=p2[0]*1+p2[1]*-0.25;
+  const pp = s1>s2?p1:p2;
+  return {k:[mxp+pp[0]*h, myp+pp[1]*h], f:[hip[0]+vx, hip[1]+vy]};
+}
+function tailPts(f,hip,pwv){
+  const pts=[[hip[0]-2,hip[1]+3]];
+  let x=pts[0][0], y=pts[0][1];
+  for(let i=1;i<=TN;i++){
+    const ft=Math.max(f-i*0.45,0);
+    const tb=paramAt(ft,I.tb), tc=paramAt(ft,I.tc);
+    const sway=Math.sin(f*0.28-i*0.6)*2.2*(1-Math.min(1,pwv));
+    const a=(tb+tc*i+sway)*RAD;
+    x+=TSEG*Math.sin(a); y+=TSEG*Math.cos(a);
+    if(y>0) y=0;
+    pts.push([x,y]);
+  }
+  return pts;
+}
+function rigAt(f,tailOn){
+  const q=sampleP(f);
+  const hip=[q[I.x],-q[I.hy]];
+  const sa=q[I.sp]*RAD, ux=Math.sin(sa), uy=-Math.cos(sa);
+  const neck=[hip[0]+TORSO*ux, hip[1]+TORSO*uy];
+  const sh=[hip[0]+(TORSO-4)*ux, hip[1]+(TORSO-4)*uy];
+  const ha=(q[I.sp]+q[I.hd])*RAD;
+  const head=[neck[0]+15*Math.sin(ha), neck[1]-15*Math.cos(ha)];
+  const [be,bh]=arm(sh,q[I.bau],q[I.baf]);
+  const [le,lh]=arm(sh,q[I.lau],q[I.laf]);
+  const bl=leg(hip,q[I.bfx],-q[I.bfy]);
+  const fl=leg(hip,q[I.ffx],-q[I.ffy]);
+  const r={q,hip,neck,sh,head,ha,be,bh,le,lh,bk:bl.k,bf:bl.f,fk:fl.k,ff:fl.f,pw:q[I.pw],u:[ux,uy]};
+  if(tailOn){ r.tail=tailPts(f,hip,r.pw); r.tip=r.tail[TN]; }
+  return r;
+}
+function comOf(r){
+  const m=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const segs=[[r.head,.08],[m(r.hip,r.neck),.50],[m(r.sh,r.be),.027],[m(r.be,r.bh),.022],[m(r.sh,r.le),.027],[m(r.le,r.lh),.022],
+              [m(r.hip,r.bk),.10],[m(r.bk,r.bf),.06],[m(r.hip,r.fk),.10],[m(r.fk,r.ff),.06]];
+  let x=0,y=0,w=0; segs.forEach(s=>{x+=s[0][0]*s[1]; y+=s[0][1]*s[1]; w+=s[1];});
+  return [x/w,y/w];
+}
+
+/* ---------- event world positions ---------- */
+ATTACKS.forEach((A,ai)=>{
+  (A.events||[]).forEach((e,ei)=>{
+    const gf=ai*FR+e.f, r=rigAt(gf,true);
+    let pos;
+    switch(e.limb){
+      case 'la': pos=r.lh; break;
+      case 'ba': pos=r.bh; break;
+      case 'tail': pos=r.tip; break;
+      case 'ffoot': pos=[r.ff[0],0]; break;
+      case 'feet': pos=[(r.bf[0]+r.ff[0])/2,0]; break;
+      default: pos=r.lh;
+    }
+    const ev={gf,x:pos[0],y:e.ground?0:pos[1],p:e.p,ground:!!e.ground,seed:gf*7+ei*13+3,inv:!!e.inv};
+    EVENTS.push(ev);
+    if(e.inv) INVSET.add(gf);
+  });
+});
+
+/* ---------- canvas + state ---------- */
+const cv=document.getElementById('stage'), ctx=cv.getContext('2d');
+const tl=document.getElementById('timeline'), tctx=tl.getContext('2d');
+let W=900,H=470,DPR=1,TW=900,TH_=54;
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2.5);
+  W=cv.parentElement.clientWidth-4; H=Math.round(Math.max(340,Math.min(W*0.5,620)));
+  cv.width=W*DPR; cv.height=H*DPR; cv.style.height=H+'px';
+  TW=tl.clientWidth||W; TH_=54;
+  tl.width=TW*DPR; tl.height=TH_*DPR; tl.style.height=TH_+'px';
+}
+window.addEventListener('resize',resize); resize();
+
+let playing=true, p=0, sampling=24, speed=1, showOnion=true, showSmear=true, showPhys=true;
+let lastT=performance.now(), hz=60, hzAcc=[];
+const view={sc:1,camX:0,camY:-100,shx:0,shy:0};
+const toS=(x,y)=>[(x-view.camX)*view.sc+W/2+view.shx,(y-view.camY)*view.sc+H/2+view.shy];
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- drawing primitives ---------- */
+function poly(pts){ ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.stroke(); }
+function toe(k,f){
+  let dx=f[0]-k[0], dy=f[1]-k[1]; const l=Math.hypot(dx,dy)||1; dx/=l; dy/=l;
+  let px=-dy, py=dx; if(px<0){px=-px;py=-py;}
+  ctx.beginPath(); ctx.moveTo(f[0],f[1]); ctx.lineTo(f[0]+px*9,f[1]+py*9); ctx.stroke();
+}
+function drawFigure(r,o){
+  const {col,back,lw,bg,detail,hand}=o;
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=lw;
+  if(r.tail){
+    ctx.strokeStyle=back;
+    for(let i=0;i<TN;i++){
+      ctx.lineWidth=lw*(0.95-0.4*i/TN);
+      ctx.beginPath(); ctx.moveTo(r.tail[i][0],r.tail[i][1]); ctx.lineTo(r.tail[i+1][0],r.tail[i+1][1]); ctx.stroke();
+    }
+    ctx.lineWidth=lw;
+  }
+  ctx.strokeStyle=back;
+  poly([r.sh,r.be,r.bh]); poly([r.hip,r.bk,r.bf]); toe(r.bk,r.bf);
+  ctx.strokeStyle=col;
+  const tx=r.hip[0]+(TORSO+2)*r.u[0], ty=r.hip[1]+(TORSO+2)*r.u[1];
+  poly([r.hip,[tx,ty]]);
+  ctx.beginPath(); ctx.arc(r.head[0],r.head[1],HEADR,0,Math.PI*2); ctx.fillStyle=bg; ctx.fill(); ctx.stroke();
+  poly([r.hip,r.fk,r.ff]); toe(r.fk,r.ff);
+  poly([r.sh,r.le,r.lh]);
+  if(detail && r.pw>0.35){
+    const a=clamp((r.pw-0.35)/0.3,0,1);
+    ctx.globalAlpha=a; ctx.strokeStyle=hand; ctx.fillStyle=hand;
+    [[r.be,r.bh],[r.le,r.lh]].forEach(([e,h])=>{
+      let dx=e[0]-h[0], dy=e[1]-h[1]; const l=Math.hypot(dx,dy)||1; dx/=l; dy/=l;
+      ctx.lineWidth=lw+2.4;
+      ctx.beginPath(); ctx.moveTo(h[0],h[1]); ctx.lineTo(h[0]+dx*12,h[1]+dy*12); ctx.stroke();
+      ctx.beginPath(); ctx.arc(h[0],h[1],lw*0.95,0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha=1;
+  }
+}
+function drawGhost(r,color,lw){
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=lw; ctx.strokeStyle=color;
+  poly([r.sh,r.be,r.bh]); poly([r.hip,r.bk,r.bf]); poly([r.hip,r.neck]); poly([r.hip,r.fk,r.ff]); poly([r.sh,r.le,r.lh]);
+  ctx.beginPath(); ctx.arc(r.head[0],r.head[1],HEADR,0,Math.PI*2); ctx.stroke();
+}
+
+/* ---------- FX ---------- */
+function drawFX(ev,age,col){
+  const life=ev.ground?32:22;
+  if(age<0||age>life) return;
+  const pw=ev.p, fade=1-age/life, rng=mulberry(ev.seed);
+  ctx.save(); ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let k=0;k<2;k++){
+    const a=age-k*3; if(a<0) continue;
+    const r=8+a*(4+6*pw);
+    ctx.globalAlpha=Math.max(0,fade*(k?0.55:0.9)); ctx.lineWidth=(3.2*fade+0.6)*(k?0.7:1);
+    ctx.beginPath(); ctx.ellipse(ev.x,ev.y,r,ev.ground?r*0.3:r,0,0,Math.PI*2); ctx.stroke();
+  }
+  if(age<16){
+    const n=ev.ground?10:15;
+    for(let i=0;i<n;i++){
+      const th=ev.ground? -Math.PI*(0.04+0.92*rng()) : rng()*Math.PI*2;
+      const r0=6+age*(3+4*pw), len=((10+22*pw)*rng()+8)*(1-age/16);
+      ctx.globalAlpha=0.9*(1-age/16); ctx.lineWidth=1.6+rng()*1.4;
+      ctx.beginPath(); ctx.moveTo(ev.x+Math.cos(th)*r0,ev.y+Math.sin(th)*r0);
+      ctx.lineTo(ev.x+Math.cos(th)*(r0+len),ev.y+Math.sin(th)*(r0+len)); ctx.stroke();
+    }
+  }
+  const nd=ev.ground?14:9;
+  for(let i=0;i<nd;i++){
+    const vx=(rng()-0.5)*2*(3+7*pw), vy=-(2+rng()*7*pw);
+    const px=ev.x+vx*age, py=ev.y+vy*age+0.28*age*age;
+    if(ev.ground && py>0) continue;
+    const s=(1.2+rng()*2.2)*(1-age/life);
+    ctx.globalAlpha=0.85*fade;
+    ctx.beginPath(); ctx.arc(px,py,Math.max(0.2,s),0,Math.PI*2); ctx.fill();
+  }
+  if(ev.ground){
+    const cl=Math.min(age,11)*(5+6*pw);
+    ctx.globalAlpha=Math.min(1,fade*1.6); ctx.lineWidth=1.8;
+    for(let side=-1;side<=1;side+=2){
+      for(let b=0;b<3;b++){
+        let x=ev.x,y=2; ctx.beginPath(); ctx.moveTo(x,y);
+        const L=cl*(0.55+0.45*rng())*(b===0?1:0.7);
+        const steps=Math.max(1,Math.floor(L/12)); const slope=0.1+b*0.22;
+        for(let s=1;s<=steps;s++){ x+= side*L/steps; y+= (rng()*5)+slope*(L/steps)*0.6; ctx.lineTo(x,y); }
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function drawSpeedLines(dp,col){
+  const a=rigAt(dp,false), b=rigAt(dp-1,false);
+  const vx=a.hip[0]-b.hip[0], vy=a.hip[1]-b.hip[1], sp=Math.hypot(vx,vy);
+  if(sp<5.5) return;
+  const dx=vx/sp, dy=vy/sp, nx=-dy, ny=dx;
+  const rng=mulberry(Math.floor(dp/2)*131+7);
+  const k=clamp((sp-5.5)/22,0.15,1);
+  ctx.save(); ctx.strokeStyle=col; ctx.lineCap='round';
+  for(let i=0;i<12;i++){
+    const off=(rng()-0.5)*230, back=34+rng()*70, len=(26+rng()*90)*k;
+    const sx=a.hip[0]+nx*off-dx*back, sy=a.hip[1]-14+ny*off-dy*back;
+    ctx.globalAlpha=(0.25+rng()*0.45)*k; ctx.lineWidth=0.8+rng()*1.5;
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-dx*len,sy-dy*len); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAura(r,dp,col){
+  const pw=r.pw; if(pw<0.08) return;
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let i=0;i<16;i++){
+    let bx,by;
+    if(i<10){ const s=(i%5)/4; bx=r.hip[0]+(r.neck[0]-r.hip[0])*s+(i<5?-7:7); by=r.hip[1]+(r.neck[1]-r.hip[1])*s; }
+    else { const f=(i%2)?r.bf:r.ff; bx=f[0]+(i<13?-4:5); by=f[1]-2; }
+    const ph=dp*0.2+i*1.9, hv=0.7+0.3*(((i*37)%10)/10);
+    ctx.beginPath(); ctx.moveTo(bx,by);
+    for(let j=1;j<=6;j++){
+      ctx.lineTo(bx+Math.sin(ph+j*0.8)*(3+j*2.2)*(0.6+pw*0.6), by-j*(8+10*pw)*hv);
+    }
+    ctx.globalAlpha=Math.min(0.6,pw*0.55); ctx.lineWidth=1.6+pw;
+    ctx.strokeStyle=(i%3===0)?col.dark:col.red; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSmear(dp,inv){
+  const SN=8, st=0.32, hist=[];
+  for(let s=0;s<=SN;s++) hist.push(rigAt(dp-s*st,true));
+  const tips=[{n:'lh',arm:true,e:'le'},{n:'bh',arm:true,e:'be'},{n:'tip',arm:false}];
+  tips.forEach(T=>{
+    const pos=hist.map(h=>h[T.n]);
+    const sp=Math.hypot(pos[0][0]-pos[3][0],pos[0][1]-pos[3][1])/(3*st);
+    if(sp<10) return;
+    const k=clamp((sp-10)/28,0,1);
+    const L=[],R=[];
+    for(let i=0;i<=SN;i++){
+      const a=pos[Math.max(i-1,0)], b=pos[Math.min(i+1,SN)];
+      let dx=b[0]-a[0], dy=b[1]-a[1]; const l=Math.hypot(dx,dy)||1; dx/=l; dy/=l;
+      const w=(T.arm?6.5:5)*(1-i/(SN+1))*(0.5+0.5*k);
+      L.push([pos[i][0]-dy*w,pos[i][1]+dx*w]); R.push([pos[i][0]+dy*w,pos[i][1]-dx*w]);
+    }
+    ctx.save();
+    ctx.fillStyle=inv?'rgba(255,255,255,'+(0.12+0.3*k)+')':'rgba(229,35,27,'+(0.10+0.28*k)+')';
+    ctx.beginPath(); ctx.moveTo(L[0][0],L[0][1]); for(let i=1;i<=SN;i++) ctx.lineTo(L[i][0],L[i][1]);
+    for(let i=SN;i>=0;i--) ctx.lineTo(R[i][0],R[i][1]); ctx.closePath(); ctx.fill();
+    const base=hist.map(h=>T.arm?h.sh:h.hip);
+    ctx.fillStyle=inv?'rgba(255,255,255,'+(0.05+0.1*k)+')':'rgba(229,35,27,'+(0.05+0.1*k)+')';
+    ctx.beginPath(); ctx.moveTo(base[0][0],base[0][1]);
+    for(let i=0;i<=SN;i++) ctx.lineTo(pos[i][0],pos[i][1]);
+    for(let i=SN;i>=0;i--) ctx.lineTo(base[i][0],base[i][1]);
+    ctx.closePath(); ctx.fill();
+    if(T.arm && k>0.2){
+      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=3.2;
+      [2,4,6].forEach((s,j)=>{
+        ctx.strokeStyle=inv?'rgba(255,255,255,'+((0.28-j*0.08)*k)+')':'rgba(229,35,27,'+((0.34-j*0.1)*k)+')';
+        poly([hist[s].sh,hist[s][T.e],hist[s][T.n]]);
+      });
+    }
+    ctx.restore();
+  });
+}
+
+/* ---------- physics overlay ---------- */
+function arrow(x0,y0,x1,y1,col,lw){
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=lw; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+  const a=Math.atan2(y1-y0,x1-x0), h=7;
+  ctx.beginPath(); ctx.moveTo(x1,y1);
+  ctx.lineTo(x1-h*Math.cos(a-0.45),y1-h*Math.sin(a-0.45)); ctx.lineTo(x1-h*Math.cos(a+0.45),y1-h*Math.sin(a+0.45)); ctx.closePath(); ctx.fill();
+}
+let phys={vh:0,vt:0,vl:0,vb:0,vc:0,ke:0,ay:0,air:false,unstable:false,aCom:0};
+function drawPhysicsWorld(dp,r){
+  const defs=[['lh','rgba(17,17,17,.55)'],['bh','rgba(17,17,17,.4)'],['tip','rgba(10,147,150,.7)'],['hip','rgba(20,115,230,.55)']];
+  ctx.save();
+  defs.forEach(([n,c])=>{
+    const pts=[];
+    for(let k=-6;k<=10;k++){ const rr=rigAt(dp+k,n==='tip'); pts.push(rr[n]); }
+    ctx.strokeStyle=c; ctx.fillStyle=c; ctx.lineWidth=1;
+    ctx.setLineDash([3,4]); poly(pts); ctx.setLineDash([]);
+    pts.forEach((q,i)=>{ ctx.beginPath(); ctx.arc(q[0],q[1],i===6?2.6:1.5,0,Math.PI*2); ctx.fill(); });
+  });
+  ctx.restore();
+  const c=comOf(r);
+  const feet=[r.bf,r.ff].filter(f=>f[1]>-4);
+  ctx.save();
+  if(feet.length){
+    const xs=feet.map(f=>f[0]), mn=Math.min(...xs)-4, mx=Math.max(...xs)+9;
+    ctx.strokeStyle='rgba(0,150,85,.8)'; ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(mn,9); ctx.lineTo(mx,9); ctx.stroke();
+    phys.unstable = (c[0]<mn-2 || c[0]>mx+2);
+    phys.air=false;
+  } else { phys.air=true; phys.unstable=false; }
+  ctx.setLineDash([2,3]); ctx.strokeStyle='rgba(20,115,230,.7)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(c[0],c[1]); ctx.lineTo(c[0],14); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=phys.unstable?'#e5231b':'#1473e6';
+  ctx.beginPath(); ctx.moveTo(c[0],11); ctx.lineTo(c[0]-5,19); ctx.lineTo(c[0]+5,19); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#1473e6'; ctx.lineWidth=1.6;
+  ctx.beginPath(); ctx.arc(c[0],c[1],6,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c[0]-9,c[1]); ctx.lineTo(c[0]+9,c[1]); ctx.moveTo(c[0],c[1]-9); ctx.lineTo(c[0],c[1]+9); ctx.stroke();
+  ctx.restore();
+}
+function physicsVectors(dp,r,draw){
+  const a=rigAt(dp-0.25,true), b=rigAt(dp+0.25,true);
+  const vel=n=>[(b[n][0]-a[n][0])/0.5,(b[n][1]-a[n][1])/0.5];
+  const cA=comOf(a), cB=comOf(b), cc=comOf(r);
+  const vc=[(cB[0]-cA[0])/0.5,(cB[1]-cA[1])/0.5];
+  const items=[
+    {n:'lh',v:vel('lh'),pt:r.lh,col:'#111',s:2.6,min:2},
+    {n:'bh',v:vel('bh'),pt:r.bh,col:'#111',s:2.6,min:2},
+    {n:'tip',v:vel('tip'),pt:r.tip,col:'#0a9396',s:1.6,min:2.5},
+    {n:'com',v:vc,pt:cc,col:'#1473e6',s:4,min:0.8}
+  ];
+  const labels=[];
+  items.forEach(it=>{
+    const sp=Math.hypot(it.v[0],it.v[1]), mps=sp*BASE_FPS/100;
+    if(it.n==='lh') phys.vl=mps; if(it.n==='bh') phys.vb=mps; if(it.n==='tip') phys.vt=mps; if(it.n==='com') phys.vc=mps;
+    if(!draw || mps<it.min) return;
+    let len=Math.min(140,sp*it.s);
+    const ux=it.v[0]/sp, uy=it.v[1]/sp;
+    arrow(it.pt[0],it.pt[1],it.pt[0]+ux*len,it.pt[1]+uy*len,it.col,2);
+    labels.push({x:it.pt[0]+ux*len,y:it.pt[1]+uy*len,t:mps.toFixed(1)+' m/s',c:it.col});
+  });
+  phys.vh=Math.max(phys.vl||0,phys.vb||0);
+  phys.ke=0.5*2.4*phys.vh*phys.vh;
+  const cm=comOf(rigAt(dp-1,false)), cp=comOf(rigAt(dp+1,false));
+  const ax=cp[0]-2*cc[0]+cm[0], ay=cp[1]-2*cc[1]+cm[1];
+  phys.aCom=Math.hypot(ax,ay)*BASE_FPS*BASE_FPS/100;
+  phys.ay=ay*BASE_FPS*BASE_FPS/100;
+  if(draw && phys.air){
+    arrow(cc[0]+16,cc[1],cc[0]+16,cc[1]+28,'#e5231b',1.6);
+    labels.push({x:cc[0]+16,y:cc[1]+36,t:'g 9.8',c:'#e5231b'});
+  }
+  return labels;
+}
+
+/* ---------- camera ---------- */
+function camera(dp){
+  let sx=0,w=0,hyA=0;
+  for(let k=0;k<=8;k++){
+    const ww=1-k*0.09, f=dp-k*1.5;
+    sx+=paramAt(f,I.x)*ww; hyA+=paramAt(f,I.hy)*ww; w+=ww;
+  }
+  const cx=sx/w+28, hy=hyA/w;
+  const camY=-100+Math.min(0,(-hy+75))*0.55;
+  let zoom=1-clamp((hy-85)/420,0,0.17);
+  let shx=0,shy=0;
+  EVENTS.forEach((e,i)=>{
+    const age=dp-e.gf;
+    if(age>=0&&age<14){
+      zoom+=e.p*0.06*Math.exp(-age/4);
+      const amp=e.p*6*Math.exp(-age/3);
+      shx+=amp*Math.sin(age*4.1+i*2); shy+=amp*Math.cos(age*5.3+i);
+    }
+  });
+  return {cx,camY,zoom,shx,shy};
+}
+
+/* ---------- render ---------- */
+function render(dp){
+  const gi=Math.min(Math.floor(dp),N-1);
+  const inv=INVSET.has(gi);
+  const C=camera(dp);
+  const sc=(H/330)*C.zoom;
+  view.sc=sc; view.camX=C.cx; view.camY=C.camY; view.shx=C.shx*sc; view.shy=C.shy*sc;
+  const bg=inv?'#000':'#fff';
+  const pal={col:inv?'#fff':RED, back:inv?'#c8c8c8':RED_BACK, bg, hand:inv?'#fff':'#0b0b0b', red:inv?'#fff':RED, dark:inv?'#bbb':'#111'};
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle=bg; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.setTransform(DPR*sc,0,0,DPR*sc,DPR*(W/2-C.cx*sc+view.shx),DPR*(H/2-C.camY*sc+view.shy));
+
+  const r=rigAt(dp,true);
+  const air=Math.max(0,-Math.max(r.bf[1],r.ff[1]));
+  const shw=46*(1-Math.min(0.75,air/220));
+  ctx.fillStyle=inv?'rgba(255,255,255,.14)':'rgba(0,0,0,.10)';
+  ctx.beginPath(); ctx.ellipse(r.hip[0],4,shw,5.5*(1-Math.min(0.6,air/260)),0,0,Math.PI*2); ctx.fill();
+
+  if(showSmear) drawSpeedLines(dp,inv?'#fff':'#111');
+  if(showOnion && !inv){
+    [[-6,'rgba(20,115,230,.13)'],[-3,'rgba(20,115,230,.24)'],[4,'rgba(0,160,110,.22)']].forEach(([d,c])=>{
+      const f=dp+d; if(f<0||f>N-1) return;
+      drawGhost(rigAt(f,false),c,3);
+    });
+  }
+  drawAura(r,dp,pal);
+  if(showSmear) drawSmear(dp,inv);
+  drawFigure(r,{col:pal.col,back:pal.back,lw:5.4,bg,detail:true,hand:pal.hand});
+  EVENTS.forEach(e=>drawFX(e,dp-e.gf,inv?'#fff':'#111'));
+
+  const drawPhys=showPhys && !inv;
+  if(drawPhys) drawPhysicsWorld(dp,r); else { phys.unstable=false; phys.air=Math.max(r.bf[1],r.ff[1])<-4; }
+  const labels=physicsVectors(dp,r,drawPhys);
+
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.font='600 10.5px ui-monospace, Menlo, Consolas, monospace'; ctx.textBaseline='middle';
+  labels.forEach(l=>{ const s=toS(l.x,l.y); ctx.fillStyle=l.c; ctx.fillText(l.t,s[0]+6,s[1]-6); });
+  if(drawPhys && phys.unstable){
+    const c=toS(r.hip[0],r.hip[1]+110); ctx.fillStyle='#e5231b'; ctx.fillText('CoM OUTSIDE BASE — MOMENTUM-LOADED',c[0]-96,c[1]);
+  }
+  if(drawPhys && phys.air && phys.ay>9.81*1.6){
+    const c=toS(r.hip[0],r.hip[1]-120); ctx.fillStyle='#e5231b';
+    ctx.fillText('ANIME-G '+(phys.ay/9.81).toFixed(1)+' g  (DEFIES 1.0 g)',c[0]-80,c[1]);
+  }
+  const ai=Math.min(NA-1,Math.floor(gi/FR)), fl=dp-ai*FR, fi=Math.floor(fl);
+  const isKey=KEYF[gi]?'KEY':'TWEEN';
+  ctx.fillStyle=inv?'#ddd':'#555';
+  const mode=sampling===60?'60 INTERP (CATMULL-ROM)':sampling+' HELD';
+  ctx.fillText('ATK '+String(ai+1).padStart(2,'0')+'/'+String(NA).padStart(2,'0')+'  '+ATTACKS[ai].name,12,16);
+  ctx.fillText('F '+String(fi).padStart(2,'0')+'/'+FR+' ['+isKey+']  ·  GLOBAL '+String(gi+1).padStart(3,'0')+'/'+N+(WGT[gi]>1.01?'  ·  HITSTOP ×'+WGT[gi].toFixed(1):''),12,31);
+  ctx.fillText('SAMPLING '+mode+'  ·  RENDER '+Math.round(hz)+' Hz',12,46);
+  if(inv){ ctx.fillStyle='#fff'; ctx.fillText('IMPACT FRAME',12,H-14); }
+  updateNote(ai,fi);
+  drawTimeline(dp,ai);
+}
+
+/* ---------- note / stats ---------- */
+const annEl=document.getElementById('annotation');
+let lastNoteKey='';
+function updateNote(ai,fi){
+  const A=ATTACKS[ai];
+  const n=A.notes.find(x=>fi>=x[0]&&fi<=x[1])||A.notes[A.notes.length-1];
+  const key=ai+':'+n[0];
+  if(key!==lastNoteKey){
+    lastNoteKey=key;
+    annEl.innerHTML='<b>Biomechanical Reference:</b> <span style="color:var(--red);font-weight:700">ATK '+String(ai+1).padStart(2,'0')+' · '+A.name+' · F'+String(n[0]).padStart(2,'0')+'–'+String(n[1]).padStart(2,'0')+'</span><br>'+n[2]+'<span id="annStats"></span>';
+  }
+  const se=document.getElementById('annStats');
+  se.textContent='FIST '+(phys.vh||0).toFixed(1)+' m/s · KE≈'+Math.round(phys.ke||0)+' J (2.4 kg eff.) · TAIL TIP '+(phys.vt||0).toFixed(1)+' m/s · CoM '+(phys.vc||0).toFixed(1)+' m/s · |a| '+(phys.aCom/9.81).toFixed(1)+' g · KEYS '+A.keyCount+' → '+FR+' BAKED → '+(sampling===60?'∞ SUB-FRAMES':sampling+' fps HOLD');
+}
+
+/* ---------- timeline ---------- */
+function drawTimeline(dp,ai){
+  const c=tctx; c.setTransform(DPR,0,0,DPR,0,0);
+  c.fillStyle='#fff'; c.fillRect(0,0,TW,TH_);
+  const fw=TW/N;
+  for(let a=0;a<NA;a++){
+    c.fillStyle=a%2?'#f4f3ef':'#fff'; c.fillRect(a*FR*fw,0,FR*fw,TH_);
+    if(a===ai){ c.fillStyle='rgba(229,35,27,.07)'; c.fillRect(a*FR*fw,0,FR*fw,TH_); }
+    c.fillStyle='#111'; c.fillRect(a*FR*fw,0,1.5,TH_);
+    c.font='600 9.5px ui-monospace, Menlo, monospace'; c.fillStyle=a===ai?'#e5231b':'#77766f'; c.textBaseline='top';
+    c.fillText(String(a+1).padStart(2,'0')+' '+ATTACKS[a].short,a*FR*fw+5,4);
+  }
+  for(let i=0;i<N;i++){
+    const x=i*fw+fw/2;
+    c.fillStyle=KEYF[i]?'#111':'#b9b8b1';
+    const h=KEYF[i]?14:6;
+    c.fillRect(x-0.6,TH_-h-4,1.2,h);
+    if(WGT[i]>1.01){ c.fillStyle='rgba(0,0,0,.25)'; c.fillRect(x-fw/2,TH_-3,fw,2); }
+  }
+  EVENTS.forEach(e=>{
+    const x=e.gf*fw+fw/2; c.fillStyle=e.inv?'#000':'#e5231b';
+    c.beginPath(); c.moveTo(x,22); c.lineTo(x+4,27); c.lineTo(x,32); c.lineTo(x-4,27); c.closePath(); c.fill();
+  });
+  const px=dp*fw+fw/2;
+  c.fillStyle='#e5231b'; c.fillRect(px-1,0,2,TH_);
+  c.beginPath(); c.moveTo(px-5,0); c.lineTo(px+5,0); c.lineTo(px,6); c.closePath(); c.fill();
+}
+
+/* ---------- loop ---------- */
+function getDisplayP(){
+  if(sampling===60) return p;
+  if(!playing) return Math.floor(p);
+  const step=BASE_FPS/sampling;
+  return Math.floor(p/step)*step;
+}
+function loop(now){
+  const raw=(now-lastT)/1000; lastT=now;
+  if(raw>0){ hzAcc.push(1/raw); if(hzAcc.length>30) hzAcc.shift(); hz=hzAcc.reduce((a,b)=>a+b,0)/hzAcc.length; }
+  const dt=Math.min(0.1,Math.max(0,raw));
+  if(playing){
+    const w=WGT[Math.min(N-1,Math.floor(p))];
+    p+=dt*BASE_FPS*speed/w;
+    if(p>=N) p-=N;
+  }
+  render(getDisplayP());
+  requestAnimationFrame(loop);
+}
+
+/* ---------- UI wiring ---------- */
+const btnPP=document.getElementById('btnPlayPause');
+function setPlaying(v){ playing=v; btnPP.textContent=playing?'■ PAUSE':'▶ PLAY'; }
+btnPP.onclick=()=>setPlaying(!playing);
+function stepFrame(d){ setPlaying(false); p=((Math.floor(p)+d)%N+N)%N; }
+document.getElementById('btnPrev').onclick=()=>stepFrame(-1);
+document.getElementById('btnNext').onclick=()=>stepFrame(1);
+document.querySelectorAll('.fps-btn').forEach(b=>b.onclick=()=>{
+  sampling=+b.dataset.fps; document.querySelectorAll('.fps-btn').forEach(x=>x.classList.toggle('active',x===b));
+});
+document.querySelectorAll('.spd-btn').forEach(b=>b.onclick=()=>{
+  speed=+b.dataset.spd; document.querySelectorAll('.spd-btn').forEach(x=>x.classList.toggle('active',x===b));
+});
+const bO=document.getElementById('btnOnion'), bS=document.getElementById('btnSmear'), bP=document.getElementById('btnPhysics');
+function tog(btn,key){ btn.classList.toggle('active'); const v=btn.classList.contains('active'); if(key==='o')showOnion=v; if(key==='s')showSmear=v; if(key==='p')showPhys=v; }
+bO.onclick=()=>tog(bO,'o'); bS.onclick=()=>tog(bS,'s'); bP.onclick=()=>tog(bP,'p');
+
+const atkGroup=document.getElementById('atkGroup');
+ATTACKS.forEach((A,i)=>{
+  const b=document.createElement('button'); b.className='atk-btn';
+  b.textContent=String(i+1).padStart(2,'0')+' '+A.short; b.onclick=()=>{ p=i*FR; };
+  atkGroup.appendChild(b);
+});
+function jumpTo(i){ p=i*FR; }
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '){ e.preventDefault(); setPlaying(!playing); }
+  else if(k==='arrowleft'){ e.preventDefault(); stepFrame(-1); }
+  else if(k==='arrowright'){ e.preventDefault(); stepFrame(1); }
+  else if(k==='o') tog(bO,'o');
+  else if(k==='s') tog(bS,'s');
+  else if(k==='p') tog(bP,'p');
+  else if(k>='1'&&k<='7') jumpTo(+k-1);
+});
+let scrub=false;
+function scrubAt(e){ const r=tl.getBoundingClientRect(); p=clamp(Math.floor((e.clientX-r.left)/r.width*N),0,N-1); }
+tl.addEventListener('pointerdown',e=>{ scrub=true; tl.setPointerCapture(e.pointerId); scrubAt(e); });
+tl.addEventListener('pointermove',e=>{ if(scrub) scrubAt(e); });
+tl.addEventListener('pointerup',()=>{ scrub=false; });
+
+requestAnimationFrame(t=>{ lastT=t; loop(t); });
+</script>
+</body>
+</html>

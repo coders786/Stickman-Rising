@@ -1567,6 +1567,14 @@ export const ATTACKS: Record<string, AttackDef> = {
    * alternate punch ↔ kick per armed use (Player.firePowerDashSlash) */
   powerPunch: MOVES.powerPunch,
   powerKick: MOVES.powerKick,
+  /* THE SAKUGA SET — the Dark Lord study transcribed 1:1 (clips in
+   * combat/sakuga.ts); reached through the empty-hand chain graph */
+  sakugaJabCross: MOVES.sakugaJabCross,
+  sakugaBarrage: MOVES.sakugaBarrage,
+  sakugaDragon: MOVES.sakugaDragon,
+  sakugaHammer: MOVES.sakugaHammer,
+  sakugaScorpion: MOVES.sakugaScorpion,
+  sakugaWrath: MOVES.sakugaWrath,
 }
 
 export function getAttack(id: string): AttackDef | undefined {

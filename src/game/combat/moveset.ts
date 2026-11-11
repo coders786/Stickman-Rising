@@ -41,6 +41,10 @@ import { PLAYER_SPEC } from '../anim/skeleton'
 import { clamp } from '../core/utils'
 import type { SfxName } from '../audio/audio'
 import type { AttackDef, AttackKind } from './attacks'
+import {
+  SAKUGA_JABCROSS_CLIP, SAKUGA_BARRAGE_CLIP, SAKUGA_DRAGON_CLIP,
+  SAKUGA_HAMMER_CLIP, SAKUGA_SCORPION_CLIP, SAKUGA_WRATH_CLIP,
+} from './sakuga'
 
 export type StrikeHand = 'left' | 'right'
 export type StrikeJoint = 'hand' | 'elbow' | 'foot' | 'knee' | 'shoulder'
@@ -918,16 +922,17 @@ function move(s: MoveSpec): AttackDef {
 const MOVES_SRC: MoveSpec[] = [
   /* ground light chain */
   { id: 'l1', label: 'KIZAMI JAB', kind: 'light', requires: 'ground', clip: JAB, limb: 'right',
-    hitStart: 0.08, hitEnd: 0.15, dmg: 10, kb: 95 },
+    hitStart: 0.08, hitEnd: 0.15, dmg: 10, kb: 95,
+    chain: ['sakugaJabCross'] },
   { id: 'l2', label: 'GYAKU CROSS', kind: 'light', requires: 'ground', clip: CROSS, limb: 'left',
     hitStart: 0.11, hitEnd: 0.20, dmg: 13, kb: 115,
-    chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat'] },
+    chain: ['l3', 'h1', 'h2', 'stabs', 'launcher', 'spin', 'retreat', 'sakugaBarrage'] },
   { id: 'l3', label: 'KAGI HOOK', kind: 'light', requires: 'ground', clip: HOOK, limb: 'right',
     hitStart: 0.12, hitEnd: 0.22, dmg: 14, kb: 125,
     chain: ['l4', 'h1', 'h2', 'stabs', 'launcher', 'retreat'] },
   { id: 'l4', label: 'SLIP BODY ELBOW', kind: 'light', requires: 'ground', clip: BODYBLOW, limb: 'right', joint: 'elbow',
     hitStart: 0.14, hitEnd: 0.26, dmg: 15, kb: 105, stagger: 0.3,
-    chain: ['l5', 'h2', 'stabs', 'launcher'] },
+    chain: ['l5', 'h2', 'stabs', 'launcher', 'sakugaDragon'] },
   { id: 'l5', label: 'TWIN SHOTEI', kind: 'light', requires: 'ground', clip: TWINPALM, limb: 'right',
     hitStart: 0.16, hitEnd: 0.30, dmg: 16, kb: 165, breakGuard: true },
   /* contextual lights */
@@ -946,10 +951,10 @@ const MOVES_SRC: MoveSpec[] = [
     chain: ['l1', 'l2', 'launcher', 'spin'] },
   { id: 'h2', label: 'TORNADO ROUNDHOUSE', kind: 'heavy', requires: 'ground', clip: ROUNDHOUSE, limb: 'right', joint: 'foot',
     hitStart: 0.22, hitEnd: 0.36, dmg: 26, kb: 240, heavy: true, breakGuard: true,
-    chain: ['l5', 'launcher'] },
+    chain: ['l5', 'launcher', 'sakugaScorpion'] },
   { id: 'h3', label: 'SKYHAMMER FIST', kind: 'heavy', requires: 'ground', clip: HAMMER, limb: 'right',
     hitStart: 0.26, hitEnd: 0.40, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
-    chain: ['l1'] },
+    chain: ['l1', 'sakugaHammer', 'sakugaWrath'] },
   /* new command heavies */
   { id: 'axeKick', label: 'KAKATO AXE KICK', kind: 'heavy', requires: 'ground', clip: AXEKICK, limb: 'right', joint: 'foot',
     hitStart: 0.24, hitEnd: 0.36, dmg: 24, kb: 175, heavy: true, breakGuard: true,
@@ -1011,6 +1016,37 @@ const MOVES_SRC: MoveSpec[] = [
   { id: 'airElbow', label: 'FLYING ELBOW', kind: 'air', requires: 'air', clip: AIRELBOW, limb: 'right', joint: 'elbow',
     hitStart: 0.10, hitEnd: 0.26, dmg: 22, kb: 185, heavy: true, float: 0.5,
     moveY: 320, moveYAt: 0.12 },
+  /* THE SAKUGA SET — the uploaded "THE DARK LORD — Sakuga Study"
+   * transcribed 1:1 into this rig (clips in combat/sakuga.ts): every key
+   * pose at the study's exact 24fps beat grid, IK-authored contacts on the
+   * study's hand/heel spots, eases/trunk/hips matched. Hit windows sit on
+   * the study's impact-event frames; hitstop/shake from its slow-in map;
+   * lunges ride the engine's moveX/moveY impulses. Reached through the
+   * chain graph above (l1/l2/l4/h2/h3) and chain back into the movset. */
+  { id: 'sakugaJabCross', label: 'SAKUGA JAB–CROSS–SLIP', kind: 'light', requires: 'ground', clip: SAKUGA_JABCROSS_CLIP, limb: 'right',
+    hitStart: 0.27, hitEnd: 0.58, dmg: 12, kb: 110, stagger: 0.18,
+    multiHit: 0.26, hitstop: 0.05, shake: 0.08, moveX: 60, moveXAt: 0.10,
+    chain: ['l2', 'l3', 'h1', 'sakugaBarrage'] },
+  { id: 'sakugaBarrage', label: 'SAKUGA SIX-POINT BARRAGE', kind: 'light', requires: 'ground', clip: SAKUGA_BARRAGE_CLIP, limb: 'right',
+    hitStart: 0.125, hitEnd: 1.17, dmg: 13, kb: 95, stagger: 0.18,
+    multiHit: 0.17, hitstop: 0.045, shake: 0.08, moveX: 90, moveXAt: 0.05,
+    chain: ['l1', 'h1', 'sakugaWrath'] },
+  { id: 'sakugaDragon', label: 'SAKUGA RISING DRAGON', kind: 'launcher', requires: 'ground', clip: SAKUGA_DRAGON_CLIP, limb: 'right',
+    hitStart: 0.34, hitEnd: 0.65, dmg: 17, kb: 100, kbY: -240, launch: 420, heavy: true,
+    multiHit: 0.24, moveY: -300, moveYAt: 0.36, float: 0.75,
+    chain: ['a1', 'a2', 'a3', 'dive', 'slam'] },
+  { id: 'sakugaHammer', label: 'SAKUGA SKY HAMMER', kind: 'heavy', requires: 'ground', clip: SAKUGA_HAMMER_CLIP, limb: 'right',
+    hitStart: 0.67, hitEnd: 0.83, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
+    hitstop: 0.12, shake: 0.30, moveY: -240, moveYAt: 0.33, float: 0.55,
+    moveX: 60, moveXAt: 0.20, chain: ['l1', 'h1'] },
+  { id: 'sakugaScorpion', label: 'SAKUGA SCORPION WHIP', kind: 'heavy', requires: 'ground', clip: SAKUGA_SCORPION_CLIP, limb: 'right',
+    hitStart: 0.71, hitEnd: 0.87, dmg: 26, kb: 280, kbY: -60, heavy: true, breakGuard: true,
+    hitstop: 0.08, shake: 0.22, moveX: 140, moveXAt: 0.50,
+    chain: ['h2', 'l1'] },
+  { id: 'sakugaWrath', label: 'SAKUGA WRATH FINISHER', kind: 'heavy', requires: 'ground', clip: SAKUGA_WRATH_CLIP, limb: 'left',
+    hitStart: 0.79, hitEnd: 1.00, dmg: 30, kb: 460, kbY: -40, heavy: true, breakGuard: true,
+    stagger: 0.5, hitstop: 0.12, shake: 0.34, multiHit: 0.16,
+    moveX: 240, moveXAt: 0.77, chain: ['h1', 'l1'] },
 ]
 
 export const MOVES: Record<string, AttackDef> = {}
