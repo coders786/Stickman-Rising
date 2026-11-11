@@ -58,8 +58,6 @@ server.log
 /db/*.db-wal
 /db/*.db-shm
 
-# prisma generated client (regenerated via: bun run db:generate)
-/src/generated/
 
 # Skills directory
 /skills/

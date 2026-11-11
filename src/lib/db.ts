@@ -1,11 +1,11 @@
 /** STICKMAN RISING — the scoreboard store.
  *
- * ROOT-CAUSE NOTE: this module used to import `@/generated/prisma/client`,
- * a build-time artifact produced by `prisma generate`. Nothing in the repo
- * generates it during install/dev, so the module graph failed to resolve
- * and every route that touched the database died with
- * "Module not found: Can't resolve '@/generated/prisma/client'" — including
- * a clean `next build`.
+ * ROOT-CAUSE NOTE: this module once imported a generated Prisma client — a
+ * build-time artifact that nothing in the repo produced during install or
+ * dev. The module graph failed to resolve and every route that touched the
+ * database died with "Module not found: Can't resolve
+ * '@/generated/prisma/client'", including a clean `next build`. Prisma has
+ * since been removed entirely.
  *
  * The leaderboard needs exactly two tables. Node ships SQLite (`node:sqlite`,
  * synchronous, zero install, zero codegen), so the store is now self-
@@ -13,7 +13,7 @@
  * client to go stale, and no native module to rebuild per Node version.
  *
  * Table and column names are unchanged, so an existing `db/custom.db`
- * written by the old Prisma adapter keeps working.
+ * written by the old adapter keeps working.
  */
 import path from 'node:path'
 import { mkdirSync } from 'node:fs'

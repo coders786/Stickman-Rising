@@ -18,7 +18,7 @@ A fast, kinetic **2D wave-survival combat game** with a pseudo-3D stickman warri
   | 6 | 👻 Phantom Blade | — | — |
 - **Combat system**: light/heavy attack chains, parry, executions, combo counter, dash i-frames
 - **Wave survival** with escalating enemy hordes
-- **Persistent leaderboard** (SQLite + Prisma 7) and unlock progression saved locally
+- **Persistent leaderboard** (SQLite via Node's built-in `node:sqlite`) and unlock progression saved locally
 - **Character sheet / QA harness** under `research/` — frame-by-frame VLM-verified animation iteration
 
 ## 🕹️ Controls
@@ -46,8 +46,8 @@ in the same direction within 280 ms to sprint.
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript 6**
 - **Tailwind CSS 4** + **shadcn/ui** (New York) + **lucide-react**
-- **Prisma 7** + SQLite via the `better-sqlite3` driver adapter
-- **Bun** as the package manager / script runner; **Node.js 22.12+** for the Next.js server (required by the SQLite adapter)
+- **SQLite** via Node's built-in `node:sqlite` — zero dependencies, zero codegen, schema created on first use
+- **Bun** as the package manager / script runner; **Node.js 22.12+** for the Next.js server (required by `node:sqlite`)
 - Game engine: pure TypeScript + Canvas 2D (`src/game/`)
 
 ## Momentum dash and double-tap sprint
@@ -129,7 +129,7 @@ For reproducible installs, run `bun install --frozen-lockfile`. To refresh depen
 within the declared version ranges, run `bun update`.
 
 TypeScript stays on **6.x** because the current `typescript-eslint` integration does
-not support TypeScript 7. Prisma stays on **7.x**. ESLint 9 is used for plugin peer
+not support TypeScript 7. ESLint 9 is used for plugin peer
 compatibility; the scoped minimatch override addresses GHSA-g3hv-75wg-m249. Check
 both `npm audit` and `bun audit` when updating either lockfile.
 
@@ -139,12 +139,8 @@ both `npm audit` and `bun audit` when updating either lockfile.
 # 1. Install dependencies
 bun install
 
-# 2. Configure the database
+# 2. Play — the database schema is created on first use
 cp .env.example .env
-bun run db:generate   # generate the Prisma client
-bun run db:push       # create/sync the SQLite schema
-
-# 3. Play
 bun run dev           # http://localhost:3000
 ```
 
@@ -157,14 +153,11 @@ HOSTNAME=0.0.0.0 bun run start
 ```
 
 - Fonts are bundled through `geist`; builds no longer contact Google Fonts.
-- `start` and the deployment launcher use **Node**, not Bun: `better-sqlite3`
-  is a native Node module and is not supported by the Bun runtime.
-- Run `db:generate` and `db:push` before first use. Client generation may need
-  access to Prisma's engine download host; schema synchronization requires it.
-- If the native SQLite binding is missing after an install with scripts disabled,
-  run `npm rebuild better-sqlite3` with Node and a C++ build toolchain installed.
-  In restricted build environments with local Node headers, use
-  `npm_config_nodedir=/usr/local npm rebuild better-sqlite3 --build-from-source`.
+- `start` and the deployment launcher use **Node**, not Bun: `node:sqlite` is a
+  Node built-in (with Bun compatibility treated as best-effort).
+- There is no database codegen and no native module to build. The schema is
+  applied with `CREATE TABLE IF NOT EXISTS` on first connection, so a fresh
+  clone runs without any setup step.
 - Scores API returns `400` for invalid data, `413` for bodies over 4 KiB, `415`
   for unsupported content types, and `503` when the database is unavailable.
   A UUID `Idempotency-Key` header makes retries safe; the game reuses it per run.
@@ -203,7 +196,6 @@ src/
     world/       # waves, background
     audio/       # sound
   components/ui/ # shadcn/ui components
-prisma/          # database schema
 research/        # animation research, QA harnesses, character sheets, VLM audits
 ```
 
