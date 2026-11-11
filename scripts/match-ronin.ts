@@ -339,6 +339,7 @@ function convertPose(o: Record<string, number>, x0: number): Converted {
 const EASE_MAP: Record<string, string> = { lin: 'linear', io: 'inOutCubic', in: 'inCubic', out: 'outCubic' }
 
 /* per-attack pipeline: accumulate → convert → continuity mids → emit */
+declare const Bun: { write(path: string, content: string): Promise<unknown> }
 let report = ''
 
 function emitAttack(a: Atk): string {
@@ -346,8 +347,9 @@ function emitAttack(a: Atk): string {
   const acc: Record<string, number>[] = []
   let prev: Record<string, number> | null = null
   for (const k of a.keys) {
-    prev = prev ? { ...prev, ...k.o } : { ...k.o }
-    acc.push({ ...prev })
+    const o = Object.assign({}, (k.o ?? {}) as Record<string, number>)
+    prev = Object.assign(prev ?? {}, o)
+    acc.push(Object.assign({}, prev))
   }
   const x0 = acc[0].x
   const conv = acc.map(o => convertPose(o, x0))
