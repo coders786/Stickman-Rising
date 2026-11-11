@@ -58,7 +58,7 @@ unarmed 30-movset punches/kicks — check their first keys for counter-motion), 
 (≤2 frames) or same-direction (fake anticipation) · arms load but hips/torso never counter-rotate · dashes that
 lunge without a rearward gather · idle→attack transitions with zero anticipation.
 
-### 2. Follow-through & Overlapping Action — ❌
+### 2. Follow-through & Overlapping Action — ✅
 **Principle:** Nothing stops all at once. Extremities continue after the torso stops; joints release sequentially.
 **Becker standard:** After a punch lands, the fist keeps traveling, the shoulder rolls over it, the head settles a
 beat later, hips finish rotating after the chest already stopped. Recovery never returns the pose to neutral
@@ -188,7 +188,7 @@ new cycle. The program never stops climbing.
 *(entries appended by each session run — newest last)*
 
 ```
-LOCK: set 2026-11-11T05:46:30Z (GAP session 2 — follow-through & overlapping action)
+LOCK: cleared
 ```
 
 ### SESSION 1 — Anticipation & Wind-up (2026-11-10) — ✅
@@ -282,3 +282,131 @@ lines, zero new errors.
 5. JAB 60ms chamber — acceptable for a kizami poke; revisit at Cycle 2 bar.
 
 **COMMIT:** `407ffeb` — feat(anim): GAP SESSION 1 — anticipation & wind-up (Becker-grade coil) — pushed to origin/main
+
+### SESSION 2 — Follow-through & Overlapping Action (2026-11-11) — ✅
+
+**AUDIT SCOPE:** `attacks.ts` recovery tails of all ground/dash sword clips,
+`animator.ts` (crossfade system: 80ms default blend via `InertialTransition`,
+velocity-preserving, wrist shortest-path unwrap — audited, HEALTHY, no change
+needed), `pose.ts` NEUTRAL defaults (pelvisYaw 0.04 / chestYaw −0.02 / head
+−0.06 / rootRot 0.03 — what omitted channels snap to), prior session's
+Proposal #3 (hip winds settling straight back to NEUTRAL). Baselines BEFORE
+edits: lint exit 0; `tests/player-animation.test.ts` 3/3; continuity-check
+**35 pre-existing flags** (sakugaBarrage 11 / sakugaWrath 9 / sakugaDragon 5 /
+sakugaHammer 4 / unarmedPowerKick 2 / unarmedPowerRam+Cross, sakugaScorpion,
+sakugaJabcross 1 each — grew from Session 1's recorded 10 because commit
+`2680591` added the sakuga family meanwhile); `audit-player-anim.ts` PASS;
+`bunx tsc --noEmit` = 3 pre-existing errors (skills/image-edit,
+src/lib/db prisma-client, tests/hud-layout) — stash-probe confirmed identical
+on HEAD, so none introduced by this program.
+
+**BECKER STANDARD (Session 2):** nothing stops all at once. After contact the
+fist keeps traveling, the shoulder rolls over it, the head settles a beat
+later; hips finish rotating AFTER the chest already stopped. Recovery is
+overshoot-then-settle, never a monotone decay into neutral. Sequencing:
+arm arrives → hips carry past and correct → head gives back last.
+
+**GAP FINDINGS (ruthless numbers, @30fps = 33.3ms/frame):**
+- **Universal pattern across all 10 edited clips:** the strike key carries
+  Session 1's hip unwind (pelvisYaw +0.18…+0.28 / chestYaw −0.14…−0.24) and
+  the VERY NEXT key omits the channels → makePose snaps pelvis to 0.04 /
+  chest to −0.02 in ONE eased span: a straight-line monotone decay.
+  Decays measured: l1 0.18→0.04 over 90ms/2.7f; l2 0.22→0.04 100ms/3f;
+  l3 0.18→0.04 3f; l4 0.20→0.04 3f; l5 0.20→0.04 120ms/3.6f;
+  stabs T1 0.24→0.04 3f, T2 0.26→0.04 3f, **T3 0.28→0.04 in 75ms/2.25f
+  (0.107 rad/frame — during the penetration HOLD, the hips gave up while
+  the blade was still supposed to be buried)**; h1 0.22→0.04 130ms/3.9f;
+  h2 hold 0.38 ✓ wound (0.20) but retract 0.56→0.04 over 180ms/5.4f;
+  launcher 0.18→0.04 120ms/3.6f; dashHeavy 0.20→0.04 over 140ms/4.2f hold.
+- **Zero overshoot anywhere:** hips never carry past the contact amplitude;
+  the unwind decelerates INTO neutral on the same span that stops the arm —
+  every joint stops on the same frame (the exact failure mode the session
+  hunts).
+- **Head snap:** strike keys pitch head −0.16…−0.28; follow-through keys omit
+  it → head returns to NEUTRAL −0.06 simultaneously with the hips. No
+  late-settle beat exists in the entire sword family.
+- **h3 (GRAND SLAM) had NO hip drive at its money frame:** impact key 0.5
+  (rootRot 0.6, the blade-buried pose) carries pelvisYaw/chestYaw NEUTRAL —
+  the 30-dmg AOE slam lands with statistically zero pelvis rotation
+  (Session 1 wound only the entry crouch at kf0 −0.16).
+- **stabs string rhythm was machine-gun flat:** retracts 0.27/0.45 and
+  ignitions 0.305/0.5 all defaulted pelvis to 0.04 — between thrusts the
+  hips parked at neutral instead of holding partial wind + re-coiling.
+- `animator.ts` crossfades: velocity-preserving residual via
+  `InertialTransition` — the overlap machinery ALREADY exists at the blend
+  layer; the gap was authored keyframe data, not the blender.
+
+**FIXES APPLIED (all strictly additive: channel-adds to existing keys +
+inserted settle keys; ZERO event retiming — hit/trail/swingSfx/cancel/
+moveX/moveXAt/moveY/chain untouched; every inserted key sits AFTER its
+clip's cancel window, inside dead tail time):**
+- `attacks.ts` — 14 edits, 10 clips, +69 lines:
+  - **l1**: FT 0.26 gained pelvisYaw 0.25 / chestYaw −0.19 / head −0.10
+    (overshoot = strike ×1.35; hips carry past the draw); INSERT settle
+    0.35 (0.10/−0.06/−0.08) before GUARD 0.44.
+  - **l2**: FT 0.28 → 0.30/−0.24/−0.11; INSERT settle 0.375 (0.12/−0.08).
+  - **l3**: FT 0.29 → 0.25/−0.21/−0.12; INSERT settle 0.39 (0.10/−0.07).
+  - **l4**: FT 0.30 → 0.27/−0.21/−0.10; INSERT settle 0.42 (0.11/−0.07).
+  - **l5**: FT 0.37 → 0.27/−0.24/−0.13; INSERT settle 0.48 (0.11/−0.08).
+  - **stabs**: retract1 0.27 +0.10/−0.07 (partial wind held); ignition2
+    0.305 −0.06/+0.05 (re-coil past neutral); retract2 0.45 +0.11/−0.08;
+    ignition3 0.50 −0.07/+0.055 (escalating re-coil); penetration 0.63
+    stays WOUND +0.24/−0.20 (h2's tsuki law); INSERT settle 0.70
+    (0.12/−0.09). Hip wave now reads +0.24 → 0.10 → −0.06 → +0.26 →
+    0.11 → −0.07 → +0.28 → 0.24 → 0.12 → neutral.
+  - **h1**: FT 0.45 → 0.30/−0.24/−0.13; INSERT settle 0.57 (0.12/−0.08/−0.09).
+  - **h2**: retract 0.56 +0.10/−0.07; INSERT settle 0.64 (0.06/−0.04).
+  - **h3**: ignition 0.42 +0.10/−0.06 (unwind builds through the fall);
+    impact 0.5 +0.22/−0.18 (the money frame gets its hip drive);
+    bury 0.64 +0.12/−0.08 (settle-carry into the hold).
+  - **launcher**: FT 0.23 → 0.24/−0.18/−0.12; INSERT settle 0.34 (0.10/−0.06).
+  - **dashHeavy**: hold 0.26 stays wound +0.16/−0.12; INSERT settle 0.38
+    (0.08/−0.05).
+  - Sequencing per clip now: strike (hips wound) → FT (hips overshoot,
+    arm extends, head rides late) → settle key (hips give back to ~40%) →
+    GUARD (neutral) — joints release in ORDER, arm first, head last.
+- Continuity budget: largest added span = stabs ignition3 0.04→0.28
+  (via −0.07) ≈ 0.15 rad/frame — 4.8× under the 0.72 limit.
+
+**VERIFY (all actually run):** `bun run lint` → exit 0.
+`tests/player-animation.test.ts` → 3/3 pass. `.qa/continuity-check.ts` →
+EXACTLY the 35 pre-existing baseline flags, clip-for-clip identical
+(zero new). `.qa/audit-player-anim.ts` → ALL CHECKS PASSED. `bunx tsc
+--noEmit` → same 3 pre-existing errors as the HEAD stash-probe (none from
+this session). Live probe: fresh boot → ENGAGE → walk-in → 5-slash string →
+`window.__sr.combo.hits` = **4**, player alive — the edited clips sample,
+blend and land cleanly in the real 60fps loop.
+**dev.log caveat (honest):** `/home/z/my-project/dev.log` does not exist in
+the current boot cycle and the running server's stdout is a deleted
+pseudo-terminal (`/proc/<pid>/fd/1 → /dev/pts/1 (deleted)`), so the last-80-
+lines check was satisfied by equivalents: server log of this boot (clean:
+GET 200 / compiled lines only) + the live gameplay probe above.
+
+**ENVIRONMENT NOTE (honest):** the Turbopack dev server wedged AGAIN
+mid-session (same signature as the 12:00 run: busy-loop ~34-41% CPU,
+~1.07GB RSS, port 3000 refusing after the browser session opened; first
+post-edit compile was a fast 200 — the wedge appeared during browser load,
+not at compile time). Recovery identical to last run: SIGKILL the worker →
+supervisor died with it → `bash .zscripts/dev.sh` (the sanctioned boot
+path) → healthy 200. Recurring Turbopack instability is now a 2-run
+pattern worth investigating OUTSIDE this program — logged as proposal #4.
+
+**PROPOSALS / FOLLOW-UPS:**
+1. Unarmed 30-movset recoveries (moveset.ts) likely share the same
+   straight-to-neutral hip decay — same settle-key treatment, next session
+   that touches recovery data (Session 6 weight shift will be in there
+   anyway).
+2. DASH family (DASH_LAUNCH_Q carry/pivot clips) end-of-dash recoveries —
+   audit-only this session; the launcher-family settle pattern applies.
+3. `retreat` / `spin` clips never got Session 1 unwinds, so they have no
+   unwind to overshoot — they need the FULL Session-1+2 treatment
+   (wind + overshoot + settle) as one unit.
+4. ENVIRONMENT: Turbopack dev wedge (2 runs in a row) — investigate
+   next-server version/watch config outside the curriculum; consider a
+   watchman-style canary that detects the wedge (port 000 + RSS > 900MB)
+   and auto-runs `.zscripts/dev.sh`.
+5. Head settle keys were authored only where strike heads pitched hardest
+   (−0.16…−0.28); GUARD's own head −0.1 vs settle −0.08→−0.1 remains a
+   0.02 rad cosmetic bump — imperceptible, leave.
+
+**COMMIT:** `1fd9c0a` — feat(anim): GAP SESSION 2 — follow-through & overlapping action (momentum bleeds, joints release sequentially) — pushed to origin/main
