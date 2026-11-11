@@ -895,8 +895,19 @@ interface MoveSpec {
   corridorY?: number
 }
 
+/** Contact tolerance for an empty-hand strike, in world px.
+ *
+ * DERIVED, NOT CHOSEN: a drawn bone is `lineW: 4.5` wide (skeleton.ts), so
+ * a limb is 2.25px to each side of its centre line. `pad` is added to the
+ * BODY sphere radius (21px torso), so a fist needs `≤ 2.25` px to match its
+ * own drawn footprint plus ~2.75px of render grain and swept-segment
+ * tolerance — 5. Anything wider makes a fist connect from a distance the
+ * player can see is empty. This is also the ceiling the module contract
+ * names, and the value every other unarmed move already uses. */
+export const CONTACT_PAD = 5
+
 /** Enforce the empty-hand contract: visible-limb hitbox (strikeHand set,
- * grip 0 — fists never draw steel), trail == hit window, ≤7 px contact
+ * no blade grip — fists never draw steel), trail == hit window, ≤7 px contact
  * pad (a fist/heel is narrower than any blade), heavy sfx. */
 function move(s: MoveSpec): AttackDef {
   const hit: AttackDef['hit'] = {
@@ -905,13 +916,13 @@ function move(s: MoveSpec): AttackDef {
     kb: s.kb ?? (s.heavy ? 200 : 95), kbY: s.kbY, launch: s.launch, juggle: s.juggle,
     hitstop: s.hitstop ?? (s.heavy ? 0.06 : 0.035),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
-    heavy: !!s.heavy, pad: s.pad ?? (s.heavy ? 7 : 5), breakGuard: s.breakGuard,
+    heavy: !!s.heavy, pad: s.pad ?? CONTACT_PAD, breakGuard: s.breakGuard,
     multiHit: s.multiHit, aoe: s.aoe,
     corridorBack: s.corridorBack, corridorFront: s.corridorFront, corridorY: s.corridorY,
   }
   return {
     id: s.id, label: s.label, kind: s.kind, requires: s.requires,
-    clip: s.clip, strikeHand: s.limb, strikeJoint: s.joint ?? 'hand', grip: 0,
+    clip: s.clip, strikeHand: s.limb, strikeJoint: s.joint ?? 'hand',
     chain: s.chain ?? [], cancel: s.hitEnd + (s.heavy ? 0.12 : 0.06),
     hit, trail: { start: s.hitStart, end: s.hitEnd },
     swingSfx: { t: s.sfxT ?? Math.max(0.02, s.hitStart - 0.04), name: (s.heavySfx ?? s.heavy) ? 'swingHeavy' : 'swing' },
@@ -983,12 +994,12 @@ const MOVES_SRC: MoveSpec[] = [
    * corridor is the dash path itself, so the pass tears the pack. */
   { id: 'powerPunch', label: 'RAIJIN KEN', kind: 'dash', requires: 'ground', clip: POWERCROSS, limb: 'right', joint: 'hand',
     hitStart: 0.10, hitEnd: 0.44, dmg: 30, kb: 560, kbY: -40, heavy: true, breakGuard: true,
-    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: 10,
+    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: CONTACT_PAD,
     corridorBack: 150, corridorFront: 88, corridorY: 55,
     moveX: 240, moveXAt: 0.02, chain: ['h1', 'l1'] },
   { id: 'powerKick', label: 'FUJIN KYAKU', kind: 'dash', requires: 'ground', clip: POWERKICK, limb: 'right', joint: 'foot',
     hitStart: 0.10, hitEnd: 0.44, dmg: 26, kb: 640, kbY: -90, launch: 260, heavy: true, breakGuard: true,
-    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: 10,
+    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: CONTACT_PAD,
     corridorBack: 150, corridorFront: 88, corridorY: 40,
     moveX: 240, moveXAt: 0.02, chain: ['h2', 'l1'] },
   /* specials */

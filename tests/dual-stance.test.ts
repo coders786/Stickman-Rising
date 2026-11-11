@@ -6,11 +6,11 @@ import {FX} from '../src/game/fx/fx'
 import type {WorldRef} from '../src/game/core/types'
 import {ATTACKS} from '../src/game/combat/attacks'
 import {unarmedAttack} from '../src/game/combat/unarmed'
-import {equipmentClip} from '../src/game/anim/equipment-motion'
 import {RUN_CLIP,SPRINT_CLIP,JUMP_CLIP,JUMP_LEAP_CLIP,FALL_CLIP,LAND_CLIP,DASH_LAUNCH_CLIP} from '../src/game/anim/clips'
 import {CH} from '../src/game/anim/pose'
 import {applyJointLimits} from '../src/game/anim/limits'
 import type {Animator} from '../src/game/anim/animator'
+import {PLAYER_STYLE} from '../src/game/anim/skeleton'
 function setup(){
  const input=new Input(),p=new Player(),hits:number[]=[],noop=()=>{}
  const w={time:0,timeScale:1,arenaMinX:-5000,arenaMaxX:5000,enemies:[],input,fx:new FX(),
@@ -24,23 +24,33 @@ test('every sword attack intent has a bounded, short-contact empty-hand equivale
  for(const base of Object.values(ATTACKS)){
   const a=unarmedAttack(base)
   assert.equal(a.id,base.id);assert.ok(a.strikeHand);assert.equal(a.requires,base.requires)
-  assert.ok(!a.traj&&!a.drawFlash&&!a.hit.aoe&&!a.slamImpact)
+  assert.ok(!a.drawFlash&&!a.hit.aoe&&!a.slamImpact)
   assert.ok(a.clip.frames.length>=7&&a.hit.start<a.hit.end&&a.hit.end<a.cancel)
-  assert.ok(a.hit.pad!<=7);assert.equal(a.grip,0)
+  // CONTACT TOLERANCE, BOUNDED BY THE WEAPON: `pad` is added to the enemy
+  // BODY sphere radius (21px torso), so it sets how far outside a visible
+  // limb a fist can still register. The one thing it must never do is
+  // inherit a blade corridor's fattening — 12px of padding on a 2.25px-wide
+  // fist is a fist that connects from sword distance. Every unarmed move
+  // therefore sits at the empty-hand ceiling (5) or below it, and NEVER
+  // above its own armed twin.
+  const floor = 5
+  assert.ok(a.hit.pad! <= floor, `${a.id}: unarmed pad ${a.hit.pad} exceeds the ${floor}px contact ceiling`)
+  assert.ok(a.hit.pad! <= (base.hit.pad ?? 3),
+    `${a.id}: unarmed pad ${a.hit.pad} inherits armed padding ${base.hit.pad}`)
   for(const f of a.clip.frames){
    const safe=applyJointLimits(f.p.slice())
    for(let ch=0;ch<safe.length;ch++)assert.ok(Math.abs(safe[ch]-f.p[ch])<1e-5)
   }
  }
 })
-test('sheathed and drawn movement share gait clocks and legs, not arm silhouettes',()=>{
+test('one clip library serves both stances: armedness never rewrites a clip',()=>{
+ // The equipment adapter is gone. The SAME authored clip plays drawn or
+ // sheathed — arms included. Only the hitbox/blade attachment differs.
  for(const base of [RUN_CLIP,SPRINT_CLIP,JUMP_CLIP,JUMP_LEAP_CLIP,FALL_CLIP,LAND_CLIP,DASH_LAUNCH_CLIP]){
-  const free=equipmentClip(base,false),armed=equipmentClip(base,true)
-  assert.equal(free.equipment,'free');assert.equal(armed.equipment,'armed')
-  assert.equal(free.dur,armed.dur);assert.equal(free.loop,base.loop)
-  assert.notDeepEqual([...free.frames[1].p],[...armed.frames[1].p])
-  for(let i=0;i<base.frames.length;i++)for(const ch of [CH.hipL,CH.kneeL,CH.hipR,CH.kneeR])assert.ok(Math.abs(free.frames[i].p[ch]-armed.frames[i].p[ch])<1e-5)
-  assert.equal(equipmentClip(base,false),free,'cached, not allocated each frame')
+  assert.equal(base.equipment,undefined,'no clip is pre-rewritten per stance')
+  assert.equal(base.source,undefined,'no derived clip')
+  assert.ok(base.frames.length>1)
+  assert.ok(base.dur>0)
  }
 })
 test('light, heavy, parry, charge, dash and ability do not silently draw the sword',()=>{

@@ -2,30 +2,22 @@ import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_
 import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVelocity,airDragCoefficient} from '../physics/motion-laws'
 import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
 import {rewardsConfirmedHit} from '../combat/hit-resolution'
-import {groundedDashAct} from '../anim/grounded-dash'
-import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,FIST_DUAL_CHARGE_CLIP,POWER_DASH_CLIP,POWER_DASH_SLASH_CHARGE,powerDashAct,powerDashRecovery,powerDashLift} from '../anim/power-dash'
+import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,FIST_DUAL_CHARGE_CLIP,POWER_DASH_CLIP,POWER_DASH_SLASH_CHARGE,powerDashLift} from '../anim/power-dash'
 /** STICKMAN RISING — the Player: state machine, dash system, combo machine,
  * parry/riposte, charged attacks, elemental abilities, execution finishers.
  */
 
 import {drawArticulatedHand} from '../anim/humanoid'
 import {drawDetail,DRAW_CLEAR,DRAW_GRIP} from '../anim/draw-detail'
-import {equipmentClip} from '../anim/equipment-motion'
-import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP} from '../combat/unarmed'
+import {unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP} from '../combat/unarmed'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
-import { SprintExposure,SPRINT_EXPOSURE_CHANNELS } from '../anim/sprint-exposure'
 import { Animator } from '../anim/animator'
 import { handGestures } from '../anim/hand-gestures'
-import { ContextMotion,DEFAULT_CONTEXT,type MotionContext } from '../anim/context-motion'
-import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
-import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
-import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
-import { AnatomicalMotion } from '../anim/motion-constraints'
+import { FighterGeom, drawFighter3D, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
 import { applyJointLimits } from '../anim/limits'
-import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
 import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -42,34 +34,6 @@ import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
 import { Trail } from '../fx/fx'
 import { WorldRef } from '../core/types'
 import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
-
-/** The reference finish: upright chest, extended trailing leg and a bent
- * forward support leg. Keep attack arms authored by the attack itself. */
-function dashFinishPose(p:Pose,weight:number,mirrored:boolean,arms:boolean,armWeight=weight,armed=false):void {
-  const rear=mirrored?CH.hipR:CH.hipL,lead=mirrored?CH.hipL:CH.hipR
-  const rearKnee=mirrored?CH.kneeR:CH.kneeL,leadKnee=mirrored?CH.kneeL:CH.kneeR
-  p[rear]+=(-.65-p[rear])*weight;p[lead]+=(.88-p[lead])*weight
-  p[rearKnee]+=(-.35-p[rearKnee])*weight;p[leadKnee]+=(-1.28-p[leadKnee])*weight
-  if(arms){
-    const bladeArm=p[CH.shR]+p[CH.elR]
-    p[CH.shL]+=(.65-p[CH.shL])*armWeight;p[CH.elL]+=(-1.05-p[CH.elL])*armWeight
-    p[CH.shR]+=(.35-p[CH.shR])*armWeight;p[CH.elR]+=(-.85-p[CH.elR])*armWeight
-    if(armed)p[CH.wrR]+=bladeArm-p[CH.shR]-p[CH.elR]
-  }
-}
-
-/** Keep dash arms bent and near the chest, with an independent front hand.
- * Targets are shoulder-relative and use the rig's true upper/forearm lengths. */
-function dashGuardPose(p:Pose,weight:number,progress:number,power:boolean,armed:boolean):void {
-  const arc=Math.sin(Math.PI*clamp01(progress))
-  const left=handPose('left',power?17+2*arc:14+2*arc,power?13:19)
-  const right=handPose('right',power?10:6,power?17:23)
-  p[CH.shL]+=(left.shL!-p[CH.shL])*weight;p[CH.elL]+=(left.elL!-p[CH.elL])*weight
-  const old=p[CH.shR]+p[CH.elR]
-  p[CH.shR]+=(right.shR!-p[CH.shR])*weight;p[CH.elR]+=(right.elR!-p[CH.elR])*weight
-  // The drawn weapon keeps the same orientation as the authored carry.
-  if(armed)p[CH.wrR]+=old-p[CH.shR]-p[CH.elR]
-}
 
 /** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
 function circleHitsSweptQuad(
@@ -123,6 +87,16 @@ const SCALE = 1.32
  * foot-ground lock (updateFootLock): idle bent knees, lunges and landing
  * squashes all sit exactly ON the ground line. */
 const HIP_H = (25 + 24) * SCALE
+
+/** Contact data the authored weapon path feeds the *hitbox* — no limb is
+ * re-solved from it. The swing trail, hitbox and blade render all read the
+ * same projected segment (updateBladeWorld), so what the eye sees IS what
+ * hits. Kept as an explicit type so the read path is documented. */
+interface WeaponContact {
+  bladeAngle: number
+  bladeYaw: number
+  bladeLen: number
+}
 
 /**
  * Enemy body spheres: [centerY offset above ground, radius] in enemy-local
@@ -249,20 +223,16 @@ export class Player {
   sword: SwordDef = SWORDS.katana
 
   state: PlayerState = 'move'
-  private animator = new Animator(true)
-  private contextMotion = new ContextMotion()
-  sprintExposure=new SprintExposure()
-  private motionContext:MotionContext = {...DEFAULT_CONTEXT}
-  private contextClip = ''
-  private contextEntrySpeed = 0
+  private animator = new Animator()
+  /** locomotion stride phase [0..1) — the ONE clock that drives walk/run/
+   * sprint clip time. Derived from travel ÷ authored stride, so the strand
+   * rate on screen matches the ground speed (no IK re-plant needed). */
   private stopEntrySpeed = 0
   /** Last contact load, captured before the ground removes normal velocity. */
   readonly physicsMetrics={mass:PLAYER_MASS,momentumX:0,momentumY:0,energy:0,forceX:0,forceY:0,supportLoad:0}
   landingLoad:LandingLoad=landingLoad(0)
   private landingImpact = 0
   private landingRecoveryT = 0
-  /** Deterministic condition readout for the animation inspector. */
-  animationVariation = 'rest-open'
 
   /* ---------------------------------------------------------------- */
   /* CONTEXT-AWARE LOCOMOTION (spec §4–§7)                              */
@@ -294,8 +264,6 @@ export class Player {
   /** POST-ATTACK MOMENTUM: the body preserves the last swing's rotational
    * momentum into locomotion (follow-through + recovery), decaying */
   private emptyTrail:Trail={active:false,pts:new Float32Array(4),head:0,count:0,N:1,age:0,life:0,color:'#000',color2:'#000',width:0,emitting:false}
-  private postAttackT = 0
-  private postArmVel = 0
   /** smoothed acceleration → anticipatory lean (previous-frame awareness) */
   private accelSm = 0
   private prevVx = 0
@@ -351,8 +319,6 @@ export class Player {
   dashBody:DashBody|null=null
   private dashMotionActive=false
   private dashBoostFxFired=false
-  private dashSink=0
-  private dashSkim=0
   private dashLift=0
   private dashWakeTimer=0
   private dashWakeCount=0
@@ -401,26 +367,16 @@ export class Player {
    * sheathed Iai / Battōjutsu mode. */
   swordDrawn = false
   /** the active one-shot sheath/draw ritual (runs inside state 'move') */
-  private carryRelaxW=0
   private sheathAct: { t: number; dur: number; mode: 'sheathe' | 'draw' } | null = null
   /** seconds of standing peace (no threat, no combat) — feeds auto-sheathe */
   private peaceT = 0
   /** damped weight of the sheathed pommel-rest arm layer */
   private sheathW = 0
 
-  /* ---- PAVE: procedural animation variation — the bounded secondary-
-   * motion layer (moving holds, breath, hurt posture, sword body-language,
-   * combo escalation flair). Additive pass that runs AFTER every authored /
-   * procedural writer and the grip IK, BEFORE the anatomical limits + FK
-   * solve (documented solve order). Per-entity seeded → no two plays of a
-   * clip render identically. */
-  private pave = new PaveState()
-  /** seconds since the last damage taken (flinch carryover window 0–1s) */
+  /** seconds since the last damage taken */
   private sinceHitT = 99
-  /** seconds airborne (aerial pose evolution: tuck → extend → spread) */
+  /** seconds airborne */
   private airT = 0
-  /** airborne silhouette variant for PAVE ('leap' = momentum long-jump) */
-  private jumpStyle: JumpStyle = 'standard'
 
   /* ---- IDLE FLOURISHES & SCARF SIMULATION ---- */
   private standstillT = 0
@@ -444,39 +400,10 @@ export class Player {
   private hurtT = 0
   private deadT = 0
 
-  /* ---- WEIGHT: hip height derives from the planted foot (foot-ground
-   * lock) — no floating, no digging, real weight transfer for every pose. */
-  private motion = new AnatomicalMotion()
+  /* ---- WEIGHT: the hip rides at the leg-length height the AUTHORED pose
+   * implies. No IK re-plant, no lock spring — the clip's own knee flexion
+   * is the body's height. */
   private footLock = HIP_H
-
-  /* ---- GROUND-CONTACT GAIT (legik): a real gait planner + 2-bone leg IK
-   * owns the legs during grounded locomotion — stance feet world-LOCKED
-   * exactly on the ground line, swing feet on clearance arcs. This is the
-   * fix for the floating far/offside leg in every animation. */
-  private gait = new GaitPlanner()
-  /** gait authority weight (0 = FK clip legs, 1 = IK planner legs) */
-  private gaitW = 0
-  private ikOut: LegIKOut = { kx: 0, ky: 0, ax: 0, ay: 0, clamped: false }
-  private toeScratch = { x: 0, y: 0 }
-  /** sole clearance of the visual foot wedge (local units) */
-  private static readonly SOLE = 3.4
-  /** sole clearance in world px */
-  private static readonly SOLE_W = 3.4 * SCALE
-
-  /* ---- BLADE DYNAMICS: rotational inertia of the katana. The tip lags
-   * the arm's angular acceleration and whips through on release — a
-   * physically-motivated furi-otoshi accent layered under the keyframes. */
-  private bladeLag = 0
-  private bladeLagVel = 0
-  private prevArmSum = 0
-  /** signed arm angular velocity (rad/s) — drives lag, chain reaction, overshoot */
-  private armVel = 0
-
-  /* ---- KINETIC CHAIN (anti "spinning top"): hips → torso → shoulders
-   * counter-lag spring. When the arm whips, the body visibly loads against
-   * it (30% hips · 50% torso · 20% shoulders) — Newton's third law, read. */
-  private chainLag = 0
-  private chainLagVel = 0
 
   /* ---- 2.8D: camera-side depth of the blade plane (−1..1) + hyper-scale
    * (blade grows during active frames, anime weapon read) + smear tracking */
@@ -488,29 +415,7 @@ export class Player {
   private smearA0 = 0
   private smearA1 = 0
 
-  /* ---- 3D GAIT / SWORD-CARRY state (rig3d consumers) ---- */
-  /** damped gait twist amplitude (pelvis swivel + shoulder counter) */
-  private gaitYawAmp = 0
-  /** damped weapon carry yaw per locomotion (sprint tuck etc.) */
-  private carryYaw = 0
-  /** damped sword-arm depth carry */
-  private carryArmZ = 0
-  /** damped sword-FOREARM depth carry (elbow-pivot yaw — the steel folds
-   * deeper than the shoulder can yaw) */
-  private carryForeZ = 0
-
-  /* ---- TWO-HANDED GRIP: the off hand reaches for the tsuka butt via 2-bone
-   * IK (real kenjutsu: chūdan/jōdan/kiri are two-handed stances). */
-  private twoHandW = 0
-
-  /* ---- SWORD-LED ARM CONTROL (anim/armarc.ts): during each strike the
-   * blade follows a geometrically-locked arc and a 2-bone IK chain solves
-   * the sword arm to carry it — the enemy sits on the monouchi BY
-   * construction, so the visual cut and the hitbox are one object. */
-  private swordArc = new SwordArcSolver()
-
-  /* ---- arm life: idle breathing clock + anime impact-frame timer ---- */
-  private animClock = 0
+  /* ---- anime impact-frame timer ---- */
   private impactFlashT = 0
 
   /* ---- HEAVY CHAIN: h1 → h2 → h3 (was: single animation forever). */
@@ -533,8 +438,7 @@ export class Player {
 
   reset(x: number): void {
     this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeX=1;this.dashPower=false;this.dashPendingCharge=false;this.dashPendingJump=false;this.dashRecoverT=0;this.dashFinishT=0
-    this.dashBody=null;this.dashDisplacement=null;this.dashMotionActive=false;this.dashBoostFxFired=false;this.dashSink=0;this.dashSkim=0;this.dashLift=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
-    this.motion.reset()
+    this.dashBody=null;this.dashDisplacement=null;this.dashMotionActive=false;this.dashBoostFxFired=false;this.dashLift=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
     this.x = x
     this.y = 0
     this.vx = 0
@@ -543,10 +447,8 @@ export class Player {
     this.physicsMetrics.forceX=0;this.physicsMetrics.forceY=0;this.physicsMetrics.supportLoad=this.physicsMetrics.mass*SUPPORT_GRAVITY
     this.face = 1
     this.grounded = true
-    this.gait.reseed(x,1);this.gaitW=0;this.footLock=HIP_H
-    this.contextMotion.reset()
-    this.sprintExposure.reset()
-    this.contextClip='';this.landingRecoveryT=0;this.landingImpact=0;this.landingLoad=landingLoad(0);this.landSpring=0;this.landSpringDecay=5;this.parryBraceT=0;this.stopEntrySpeed=0
+    this.footLock=HIP_H
+    this.landingRecoveryT=0;this.landingImpact=0;this.landingLoad=landingLoad(0);this.landSpring=0;this.landSpringDecay=5;this.parryBraceT=0;this.stopEntrySpeed=0
     this.hp = this.maxHp
     this.energy = this.maxEnergy
     this.stamina = this.maxStamina;this.staminaRegenDelay=0
@@ -563,11 +465,6 @@ export class Player {
     this.airIndex = 0
     this.bladeZ = 0
     this.swingScale = 1
-    this.bladeLag = 0
-    this.bladeLagVel = 0
-    this.chainLag = 0
-    this.chainLagVel = 0
-    this.prevArmSum = 0
     this.hasPrevAng = false
     // context-aware locomotion state
     this.loco = 'idle'
@@ -581,15 +478,9 @@ export class Player {
     this.surrounded = false
     this.braking = false
     this.turnT = 0
-    this.postAttackT = 0
-    this.postArmVel = 0
     this.accelSm = 0
     this.prevVx = 0
     this.headTrackW = 0
-    this.gaitYawAmp = 0
-    this.carryYaw = 0
-    this.carryArmZ = 0
-    this.carryForeZ = 0
     this.dashVariant = 'launch'
     this.dashCfg = DASH_VARIANTS.launch
     this.dashHandoff = false
@@ -601,13 +492,10 @@ export class Player {
     this.retreatLockT = 0
     this.swordDrawn = false
     this.sheathAct = null
-    this.carryRelaxW=0
     this.peaceT = 0
     this.sheathW = 0
-    this.pave = new PaveState()
     this.sinceHitT = 99
     this.airT = 0
-    this.jumpStyle = 'standard'
     this.standstillT = 0
     this.isFlourishActive = false
     this.playAnimation(IDLE_CLIP, { blend: 0.05 })
@@ -738,7 +626,6 @@ export class Player {
     this.locoT += dt
     this.sprintDriveT=Math.max(0,this.sprintDriveT-dt)
     if (this.turnT > 0) this.turnT = Math.max(0, this.turnT - dt * 6) // ~0.17s pivot
-    if (this.postAttackT > 0) this.postAttackT = Math.max(0, this.postAttackT - dt)
     // the sword-home ritual only lives in the move state — any external
     // transition (hurt / parry / scripted) abandons it
     if (this.state !== 'move' && this.sheathAct) this.sheathAct = null
@@ -816,10 +703,6 @@ export class Player {
       this.grounded = false
     }
     this.airT = this.grounded ? 0 : this.airT + dt
-    // PAVE airborne spin accumulator — inert unless a jump style sets a
-    // target; the post-landing unwind to the nearest full turn preserves
-    // rendered pose continuity (pave.ts owns the math).
-    updatePaveSpin(this.pave, dt, !this.grounded)
     // arena bounds
     if (this.x < w.arenaMinX + 20) {
       this.x = w.arenaMinX + 20
@@ -851,204 +734,118 @@ export class Player {
     // ability script
     if (this.ability) this.updateAbility(dt, w)
 
-    // animation + solve
-    this.updateGait(dt, w)
-    const gaitClip = this.animator.getClip()?.name
-    const syncGait = this.state === 'move' && this.grounded && !this.braking
-      && !this.sheathAct && ['walk','run','sprint','sprintDrive','combatStep','backpedal'].includes(gaitClip ?? '')
-    this.animator.update(dt, syncGait ? this.gait.phase : undefined,
-      this.dashDisplacement&&this.dashBody&&this.animator.getClip()?.name===(this.dashPower?POWER_DASH_CLIP:this.dashCfg.clip).name?(this.dashPower?this.dashBody.progress*POWER_DASH_CLIP.dur:this.dashBody.poseProgress*this.dashCfg.clip.dur):undefined)
-    // Base layer: the clip FULLY owns the pose each frame (write, never
-    // accumulate). applyProcedural() is a bounded additive layer on top.
-    // Without this copy, procedural += deltas integrate unbounded → spine
-    // spin + root sink. (Same contract as Spine's AnimationState.apply /
-    // Godot AnimationTree → Skeleton2D.)
+    /* ================================================================
+     * ANIMATION PIPELINE — SINGLE OWNERSHIP
+     * ================================================================
+     * 1. ANIMATOR  the selected clip is the pose. One short crossfade on a
+     *              clip change, then the authored channels ARE the body.
+     *              No smoothing, no exposure hold, no equipment rewrite.
+     * 2. ACTING    the only procedural bone writers left: gait phase timing
+     *              and the two-handed grip IK. Both are *contact*, not
+     *              performance — the grip holds the tsuka the authored arm
+     *              put there; it never picks a swing path.
+     * 3. SOLVE     local 3D skeleton → projection. Nothing rewrites the
+     *              rendered skeleton afterwards.
+     *
+     * Anything an author writes in a clip survives to the screen. See
+     * docs/ANIMATION.md for the removed layers and why.
+     * ================================================================ */
+    // A looping gait clip advances on its own authored clock; only a
+    // force-driven (non-looping) action borrows the motor's sample time.
+    // There is no external stride-phase writer any more — the clip's own
+    // duration IS the stride, so the feet cannot slide against the floor
+    // at a cadence nothing on screen agrees with.
+    const dashBody=this.dashDisplacement?this.dashBody:null
+    const dashOwns=!!dashBody
+      &&this.animator.getClip()?.name===(this.dashPower?POWER_DASH_CLIP:this.dashCfg.clip).name
+    this.animator.update(dt, undefined,
+      dashOwns&&dashBody?(this.dashPower?dashBody.progress*POWER_DASH_CLIP.dur:dashBody.poseProgress*this.dashCfg.clip.dur):undefined)
+    // the clip owns the body. Write, never accumulate.
     this.pose.set(this.animator.pose)
-    this.applyProcedural(dt)
-    if(this.state==='dash'&&this.dashBody){
-      const b=this.dashBody
-      const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
-      this.pose[CH.rootRot]+=forcePitch
-      this.pose[CH.head]-=forcePitch
-      if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
-      this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
-    }
-    const motionClip=this.animator.getClip()
-    if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
-    const motionPhase=motionClip&&motionClip.dur>0
-      ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
-    Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
-      speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
-      threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
-      grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
-      landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
-      attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
-    this.contextMotion.apply(this.pose,this.motionContext,dt)
-    this.animationVariation=this.contextMotion.variation
-    this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
-    // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
-    // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
-    this.animator.applyPreparedTransition(this.pose,dt)
-    const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
-      &&/^sprint/.test(motionClip?.name??'')
-    if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
-    this.sprintExposure.apply(this.pose,
-      this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      motionPhase,dt,sprintActing)
-    if(this.sprintExposure.active){
-      this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
-      this.motion.adoptDisplayArms(this.pose)
-    }
-    // Final low-drive acting lives after entry smoothing, but its own
-    // quintic envelope starts/ends at zero with zero velocity/acceleration.
-    // Never tip a backward guard or an aerial dodge onto the floor.
-    this.dashSink=0;this.dashSkim=0;this.dashLift=0
-    if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
-      const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
-      const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
-      const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
-      // Normal dash remains upright throughout; its own footwork, not a
-      // scaled copy of the power lean, supplies the sense of speed.
-      p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]+=(.02-p[CH.spine])*a.weight
-      p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
-      const brace=a.compression*a.weight,reach=a.rearReach*a.weight
-      const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
-      const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
-      p[CH.rootX]+=1.5*brace
-      p[rear]-=.16*reach;p[lead]+=.08*reach
-      p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
-      if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
-      dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
-      this.dashSink=a.drop*a.weight
-    }
-    // A charged release uses its own authored performance; dash strikes keep
-    // their attack arms, while the grounded body follows the same power arc.
-    if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
-      const a=powerDashAct(this.dashBody.progress),p=this.pose
-      const pitch=.35+1.0*a.drive-.31*a.catch
-      p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
-      // The moving guard remains separate from the dash-attack arm layer.
-      if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
-      dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
-      this.dashSink=a.drop
-      this.dashLift=powerDashLift(this.dashBody.age)
-      // Both soles follow the low ballistic body arc before returning to the
-      // close-to-ground skim and then the planted braking catch.
-      this.dashSkim=7*a.drive+this.dashLift
-    }
-    // Charge/stabilization are planted body-language beats, not flight.
-    if(this.grounded&&this.state==='dashCharge'){
-      // The planted COIL clip owns the stance (plant → sink → lock — its
-      // keyframes are the choreography). This layer adds only what a clip
-      // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
-      // and a micro tremble in the sword arm itself, the steel visibly
-      // straining under stored tension. IK keeps the soles grounded.
-      // THE DUAL CHAMBER strains under the fuller load: amplitude grows
-      // with the blade segment (the body carries steel, not static weight).
-      const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
-      const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
-      const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
-      p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
-      p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
-      this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
-    } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
-      const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
-      const q=powerDashRecovery(progress),p=this.pose
-      // A bounded, damped joint response absorbs impact before standing.
-      const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
-      p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
-      p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
-      // Upper body settles just after the legs, rather than every joint
-      // snapping to idle on the same frame. Sword attacks still own their arms.
-      const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
-      dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
-      p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
-      p[CH.rootY]+=1.5*Math.max(0,wobble)
-      this.dashSink=q
-    }
-    this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
-    // procedural layers (bounded, frame-local — never accumulate):
-    // SWORD-LED ARC first: it rewrites the arm channels, so the blade
-    // dynamics spring below sees the ARC's angular velocity — the whip
-    // lags/overshoots the real swing, not the raw keyframes.
-    this.swordArc.update(dt, {
-      pose: this.pose,
-      shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
-      shoulderZ: this.geom.shoulderR.z,
-      handX: this.geom.handR.x, handY: this.geom.handR.y,
-      handZ: this.geom.handR.z,
-      def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
-      animT: this.action ? this.action.animT : 0,
-      enemies: w.enemies,
-      face: this.face,
-      x: this.x,
-      hipY: this.hipY,
-      reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
-    })
-    this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
-    this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
-    // ---- PAVE (bounded organic variation): the additive secondary-motion
-    // pass. Positioned deliberately AFTER every authored/procedural writer
-    // and the grip IK but BEFORE the anatomical gate + FK solve, so:
-    //   (a) the off-hand grip + foot IK re-solve against the varied pose
-    //       (a gripping hand never gets uncontrolled noise — brief §6),
-    //   (b) applyJointLimits bounds every additive offset,
-    //   (c) the arm channels are gated to near-zero inside strike/trail
-    //       windows so hitboxes and trails stay crisp.
-    {
-      const a = this.action
-      const striking = this.state === 'attack' && a != null
-        && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
-      // Precision actions gate the arm channels: strike/trail windows and
-      // the dash family are authored contact silhouettes (hand separation,
-      // blade arcs) — noise there would blur readable beats. Rituals,
-      // parries and the scripted cinematic keep a partial gate so holds
-      // stay alive without smearing choreography.
-      const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
-        : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
-        : 1
-      const hpFrac = this.hp / this.maxHp
-      const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
-      applyPave(this.pose, {
-        time: this.now,
-        dt,
-        hp: hpFrac,
-        comboHits: w.combo?.hits ?? 0,
-        speedRatio,
-        airborne: !this.grounded,
-        airborneT: this.airT,
-        chargeRatio: this.chargeRatio,
-        sinceHitTaken: this.sinceHitT,
-        sword: this.sword.id,
-        armGate,
-        // contextual breath: calm 14 bpm → combat threat + sprint exertion
-        // + near-death labor climb toward ~40 (spec §4.3)
-        breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
-        jumpStyle: this.jumpStyle,
-      }, this.pave)
-    }
-    // ANATOMICAL LIMITS: the last writer before the solve. Clips, additive
-    // layers, crossfades and every IK all pass through the same human ROM
-    // gate — elbows never cross their flexion side, knees never fold
-    // forward, shoulders stay in the glenohumeral envelope.
-    applyJointLimits(this.pose,(this.state==='dash'||(this.state==='attack'&&this.dashPower&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.dashDx*this.face>.5?1.58:1.1)
-    // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
+    this.updateDashLift(dt)
+    this.applyTwoHandGrip()         // off-hand CONTACT onto the authored hilt
+    // CONTACT CONSTRAINTS (pre-projection, channel space):
+    //  · the kissaki never passes through the ground the body is standing on
+    this.applyBladeGroundConstraint()
+    // ANATOMICAL LIMITS: one gate, immediately before the solve. Every
+    // writer above is already inside the human ROM; this is the safety net.
+    applyJointLimits(this.pose)
+    // LOCAL 3D SKELETON → CAMERA PROJECTION. The last pose writer in the
+    // frame; the rendered joints are never modified after this point.
     solveFighter3D(
       this.pose, PLAYER_SPEC, this.geom,
       PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
       this.swingScale,
     )
-    this.applyDrawContact()
-    this.updateFootLock(dt)         // weight: hips sit on the planted foot
-    this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
-    this.animator.captureDisplayPose(this.pose,dt)
     this.updateBladeWorld()
     this.updateSwingScale(dt)
     this.updateScarf(dt, w.time)
+  }
+
+  /** BLADE-GROUND CONTACT — a positional constraint in LOCAL CHANNEL SPACE.
+   *
+   * The floor is solid: a carried or recovering blade may tap the ground and
+   * slide along it, never pierce it. This is *contact*, not performance — it
+   * only ever rotates the authored wrist channel toward the nearer horizon
+   * (preserving the carry direction) and only by the amount needed. It runs
+   * BEFORE projection, so the rendered skeleton, the hitbox and the trail all
+   * still read one consistent blade.
+   *
+   * Attack swings are exempt: their authored tips travel above the bodies
+   * they cut, and a constraint there would fight the contact pose.
+   */
+  private applyBladeGroundConstraint(): void {
+    if (!this.swordDrawn || this.state === 'attack' || this.sheathAct) return
+    const p = this.pose
+    const sum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
+    const len = PLAYER_SPEC.blade * this.sword.stats.range * 1.06 * this.swingScale
+    const hx = p[CH.rootX]
+    const hy = p[CH.rootY]
+    // hand position is cheap to solve in the sagittal plane (the depth
+    // channels only shorten the projection, never the world height)
+    const sx = hx + Math.sin(p[CH.rootRot]) * (PLAYER_SPEC.torso - PLAYER_SPEC.shoulderDrop)
+    const sy = hy - Math.cos(p[CH.rootRot]) * (PLAYER_SPEC.torso - PLAYER_SPEC.shoulderDrop)
+    const handX = sx + Math.sin(p[CH.shR]) * PLAYER_SPEC.upperArm
+      + Math.sin(p[CH.shR] + p[CH.elR]) * PLAYER_SPEC.foreArm
+    const handY = sy + Math.cos(p[CH.shR]) * PLAYER_SPEC.upperArm
+      + Math.cos(p[CH.shR] + p[CH.elR]) * PLAYER_SPEC.foreArm
+    void handX
+    // blade angle from +X in the sagittal plane
+    const a = Math.PI / 2 - sum
+    const sinA = Math.sin(a)
+    if (sinA <= 0.05) return // pointing up / level: nothing to hit
+    // the WORLD ground line in local units (y = 0 is the floor the body
+    // stands on). Never below the stance: a crouch keeps its own contact.
+    const floorLocal = Math.max(
+      (0 - this.hipY) / SCALE,
+      Math.max(this.geom.ankleL.y, this.geom.ankleR.y, this.geom.toeL.y, this.geom.toeR.y),
+    ) - 1.0
+    const tipY = handY + sinA * len
+    if (tipY <= floorLocal) return
+    // solve the tip onto the floor, rotate the wrist by exactly the deficit
+    const sinT = clamp01((floorLocal - handY) / len)
+    const aT = Math.asin(sinT)
+    const cosA = Math.cos(a)
+    if (cosA < 0) {
+      // back-down carry → rotate toward straight-back (preserve direction)
+      const aNorm = Math.PI - Math.asin(clamp01(sinA))
+      p[CH.wrR] -= Math.PI - aT - aNorm
+    } else {
+      // forward-down carry → rotate toward level-forward
+      p[CH.wrR] += Math.asin(clamp01(sinA)) - aT
+    }
+  }
+
+  /** POWER DASH HOP — the one piece of dash body language that is *body
+   * translation*, not pose authoring: a bounded ballistic lift of the rig
+   * while the motor drives. pose.rootY is never touched, so the clip's own
+   * crouch/extension reads exactly as authored. */
+  private updateDashLift(dt: number): void {
+    this.dashLift = 0
+    if (this.dashPower && this.dashMotionActive && this.dashBody && this.grounded) {
+      this.dashLift = powerDashLift(this.dashBody.age)
+    }
+    void dt
   }
 
   private drawSocket(){
@@ -1056,34 +853,6 @@ export class Player {
     const d=drawDetail(seconds),ang=.24+(this.pose[CH.rootRot]+this.pose[CH.spine]*.35)*.6+.30*d.extraction*(1-d.turn)
     return{...d,ang,x:this.geom.hip.x+3-Math.cos(ang)*d.retract,
       y:this.geom.hip.y+1+Math.sin(ang)*d.retract-d.lift}
-  }
-
-  /** Final projected hand contact, after smoothing. Small bounded Jacobian
-   * solves preserve arm lengths; no hand teleport or stretched bone. */
-  private applyDrawContact():void{
-    if(this.sheathAct?.mode!=='draw')return
-    const socket=this.drawSocket(),p=this.pose
-    const length=PLAYER_SPEC.blade*this.sword.stats.range*1.06
-    const resolve=()=>solveFighter3D(p,PLAYER_SPEC,this.geom,length,this.swingScale)
-    for(const side of ['R','L'] as const){
-      const sh=side==='R'?CH.shR:CH.shL,el=side==='R'?CH.elR:CH.elL
-      const pull=side==='R'?length*socket.extraction:0
-      const tx=socket.x+Math.cos(socket.ang)*pull,ty=socket.y-Math.sin(socket.ang)*pull
-      const weight=socket.contact
-      const hand=()=>side==='R'?this.geom.handR:this.geom.handL
-      const initialSh=p[sh],initialEl=p[el]
-      for(let i=0;i<6;i++){
-        resolve();const x=hand().x,y=hand().y,ex=tx-x,ey=ty-y
-        if(Math.hypot(ex,ey)<.15)break
-        p[sh]+=.001;resolve();const ax=(hand().x-x)/.001,ay=(hand().y-y)/.001;p[sh]-=.001
-        p[el]+=.001;resolve();const bx=(hand().x-x)/.001,by=(hand().y-y)/.001;p[el]-=.001
-        const det=ax*by-ay*bx;if(Math.abs(det)<.001)break
-        p[sh]+=clamp((ex*by-ey*bx)/det,-.24,.24)
-        p[el]+=clamp((ax*ey-ay*ex)/det,-.24,.24);applyJointLimits(p)
-      }
-      p[sh]=initialSh+(p[sh]-initialSh)*weight;p[el]=initialEl+(p[el]-initialEl)*weight
-    }
-    applyJointLimits(p);resolve()
   }
 
   private onLand(w: WorldRef): void {
@@ -1094,9 +863,6 @@ export class Player {
     if(this.state==='move')this.landingRecoveryT=Math.abs(this.vx)>250?.08:this.landingImpact>700?.20:.12
     w.audio.play('land', { volume: .25+.4*this.landingLoad.pressure })
     w.fx.dust(this.x, 0, Math.round(4+6*this.landingLoad.pressure))
-    // re-seed the gait anchors under the landing position — the squash
-    // parks both feet flat through the absorb, then stepping resumes
-    this.gait.reseed(this.x, this.face)
     // slam impact while attacking
     const a = this.action
     if (a && a.def.slamImpact && !a.impactDone) {
@@ -1317,11 +1083,11 @@ export class Player {
         if (this.animator.isDone() || (ax !== 0 && speed < 90)) this.braking = false
       } else {
         this.setLoco(this.pickLoco(speed, ax))
-        // GAIT-CADENCE SYNC: clip playback speed follows the legik planner's
-        // step cadence (velocity ÷ stride) so the authored torso bob + arm
-        // pump land on the SAME beat as the IK-planted feet — the stride
-        // length itself derives from velocity, so planted feet never skate.
-        const cad = Math.max(0.001, this.gait.cadence)
+        // STRIDE CLOCK (single): playback speed = travel ÷ authored stride.
+        // The authored WHOLE cycle keeps one tempo, so torso bob, arm pump
+        // and foot contacts stay in the same relationship the animator drew.
+        // No second system re-plants or re-times the feet.
+        const cad = this.strideCadence()
         const cadSpeed = (dur: number) => cad * dur
         switch (this.loco) {
           case 'walk':
@@ -1590,7 +1356,6 @@ export class Player {
       // a run converts into the LEAP (momentum long-jump + a touch of
       // carry-over speed), a standstill gets the vertical hands-only jump.
       const speed = Math.abs(this.vx)
-      this.jumpStyle = wasGrounded && speed > 300 ? 'leap' : 'standard'
       if (wasGrounded && speed > 300) {
         this.vx = Math.sign(this.vx) * Math.max(speed, Math.min(speed * 1.12, 560))
         this.playAnimation(JUMP_LEAP_CLIP, { blend: 0.05 })
@@ -1832,7 +1597,12 @@ export class Player {
       // Input reset/blur is cancellation, not an accidental power shot.
       if(!input.released('dash')){this.state='move';this.dropDualCharge();return}
       this.dropDualCharge()
-      this.startDash(w,this.dashChargeX,0,this.dashChargeReady)
+      // READY IS NOT THE SAME AS AFFORDABLE. A coil that filled while the
+      // player was out of stamina slides out as an ordinary grounded dash
+      // and pays the ordinary cost — launching a POWERED dash here would
+      // spend stamina the body does not have.
+      const powered=this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST
+      this.startDash(w,this.dashChargeX,0,powered)
       return
     }
     this.dashChargeElapsedT+=dt
@@ -1946,7 +1716,7 @@ export class Player {
     this.dashHandoff = false
     // Entry preserves incoming momentum. The motor must earn a reversal.
     this.dashBody=new DashBody(cfg,this.vx,this.vy,dx,dy,this.grounded)
-    this.dashFinishT=0;this.dashMotionActive=true;this.dashBoostFxFired=false;this.dashSink=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
+    this.dashFinishT=0;this.dashMotionActive=true;this.dashBoostFxFired=false;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
 
     // ---- clip + presentation per variant (entry blend is momentum-
     // matched: carry blends longer because the run already matches) ----
@@ -2173,18 +1943,23 @@ export class Player {
   }
 
   private playAnimation(clip:Clip,opts:PlayOpts={}):void{
-    this.animator.play(equipmentClip(clip,this.swordDrawn),opts)
+    this.animator.play(clip,opts)
+  }
+
+  /** Authored stride per locomotion cycle (world px per full L/R cycle at
+   * a natural cadence). Playback is travel ÷ stride, clamped into a sane
+   * animation band: contact feet still read as grabbing the floor because
+   * the CLIP's own contact timing sets the stride, not a hidden IK. */
+  private strideCadence():number{
+    const stride=this.loco==='sprint'?196:this.loco==='run'?168:this.loco==='walk'?92:60
+    const speed=Math.abs(this.vx)
+    return clamp(speed/Math.max(1,stride),.12,4.2)
   }
 
   startAttack(def: AttackDef, w: WorldRef, fromParry = false): void {
     if (!def) return
     this.peaceT = 0
     this.sheathAct = null
-    // per-combo variation seed: no two plays of the same chain render
-    // identically (PAVE spec var #27)
-    this.pave.reseed(w.time, this.x)
-    // Preserve current motion through the shared inertial transition.
-    // Empty-hand arm residuals clear before the damage window begins.
     const wasAttack = this.state === 'attack'
     // requirement checks
     if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
@@ -2242,12 +2017,11 @@ export class Player {
       fromParry,
     }
     if (fromParry) this.riposteT = 0
-    this.swordArc.begin() // sword-led arc: reset the engage capture
     this.state = 'attack'
     this.charging = false
     // Authored startup/contact/recovery clocks remain independent of
     // visual entry residuals; do not smear the fist past its contact beat.
-    this.playAnimation(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: def.strikeHand?1:this.atkSpeed,armBlendLimit:def.strikeHand?def.hit.start*.75:undefined })
+    this.playAnimation(def.clip, { blend: wasAttack ? 0.09 : 0.06, speed: def.strikeHand?1:this.atkSpeed })
     // slight ground friction during attacks
   }
 
@@ -2370,13 +2144,9 @@ export class Player {
       }
     }
 
-    // OVERSHOOT (follow-through law): as the active window closes, inject a
-    // 2-frame rotational impulse — the tip pushes PAST the stop point and
-    // the wrist spring elastic-snaps it back. Stopping dead reads weightless.
-    if (!def.strikeHand && !a.overshootDone && animT > h.end && this.armVel !== 0) {
-      a.overshootDone = true
-      this.bladeLagVel += Math.sign(this.armVel) * 2.4
-    }
+    // OVERSHOOT is AUTHORED: the clip's own recovery keyframes push the tip
+    // past the contact line. The old injected 2-frame wrist impulse lived in
+    // a spring that also rewrote every other frame's wrist.
 
     // trail emission
     if (!def.strikeHand && animT >= def.trail.start && animT <= def.trail.end) {
@@ -2465,12 +2235,11 @@ export class Player {
       }
     }
 
-    // finish — capture the swing's final rotational momentum: the body
-    // carries it into locomotion (post-attack recovery, spec §7)
+    // finish — the clip's recovery keyframes are the follow-through. The
+    // body carries nothing the author didn't draw; momentum shows in the
+    // travel physics, not in a hidden torso overlay.
     if (this.animator.isDone()) {
       w.fx.endTrail(a.trail, 0.18)
-      this.postAttackT = 0.34
-      this.postArmVel = def.strikeHand?0:this.armVel
       this.action = null
       this.state = 'move'
     }
@@ -3046,298 +2815,6 @@ export class Player {
   /* procedural layers: weight, blade physics, two-handed grip            */
   /* ------------------------------------------------------------------ */
 
-  /** updateGait — drive the legik GaitPlanner. Engaged for grounded
-   * locomotion (move state, not braking, not in the sheathe ritual); every
-   * other state (attacks, dashes, air, hurt) parks the planner so the FK
-   * clip legs apply, with only the plant-snap/clamp pass fixing contact. */
-  private updateGait(dt: number, w: WorldRef): void {
-    const ritualSupport=!!this.sheathAct&&Math.abs(this.vx)<35
-    const active = this.state === 'move' && this.grounded && !this.braking && this.dashRecoverT<=0 && this.dashFinishT<=0 && (!this.sheathAct||ritualSupport)
-    const tune = ritualSupport?PLAYER_GAIT.idle:PLAYER_GAIT[this.loco] ?? PLAYER_GAIT.idle
-    const speed = Math.abs(this.vx)
-    // femoral midpoint in world space (geom solved this frame)
-    const hipX = this.x + this.face * SCALE * this.geom.hip.x
-    this.gait.update(hipX, this.vx, this.face, speed, tune, dt, active, Player.SOLE_W, this.grounded)
-    // authority blend: in over ~90ms, out over ~180ms (hands off gently)
-    this.gaitW = damp(this.gaitW, active ? 1 : 0, active ? 18 : (this.state === 'dash'||this.state === 'dashCharge'||this.dashMotionActive||this.dashRecoverT>0||this.dashFinishT>0) ? 60 : this.braking ? 15 : 8, dt)
-    // footfall feedback: a whisper of dust at real heel strikes (run+ only)
-    if (this.gait.footfall && speed > 230) {
-      w.fx.dust(this.gait.footfallX, 0, 2)
-    }
-  }
-
-  /** FOOT-GROUND LOCK — the pelvis-height authority. With the gait active
-   * the hip sits at the AUTHORED nominal height minus whatever the most-
-   * extended planted leg allows (diagonal struts at contact drop the hips
-   * — real weight acceptance); the authored rootY bob now reads exactly
-   * once (the old flight-branch double-counted it away). For non-gait
-   * grounded poses the lowest FK foot still pins the sole exactly; airborne
-   * → nominal hip height (physics owns y).
-   *
-   * THE STANCE-LEG CONTRACT (the collapse fix — "no knee suspension"):
-   * The leg-geometry bound `bound = f.y − vert(dx)` is only meaningful
-   * while the planted foot is INSIDE the leg's reach annulus. A foot that
-   * plants beyond horizontal reach (fast-stop strides: the old planner
-   * predicted landings up to 110px ahead) drives vert → 0 → bound → ankle
-   * height → the pelvis crashed to the floor with both knees locked
-   * straight (hipY −65 → −7). Two guards now hold:
-   *   1. dx is clamped into the reachable envelope before the sqrt — a
-   *      stance foot can never claim a hip below 0.72·HIP_H (a deep but
-   *      ALIVE lunge, never a collapse).
-   *   2. femurT is bounded to [0.74, 1.0]·HIP_H in gait states — the hips
-   *      neither stand on locked knees nor sink into a squat while
-   *      locomoting. (Deep authored crouches — dash/land squats — go
-   *      through the FK pin branch, which is untouched.) */
-  private updateFootLock(dt: number): void {
-    const g = this.geom
-    const rootY = this.pose[CH.rootY]
-    let target: number
-    if (this.gaitW > 0.5 && this.gait.hasPlanted && this.grounded) {
-      // GAIT: femur target height = authored nominal, limited by the
-      // planted leg geometry (the pelvis can't outrun its own stance leg)
-      const l1 = PLAYER_SPEC.thigh * SCALE
-      const l2 = PLAYER_SPEC.shin * SCALE
-      const reach = (l1 + l2) * 0.999
-      // the stance foot's horizontal offset is bounded to the reachable
-      // envelope: beyond it the leg cannot push the hip ANY lower, so the
-      // bound saturates instead of collapsing to ankle height
-      const dxMax = reach * 0.72
-      let bound = -Infinity
-      const feet: { x: number; y: number; fx: number; planted: boolean }[] = [
-        { x: this.gait.footL.x, y: this.gait.footL.y, fx: this.x + this.face * SCALE * g.hipPtL.x, planted: this.gait.footL.planted },
-        { x: this.gait.footR.x, y: this.gait.footR.y, fx: this.x + this.face * SCALE * g.hipPtR.x, planted: this.gait.footR.planted },
-      ]
-      for (const f of feet) {
-        if (!f.planted) continue // A raised swing foot must NEVER set pelvis support height.
-        const dx = clamp(Math.abs(f.x - f.fx), 0, dxMax)
-        const vert = Math.sqrt(reach * reach - dx * dx)
-        bound = Math.max(bound, f.y - vert)
-      }
-      // nominal effective femur height: hips at HIP_H, rootY bob applies once
-      const nominal = -HIP_H + SCALE * rootY
-      let femurT = Math.max(nominal, isFinite(bound) ? bound : nominal)
-      // hip band (y-down: more-negative = taller):
-      //   Math.max  — hips never ride ABOVE straight-leg height (stilt read)
-      //   Math.min  — hips never SINK below 74% leg height while locomoting
-      // (the old "crouch floor" Math.max(femurT, −1.16·HIP_H) never bound
-      // the collapse, which arrived from ABOVE: femurT → −4.4 → hips on
-      // the floor with locked knees. These two clamps are direction-checked
-      // against the y-down sign convention: a stand (−66.9) passes both
-      // untouched; a collapse (−4.4) is floored to −47.9.)
-      femurT = Math.max(femurT, -HIP_H * 1.0)
-      femurT = Math.min(femurT, -HIP_H * (this.loco==='walk'&&!this.sheathAct ? .88 : .74))
-      // footLock ↔ hipY: effective femur = hipY + SCALE·hipPt.y = femurT
-      target = SCALE * g.hipPtR.y - femurT
-    } else if (this.grounded && this.state !== 'dead') {
-      // FK stance pin: lowest ankle/toe owns the hip (captures lunges,
-      // squats, attacks — anything with an extended leg near the floor)
-      const lowContact = Math.max(g.ankleL.y, g.ankleR.y, g.toeL.y, g.toeR.y) + 2.4
-      const support = lowContact * SCALE
-      target = support >= HIP_H * 0.72 && support <= HIP_H * 1.2 ? support : HIP_H
-    } else {
-      // AIR: physics owns height; the authored rootY bob shows through the
-      // geom exactly once (footLock constant — the old +rootY term canceled
-      // it against the geom's own rootY, killing the clip bob outright)
-      target = HIP_H
-    }
-    if(this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0)))target=Math.max(HIP_H*.67,target-13*this.dashSink)
-    // critically-damped tracking (k=24): follows a 0.3s stride with ~2px
-    // residual, and because the target itself is now bounded, the spring
-    // can never be flung by a degenerate bound again
-    this.footLock = damp(this.footLock, target, 24, dt)
-    if(this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))){
-      const hip=g.ankleL.y>g.ankleR.y?g.hipPtL:g.hipPtR
-      // The support leg must be able to reach the floor during low drive.
-      this.footLock=Math.min(this.footLock,SCALE*(hip.y+(PLAYER_SPEC.thigh+PLAYER_SPEC.shin)*.96)+Player.SOLE_W)
-    }
-  }
-
-  /** GROUND IK — the leg writer. Two passes:
-   *  1. GAIT pass (weight gaitW): re-solve both legs from the femoral heads
-   *     to the planner's ankle targets — stance feet land EXACTLY on the
-   *     ground line at their world-locked anchors, swing feet ride the arc.
-   *     Knee always bends forward (anatomy). Toes from the gait pitch
-   *     (heel-strike → flat → toe-off).
-   *  2. PLANT pass (non-gait grounded states — attacks, dashes, brake,
-   *     land): any leg that is EXTENDED and near the floor gets snapped by
-   *     IK to exact sole contact at its authored x (stance feet never
-   *     hover); any toe below the floor gets clamped up (the floor is
-   *     solid). Airborne legs stay pure FK. */
-  private applyGroundIK(dt: number): void {
-    void dt
-    const g = this.geom
-    const l1 = PLAYER_SPEC.thigh
-    const l2 = PLAYER_SPEC.shin
-    const legLen = l1 + l2
-    const w = this.gaitW
-    this.snapContacts.length = 0
-
-    if (w > 0.01) {
-      const legs: [FootPlan, typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
-        [this.gait.footL, g.hipPtL, g.kneeL, g.ankleL, g.toeL],
-        [this.gait.footR, g.hipPtR, g.kneeR, g.ankleR, g.toeR],
-      ]
-      for (const [fp, hipPt, knee, ankle, toe] of legs) {
-        // world target → local (facing) space
-        const tx = (fp.x - this.x) / (this.face * SCALE)
-        const ty = (fp.y - this.hipY) / SCALE
-        // Blend the TARGET, then solve. Blending solved knee positions
-        // shortened the femur/shin during every gait transition.
-        solveLegIK(hipPt.x, hipPt.y, ankle.x + (tx - ankle.x) * w,
-          ankle.y + (ty - ankle.y) * w, l1, l2, 1, this.ikOut)
-        knee.x = this.ikOut.kx; knee.y = this.ikOut.ky
-        ankle.x = this.ikOut.ax; ankle.y = this.ikOut.ay
-        toeFromPitch(ankle.x, ankle.y, fp.pitch, PLAYER_SPEC.foot, this.toeScratch)
-        // the floor is solid: a plantarflexed toe-off toe never digs below it
-        const groundLy = (-1.2 - this.hipY) / SCALE
-        if (this.toeScratch.y > groundLy) this.toeScratch.y = groundLy
-        toe.x += (this.toeScratch.x - toe.x) * w
-        toe.y += (this.toeScratch.y - toe.y) * w
-      }
-    }
-
-    // PLANT pass — exact contact for non-gait grounded stances + floor clamp
-    if (w < 0.99 && this.grounded && this.state !== 'dead') {
-      const legs: [typeof g.hipPtL, typeof g.kneeL, typeof g.ankleL, typeof g.toeL][] = [
-        [g.hipPtL, g.kneeL, g.ankleL, g.toeL],
-        [g.hipPtR, g.kneeR, g.ankleR, g.toeR],
-      ]
-      const iw = 1 - w // authority complement
-      const support=this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))
-        ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR):null
-      for (const [hipPt, knee, ankle, toe] of legs) {
-        const ankleWy = this.hipY + SCALE * ankle.y
-        const toeWy = this.hipY + SCALE * toe.y
-        const extended = ankle.y > legLen * 0.52
-        // capture band: sole within ~12px of the line, or already below it
-        const nearGround = ankleWy > -12 && toeWy < 6
-        if ((extended && nearGround)||ankle===support||this.dashSkim>.05) {
-          // snap: keep the authored stance x, pin the sole exactly
-          // Stagger the two feet slightly during the power skim; both remain
-          // close to the roof, but they do not move as one rigid shape.
-          const skimWave=this.dashBody?Math.sin(this.dashBody.progress*Math.PI*3)*.13:0
-          const skim=this.dashSkim*(1+(ankle===g.ankleL?skimWave:-skimWave))
-          const ty = (-Player.SOLE_W - skim - this.hipY) / SCALE
-          const forced=ankle===support||this.dashSkim>.05
-          const maxDx=Math.sqrt(Math.max(0,(legLen*.98)**2-(ty-hipPt.y)**2))
-          const tx=forced?hipPt.x+clamp(ankle.x-hipPt.x,-maxDx,maxDx):ankle.x
-          solveLegIK(hipPt.x, hipPt.y, tx, forced?ty:ankle.y+(ty-ankle.y)*iw, l1, l2, 1, this.ikOut)
-          knee.x = this.ikOut.kx; knee.y = this.ikOut.ky
-          ankle.x = this.ikOut.ax; ankle.y = this.ikOut.ay
-          // flat toe forward
-          toeFromPitch(ankle.x, ankle.y, 0.12, PLAYER_SPEC.foot, this.toeScratch)
-          toe.x += (this.toeScratch.x - toe.x) * iw
-          toe.y += (this.toeScratch.y - toe.y) * iw
-          // register the exact contact point for the shadow AO core
-          if (iw > 0.5&&this.dashSkim<.5) this.snapContacts.push(this.x + this.face * SCALE * ankle.x)
-        } else {
-          // floor clamp — the ground is solid: toes never render below it
-          const groundLy = (-1.2 - this.hipY) / SCALE
-          if (toe.y > groundLy) toe.y = groundLy
-          if (extended && ankle.y > (-Player.SOLE_W + 2 - this.hipY) / SCALE) {
-            ankle.y = (-Player.SOLE_W + 2 - this.hipY) / SCALE
-          }
-        }
-      }
-    }
-  }
-
-  /** BLADE DYNAMICS — rotational inertia of the katana as a spring-damper
-   * on the wrist channel. When the arm accelerates (windup → cut), the tip
-   * lags behind the drive angle; when the arm decelerates, the stored
-   * energy whips the tip THROUGH the target line with a small overshoot —
-   * the physical furi-otoshi snap real swordsmen feel. Under-damped
-   * (ζ≈0.3): lively, never mushy. Applied BEFORE solve → hitboxes inherit
-   * the physical blade, not just the keyframed one.
-   *
-   * During hit-stop (world timeScale ≈ 0.05) the blade takes a ±5° impact
-   * resistance deflection AGAINST its swing direction — the cut bites into
-   * something with mass (spec: kinetic impact modulation). */
-  private updateBladeDynamics(dt: number, w: WorldRef): void {
-    if (dt <= 1e-5) return
-    const p = this.pose
-    const armSum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
-    const armVel = (armSum - this.prevArmSum) / dt
-    this.armVel = armVel
-    this.prevArmSum = armSum
-    if(!this.swordDrawn&&!this.sheathAct){
-      this.bladeLag=0;this.bladeLagVel=0;this.chainLag=0;this.chainLagVel=0
-      return
-    }
-    // lag target: proportional to angular velocity (inertia resisting)
-    const target = w.timeScale < 0.5
-      ? clamp(-Math.sign(armVel || this.bladeLag || 1) * 0.09, -0.15, 0.15) // impact resistance ~5°
-      : clamp(-armVel * 0.045, -0.15, 0.15)
-    // spring toward target, under-damped for the whip-through
-    const K = 260
-    const C = 9
-    this.bladeLagVel += (K * (target - this.bladeLag) - C * this.bladeLagVel) * dt
-    this.bladeLag += this.bladeLagVel * dt
-    this.bladeLag = clamp(this.bladeLag, -0.17, 0.17)
-    this.bladeLagVel = clamp(this.bladeLagVel, -6, 6)
-    p[CH.wrR] += this.bladeLag
-
-    // KINETIC CHAIN (hips 30% · torso 50% · shoulders 20%): a slower spring
-    // driven by the same arm whip. Accelerating into a cut → the torso loads
-    // INTO the swing; the deceleration at impact → the body recoils back.
-    // The upper body can never again rotate independently of the hips.
-    const k2 = 90
-    const c2 = 7.5
-    const chainTarget = this.state === 'attack' ? clamp(-armVel * 0.02, -0.14, 0.14) : 0
-    this.chainLagVel += (k2 * (chainTarget - this.chainLag) - c2 * this.chainLagVel) * dt
-    this.chainLag = clamp(this.chainLag + this.chainLagVel * dt, -0.16, 0.16)
-    // Carry/wrist interpolation is not a sword impact. Feeding it back into
-    // locomotion folded the spine on every stride, even with steel sheathed.
-    if (this.state === 'attack') {
-      p[CH.rootRot] += -this.chainLag * 0.3
-      p[CH.spine] += -this.chainLag * 0.5
-      p[CH.shR] += this.chainLag * 0.2
-    }
-
-    // GROUND CLEARANCE — the floor is SOLID: the kissaki can never pass
-    // below the ground plane. Clip-blends between carries (guard ↔ walk
-    // side-carry ↔ run trail) linearly sweep the wrist through
-    // straight-down angles; without this, the tip pierces the floor for
-    // ~10 frames on every transition. A positional wrist constraint rotates
-    // the tip toward the NEARER horizon (forward-level or back-level,
-    // preserving the carry direction), rate-limited so the lowering reads
-    // as the kissaki TAPPING the floor and sliding along it.
-    // (Attacks exempt: their tips target enemy bodies above the floor.)
-    if (this.swordDrawn && this.state !== 'attack') {
-      const sum = p[CH.shR] + p[CH.elR] + p[CH.wrR]
-      const bladeA = Math.PI / 2 - sum
-      const sinA = Math.sin(bladeA)
-      const cosA = Math.cos(bladeA)
-      if (sinA > 0.05) {
-        const len = PLAYER_SPEC.blade * this.sword.stats.range * 1.06 * this.swingScale
-        const tipLY = this.geom.handR.y + sinA * len
-        // local floor = the stance foot's contact point (crouch-aware),
-        // small margin for the drawn edge width
-        const floorLocal = Math.max(
-          this.geom.ankleL.y, this.geom.ankleR.y, this.geom.toeL.y, this.geom.toeR.y,
-        ) + 2.5
-        if (tipLY > floorLocal) {
-          const dY = tipLY - floorLocal
-          // solve for the angle that puts the tip exactly on the floor
-          const sinT = Math.max(0.06, (sinA * len - dY) / len)
-          const aT = Math.asin(clamp01(sinT))
-          // quadrant-safe (raw channels are up-wound): cos<0 → back-down
-          // carry rotates toward straight-back; cos≥0 → forward-down
-          // rotates toward level-forward — the carry direction is preserved
-          if (cosA < 0) {
-            const aNorm = Math.PI - Math.asin(clamp01(sinA))
-            const delta = Math.PI - aT - aNorm
-            p[CH.wrR] -= clamp(delta, 0, 20 * dt)
-          } else {
-            const aNorm = Math.asin(clamp01(sinA))
-            const delta = aNorm - aT
-            p[CH.wrR] += clamp(delta, 0, 20 * dt)
-          }
-        }
-      }
-    }
-  }
-
   private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
     let best: { x: number; y: number } | null = null
     let bestD = Infinity
@@ -3366,481 +2843,49 @@ export class Player {
     this.swingScale = damp(this.swingScale, target, 18, dt)
   }
 
-  /** zArc Z-envelope → BLADE YAW: the legacy visual depth pulse, expressed
-   * as a 3D yaw on the weapon. Only attacks WITHOUT a declared 3D
-   * trajectory use it — traj'd attacks own the bladeYaw channel through
-   * the arc solver (real yaw paths, not a sine pulse). */
-  private updateBladeZ(dt: number): void {
-    let target = 0
-    if (this.state === 'attack' && this.action) {
-      const def = this.action.def
-      if (def.zArc) {
-        const tr = def.trail
-        const t = this.action.animT
-        if (t >= tr.start && t <= tr.end) {
-          const u = clamp01((t - tr.start) / (tr.end - tr.start))
-          target = def.zArc * Math.sin(u * Math.PI)
-        }
-      }
-    }
-    this.bladeZ = damp(this.bladeZ, target, 16, dt)
-    if (!this.action?.def.traj) this.pose[CH.bladeYaw] += this.bladeZ * 0.85
-  }
-  /** TWO-HANDED GRIP — the off hand solves 2-bone IK onto the tsuka butt
-   * (te-no-uchi: left hand at the pommel, right near the guard — how a
-   * katana is actually swung). Blended over the authored off-arm channels
-   * with a state-driven weight so running/dashing pumps stay authored.
+  /** TWO-HANDED GRIP — PURE CONTACT, NOT PERFORMANCE.
    *
-   * ANATOMY CONTRACT v2 (the "draped straight off-arm" fix):
-   *  · 3D SOLVE: the IK runs in REAL 3D — target = pommel pulled into the
-   *    left shoulder's depth neighborhood (|Δz| ≤ 12), solved with
-   *    rig3d.ikArm3D (law of cosines in the target's own plane). The old
-   *    projected-2D solve ignored the 15-unit depth gap between the far
-   *    shoulder (z≈−7) and the grip (z≈+8), so the channels it wrote
-   *    re-projected to a nearly-straight arm draped across the torso —
-   *    the "one elbow looks broken at idle" defect.
-   *  · FLEXION FLOOR: grip elbows hold ≥35° flexion (el ≤ −0.61) — a
-   *    hand stacked on a tsuka is never a straight arm.
-   *  · DEPTH COHERENCE: the solve writes armLz AND foreLz (the forearm's
-   *    own elbow-pivot yaw) split like the sword-arc solver, so upper arm
-   *    and forearm fold through the SAME depth story.
-   *  · THREAT-DRIVEN WEIGHT: at standstill the grip weight tracks
-   *    enemyNearW — threat engaged = full two-hand chūdan grip; safe =
-   *    the arm hangs (the relax layer owns it). Sheathed = never. */
-  private applyTwoHandGrip(dt: number): void {
-    // desired grip weight by state — strictly eliminates floating zombie arms
-    let target = 0
-    switch (this.state) {
-      case 'move':
-        if (!this.swordDrawn || this.isFlourishActive) target = 0
-        else if (Math.abs(this.vx) < 40) target = Math.min(0.2, this.enemyNearW * 0.2)
-        else target = 0
-        break
-      case 'attack':
-        target = this.action ? (this.action.def.grip ?? 0.45) : 0.45
-        break
-      case 'charge':
-      case 'parry':
-        target = this.swordDrawn ? 0.85 : 0
-        break
-      case 'scripted':
-        target = 0.4
-        break
-      default:
-        target = 0
-    }
-    this.twoHandW = damp(this.twoHandW, target, 11, dt)
-    const w = this.twoHandW
-    if (w < 0.03 || !this.swordDrawn || this.isFlourishActive || this.sheathAct) return
-
-    const g = this.geom // last frame's solve — continuous, 1-frame stale
-    // ---- 3D target: tsuka butt, pulled toward the far shoulder's depth ----
+   * The authored right arm defines where the tsuka is. The off hand must
+   * physically reach that hilt (te-no-uchi), so a 2-bone IK re-solves the
+   * off hand onto the pommel. What changed in the ownership refactor:
+   *
+   *  · It no longer CHOOSES a grip. There is no state machine, no attack
+   *    "grip weight" spec, no threat-driven weight. The grip exists exactly
+   *    when the authored left hand is already inside grip reach of the
+   *    tsuka — i.e. the animator drew a two-handed hold.
+   *  · It never invents a swing path, and it never fires on the sword arm.
+   *  · Its weight is a hard function of authored distance, so a one-handed
+   *    stance (iai draw, dash carry) is left completely untouched.
+   */
+  private applyTwoHandGrip(): void {
+    if (!this.swordDrawn || this.isFlourishActive || this.sheathAct) return
+    const g = this.geom // previous frame's solve — one frame stale, continuous
     const U = PLAYER_SPEC.upperArm
     const F = PLAYER_SPEC.foreArm
+    // authored off-hand position vs the authored hilt (projected local space)
+    const handDist = Math.hypot(g.handL.x - g.pommel.x, g.handL.y - g.pommel.y)
+    // engagement band: inside ~10u the animator clearly authored a hold
+    const GRIP_NEAR = 10
+    const GRIP_FAR = 17
+    const engage = clamp01((GRIP_FAR - handDist) / (GRIP_FAR - GRIP_NEAR))
+    if (engage <= 0) return
     const sx = g.shoulderL.x
     const sy = g.shoulderL.y
-    const sz = g.shoulderL.z
-    let dx = g.pommel.x - sx
-    let dy = g.pommel.y - sy
-    let dz = clamp(g.pommel.z - sz, -12, 12) // depth clamp — no cross-body reach
-    const ik = ikArm3D(dx, dy, dz, U, F)
+    const dz = clamp(g.pommel.z - g.shoulderL.z, -12, 12)
+    const ik = ikArm3D(g.pommel.x - sx, g.pommel.y - sy, dz, U, F)
     // anatomical grip band: 35°..150° flexion, flexion side only
     const elIk = clamp(ik.el, -2.62, -0.61)
     const shIk = clamp(ik.sh, -1.05, 3.05)
-    // depth split (mirror of the sword-arc solver): the shoulder plane
-    // carries ~58% of the reach yaw, the forearm's elbow-pivot the rest
     const foreLead = clamp(ik.yaw * 0.42, -0.6, 0.6)
     const armYaw = clamp(ik.yaw - foreLead, -1.35, 1.35)
     const foreYaw = clamp(ik.yaw - armYaw, -0.65, 0.65)
     const p = this.pose
-    p[CH.shL] += (shIk - p[CH.shL]) * w
-    p[CH.elL] += (elIk - p[CH.elL]) * w
-    p[CH.armLz] += (armYaw - p[CH.armLz]) * w
-    p[CH.foreLz] += (foreYaw - p[CH.foreLz]) * w
-  }
-
-  private applyProcedural(dt: number): void {
-    const p = this.pose
-    this.animClock += dt
-    // anime impact-frame timer (white silhouette beat on heavy connects)
-    if (this.impactFlashT > 0) this.impactFlashT = Math.max(0, this.impactFlashT - dt)
-
-    // ---- previous-frame awareness: smoothed acceleration lean ----
-    const accel = (this.vx - this.prevVx) / Math.max(dt, 1e-4)
-    this.prevVx = this.vx
-
-    /* ---- THE TIERED LEAN SYSTEM (VLM/biomechanics research) ----------
-     * Trunk lean is a FUNCTION OF ACCELERATION, not raw speed (Kugler &
-     * Janshen: lean ≈ atan(a/g)) — and the tiers are hard-separated so
-     * each locomotion state owns a distinct posture band:
-     *   walk  3–7°    (0.06 rad cap)
-     *   run   ~10°    (0.10 rad cap)
-     *   sprint ~15°   (0.15 rad cap — max-VELOCITY posture: research says
-     *                  elite sprinters hold only 15–20° at top speed)
-     *   dash  +12.6°  (a damped additive on the already-deep authored
-     *                  clips — acceleration posture, 45°+ authored)
-     * The speed term is normalized by the SPRINT ceiling (not MOVE_MAX)
-     * so run ≈ 0.73 and sprint 1.0 no longer clamp to the same lean —
-     * the old bug that made sprint read exactly as leaned as dash.
-     *
-     * THE STOP FIX: braking (accel opposing travel) is NOT a license to
-     * lean backward — a real stop lowers the COG over the stride and rides
-     * a shallow 2–4° back-pitch. The old /3200 gain on a −3500px/s² stop
-     * spike produced a −9.2° back-lean that LINGERED (k=14 decay) after
-     * the body had already stopped — the "leans too much when I stop"
-     * defect. Now: braking lean is gain-limited to ±0.05 rad and decays
-     * fast (k=26) once the speed is gone; the spent momentum sinks into
-     * the knees instead (rootY), which reads as weight, not stiffness. */
-    const capFor: Record<string, number> = {
-      walk: 0.06, run: 0.1, sprint: 0.15, combat: 0.05, backpedal: 0.045, idle: 0.03,
-    }
-    const cap = capFor[this.loco] ?? 0.08
-    const speedLean = clamp((this.vx * this.face) / SPRINT_MAX, -1, 1)
-    const braking = this.accelSm * this.face < 0
-    const accelCap = braking ? 0.05 : 0.12
-    const accelLean = clamp(this.accelSm * this.face / (braking ? 6800 : 3600), -accelCap, accelCap)
-    // smoothing: braking settles fast (k=26) — the reverse pitch must
-    // vanish WITH the speed, never linger over a stopped body
-    this.accelSm = damp(this.accelSm, accel, braking ? 26 : 14, dt)
-    const lean = speedLean * cap + accelLean
-    // brake COG dip: the deceleration sinks into the knees (weight),
-    // replacing most of the old backward lean
-    const brakeDip = braking ? clamp(-this.accelSm * this.face / 4200, 0, 1.6) : 0
-
-    // Dash keyframes own the support-line pitch. Never stack a second
-    // velocity-driven torso tilt on top of the authored launch/catch.
-
-    // ---- FULL-BODY LEAN (THE "torso-only bend" fix): the forward pitch
-    // is distributed through the ENTIRE articulation — and crucially the
-    // PELVIS TRANSLATES toward the facing (rootX) so the body hangs over
-    // its toes while the feet stay planted BEHIND the COG: the legs become
-    // diagonal struts (front knee loaded, rear leg extended), not vertical
-    // hangers under a rotated chest. Lumbar adds its fraction, the ankle
-    // dorsi-flexes to brake, the COG drops as the body commits. A body
-    // that leans only from the chest reads as a puppet; a body that leans
-    // from the ground up reads as an athlete.
-    if (this.state !== 'dead') {
-      const l = this.state === 'dash' ? 0 : lean
-      // Martial upright alignment: subtle core tilt without zombie slouch
-      p[CH.rootRot] += l * 0.14
-      p[CH.spine] += l * 0.06
-      p[CH.rootX] += l * 1.2
-      p[CH.hipR] += l * 0.22
-      p[CH.hipL] -= l * 0.18
-      p[CH.kneeR] -= l * 0.12
-      p[CH.kneeL] -= l * 0.08
-      p[CH.footR] += l * 0.08
-      p[CH.rootY] += Math.abs(l) * 1.0
-      // braking weight acceptance: the stop sinks cleanly into knees
-      p[CH.rootY] += brakeDip
-      p[CH.kneeR] -= brakeDip * 0.22
-      p[CH.kneeL] -= brakeDip * 0.16
-      // head stays level on horizon
-      p[CH.head] -= l * 0.12
-    }
-
-    // vertical pitch while airborne
-    if (!this.grounded && this.state !== 'attack') {
-      p[CH.rootRot] += clamp(this.vy / 1400, -0.22, 0.3)
-    }
-
-    // ---- GAIT TWIST (the 3D torso read): pelvis swivel + shoulder
-    // COUNTER-rotation in depth, phased to the stride cycle. This is the
-    // transverse-plane half of locomotion the sagittal clips can't carry:
-    // the hip sockets advance/recede per stride and the shoulder girdle
-    // counter-rotates — the #1 depth tell of real bipedal gait.
-    if (this.state === 'move' && this.grounded) {
-      const clip = this.animator.getClip()
-      const ph = clip && clip.loop && clip.dur > 0
-        ? (this.animator.getTime() / clip.dur) % 1
-        : 0
-      const sway = Math.sin(ph * Math.PI * 2)
-      let amp = 0
-      let cAmp = 0
-      switch (this.loco) {
-        // research (gait biomechanics): pelvis transverse rotation at sprint
-        // 12–18°, shoulder counter-rotation 25–40° — the chest counter is
-        // ~1.3× pelvis at walk and approaches ~2× at sprint cadence
-        case 'walk': amp = 0.04; cAmp = 1.3; break
-        case 'run': amp = 0.055; cAmp = 1.1; break
-        case 'sprint': amp = 0.045; cAmp = 1.15; break
-        case 'combat': case 'backpedal': amp = 0.05; cAmp = 1.2; break
-        default: break
-      }
-      this.gaitYawAmp = damp(this.gaitYawAmp, amp, 8, dt)
-      p[CH.pelvisYaw] += sway * this.gaitYawAmp
-      p[CH.chestYaw] += -sway * this.gaitYawAmp * cAmp
-    } else {
-      this.gaitYawAmp = damp(this.gaitYawAmp, 0, 8, dt)
-    }
-
-    // ---- SWORD CARRY per gait (depth-aware weapon handling): each
-    // locomotion state carries the weapon DIFFERENTLY — walk: relaxed
-    // low-back carry; run: trailing flat behind the hip; sprint: tucked
-    // HARD back with the blade swinging through depth BEHIND the torso
-    // plane (bladeYaw −0.5: the steel visibly recedes past the body);
-    // combat: square-on live guard. Never one frozen carry for all states.
-    // DASH carries are VARIANT-aware: the forward lunge tucks the steel
-    // back (iai-ready); the backdash/escape HOLD the guard toward the
-    // threat — the blade never turns its back on an enemy you're dodging.
-    {
-      let carryYaw = 0
-      let carryArm = 0
-      let carryFore = 0
-      if (this.state === 'move' && this.grounded) {
-        switch (this.loco) {
-          case 'walk': carryYaw = -0.12; carryArm = -0.08; carryFore = -0.05; break
-          case 'run': carryYaw = -0.28; carryArm = -0.14; carryFore = -0.08; break
-          // sprint: tucked hard back but the tuck lives in BLADE YAW only —
-          // the old arm-yaw pair (−0.16/−0.1 on top of authored −0.18)
-          // stacked with the girdle inheritance to ~−0.39 total: the
-          // forearm's projected direction became ~47% depth, so a deeply
-          // BENT elbow (interior ~111°) projected to a straight horizontal
-          // stub behind the hip — the "dead sword arm" read. Arm yaw stays
-          // shallow; bladeYaw −0.3 carries the whole Raiden tuck alone.
-          case 'sprint': carryYaw = -0.3; carryArm = -0.06; carryFore = -0.04; break
-          case 'combat': carryYaw = 0.06; carryArm = 0.1; carryFore = 0.05; break
-          case 'backpedal': carryYaw = 0.04; carryArm = 0.06; carryFore = 0.03; break
-          default: break
-        }
-      } else if (this.state === 'dash') {
-        switch (this.dashVariant) {
-          case 'pivot': case 'launch': case 'chain': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
-          case 'carry': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
-          case 'hunt': carryYaw = -0.28; carryArm = -0.04; carryFore = -0.025; break
-          case 'air': carryYaw = -0.3; carryArm = -0.24; carryFore = -0.18; break
-          case 'pierce': carryYaw = 0; carryArm = 0; carryFore = 0; break // clip owns the thrust line
-          case 'vault': carryYaw = 0.02; carryArm = 0.04; carryFore = 0.02; break
-          case 'retreat': carryYaw = 0.1; carryArm = 0.08; carryFore = 0.05; break
-          case 'carve': carryYaw = -0.12; carryArm = 0.06; carryFore = -0.08; break
-        }
-      }
-      this.carryYaw = damp(this.carryYaw, carryYaw, 6, dt)
-      this.carryArmZ = damp(this.carryArmZ, carryArm, 6, dt)
-      this.carryForeZ = damp(this.carryForeZ, carryFore, 6, dt)
-      if (this.state !== 'attack') {
-        p[CH.bladeYaw] += this.carryYaw
-        p[CH.armRz] += this.carryArmZ
-        // the forearm folds DEEPER than the shoulder can yaw — the elbow
-        // trails in its own plane while the grip tucks past the hip
-        // (the forearm's elbow-pivot DOF doing real carrying work)
-        p[CH.foreRz] += this.carryForeZ
-      }
-    }
-
-    // ---- DASH PROCEDURAL MOTION: continuous layers the keyframed clips
-    // can't carry alone. (1) ESCAPE depth-carve: a smooth sin() yaw sweep
-    // over the dash duration — the pelvis/chest twist through the
-    // transverse plane peaks mid-dash and unwinds into the guard; the clip
-    // authors the beats, this guarantees the sweep between them. (2) UP
-    // rise: the gaze stays level while the world drops — head/blade
-    // counter-articulate the vertical travel. (3) direction-aware pelvis
-    // yaw on the forward lunge: the hips square into the travel vector.
-    if (this.state === 'dash') {
-      const k = 1 - this.dashT / this.dashDur
-      if (this.dashVariant === 'carve') {
-        const spin = Math.sin(clamp01(k) * Math.PI) * 0.38
-        p[CH.pelvisYaw] += spin
-        p[CH.chestYaw] += spin * 0.6
-      } else if (this.dashVariant === 'vault') {
-        p[CH.head] -= 0.12 * Math.sin(clamp01(k) * Math.PI)
-      } else if (this.dashVariant === 'pivot' || this.dashVariant === 'launch' || this.dashVariant === 'chain'
-        || this.dashVariant === 'carry' || this.dashVariant === 'hunt'
-        || this.dashVariant === 'pierce') {
-        // pelvis squares into the dash vector (diagonal dashes yaw the hips)
-        p[CH.pelvisYaw] += this.dashDy * 0.22
-      } else if (this.dashVariant === 'retreat') {
-        // the guarded retreat: hips open slightly against travel, chest
-        // counter-rotates to keep the guard presentation toward the threat
-        p[CH.pelvisYaw] -= this.dashDy * 0.16
-      }
-    }
-
-    // ---- ATTACK TORSO DRIVE: the body follows the blade. When a cut
-    // sweeps through depth (bladeYaw), the pelvis rotates WITH it and the
-    // shoulders rotate FURTHER — hips → torso → shoulders generate the
-    // sword's power together (spec: full-body power generation).
-    if (this.state === 'attack') {
-      const by = p[CH.bladeYaw]
-      p[CH.pelvisYaw] += by * 0.35
-      p[CH.chestYaw] += by * 0.65
-    }
-
-    // ---- 180° TURN PIVOT: cosmetic counter-rotation sweep through the
-    // flip — the body leans back over the OLD direction, unwinding into the
-    // new one, with a hip drop + knee flex (weight shift through the turn)
-    if (this.turnT > 0) {
-      const e = this.turnT * this.turnT // ease-out unwind
-      p[CH.rootRot] += this.turnDir * this.face * 1.15 * e
-      p[CH.rootY] += 3.2 * e
-      p[CH.kneeR] -= 0.22 * e
-      p[CH.kneeL] -= 0.16 * e
-      // the turn also YAWS the pelvis through depth — the body carves the
-      // reversal instead of flat-spinning
-      p[CH.pelvisYaw] += this.turnDir * 0.3 * e
-    }
-
-    // ---- POST-ATTACK MOMENTUM (sword-aware locomotion, spec §7): the
-    // torso/shoulder chain preserves the final swing's rotational momentum
-    // and recovers over ~0.34s — never snapping to an upright neutral
-    if (this.postAttackT > 0 && this.state === 'move') {
-      const e = Math.pow(this.postAttackT / 0.34, 1.6) // decaying carryover
-      const m = clamp(this.postArmVel * 0.02, -0.16, 0.16)
-      p[CH.rootRot] += m * 0.6 * e
-      p[CH.spine] += m * 0.8 * e
-      p[CH.shR] += m * 1.2 * e
-      p[CH.wrR] += m * 0.5 * e
-    }
-
-    // ---- COMBAT CROUCH + GUARD RAISE (Condition B, spec §4/§5): enemy
-    // proximity lowers the COG, flexes the knees, coils the torso — a
-    // weighted, damped overlay (never a snap; hysteresis in scanEnemies)
-    const wC = this.enemyNearW
-    if (wC > 0.02 && this.state === 'move' && this.grounded) {
-      p[1] += wC * 2.4
-      p[2] += wC * 0.06
-      p[CH.kneeR] -= wC * 0.1
-      p[CH.kneeL] -= wC * 0.07
-      // surrounded: even lower, blade centered
-      if (this.surrounded) p[1] += wC * 1.2
-    }
-    // ---- SWORD RELAX/RAISE: safe → the katana lowers into a deep side
-    // carry (arm drops, kissaki down-BACK ~139°, tip clearing the ground
-    // by ~14 local units — the old +4.33 offset measured proj −124..−142°:
-    // the blade rode UP over the shoulder instead of hanging); threat →
-    // it rises back into the live guard (the blade "notices" enemies
-    // before the player swings — emergent, damped, alive). The wrR offset
-    // is NEGATIVE-WOUND (−2.09): the guard→relax sum sweep 1.5 → −0.86
-    // rad carries the blade angle 4° → +139° THROUGH THE UP HEMISPHERE
-    // (tip over the shoulder for a beat, then settling down-back) —
-    // never through straight-down.
-    // THE OFF-ARM HANG (the drape fix): safe-idle arms HANG — shoulder
-    // back to vertical, soft ~30° elbow, hand beside the thigh/saya. The
-    // old layer only nudged shL while the grip IK chased the pommel with
-    // its old weight-1 target, producing a near-straight arm draped
-    // across the torso. Now: when relaxed the grip weight goes to 0
-    // (see applyTwoHandGrip) and this layer OWNS the hang.
-    // (SHEATHED: skipped — no blade to relax; the pommel-rest layer below
-    // owns the arms.)
-    const relaxedCarry=this.swordDrawn && this.state === 'move' && !this.sheathAct && this.grounded && Math.abs(this.vx)<60
-    this.carryRelaxW=damp(this.carryRelaxW,relaxedCarry?1:0,10,dt)
-    if (relaxedCarry) {
-      const relax = (1 - wC)*this.carryRelaxW
-      // THE BENT-CARRY READ (reference panel 1 conformance): a relaxed sword
-      // carry holds ~53° elbow flexion (interior ~127°) with the hand at
-      // hip-front — "low carry WITH control", not a limp straight arm. The
-      // old −0.05 elbow nudge left the arm near-straight (~150°) and passive
-      // (the "dead arm at idle" read); the deeper bend also carries the hand
-      // to (10, 1) local — in front of the hip, kissaki sweeping down-back.
-      p[CH.shR] += relax * -0.25
-      p[CH.elR] += relax * -0.35
-      p[CH.wrR] += relax * -2.09
-      // the natural hang: upper arm vertical, elbow softly bent —
-      // NEVER a reach across the body
-      p[CH.shL] += (relax * (-0.02 - p[CH.shL])) * 0.6
-      p[CH.elL] += (relax * (-0.52 - p[CH.elL])) * 0.6
-      p[CH.armLz] += (relax * (0.06 - p[CH.armLz])) * 0.5
-      p[CH.foreLz] += (relax * (0.04 - p[CH.foreLz])) * 0.5
-    }
-
-    // ---- SWORD HOME ARM LAYER: while sheathed in grounded locomotion the
-    // right fist rides the tsuka pommel and the left steadies the saya
-    // mouth — the samurai walk (Ghost of Tsushima exploration read).
-    // Fades OUT above walking pace: a pinned pommel-rest at full run read
-    // as a frozen, lifeless arm (the sword arm must pump with the gait).
-    // Airborne = the hands-only jump family (authored clips); the ritual
-    // clips own the arms while active. Damped weight → smooth transitions.
-    //
-    // THE DYNAMIC KASHIRA WELD (two stacked fixes):
-    //  1. The old static targets (shR −0.34, elR −0.46) reached BACKWARD
-    //     behind the hip with a near-straight elbow — the fist floated 34
-    //     units from the drawn pommel and read as a dislocated elbow jammed
-    //     into the pelvis (the idle catastrophe). The kashira renders ~22
-    //     units FORWARD of the hip (tsuka continues the saya axis out of
-    //     the mouth at ~14° above horizontal — iaido rest: shoulder ~+55°,
-    //     elbow interior ~115-125°, hand at navel height).
-    //  2. Static channel targets still drifted 2-3 units off the hilt
-    //     through breathing sway, and the up-wound carry wrist oriented the
-    //     FIST backward off the tsuka axis (the renderer orients fists on
-    //     the blade-angle sum). The right arm is now IK-solved onto the
-    //     LIVE kashira point every frame — the same pelvis-pitch formula
-    //     the saya renderer uses — with the wrist rotated onto the saya
-    //     axis: the fist stays GLUED to the hilt through sway, and reads
-    //     like a hand actually holding the tsuka.
-    {
-      const paceFade = 1 - clamp01((Math.abs(this.vx) - 110) / 90)
-      const sheathTarget = !this.swordDrawn && this.state === 'move'
-        && this.grounded && !this.braking && !this.sheathAct && !this.isFlourishActive && !this.hasThreat ? paceFade*(1-clamp01(Math.abs(this.vx)/45)) : 0
-      this.sheathW = damp(this.sheathW, sheathTarget, 9, dt)
-      if (this.sheathW > 0.02 && !this.sheathAct && this.state==='move' && this.grounded && !this.hasThreat) {
-        const k = this.sheathW
-        // the saya geometry (local space — mirror of the draw path)
-        const pelvisPitch = p[CH.rootRot] + p[CH.spine] * 0.35
-        const sayAng = 0.24 + pelvisPitch * 0.6
-        const tl = PLAYER_SPEC.blade * 0.28
-        const mx = p[CH.rootX] + 3
-        const my = p[CH.rootY] + 1
-        const kx = mx + Math.cos(sayAng) * tl
-        const ky = my - Math.sin(sayAng) * tl
-        // right arm → LIVE kashira IK (geom is last frame's solve, unprojected)
-        {
-          const g = this.geom
-          const sS = FOCUS / (FOCUS - g.shoulderR.z)
-          const sx = g.shoulderR.x / sS
-          const sy = g.shoulderR.y / sS
-          const ik = ikArm3D(
-            kx - sx, ky - sy, clamp(-g.shoulderR.z, -10, 10),
-            PLAYER_SPEC.upperArm, PLAYER_SPEC.foreArm,
-          )
-          const elIk = clamp(ik.el, -2.62, -0.61)
-          const shIk = clamp(ik.sh, -1.05, 3.05)
-          p[CH.shR] += (shIk - p[CH.shR]) * k
-          p[CH.elR] += (elIk - p[CH.elR]) * k
-          p[CH.armRz] += (clamp(ik.yaw, -0.45, 0.45) - p[CH.armRz]) * k
-          // wrist: the fist axis rides the SAYA axis (blade angle = −sayAng)
-          // — the fist reads as wrapping the tsuka, never pointing backward
-          p[CH.wrR] += (Math.PI / 2 + sayAng - shIk - elIk - p[CH.wrR]) * k
-        }
-        // The off-arm retains the authored counter-swing. Pinning BOTH
-        // arms to the waist erased the gait and made walking look lifeless.
-      }
-    }
-
-    // ---- HEAD TRACKING: the head turns toward the nearest threat (alive
-    // even mid-locomotion — running away while glancing back)
-    if (this.headTrackW > 0.02 && this.hasThreat && this.state === 'move') {
-      const dx = (this.threatX - this.x) * this.face
-      const dy = this.threatY - (this.hipY - 70) // vs head height (world)
-      const ang = Math.atan2(dy, Math.abs(dx) + 24) // +pitch = look down
-      p[CH.head] += clamp(ang, -0.42, 0.5) * 0.55 * this.headTrackW
-    }
-
-    // landing spring (squash)
-    if (this.landSpring > 0) {
-      this.landSpring = Math.max(0, this.landSpring - dt * this.landSpringDecay)
-      p[1] += this.landSpring * 6
-    }
-    // charge tremble
-    if (this.charging) {
-      p[0] += Math.sin(this.animClock*23)*.18*this.chargeRatio
-      p[1] += Math.sin(this.animClock*19+.7)*.12*this.chargeRatio
-    }
-    // hurt shake
-    if (this.hurtT > 0) {
-      p[0] += Math.sin(this.animClock*36)*.45*this.hurtT
-    }
-    // ARM LIFE: the guard breathes — out-of-phase micro sway on the sword
-    // arm joints (research: even "idle" reference poses hold live tension).
-    // Bounded ±0.025 rad; blended away the moment any state layer drives
-    // the arm (attacks own it via the sword-led arc + keyframes).
-    if (this.state === 'move' && this.grounded && Math.abs(this.vx) < 40 && this.hurtT <= 0) {
-      const t = this.animClock
-      p[CH.shR] += Math.sin(t * 1.9) * 0.018
-      p[CH.elR] += Math.sin(t * 1.5 + 0.8) * 0.024
-      p[CH.wrR] += Math.sin(t * 1.7 + 1.6) * 0.016
-      p[CH.shL] += Math.sin(t * 1.6 + 2.2) * 0.015
-      p[CH.elL] += Math.sin(t * 1.4 + 3.0) * 0.02
-    }
+    // contact only: the hand lands on the hilt. The authored grip read is
+    // preserved because engagement is already ~1 when the pose says "hold".
+    p[CH.shL] += (shIk - p[CH.shL]) * engage
+    p[CH.elL] += (elIk - p[CH.elL]) * engage
+    p[CH.armLz] += (armYaw - p[CH.armLz]) * engage
+    p[CH.foreLz] += (foreYaw - p[CH.foreLz]) * engage
   }
 
   private updateBladeWorld(): void {
@@ -3943,15 +2988,16 @@ export class Player {
     this.shBlade.x0 = this.x + f * g.grip.x; this.shBlade.y0 = hy + SCALE * g.grip.y
     this.shBlade.x1 = this.x + f * g.tip.x; this.shBlade.y1 = hy + SCALE * g.tip.y
     this.shFig.blade = this.swordDrawn ? this.shBlade : null
-    // contact AO: the legik planted anchors (exact ground-contact points)
-    // PLUS any plant-snap contacts from non-gait stances (dash/attacks/brake)
+    // contact AO: the AUTHORED stance. Each foot's world-x comes straight
+    // from the solved skeleton, gated by whether the pose actually put that
+    // foot on the ground line (local y near the stance depth). No planner
+    // contact is invented — if the clip lifts a foot, its AO lifts too.
     const contacts: number[] = []
     if (this.grounded) {
-      if (this.gaitW > 0.5) {
-        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
-        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
+      for (const [toe, ankle] of [[g.toeL, g.ankleL], [g.toeR, g.ankleR]] as const) {
+        const low = Math.max(toe.y, ankle.y)
+        if (low > 42) contacts.push(this.x + this.face * SCALE * toe.x)
       }
-      for (const c of this.snapContacts) contacts.push(c)
     }
     drawCastShadow(ctx, this.shFig, light, {
       alpha: 0.58, width: 6.4, passes: 3, scale: SCALE,
@@ -4070,7 +3116,7 @@ export class Player {
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
-      hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
+      hands:handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),
       rimColor:'#000000',rimAlpha:0,
       alpha,
       // Null-black face/body stays black through hurt and impact frames.

@@ -262,7 +262,7 @@ export {WALK_CLIP,WALK_EXPOSURES} from './patrol-walk'
 /* Athletic martial run: controlled core, tucked elbows, sword stabilized at hip. */
 const RUN_Q: PoseInput[] = [
   { // CONTACT
-    rootX: 1.5, rootY: 0.4, rootRot: 0.08, spine: 0.02, head: -0.04,
+    rootX: 1.5, rootY: 9.39, rootRot: 0.08, spine: 0.02, head: -0.04,
     hipR: 0.72, kneeR: -0.18, footR: 0.20,
     hipL: -0.65, kneeL: -0.52, footL: -0.06,
     shR: 0.08, elR: -0.72, wrR: 1.20,
@@ -270,7 +270,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.16, chestYaw: -0.10, armLz: 0.20, foreLz: 0.08,
   },
   { // LOADING
-    rootX: 3.2, rootY: 1.6, rootRot: 0.09, spine: 0.025, head: -0.045,
+    rootX: 3.2, rootY: 1.80, rootRot: 0.09, spine: 0.025, head: -0.045,
     hipR: 0.40, kneeR: -0.58, footR: 0.05,
     hipL: -0.78, kneeL: -0.26, footL: 0.02,
     shR: 0.12, elR: -0.75, wrR: 1.20,
@@ -278,7 +278,7 @@ const RUN_Q: PoseInput[] = [
     pelvisYaw: 0.05, chestYaw: -0.03, armLz: 0.08, foreLz: 0.04,
   },
   { // PUSH-OFF
-    rootX: 5.0, rootY: 0.8, rootRot: 0.08, spine: 0.03, head: -0.04,
+    rootX: 5.0, rootY: 1.96, rootRot: 0.08, spine: 0.03, head: -0.04,
     hipR: -0.25, kneeR: -0.32, footR: -0.08,
     hipL: 0.45, kneeL: -1.15, footL: 0.16,
     shR: 0.18, elR: -0.76, wrR: 1.20,
@@ -321,7 +321,7 @@ export const RUN_CLIP: Clip = makeClip('run', runFrames, true)
  */
 const SPRINT_Q: PoseInput[] = [
   { // 01 / forefoot strike: foot lands under the advancing center of mass
-    rootX: 5.0, rootY: 1.2, rootRot: 0.32, spine: 0.045, head: -0.27,
+    rootX: 5.0, rootY: 8.26, rootRot: 0.32, spine: 0.045, head: -0.27,
     hipR: 0.78, kneeR: -0.46, footR: 0.14,
     hipL: -0.55, kneeL: -1.10, footL: -0.16,
     shR: 0.03, elR: -1.10, wrR: 1.26,
@@ -329,7 +329,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.15, chestYaw: -0.19, armLz: -0.12, armRz: -0.03, bladeYaw: -0.22,
   },
   { // 02 / compression: spring load, trailing heel recovers
-    rootX: 5.6, rootY: 3.0, rootRot: 0.35, spine: 0.05, head: -0.30,
+    rootX: 5.6, rootY: 2.53, rootRot: 0.35, spine: 0.05, head: -0.30,
     hipR: 0.43, kneeR: -0.78, footR: 0.04,
     hipL: -0.22, kneeL: -1.62, footL: 0.08,
     shR: 0.07, elR: -1.14, wrR: 1.26,
@@ -337,7 +337,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0.09, chestYaw: -0.12, armLz: -0.07, armRz: -0.03, bladeYaw: -0.20,
   },
   { // 03 / drive: stance hip extends, swing knee folds high
-    rootX: 6.3, rootY: 2.1, rootRot: 0.36, spine: 0.045, head: -0.31,
+    rootX: 6.3, rootY: 0.96, rootRot: 0.36, spine: 0.045, head: -0.31,
     hipR: 0.02, kneeR: -0.57, footR: -0.10,
     hipL: 0.25, kneeL: -1.90, footL: 0.16,
     shR: 0.11, elR: -1.17, wrR: 1.26,
@@ -345,7 +345,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: 0, chestYaw: 0, armLz: 0, armRz: -0.02, bladeYaw: -0.18,
   },
   { // 04 / toe-off: release stored energy, opposite thigh punches forward
-    rootX: 6.6, rootY: 0.3, rootRot: 0.34, spine: 0.04, head: -0.29,
+    rootX: 6.6, rootY: 3.56, rootRot: 0.34, spine: 0.04, head: -0.29,
     hipR: -0.38, kneeR: -0.30, footR: -0.21,
     hipL: 0.73, kneeL: -1.58, footL: 0.18,
     shR: 0.13, elR: -1.15, wrR: 1.26,
@@ -353,7 +353,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: -0.09, chestYaw: 0.12, armLz: 0.07, armRz: -0.02, bladeYaw: -0.19,
   },
   { // 05 / flight: both feet released, long silhouette with clear knee separation
-    rootX: 6.0, rootY: -1.8, rootRot: 0.31, spine: 0.04, head: -0.26,
+    rootX: 6.0, rootY: 8.30, rootRot: 0.31, spine: 0.04, head: -0.26,
     hipR: -0.58, kneeR: -0.72, footR: -0.15,
     hipL: 1.00, kneeL: -1.02, footL: 0.15,
     shR: 0.09, elR: -1.12, wrR: 1.26,
@@ -361,7 +361,7 @@ const SPRINT_Q: PoseInput[] = [
     pelvisYaw: -0.15, chestYaw: 0.19, armLz: 0.12, armRz: -0.03, bladeYaw: -0.22,
   },
   { // 06 / recovery: reach down, not forward; prepare the next forefoot strike
-    rootX: 5.4, rootY: -0.4, rootRot: 0.31, spine: 0.045, head: -0.26,
+    rootX: 5.4, rootY: 10.20, rootRot: 0.31, spine: 0.045, head: -0.26,
     hipR: -0.58, kneeR: -0.98, footR: -0.16,
     hipL: 0.90, kneeL: -0.67, footL: 0.14,
     shR: 0.05, elR: -1.10, wrR: 1.26,
@@ -1050,7 +1050,7 @@ const DASH_PIERCE_Q: PoseInput[] = [
     // the arm LOCKED OUT straight along the travel vector (throat height)
     rootX: 6, rootRot: 0.14, rootY: 5.5, spine: 0.03, head: -0.08,
     hipR: 0.85, kneeR: -1.55, footR: 0.15,
-    hipL: -1.05, kneeL: -0.08, footL: -0.25,
+    hipL: -1.05, kneeL: -0.12, footL: -0.25,
     shR: 1.4, elR: 0.0, wrR: 0.3,
     shL: -0.7, elL: -0.35,
     pelvisYaw: 0.1, chestYaw: -0.06,
@@ -1308,21 +1308,21 @@ export const CHARGE_CLIP: Clip = makeClip('charge', [
     rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
     hipR: 0.55, kneeR: -1.15, footR: 0.2,
     hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: 0.15, wrR: 0.25,
+    shR: 2.6, elR: -0.15, wrR: 0.25,
     shL: 1.85, elL: -0.5, wrL: -0.2,
   }, 'linear'),
   keyframe(0.3, {
     rootY: 6.9, rootRot: 0.36, spine: 0.11, head: -0.2,
     hipR: 0.58, kneeR: -1.2, footR: 0.2,
     hipL: -0.42, kneeL: -1.0, footL: 0.15,
-    shR: 2.65, elR: 0.15, wrR: 0.2,
+    shR: 2.65, elR: -0.15, wrR: 0.2,
     shL: 1.9, elL: -0.5, wrL: -0.22,
   }, 'linear'),
   keyframe(0.6, {
     rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
     hipR: 0.55, kneeR: -1.15, footR: 0.2,
     hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: 0.15, wrR: 0.25,
+    shR: 2.6, elR: -0.15, wrR: 0.25,
     shL: 1.85, elL: -0.5, wrL: -0.2,
   }, 'linear'),
 ], true)
@@ -1336,7 +1336,7 @@ export const EXECUTE_POSE_CLIP: Clip = makeClip('execPose', [
     rootRot: 0.1, spine: 0.06, head: -0.12, rootY: 0,
     hipR: 0.3, kneeR: -0.55, footR: 0.15,
     hipL: -0.35, kneeL: -0.5, footL: 0.12,
-    shR: 0.75, elR: 0.15, wrR: -1.0,
+    shR: 0.75, elR: -0.15, wrR: -1.0,
     shL: 0.25, elL: -0.4,
   }, 'outCubic'),
 ])

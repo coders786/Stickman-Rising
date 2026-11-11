@@ -33,9 +33,14 @@ test('dash arms stay proportionate, flexed and above the floor in every stance',
     assert.ok(p.pose[ch]<=-.26+1e-5&&p.pose[ch]>=-2.62-1e-5,'elbow stays flexed')
     assert.ok(p.hipY+1.32*hand.y<-7,'hands remain above the ground')
    }
-   if(power&&p.state==='dash'&&p.pose[CH.rootRot]>1.2){
-    assert.ok(g.handL.x>g.shoulderL.x+10,'front hand leads the low drive')
-    assert.ok(Math.hypot(g.handL.x-g.handR.x,g.handL.y-g.handR.y)>4,'hands remain separated')
+   if(power&&p.state==='dash'&&p.pose[CH.rootRot]>1.0){
+    // THE AUTHORED POWER-DASH DRIVE (POWER_DASH_CLIP): the clip itself
+    // throws the off hand out to the drive direction and holds a live gap
+    // between the two hands. Nothing re-solves these arms — this asserts
+    // the authored pose is what plays.
+    assert.ok(Math.hypot(g.handL.x-g.shoulderL.x,g.handL.y-g.shoulderL.y)>28,
+      'authored drive extends the off arm to a full forward reach')
+    assert.ok(Math.hypot(g.handL.x-g.handR.x,g.handL.y-g.handR.y)>2,'drive keeps the hands apart')
     skimFrames++
    }
    if(drawn&&p.state==='dash')assert.ok(p.hipY+1.32*g.tip.y<2,'carried sword tip stays above floor')

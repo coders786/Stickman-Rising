@@ -4,7 +4,6 @@ import {Player} from '../src/game/entities/player'
 import {FX} from '../src/game/fx/fx'
 import type {WorldRef} from '../src/game/core/types'
 import {dashHandMotion,runningHandMotion} from '../src/game/anim/hand-kinematics'
-import {equipmentClip} from '../src/game/anim/equipment-motion'
 import {DASH_LAUNCH_CLIP} from '../src/game/anim/clips'
 import {CH} from '../src/game/anim/pose'
 test('walk keeps a tall supported pelvis with short stepping rather than a wide crouch',()=>{
@@ -28,6 +27,8 @@ test('walking hands have equal relaxed reach and dash hands express load, stream
  const load=dashHandMotion('dashLaunch',0),drive=dashHandMotion('dashLaunch',.35),catchPose=dashHandMotion('dashLaunch',1)
  assert.ok(drive.left.x<load.left.x-20);assert.ok(catchPose.left.x>drive.left.x+25)
  assert.ok(dashHandMotion('dashCarve',.35).left.y<drive.left.y-10)
- const clip=equipmentClip(DASH_LAUNCH_CLIP,false)
+ // the dash clip's authored off-arm travels through the whole performance;
+ // no equipment adapter rewrites it, so the authored arc is what plays
+ const clip=DASH_LAUNCH_CLIP
  assert.ok(new Set(clip.frames.map(f=>f.p[CH.shL].toFixed(2))).size>4)
 })

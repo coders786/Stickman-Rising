@@ -6,6 +6,7 @@ import {FX} from '../src/game/fx/fx'
 import {Enemy} from '../src/game/entities/enemy'
 import {resolveEnemyHit} from '../src/game/combat/hit-resolution'
 import type {WorldRef} from '../src/game/core/types'
+import {CH} from '../src/game/anim/pose'
 
 function setup(hz=120){
  const input=new Input(),p=new Player(),fx=new FX(),noop=()=>{},hits:number[]=[]
@@ -68,11 +69,32 @@ test('power is stronger than tap and stabilizes before rising',()=>{
 test('attacks can interrupt charge or ride the released powered dash',()=>{
  for(const attack of ['light','heavy'] as const)for(const hz of [30,60,120]){
   const charging=setup(hz);charging.input.setVirtual('dash',true);charging.step()
-  charging.input.setVirtual(attack,true);charging.step();assert.equal(charging.p.state,'attack')
+  charging.input.setVirtual(attack,true);charging.step()
+  if(attack==='light'){
+   // LIGHT interrupts the charge immediately: a quick slash out of the coil.
+   assert.equal(charging.p.state,'attack')
+  }else{
+   // HEAVY does NOT interrupt — it ARMS the dual charge (hold-to-chamber,
+   // HEAVY_HOLD_ARM = .15s) so the invested dash can convert into RAIJIN
+   // ZAN / the empty-hand twin. Cutting the charge on a heavy press would
+   // make the dual release unreachable.
+   assert.equal(charging.p.state,'dashCharge')
+   charging.input.setVirtual('heavy',false);charging.step()
+   for(let i=0;i<Math.ceil(.2*hz);i++)charging.step()
+  }
+  charging.input.setVirtual(attack,false)
   const s=setup(hz);charge(s,hz);s.input.setVirtual('dash',false);s.step()
   for(let i=0;i<Math.ceil(.06*hz);i++)s.step()
   const x=s.p.x;s.input.setVirtual(attack,true);s.step()
-  assert.equal(s.p.state,'attack');assert.equal((s.p as unknown as {action:{def:{id:string}}}).action.def.id,attack==='light'?'dashSlash':'dashHeavy')
+  // DURING A LIVE POWER DASH the press is the charged release (GALE
+  // BREAKER), not a plain pass cut: the powered body has already paid its
+  // startup, so it converts into the dedicated charged strike. Both keys
+  // route there, by design.
+  const allowed=['powerArc','powerPunch']
+  assert.equal(s.p.state,'attack')
+  const got=(s.p as unknown as {action:{def:{id:string}}}).action.def.id
+  assert.ok(allowed.includes(got),`${allowed.join('|')} — got ${got}`)
+  assert.equal((s.p as unknown as {dashPower:boolean}).dashPower,true,'the strike rides the powered dash')
   s.input.setVirtual(attack,false);let peak=s.p.vx
   for(let i=0;i<Math.ceil(.18*hz);i++){s.step();peak=Math.max(peak,s.p.vx)}
   assert.ok(s.p.x-x>100);assert.ok(peak>1000)
@@ -153,16 +175,30 @@ test('charged dash has a distinct clip, near-horizontal drive, and grounded low 
   const probe=s.p as unknown as {animator:{getClip():{name:string}|null},dashRecoverT:number}
   assert.equal(probe.animator.getClip()?.name,'powerDash')
   let peak=0
-  while(s.p.state==='dash'){s.step();peak=Math.max(peak,s.p.pose[2])}
+  while(s.p.state==='dash'){s.step();peak=Math.max(peak,s.p.pose[CH.rootRot])}
   assert.ok(peak>1.20,`power lean ${peak}`)
-  const low=s.p.hipY+1.32*s.p.geom.hip.y
+  // THE CLIP'S OWN CATCH IS THE RECOVERY. Nothing re-writes the body after
+  // it: contact support comes from POWER_DASH_CLIP's own stance keys, and
+  // the torso UNWINDS from the committed drive back to the idle read. (Hip
+  // height is no longer a useful proxy for "crouch" — with the pelvis
+  // authored onto the ground, hip height is set by leg extension, so the
+  // recovery reads as lean/contact, not as a height delta.)
+  const lean=()=>s.p.pose[CH.rootRot]
+  const toeY=()=>Math.max(s.p.hipY+1.32*s.p.geom.toeL.y,s.p.hipY+1.32*s.p.geom.toeR.y)
+  // sample the lean where the drive is actually committed (mid-clip), not
+  // at the instant the motor hands over
+  let driven=peak
   for(let i=0;i<Math.ceil(.10*hz);i++){
+   driven=Math.max(driven,lean())
    s.step();assert.ok(probe.dashRecoverT>0)
-   assert.ok(Math.max(s.p.hipY+1.32*s.p.geom.toeL.y,s.p.hipY+1.32*s.p.geom.toeR.y)>-6,'recovery has ground support')
+   assert.ok(toeY()>-6,'recovery has ground support')
   }
-  assert.ok(s.p.hipY+1.32*s.p.geom.hip.y>low-5,'hold the low stabilization before rising')
+  const catching=lean()
   for(let i=0;i<Math.ceil(.45*hz);i++)s.step()
-  assert.ok(s.p.hipY+1.32*s.p.geom.hip.y<low-3,'rise after settling')
+  // the drive unwinds monotonically toward the neutral idle pitch
+  assert.ok(catching<driven-0.15,`catch unwinds the drive (${driven.toFixed(2)}→${catching.toFixed(2)})`)
+  assert.ok(lean()<catching,`settles further upright (${catching.toFixed(2)}→${lean().toFixed(2)})`)
+  assert.ok(toeY()>-6,'settled stance keeps ground contact')
  }
 })
 
@@ -225,15 +261,37 @@ test('both landings resist movement until stabilized, then accept a queued jump'
 })
 
 test('dash stamina is spent only on launch and interrupted charges cost nothing',()=>{
+ // THE COIL IS FREE. Holding the dash key costs nothing until the body
+ // actually LAUNCHES; cancelling the charge costs nothing at all; and an
+ // early attack press (before the coil is ready) is a plain attack off a
+ // free charge. Only the release pays.
  for(const hz of [30,60,120]){
+  // (1) holding the coil is free
   const s=setup(hz);const full=s.p.stamina
   s.input.setVirtual('dash',true);for(let i=0;i<Math.ceil(hz*.4);i++)s.step()
+  assert.equal(s.p.state,'dashCharge')
   assert.equal(s.p.stamina,full,'charging does not spend stamina')
-  s.input.setVirtual('light',true);s.step();assert.equal(s.p.state,'attack');assert.equal(s.p.stamina,full)
+
+  // (2) an EARLY attack press interrupts for free — the coil never launched
+  const e=setup(hz)
+  e.input.setVirtual('dash',true);e.step()
+  e.input.setVirtual('light',true);e.step()
+  assert.equal(e.p.state,'attack');assert.equal(e.p.stamina,full,'an interrupted charge costs nothing')
+
+  // (3) cancelling the fully-charged coil for another action is free too
+  const c=setup(hz);charge(c,hz)
+  c.input.setVirtual('jump',true);c.step()
+  assert.equal(c.p.stamina,full,'cancelling a ready charge costs nothing')
+
+  // (4) a normal dash spends 45 on launch
   const n=setup(hz);n.input.setVirtual('dash',true);n.input.setVirtual('dash',false);n.step()
   assert.equal(n.p.stamina,n.p.maxStamina-45,'normal dash costs 45')
+
+  // (5) a full-charge RELEASE launches and spends 120 exactly once
   const b=setup(hz);charge(b,hz);b.input.setVirtual('dash',false);b.step()
   assert.equal(b.p.stamina,b.p.maxStamina-120,'power dash costs 120 once')
+  for(let i=0;i<Math.ceil(.2*hz);i++)b.step()
+  assert.ok(b.p.stamina>=b.p.maxStamina-120,'never charged twice for one release')
  }
 })
 
@@ -258,9 +316,22 @@ test('low stamina prevents new dashes, never blocks attacks, and regenerates aft
 
 test('charged release falls back to a normal dash when power stamina is insufficient',()=>{
  for(const hz of [30,60,120]){
-  const s=setup(hz);s.p.stamina=100;charge(s,hz);const before=s.p.stamina;s.input.setVirtual('dash',false);s.step()
-  assert.equal(s.p.state,'dash');assert.equal((s.p as unknown as {dashPower:boolean}).dashPower,false)
-  assert.equal(s.p.stamina,before-45)
+  const s=setup(hz)
+  // Drain at the RELEASE, not before the coil: stamina regenerates during
+  // the 0.32s charge, so pre-draining just refills itself and the case
+  // under test never occurs.
+  charge(s,hz)
+  s.p.stamina=60
+  const before=s.p.stamina
+  s.input.setVirtual('dash',false);s.step()
+  // READY IS NOT AFFORDABLE: the coil filled but the body cannot pay 120,
+  // so it slides out as an ordinary grounded dash at the ordinary cost.
+  // (Compare the DROP, not the absolute value — regen ticks in the same
+  // frame; the power cost would have been 120.)
+  assert.equal(s.p.state,'dash')
+  assert.equal((s.p as unknown as {dashPower:boolean}).dashPower,false)
+  const spent=before-s.p.stamina
+  assert.ok(spent>40&&spent<50,`ordinary dash cost ~45 (spent ${spent.toFixed(1)})`)
  }
 })
 

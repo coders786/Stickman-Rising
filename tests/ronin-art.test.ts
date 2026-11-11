@@ -5,7 +5,6 @@ import { CH, makePose } from '../src/game/anim/pose'
 import { sampleClip } from '../src/game/anim/animator'
 import { applyJointLimits } from '../src/game/anim/limits'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../src/game/anim/skeleton'
-import { PLAYER_GAIT, GaitPlanner } from '../src/game/anim/legik'
 
 test('anime proportions preserve the limb and blade reach contracts', () => {
   assert.equal(PLAYER_STYLE.model,'shadow-ronin')
@@ -29,11 +28,17 @@ test('rest and combat guard have an intentional lowered, flexed martial posture'
   }
   assert.ok(SPRINT_CLIP.frames[0].p[CH.rootRot] > WALK_CLIP.frames[0].p[CH.rootRot]+.09)
 })
-test('parked foot IK retains the broader martial stance without marching in place', () => {
-  const gait=new GaitPlanner()
-  for(let i=0;i<240;i++)gait.update(0,0,1,0,PLAYER_GAIT.idle,1/120,true,3,true)
-  assert.equal(gait.standing,true)
-  assert.equal(gait.cadence,0)
-  assert.ok(gait.footR.planted && gait.footL.planted)
-  assert.ok(gait.footR.x-gait.footL.x>33)
+test('the authored idle stance is wide and planted, and the ROM gate leaves it alone', () => {
+  // The gait/foot-IK planner is gone: stance width is now authored, so it
+  // must come out of the clip. Standing still, the two feet hold a martial
+  // gap from the KEYFRAMES — no planner, no marching-in-place risk.
+  for(const clip of [IDLE_CLIP,COMBAT_IDLE_CLIP]){
+    for(let i=0;i<120;i++){
+      const pose=sampleClip(clip,clip.dur*i/120,makePose())
+      // feet derive from hip + knee + ankle in channel space
+      const stance=Math.abs(PLAYER_SPEC.thigh*(Math.sin(pose[CH.hipR])-Math.sin(pose[CH.hipL])))
+      assert.ok(stance>8,`authored stance width ${stance.toFixed(1)} in ${clip.name}`)
+    }
+    assert.ok(clip.loop,'idle clips loop without accumulating')
+  }
 })

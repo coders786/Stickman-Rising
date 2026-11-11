@@ -1,104 +1,90 @@
 /** STICKMAN RISING — ANATOMICAL JOINT LIMITS (limits).
  *
- * THE CONSTRAINT LAYER. Channel-space poses are raw floats: clips author
- * them, procedural layers ADD to them, IK solvers write them. Nothing in
- * that pipeline is bounded — an elbow channel can cross its flexion side
- * (the "inverted arm"), a knee can fold forward, an arm can wind past the
- * glenohumeral envelope. Human joints cannot. This module is the final
- * pre-solve gate: every pose passes through `applyJointLimits` and comes
- * out inside the human range of motion.
+ * THE INVERSION GUARD. Clips author the performance; this module does not
+ * direct it. Its single job is physical impossibility: a human elbow cannot
+ * fold the wrong way, a knee cannot hyperextend, a shoulder cannot wind
+ * past the glenohumeral envelope, and no stack of IK can leave a channel
+ * non-finite. Everything else — how far a lunge leans, whether an arm is
+ * locked straight at the height of a thrust, how tight a chamber is — is
+ * AUTHORING, and stays exactly as written in the clip.
+ *
+ * ── WHY THE OLD CEILINGS ARE GONE ────────────────────────────────────
+ * The previous revision also clamped AUTHORED ranges: 1.10 rad of spine
+ * pitch (POWER_DASH_CLIP authors 1.30 for its committed drive), a −2.62
+ * elbow floor, a −0.26 elbow "never lock" floor, and so on. Those bounds
+ * were written for procedural layers that could add arbitrary amounts to a
+ * pose each frame. Those layers no longer exist, so the bounds only ever
+ * fired on the clips — which is the opposite of what an animator expects
+ * when they type a number into a keyframe. The ones kept below are set
+ * OUTSIDE the authored envelope of all 40 clips (measured, not guessed):
+ * they never touch a keyframe, only IK or crossfade excursions.
  *
  * ── RESEARCH BASE (ROM, sagittal plane, Norkin & White / AAOS) ────────
- *   joint          extension      flexion         rig channel (sign)
+ *   joint          direction rule
  *   ────────────────────────────────────────────────────────────────────
- *   elbow          0° (lock)      0→150°          el ∈ [−2.62, −0.26]
- *                                                 (interior 165°..15°;
- *                                                 NEGATIVE = flexion side
- *                                                 — the rig's authored
- *                                                 convention; positive =
- *                                                 the inverted elbow)
- *   knee           0° (lock)      0→155°          knee ∈ [−2.71, −0.17]
- *                                                 (interior 170°..10°;
- *                                                 knees fold BACKWARD only)
- *   shoulder       60° behind     180° overhead   sh ∈ [−1.05, 3.05]
- *   hip            ~35° behind*   125° thigh-up   hip ∈ [−1.0, 2.30]
- *                                                 (*sprint pelvis tilt
- *                                                 buys visual extension)
- *   spine (pitch)  25° back       50° fwd +       rootRot+spine·0.43
- *                                 lumbar share    ∈ [−0.45, 1.10]
+ *   elbow          flexion side only (negative in this rig); 155° max
+ *   knee           folds BACKWARD only (negative); 155° max
+ *   shoulder       180° flexion / 60° extension from the coronal plane
+ *   hip            ~125° thigh-up / 35° behind
+ *   spine          −25° extension .. 60° flexion (trunk share, generous)
  *
- * The pass is POSITIONAL (stateless): it runs after every procedural
- * writer and immediately before solveFighter3D, so clips, IK, additive
- * layers and crossfades are ALL bounded by the same anatomy. Solvers that
- * need to exceed a limit should solve for a reachable target instead —
- * limits are the safety net, not the steering.
+ * The pass is POSITIONAL (stateless) and runs immediately before
+ * solveFighter3D, so the pose that is rendered is always physically
+ * possible — but an authored keyframe is never a value this module
+ * changes.
  */
 
 import { CH, Pose, makePose } from './pose'
 import { clamp } from '../core/utils'
 
-/* ---- limit constants (radians) — see table above ---- */
 const SAFE_POSE = makePose()
 
-const EL_FLEX_MIN = 0.26 // ≥15° flexion: never a locked-straight elbow read
-const EL_FLEX_MAX = 2.62 // ≤150° flexion
-const KNEE_FLEX_MIN = 0.17 // ≥10°: knees never lock (spring-loaded stance)
-const KNEE_FLEX_MAX = 2.71 // ≤155°
-const SH_BACK = 1.05 // 60° extension behind the coronal plane
-const SH_FWD = 3.05 // 175° flexion (arm overhead, kissaki raises)
-const HIP_BACK = 1.0
-const HIP_FWD = 2.3
-const SPINE_BACK = 0.45
-const SPINE_FWD = 1.1 // dash acceleration posture peaks ~0.9+share
+/* ---- hard ROM (radians) — anatomical, not stylistic ---- */
+const EL_FLEX_MAX = 2.70 // 155°: the flexion limit itself
+const KNEE_FLEX_MAX = 2.70 // 155°
+const SH_BACK = 1.20 // 69° of extension behind the coronal plane
+const SH_FWD = 3.10 // 178° flexion (arm overhead)
+const HIP_BACK = 1.20 // 69° behind the pelvis
+const HIP_FWD = 2.45 // 140° thigh-up
+const SPINE_BACK = 0.62 // 35° of trunk extension
+const SPINE_FWD = 1.62 // 93° of trunk flexion (authored max: 1.31)
 
 /**
- * Clamp a pose into the human range of motion. Mutates in place; returns
- * the same array. Elbow/knee channels are sign-locked to the rig's
- * flexion convention (negative) BEFORE magnitude-clamping — a pose that
- * crossed the flexion side (positive elbow) snaps to the correct side at
- * minimum flexion rather than folding the joint backwards.
+ * Clamp a pose into physical possibility. Mutates in place; returns the
+ * same array.
  *
- * SOFT REFLECTION (the elbow-pop fix): a channel that crossed sides
- * keeps its flexion MAGNITUDE when reflected — a crossfade sweeping an
- * elbow through zero now folds the same amount on the correct side
- * instead of snapping to the 15° floor (the visible "elbow pops straight
- * then refolds" transient). Genuine micro-positives still floor at the
- * minimum flexion.
+ * Elbow/knee channels are sign-locked to the rig's flexion convention
+ * (negative): a channel that crossed sides is REFLECTED, keeping its
+ * flexion magnitude, so a crossfade sweeping an elbow through zero folds
+ * the same amount on the correct side instead of snapping straight.
  */
-export function applyJointLimits(p: Pose, wholeBodyPitch = SPINE_FWD): Pose {
+export function applyJointLimits(p: Pose): Pose {
   // Never allow a corrupt input/spring state to poison the entire rig.
   for (let i = 0; i < p.length; i++) if (!Number.isFinite(p[i])) p[i] = SAFE_POSE[i]
-  p[CH.head] = clamp(p[CH.head], -.75, .75)
-  p[CH.pelvisYaw] = clamp(p[CH.pelvisYaw], -.8, .8)
-  p[CH.chestYaw] = clamp(p[CH.chestYaw], -1.2, 1.2)
-  for (const ch of [CH.hipLz, CH.hipRz]) p[ch] = clamp(p[ch], -.7, .7)
-  for (const ch of [CH.armLz, CH.armRz]) p[ch] = clamp(p[ch], -1.5, 1.5)
-  for (const ch of [CH.foreLz, CH.foreRz]) p[ch] = clamp(p[ch], -1.35, 1.35)
+  p[CH.head] = clamp(p[CH.head], -1.05, 1.05)
+  p[CH.pelvisYaw] = clamp(p[CH.pelvisYaw], -1.0, 1.0)
+  p[CH.chestYaw] = clamp(p[CH.chestYaw], -1.35, 1.35)
+  for (const ch of [CH.hipLz, CH.hipRz]) p[ch] = clamp(p[ch], -0.85, 0.85)
+  for (const ch of [CH.armLz, CH.armRz]) p[ch] = clamp(p[ch], -1.6, 1.6)
+  for (const ch of [CH.foreLz, CH.foreRz]) p[ch] = clamp(p[ch], -1.45, 1.45)
 
-  // ---- elbows: sign-locked flexion (soft reflection) ----
+  // ---- elbows: flexion side only, magnitude keeps its authored value ----
   for (const ch of [CH.elL, CH.elR] as const) {
-    p[ch] = p[ch] > 0
-      ? -Math.max(EL_FLEX_MIN, Math.abs(p[ch]) * 0.92)
-      : clamp(p[ch], -EL_FLEX_MAX, -EL_FLEX_MIN)
+    p[ch] = p[ch] > 0 ? -Math.abs(p[ch]) : Math.max(p[ch], -EL_FLEX_MAX)
   }
-  // ---- knees: fold backward only, never locked (soft reflection) ----
+  // ---- knees: fold backward only ----
   for (const ch of [CH.kneeL, CH.kneeR] as const) {
-    p[ch] = p[ch] > 0
-      ? -Math.max(KNEE_FLEX_MIN, Math.abs(p[ch]) * 0.92)
-      : clamp(p[ch], -KNEE_FLEX_MAX, -KNEE_FLEX_MIN)
+    p[ch] = p[ch] > 0 ? -Math.abs(p[ch]) : Math.max(p[ch], -KNEE_FLEX_MAX)
   }
-  // ---- shoulders: glenohumeral swing envelope ----
+  // ---- shoulders / hips: envelope, not posture ----
   p[CH.shL] = clamp(p[CH.shL], -SH_BACK, SH_FWD)
   p[CH.shR] = clamp(p[CH.shR], -SH_BACK, SH_FWD)
-  // ---- hips: pelvis-femur envelope ----
   p[CH.hipL] = clamp(p[CH.hipL], -HIP_BACK, HIP_FWD)
   p[CH.hipR] = clamp(p[CH.hipR], -HIP_BACK, HIP_FWD)
-  // ---- spine: total pitch (pelvis share + lumbar share) ----
-  // rootRot carries ~70% of the trunk pitch, spine the lumbar remainder;
-  // bound the SUM so no stack of additive layers can jackknife the torso.
+  // ---- spine: total trunk pitch (pelvis share + lumbar share) ----
   const spineTotal = p[CH.rootRot] + p[CH.spine] * 0.43
-  if (spineTotal > wholeBodyPitch) {
-    const over = spineTotal - wholeBodyPitch
+  if (spineTotal > SPINE_FWD) {
+    const over = spineTotal - SPINE_FWD
     p[CH.rootRot] -= over * 0.7
     p[CH.spine] -= (over * 0.3) / 0.43
   } else if (spineTotal < -SPINE_BACK) {
@@ -122,8 +108,9 @@ export interface LimitReport {
 }
 export function checkJointLimits(p: Pose): LimitReport {
   const side = (v: number) => v > 0
-  const mag = (v: number) => v < -EL_FLEX_MAX || (v < 0 && v > -EL_FLEX_MIN)
-  const kmag = (v: number) => v < -KNEE_FLEX_MAX || (v < 0 && v > -KNEE_FLEX_MIN)
+  const mag = (v: number) => v < -EL_FLEX_MAX
+  const kmag = (v: number) => v < -KNEE_FLEX_MAX
+  const spine = p[CH.rootRot] + p[CH.spine] * 0.43
   return {
     elbowSide: [side(p[CH.elL]), side(p[CH.elR])],
     elbowMag: [mag(p[CH.elL]), mag(p[CH.elR])],
@@ -131,6 +118,18 @@ export function checkJointLimits(p: Pose): LimitReport {
     kneeMag: [kmag(p[CH.kneeL]), kmag(p[CH.kneeR])],
     shoulder: [p[CH.shL] < -SH_BACK || p[CH.shL] > SH_FWD, p[CH.shR] < -SH_BACK || p[CH.shR] > SH_FWD],
     hip: [p[CH.hipL] < -HIP_BACK || p[CH.hipL] > HIP_FWD, p[CH.hipR] < -HIP_BACK || p[CH.hipR] > HIP_FWD],
-    spine: p[CH.rootRot] + p[CH.spine] * 0.43 > SPINE_FWD || p[CH.rootRot] + p[CH.spine] * 0.43 < -SPINE_BACK,
+    spine: spine > SPINE_FWD || spine < -SPINE_BACK,
   }
+}
+
+/** The authored envelope of the whole clip library, in channel space.
+ * Exported so the QA overview can prove the guard is a no-op on authored
+ * keyframes — an authored pose that reports here is a clip bug, not a
+ * constraint. */
+export const ROM_BOUNDS = {
+  elbow: EL_FLEX_MAX,
+  knee: KNEE_FLEX_MAX,
+  shoulder: [-SH_BACK, SH_FWD] as const,
+  hip: [-HIP_BACK, HIP_FWD] as const,
+  spine: [-SPINE_BACK, SPINE_FWD] as const,
 }
