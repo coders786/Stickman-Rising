@@ -462,6 +462,25 @@ export function drawStick(
       ctx.arc(j.x, j.y, jr * 0.42, 0, Math.PI * 2)
       ctx.fill()
     }
+    // hydraulic piston housings: open arc rings around the joints, slowly
+    // rotating — machined servo canisters at gameplay zoom. Front joints
+    // glow; back joints stay faint outline so the depth order still reads.
+    const spin = t * 1.9
+    ctx.lineWidth = 1.3
+    ctx.strokeStyle = rgba(style.outline, 0.6)
+    const backJoints: Array<[Vec2, number]> = [[g.kneeL, 1.1], [g.elbL, 4.1]]
+    for (const [j, a0] of backJoints) {
+      ctx.beginPath()
+      ctx.arc(j.x, j.y, jr + 2.2, spin * 0.86 + a0, spin * 0.86 + a0 + 2.4)
+      ctx.stroke()
+    }
+    ctx.strokeStyle = rgba(style.glow, 0.42)
+    const frontJoints: Array<[Vec2, number]> = [[g.kneeR, 0], [g.elbR, 2.2]]
+    for (const [j, a0] of frontJoints) {
+      ctx.beginPath()
+      ctx.arc(j.x, j.y, jr + 2.4, spin + a0, spin + a0 + 2.6)
+      ctx.stroke()
+    }
   }
 
   // ---- 7. head ----
@@ -486,6 +505,19 @@ export function drawStick(
   ctx.lineTo(vx + hr - 0.6, vy - 2.2)
   ctx.stroke()
   if (!opts.simple) {
+    // sweeping reflection glint rides the visor slit — a moving highlight
+    // sells the slit as glass over a sensor, wraps in from off-edge
+    const gp = ((t * 0.4) % 1.6) - 0.3
+    if (gp > 0 && gp < 1) {
+      const gx = vx + 1.5 + (hr - 2.1) * gp
+      const gy = vy - 3.1 + 0.9 * gp
+      ctx.strokeStyle = rgba('#ffffff', 0.32)
+      ctx.lineWidth = 1.1
+      ctx.beginPath()
+      ctx.moveTo(gx - 1.1, gy - 0.35)
+      ctx.lineTo(gx + 1.3, gy + 0.4)
+      ctx.stroke()
+    }
     // helmet crest
     ctx.strokeStyle = rgba(style.body, 0.9)
     ctx.lineWidth = 2.2
@@ -533,6 +565,103 @@ export function drawStick(
     ctx.moveTo((g.hip.x + g.kneeR.x) / 2, (g.hip.y + g.kneeR.y) / 2)
     ctx.lineTo((g.hip.x + g.kneeR.x) / 2 + 1.2, (g.hip.y + g.kneeR.y) / 2 - 2.6)
     ctx.stroke()
+    // ---- plating segment pass: seams that read as machined armor plates
+    // stacked over the body mass. All seams stay INSIDE the limb/torso
+    // silhouette so the readable stick outline is never broken. ----
+    ctx.lineWidth = 1.2
+    ctx.strokeStyle = rgba(style.outline, 0.8)
+    // chest plate seams (two, perpendicular to the torso axis)
+    {
+      const tx = g.chest.x - g.waist.x
+      const ty = g.chest.y - g.waist.y
+      const tl = Math.hypot(tx, ty) || 1
+      const px = -ty / tl
+      const py = tx / tl
+      for (const f of [0.52, 0.78]) {
+        const mx = g.waist.x + tx * f
+        const my = g.waist.y + ty * f
+        const hw = 5.2 - f * 1.6
+        ctx.beginPath()
+        ctx.moveTo(mx + px * hw, my + py * hw)
+        ctx.lineTo(mx - px * hw, my - py * hw)
+        ctx.stroke()
+      }
+      // forearm guard band across the sword forearm (55% down)
+      const fx = g.elbR.x + (g.handR.x - g.elbR.x) * 0.55
+      const fy = g.elbR.y + (g.handR.y - g.elbR.y) * 0.55
+      const fdx = g.handR.x - g.elbR.x
+      const fdy = g.handR.y - g.elbR.y
+      const fdl = Math.hypot(fdx, fdy) || 1
+      ctx.beginPath()
+      ctx.moveTo(fx - (fdy / fdl) * 2.9, fy + (fdx / fdl) * 2.9)
+      ctx.lineTo(fx + (fdy / fdl) * 2.9, fy - (fdx / fdl) * 2.9)
+      ctx.stroke()
+      // shin guard seam on the front shin (mid-calf)
+      const sx = (g.kneeR.x + g.ankleR.x) / 2
+      const sy = (g.kneeR.y + g.ankleR.y) / 2
+      const sdx = g.ankleR.x - g.kneeR.x
+      const sdy = g.ankleR.y - g.kneeR.y
+      const sdl = Math.hypot(sdx, sdy) || 1
+      ctx.beginPath()
+      ctx.moveTo(sx - (sdy / sdl) * 2.6, sy + (sdx / sdl) * 2.6)
+      ctx.lineTo(sx + (sdy / sdl) * 2.6, sy - (sdx / sdl) * 2.6)
+      ctx.stroke()
+    }
+    // ---- spinal power cable: skull base → sacrum along the BACK of the
+    // torso, bowing away and swaying — sells a powered suit worn over the
+    // body; two clamp ticks pin it to the plating ----
+    {
+      const ndx = g.chest.x - g.hip.x
+      const ndy = g.chest.y - g.hip.y
+      const nl = Math.hypot(ndx, ndy) || 1
+      const bx = ndy / nl
+      const by = -ndx / nl
+      const sway = Math.sin(t * 2.8) * 1.1
+      const ax = g.neckTop.x + bx * 2.4
+      const ay = g.neckTop.y + by * 2.4
+      const ex = g.hip.x + bx * 2.9
+      const ey = g.hip.y + by * 2.9
+      const cx = (ax + ex) / 2 + bx * (2.6 + sway)
+      const cy = (ay + ey) / 2 + by * (2.6 + sway)
+      ctx.strokeStyle = rgba(style.outline, 0.9)
+      ctx.lineWidth = 1.8
+      ctx.beginPath()
+      ctx.moveTo(ax, ay)
+      ctx.quadraticCurveTo(cx, cy, ex, ey)
+      ctx.stroke()
+      // clamp ticks at 32% / 64% along the chord
+      ctx.lineWidth = 1.1
+      ctx.strokeStyle = rgba(style.outline, 0.75)
+      for (const f of [0.32, 0.64]) {
+        const qx = ax + (ex - ax) * f
+        const qy = ay + (ey - ay) * f
+        ctx.beginPath()
+        ctx.moveTo(qx + bx * 1.6, qy + by * 1.6)
+        ctx.lineTo(qx - bx * 1.6, qy - by * 1.6)
+        ctx.stroke()
+      }
+    }
+    // ---- hip thruster vents: three machined exhaust slits on the BACK of
+    // the pelvis housing, breathing with the core pulse ----
+    {
+      const ndx = g.waist.x - g.hip.x
+      const ndy = g.waist.y - g.hip.y
+      const nl = Math.hypot(ndx, ndy) || 1
+      const ux = ndx / nl
+      const uy = ndy / nl
+      const bx = uy
+      const by = -ux
+      ctx.strokeStyle = rgba(style.core ?? style.glow, 0.5 + ca * 0.35)
+      ctx.lineWidth = 1.4
+      for (const [off, len] of [[2.4, 2.6], [3.6, 3.1], [4.8, 2.6]] as const) {
+        const vx0 = g.hip.x + bx * off - ux * len
+        const vy0 = g.hip.y + by * off - uy * len
+        ctx.beginPath()
+        ctx.moveTo(vx0, vy0)
+        ctx.lineTo(vx0 + ux * len * 2, vy0 + uy * len * 2)
+        ctx.stroke()
+      }
+    }
   }
 
   // ---- 9. hit flash overlay ----
