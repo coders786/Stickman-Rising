@@ -69,7 +69,7 @@ instantly — it overshoots, then settles with overlap (arm arrives, then hand, 
 blade stops dead at extension instead of whipping past and settling · head/torso arrive simultaneously ·
 secondary spring constants too stiff (no visible overlap) or too loose (mush).
 
-### 3. Timing, Spacing & Easing — ❌
+### 3. Timing, Spacing & Easing — ✅
 **Principle:** Weight and force live in the *distribution* of frames, not the poses.
 **Becker standard:** Attacks are brutally asymmetric: slow-ish anticipation → 1-2 frame BLUR of a strike →
 long cushioned settle. Spacing between frame pairs widens mid-swing (acceleration) and narrows into extremes
@@ -410,3 +410,108 @@ pattern worth investigating OUTSIDE this program — logged as proposal #4.
    0.02 rad cosmetic bump — imperceptible, leave.
 
 **COMMIT:** `1fd9c0a` — feat(anim): GAP SESSION 2 — follow-through & overlapping action (momentum bleeds, joints release sequentially) — pushed to origin/main
+
+### SESSION 3 — Timing, Spacing & Easing (2026-11-11) — ✅
+
+**AUDIT SCOPE:** `attacks.ts` (every attack clip's keyframe
+intervals + explicit eases — full extraction table built for all 25 clips:
+l1-l5, retreat, spin, stabs, h1-h3, launcher, dashslash, dashHeavy, powerArc,
+powerSlash, charged, riposte, a1-a3, dive, slam), `animator.ts` (ease model:
+`e` on a key applies to the span INTO that key; default = inOutCubic;
+`monotone` clips bypass eases entirely), `clips.ts` (locomotion = monotone
+C1 — eases inert there; CHARGE_CLIP's 3 `linear` eases are a held tremble
+loop with ≤0.1 deltas — correct usage, not impact eases), `moveset.ts`
+(unarmed = monotone for strikes — ease-inert; its kf eases govern only
+non-monotone clips), `core/utils.ts` EASES registry (12 curves; outExpo
+and outQuart existed UNUSED by the core string family).
+
+**BECKER STANDARD (Session 3):** attacks are brutally asymmetric —
+slow-ish coil → 1-2 frame BLUR strike → long cushioned settle. Spacing
+widens mid-swing (acceleration) and narrows into extremes (deceleration).
+Recovery never mirrors attack speed; the money frame arrives ~87% into
+its span's first quarter.
+
+**GAP FINDINGS (numbers @30fps=33.3ms; peaks budgeted at 60fps
+sampling, lim 0.72 rad/f / 14 px):**
+- **No blur anywhere in the core string family:** every strike span in
+  l1-l5/stabs/h1-h3/launcher/dash/riposte/air eased `outCubic` at best
+  (50% travel by ~35% of span). outExpo was used ZERO times in the whole
+  combat family; outQuart only in the power attacks (powerArc 0.11,
+  powerSlash .14, charged 0.17) — the blur language existed in-house but
+  never reached the strings the player throws every fight.
+- **Machine-symmetric settles:** EVERY recovery tail span in the family
+  (Session-2 settle keys → GUARD returns, 31 spans) eased `inOutCubic` —
+  symmetric S: sticky start (mini-freeze at the FT pose), glide, stop.
+  Read as "hitch → glide", not "WHIP → bleed → settle".
+- **Budget-constrained spans (kept outCubic, honest):** h3 impact span
+  0.42→0.5 (shR Δ1.30 → outExpo peak 0.99 / outQuart 0.79 > 0.72),
+  dashslash 0.06→0.102 (shR Δ0.85 → expo 0.80 / quart 0.74 > 0.72),
+  dive 0.06→0.12 (hipR Δ1.05 → expo 0.90 > 0.72), slam 0.07→0.15 (hipR
+  Δ1.20, shL Δ1.30 → quart 0.73/0.79 > 0.72). Their blur needs key-time
+  re-spacing (PROPOSAL), not eases.
+- Pre-existing anomaly found while verifying: the power family's own
+  outQuart strikes violate the 0.72 budget TODAY (powerArc shR peak 1.09,
+  powerSlash 1.24, charged 0.76) — identical on clean HEAD, so predates
+  this program; the ease-blind checker never saw them.
+
+**FIXES APPLIED (all pure ease-name swaps — ZERO key times, poses,
+events, cancel windows, chain rules touched; 47 edits):**
+- **16 strike blurs** (span INTO the money key): outExpo → l1 0.17,
+  l3 0.19, l4 0.2, l5 0.25 (finisher), h1 0.32, launcher 0.11,
+  riposte 0.15; outQuart → l2 0.18, stabs T1 0.17 / T2 0.35 /
+  T3 0.555, h2 0.24, dashHeavy 0.12, a1 0.09, a2 0.09, a3 0.10.
+  Sharper entry also aligns pose-at-hit-window-start closer to full
+  extension (l1: blade 78%→94% at hit.start 0.14).
+- **31 settle cushions** (inOutCubic → outQuad): every Session-2 settle
+  key and settle→GUARD span — l1-l5 tails, retreat 0.51, spin 0.49/0.65,
+  stabs 0.7/0.78, h1 0.57/0.71, h2 0.56/0.64/0.72, h3 0.9 (the GRAND
+  SLAM's 260ms bury-hold tail), launcher 0.34/0.46, dashslash 0.35,
+  dashHeavy 0.38/0.5, powerArc 0.28/0.42, powerSlash .52/.64, charged
+  0.66, riposte 0.39/0.56, air a1/a2 0.33/0.41, a3 0.49/0.57, dive
+  0.62, slam 0.78. Final GUARD→GUARD spans left inert (identical
+  poses). Sequencing now reads: whip-past (outExpo/quart) →
+  bleed-arrive (outQuad) → joints release in Session-2's order.
+- 2 self-reverted during verify: dive 0.12, slam 0.15 (budget above).
+
+**VERIFY (all actually run):** `bun run lint` → exit 0.
+`.qa/continuity-check.ts` → **77 flags on BOTH clean HEAD (stash-probe)
+and the edited tree — zero delta** (checker is ease-blind: models
+outCubic for every span regardless of actual ease). NOTE honestly: the
+baseline grew 35→77 since Session 2's log (sakuga counts exactly doubled:
+11→22, 9→18, 5→10, 4→8) WITHOUT any edit by this session — verified by
+the stash-probe; environment drift to investigate outside this program.
+Own analytic first-frame peak check (the checker's blind spot):
+all 47 changed spans ≤ 0.72 rad / ≤ 14 px; 6 pre-existing power-family
+violations identical on HEAD. Live probe (agent-browser): fresh boot →
+ENGAGE → strings fired → hits registered (point-blank 5-slash string
+landed its in-range hits; combo counter read 1 mid-string under a
+hostile 6-enemy pack vs Session 2's calmer-condition 4 — cadence/pack
+interference, not animation data), player survived full strings,
+**ZERO page/console errors** across boot, combat, death, retry;
+screenshots captured (research/s3-live-string.png 481KB, s3-live-dead.png
+341KB — rendered frames).
+
+**ENVIRONMENT NOTE (honest):** Turbopack wedged a 3rd time during the
+edit window (next-server 85% CPU / 43% RSS / port dead) — recovered via
+`kill -9` + sanctioned `.zscripts/dev.sh` boot (now a 3-run pattern;
+proposal #4 upgraded to urgent).
+
+**PROPOSALS / FOLLOW-UPS:**
+1. h3/dashslash/dive/slam blur spans are budget-capped by large channel
+   deltas over 3-5 frame spans — the true Becker blur there needs a
+   re-spaced keychain (insert 1-2f apex keys + tighten pre-strike
+   spacing). RISKY (key times near hit windows) → schedule as its own
+   micro-session, not a rider.
+2. Pre-existing power-family outQuart violations (peaks 0.76-1.24) —
+   soften to match the 0.72 discipline or accept as authored sakuga
+   extremity; needs an intentional decision.
+3. Continuity baseline drift 35→77 (sakuga doubling) — root-cause
+   outside this program (checker blind to eases; something changed pose
+   data between 1fd9c0a and HEAD-b805007).
+4. Turbopack wedge canary/auto-restart — see Session 2 proposal #4,
+   now with 3 occurrences.
+5. Wind-up apexes (l5 0.12, stabs 0.09, h1 0.14, h2 0.12) sit on
+   symmetric inOutCubic — soft enough for gathers; revisit at Cycle 2
+   only if coils read stiff.
+
+**COMMIT:** (recorded post-push in tracker update)

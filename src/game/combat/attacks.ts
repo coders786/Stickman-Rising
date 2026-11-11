@@ -179,7 +179,7 @@ const l1: AttackDef = {
       shR: 1.0, elR: -0.3, wrR: 0.62, // blade rips out level, elbow stays flexion-side
       shL: 0.55, elL: -0.95,
       pelvisYaw: 0.18, chestYaw: -0.14, // hips unwind through the draw
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.26, {
       rootRot: 0.38, spine: 0.13, rootY: 0,
       shR: 1.2, elR: -0.25, wrR: 0.3, // follow-through, arm extends (≤14° flexion floor)
@@ -190,7 +190,7 @@ const l1: AttackDef = {
     }, 'outCubic'),
     keyframe(0.35, {
       pelvisYaw: 0.1, chestYaw: -0.06, head: -0.08, // hips settle after the arm arrived
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.44, GUARD, 'inOutCubic'),
     keyframe(0.52, GUARD, 'inOutCubic'),
   ]),
@@ -242,7 +242,7 @@ const l2: AttackDef = {
       shR: 1.15, elR: -0.05, wrR: -0.2, // blade crossing the descending diagonal
       shL: 0.35, elL: -1.2,
       pelvisYaw: 0.22, chestYaw: -0.18, // hips unwind through the diagonal
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.28, {
       rootRot: 0.42, spine: 0.16, rootY: 1.5,
       shR: 0.85, elR: -0.35, wrR: -0.2, // follow-through low
@@ -253,7 +253,7 @@ const l2: AttackDef = {
     }, 'outCubic'),
     keyframe(0.375, {
       pelvisYaw: 0.12, chestYaw: -0.08, head: -0.085, // sequential settle
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.47, GUARD, 'inOutCubic'),
     keyframe(0.55, GUARD, 'inOutCubic'),
   ]),
@@ -307,7 +307,7 @@ const l3: AttackDef = {
       shR: 1.75, elR: 0.55, wrR: -0.1, // blade rips up the rising diagonal
       shL: 0.3, elL: -1.4,
       pelvisYaw: 0.18, chestYaw: -0.16, // hips unwind with the riser
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.29, {
       rootRot: -0.08, spine: -0.03, rootY: -3,
       shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
@@ -317,7 +317,7 @@ const l3: AttackDef = {
     }, 'outCubic'),
     keyframe(0.39, {
       pelvisYaw: 0.1, chestYaw: -0.07, head: -0.09, // sequential settle
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.49, GUARD, 'inOutCubic'),
     keyframe(0.57, GUARD, 'inOutCubic'),
   ]),
@@ -368,7 +368,7 @@ const l4: AttackDef = {
       shR: 1.0, elR: 0.35, wrR: 0.22, // blade sweeps level through the front
       shL: 0.4, elL: -1.15,
       pelvisYaw: 0.2, chestYaw: -0.16, // hips drive the level arc
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.3, {
       rootRot: 0.4, spine: 0.15, rootY: 0,
       shR: 1.5, elR: 0.35, wrR: -0.85, // arc settles forward-low
@@ -379,7 +379,7 @@ const l4: AttackDef = {
     }, 'outCubic'),
     keyframe(0.42, {
       pelvisYaw: 0.11, chestYaw: -0.07, head: -0.08, // sequential settle
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.53, GUARD, 'inOutCubic'),
     keyframe(0.61, GUARD, 'inOutCubic'),
   ]),
@@ -440,7 +440,7 @@ const l5: AttackDef = {
       shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi: hands stay near the
       shL: 0.9, elL: -0.7,              // body — the blade falls through the
       pelvisYaw: 0.2, chestYaw: -0.18,  // hips unwind through the fall
-    }, 'outCubic'),                       // front plane, close enough to cut
+    }, 'outExpo'),                       // front plane, close enough to cut
     keyframe(0.37, {
       rootRot: 0.44, spine: 0.17, rootY: 2.5,
       shR: 0.7, elR: -0.6, wrR: -0.35, // cut finishes low past the target
@@ -451,7 +451,7 @@ const l5: AttackDef = {
     }, 'outCubic'),
     keyframe(0.48, {
       pelvisYaw: 0.11, chestYaw: -0.08, head: -0.09, // sequential settle
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.59, GUARD, 'inOutCubic'),
     keyframe(0.67, GUARD, 'inOutCubic'),
   ]),
@@ -497,7 +497,7 @@ const retreat: AttackDef = {
       shR: 2.0, elR: 0.5, wrR: 0.1,
       shL: 0.25, elL: -1.4,
     }, 'outCubic'),
-    keyframe(0.51, GUARD, 'inOutCubic'),
+    keyframe(0.51, GUARD, 'outQuad'),
     keyframe(0.59, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.16, end: 0.28, dmg: 10, stagger: 0.22, kb: 90, kbY: -160, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
@@ -553,8 +553,8 @@ const spin: AttackDef = {
     keyframe(0.49, {
       rootRot: 0.3, rootY: 3,
       shR: 0.7, elR: -0.3, wrR: 1.1,
-    }, 'inOutCubic'),
-    keyframe(0.65, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.65, GUARD, 'outQuad'),
   ]),
   hit: { start: 0.09, end: 0.42, dmg: 5.5, stagger: 0.14, kb: 160, hitstop: 0.028, shake: 0.07, heavy: false, multiHit: 0.11, pad: 6 },
   trail: { start: 0.08, end: 0.46 },
@@ -615,7 +615,7 @@ const stabs: AttackDef = {
       shR: 1.5, elR: 0.05, wrR: 0.02,
       shL: 1.4, elL: -0.35,
       pelvisYaw: 0.24, chestYaw: -0.2, // hips spear through with the point
-    }, 'outCubic'),
+    }, 'outQuart'),
     // retract 1 — controlled pull back to the hip, point never drops
     keyframe(0.27, {
       rootRot: -0.08, rootY: 1,
@@ -641,7 +641,7 @@ const stabs: AttackDef = {
       shR: 1.52, elR: 0.04, wrR: 0.01,
       shL: 1.42, elL: -0.34,
       pelvisYaw: 0.26, chestYaw: -0.22, // hips drive the deeper repeat
-    }, 'outCubic'),
+    }, 'outQuart'),
     // retract 2
     keyframe(0.45, {
       rootRot: -0.1, rootY: 1.5,
@@ -668,7 +668,7 @@ const stabs: AttackDef = {
       shR: 1.55, elR: 0.05, wrR: 0.0,
       shL: 1.45, elL: -0.35,
       pelvisYaw: 0.28, chestYaw: -0.24, // the passing lunge unwinds hardest
-    }, 'outCubic'),
+    }, 'outQuart'),
     // penetration beat — the hold sells the depth before recovery
     keyframe(0.63, {
       rootRot: 0.44, spine: 0.16, rootY: 2.2,
@@ -679,8 +679,8 @@ const stabs: AttackDef = {
     }, 'inOutSine'),
     keyframe(0.7, {
       pelvisYaw: 0.12, chestYaw: -0.09, // sequential settle after the hold
-    }, 'inOutCubic'),
-    keyframe(0.78, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.78, GUARD, 'outQuad'),
     keyframe(0.86, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.15, end: 0.58, dmg: 4.5, stagger: 0.12, kb: 70, hitstop: 0.03, shake: 0.06, heavy: false, multiHit: 0.15, pad: 6 },
@@ -748,7 +748,7 @@ const h1: AttackDef = {
       shR: 0.85, elR: -0.5, wrR: -0.2, // te-no-uchi vertical fall — hands
       shL: 0.9, elL: -0.7,              // near the body, blade cuts the close plane
       pelvisYaw: 0.22, chestYaw: -0.18, // hips unwind through the drop
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.45, {
       rootRot: 0.46, spine: 0.18, rootY: 3,
       shR: 0.7, elR: -0.6, wrR: -0.35,
@@ -759,8 +759,8 @@ const h1: AttackDef = {
     }, 'outCubic'),
     keyframe(0.57, {
       pelvisYaw: 0.12, chestYaw: -0.08, head: -0.09, // sequential settle
-    }, 'inOutCubic'),
-    keyframe(0.71, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.71, GUARD, 'outQuad'),
     keyframe(0.79, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.28, end: 0.42, dmg: 18, stagger: 0.38, kb: 260, hitstop: 0.08, shake: 0.26, heavy: true, pad: 8 },
@@ -813,7 +813,7 @@ const h2: AttackDef = {
       shR: 1.5, elR: 0.05, wrR: 0.02, // blade dead-level, full extension
       shL: 1.4, elL: -0.35, // second hand joins on the tsuka
       pelvisYaw: 0.26, chestYaw: -0.22, // hips unwind into the lunge
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.38, {
       rootRot: 0.42, spine: 0.16, rootY: 2.2,
       shR: 1.52, elR: 0.06, wrR: 0.0, // hold — full penetration beat
@@ -826,11 +826,11 @@ const h2: AttackDef = {
       shL: 0.7, elL: -0.8,
       // GAP-2 · retract keeps partial hip wind; settle follows sequentially
       pelvisYaw: 0.1, chestYaw: -0.07,
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     keyframe(0.64, {
       pelvisYaw: 0.06, chestYaw: -0.04, // the last joints give back
-    }, 'inOutCubic'),
-    keyframe(0.72, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.72, GUARD, 'outQuad'),
     keyframe(0.8, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.2, end: 0.34, dmg: 22, stagger: 0.42, kb: 560, hitstop: 0.09, shake: 0.34, heavy: true, breakGuard: true, pad: 10 },
@@ -899,7 +899,7 @@ const h3: AttackDef = {
       // GAP-2 · settle-carry: unwind decays sequentially into the hold
       pelvisYaw: 0.12, chestYaw: -0.08,
     }, 'outQuad'),
-    keyframe(0.9, GUARD, 'inOutCubic'),
+    keyframe(0.9, GUARD, 'outQuad'),
     keyframe(0.98, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.48, end: 0.6, dmg: 30, stagger: 0.5, kb: 380, launch: -320, hitstop: 0.12, shake: 0.5, heavy: true, aoe: 135, breakGuard: true, pad: 10 },
@@ -953,7 +953,7 @@ const launcher: AttackDef = {
       shR: 1.75, elR: 0.55, wrR: -0.1, // rising cut through the front plane
       shL: 0.2, elL: -1.4,
       pelvisYaw: 0.18, chestYaw: -0.14, // hips unwind with the riser
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.23, {
       rootY: -6, rootRot: -0.3, spine: -0.1,
       shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
@@ -963,8 +963,8 @@ const launcher: AttackDef = {
     }, 'outCubic'),
     keyframe(0.34, {
       pelvisYaw: 0.1, chestYaw: -0.06, head: -0.09, // sequential settle
-    }, 'inOutCubic'),
-    keyframe(0.46, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.46, GUARD, 'outQuad'),
     keyframe(0.54, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.04, end: 0.12, dmg: 12, stagger: 0.3, kb: 60, launch: -640, hitstop: 0.07, shake: 0.2, heavy: false, pad: 8 },
@@ -1016,7 +1016,7 @@ const dashSlash: AttackDef = {
       shR: 1.5, elR: 0.4, wrR: -0.6, // settle forward-low
       shL: 0.35, elL: -1.1,
     }, 'outCubic'),
-    keyframe(0.35, GUARD, 'inOutCubic'),
+    keyframe(0.35, GUARD, 'outQuad'),
     keyframe(0.43, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.07, end: 0.21, dmg: 12, stagger: 0.26, kb: 220, hitstop: 0.05, shake: 0.16, heavy: false, multiHit: 0.1, pad: 6 },
@@ -1065,7 +1065,7 @@ const dashHeavy: AttackDef = {
       shR: 1.55, elR: 0.08, wrR: -0.06, // full-extension level thrust
       shL: 1.35, elL: -0.4,
       pelvisYaw: 0.2, chestYaw: -0.16, // hips unwind with the spear
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.26, {
       rootRot: 0.58, rootY: 2,
       shR: 1.5, elR: 0.08, wrR: -0.04,
@@ -1075,8 +1075,8 @@ const dashHeavy: AttackDef = {
     }, 'inOutSine'),
     keyframe(0.38, {
       pelvisYaw: 0.08, chestYaw: -0.05, // sequential settle
-    }, 'inOutCubic'),
-    keyframe(0.5, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.5, GUARD, 'outQuad'),
     keyframe(0.58, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.1, end: 0.26, dmg: 24, stagger: 0.45, kb: 540, hitstop: 0.1, shake: 0.3, heavy: true, pad: 10 },
@@ -1145,8 +1145,8 @@ const powerArc: AttackDef = {
       hipL: -0.6, kneeL: -0.9, footL: 0.08,
       shR: 1.0, elR: -0.4, wrR: -0.9,
       shL: 0.5, elL: -1.1,
-    }, 'inOutCubic'),
-    keyframe(0.42, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.42, GUARD, 'outQuad'),
     keyframe(0.5, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.08, end: 0.2, dmg: 28, stagger: 0.5, kb: 500, hitstop: 0.1, shake: 0.34, heavy: true, multiHit: 0.09, pad: 8 },
@@ -1244,9 +1244,9 @@ const powerSlash: AttackDef = {
       hipL: -.5, kneeL: -.9, footL: .1, hipR: .6, kneeR: -1.35, footR: .18,
       shR: .5, elR: -.4, wrR: -.6, shL: .4, elL: -.7, wrL: -.2,
       pelvisYaw: .02, chestYaw: 0,
-    }, 'inOutCubic'),
+    }, 'outQuad'),
     // ZANSHIN: the settle back to the middle guard
-    keyframe(.64, GUARD, 'inOutCubic'),
+    keyframe(.64, GUARD, 'outQuad'),
     keyframe(.7, GUARD, 'inOutCubic'),
   ]),
   hit: { start: .1, end: .44, dmg: 38, stagger: .55, kb: 640, kbY: -70, hitstop: .11, shake: .38, heavy: true, breakGuard: true, multiHit: .13, pad: 10, corridorBack: 150, corridorFront: 88 },
@@ -1295,7 +1295,7 @@ const charged: AttackDef = {
       shR: 0.95, elR: -0.3, wrR: -0.25, // follow low-left
       shL: 0.3, elL: -1.3,
     }, 'outCubic'),
-    keyframe(0.66, GUARD, 'inOutCubic'),
+    keyframe(0.66, GUARD, 'outQuad'),
     keyframe(0.74, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.15, end: 0.31, dmg: 46, stagger: 0.6, kb: 420, launch: -380, hitstop: 0.14, shake: 0.55, heavy: true, aoe: 150, breakGuard: true, pad: 12 },
@@ -1343,7 +1343,7 @@ const riposte: AttackDef = {
       hipL: -0.55, kneeL: -0.3,
       shR: 1.05, elR: 0.0, wrR: 0.55, // NU KITSUKE — the draw-cut rips out
       shL: 0.5, elL: -1.05,
-    }, 'outCubic'),
+    }, 'outExpo'),
     keyframe(0.23, {
       rootRot: 0.4, spine: 0.14, rootY: 0,
       shR: 1.25, elR: 0.15, wrR: 0.25, // follow-through, full extension
@@ -1353,8 +1353,8 @@ const riposte: AttackDef = {
       rootRot: 0.12, spine: 0.04, rootY: 0.5,
       shR: 0.55, elR: -0.3, wrR: -0.85, // noto — sweeping back toward the saya
       shL: 0.4, elL: -0.7,
-    }, 'inOutCubic'),
-    keyframe(0.56, GUARD, 'inOutCubic'),
+    }, 'outQuad'),
+    keyframe(0.56, GUARD, 'outQuad'),
     keyframe(0.64, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.11, end: 0.24, dmg: 34, stagger: 0.55, kb: 380, hitstop: 0.12, shake: 0.42, heavy: true, breakGuard: true, pad: 8 },
@@ -1400,14 +1400,14 @@ const a1: AttackDef = {
       ...AIR_LEGS, rootRot: 0.35, spine: 0.12, head: -0.16, rootY: -1,
       shR: 1.15, elR: 0.0, wrR: -0.25, // descending diagonal
       shL: 0.4, elL: -1.15,
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.17, {
       ...AIR_LEGS, rootRot: 0.4, rootY: 0,
       shR: 0.9, elR: -0.3, wrR: -0.3, // follow low
       shL: 0.3, elL: -1.25,
     }, 'outCubic'),
-    keyframe(0.33, { ...AIR_LEGS }, 'inOutCubic'),
-    keyframe(0.41, { ...AIR_LEGS }, 'inOutCubic'),
+    keyframe(0.33, { ...AIR_LEGS }, 'outQuad'),
+    keyframe(0.41, { ...AIR_LEGS }, 'outQuad'),
   ]),
   hit: { start: 0.07, end: 0.18, dmg: 9, stagger: 0.22, kb: 110, juggle: -420, hitstop: 0.045, shake: 0.1, heavy: false, pad: 5 },
   trail: { start: 0.06, end: 0.21 },
@@ -1442,14 +1442,14 @@ const a2: AttackDef = {
       ...AIR_LEGS, rootRot: -0.15, spine: -0.05, head: -0.22, rootY: -1.5,
       shR: 1.75, elR: 0.55, wrR: -0.1, // ripping up the reverse diagonal
       shL: 0.25, elL: -1.35,
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.17, {
       ...AIR_LEGS, rootRot: -0.18, rootY: -2,
       shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
       shL: 0.2, elL: -1.4,
     }, 'outCubic'),
-    keyframe(0.33, { ...AIR_LEGS }, 'inOutCubic'),
-    keyframe(0.41, { ...AIR_LEGS }, 'inOutCubic'),
+    keyframe(0.33, { ...AIR_LEGS }, 'outQuad'),
+    keyframe(0.41, { ...AIR_LEGS }, 'outQuad'),
   ]),
   hit: { start: 0.07, end: 0.18, dmg: 9.5, stagger: 0.24, kb: 130, juggle: -460, hitstop: 0.05, shake: 0.12, heavy: false, pad: 5 },
   trail: { start: 0.06, end: 0.21 },
@@ -1485,7 +1485,7 @@ const a3: AttackDef = {
       ...AIR_LEGS, rootRot: 0.25, spine: 0.1, head: -0.16, rootY: -1,
       shR: 1.05, elR: 0.2, wrR: 0.3, // level sweep
       shL: 0.35, elL: -1.1,
-    }, 'outCubic'),
+    }, 'outQuart'),
     keyframe(0.21, {
       ...AIR_LEGS, rootRot: 0.3, rootY: -1.5,
       shR: 1.4, elR: 0.15, wrR: -0.55, // arc settles forward-low
@@ -1496,8 +1496,8 @@ const a3: AttackDef = {
       shR: 0.5, elR: 0.1, wrR: 0.97, // counter-pass (level sawing pull-back)
       shL: 0.4, elL: -1.05,
     }, 'outCubic'),
-    keyframe(0.49, { ...AIR_LEGS }, 'inOutCubic'),
-    keyframe(0.57, { ...AIR_LEGS }, 'inOutCubic'),
+    keyframe(0.49, { ...AIR_LEGS }, 'outQuad'),
+    keyframe(0.57, { ...AIR_LEGS }, 'outQuad'),
   ]),
   hit: { start: 0.08, end: 0.37, dmg: 6, stagger: 0.16, kb: 150, juggle: -400, hitstop: 0.03, shake: 0.08, heavy: false, multiHit: 0.1, pad: 6 },
   trail: { start: 0.07, end: 0.39 },
@@ -1543,7 +1543,7 @@ const dive: AttackDef = {
       rootRot: 0.75, rootY: 2,
       shR: 1.2, elR: -0.2, wrR: -0.4,
     }, 'outQuad'),
-    keyframe(0.62, { ...GUARD }, 'inOutCubic'),
+    keyframe(0.62, { ...GUARD }, 'outQuad'),
   ]),
   hit: { start: 0.1, end: 0.5, dmg: 7, stagger: 0.16, kb: 80, juggle: -260, hitstop: 0.035, shake: 0.09, heavy: false, multiHit: 0.13, pad: 6 },
   trail: { start: 0.08, end: 0.52 },
@@ -1599,7 +1599,7 @@ const slam: AttackDef = {
       shR: 1.05, elR: -0.4, wrR: -0.5, // impact crouch, blade buried low
       shL: 0.3, elL: -0.6,
     }, 'outQuart'),
-    keyframe(0.78, GUARD, 'inOutCubic'),
+    keyframe(0.78, GUARD, 'outQuad'),
     keyframe(0.86, GUARD, 'inOutCubic'),
   ]),
   hit: { start: 0.14, end: 0.5, dmg: 10, stagger: 0.2, kb: 60, juggle: -180, hitstop: 0.04, shake: 0.12, heavy: false, multiHit: 0.16, pad: 6 },
