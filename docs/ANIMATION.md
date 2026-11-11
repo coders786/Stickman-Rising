@@ -85,8 +85,8 @@ to absorb the error any more, and that is deliberate: a solver would silently
 undo your keyframe.
 
 Current measured worst-case ground error across all 40 clips is **4.2 px**
-(`dashPierce`), with most grounded clips inside 2.7 px. Run at speed floats
-2.4 px; walk 3.6 px.
+(`dashPierce`), with most grounded clips inside 2.7 px. Live at speed: walk
+floats 0.6 px, run 2.4 px.
 
 ### Airborne clips
 
@@ -180,6 +180,10 @@ Removing the solvers exposed authoring work that had been hidden. Two examples:
 - The run cycle authored a stance that put the foot **9–11 px** clear of the
   floor; the deleted foot IK had been absorbing it. Authoring the pelvis height
   per keyframe takes live float from 11.9 px → 2.4 px.
+- The walk had the same problem worse: `rootY` there was a *bob offset* fed to
+  the planner, so as pelvis height it left both feet clear of the ground for
+  **31% of the cycle** — a walk that floats. Re-deriving `rootY` from each
+  key's own leg pose puts the whole cycle inside 0.42 px of the floor.
 - Empty-hand attacks inherited their sword twin's hit padding (`pad: 12` on a
   2.25 px-wide fist) and its 150 px AoE. `pad`, `aoe`, `drawFlash` and
   `slamImpact` are now weapon concepts and are stripped from unarmed variants by
@@ -208,6 +212,7 @@ Tests that pin this contract:
 | `jump-draw-transitions` | a settled pose equals the clip sample exactly — zero residue |
 | `draw-detail` | the rendered hilt sits on the drawn fist; no stale foot anchors |
 | `ronin-art` | the idle stance is authored wide; the ROM gate leaves it alone |
+| `movement-rhythm` | one step per foot per cycle, walk never leaves the ground, dash load/burst/catch envelope, every dash clip plays to its authored end |
 
 Frame-rate independence is tested at 30, 60 and 120 Hz throughout, because that
 is where per-frame solvers used to diverge.
