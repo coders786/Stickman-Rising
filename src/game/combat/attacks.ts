@@ -184,7 +184,13 @@ const l1: AttackDef = {
       rootRot: 0.38, spine: 0.13, rootY: 0,
       shR: 1.2, elR: -0.25, wrR: 0.3, // follow-through, arm extends (≤14° flexion floor)
       shL: 0.5, elL: -1.1,
+      // GAP-2 · follow-through: hips CARRY PAST the draw and the head
+      // settles late — momentum bleeds, joints release sequentially
+      pelvisYaw: 0.25, chestYaw: -0.19, head: -0.1,
     }, 'outCubic'),
+    keyframe(0.35, {
+      pelvisYaw: 0.1, chestYaw: -0.06, head: -0.08, // hips settle after the arm arrived
+    }, 'inOutCubic'),
     keyframe(0.44, GUARD, 'inOutCubic'),
     keyframe(0.52, GUARD, 'inOutCubic'),
   ]),
@@ -241,7 +247,13 @@ const l2: AttackDef = {
       rootRot: 0.42, spine: 0.16, rootY: 1.5,
       shR: 0.85, elR: -0.35, wrR: -0.2, // follow-through low
       shL: 0.3, elL: -1.3,
+      // GAP-2 · follow-through: the diagonal's momentum keeps unwinding the
+      // hips past contact; head rides late
+      pelvisYaw: 0.3, chestYaw: -0.24, head: -0.11,
     }, 'outCubic'),
+    keyframe(0.375, {
+      pelvisYaw: 0.12, chestYaw: -0.08, head: -0.085, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.47, GUARD, 'inOutCubic'),
     keyframe(0.55, GUARD, 'inOutCubic'),
   ]),
@@ -300,7 +312,12 @@ const l3: AttackDef = {
       rootRot: -0.08, spine: -0.03, rootY: -3,
       shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
       shL: 0.25, elL: -1.45,
+      // GAP-2 · follow-through: the riser's unwind carries past contact
+      pelvisYaw: 0.25, chestYaw: -0.21, head: -0.12,
     }, 'outCubic'),
+    keyframe(0.39, {
+      pelvisYaw: 0.1, chestYaw: -0.07, head: -0.09, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.49, GUARD, 'inOutCubic'),
     keyframe(0.57, GUARD, 'inOutCubic'),
   ]),
@@ -356,7 +373,13 @@ const l4: AttackDef = {
       rootRot: 0.4, spine: 0.15, rootY: 0,
       shR: 1.5, elR: 0.35, wrR: -0.85, // arc settles forward-low
       shL: 0.3, elL: -1.25,
+      // GAP-2 · follow-through: the level sweep's hip drive overshoots and
+      // the head catches up late
+      pelvisYaw: 0.27, chestYaw: -0.21, head: -0.1,
     }, 'outCubic'),
+    keyframe(0.42, {
+      pelvisYaw: 0.11, chestYaw: -0.07, head: -0.08, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.53, GUARD, 'inOutCubic'),
     keyframe(0.61, GUARD, 'inOutCubic'),
   ]),
@@ -422,7 +445,13 @@ const l5: AttackDef = {
       rootRot: 0.44, spine: 0.17, rootY: 2.5,
       shR: 0.7, elR: -0.6, wrR: -0.35, // cut finishes low past the target
       shL: 0.7, elL: -0.9,
+      // GAP-2 · follow-through: the fall's hip unwind carries past contact;
+      // the head settles a beat after the blade stops
+      pelvisYaw: 0.27, chestYaw: -0.24, head: -0.13,
     }, 'outCubic'),
+    keyframe(0.48, {
+      pelvisYaw: 0.11, chestYaw: -0.08, head: -0.09, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.59, GUARD, 'inOutCubic'),
     keyframe(0.67, GUARD, 'inOutCubic'),
   ]),
@@ -593,12 +622,16 @@ const stabs: AttackDef = {
       hipR: -0.1, kneeR: -0.55,
       shR: -0.1, elR: -1.0, wrR: -0.5,
       shL: 0.85, elL: -1.05,
+      // GAP-2 · string rhythm: hips stay partially wound between thrusts
+      pelvisYaw: 0.1, chestYaw: -0.07,
     }, 'inOutSine'),
     // ignition 2
     keyframe(0.305, {
       rootRot: 0.22, rootY: 2,
       shR: 0.72, elR: -0.48, wrR: 0.28,
       shL: 1.12, elL: -0.68,
+      // GAP-2 · re-coil: the retract re-winds the hips past neutral
+      pelvisYaw: -0.06, chestYaw: 0.05,
     }, 'outQuad'),
     // THRUST 2 — a touch deeper, chest rotating through
     keyframe(0.35, {
@@ -615,6 +648,8 @@ const stabs: AttackDef = {
       hipR: -0.12, kneeR: -0.58,
       shR: -0.12, elR: -1.02, wrR: -0.52,
       shL: 0.82, elL: -1.08,
+      // GAP-2 · string rhythm: partial hip wind carried into the re-coil
+      pelvisYaw: 0.11, chestYaw: -0.08,
     }, 'inOutSine'),
     // ignition 3 — deepest coil, back leg loads for the passing lunge
     keyframe(0.5, {
@@ -622,6 +657,8 @@ const stabs: AttackDef = {
       hipR: 0.55, kneeR: -0.72,
       shR: 0.75, elR: -0.52, wrR: 0.3,
       shL: 1.15, elL: -0.65,
+      // GAP-2 · re-coil deepens with the escalation
+      pelvisYaw: -0.07, chestYaw: 0.055,
     }, 'outQuad'),
     // THRUST 3 — deep passing lunge, hips fully open, full penetration
     keyframe(0.555, {
@@ -637,7 +674,12 @@ const stabs: AttackDef = {
       rootRot: 0.44, spine: 0.16, rootY: 2.2,
       shR: 1.56, elR: 0.06, wrR: 0.0,
       shL: 1.46, elL: -0.36,
+      // GAP-2 · hips stay WOUND through the hold (h2's tsuki law)
+      pelvisYaw: 0.24, chestYaw: -0.2,
     }, 'inOutSine'),
+    keyframe(0.7, {
+      pelvisYaw: 0.12, chestYaw: -0.09, // sequential settle after the hold
+    }, 'inOutCubic'),
     keyframe(0.78, GUARD, 'inOutCubic'),
     keyframe(0.86, GUARD, 'inOutCubic'),
   ]),
@@ -711,7 +753,13 @@ const h1: AttackDef = {
       rootRot: 0.46, spine: 0.18, rootY: 3,
       shR: 0.7, elR: -0.6, wrR: -0.35,
       shL: 0.7, elL: -0.9,
+      // GAP-2 · follow-through: the heavy fall's unwind carries past
+      // contact; head settles after the blade is already buried
+      pelvisYaw: 0.3, chestYaw: -0.24, head: -0.13,
     }, 'outCubic'),
+    keyframe(0.57, {
+      pelvisYaw: 0.12, chestYaw: -0.08, head: -0.09, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.71, GUARD, 'inOutCubic'),
     keyframe(0.79, GUARD, 'inOutCubic'),
   ]),
@@ -776,6 +824,11 @@ const h2: AttackDef = {
       rootRot: 0.18, spine: 0.07, rootY: 0.5,
       shR: 1.0, elR: -0.3, wrR: 0.85, // retract under control
       shL: 0.7, elL: -0.8,
+      // GAP-2 · retract keeps partial hip wind; settle follows sequentially
+      pelvisYaw: 0.1, chestYaw: -0.07,
+    }, 'inOutCubic'),
+    keyframe(0.64, {
+      pelvisYaw: 0.06, chestYaw: -0.04, // the last joints give back
     }, 'inOutCubic'),
     keyframe(0.72, GUARD, 'inOutCubic'),
     keyframe(0.8, GUARD, 'inOutCubic'),
@@ -826,6 +879,8 @@ const h3: AttackDef = {
       rootY: -1, rootRot: 0.3,
       shR: 2.2, elR: 0.0, wrR: 0.3,
       hipR: 0.7, kneeR: -0.8,
+      // GAP-2 · the unwind BUILDS through the fall (was neutral-held)
+      pelvisYaw: 0.1, chestYaw: -0.06,
     }, 'outQuad'),
     keyframe(0.5, {
       rootRot: 0.6, spine: 0.2, head: -0.28, rootY: 3,
@@ -833,12 +888,16 @@ const h3: AttackDef = {
       hipL: -0.6, kneeL: -0.3, footL: 0.2,
       shR: 0.9, elR: -0.45, wrR: -0.35, // blade plummets through the near plane
       shL: 0.9, elL: -0.6,
+      // GAP-2 · hips OPEN at the money frame — the slam gets its hip drive
+      pelvisYaw: 0.22, chestYaw: -0.18,
     }, 'outCubic'),
     keyframe(0.64, {
       rootRot: 0.64, rootY: 5, spine: 0.2, head: -0.26,
       hipR: 0.6, kneeR: -0.9, hipL: -0.5, kneeL: -0.8,
       shR: 0.75, elR: -0.5, wrR: -0.45, // blade buried low
       shL: 0.7, elL: -0.85,
+      // GAP-2 · settle-carry: unwind decays sequentially into the hold
+      pelvisYaw: 0.12, chestYaw: -0.08,
     }, 'outQuad'),
     keyframe(0.9, GUARD, 'inOutCubic'),
     keyframe(0.98, GUARD, 'inOutCubic'),
@@ -899,7 +958,12 @@ const launcher: AttackDef = {
       rootY: -6, rootRot: -0.3, spine: -0.1,
       shR: 2.1, elR: 0.55, wrR: -0.05, // follow high
       shL: 0.15, elL: -1.45,
+      // GAP-2 · follow-through: the riser's unwind carries past contact
+      pelvisYaw: 0.24, chestYaw: -0.18, head: -0.12,
     }, 'outCubic'),
+    keyframe(0.34, {
+      pelvisYaw: 0.1, chestYaw: -0.06, head: -0.09, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.46, GUARD, 'inOutCubic'),
     keyframe(0.54, GUARD, 'inOutCubic'),
   ]),
@@ -1006,7 +1070,12 @@ const dashHeavy: AttackDef = {
       rootRot: 0.58, rootY: 2,
       shR: 1.5, elR: 0.08, wrR: -0.04,
       shL: 1.3, elL: -0.42,
+      // GAP-2 · hips stay wound through the hold, then settle late
+      pelvisYaw: 0.16, chestYaw: -0.12,
     }, 'inOutSine'),
+    keyframe(0.38, {
+      pelvisYaw: 0.08, chestYaw: -0.05, // sequential settle
+    }, 'inOutCubic'),
     keyframe(0.5, GUARD, 'inOutCubic'),
     keyframe(0.58, GUARD, 'inOutCubic'),
   ]),
