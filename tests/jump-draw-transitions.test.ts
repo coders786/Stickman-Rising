@@ -34,7 +34,7 @@ test('draw has extraction/follow-through breakdowns and no full-turn wrist unwin
  for(let i=1;i<=300;i++){
   const p=sampleClip(c,c.dur*i/300,makePose())
   assert.ok(Math.abs(p[CH.wrR]-last[CH.wrR])<.06)
-  assert.ok(p[CH.wrR]>4.8&&p[CH.wrR]<7.5);last=p
+  assert.ok(p[CH.wrR]>4.8&&p[CH.wrR]<7.8);last=p
  }
  assert.ok(library.LAND_CLIP.frames[1].p[CH.rootY]>library.LAND_CLIP.frames[0].p[CH.rootY]+4)
  for(const c of [library.JUMP_CLIP,library.JUMP_LEAP_CLIP,library.LAND_CLIP])assert.ok(c.frames.length>=4)

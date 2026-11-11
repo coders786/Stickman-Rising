@@ -13,9 +13,11 @@ export type StrikeHand = 'left' | 'right'
 
 /** Solve SHOULDER/ELBOW channels so the hand reaches (x,y) relative to
  * the shoulder joint. Elbow hangs below/behind the shoulder→hand line
- * (human pole). */
+ * (human pole). Targets rescale with the arm (see moveset.handPose). */
 export function handPose(side: StrikeHand, x: number, y: number): Record<string, number> {
   const a = PLAYER_SPEC.upperArm, b = PLAYER_SPEC.foreArm
+  const k = (a + b) / 38
+  x *= k; y *= k
   const r = Math.max(12, Math.min(a + b - 2, Math.hypot(x, y)))
   const sh = Math.atan2(x, y) + Math.acos(Math.max(-1, Math.min(1, (a * a + r * r - b * b) / (2 * a * r))))
   const el = -Math.acos(Math.max(-1, Math.min(1, (r * r - a * a - b * b) / (2 * a * b))))

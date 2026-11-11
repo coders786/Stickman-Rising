@@ -9,6 +9,7 @@ import {unarmedAttack} from '../src/game/combat/unarmed'
 import {equipmentClip} from '../src/game/anim/equipment-motion'
 import {RUN_CLIP,SPRINT_CLIP,JUMP_CLIP,JUMP_LEAP_CLIP,FALL_CLIP,LAND_CLIP,DASH_LAUNCH_CLIP} from '../src/game/anim/clips'
 import {CH} from '../src/game/anim/pose'
+import {PLAYER_SPEC} from '../src/game/anim/skeleton'
 import {applyJointLimits} from '../src/game/anim/limits'
 import type {Animator} from '../src/game/anim/animator'
 function setup(){
@@ -87,7 +88,7 @@ test('jab reaches the authored contact pose inside its damage window, not after 
    // read the STRIKING arm (the moveset assigns a lead/rear limb per move)
    const left=def.strikeHand==='left'
    const sh=p.pose[left?CH.shL:CH.shR],el=p.pose[left?CH.elL:CH.elR]
-   const x=20*Math.sin(sh)+18*Math.sin(sh+el)
+   const x=PLAYER_SPEC.upperArm*Math.sin(sh)+PLAYER_SPEC.foreArm*Math.sin(sh+el)
    furthest=Math.max(furthest,x)
   }
  }

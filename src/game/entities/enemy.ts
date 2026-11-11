@@ -1328,8 +1328,11 @@ const ENEMY_SPEC = {
   headR: 8,
   shoulderFwd: 2.7,
   shoulderDrop: 2.8,
-  upperArm: 20,
-  foreArm: 18,
+  // Enemies share the recomposed bulky-arm read (reach 40 vs player 42 —
+  // the player keeps the reach edge; enemies gain the same mass so their
+  // windups read at the same weight class).
+  upperArm: 21,
+  foreArm: 19,
   hand: 6,
   thigh: 24,
   shin: 22,

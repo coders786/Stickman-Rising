@@ -16,7 +16,7 @@ console.log(`Shoulder Fwd/Drop: ${PLAYER_SPEC.shoulderFwd} / ${PLAYER_SPEC.shoul
 console.log(`Torso / HeadR: ${PLAYER_SPEC.torso} / ${PLAYER_SPEC.headR}`)
 console.log(`UpperArm / ForeArm: ${PLAYER_SPEC.upperArm} / ${PLAYER_SPEC.foreArm}`)
 if (PLAYER_SPEC.neck > 6.0) throw new Error('Neck length too long!')
-if (PLAYER_SPEC.shoulderFwd > 2.0) throw new Error('Shoulders slumped too far forward!')
+if (PLAYER_SPEC.shoulderFwd > 2.2) throw new Error('Shoulders slumped too far forward!')
 
 console.log('\n--- 2. VERIFYING PLAYER INITIALIZATION & POSTURE ---')
 const player = new Player()

@@ -187,12 +187,14 @@ export function solveFighter3D(pose: Pose, spec: SkelSpec, out: FighterGeom, bla
   const headZ = neckZ + Math.sin(headYaw) * 2.2
 
   // ---- SHOULDER GIRDLE: offsets rotated by girdleYaw around the spine ----
-  // Biacromial half-width ±0.10H (Drillis–Contini): shZ 8 gives the girdle
-  // a REAL coronal depth spread — the projected shoulder line visibly
-  // foreshortens as the chest yaws (THE transverse-plane torso read).
+  // Biacromial half-width ±0.10H (Drillis–Contini): shZ 9.2 gives the
+  // recomposed bulkier girdle a REAL coronal depth spread — the projected
+  // shoulder line visibly foreshortens as the chest yaws (THE
+  // transverse-plane torso read), and the wider sockets carry the 5.15
+  // deltoid caps without burying them in the ribcage.
   const sf = spec.shoulderFwd
   const sd = spec.shoulderDrop
-  const shZ = 8
+  const shZ = 9.2
   // near shoulder (sword side): (sf, sd, +shZ) rotated
   const shRx = chestX + sf * cgi + shZ * sgi
   const shRy = chestY + sd
