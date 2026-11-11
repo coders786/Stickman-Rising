@@ -234,3 +234,87 @@ Don't. If you are about to add a per-frame pose writer between `pose.set` and
 The two exemptions are `updateDashLift` (a rig translate, not a joint) and the
 two contact layers (grip and blade-floor), both of which are functions of the
 authored pose and cannot invent motion.
+
+---
+
+# The pose pipeline (architecture)
+
+The animation system is organised around one rule: **every pose writer
+declares when it runs, and the order is code, not commentary.**
+
+## Stages
+
+`src/game/anim/layers.ts` defines a `LayerStack`. Layers register with a
+stage name and run in ascending stage order; within a stage they run in
+registration order.
+
+| stage | owns | examples |
+| --- | --- | --- |
+| `base` | the authored clip, written absolutely | `animator.pose` → `pose` |
+| `procedural` | hand-authored additive body language | dash lean, charge tremor |
+| `context` | reactive secondary motion | speed / threat / health |
+| `smoothing` | damped pose tracking | `AnatomicalMotion` settle |
+| `secondary` | follow-through and contact | sword arc, wrist spring, grip IK |
+| `variation` | seeded organic noise | PAVE (gated off in contact windows) |
+| `constraint` | the ROM gate — **always last pose writer** | `applyJointLimits` |
+| `solve` | projection into world geometry | `solveFighter3D` → `FighterGeom` |
+
+`constraint` before `solve` is load-bearing: a joint written after the
+anatomical gate can be impossible. `assertPipelineSane()` throws if a layer
+ever registers past the gate.
+
+A layer contract holds the whole thing together:
+
+> A layer is a pure, bounded, frame-local transform of the pose it is
+> handed. It never accumulates across frames and never writes outside its
+> declared channels.
+
+The accumulation rule is not stylistic. When a writer integrated deltas
+without an absolute base each frame, the spine spun and the root sank —
+the pose ran away over time. Bounded, frame-local writes are what make the
+stack reorderable.
+
+## Where the pipeline lives
+
+`Player.updatePose(dt, w)` in `src/game/entities/player.ts`. It used to be
+182 lines inline in a 369-line `update()`, where the correct writer order
+existed only as prose comments above each writer. Inserting anything meant
+re-deriving that argument from the comments.
+
+## Determinism
+
+**The pose is reproducible.** It was not, and this mattered more than it
+sounds: with `Math.random()` seeding variation, identical inputs produced a
+different animation every run, so "did my change alter the animation?" had
+no answer and no animation work could be regression-tested.
+
+`PaveState` and `ComboDirector` now derive their seeds from an entity salt.
+Two entities still differ from each other (the per-entity uniqueness the
+specs call for); one entity is exactly repeatable.
+
+## The regression harness
+
+```bash
+npx tsx .qa/pose-golden.ts capture   # write the baseline
+npx tsx .qa/pose-golden.ts verify    # compare against it
+```
+
+It drives the real `Player` through 11 scenarios (idle, walk, sprint, dash,
+charge, light, heavy, chain, jump, draw, move-attack) at a fixed 120 Hz and
+fingerprints 8 760 pose channels. Verified in both directions:
+
+- unchanged pipeline → `0.00e+0` across every scenario
+- a 0.01 rad spine perturbation → fails all 11
+
+Use it before and after any change to the pipeline. A behaviour-preserving
+refactor reports zero; anything else is a behaviour change you now have to
+justify on purpose.
+
+## Known limits
+
+- The harness covers the player only. `Enemy` shares the rig but not
+  `updatePose`, so its layers are not fingerprinted yet.
+- `solveFighter3D` is a forward-kinematic projection with per-chain IK
+  corrections layered on (`applyGroundIK`, `applyDrawContact`), not a
+  general two-bone IK solver. It is deterministic and cheap; it is not
+  reusable for arbitrary rigs.
