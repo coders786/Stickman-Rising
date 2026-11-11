@@ -423,6 +423,25 @@ export class Enemy {
     if (this.kind === 'drone' && this.state !== 'launched') this.vy = 0
     this.x += this.vx * dt
     this.y += this.vy * dt
+    // ---- BODY SEPARATION ------------------------------------------------
+    // A strike lunges at 340px/s and nothing stopped it, so a grunt would
+    // end up standing INSIDE the player (measured: 2-17px apart). Every
+    // unarmed strike starts its sweep at the shoulder and ends at the fist,
+    // so at point-blank the whole hitbox opens BEHIND the enemy and the
+    // punch whiffs at zero distance — the exact "my attacks don't connect"
+    // feeling. Two bodies cannot occupy one space: hold a floor of ~30px
+    // (the player's own half-width plus this one's) and let the lunge stop
+    // there instead of carrying through.
+    if (this.kind !== 'drone' && this.state !== 'launched' && this.state !== 'dive') {
+      const pdx = this.x - px
+      const FLOOR = 30 * this.scale
+      if (Math.abs(pdx) < FLOOR) {
+        const dir = pdx >= 0 ? 1 : -1
+        // the player is the anchor: push the lighter body out, not them
+        this.x = px + dir * FLOOR
+        if (this.vx * dir < 0) this.vx = 0
+      }
+    }
     if (this.kind !== 'drone' && this.state !== 'launched') {
       if (this.y > 0) {
         this.y = 0

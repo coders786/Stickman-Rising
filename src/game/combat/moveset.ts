@@ -190,18 +190,18 @@ const JAB = clip('unarmedJab', [
     contact('linear', 'right', {
       drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
       leadFoot: [21, 39], rearFoot: [-23, 41],
-      fist: [38, -3], offFist: [-2, 8],
+      fist: [40, -1], offFist: [-2, 8],
     })),
   // SNAP — contact. Fist at full reach, rear fist pulled hard back.
   kf(0.145, contact('linear', 'right', {
     drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
     leadFoot: [21, 39], rearFoot: [-23, 41],
-    fist: [38, -3], offFist: [-2, 8],
+    fist: [40, -1], offFist: [-2, 8],
   }), 'inOutCubic'),
   mid(0.172, contact('linear', 'right', {
     drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
     leadFoot: [21, 39], rearFoot: [-23, 41],
-    fist: [38, -3], offFist: [-2, 8],
+    fist: [40, -1], offFist: [-2, 8],
   }), contact('linear', 'right', {
     drive: 0.55, travel: 2.8, sink: 0.5, lean: 0.17,
     leadFoot: [19, 40], rearFoot: [-20, 42],
@@ -235,25 +235,25 @@ const CROSS = clip('unarmedCross', [
     contact('rotation', 'left', {
       drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
       leadFoot: [22, 38], rearFoot: [-26, 39],
-      fist: [40, -4], offFist: [3, 5],
+      fist: [40, -2], offFist: [3, 5],
     })),
   // CONTACT: rear hip through, fist at full reach, head down the line
   kf(0.145, contact('rotation', 'left', {
     drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
     leadFoot: [22, 38], rearFoot: [-26, 39],
-    fist: [40, -4], offFist: [3, 5],
+    fist: [40, -2], offFist: [3, 5],
   }), 'inOutCubic'),
   // the rear hip lands; the fist stays out one beat longer than the body,
   // then the arm relaxes while the torso is still turned through
   kf(0.205, contact('rotation', 'left', {
     drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
     leadFoot: [21, 38], rearFoot: [-24, 40],
-    fist: [37, -1], offFist: [5, 6],
+    fist: [39, 0], offFist: [5, 6],
   }), 'inOutCubic'),
   mid(0.245, contact('rotation', 'left', {
     drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
     leadFoot: [21, 38], rearFoot: [-24, 40],
-    fist: [37, -1], offFist: [5, 6],
+    fist: [39, 0], offFist: [5, 6],
   }), recover('left', { settle: 1 })),
   kf(0.285, recover('left', { settle: 1 }), 'inOutCubic'),
   kf(0.32, stance('right')),
@@ -287,24 +287,24 @@ const HOOK = clip('unarmedHook', [
   }), contact('rotation', 'right', {
     drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
     leadFoot: [20, 38], rearFoot: [-25, 39],
-    fist: [33, -6], offFist: [1, 6],
+    fist: [38, 2], offFist: [1, 6],
   })),
   // CONTACT — elbow high, fist arriving from outside the target line
   kf(0.16, contact('rotation', 'right', {
     drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
     leadFoot: [20, 38], rearFoot: [-25, 39],
-    fist: [33, -6], offFist: [1, 6],
+    fist: [38, 2], offFist: [1, 6],
   }), 'inOutCubic'),
   // FOLLOW-THROUGH: the torso keeps turning PAST the target, arm folding
   kf(0.225, contact('rotation', 'right', {
     drive: 1.35, travel: 3.4, sink: 0.9, lean: 0.14, depth: 0.7,
     leadFoot: [18, 39], rearFoot: [-24, 40],
-    fist: [22, -2], offFist: [2, 5],
+    fist: [26, -1], offFist: [2, 5],
   }), 'inOutCubic'),
   mid(0.275, contact('rotation', 'right', {
     drive: 1.35, travel: 3.4, sink: 0.9, lean: 0.14, depth: 0.7,
     leadFoot: [18, 39], rearFoot: [-24, 40],
-    fist: [22, -2], offFist: [2, 5],
+    fist: [26, -1], offFist: [2, 5],
   }), recover('right', { settle: 1 })),
   kf(0.31, recover('right', { settle: 1 }), 'inOutCubic'),
   kf(0.34, stance('right')),

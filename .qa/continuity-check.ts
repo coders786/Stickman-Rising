@@ -36,20 +36,32 @@ const CH_NAMES = ['rootX','rootY','rootRot','spine','head','hipL','kneeL','footL
  * one. The budget is a VELOCITY cap, so the per-step allowance scales with
  * the grid spacing: 0.72 rad per 1/60 s == 1.80 rad per 1/24 s. */
 const BAKE_GAP = 1 / 24
-function isBaked(fr: { t: number }[]): boolean {
-  if (fr.length < 8) return false
+/** Median gap of an evenly-baked clip: `ceil(dur*24)` steps over `dur`
+ * seconds, which is 1/24 only when `dur*24` happens to be an integer.
+ * l1 (dur 0.26) bakes to 7 steps -> 0.0371, 10.9% off 1/24 — so testing
+ * proximity to 1/24 rejected genuinely-baked clips and judged them with
+ * the sparse-clip budget instead. Detect UNIFORM spacing (the actual
+ * property of a bake) and use the clip's own gap for the budget scale. */
+function bakeGap(fr: { t: number }[]): number | null {
+  if (fr.length < 8) return null
   const gaps: number[] = []
   for (let i = 1; i < fr.length; i++) gaps.push(fr[i].t - fr[i - 1].t)
-  gaps.sort((a, b) => a - b)
-  const median = gaps[gaps.length >> 1]
-  return Math.abs(median - BAKE_GAP) < BAKE_GAP * 0.08
+  const sorted = gaps.slice().sort((a, b) => a - b)
+  const median = sorted[sorted.length >> 1]
+  if (median <= 0) return null
+  // uniform to within 2%: a bake advances the same dt every step
+  const uniform = gaps.every((g) => Math.abs(g - median) < median * 0.02)
+  return uniform ? median : null
 }
 
 function checkClip(clip: { name: string; frames: { t: number; p: Float32Array; e?: unknown }[]; dur: number }, label: string) {
   const fr = clip.frames as { t: number; p: Float32Array; e: { name?: string } | string }[]
   const issues: string[] = []
-  const baked = isBaked(fr)
-  const scale = baked ? BAKE_GAP * 60 : 1
+  const gap = bakeGap(fr)
+  const baked = gap !== null
+  // a baked clip's motion is spread onto its own grid, so the per-60fps
+  // allowance scales with THIS clip's step, not a nominal 1/24
+  const scale = baked ? gap * 60 : 1
   for (let i = 0; i < fr.length - 1; i++) {
     const a = fr[i], b = fr[i + 1]
     const span = b.t - a.t

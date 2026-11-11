@@ -134,3 +134,43 @@ test('each strike holds an extreme at contact rather than arriving and stopping'
     assert.ok(speed > 60, `${id} is nearly stationary at contact (${speed.toFixed(0)} px/s)`)
   }
 })
+
+/** STRIKE REACH — the "my attacks don't connect" contract.
+ *
+ * A strike's hit segment is the limb projected from the shoulder/fist pair,
+ * so its reach is fixed by anatomy plus the authored body travel. Measured
+ * against a live grunt (front torso surface ~65px from the player's centre)
+ * the empty-hand set must be able to reach an enemy that is actually
+ * standing at fighting distance, not merely one that has walked inside the
+ * player's own body.
+ *
+ * The second half of this contract lives in Enemy.update: without a
+ * separation floor a strike lunge (340px/s) carries a grunt THROUGH the
+ * player, and a hitbox that opens behind the target cannot connect —
+ * measured 2-17px apart, connect rate 53%. With the floor it is 87%.
+ */
+test('every core strike can reach an enemy standing at fighting distance', () => {
+  const SCALE = 1.32
+  const geom = makeFighterGeom()
+  // an enemy's nearest torso surface sits at this distance from our centre
+  const ENGAGED = 55
+  for (const id of ['l1', 'l2', 'l3', 'l5', 'h2', 'h3']) {
+    const def = MOVES[id]
+    const left = def.strikeHand === 'left'
+    const joint = def.strikeJoint ?? 'hand'
+    let best = -Infinity
+    for (let i = 0; i <= 120; i++) {
+      const pose = makePose()
+      sampleClip(def.clip, (i / 120) * def.clip.dur, pose)
+      solveFighter3D(pose, PLAYER_SPEC, geom, PLAYER_SPEC.blade * 1.06, 1)
+      const g = geom as unknown as Record<string, { x: number; y: number }>
+      const distal = joint === 'foot' ? (left ? g.ankleL : g.ankleR) : (left ? g.handL : g.handR)
+      const x = SCALE * distal.x
+      if (x > best) best = x
+    }
+    assert.ok(
+      best >= ENGAGED - 5,
+      `${id} peaks at ${best.toFixed(0)}px of reach — cannot touch an enemy at ${ENGAGED}px`,
+    )
+  }
+})

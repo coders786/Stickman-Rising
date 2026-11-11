@@ -242,7 +242,7 @@ export function chain(
   // which is why the first pass of this re-composition looked like a statue
   // with a moving arm. These multipliers buy real silhouette movement.
   // travel is measured from the guard's resting offset, not from zero
-  const TRAVEL_GAIN = 3.4
+  const TRAVEL_GAIN = 3.9
   const rootX = STANCE_BACK + (o.travel ?? (source === 'drop' ? 2 : source === 'linear' ? 5 : 4)) * TRAVEL_GAIN
   const rootY = 5.5 + (o.sink ?? (source === 'drop' ? 3.5 : source === 'lift' ? -2.5 : 0.5)) * 1.9
   const rootRot = (o.lean ?? 0.16) + (source === 'drop' ? 0.14 : source === 'lift' ? -0.10 : 0.06)
