@@ -120,18 +120,27 @@ async function runQA(game: Game): Promise<{ pass: boolean; results: QAResult[] }
       }
       const launched = game.enemies.some((e) => e.state === 'launched')
       const spinning = clipName(player) === 'atk_l4' || clipName(player) === 'atk_spin'
+      // OMEGA HORIZON FLASH: the authored lens-burst translation (z −180 →
+      // +350 at the reference's exact 3-frame beat, compressed to the rig's
+      // perspective band) legitimately sweeps rootZ ~12u/frame — same
+      // whitelist class as the spin-attack arm channels.
+      const flashDive = clipName(player) === 'roninOmega'
       let fmax = 0
       let fch = -1
       for (let c = 0; c < CH_COUNT; c++) {
         if (launched && c >= 2) continue // flail spins by design
         if (spinning && (c === 14 || c === 15 || c === 16)) continue // arm channels spin
+        if (flashDive && c === 17) continue // authored depth flash (see above)
         const d = Math.abs(player.pose[c] - prevPose[c])
         if (d > fmax) { fmax = d; fch = c }
       }
       if (fmax > maxPoseDelta) maxPoseDelta = fmax
       // ch0/1 are translations (units): legit fast land recovery ≈ 5.5/frame
-      // rotations: snappy attack windups ≈ 1.3/frame; real snaps are 5+ rad
-      const limit = fch <= 1 ? 6.5 : 2.5
+      // ch17 (rootZ) is the DEPTH translation — the Shadow Ronin sequences
+      // drive body-scale through the perspective band by design (OMEGA's
+      // dive/burst ≈ 25u per 0.17s = 4%/frame scale change, invisible);
+      // rotations keep the tighter bound.
+      const limit = fch <= 1 || fch === 17 ? 6.5 : 2.5
       if (fmax > limit) {
         deltaViolations++
         if (deltaViolations <= 3) {

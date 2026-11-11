@@ -2130,7 +2130,10 @@ export class Player {
     }
     // ground light chain (with time decay)
     if (w.time - this.lastLightAt > 1.1) this.lightIndex = 0
-    this.lightIndex = Math.min(this.lightIndex + 1, 5)
+    // THE SHADOW RONIN SET (combat/ronin.ts): the 6th light of the chain is
+    // the ONSLAUGHT X-SLASH — the transcribed sequence tier (l1→…→l5→sr).
+    this.lightIndex = Math.min(this.lightIndex + 1, 6)
+    if (this.lightIndex >= 6) return 'srOnslaught'
     return `l${Math.min(this.lightIndex, 5)}`
   }
 
@@ -2147,7 +2150,10 @@ export class Player {
       if (ax !== 0 && Math.sign(ax) === this.face) return ATTACKS.stepKick
     }
     if (w.time - this.lastHeavyAt > 1.15) this.heavyIndex = 0
-    this.heavyIndex = Math.min(this.heavyIndex + 1, 3)
+    // THE SHADOW RONIN SET: the 4th heavy of the chain is the OMEGA HORIZON
+    // FLASH — the transcribed finisher (h1→h2→h3→srOmega).
+    this.heavyIndex = Math.min(this.heavyIndex + 1, 4)
+    if (this.heavyIndex >= 4) return ATTACKS.srOmega
     return ATTACKS[`h${this.heavyIndex}`] ?? ATTACKS.h1
   }
 
@@ -2403,22 +2409,42 @@ export class Player {
             // forward axis was the only unmapped direction in pickLight, so
             // neutral / back / up / down chains are untouched.
             next = 'stabs'
+          } else if (this.grounded && ax !== 0 && Math.sign(ax) === this.face && def.chain.includes('srViper')) {
+            // THE SHADOW RONIN SET: forward pressure after the thrust string
+            // (or TSUKI) chains into VIPER CROSS-PIERCE — the spear-the-lens
+            // sequence. Checked after the stabs rule so l2/l3 keep theirs.
+            next = 'srViper'
+          } else if (this.grounded && ax !== 0 && Math.sign(ax) === this.face && def.chain.includes('srIai')) {
+            // THE SHADOW RONIN SET: forward pressure after the iai draw /
+            // backstep cut extends into IAIJUTSU CROSS-DRAW.
+            next = 'srIai'
+          } else if (this.grounded && ay > 0.4 && (def.chain.includes('srVortex') || def.chain.includes('srCross'))) {
+            // THE SHADOW RONIN SET: down+light mid-chain chains the crouch
+            // finisher declared by the current move (HASSO SWEEP → HELIX
+            // VORTEX; SLIP BODY ELBOW → TWIN MOMENTUM CRESCENT). These
+            // down-chains were dead inputs before — no existing route lost.
+            next = def.chain.includes('srVortex') ? 'srVortex' : 'srCross'
           } else {
             next = this.pickLight(w, ax, ay)
           }
         } else if (input.buffered('heavy')) {
           input.takeBuffered('heavy')
           if (!this.grounded) {
-            next = 'slam'
+            // THE SHADOW RONIN SET: air heavy after FALCON DIVE chains into
+            // AVALANCHE METEOR DROP (the plunge alternative to METEOR FALL);
+            // every other air finish keeps its slam.
+            next = def.chain.includes('srMeteor') ? 'srMeteor' : 'slam'
           } else if (input.down('heavy')) {
             // still holding → convert to charge
             this.enterCharge(w)
             w.fx.endTrail(a.trail)
             return
           } else {
-            // advance the heavy CHAIN (h1 → h2 → h3) like the light chain
+            // advance the heavy CHAIN (h1 → h2 → h3) like the light chain;
+            // THE SHADOW RONIN SET: chains that declare srOmega (h3's own
+            // list, the sr tier) route the next heavy into the OMEGA finish.
             const heavyNext = def.chain.find((c) => /^h[123]$/.test(c))
-            next = heavyNext ?? (def.kind === 'heavy' ? 'l1' : 'h1')
+            next = heavyNext ?? (def.chain.includes('srOmega') ? 'srOmega' : (def.kind === 'heavy' ? 'l1' : 'h1'))
           }
         }
         if (next) {

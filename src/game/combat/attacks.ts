@@ -25,6 +25,7 @@ import type { SfxName } from '../audio/audio'
 // runtime cycle. Registered in ATTACKS below; selection is gated to the
 // sheathed (empty-hand) stance inside Player.pickHeavy/pickLight.
 import { MOVES, UNARMED_ULT } from './moveset'
+import { RONIN_ATTACKS } from './ronin'
 
 export type AttackKind =
   | 'light' | 'heavy' | 'launcher' | 'air' | 'slam' | 'dash'
@@ -198,7 +199,7 @@ const l1: AttackDef = {
   trail: { start: 0.13, end: 0.32 },
   swingSfx: { t: 0.13, name: 'swing' },
   cancel: 0.32,
-  chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat'],
+  chain: ['l2', 'l3', 'h1', 'launcher', 'spin', 'retreat', 'srIai'],
   moveX: 150, moveXAt: 0.13, groundDrive:{duration:.06,acceleration:3000},
   grip: 0.25, // iai draw: left hand holds the SAYA, not the tsuka
   zArc: 0.4, drawFlash: true,
@@ -387,7 +388,7 @@ const l4: AttackDef = {
   trail: { start: 0.15, end: 0.41 },
   swingSfx: { t: 0.16, name: 'swing' },
   cancel: 0.37,
-  chain: ['l5', 'h2', 'stabs', 'launcher'],
+  chain: ['l5', 'h2', 'stabs', 'launcher', 'srCross'],
   moveX: 90, moveXAt: 0.16,
   grip: 0.7,
   zArc: 0.55,
@@ -459,7 +460,7 @@ const l5: AttackDef = {
   trail: { start: 0.19, end: 0.41 },
   swingSfx: { t: 0.2, name: 'swingHeavy' },
   cancel: 0.37,
-  chain: [],
+  chain: ['srOnslaught'],
   moveX: 240, moveXAt: 0.2,
   grip: 1, // kiri oroshi — full two-handed vertical
   zArc: 0.65,
@@ -504,7 +505,7 @@ const retreat: AttackDef = {
   trail: { start: 0.15, end: 0.34 },
   swingSfx: { t: 0.14, name: 'swing' },
   cancel: 0.31,
-  chain: ['l1', 'l2', 'launcher', 'spin'],
+  chain: ['l1', 'l2', 'launcher', 'spin', 'srIai'],
   moveX: -240, moveXAt: 0.05,
   grip: 0.85,
   zArc: 0.45,
@@ -560,7 +561,7 @@ const spin: AttackDef = {
   trail: { start: 0.08, end: 0.46 },
   swingSfx: { t: 0.08, name: 'swing' },
   cancel: 0.4,
-  chain: ['l5', 'launcher', 'h2'],
+  chain: ['l5', 'launcher', 'h2', 'srVortex'],
   grip: 0.75,
   zArc: 0.5,
   traj: { // SPIN family: near-full-circle depth rotation around the body —
@@ -687,7 +688,7 @@ const stabs: AttackDef = {
   trail: { start: 0.12, end: 0.63 },
   swingSfx: { t: 0.13, name: 'swing' },
   cancel: 0.66,
-  chain: ['l5', 'h2', 'launcher', 'spin'],
+  chain: ['l5', 'h2', 'launcher', 'spin', 'srViper'],
   moveX: 250, moveXAt: 0.13,
   grip: 1, // the string is always two-handed — h2's tsuki law
   zArc: 0.8, // thrusts spear the lens
@@ -837,7 +838,7 @@ const h2: AttackDef = {
   trail: { start: 0.18, end: 0.4 },
   swingSfx: { t: 0.2, name: 'swingHeavy' },
   cancel: 0.4,
-  chain: ['h3', 'stabs', 'l1'],
+  chain: ['h3', 'stabs', 'l1', 'srViper'],
   moveX: 320, moveXAt: 0.2,
   grip: 1, // tsuki: the thrust is ALWAYS two-handed
   zArc: 0.85, // the thrust SPEARS the camera — full foreshortening
@@ -906,7 +907,7 @@ const h3: AttackDef = {
   trail: { start: 0.43, end: 0.63 },
   swingSfx: { t: 0.44, name: 'swingHeavy' },
   cancel: 0.55,
-  chain: [],
+  chain: ['srOmega'],
   moveY: -780, moveYAt: 0.04,
   slamImpact: { r: 135, dmg: 26, launch: -280 },
   grip: 1,
@@ -1503,7 +1504,7 @@ const a3: AttackDef = {
   trail: { start: 0.07, end: 0.39 },
   swingSfx: { t: 0.07, name: 'swing' },
   cancel: 0.31,
-  chain: ['dive', 'slam', 'a1'],
+  chain: ['dive', 'slam', 'a1', 'srMeteor'],
   float: 0.34,
   grip: 0.8,
   zArc: 0.5,
@@ -1549,7 +1550,7 @@ const dive: AttackDef = {
   trail: { start: 0.08, end: 0.52 },
   swingSfx: { t: 0.09, name: 'swing' },
   cancel: 0.2,
-  chain: [],
+  chain: ['srMeteor'],
   moveY: 620, moveYAt: 0.08,
   moveX: 260, moveXAt: 0.08,
   float: 0.9,
@@ -1644,6 +1645,10 @@ export const ATTACKS: Record<string, AttackDef> = {
   sakugaHammer: MOVES.sakugaHammer,
   sakugaScorpion: MOVES.sakugaScorpion,
   sakugaWrath: MOVES.sakugaWrath,
+  /* THE SHADOW RONIN SET — the dual-blade study transcribed 1:1 (clips in
+   * combat/ronin-sakuga.ts); cinematic finisher tier for BOTH stances
+   * (empty-hand variants live in MOVES — unarmedAttack swaps by id) */
+  ...RONIN_ATTACKS,
 }
 
 export function getAttack(id: string): AttackDef | undefined {

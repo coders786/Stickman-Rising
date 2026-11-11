@@ -281,3 +281,86 @@ every per-frame channel delta (`.qa/continuity-check.ts` audits **all 30**).
   (pre-existing mechanic); command kicks fire on quick taps or charge release.
 - Enemy PAVE / hurt-reaction variety for kick impacts (band-specific stagger
   heights) — candidate for a future pass.
+
+## 9. THE SHADOW RONIN SET — 7 cinematic sequences ported for BOTH stances [this pass]
+
+Source: `upload/Shadow_Ronin.html` ("SHADOW RONIN — Cinematic Dual-Blade
+Animation Studio": 7 signature sequences, 24fps beat grid, per-key eases,
+impact events + slow-map). Converter: `scripts/match-ronin.ts` →
+`src/game/combat/ronin-sakuga.ts` (clips) + `src/game/combat/ronin.ts`
+(attack defs, armed + empty-hand) — the same proven methodology as the
+Dark Lord sakuga port (`scripts/match-darklord.ts`), extended with the
+reference's NEW depth channels:
+
+- `z + fov → rootZ` (clamp(z·0.08 + (fov−1)·45, −52, 58)) — the reference's
+  whole-body depth scale compressed into the rig's FOCUS-620 perspective
+  band (body scale 0.92..1.10): near bursts widen, far dives shrink.
+- `rotY → pelvis/chest counter-yaw split + armRz/armLz sweep +
+  bladeYaw = clamp((rotY−0.42)·0.5, ±1.35)` — VORTEX's 0→π spin reads as a
+  full transverse-plane rotation through the rig's real 3D chain.
+- `z → bladeZ` (thrust depth travel) — VIPER spears the lens, IAI bursts past it.
+- feet are stored WORLD-space by the reference (planted stances keep their
+  lunge splits while the hips drive): converted as (bfx−x, hy−bfy)·S.
+- eases ride the ARRIVING key (the reference's own bake() law) — the sr
+  clips deliberately do NOT use monotone interpolation; the authored in/out
+  asymmetry IS the choreography.
+
+The 7 sequences (clip `ronin*`, defs `sr*`):
+IAI CROSS-DRAW · TWIN MOMENTUM CRESCENT · AVALANCHE METEOR DROP ·
+HELIX VORTEX CUTTER · VIPER CROSS-PIERCE · ONSLAUGHT CHAIN X-SLASH ·
+OMEGA HORIZON FLASH.
+
+Reachability (chain graph, additive — no existing route lost):
+- srOnslaught: 6th light of the chain (l1→…→l5→X-SLASH) — both stances
+- srOmega: 4th heavy (h1→h2→h3→OMEGA) + heavy press off any sr finisher
+- srIai: forward+light after IAI DRAW / BACKSTEP CUT
+- srViper: forward+light after RENZOKU TSUKI / TSUKI
+- srVortex: down+light after HASSO SWEEP (was a dead input)
+- srCross: down+light after SLIP BODY ELBOW (was a dead input)
+- srMeteor: air heavy after FALCON DIVE
+- sheathed variants live in MOVES (dual-stance contract, fists never draw
+  steel) — unarmedAttack() swaps every sr id automatically
+
+Documented adaptations (kept honest):
+- DUAL BLADES → single katana (lead arm) + live off-hand (rear blade becomes
+  unarmed counters/saya control/X-slash crossings)
+- TAIL → no 5th limb; beats carried by counter-rotation + scarf physics
+- AURA (pw) → dropped (physical, non-magical house law)
+- Windmill arcs crossing ±180° remap to the nearest legal glenohumeral line
+- No traj/zArc declared on the sr defs on purpose: the sword-arc solver
+  derives its 3D blade path from the ported clips' own chamber/contact keys
+  (incl. the bladeYaw sweeps + bladeZ travel) — the reference choreography
+  drives the aim-locked arc + overshoot physics.
+
+Verification [this pass]:
+- `bun run lint` clean; tsc at environment baseline (scripts/ generator
+  carries the same class of errors as match-darklord — dev-only tool).
+- `window.__srQA.run()` — ALL 9 CHECKS PASS (incl. the chain script that now
+  walks into the sr clips): 0 NaN frames, 0 pose-continuity violations,
+  0 leaked FX/ghosts. Two QA-gate refinements shipped with the set:
+  ch17 (rootZ) is classified as a TRANSLATION channel (same class as
+  ch0/1 — the depth axis legitimately moves fast), and roninOmega's
+  authored lens-burst is whitelisted for ch17 (same whitelist class as the
+  spin-attack arm channels).
+- Live E2E probes: roninVortex pose channels sweep rootZ −5.8→+17.9 /
+  bladeYaw −0.80→+1.12 across the spin; roninOmega rootZ −42 (far-plane
+  dive) → +58 (camera burst) at its 0.78–0.96 hit window.
+- Hit resolution exact: armed srViper 24 dmg (heavy grunt 105→88 =
+  24×0.72); unarmed srOnslaught 22 dmg (105→89 = 22×0.72) — the dual-stance
+  swap fires inside startAttack.
+- Real-input chains (BOTH stances): J×6 → l1→l2→l3→l4→l5→roninOnslaught ✓
+  (armed + unarmed); K×4 → h1→h2→h3→roninOmega ✓; forward+J during l1 →
+  roninIai ✓.
+- VLM screenshot audit: vortex spin / omega burst / unarmed onslaught all
+  anatomically coherent, blade + trail readable, saya correctly sheathed in
+  the fist variant, zero page errors / zero runtime errors in the dev log.
+- QA handle: `window.__srRonin` (force-start any sequence via
+  `__sr.player.startAttack(__srRonin.srOmega, __sr.worldRef)`).
+
+Remaining limitations [this pass]:
+- Depth reads through motion (rootZ swings ±10% body scale), not literal
+  camera-piercing fov 2.6 — deliberate gameplay-geometry preservation.
+- The down+light / air-heavy sr routes share the verified walker mechanics
+  but were not individually E2E-timed (live enemy interference in the
+  scripted-input harness); forced-start playback + hit math are verified
+  for every sequence.

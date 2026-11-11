@@ -45,6 +45,7 @@ import {
   SAKUGA_JABCROSS_CLIP, SAKUGA_BARRAGE_CLIP, SAKUGA_DRAGON_CLIP,
   SAKUGA_HAMMER_CLIP, SAKUGA_SCORPION_CLIP, SAKUGA_WRATH_CLIP,
 } from './sakuga'
+import { RONIN_UNARMED } from './ronin'
 
 export type StrikeHand = 'left' | 'right'
 export type StrikeJoint = 'hand' | 'elbow' | 'foot' | 'knee' | 'shoulder'
@@ -934,7 +935,8 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.14, hitEnd: 0.26, dmg: 15, kb: 105, stagger: 0.3,
     chain: ['l5', 'h2', 'stabs', 'launcher', 'sakugaDragon'] },
   { id: 'l5', label: 'TWIN SHOTEI', kind: 'light', requires: 'ground', clip: TWINPALM, limb: 'right',
-    hitStart: 0.16, hitEnd: 0.30, dmg: 16, kb: 165, breakGuard: true },
+    hitStart: 0.16, hitEnd: 0.30, dmg: 16, kb: 165, breakGuard: true,
+    chain: ['srOnslaught'] },
   /* contextual lights */
   { id: 'retreat', label: 'HOP-BACK BACKFIST', kind: 'light', requires: 'ground', clip: BACKFIST, limb: 'left',
     hitStart: 0.10, hitEnd: 0.22, dmg: 13, kb: 130, moveX: -110, moveXAt: 0.02 },
@@ -1051,6 +1053,11 @@ const MOVES_SRC: MoveSpec[] = [
 
 export const MOVES: Record<string, AttackDef> = {}
 for (const s of MOVES_SRC) MOVES[s.id] = move(s)
+/* THE SHADOW RONIN SET — empty-hand variants of the transcribed dual-blade
+ * sequences (combat/ronin.ts): same body choreography, fist/heel hitboxes.
+ * Registered here so unarmedAttack() maps every sr id in the sheathed
+ * stance — the dual-stance contract. */
+Object.assign(MOVES, RONIN_UNARMED)
 
 /** Unarmed ULT — registered in ATTACKS as `ultPalm`; routed by
  * startUnarmedFinisher (grounded ultimate). Five confirmed contacts × 13
