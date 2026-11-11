@@ -514,4 +514,4 @@ proposal #4 upgraded to urgent).
    symmetric inOutCubic — soft enough for gathers; revisit at Cycle 2
    only if coils read stiff.
 
-**COMMIT:** (recorded post-push in tracker update)
+**COMMIT:** `ae5088a` — feat(anim): GAP SESSION 3 — timing, spacing & easing (strike-blur eases, cushioned settles) — pushed to origin/main
