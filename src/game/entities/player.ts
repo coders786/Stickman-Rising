@@ -713,7 +713,13 @@ export class Player {
     // logically STANDING while the button is held) rests at full rate; a
     // moving gait recovers slower; a full sprint barely trickles back.
     // Swinging and dashing are exertion: those states pause the meter.
-    if(this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dead'&&this.state!=='attack'&&this.state!=='dash'){
+    // A HELD CHARGE IS NOT REST. It reads as planted, but it is a committed
+    // investment, and the release is priced against the meter at the moment it
+    // fires. Letting the still-rate climb run during the hold let a player who
+    // approached the coil with 100 stamina regen past the 120 threshold and
+    // fire a power dash they could not afford when they committed to it.
+    const investing = this.state==='dashCharge'||this.state==='charge'
+    if(!investing&&this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dead'&&this.state!=='attack'&&this.state!=='dash'){
       const still=this.grounded&&Math.abs(this.vx)<30
       const rate=still?DASH_STAMINA_REGEN_STILL:this.loco==='sprint'?DASH_STAMINA_REGEN_SPRINT:DASH_STAMINA_REGEN
       this.stamina=Math.min(this.maxStamina,this.stamina+rate*Math.max(0,dt-staminaWait))
@@ -1785,18 +1791,23 @@ export class Player {
     this.vx=brakeVelocity(this.vx,tractionAcceleration(3200),dt)
     const ax=input.axisX(),ay=input.axisY()
     if(Math.abs(ax)>.2)this.dashChargeX=ax
-    // Attack from the charge: a FULLY charged release converts directly into
-    // the power dash attack (the startup was already paid in the coil —
-    // the blade is charged, so the strike rides the release). Early presses
-    // remain plain attacks, exactly as before.
+    // ATTACK from the charge: a light attack CANCELS the charge and throws a
+    // normal light strike. It must not silently convert into the power dash.
+    //
+    // This used to fire `startDash(..., power)` + powerArc whenever the coil
+    // was ready and stamina allowed, which had two consequences the player
+    // could not read: the press spent 120 stamina instead of nothing, and the
+    // strike that came out was the charged dash attack rather than the light
+    // the player asked for. The stamina law in combat/stamina.ts is explicit —
+    // "costs are charged on launch, not on button down, so cancelled charges
+    // and failed requests are free". A cancel into an attack is a cancel.
+    //
+    // The charged release remains reachable: release the DASH key (drawn
+    // steel: the coil fires powerArc/powerSlash), or hold HEAVY to arm the
+    // dual chamber.
     if(input.pressed('light')||input.buffered('light')){
       input.takeBuffered('light')
       this.dropDualCharge()
-      if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
-        this.startDash(w,this.dashChargeX,0,true)
-        this.startAttack(ATTACKS.powerArc,w)
-        return
-      }
       this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
     }
     // HEAVY inside the charge: HOLD arms THE DUAL CHARGE (dash hold + heavy

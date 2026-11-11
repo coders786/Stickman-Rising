@@ -32,6 +32,7 @@
  *  · srMeteor     air heavy after FALCON DIVE (the plunge alternative)
  */
 import type { AttackDef, AttackKind, AttackHit } from './attacks'
+import { EMPTY_HAND_PAD_MAX } from './contracts'
 import {
   RONIN_META, RONIN_Iai_CLIP, RONIN_Cross_CLIP, RONIN_Meteor_CLIP,
   RONIN_Vortex_CLIP, RONIN_Viper_CLIP, RONIN_Onslaught_CLIP, RONIN_Omega_CLIP,
@@ -194,10 +195,18 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     hitstop: hitstopOf(s.meta),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
     heavy: !!s.heavy,
-    aoe: s.aoe,
+    // aoe is a blade-arc property — see the note on the returned def below.
+    aoe: unarmed ? undefined : s.aoe,
     multiHit: s.multiHit,
     breakGuard: s.breakGuard,
-    pad: s.pad ?? (s.heavy ? 8 : 5),
+    // A FIST IS NARROWER THAN A BLADE. This used to pass the sword's pad
+    // straight through to the empty-hand variant, so srViper kept its
+    // katana's 8 px contact radius while it was a punch and srOmega kept 12
+    // — the hitbox was fatter than the limb that supposedly made it. The
+    // empty-hand contract (see moveset.ts `move`) caps the pad at 7 px;
+    // clamp rather than drop, so a punch reads slightly more generous than
+    // the 5/7 defaults without ever exceeding the documented bound.
+    pad: unarmed ? Math.min(EMPTY_HAND_PAD_MAX, s.pad ?? 5) : (s.pad ?? (s.heavy ? 8 : 5)),
     corridorBack: s.corridor?.back,
     corridorFront: s.corridor?.front,
     corridorY: s.corridor?.y,
@@ -226,8 +235,18 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     moveYAt: s.moveYAt,
     float: s.float,
     groundDrive: s.groundDrive,
-    slamImpact: s.slamImpact,
-    drawFlash: s.drawFlash,
+    // ARMED-ONLY EFFECTS DO NOT SURVIVE THE SHEATHE. Each of these is a
+    // property of the steel, not of the movement:
+    //   · drawFlash — the iai glint off a blade leaving the saya; a fist has
+    //     nothing to flash.
+    //   · slamImpact — the katana's impact authored off the blade tip's
+    //     arrival; the empty-hand equivalent lands on a limb and re-derives
+    //     its own weight.
+    //   · aoe — srOmega's 150 px horizon burst is the blade's arc radius. The
+    //     same choreography thrown as a palm strike has no 150 px reach, and
+    //     keeping it silently gave a punch a sword's sweep.
+    slamImpact: unarmed ? undefined : s.slamImpact,
+    drawFlash: unarmed ? undefined : s.drawFlash,
     grip: unarmed ? 0 : s.grip,
     ...(unarmed ? { strikeHand: s.unarmed.limb, strikeJoint: s.unarmed.joint } : {}),
   }

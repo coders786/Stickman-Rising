@@ -65,14 +65,44 @@ test('power is stronger than tap and stabilizes before rising',()=>{
  }
 })
 
-test('attacks can interrupt charge or ride the released powered dash',()=>{
+test('light cancels a charge; heavy arms the dual chamber; both ride a released dash',()=>{
  for(const attack of ['light','heavy'] as const)for(const hz of [30,60,120]){
-  const charging=setup(hz);charging.input.setVirtual('dash',true);charging.step()
-  charging.input.setVirtual(attack,true);charging.step();assert.equal(charging.p.state,'attack')
+  // ---- LIGHT CANCELS. It throws the ordinary light strike and must not
+  // spend the power-dash cost: combat/stamina.ts states costs are charged on
+  // LAUNCH, so a cancel into an attack is free. ----
+  const charging=setup(hz);const before=charging.p.stamina
+  charging.input.setVirtual('dash',true);charging.step()
+  charging.input.setVirtual(attack,true);charging.step()
+  if(attack==='light'){
+   assert.equal(charging.p.state,'attack')
+   assert.equal(charging.p.stamina,before,'an interrupted charge is free')
+  }else{
+   // ---- HEAVY ARMS THE DUAL CHAMBER instead of interrupting. Holding it
+   // converts the invested coil into RAIJIN ZAN (drawn) / RAIJIN KEN
+   // (sheathed). This is by design (research/ANIM-GAP-CURRICULUM.md: the
+   // anticipation is "BY DESIGN paid inside the planted DUAL_CHARGE coils"),
+   // so a heavy press must NOT cut the charge — that would make the dual
+   // release unreachable. ----
+   assert.equal(charging.p.state,'dashCharge')
+   // arming classifies on a HOLD beat (HEAVY_HOLD_ARM), so a TAP stays a
+   // plain heavy — hold past the beat to reach the chamber
+   for(let i=0;i<Math.ceil(.22*hz);i++)charging.step()
+   const armed=(charging.p as unknown as {dashDualArmed:boolean}).dashDualArmed
+   assert.equal(armed,true,'heavy held inside the charge arms the dual chamber')
+   charging.input.setVirtual('heavy',false)
+  }
+  charging.input.setVirtual(attack,false)
+
+  // ---- A RELEASED POWER DASH CONVERTS THE PRESS INTO THE CHARGED STRIKE.
+  // The startup was already paid in the coil, so the body does not restart
+  // it; both keys route to the dedicated charged attack. ----
   const s=setup(hz);charge(s,hz);s.input.setVirtual('dash',false);s.step()
   for(let i=0;i<Math.ceil(.06*hz);i++)s.step()
   const x=s.p.x;s.input.setVirtual(attack,true);s.step()
-  assert.equal(s.p.state,'attack');assert.equal((s.p as unknown as {action:{def:{id:string}}}).action.def.id,attack==='light'?'dashSlash':'dashHeavy')
+  assert.equal(s.p.state,'attack')
+  const got=(s.p as unknown as {action:{def:{id:string}}}).action.def.id
+  assert.ok(['powerArc','powerSlash'].includes(got),`charged strike — got ${got}`)
+  assert.equal((s.p as unknown as {dashPower:boolean}).dashPower,true,'the strike rides the powered dash')
   s.input.setVirtual(attack,false);let peak=s.p.vx
   for(let i=0;i<Math.ceil(.18*hz);i++){s.step();peak=Math.max(peak,s.p.vx)}
   assert.ok(s.p.x-x>100);assert.ok(peak>1000)

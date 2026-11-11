@@ -42,6 +42,7 @@ import { PLAYER_SPEC } from '../anim/skeleton'
 import { clamp } from '../core/utils'
 import type { SfxName } from '../audio/audio'
 import type { AttackDef, AttackKind } from './attacks'
+import { EMPTY_HAND_PAD_MAX } from './contracts'
 import {
   SAKUGA_JABCROSS_CLIP, SAKUGA_BARRAGE_CLIP, SAKUGA_DRAGON_CLIP,
   SAKUGA_HAMMER_CLIP, SAKUGA_SCORPION_CLIP, SAKUGA_WRATH_CLIP,
@@ -1112,7 +1113,12 @@ function move(s: MoveSpec): AttackDef {
     kb: s.kb ?? (s.heavy ? 200 : 95), kbY: s.kbY, launch: s.launch, juggle: s.juggle,
     hitstop: s.hitstop ?? (s.heavy ? 0.06 : 0.035),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
-    heavy: !!s.heavy, pad: s.pad ?? (s.heavy ? 7 : 5), breakGuard: s.breakGuard,
+    // THE EMPTY-HAND CONTRACT, ENFORCED: a fist/heel is narrower than any
+    // blade, so the contact pad is clamped at 7 px here rather than trusted
+    // from the spec. Authoring pad:10 in this table (as two dash strikes
+    // once did) silently produced a punch with a katana's hitbox.
+    heavy: !!s.heavy, pad: Math.min(EMPTY_HAND_PAD_MAX, s.pad ?? (s.heavy ? 7 : 5)),
+    breakGuard: s.breakGuard,
     multiHit: s.multiHit, aoe: s.aoe,
     corridorBack: s.corridorBack, corridorFront: s.corridorFront, corridorY: s.corridorY,
   }
@@ -1193,12 +1199,12 @@ const MOVES_SRC: MoveSpec[] = [
    * corridor is the dash path itself, so the pass tears the pack. */
   { id: 'powerPunch', label: 'RAIJIN KEN', kind: 'dash', requires: 'ground', clip: POWERCROSS, limb: 'right', joint: 'hand',
     hitStart: 0.10, hitEnd: 0.44, dmg: 30, kb: 560, kbY: -40, heavy: true, breakGuard: true,
-    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: 10,
+    stagger: 0.5, hitstop: 0.11, shake: 0.36, multiHit: 0.13, pad: 7,
     corridorBack: 150, corridorFront: 88, corridorY: 55,
     moveX: 240, moveXAt: 0.02, chain: ['h1', 'l1'] },
   { id: 'powerKick', label: 'FUJIN KYAKU', kind: 'dash', requires: 'ground', clip: POWERKICK, limb: 'right', joint: 'foot',
     hitStart: 0.10, hitEnd: 0.44, dmg: 26, kb: 640, kbY: -90, launch: 260, heavy: true, breakGuard: true,
-    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: 10,
+    stagger: 0.55, hitstop: 0.12, shake: 0.38, multiHit: 0.13, pad: 7,
     corridorBack: 150, corridorFront: 88, corridorY: 40,
     moveX: 240, moveXAt: 0.02, chain: ['h2', 'l1'] },
   /* THE KINETIC-CHAIN SET — five empty-hand techniques authored to the
