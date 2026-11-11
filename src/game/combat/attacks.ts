@@ -1645,6 +1645,15 @@ export const ATTACKS: Record<string, AttackDef> = {
   sakugaHammer: MOVES.sakugaHammer,
   sakugaScorpion: MOVES.sakugaScorpion,
   sakugaWrath: MOVES.sakugaWrath,
+  /* THE KINETIC-CHAIN SET — the five empty-hand techniques authored to the
+   * reference studio's proximal-to-distal beat law (clips in moveset.ts).
+   * Chosen by the COMBO DIRECTOR (combat/combo-director.ts) over the
+   * authored chain graph; sheathed only. */
+  viperPalm: MOVES.viperPalm,
+  avalancheElbow: MOVES.avalancheElbow,
+  cyclone: MOVES.cyclone,
+  ironRoot: MOVES.ironRoot,
+  omegaPalm: MOVES.omegaPalm,
   /* THE SHADOW RONIN SET — the dual-blade study transcribed 1:1 (clips in
    * combat/ronin-sakuga.ts); cinematic finisher tier for BOTH stances
    * (empty-hand variants live in MOVES — unarmedAttack swaps by id) */

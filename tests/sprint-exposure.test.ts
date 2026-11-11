@@ -6,6 +6,7 @@ import {Animator} from '../src/game/anim/animator'
 import {SPRINT_CLIP,IDLE_CLIP} from '../src/game/anim/clips'
 import {ContextMotion,DEFAULT_CONTEXT} from '../src/game/anim/context-motion'
 import {runningHandMotion,sprintHandArc} from '../src/game/anim/hand-kinematics'
+import {PLAYER_SPEC} from '../src/game/anim/skeleton'
 const hands={leftOpen:.3,rightOpen:0,leftRoll:.05,rightRoll:0}
 test('sprint exposure is exactly 10 Hz at 30/60/120 render updates per second',()=>{
  assert.equal(SPRINT_POSE_HZ,10)
@@ -53,8 +54,8 @@ test('the unarmed near arm reaches its front rib-height pose instead of sticking
  const m=new ContextMotion(),c={...DEFAULT_CONTEXT,clip:'sprint',speed:480,forward:480,phase:.5}
  let p=makePose()
  for(let i=0;i<120;i++){p=sampleAtHalf();m.apply(p,c,1/120)}
- const x=20*Math.sin(p[CH.shR])+18*Math.sin(p[CH.shR]+p[CH.elR])
- const y=20*Math.cos(p[CH.shR])+18*Math.cos(p[CH.shR]+p[CH.elR])
+ const x=PLAYER_SPEC.upperArm*Math.sin(p[CH.shR])+PLAYER_SPEC.foreArm*Math.sin(p[CH.shR]+p[CH.elR])
+ const y=PLAYER_SPEC.upperArm*Math.cos(p[CH.shR])+PLAYER_SPEC.foreArm*Math.cos(p[CH.shR]+p[CH.elR])
  assert.ok(x>12&&y<21,`near wrist still trapped at hip: ${x}, ${y}`)
  function sampleAtHalf(){const a=new Animator();a.play(SPRINT_CLIP,{blend:0});a.update(0,.5);return a.pose.slice()}
 })
@@ -66,8 +67,8 @@ test('composed sprint key hands match their phase, without double-filter quarter
   const p=makePose();m.composeSprintArms(p,c)
   const h=runningHandMotion(phase,480)
   for(const [sh,el,hand] of [[CH.shL,CH.elL,h.left],[CH.shR,CH.elR,h.right]] as const){
-   const x=20*Math.sin(p[sh])+18*Math.sin(p[sh]+p[el])
-   const y=20*Math.cos(p[sh])+18*Math.cos(p[sh]+p[el])
+   const x=PLAYER_SPEC.upperArm*Math.sin(p[sh])+PLAYER_SPEC.foreArm*Math.sin(p[sh]+p[el])
+   const y=PLAYER_SPEC.upperArm*Math.cos(p[sh])+PLAYER_SPEC.foreArm*Math.cos(p[sh]+p[el])
    assert.ok(Math.abs(x-hand.x)<1e-4&&Math.abs(y-hand.y)<1e-4)
   }
   const armed=makePose();const sh=armed[CH.shR],el=armed[CH.elR]

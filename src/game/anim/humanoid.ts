@@ -52,38 +52,63 @@ function segmentProfile(a: Point, hinge: Point, b: Point, radii: number[]): Surf
  * Pure #000 body, including face. Short hair, no tied tail, no glow details. */
 /** Shared production palm/finger shape, also used for isolated design studies. */
 export function drawArticulatedHand(ctx:CanvasRenderingContext2D,color:string,open:number):void{
-// Match the palm/finger silhouette to the six-unit hand in PLAYER_SPEC;
-// keep the wrist origin fixed so weapon grips and arm lengths do not move.
-ctx.save();ctx.scale(1.12,1.12)
-ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-.7,-1)
-ctx.quadraticCurveTo(.8,-1.9,2.2,-1.3);ctx.lineTo(2.7,.5)
-ctx.quadraticCurveTo(1.5,1.8,-.8,1);ctx.closePath();ctx.fill()
-ctx.strokeStyle=color;ctx.lineWidth=.8;ctx.lineCap='round'
-// Three phalange segments curl toward the palm. The ring/little fingers
-// rest more flexed than the index: a soft athletic hand, not four spikes.
-for(let i=0;i<4;i++){
-  const lengths=[2.8,3.2,2.95,2.35],curl=(1-open)*(1.18+i*.11)
-  const spread=(i-1.5)*open*.18
-  let x=1,y=(i-1.5)*.72,angle=spread
-  ctx.beginPath();ctx.moveTo(x,y)
-  for(const fraction of [.44,.33,.23]){
-    x+=Math.cos(angle)*lengths[i]*fraction
-    y+=Math.sin(angle)*lengths[i]*fraction
-    ctx.lineTo(x,y);angle+=curl
+// Palm/fingers sized to the 6.6-unit hand in PLAYER_SPEC. At 1.19 the palm
+// measured ~3.2 units — a nub on the end of the old 10-unit arm, which is
+// half of why the limb read as a monster with a mitten. 1.52 puts the whole
+// hand (palm + fist mass) at the spec length; the wrist origin stays fixed
+// so weapon grips and arm lengths do not move.
+ctx.save();ctx.scale(1.52,1.52)
+const o=clamp01(open)
+ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineCap='round';ctx.lineJoin='round'
+// ── palm: ONE smooth block from the wrist to the knuckle line. The old path
+// was four straight edges with quadratic corners, which at this scale drew a
+// dark rhombus on the end of the arm.
+ctx.lineWidth=.5
+ctx.beginPath()
+ctx.moveTo(-.95,-1);ctx.quadraticCurveTo(.9,-1.45,2.15,-1.15)
+ctx.quadraticCurveTo(2.6,-.55,2.55,0)
+ctx.quadraticCurveTo(2.6,.55,2.15,1.15)
+ctx.quadraticCurveTo(.9,1.45,-.95,1)
+ctx.quadraticCurveTo(-1.35,0,-.95,-1)
+ctx.closePath();ctx.fill();ctx.stroke()
+if(o<.55){
+  // ── closed fist: the curled fingers are ONE rounded mass with soft knuckle
+  // seams. Four curled 3-segment polylines is precisely what made the hand
+  // read as a cluster of crystal spikes.
+  const t=1-o/.55,reach=.85+.3*t
+  ctx.beginPath()
+  ctx.moveTo(1.9,-1.02);ctx.quadraticCurveTo(2.55+reach,-.92,2.6+reach,0)
+  ctx.quadraticCurveTo(2.55+reach,.92,1.9,1.02)
+  ctx.quadraticCurveTo(1.45,0,1.9,-1.02)
+  ctx.closePath();ctx.fill()
+  ctx.lineWidth=.16
+  for(const ky of [-.62,-.21,.21,.62]){
+    ctx.beginPath();ctx.moveTo(2.05,ky)
+    ctx.quadraticCurveTo(2.35,ky*.9,2.3+reach*.8,ky*.72);ctx.stroke()
   }
-  ctx.stroke()
+}else{
+  // ── open hand: four tapered fingers, round caps, a single gentle curl
+  // (no zig-zag), spreading as the hand opens.
+  const k=(o-.55)/.45
+  for(let i=0;i<4;i++){
+    const spread=(i-1.5)*.22*k, len=[2.5,2.9,2.65,2.15][i], by=(i-1.5)*.6
+    ctx.lineWidth=.7-i*.04
+    const kx=1.9+Math.cos(spread-.1)*len*.55, ky=by+Math.sin(spread-.1)*len*.55
+    const tx=kx+Math.cos(spread+.22)*len*.45, ty=ky+Math.sin(spread+.22)*len*.45
+    ctx.beginPath();ctx.moveTo(1.85,by);ctx.quadraticCurveTo(kx,ky,tx,ty);ctx.stroke()
+  }
 }
-// Opposable thumb folds over the grip instead of pointing sideways.
-ctx.beginPath();ctx.moveTo(-.1,-1)
-ctx.quadraticCurveTo(1.4,-2.2-open*.45,2.1+open,-.35-open*1.8)
-ctx.stroke();
+// ── thumb: a rounded pad folding over the grip.
+ctx.lineWidth=.9
+ctx.beginPath();ctx.moveTo(-.2,-.88)
+ctx.quadraticCurveTo(1.1,-1.5-o*.25,1.8+o*.3,-.5-o*.45);ctx.stroke()
 ctx.restore()
 }
 
 function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts:FighterDrawOpts):void {
   const limb=(a:Point,b:Point,c:Point,r:number[])=>surface(ctx,segmentProfile(a,b,c,r),color)
   for(const [h,k,a,t] of [[g.hipPtL,g.kneeL,g.ankleL,g.toeL],[g.hipPtR,g.kneeR,g.ankleR,g.toeR]]){
-    limb(h,k,a,[4.6,4.9,3.45,2.25,3.05,2.05,1.4])
+    limb(h,k,a,[4.2,4.35,3.1,2.0,2.75,1.9,1.35])
     outline(ctx,[{x:a.x-2.4,y:a.y-2}, {x:a.x+2,y:a.y-2},
       {x:t.x+1.4,y:t.y-1},{x:t.x+1.8,y:t.y+1.8},{x:a.x-2.5,y:a.y+2}]);ctx.fillStyle=color;ctx.fill()
   }
@@ -97,21 +122,25 @@ function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts
     return{x:g.hip.x+dx*t+(g.waist.x-waistLine.x)*envelope-dy/l*(w+bow),
       y:g.hip.y+dy*t+(g.waist.y-waistLine.y)*envelope+dx/l*(w+bow)}
   }
-  outline(ctx,[at(-.09,-4.5),at(0,-5.4),at(.32,-4.6),at(.73,-8.6),at(.98,-10.1),
-    at(1.08,-3),at(1.08,3),at(.98,10.1),at(.73,8.6),at(.32,4.6),at(0,5.4),at(-.09,4.5)])
+  // V-taper fitted to the LEAN arm: pelvis 5.2 → waist 4.5 → ribcage 9.6,
+  // with the lat flare landing on a 3.4 deltoid. Holding the old 10.9
+  // shoulder half-width against slim arms produced a pyramid under a pair of
+  // sticks — the girdle has to shrink with the limbs or neither reads.
+  outline(ctx,[at(-.09,-4.4),at(0,-5.2),at(.32,-4.5),at(.73,-8.6),at(.98,-9.6),
+    at(1.08,-3),at(1.08,3),at(.98,9.6),at(.73,8.6),at(.32,4.5),at(0,5.2),at(-.09,4.4)])
   ctx.fillStyle=color;ctx.fill()
   // No thigh-length gi flaps: they fused into a low diaper-shaped crotch.
   // The pelvis contour ends at the femoral heads; legs supply the rest.
   // Raised collar and short split obi ends stylize the OUTLINE only.
   // No colored headband, cape, ponytail or interior clothing highlights.
   const collar=(t:number,w:number)=>at(t,w)
-  outline(ctx,[collar(.94,-6),collar(1.14,-4.8),collar(1.18,3.6),collar(.96,6)])
+  outline(ctx,[collar(.94,-6.6),collar(1.14,-5.3),collar(1.18,4.0),collar(.96,6.6)])
   ctx.fillStyle=color;ctx.fill()
   const energy=clamp01(opts.motionEnergy??0),flutter=Math.sin((opts.time??0)*7)*(.3+energy*1.1)
   ctx.beginPath();ctx.moveTo(g.hip.x-5,g.hip.y-1)
   ctx.quadraticCurveTo(g.hip.x-12,g.hip.y-5-flutter,g.hip.x-18-energy*3,g.hip.y-2-flutter)
   ctx.lineTo(g.hip.x-14,g.hip.y-5-flutter);ctx.lineTo(g.hip.x-5,g.hip.y-3);ctx.closePath();ctx.fill()
-  surface(ctx,[withRadius(g.chest,3.1),withRadius(g.neckTop,2.4),withRadius(mix(g.neckTop,g.headC,.65),2.5)],color)
+  surface(ctx,[withRadius(g.chest,3.5),withRadius(g.neckTop,2.7),withRadius(mix(g.neckTop,g.headC,.65),2.8)],color)
   const gesture=opts.hands??{leftOpen:.2,rightOpen:0,leftRoll:0,rightRoll:0}
   for(const [sh,el,wr,open,roll] of [
     [g.shoulderL,g.elbL,g.handL,gesture.leftOpen,gesture.leftRoll],
@@ -119,8 +148,15 @@ function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts
   ] as const){
     const ux=el.x-sh.x,uy=el.y-sh.y,fx=wr.x-el.x,fy=wr.y-el.y
     const flex=.5*(1-(ux*fx+uy*fy)/(Math.hypot(ux,uy)*Math.hypot(fx,fy)||1))
-    // Re-composed taper: triceps mass -> elbow pinch -> forearm -> wrist.
-    limb(sh,el,wr,[3.85,3.6+.3*flex,2.5,1.65,2.55,1.65,1.08])
+    // LEAN fighter arm (deltoid → bicep → elbow → forearm → wrist). The old
+    // profile ran a 5.15 deltoid and a 4.95 bicep — a 10-unit-wide limb on a
+    // 22-unit upper arm, as wide as the skull, which read as a brute/golem
+    // mass rather than a martial artist. This one is 3.4 at the deltoid and
+    // tapers MONOTONICALLY through the elbow (1.7) into the forearm belly
+    // (2.25) and a 1.15 wrist: one continuous taper, no flare-pinch-flare,
+    // so the outline has no diamond nodes left in it. Bicep still flexes
+    // with elbow bend so a chambered arm reads as loaded, not tubular.
+    limb(sh,el,wr,[3.4,3.2+.22*flex,2.55,1.7,2.25,1.85,1.15])
     // Palm/fingers articulate around the solved wrist, not an offset fist.
     ctx.save();ctx.translate(wr.x,wr.y);ctx.rotate(Math.atan2(wr.y-el.y,wr.x-el.x)+roll)
     drawArticulatedHand(ctx,color,open);ctx.restore()

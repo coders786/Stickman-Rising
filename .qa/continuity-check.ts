@@ -31,9 +31,25 @@ const firstFrameFrac = (ease: string, frames: number): number => {
 
 const CH_NAMES = ['rootX','rootY','rootRot','spine','head','hipL','kneeL','footL','hipR','kneeR','footR','shL','elL','wrL','shR','elR','wrR']
 
+/** A clip on the reference BAKE grid (uniform 24 fps spacing): its motion is
+ * authored per anime frame, so a step carries a 24 fps delta, not a 60 fps
+ * one. The budget is a VELOCITY cap, so the per-step allowance scales with
+ * the grid spacing: 0.72 rad per 1/60 s == 1.80 rad per 1/24 s. */
+const BAKE_GAP = 1 / 24
+function isBaked(fr: { t: number }[]): boolean {
+  if (fr.length < 8) return false
+  const gaps: number[] = []
+  for (let i = 1; i < fr.length; i++) gaps.push(fr[i].t - fr[i - 1].t)
+  gaps.sort((a, b) => a - b)
+  const median = gaps[gaps.length >> 1]
+  return Math.abs(median - BAKE_GAP) < BAKE_GAP * 0.08
+}
+
 function checkClip(clip: { name: string; frames: { t: number; p: Float32Array; e?: unknown }[]; dur: number }, label: string) {
   const fr = clip.frames as { t: number; p: Float32Array; e: { name?: string } | string }[]
   const issues: string[] = []
+  const baked = isBaked(fr)
+  const scale = baked ? BAKE_GAP * 60 : 1
   for (let i = 0; i < fr.length - 1; i++) {
     const a = fr[i], b = fr[i + 1]
     const span = b.t - a.t
@@ -45,10 +61,11 @@ function checkClip(clip: { name: string; frames: { t: number; p: Float32Array; e
     for (let c = 0; c < 17; c++) {
       const d = Math.abs(b.p[c] - a.p[c])
       if (d < 1e-6) continue
-      const lim = c < 2 ? 14 : 0.72
+      const lim = (c < 2 ? 14 : 0.72) * scale
       // worst case: first-frame concentration for the common ease family.
-      // outCubic is the default in these clips.
-      const f = firstFrameFrac('outCubic', frames)
+      // outCubic is the default in these clips. A baked clip already carries
+      // its easing in the data and plays STEPPED, so the step delta is final.
+      const f = baked ? 1 : firstFrameFrac('outCubic', frames)
       const peak = d * f
       if (peak > lim) {
         issues.push(`${label} ${clip.name} kf[${i}→${i+1}] t=${a.t.toFixed(2)}→${b.t.toFixed(2)} ch=${CH_NAMES[c]} span=${d.toFixed(2)} frames=${frames.toFixed(1)} peak≈${peak.toFixed(2)} (lim ${lim})`)

@@ -41,18 +41,24 @@ export interface SkelSpec {
 
 /** Anime ronin rig proportions: 32-unit torso, 4.6-unit neck and 6.1-unit
  * skull radius give a roughly adult seven-to-eight-head silhouette.
- * Leg length stays 49 and arm length 38 to preserve contact/combat reach.
- * The player surface is continuous anatomy; enemy stick styles are separate.
+ * Leg length stays 49. Arms are recomposed BULKY + LONGER: upper 22 /
+ * fore 20 (reach 42, +10.5% over the old 38) with a broader, lower
+ * glenohumeral root (fwd 2.1 / drop 2.5) so the deltoid mass has a socket
+ * to sit in. Arm/leg ratio moves 0.78 → 0.86 — a deliberate anime-fighter
+ * reach read: sword arcs (fractional extension) and joint-angle clips
+ * gain reach automatically; hand-space punch targets are rescaled inside
+ * handPose to preserve their extension ratio. The player surface is
+ * continuous anatomy; enemy stick styles are separate.
  */
 export const PLAYER_SPEC: SkelSpec = {
   torso: 32,
   neck: 4.6,
   headR: 6.1,
-  shoulderFwd: 1.6,
-  shoulderDrop: 2.0,
-  upperArm: 20,
-  foreArm: 18,
-  hand: 6.2,
+  shoulderFwd: 2.1,
+  shoulderDrop: 2.5,
+  upperArm: 22,
+  foreArm: 20,
+  hand: 6.6,
   thigh: 25,
   shin: 24,
   foot: 10,
@@ -803,11 +809,11 @@ function drawSilhouette(
   ctx.fill()
   // rear deltoid cap — the back arm's root reads at the far shoulder
   ctx.beginPath()
-  ctx.arc(g.shoulderL.x, g.shoulderL.y, 4.6, 0, Math.PI * 2)
+  ctx.arc(g.shoulderL.x, g.shoulderL.y, 5.2, 0, Math.PI * 2)
   ctx.fill()
   // back arm: triceps taper + forearm, from the far glenohumeral joint
-  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 4.9, 3.1, back)
-  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 2.9, 1.8, back)
+  fillTaper(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, 5.6, 3.6, back)
+  fillTaper(ctx, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y, 3.3, 2.1, back)
 
   // ---- 2. torso: pelvis basin + abdomen + ribcage + trapezius + neck ----
   // pelvis: WIDE at the hip (iliac crest), tapering hard to the waist —
@@ -855,15 +861,15 @@ function drawSilhouette(
   ctx.fill()
   // deltoid cap ON the glenohumeral joint — the arm reads from the shoulder
   ctx.beginPath()
-  ctx.arc(g.shoulderR.x, g.shoulderR.y, 5.7, 0, Math.PI * 2)
+  ctx.arc(g.shoulderR.x, g.shoulderR.y, 6.4, 0, Math.PI * 2)
   ctx.fill()
   // bicep → forearm taper (anatomical: deltoid .055H → elbow .035H →
   // wrist .020H — the forearm tapers STEEPER than the humerus)
-  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 5.7, 3.6, black)
-  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.4, 2.1, black)
+  fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 6.4, 4.1, black)
+  fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.9, 2.4, black)
   // elbow sphere (silhouette joint)
   ctx.beginPath()
-  ctx.arc(g.elbR.x, g.elbR.y, 3.7, 0, Math.PI * 2)
+  ctx.arc(g.elbR.x, g.elbR.y, 4.2, 0, Math.PI * 2)
   ctx.fill()
 
   // ---- 4. hands: fists oriented on the blade axis (grip anatomy) ----
@@ -978,8 +984,8 @@ function drawSilhouette(
     fillTaper(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, 6.5, 4.7, fc, flash)
     fillTaper(ctx, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y, 4.4, 2.9, fc, flash)
     fillTaper(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, 5.8, 4.3, fc, flash * 0.8)
-    fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 4.9, 3.6, fc, flash)
-    fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.5, 2.6, fc, flash)
+    fillTaper(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, 6.4, 4.1, fc, flash)
+    fillTaper(ctx, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y, 3.9, 2.4, fc, flash)
     fillTaper(ctx, g.waist.x, g.waist.y, g.chest.x, g.chest.y, 6.6, 10.4, fc, flash)
     fillTaper(ctx, g.hip.x, g.hip.y, g.waist.x, g.waist.y, 9.6, 6.6, fc, flash)
     ctx.fillStyle = fc

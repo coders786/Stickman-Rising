@@ -12,6 +12,7 @@ import {drawArticulatedHand} from '../anim/humanoid'
 import {drawDetail,DRAW_CLEAR,DRAW_GRIP} from '../anim/draw-detail'
 import {equipmentClip} from '../anim/equipment-motion'
 import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP} from '../combat/unarmed'
+import {ComboDirector,type Requires} from '../combat/combo-director'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
 import { SprintExposure,SPRINT_EXPOSURE_CHANNELS } from '../anim/sprint-exposure'
@@ -229,6 +230,10 @@ interface AbilityState {
   y: number
 }
 
+/** Anime cadence for empty-hand strikes: the clip clock ticks at the bake
+ * rate, so a beat holds then snaps (the reference studio's BASE_FPS = 24). */
+const UNARMED_STEP_RATE = 24
+
 export class Player {
   x = 400
   y = 0
@@ -415,6 +420,10 @@ export class Player {
    * solve (documented solve order). Per-entity seeded → no two plays of a
    * clip render identically. */
   private pave = new PaveState()
+  /** THE COMBO DIRECTOR — seeded weighted branch chooser over the
+   * authored empty-hand chain graph (anti-repeat + variety memory +
+   * combo-heat escalation). See combat/combo-director.ts. */
+  private readonly combo = new ComboDirector()
   /** seconds since the last damage taken (flinch carryover window 0–1s) */
   private sinceHitT = 99
   /** seconds airborne (aerial pose evolution: tuck → extend → spread) */
@@ -2190,6 +2199,13 @@ export class Player {
     if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
     if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
     if(!this.swordDrawn)def=unarmedAttack(def)
+    // COMBO DIRECTOR bookkeeping: a fresh string reseeds the walk (one seed
+    // per string, the PAVE law); every throw inside a string is recorded so
+    // anti-repeat and variety memory can see it.
+    if(!this.swordDrawn){
+      if(!wasAttack)this.combo.reseed(w.time,this.x)
+      this.combo.record(def.id)
+    }
 
     // face toward held direction at attack start
     const ax = w.input.axisX()
@@ -2247,7 +2263,17 @@ export class Player {
     this.charging = false
     // Authored startup/contact/recovery clocks remain independent of
     // visual entry residuals; do not smear the fist past its contact beat.
-    this.playAnimation(def.clip, { blend: wasAttack ? 0.11 : 0.07, speed: def.strikeHand?1:this.atkSpeed,armBlendLimit:def.strikeHand?def.hit.start*.75:undefined })
+    // EMPTY-HAND CADENCE: fists play on the reference studio's 24 fps bake
+    // grid (quantized clip clock), so each authored beat HOLDS for a frame
+    // and then snaps — anime limited animation — while the physics layers
+    // (trails, cloth, camera) keep integrating at full rate. The drawn sword
+    // keeps its continuous tempo.
+    this.playAnimation(def.clip, {
+      blend: wasAttack ? 0.11 : 0.07,
+      speed: def.strikeHand ? 1 : this.atkSpeed,
+      stepRate: def.strikeHand ? UNARMED_STEP_RATE : undefined,
+      armBlendLimit: def.strikeHand ? def.hit.start * .75 : undefined,
+    })
     // slight ground friction during attacks
   }
 
@@ -2425,7 +2451,17 @@ export class Player {
             // down-chains were dead inputs before — no existing route lost.
             next = def.chain.includes('srVortex') ? 'srVortex' : 'srCross'
           } else {
-            next = this.pickLight(w, ax, ay)
+            // THE COMBO DIRECTOR (sheathed only): the authored chain graph is
+            // the menu, the director is the chooser. Candidates are filtered to
+            // what fromChain() already accepts, so every pick commits.
+            if (!this.swordDrawn) {
+              const legal = def.chain.filter((c) => !!ATTACKS[c] && fromChain(def, c, this))
+              const picked = legal.length
+                ? this.combo.pick(legal, { comboHits: w.combo?.hits ?? 0, grounded: this.grounded }, REQUIRES_OF)
+                : null
+              if (picked) next = picked
+            }
+            if (!next) next = this.pickLight(w, ax, ay)
           }
         } else if (input.buffered('heavy')) {
           input.takeBuffered('heavy')
@@ -2445,6 +2481,18 @@ export class Player {
             // list, the sr tier) route the next heavy into the OMEGA finish.
             const heavyNext = def.chain.find((c) => /^h[123]$/.test(c))
             next = heavyNext ?? (def.chain.includes('srOmega') ? 'srOmega' : (def.kind === 'heavy' ? 'l1' : 'h1'))
+            // COMBO DIRECTOR (sheathed): choose among the heavy-tier legs the
+            // current move declares instead of always taking the first.
+            if (!this.swordDrawn) {
+              const tier = def.chain.filter((c) => {
+                const d = ATTACKS[c]
+                return !!d && !!d.hit?.heavy && fromChain(def, c, this)
+              })
+              const picked = tier.length
+                ? this.combo.pick(tier, { comboHits: w.combo?.hits ?? 0, grounded: this.grounded }, REQUIRES_OF)
+                : null
+              if (picked) next = picked
+            }
           }
         }
         if (next) {
@@ -2469,7 +2517,9 @@ export class Player {
     // carries it into locomotion (post-attack recovery, spec §7)
     if (this.animator.isDone()) {
       w.fx.endTrail(a.trail, 0.18)
-      this.postAttackT = 0.34
+      // recovery tempo breathes with the string (director tempo 0.97–1.04×):
+      // authored contact times stay absolute, only the settle varies
+      this.postAttackT = 0.34 * (def.strikeHand ? this.combo.tempo() : 1)
       this.postArmVel = def.strikeHand?0:this.armVel
       this.action = null
       this.state = 'move'
@@ -4296,6 +4346,9 @@ interface EnemyLike {
   y: number
   d?: number
 }
+
+/** `requires` of any attack id, for the combo director's ground/air gate. */
+const REQUIRES_OF = (id: string): Requires => (ATTACKS[id]?.requires as Requires) ?? 'any'
 
 function fromChain(def: AttackDef, next: string, player: Player): boolean {
   if (next === 'riposte') return true

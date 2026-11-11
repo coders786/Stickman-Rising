@@ -12,7 +12,9 @@ test('anime proportions preserve the limb and blade reach contracts', () => {
   assert.ok(PLAYER_SPEC.torso <= 33)
   assert.ok(PLAYER_SPEC.headR < 6.5)
   assert.equal(PLAYER_SPEC.thigh+PLAYER_SPEC.shin,49)
-  assert.equal(PLAYER_SPEC.upperArm+PLAYER_SPEC.foreArm,38)
+  assert.equal(PLAYER_SPEC.upperArm+PLAYER_SPEC.foreArm,42)
+  assert.equal(PLAYER_SPEC.upperArm,22)
+  assert.equal(PLAYER_SPEC.foreArm,20)
   assert.equal(PLAYER_SPEC.blade,56)
 })
 test('rest and combat guard have an intentional lowered, flexed martial posture', () => {

@@ -17,11 +17,18 @@ export interface Keyframe {
   t: number
   p: Pose
   e?: string // ease name applied when interpolating INTO this keyframe
+  /** the authored ease NAME (survives `e` being compiled to a function, so
+   * the bake step in anim/bake.ts can replay the exact curve) */
+  en?: string
 }
 
 export interface Clip {
   equipment?:'free'|'armed'
   source?:Clip
+  /** set by the bake when the clip was re-timed around a contact: the moment
+   * the pose actually snaps. Hit windows should be derived from this rather
+   * than guessed, so the hitbox cannot drift off the strike. */
+  snapAt?: number
   name: string
   frames: Keyframe[]
   dur: number
@@ -37,7 +44,7 @@ interface KeyedEase {
 }
 
 export function keyframe(t: number, src: PoseInput, ease?: string): Keyframe {
-  return { t, p: makePose(src), e: ease }
+  return { t, p: makePose(src), e: ease, en: ease }
 }
 
 export function makeClip(name: string, frames: Keyframe[], loop = false): Clip {
@@ -45,6 +52,7 @@ export function makeClip(name: string, frames: Keyframe[], loop = false): Clip {
     t: f.t,
     p: f.p,
     e: EASES[f.e ?? 'inOutCubic'] ?? EASES.inOutCubic,
+    en: f.en ?? f.e,
   }))
   const dur = frames.length ? frames[frames.length - 1].t : 0
   return { name, frames: keyed as unknown as Keyframe[], dur, loop }
