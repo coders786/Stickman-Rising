@@ -4857,27 +4857,38 @@ export class Player {
     }
   }
 
-  /** Physical ink/air-displacement smear for A/B/C unarmed kicks. It is
-   * deliberately non-emissive: three tapered brush wakes sit behind the
-   * live silhouette, matching the contact drawing without inventing extra
-   * interpolated body poses. */
-  drawKickSmear(ctx:CanvasRenderingContext2D):void{
+  /** Physical ink/air-displacement smear for the held-drawing strikes — the
+   * speed lines of a hand-drawn punch sheet. Deliberately non-emissive:
+   * tapered brush wakes sit behind the live silhouette (fist, heel, knee,
+   * elbow or shoulder), matching the contact drawing without inventing
+   * extra interpolated body poses. */
+  drawStrikeSmear(ctx:CanvasRenderingContext2D):void{
     const a=this.action
-    if(!a||!a.def.strikeHand||(a.def.strikeJoint!=='foot'&&a.def.strikeJoint!=='knee')||!this.limbSeg.active)return
-    const start=a.def.hit.start-.035,end=a.def.hit.end+.055
+    const joint=a?.def.strikeJoint
+    if(!a||!a.def.strikeHand||!joint)return
+    // Sheathed strikes carry the visible limb as the hit segment (blade :=
+    // fist/heel/knee); drawn-blade body strikes expose limbSeg instead.
+    const seg=this.limbSeg.active?this.limbSeg
+      :(!this.swordDrawn&&this.blade.tx!==this.blade.bx?this.blade:null)
+    if(!seg)return
+    const start=a.def.hit.start-.035,end=a.def.hit.end+.065
     if(a.animT<start||a.animT>end)return
     const life=Math.max(0,Math.min(1,(a.animT-start)/.055))*Math.max(0,Math.min(1,(end-a.animT)/.07))
-    const tx=this.limbSeg.tx,ty=this.limbSeg.ty
-    const hx=this.x,hy=this.hipY-15
+    const tx=seg.tx,ty=seg.ty
+    // Anchor per joint: legs launch from the hip line, arms from the
+    // shoulder line, the shoulder tackle from behind the body mass.
+    const arm=joint==='hand'||joint==='elbow'
+    const hx=this.x+(joint==='shoulder'?-this.face*8:0),hy=this.hipY-(arm?40:joint==='shoulder'?32:15)
     const dx=tx-hx,dy=ty-hy,L=Math.max(1,Math.hypot(dx,dy)),nx=-dy/L,ny=dx/L
-    const sx=hx-dx*.18-this.face*16,sy=hy+18
+    const sx=hx-dx*(arm?.3:.18)-this.face*(arm?10:joint==='shoulder'?22:16),sy=hy+(arm?-dy*.12:18)
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='source-over'
-    // Broad sumi-e wake, darkest at the live foot and transparent at origin.
+    // Broad sumi-e wake, darkest at the live limb tip and transparent at origin.
     const g=ctx.createLinearGradient(sx,sy,tx,ty)
-    g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.07*life})`);g.addColorStop(1,`rgba(198,210,216,${.2*life})`)
-    ctx.strokeStyle=g;ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
-    // Separated brush filaments make speed readable without a neon ribbon.
-    for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(184,197,203,${(.1-Math.abs(i)*.018)*life})`;ctx.lineWidth=1.4+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
+    g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.09*life})`);g.addColorStop(1,`rgba(206,218,224,${.27*life})`)
+    ctx.strokeStyle=g;ctx.lineWidth=arm?10:12;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
+    // Separated brush filaments make speed readable without a neon ribbon —
+    // three streaks of varying length, exactly like the reference sheet.
+    for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(192,205,211,${(.15-Math.abs(i)*.026)*life})`;ctx.lineWidth=1.5+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
     ctx.restore()
   }
 

@@ -125,8 +125,9 @@ export class Renderer {
     // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
     fx.drawSilhouettes(ctx)
 
-    // Physical unarmed kick smears belong behind the opaque contact pose.
-    player.drawKickSmear(ctx)
+    // Physical strike smears (the punch-sheet speed lines) belong behind the
+    // opaque contact pose.
+    player.drawStrikeSmear(ctx)
 
     // player
     player.draw(ctx, time)

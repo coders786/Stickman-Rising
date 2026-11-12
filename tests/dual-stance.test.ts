@@ -26,7 +26,7 @@ test('every sword attack intent has a bounded, short-contact empty-hand equivale
   const a=unarmedAttack(base)
   assert.equal(a.id,base.id);assert.ok(a.strikeHand);assert.equal(a.requires,base.requires)
   assert.ok(!a.traj&&!a.drawFlash&&!a.hit.aoe&&!a.slamImpact)
-  assert.equal(a.clip.frames.length,3);assert.equal(a.clip.interpolation,'step')
+  assert.equal(a.clip.frames.length===4||a.clip.frames.length===6,true,`${a.id} follows the A/B/C/D law (long animations use at most 6 drawings)`);assert.equal(a.clip.interpolation,'step')
   assert.ok(a.hit.start<a.hit.end&&a.hit.end<a.cancel)
   assert.ok(a.hit.pad!<=7);assert.equal(a.grip,0)
   for(const f of a.clip.frames){

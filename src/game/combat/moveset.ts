@@ -36,7 +36,7 @@
 
 import { keyframe, makeClip, sampleClip, type Clip } from '../anim/animator'
 import { bakeClip, BAKE_FPS } from '../anim/bake'
-import { CH, makePose, type ChannelKey, type PoseInput } from '../anim/pose'
+import { CH, makePose, type ChannelKey, type Pose, type PoseInput } from '../anim/pose'
 import { applyJointLimits } from '../anim/limits'
 import { PLAYER_SPEC } from '../anim/skeleton'
 import { clamp } from '../core/utils'
@@ -141,54 +141,82 @@ const kf = (t: number, d: PoseInput, ease?: string) => {
  * ignore every ease and smear the whole move into one uniform blur. */
 const clip = (name: string, frames: ReturnType<typeof kf>[], contact: number | null = null): Clip =>
   bakeClip(makeClip(name, frames), BAKE_FPS, contact)
-/** Strict retro exposure clip: exactly A(start), B(contact), C(recovery).
- * Animator `step` mode holds drawings with zero synthesized interpolation. */
-const abcClip=(name:string,dur:number,a:PoseInput,b:PoseInput,c:PoseInput):Clip=>{
-  const out=makeClip(name,[kf(0,a),kf(dur*.46,b),kf(dur,c)])
+/** Strict retro exposure clip — the punch-sheet law: exactly A(chamber),
+ * B(drive), C(contact), D(recovery) — FOUR held drawings, no more.
+ * Animator `step` mode snaps between drawings with zero synthesized
+ * interpolation: every pose on screen is an authored drawing, and the
+ * brush smear behind the striking limb carries the motion between them
+ * the way speed lines do on a hand-drawn punch sheet. */
+const abcdClip=(name:string,dur:number,a:PoseInput,b:PoseInput,c:PoseInput,d:PoseInput):Clip=>{
+  const out=makeClip(name,[kf(0,a),kf(dur*.28,b),kf(dur*.46,c),kf(dur,d)])
   out.interpolation='step';out.snapAt=dur*.46
   return out
 }
-/* Fresh three-drawing kicking school. These translate the readable ideas of
- * Korean stance pressure and Mishima-style launchers without copying any
- * proprietary move frame-for-frame. Each has a unique pelvis/foot silhouette. */
-const ABC_ROUNDHOUSE=abcClip('abcCycloneRoundhouse',.34,
+/** Four-drawing clip from a three-beat skeleton: the drive drawing is an
+ * explicit authored breakdown between chamber and contact — a held drawing
+ * like any other (the runtime never interpolates). */
+const abc4=(name:string,dur:number,a:PoseInput,b:PoseInput,c:PoseInput):Clip=>
+  abcdClip(name,dur,a,lerpPose(a,b,.5),b,c)
+/* Fresh four-drawing kicking school (ABCD: chamber → drive → extension →
+ * recovery). These translate the readable ideas of Korean stance pressure
+ * and Mishima-style launchers without copying any proprietary move
+ * frame-for-frame. Each has a unique pelvis/foot silhouette. */
+const ABC_ROUNDHOUSE=abc4('abcCycloneRoundhouse',.34,
  {...G,rootY:4,pelvisYaw:-.65,chestYaw:.45,hipR:.75,kneeR:-1.85,shR:.35,shL:.8},
  {...G,rootX:5,rootY:1,rootRot:-.12,head:.1,pelvisYaw:1.25,chestYaw:-.8,hipR:1.62,kneeR:-.18,footR:1.25,hipRz:.65,shR:-.45,shL:1.1},
  {...G,rootX:3,rootY:4.8,rootRot:.2,pelvisYaw:.2,hipR:.5,kneeR:-1.05,shR:.5,shL:.4})
-const ABC_SKYROCKET=abcClip('abcSkyRocket',.38,
+const ABC_SKYROCKET=abc4('abcSkyRocket',.38,
  {...G,rootY:7,rootRot:.28,pelvisYaw:-.35,hipR:.95,kneeR:-2.0,hipL:-.48,kneeL:-1.2,shR:.8,shL:.25},
  {...G,rootX:6,rootY:-1.5,rootRot:-.16,head:.12,pelvisYaw:.5,chestYaw:-.35,hipR:2.18,kneeR:-.32,footR:.42,hipL:-.55,kneeL:-.28,shR:-.2,shL:.9},
  {...G,rootX:4,rootY:4.5,rootRot:.18,hipR:.55,kneeR:-1.2,hipL:-.35,kneeL:-.85})
-const ABC_BACKLASH=abcClip('abcBacklashHeel',.44,
+const ABC_BACKLASH=abc4('abcBacklashHeel',.44,
  {...G,rootY:5,rootRot:.12,pelvisYaw:.95,chestYaw:-.7,hipR:.35,kneeR:-1.65,shR:.2,shL:1.0},
  {...G,rootX:-2,rootY:1,rootRot:.28,head:-.22,pelvisYaw:-1.25,chestYaw:.9,hipR:-1.58,kneeR:-.2,footR:-1.18,hipRz:-.7,shR:1.15,shL:-.4},
  {...G,rootX:-4,rootY:5.2,rootRot:.2,pelvisYaw:-.25,hipR:.2,kneeR:-1.1,shR:.7,shL:.25})
-const ABC_HUNTING=abcClip('abcHuntingHawk',.4,
+const ABC_HUNTING=abc4('abcHuntingHawk',.4,
  {...G,rootY:6,rootRot:.4,pelvisYaw:-.5,hipR:.95,kneeR:-1.9,hipL:-.6,kneeL:-1.25,shR:.9,shL:.4},
  {...G,rootX:7,rootY:-2,rootRot:.65,head:-.55,pelvisYaw:.85,chestYaw:-.55,hipR:1.48,kneeR:-.12,footR:1.1,hipL:-.85,kneeL:-.25,shR:-.35,shL:.75},
  {...G,rootX:5,rootY:3.8,rootRot:.3,pelvisYaw:.15,hipR:.55,kneeR:-1.15,hipL:-.45,kneeL:-.9})
-const ABC_AXE=abcClip('abcFallingAxe',.46,
+const ABC_AXE=abc4('abcFallingAxe',.46,
  {...G,rootY:5.5,rootRot:-.08,pelvisYaw:.3,hipR:1.8,kneeR:-1.25,footR:.35,shR:.35,shL:.85},
  {...G,rootX:4,rootY:2,rootRot:.55,head:-.45,pelvisYaw:-.35,chestYaw:.25,hipR:.72,kneeR:-.12,footR:-.9,hipRz:.2,shR:-.25,shL:.5},
  {...G,rootX:3,rootY:7,rootRot:.38,hipR:.6,kneeR:-1.45,hipL:-.45,kneeL:-1.25,shR:.55,shL:.3})
-const ABC_SWEEP=abcClip('abcTempleSweep',.36,
+const ABC_SWEEP=abc4('abcTempleSweep',.36,
  {...G,rootY:7,rootRot:.45,pelvisYaw:-.55,hipR:.45,kneeR:-1.75,hipL:-.65,kneeL:-1.5,shR:.75,shL:.45},
  {...G,rootX:4,rootY:8,rootRot:.58,head:-.5,pelvisYaw:1.15,chestYaw:-.8,hipR:1.48,kneeR:-.2,footR:1.35,hipRz:.3,shR:-.2,shL:.95},
  {...G,rootX:2,rootY:6,rootRot:.28,pelvisYaw:.2,hipR:.5,kneeR:-1.2,hipL:-.42,kneeL:-1.0})
 
-/* Three-drawing boxing line. The feet, knees, pelvis, spine, opposite guard
+/* Four-drawing boxing line — authored directly from the punch-sheet
+ * reference: A guard, B drive (fist leaves the chin, torso starts
+ * unwinding), C the drawn punch at full extension (the smear beat),
+ * D catch back to guard. The feet, knees, pelvis, spine, opposite guard
  * and head all participate; these are not arm-only replacements. */
-const ABC_JAB=abcClip('abcDrivingJab',.28,
+const ABC_JAB=abcdClip('abcDrivingJab',.30,
+ // A — bladed guard, weight loaded, lead fist high
  {...G,rootY:5,rootRot:.14,pelvisYaw:-.28,chestYaw:.22,hipR:.58,kneeR:-.82,hipL:-.5,kneeL:-.72,...handPose('right',12,3)},
+ // B — drive: shoulder launches, the coil begins to unwind
+ {...G,rootX:2,rootY:4,rootRot:.02,pelvisYaw:-.04,chestYaw:-.12,hipR:.68,kneeR:-.62,hipL:-.55,kneeL:-.6,...handPose('right',22,1),...handPose('left',9,3)},
+ // C — contact: straight punch at shoulder height (brush smear beat)
  {...G,rootX:5,rootY:3,rootRot:-.08,pelvisYaw:.3,chestYaw:-.48,hipR:.8,kneeR:-.38,hipL:-.62,kneeL:-.5,...handPose('right',41,-1),...handPose('left',8,3)},
+ // D — catch: recoil stance
  {...G,rootX:3,rootY:4.5,rootRot:.12,pelvisYaw:-.12,chestYaw:.18,hipR:.5,kneeR:-.68,hipL:-.4,kneeL:-.65})
-const ABC_CROSS=abcClip('abcRearCross',.31,
+const ABC_CROSS=abcdClip('abcRearCross',.33,
+ // A — deeper coil than the jab: the rear hip loads the cross
  {...G,rootY:5.5,rootRot:.18,pelvisYaw:-.55,chestYaw:.42,hipR:.48,kneeR:-.76,hipL:-.62,kneeL:-.9,...handPose('left',8,4)},
- {...G,rootX:7,rootY:2.5,rootRot:-.13,pelvisYaw:.78,chestYaw:-.72,hipR:.9,kneeR:-.3,hipL:-.7,kneeL:-.38,...handPose('left',41,-1),...handPose('right',7,3)},
+ // B — drive: rear hip fires, the fist punches through the guard line
+ {...G,rootX:3,rootY:4,rootRot:.02,pelvisYaw:.2,chestYaw:-.1,hipR:.66,kneeR:-.55,hipL:-.66,kneeL:-.62,...handPose('left',20,1),...handPose('right',8,3)},
+ // C — contact: full cross extension over a deep forward lunge (long smear)
+ {...G,rootX:8,rootY:2.5,rootRot:-.13,pelvisYaw:.78,chestYaw:-.72,hipR:.9,kneeR:-.3,hipL:-.7,kneeL:-.38,...handPose('left',43,-1),...handPose('right',7,3)},
+ // D — catch: recoil stance
  {...G,rootX:4,rootY:4.2,rootRot:.16,pelvisYaw:.08,chestYaw:-.04,hipR:.54,kneeR:-.62,hipL:-.45,kneeL:-.72})
-const ABC_UPPERCUT=abcClip('abcRisingUppercut',.4,
+const ABC_UPPERCUT=abcdClip('abcRisingUppercut',.42,
+ // A — deep load: knees folded, fist low by the hip
  {...G,rootY:11,rootRot:.42,head:-.22,pelvisYaw:-.5,chestYaw:.32,hipR:.72,kneeR:-1.35,hipL:-.55,kneeL:-1.42,...handPose('right',9,13),...handPose('left',7,5)},
+ // B — drive: legs begin to extend, fist climbs inside the guard line
+ {...G,rootX:2,rootY:7,rootRot:.1,head:-.08,pelvisYaw:.2,chestYaw:.06,hipR:.86,kneeR:-.95,hipL:-.5,kneeL:-1.0,...handPose('right',11,-8),...handPose('left',7,5),armRz:.12},
+ // C — contact: full rising extension, body stretched vertical (smear beat)
  {...G,rootX:6,rootY:-3,rootRot:-.32,head:.12,pelvisYaw:.82,chestYaw:-.72,hipR:.95,kneeR:-.22,hipL:-.38,kneeL:-.3,...handPose('right',12,-38),...handPose('left',8,4),armRz:.22},
+ // D — catch: recoil stance
  {...G,rootX:4,rootY:5,rootRot:.2,pelvisYaw:.12,chestYaw:-.08,hipR:.58,kneeR:-.8,hipL:-.42,kneeL:-.86,...handPose('right',10,5)})
 
 /** Exact pose-space midpoint of two authored keyframe inputs. Inserted
@@ -1690,7 +1718,7 @@ export const UNARMED_PARRY_CLIP = clip('unarmedParry', [
 
 /** J charge is intentionally five held drawings: enough graphic punch to
  * show heel pressure → hip coil → rib compression → fist load → hard brace,
- * but still no synthesized interpolation. Ordinary attacks remain A/B/C. */
+ * but still no synthesized interpolation. Ordinary attacks are A/B/C/D. */
 export const UNARMED_PUNCH_CHARGE_CLIP=makeClip('heldPunchCharge5',[
  kf(0,{...G,rootY:4,rootRot:.12,pelvisYaw:-.28,chestYaw:.2,...handPose('right',5,13),...handPose('left',12,3)}),
  kf(.09,{...G,rootX:-1,rootY:6.5,rootRot:.26,head:-.2,pelvisYaw:-.62,chestYaw:.43,hipR:.68,kneeR:-1.2,hipL:-.52,kneeL:-1.08,...handPose('right',0,16),...handPose('left',14,2)}),
@@ -1699,7 +1727,7 @@ export const UNARMED_PUNCH_CHARGE_CLIP=makeClip('heldPunchCharge5',[
  kf(.42,{...G,rootX:-2.5,rootY:9.4,rootRot:.45,head:-.36,pelvisYaw:-1.08,chestYaw:.8,hipR:.92,kneeR:-1.8,hipL:-.75,kneeL:-1.55,armRz:-.5,...handPose('right',-9,19),...handPose('left',16,-1)}),
 ])
 UNARMED_PUNCH_CHARGE_CLIP.dur=.5;UNARMED_PUNCH_CHARGE_CLIP.loop=true;UNARMED_PUNCH_CHARGE_CLIP.interpolation='step';UNARMED_PUNCH_CHARGE_CLIP.snapAt=.18
-export const UNARMED_KICK_CHARGE_CLIP=abcClip('abcKickCharge',.48,
+export const UNARMED_KICK_CHARGE_CLIP=abc4('abcKickCharge',.48,
  {...G,rootY:4.5,rootRot:.1,pelvisYaw:.25,hipR:.62,kneeR:-1.55,hipL:-.45,kneeL:-1.1,shR:.4,shL:.75},
  {...G,rootX:-1,rootY:8,rootRot:.18,head:-.15,pelvisYaw:.9,chestYaw:-.62,hipR:1.05,kneeR:-2.05,hipL:-.68,kneeL:-1.55,hipRz:.4,shR:.1,shL:1.0},
  {...G,rootY:6.6,rootRot:.14,pelvisYaw:.62,chestYaw:-.4,hipR:.88,kneeR:-1.82,hipL:-.55,kneeL:-1.3,shR:.25,shL:.88})
@@ -2215,10 +2243,13 @@ for (const m of Object.values(MOVES)) {
  * stance — the dual-stance contract. */
 Object.assign(MOVES, RONIN_UNARMED)
 
-/** Global empty-hand exposure law: every attack is exactly A/B/C and uses
- * held drawings. All legacy kick clips are discarded and replaced by the
- * fresh school above; punches retain their measured contact silhouette but
- * shed every generated in-between. */
+/** Global empty-hand exposure law: every attack is exactly A/B/C/D — four
+ * HELD drawings (chamber, drive, contact, recovery) — and very long
+ * animations use at most six. Nothing is ever interpolated: the animator's
+ * `step` mode snaps between drawings the way a hand-drawn punch sheet does,
+ * and the brush smear behind the striking limb carries the motion between
+ * beats. All legacy kick clips are discarded and replaced by the fresh
+ * school above; punches keep their measured contact silhouette. */
 const kickFor=(id:string):Clip=>{
   if(/axe|slam|meteor/i.test(id))return ABC_AXE
   if(/spinHook|scorpion|backlash/i.test(id))return ABC_BACKLASH
@@ -2227,27 +2258,49 @@ const kickFor=(id:string):Clip=>{
   if(/dive|a3|airTwist|powerKick|chargedKick/i.test(id))return ABC_HUNTING
   return ABC_ROUNDHOUSE
 }
-const compressABC=(m:AttackDef):Clip=>{
-  const src=m.clip,dur=Math.max(.24,src.dur),a=makePose(),b=makePose(),c=makePose()
-  sampleClip(src,0,a);sampleClip(src,(m.hit.start+m.hit.end)*.5,b);sampleClip(src,src.dur,c)
-  // Re-author the lower body for the sparse format: A loads, B drives, C
-  // catches. Sampling old clips alone could preserve nearly static legs.
+const compressABCD=(m:AttackDef):Clip=>{
+  const src=m.clip,dur=Math.max(.24,src.dur)
+  const tC=(m.hit.start+m.hit.end)*.5
+  // VERY LONG animations (barrage strings, finishers, corridor releases)
+  // earn up to SIX drawings; every ordinary strike gets exactly four.
+  const long=dur>.58||(m.hit.end-m.hit.start)>.34||m.kind==='finisher'
+  const n=long?6:4
+  const samples=long
+    ?[0,tC*.4,tC*.72,tC,tC+(src.dur-tC)*.45,src.dur]
+    :[0,tC*.52,tC,src.dur]
+  const slots=long?[0,.18,.30,.46,.72,1]:[0,.28,.46,1]
+  const contact=n-(long?3:2),last=n-1
+  const a=makePose(),poses:Pose[]=[]
+  for(let i=0;i<n;i++){sampleClip(src,samples[i],a);poses.push(Float32Array.from(a))}
+  const drive=(p:Float32Array)=>{
+    p[CH.rootY]+=.8;p[CH.pelvisYaw]+=.15;p[CH.chestYaw]-=.1
+    p[CH.hipR]+=.09;p[CH.kneeR]-=.1;p[CH.hipL]-=.07;p[CH.kneeL]-=.08
+  }
+  // Re-author the lower body for the sparse format: A loads, the drive
+  // drawings wind, the contact drives, the last catches. Sampling old clips
+  // alone could preserve nearly static legs.
+  for(let i=1;i<contact;i++)drive(poses[i])
+  const b=poses[contact]
   b[CH.rootY]+=1.8;b[CH.pelvisYaw]+=.34;b[CH.chestYaw]-=.24
   b[CH.hipR]+=.2;b[CH.kneeR]-=.24;b[CH.hipL]-=.16;b[CH.kneeL]-=.18
-  c[CH.rootY]+=1;c[CH.hipR]-=.12;c[CH.kneeR]-=.12;c[CH.hipL]+=.1;c[CH.kneeL]-=.1
+  const catchP=(p:Float32Array,k:number)=>{
+    p[CH.rootY]+=1*k;p[CH.hipR]-=.12*k;p[CH.kneeR]-=.12*k;p[CH.hipL]+=.1*k;p[CH.kneeL]-=.1*k
+  }
+  for(let i=contact+1;i<last;i++)catchP(poses[i],.5)
+  catchP(poses[last],1)
   if(m.strikeJoint==='hand'){
     const hand=handPose(m.strikeHand??'right',41,-1)
     for(const [k,v] of Object.entries(hand) as [ChannelKey,number][])b[CH[k]]=v
   }
-  applyJointLimits(a);applyJointLimits(b);applyJointLimits(c)
+  for(const p of poses)applyJointLimits(p)
   const asInput=(p:Float32Array)=>{const o:PoseInput={};for(const k of Object.keys(CH) as ChannelKey[])o[k]=p[CH[k]];return o}
-  const out=makeClip(`abc_${m.id}`,[keyframe(0,asInput(a)),keyframe(dur*.46,asInput(b)),keyframe(dur,asInput(c))])
+  const out=makeClip(`abc_${m.id}`,poses.map((p,i)=>keyframe(dur*slots[i],asInput(p))))
   out.interpolation='step';out.snapAt=dur*.46;return out
 }
 for(const m of Object.values(MOVES)){
   const leg=m.strikeJoint==='foot'||m.strikeJoint==='knee'
   const authoredPunch=m.id==='launcher'?ABC_UPPERCUT:m.id==='l1'?ABC_JAB:m.id==='l2'?ABC_CROSS:null
-  m.clip=leg?kickFor(m.id):authoredPunch??compressABC(m)
+  m.clip=leg?kickFor(m.id):authoredPunch??compressABCD(m)
   const impact=m.clip.dur*.46
   m.hit={...m.hit,start:impact,end:Math.min(m.clip.dur,impact+.1)}
   m.cancel=Math.max(m.hit.end+.045,Math.min(m.cancel,m.clip.dur*.82))
@@ -2264,7 +2317,7 @@ export const UNARMED_ULT: AttackDef = move({
   moveX: 90, moveXAt: 0.05,
 })
 
-UNARMED_ULT.clip=compressABC(UNARMED_ULT)
+UNARMED_ULT.clip=compressABCD(UNARMED_ULT)
 UNARMED_ULT.hit={...UNARMED_ULT.hit,start:UNARMED_ULT.clip.dur*.46-.02,end:UNARMED_ULT.clip.dur*.46+.1}
 
 export const UNARMED_FLOURISH_CLIP = FLOURISH
