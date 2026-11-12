@@ -39,28 +39,54 @@ const baseStyle = (body: string, dark: string, glow: string, lineW = 5): StickSt
   body, dark, outline: '#04060a', glow, lineW, headStyle: 'visor', armor: false,
 })
 
+/* THE APPROACH DISTANCE MUST PUT THE ENEMY IN ITS OWN RANGE.
+ *
+ * `orbit` is where the chase AI parks (see `desired = px - targetSide *
+ * this.cfg.orbit`); `range + 14` is the distance at which it is allowed to
+ * attack. Every melee type used to park 38-88px OUTSIDE that trigger:
+ *
+ *   kind      range  orbit  slack
+ *   grunt      68    120     52
+ *   assassin   62    150     88
+ *   heavy      82    130     48
+ *   shield     72    110     38
+ *   drone      90    170     80
+ *   elite      74    140     66
+ *   boss      150    200     50
+ *
+ * A grunt therefore walked to 120px and then stood there, unable to attack
+ * and unable to be reached: the player's own hand range is ~70px, so the
+ * whole hand-to-hand layer was dead on arrival against a pack that refused
+ * to close. It also made every combo silently expire, because the body was
+ * never inside reach long enough to land two strikes.
+ *
+ * Each orbit now sits just inside its owner's trigger. The AI still keeps
+ * the exact body language it had (it still prefers `orbit` over standing on
+ * top of the player); it just prefers a distance it can actually fight from.
+ * The gunner is untouched at 380 - it is the one type that WANTS to be far.
+ */
 export const ENEMY_CONFIGS: Record<EnemyKind, EnemyConfig> = {
   grunt: {
     hp: 30, speed: 135, range: 68, dmg: 8, windup: 0.5, recover: 0.55,
-    scale: 1.04, score: 50, orbit: 120,
+    scale: 1.04, score: 50, orbit: 70,
     style: baseStyle('#c8ccd2', '#78818c', '#ff4646'),
     weapon: 'machete', weaponColor: '#d8dde3',
   },
   assassin: {
     hp: 22, speed: 255, range: 62, dmg: 6, windup: 0.26, recover: 0.3,
-    scale: 0.94, score: 80, orbit: 150,
+    scale: 0.94, score: 80, orbit: 68,
     style: baseStyle('#b6a8d8', '#6f5f96', '#c44dff'),
     weapon: 'dagger', weaponColor: '#e8ddff',
   },
   heavy: {
     hp: 105, speed: 72, range: 82, dmg: 18, windup: 0.78, recover: 0.9,
-    scale: 1.32, score: 150, orbit: 130,
+    scale: 1.32, score: 150, orbit: 88,
     style: { ...baseStyle('#d8b46a', '#8f7038', '#ffae2e', 7), armor: true, core: '#ffae2e' },
     weapon: 'hammer', weaponColor: '#ffd27a',
   },
   shield: {
     hp: 62, speed: 95, range: 72, dmg: 10, windup: 0.55, recover: 0.7,
-    scale: 1.12, score: 120, orbit: 110,
+    scale: 1.12, score: 120, orbit: 78,
     style: baseStyle('#9fd8b4', '#5f9678', '#46ffb4', 6),
     weapon: 'shield', weaponColor: '#46ffb4',
   },
@@ -72,19 +98,19 @@ export const ENEMY_CONFIGS: Record<EnemyKind, EnemyConfig> = {
   },
   drone: {
     hp: 20, speed: 165, range: 90, dmg: 9, windup: 0.45, recover: 0.6,
-    scale: 0.9, score: 70, orbit: 170,
+    scale: 0.9, score: 70, orbit: 100,
     style: { ...baseStyle('#a8d8e8', '#5f96a8', '#35f2ff', 4), headStyle: 'goggles' },
     weapon: 'none', weaponColor: '#35f2ff',
   },
   elite: {
     hp: 170, speed: 205, range: 74, dmg: 8, windup: 0.3, recover: 0.4,
-    scale: 1.16, score: 400, orbit: 140,
+    scale: 1.16, score: 400, orbit: 82,
     style: { ...baseStyle('#f0d8d8', '#965f6f', '#ff2a4a', 5.5), armor: true, core: '#ff2a4a' },
     weapon: 'sword', weaponColor: '#ff5c7a',
   },
   boss: {
     hp: 950, speed: 62, range: 150, dmg: 22, windup: 0.7, recover: 0.8,
-    scale: 3.0, score: 2500, orbit: 200,
+    scale: 3.0, score: 2500, orbit: 158,
     style: { ...baseStyle('#c8d4e0', '#5f7183', '#ff2a4a', 9), armor: true, core: '#ff2a4a', headStyle: 'helm' },
     weapon: 'bossblade', weaponColor: '#ff5c7a',
   },

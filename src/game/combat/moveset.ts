@@ -1855,10 +1855,27 @@ interface MoveSpec {
 /** Enforce the empty-hand contract: visible-limb hitbox (strikeHand set,
  * grip 0 — fists never draw steel), trail == hit window, ≤7 px contact
  * pad (a fist/heel is narrower than any blade), heavy sfx. */
+/** How long a hit holds the enemy, derived from the strike that dealt it.
+ * See the note at the `stagger` assignment in move(). */
+const LIGHT_STUN_LAG = 0.10
+const CLIP_STUN_GAIN = 0.45
+
 function move(s: MoveSpec): AttackDef {
   const hit: AttackDef['hit'] = {
     start: s.hitStart, end: s.hitEnd, dmg: s.dmg,
-    stagger: s.stagger ?? (s.heavy ? 0.4 : 0.2),
+    // HITSTUN MUST OUTLAST THE STRIKE, OR THE COMBO CANNOT EXIST.
+    //
+    // Measured (.qa/combo-live.ts): a light's default 0.2s of hitstun is
+    // SHORTER than the clip that dealt it (l1 dur 0.26, l2 0.32, l3 0.34,
+    // l5 0.44) and far shorter than the ~0.3s it takes to get a fresh swing
+    // out. The grunt therefore recovered and started walking away while the
+    // player was still mid-recovery, which is why a chain against a live
+    // enemy landed 2 of 16 strikes even once every other reach bug was
+    // fixed. Hitstun is now derived from the clip it belongs to: a light
+    // holds the body through its own recovery, a heavy holds well past it.
+    // The authored `stagger` still wins wherever a clip sets one.
+    stagger: s.stagger ?? Math.max(s.heavy ? 0.4 : 0.2,
+      LIGHT_STUN_LAG + (s.hitEnd - s.hitStart) + CLIP_STUN_GAIN * (s.hitEnd ?? 0)),
     kb: s.kb ?? (s.heavy ? 200 : 95), kbY: s.kbY, launch: s.launch, juggle: s.juggle,
     hitstop: s.hitstop ?? (s.heavy ? 0.06 : 0.035),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
