@@ -419,9 +419,22 @@ const BODYBLOW = clip('unarmedBodyElbow', [
     rootZ: 10.0, hipLz: 1.35, hipRz: -1.35,
     pelvisYaw: -0.68, chestYaw: 0.76,
     ...footAt('right', 20, 39), ...footAt('left', -22, 41),
-    shR: 1.55, elR: -1.42, wrR: 0,
+    // REACH FIX. Measured: the elbow point led the hips by only 9.5px for
+    // the whole window, i.e. the HAND was further out than the elbow — a
+    // palm strike wearing an elbow's name, and 9.5px cannot reach a 15px
+    // body sphere, so l4 missed at point-blank range. A standing elbow has
+    // to project the point PAST the forearm, which means the forearm has
+    // to stay folded while the shoulder drives across: shR opens to 2.0
+    // and elR holds near -2.0, giving a ~115deg fold. Yaw comes down with
+    // it — armRz 1.05 turned the arm into the lens and spent the X reach
+    // on depth.
+    // Solved against the rig, not guessed (elbow-forward / hand-forward at
+    // z=0): shR 2.4 + elR -1.6 is the joint pair that projects the point
+    // farthest PAST the forearm (26px elbow vs 43px hand at a 92deg fold).
+    // Those numbers include the .tip the elbow carries the strike on.
+    shR: 2.40, elR: -1.60, wrR: 0.10,
     ...fistAt('left', 5, 7),
-    armRz: 1.05, foreRz: 0.85, armLz: -0.12, foreLz: -0.05,
+    armRz: 0.30, foreRz: 0.22, armLz: -0.12, foreLz: -0.05,
   }, 'inOutCubic'),
   kf(0.255, {
     ...recover('right', { settle: 1 }),

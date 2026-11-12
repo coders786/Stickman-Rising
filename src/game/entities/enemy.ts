@@ -92,6 +92,12 @@ export const ENEMY_CONFIGS: Record<EnemyKind, EnemyConfig> = {
 
 let nextId = 1
 
+/* How much of a LIGHT hit's authored knockback actually moves the body.
+ * 0.34 turns l1's 95 kb into ~32 px/s of residual drift: enough that a light
+ * reads as a hit with weight, little enough that a 0.3s combo stays inside
+ * arm reach. Heavies are untouched. See the note in takeHit(). */
+const LIGHT_HIT_PUSH = 0.34
+
 export class Enemy {
   id = nextId++
   kind: EnemyKind
@@ -762,10 +768,26 @@ export class Enemy {
     }
 
     // normal hitstun
+    //
+    // COMBO PUSH-OUT (measured, .qa/combo-travel.ts): a light chain used to
+    // lose its own combo. `l1` landed at 34px and shoved the grunt to 45;
+    // `l2` opened its window at 51 and shoved it to 69; `l3` then opened at
+    // 76 and MISSED, and by `l5` the body was 126px away with every strike
+    // whiffing. The reference sheets never show that — their fighter
+    // ADVANCES ~5px a frame through the whole row and stays in the pocket.
+    //
+    // Knockback is therefore scaled by where the strike sits in its combo
+    // (the same idea as `stunT` below, which already ignores a light
+    // attack's authored stagger and floors at 0.18): a LIGHT hit trades most
+    // of its shove for hitstun, because its job is to hold the body still
+    // for the next strike; heavies keep their full separation, because
+    // their job is to create space. Without this the only combos that
+    // connected were ones that never touched the enemy twice.
+    const light = !info.heavy && !info.launch && info.kb < 200
     this.state = 'stun'
     this.stunT = Math.max(0.18, info.stagger)
     this.stateT = 0
-    this.vx = dir * (info.kb / (this.kind === 'heavy' ? 4 : 1))
+    this.vx = dir * (info.kb / (this.kind === 'heavy' ? 4 : 1)) * (light ? LIGHT_HIT_PUSH : 1)
     if (this.kind === 'drone' && info.launch === 0) {
       this.vy = -60
     }

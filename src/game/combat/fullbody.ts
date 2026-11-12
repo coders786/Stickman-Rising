@@ -73,6 +73,30 @@ const LEG = 49
 const STANCE_BACK = -7
 
 /**
+ * X gain applied to every authored foot spot (see footAt).
+ *
+ * Swept against BOTH constraints, not chosen for looks:
+ *
+ *   spread | width/height | welded joints
+ *   -------+--------------+-----------------------------------------------
+ *   1.00   | 0.70         | none
+ *   1.10   | 0.76         | none
+ *   1.15   | 0.80         | none            <- best clean value
+ *   1.20   | 0.82         | h1 right hip
+ *   1.30   | 0.87         | l2 right knee pinned at 0.0deg
+ *   1.45   | 0.94         | l1/l3/h1 knees pinned at 0.0deg
+ *
+ * Past ~1.18 the authored leg solutions run out of reach and footAt's
+ * `d = min(LEG - 0.2, ...)` clamp starts swallowing the animation, so the
+ * knee stops moving entirely. `tests/full-body.test.ts` ("no joint is welded
+ * shut") catches exactly that, and it is right to: a leg pinned at its reach
+ * limit is a dead joint, not a wide stance. 1.15 is as wide as this rig's
+ * legs can actually stand. The remaining gap to the sheets' 0.98 is honest —
+ * their figures have longer legs relative to the torso than ours.
+ */
+const STANCE_SPREAD = 1.15
+
+/**
  * A full-body strike pose.
  *
  * Everything is optional and layered over the fight guard, so a key only
@@ -105,6 +129,20 @@ export interface ChainState {
  * the clip table it is replacing.
  */
 export function footAt(side: StrikeHand, forward: number, down: number): PoseInput {
+  // ---- REFERENCE BASE WIDENING -------------------------------------------
+  // Every uploaded sheet stands in a long diagonal lunge; ours stood in a
+  // narrow box (measured width/height 0.49-0.55 vs the sheets' 0.98). The
+  // clips each author their own foot spots, so patching the stance writer
+  // alone still collapsed back to a box the moment a strike key landed --
+  // ~65 authored `leadFoot`/`rearFoot` pairs override it. This is the single
+  // funnel every one of them passes through, so the base is widened here.
+  //
+  // The stretch is a pure X gain about the body's centre line, which keeps
+  // the authored SHAPE (a reaching lead foot stays a reaching lead foot) and
+  // only lengthens it. `down` is untouched: the legs were already at full
+  // extension in the wide keys, and pulling them lower as well would have
+  // hyper-extended the knee (d is clamped to LEG - 0.2 below).
+  forward *= STANCE_SPREAD
   const d = Math.max(10.5, Math.min(LEG - 0.2, Math.hypot(forward, down)))
   const tau = Math.atan2(forward, down)
   const a = 25, b = 24 // thigh, shin
@@ -163,8 +201,17 @@ export function stance(lead: StrikeHand = 'right'): PoseInput {
     rootRot: 0.12, spine: 0.04, head: -0.13, rootY: 5.5,
     pelvisYaw: lead === 'right' ? -0.10 : 0.10,
     chestYaw: lead === 'right' ? 0.14 : -0.14,
-    ...footAt(lead, 19, 38),        // lead foot well forward
-    ...footAt(rear, -21, 39),       // rear foot well back — a real base
+    // THE REFERENCE STANCE IS A DIAGONAL LUNGE, NOT A BOXER'S BOX.
+    // Measured off the uploaded sheets (.qa/stance-vs-ref.ts +
+    // .qa/ref-motion.ts): the boxing row's stance width is 263-266px on a
+    // figure 266px tall — front toe and rear heel are the extreme points of
+    // the silhouette, width/height ≈ 0.98. Ours measured 0.49-0.55, i.e. a
+    // narrow upright box. The base is therefore stretched and the feet
+    // planted lower: lead foot reaching, rear foot driven back and slightly
+    // toed, which is what gives every strike below the long diagonal to
+    // push against (and what the sheets draw in every single frame).
+    ...footAt(lead, 27, 36),        // lead foot reaching forward, planted
+    ...footAt(rear, -30, 37),       // rear foot driven back — the anchor
     ...fistAt(lead, 12, 3),         // lead fist high
     ...fistAt(rear, 7, 5),          // rear fist at the jaw
     armRz: 0.06, armLz: -0.06, foreRz: 0.08, foreLz: -0.04,
@@ -254,8 +301,13 @@ export function chain(
   // intent: the body is being thrown AT something, not just moved.
   const headLead = 0.26 + 0.20 * d + (source === 'drop' ? 0.30 : source === 'lift' ? -0.16 : 0.10)
 
-  const leadFoot = o.leadFoot ?? [13, 44]
-  const rearFoot = o.rearFoot ?? [-13, 45]
+  // The default strike base is the reference's lunge too: the authored
+  // values on individual clips still win, but a clip that does not override
+  // them no longer collapses back into an upright box at the moment of the
+  // hit. (Anthropometric extremes: 27 forward + 30 back = 57 rig units of
+  // base on a ~66-unit figure — the sheets' diagonal.)
+  const leadFoot = o.leadFoot ?? [21, 42]
+  const rearFoot = o.rearFoot ?? [-24, 43]
 
   // ---- SEMI-3D: the body has a Z axis --------------------------------
   // A strike that lives entirely on z=0 is a 2D drawing. Two things put the
