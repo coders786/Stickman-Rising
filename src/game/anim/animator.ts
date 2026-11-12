@@ -34,7 +34,7 @@ export interface Clip {
   dur: number
   loop: boolean
   /** Shape-preserving C1 interpolation for natural locomotion. */
-  interpolation?: 'monotone'
+  interpolation?: 'monotone' | 'step'
 }
 
 interface KeyedEase {
@@ -88,7 +88,11 @@ export function sampleClip(clip: Clip, t: number, out: Pose): Pose {
   const b = frames[i + 1]
   const span = b.t - a.t
   const u = span > 1e-6 ? clamp01((time - a.t) / span) : 1
-  if (clip.interpolation === 'monotone') {
+  if(clip.interpolation==='step'){
+    // Fighting-game A/B/C exposure: choose a drawing, never synthesize an
+    // interpolated pose between it and the next drawing.
+    out.set(u<.5?a.p:b.p)
+  } else if (clip.interpolation === 'monotone') {
     // Time-aware harmonic tangents (Fritsch–Carlson). Local extrema get
     // zero tangent, preventing knee/hip overshoot. Loop neighbors wrap in
     // time, so velocity is continuous across the left/right-cycle seam.

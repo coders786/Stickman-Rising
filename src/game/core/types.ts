@@ -16,7 +16,8 @@ export type Facing = 1 | -1
 
 export type GamePhase = 'attract' | 'playing' | 'paused' | 'gameover'
 
-export type QualityLevel = 'low' | 'medium' | 'high'
+export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra'
+export type LevelId = 'rooftop' | 'zen-night'
 
 export interface RunStats {
   score: number
@@ -29,6 +30,8 @@ export interface RunStats {
 
 export interface GameSettings {
   quality: QualityLevel
+  /** Stage choice is independent from rendering fidelity. */
+  level: LevelId
   shake: boolean
   shakeIntensity: number
   sfxVolume: number
@@ -40,6 +43,7 @@ export interface GameSettings {
 
 export const DEFAULT_SETTINGS: GameSettings = {
   quality: 'high',
+  level: 'zen-night',
   shake: true,
   shakeIntensity: 1,
   sfxVolume: 0.8,

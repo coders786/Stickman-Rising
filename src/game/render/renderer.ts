@@ -8,7 +8,7 @@ import { FX } from '../fx/fx'
 import { Enemy } from '../entities/enemy'
 import { Player } from '../entities/player'
 import { ProjectilePool } from '../entities/projectiles'
-import { CyberBackground } from '../world/background'
+import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
@@ -17,7 +17,7 @@ import { KeyLight, keyLightFromStorm } from './lighting'
 export interface RenderWorld {
   cam: Camera
   fx: FX
-  bg: CyberBackground
+  bg: BackgroundRenderer
   enemies: Enemy[]
   player: Player
   projectiles: ProjectilePool
@@ -107,6 +107,9 @@ export class Renderer {
 
     // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
     fx.drawSilhouettes(ctx)
+
+    // Physical unarmed kick smears belong behind the opaque contact pose.
+    player.drawKickSmear(ctx)
 
     // player
     player.draw(ctx, time)

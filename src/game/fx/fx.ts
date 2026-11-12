@@ -201,7 +201,7 @@ export class FX {
   private gore: 'energy' | 'blood' = 'energy'
 
   setQuality(q: QualityLevel): void {
-    this.qualityScale = q === 'high' ? 1 : q === 'medium' ? 0.65 : 0.38
+    this.qualityScale = q === 'ultra' ? 1.15 : q === 'high' ? 1 : q === 'medium' ? 0.65 : 0.38
   }
 
   setGore(g: 'energy' | 'blood'): void {

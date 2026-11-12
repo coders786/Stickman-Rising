@@ -12,13 +12,17 @@
  */
 import type { AttackDef } from './attacks'
 import {
-  MOVES, UNARMED_PARRY_CLIP, UNARMED_CHARGE_CLIP, UNARMED_GUARD,
+  MOVES, UNARMED_PARRY_CLIP, UNARMED_PUNCH_CHARGE_CLIP, UNARMED_KICK_CHARGE_CLIP, UNARMED_GUARD,
   handPose, UNARMED_ULT, UNARMED_FLOURISH_CLIP,
   type StrikeHand,
 } from './moveset'
 
-export { handPose, UNARMED_PARRY_CLIP as UNARMED_PARRY, UNARMED_CHARGE_CLIP as UNARMED_CHARGE,
+export { handPose, UNARMED_PARRY_CLIP as UNARMED_PARRY,
+  UNARMED_PUNCH_CHARGE_CLIP as UNARMED_PUNCH_CHARGE, UNARMED_KICK_CHARGE_CLIP as UNARMED_KICK_CHARGE,
   UNARMED_GUARD, UNARMED_ULT, UNARMED_FLOURISH_CLIP }
+/** Stable compatibility binding. A local const avoids Turbopack's stale
+ * cross-module re-export identity when the charge clips are hot-replaced. */
+export const UNARMED_CHARGE = UNARMED_KICK_CHARGE_CLIP
 export type { StrikeHand }
 export const CHARGED_PUNCH = MOVES.chargedPunch
 export const CHARGED_KICK = MOVES.chargedKick
