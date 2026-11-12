@@ -94,6 +94,10 @@ export class Renderer {
     // snaps brighter whenever lightning strobes it
     this.drawReflections(ctx, world, viewHalfW)
 
+    // WET-DECK ROUGHNESS: matte islands + striation chop the mirror, sharp
+    // puddle windows let it through (static pre-baked world-space plate)
+    bg.drawWetMask(ctx)
+
     // ---- LIGHTING ENGINE: one dynamic key light (moon ↔ storm strobes)
     // drives PROJECTED SKELETON SHADOWS for every entity: each solved joint
     // (and the blade) casts along the light rays onto the ground plane —

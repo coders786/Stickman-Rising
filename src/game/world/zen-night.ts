@@ -79,6 +79,8 @@ export class ZenNightBackground{
  /** zen-night draws its own pre-softened beam shafts (zero runtime blur by
   *  design) — the generic god-ray pass gets an empty mask here. */
  drawShaftMask(_ctx:CanvasRenderingContext2D,_cam:BgCam){}
+ /** zen-night's water is its own garden mirror — no shared roughness plate */
+ drawWetMask(_ctx:CanvasRenderingContext2D){}
  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();const w=this.w,h=this.h,t=this.t,hy=h*.5+(0-cam.y)*cam.zoom
   ctx.save();ctx.drawImage(this.staticFar!,0,0,w,h)
   // cached moon with a stable celestial parallax

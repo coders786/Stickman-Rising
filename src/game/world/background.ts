@@ -56,6 +56,8 @@ export interface BackgroundRenderer {
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** moon-shaft occlusion source for the renderer's god-ray pass */
   drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam):void
+  /** wet-deck roughness plate over the reflection band */
+  drawWetMask(ctx:CanvasRenderingContext2D):void
 }
 
 /* ============================ seeded RNG ================================= */
@@ -79,6 +81,7 @@ const TILE = 2048;              // horizontal wrap period of every city layer
 const NOMINAL_Y = -170;         // usual camera height
 const ARENA_X0 = -150;          // arena floor spans world x -150 .. 2750
 const ARENA_X1 = 2750;
+const DOOR_X = 1755;             // warm stairwell practical, world x
 const ARENA_W = ARENA_X1 - ARENA_X0;
 const LIP_H = 14;               // lighter metal lip band, world y 0..14
 const FACADE_H = 246;           // facade band, world y 14..260
@@ -128,9 +131,9 @@ const LAY_NEAR: LayerDef = { f: 0.3, vf: 0.805, lift: -46, below: '#04080c' };
 
 /** drifting fog bands: parallax, y-offset from horizon, alpha, speed, phase */
 const FOG_BANDS: ReadonlyArray<{ f: number; oy: number; a: number; sp: number; ph: number }> = [
-  { f: 0.1, oy: -70, a: 0.035, sp: 7, ph: 0.0 },
-  { f: 0.16, oy: -16, a: 0.05, sp: -5, ph: 2.1 },
-  { f: 0.22, oy: 30, a: 0.06, sp: 9, ph: 4.4 },
+  { f: 0.1, oy: -70, a: 0.05, sp: 7, ph: 0.0 },
+  { f: 0.16, oy: -16, a: 0.068, sp: -5, ph: 2.1 },
+  { f: 0.22, oy: 30, a: 0.085, sp: 9, ph: 4.4 },
 ];
 
 /* ============================ fixed palettes ============================= */
@@ -515,6 +518,9 @@ export class CyberBackground {
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private cloudLit!: HTMLCanvasElement;    // same deck, lightning-lit flavour
   private cloudShadowSpr!: HTMLCanvasElement; // drifting deck-shadow plates
+  private wetMask!: HTMLCanvasElement;    // static wet-deck roughness plate
+  private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
+  private doorPool!: HTMLCanvasElement;   // warm pool the door spills
   /** moon state for the render pass (updated by drawSky): screen-space disc
    *  center + eclipse coverage 0..1 (how much cloud mass sits over it) */
   moonX = 0;
@@ -609,6 +615,20 @@ export class CyberBackground {
 
     /* 1 — sky gradient anchored to the world ground line */
     const hy = h * 0.5 + (0 - cy) * cz;                     // screen y of world y=0
+    /* one fog band at a time — called BETWEEN the parallax planes so the
+     * fog reads as a volume at each depth (aerial perspective), not as a
+     * curtain in front of the whole skyline */
+    const fogBand = (i: number) => {
+      if (i >= this.fogCount) return;
+      const F = FOG_BANDS[i];
+      const fy = hy + F.oy - (cy - NOMINAL_Y) * 0.15 * cz;
+      ctx.globalAlpha = F.a * (0.85 + 0.15 * Math.sin(t * 0.05 + F.ph)) * (1 + 1.2 * this.lightningI());
+      const off = mod(t * F.sp - cx * F.f * cz, FOG_W);
+      for (let x = off - FOG_W; x < w; x += FOG_W) {
+        ctx.drawImage(this.fogSpr, x, fy - FOG_H * 0.5);
+      }
+      ctx.globalAlpha = 1;
+    };
     const skyH = hy > 1 ? (hy < h ? hy : h) : 1;
     ctx.drawImage(this.skyStrip, 0, 0, 8, 600, 0, 0, w, skyH);
     ctx.fillStyle = SKY_BELOW;
@@ -703,6 +723,8 @@ export class CyberBackground {
     }
     ctx.globalAlpha = 1;
 
+    fogBand(0);   // deep haze plane between the far city and the mid city
+
     /* 4 — mid city (parallax 0.14, softly defocused) + flickering neon signs */
     const byM = h * 0.5 + (LAY_MID.lift - cy * LAY_MID.vf) * cz;
     const mM = mod(cx * LAY_MID.f * cz, TILE);
@@ -757,6 +779,8 @@ export class CyberBackground {
     ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 0.07);
     ctx.drawImage(this.hazeSpr!, 0, hy - 96, w, 150);
     ctx.globalAlpha = 1;
+
+    fogBand(1);   // mid haze plane between the mid city and the near towers
 
     /* 5 — near-mid towers (parallax 0.30): elevator dots + searchlights */
     const byN = h * 0.5 + (LAY_NEAR.lift - cy * LAY_NEAR.vf) * cz;
@@ -845,16 +869,9 @@ export class CyberBackground {
       ctx.globalAlpha = 1;
     }
 
-    /* 6 — drifting fog bands (they scatter the lightning: glow during strikes) */
-    for (let i = 0; i < this.fogCount; i++) {
-      const F = FOG_BANDS[i];
-      const fy = hy + F.oy - (cy - NOMINAL_Y) * 0.15 * cz;
-      ctx.globalAlpha = F.a * (0.85 + 0.15 * Math.sin(t * 0.05 + F.ph)) * (1 + 1.2 * I);
-      const off = mod(t * F.sp - cx * F.f * cz, FOG_W);
-      for (let x = off - FOG_W; x < w; x += FOG_W) {
-        ctx.drawImage(this.fogSpr, x, fy - FOG_H * 0.5);
-      }
-    }
+    /* 6 — front fog band (bands 0/1 already interleaved between the depth
+     * planes above — fog is a volume BETWEEN depths, not one curtain) */
+    fogBand(2);
     ctx.globalAlpha = 1;
     ctx.restore();
   }
@@ -865,6 +882,13 @@ export class CyberBackground {
     this.ensureBuilt();
     const t = this.t;
     ctx.drawImage(this.arenaTile, ARENA_X0, 0);            // lip + facade (y 0..260)
+    // STAIRWELL PRACTICAL — warm head-house + breathing pool (additive)
+    ctx.drawImage(this.doorSpr, DOOR_X - 100, -172);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.3 + 0.05 * Math.sin(t * 0.11) + 0.06 * this.lightningI();
+    ctx.drawImage(this.doorPool, DOOR_X - 260, -68);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     // shimmering neon puddles
     for (let i = 0; i < this.puddles.length; i++) {
       const p = this.puddles[i];
@@ -933,6 +957,14 @@ export class CyberBackground {
     this.storm.drawRain(ctx);
   }
 
+  /** WET-DECK ROUGHNESS — one static plate over the mirror band: matte
+   *  dry islands + micro-striation chop the reflection, sharp puddle
+   *  windows let it through with moonlit rims. */
+  drawWetMask(ctx: CanvasRenderingContext2D): void {
+    this.ensureBuilt();
+    ctx.drawImage(this.wetMask, ARENA_X0, 12);
+  }
+
   /** MOON-SHAFT OCCLUSION SOURCE — drawn into a scaled quarter-res ctx by
    *  the renderer's god-ray pass: moon glow bright, near skyline + cloud
    *  decks dark. The radial smear then streaks the sky gaps outward as
@@ -986,6 +1018,8 @@ export class CyberBackground {
     this.moonSpr = buildMoon();
     this.moonHalo = buildMoonHalo();
     this.cloudShadowSpr = buildCloudShadowTile();
+    this.doorSpr = this.buildDoorStructure();
+    this.doorPool = this.buildDoorPool();
     this.fogSpr = buildFogSprite();
     this.mistSpr = buildMistSprite();
     this.beamSpr = buildBeamSprite();
@@ -999,6 +1033,7 @@ export class CyberBackground {
     this.midTile = this.buildMid();
     this.nearTile = this.buildNear();
     this.arenaTile = this.buildArena();
+    this.wetMask = this.buildWetMask();     // needs the puddle records above
     /* storm art: bolt variants, flash gradient, horizon haze, DOF tiles */
     this.hazeSpr = buildHazeStrip();
     this.farTileBlur = blurTile(this.farTile, 6);
@@ -1031,7 +1066,7 @@ export class CyberBackground {
   private buildFar(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, FAR_H);
     const rng = mulberry32(0xc1f3a0);
-    const shades = ['#0b1219', '#0d151d', '#0e1720', '#101a24'];
+    const shades = ['#121d28', '#14202b', '#15222e', '#172432'];
     let x = 0;
     while (x < TILE - 24) {
       let bw = 46 + rng() * 130;
@@ -1042,6 +1077,10 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, FAR_H - bh, bw, bh);
+      g.fillStyle = 'rgba(142,176,212,0.10)';               // moon rim: top
+      g.fillRect(x, FAR_H - bh, bw, 1);
+      g.fillStyle = 'rgba(142,176,212,0.06)';               // moon rim: right
+      g.fillRect(x + bw - 1, FAR_H - bh, 1, bh);
       if (rng() < 0.25) {                                  // crowning setback
         const sw = bw * (0.35 + rng() * 0.3);
         let sh = 22 + rng() * 70;
@@ -1080,13 +1119,20 @@ export class CyberBackground {
     gr.addColorStop(1, 'rgba(10,16,22,0.55)');
     g.fillStyle = gr;
     g.fillRect(0, FAR_H - 90, TILE, 90);
+    // AERIAL PERSPECTIVE — lift only tower pixels toward the sky color
+    // (source-atop keeps sky gaps clean). Research law: far layers blend
+    // toward sky color, never desaturate.
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(42,64,92,0.16)';
+    g.fillRect(0, 0, TILE, FAR_H);
+    g.globalCompositeOperation = 'source-over';
     return c;
   }
 
   private buildMid(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, MID_H);
     const rng = mulberry32(0x2b6e5f);
-    const shades = ['#081014', '#0a141a', '#0b171d', '#0c181e'];
+    const shades = ['#0b141c', '#0d1721', '#0e1924', '#101c27'];
     const cands: { bx: number; bw: number; bh: number }[] = [];
     let x = 0;
     while (x < TILE - 60) {
@@ -1098,6 +1144,10 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, MID_H - bh, bw, bh);
+      g.fillStyle = 'rgba(150,185,215,0.13)';               // moon rim: top
+      g.fillRect(x, MID_H - bh, bw, 1);
+      g.fillStyle = 'rgba(150,185,215,0.08)';               // moon rim: right
+      g.fillRect(x + bw - 1, MID_H - bh, 1, bh);
       const bg2 = g.createLinearGradient(0, MID_H - bh, 0, MID_H - bh + bh * 0.6);
       bg2.addColorStop(0, 'rgba(30,48,68,0.24)');
       bg2.addColorStop(1, 'rgba(30,48,68,0)');
@@ -1179,6 +1229,10 @@ export class CyberBackground {
     gr.addColorStop(1, 'rgba(7,13,18,0.6)');
     g.fillStyle = gr;
     g.fillRect(0, MID_H - 70, TILE, 70);
+    g.globalCompositeOperation = 'source-atop';            // aerial lift (mid)
+    g.fillStyle = 'rgba(36,56,80,0.09)';
+    g.fillRect(0, 0, TILE, MID_H);
+    g.globalCompositeOperation = 'source-over';
     return c;
   }
 
@@ -1195,6 +1249,10 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, NEAR_H - bh, bw, bh);
+      g.fillStyle = 'rgba(160,195,228,0.2)';                // moon rim: top
+      g.fillRect(x, NEAR_H - bh, bw, 1);
+      g.fillStyle = 'rgba(160,195,228,0.12)';               // moon rim: right
+      g.fillRect(x + bw - 1, NEAR_H - bh, 1, bh);
       // sky bounce: the upper faces catch faint light-pollution so the
       // slabs read as buildings, not voids
       const bg2 = g.createLinearGradient(0, NEAR_H - bh, 0, NEAR_H - bh + bh * 0.72);
@@ -1203,7 +1261,7 @@ export class CyberBackground {
       bg2.addColorStop(1, 'rgba(22,34,50,0)');
       g.fillStyle = bg2;
       g.fillRect(x, NEAR_H - bh, bw, bh * 0.72);
-      g.fillStyle = 'rgba(52,74,84,0.22)';                 // parapet
+      g.fillStyle = 'rgba(96,130,162,0.3)';                // parapet, moon-tinted
       g.fillRect(x, NEAR_H - bh, bw, 2);
       const nb = 1 + ((rng() * 3) | 0);                    // rooftop boxes
       for (let i = 0; i < nb; i++) {
@@ -1275,6 +1333,10 @@ export class CyberBackground {
     gr.addColorStop(1, 'rgba(4,8,12,0.65)');
     g.fillStyle = gr;
     g.fillRect(0, NEAR_H - 60, TILE, 60);
+    g.globalCompositeOperation = 'source-atop';            // whisper of air
+    g.fillStyle = 'rgba(30,48,70,0.035)';
+    g.fillRect(0, 0, TILE, NEAR_H);
+    g.globalCompositeOperation = 'source-over';
     return c;
   }
 
@@ -1437,6 +1499,35 @@ export class CyberBackground {
     g.fillRect(2, LIP_H, 1, H - LIP_H);
     g.fillRect(W - 3, LIP_H, 1, H - LIP_H);
 
+    /* WARM DOOR REFLECTION — the stairwell practical smears down the wet
+     * facade as a soft column with drip streaks; the wet-mask puddle
+     * windows let it read as reflected firelight */
+    const dgx = DOOR_X - ARENA_X0;
+    const dg = g.createLinearGradient(0, 18, 0, 246);
+    dg.addColorStop(0, 'rgba(255,150,80,0.17)');
+    dg.addColorStop(0.55, 'rgba(255,130,60,0.08)');
+    dg.addColorStop(1, 'rgba(255,120,50,0)');
+    g.fillStyle = dg;
+    g.fillRect(dgx - 78, 18, 156, 228);
+    for (let i = 0; i < 7; i++) {                        // drip streaks
+      const dx = dgx - 60 + rng() * 120;
+      const dw = 2 + rng() * 7;
+      const dy0 = 22 + rng() * 26;
+      const dl = 60 + rng() * 130;
+      const da = 0.06 + rng() * 0.12;
+      const dgr = g.createLinearGradient(0, dy0, 0, dy0 + dl);
+      dgr.addColorStop(0, `rgba(255,160,90,${da.toFixed(3)})`);
+      dgr.addColorStop(1, 'rgba(255,140,70,0)');
+      g.fillStyle = dgr;
+      g.fillRect(dx, dy0, dw, dl);
+    }
+    const lg = g.createLinearGradient(dgx - 120, 0, dgx + 120, 0);   // warm lip
+    lg.addColorStop(0, 'rgba(255,150,80,0)');
+    lg.addColorStop(0.5, 'rgba(255,160,92,0.12)');
+    lg.addColorStop(1, 'rgba(255,150,80,0)');
+    g.fillStyle = lg;
+    g.fillRect(dgx - 120, 0, 240, LIP_H);
+
     /* animated decal records (world coords) */
     for (let i = 0; i < 11; i++) {
       const rx = 18 + rng() * 30;
@@ -1469,6 +1560,131 @@ export class CyberBackground {
         sp: 0.6 + rng() * 0.8,
       });
     }
+    return c;
+  }
+
+  /** WET-DECK ROUGHNESS MASK — static world-space plate over the mirror
+   *  band. Matte micro-striation + dry islands chop the reflection into
+   *  wet-asphalt character; destination-out PUDDLE WINDOWS let the sharp
+   *  mirror through, each with a moonlit specular rim on the moon side.
+   *  Pre-baked: one blit per frame, zero allocs. */
+  private buildWetMask(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(ARENA_W, 280);
+    const rng = mulberry32(0x3ee7a1);
+    // 1 — vertical micro-striation: thin matte strips chop the mirror
+    for (let i = 0; i < 150; i++) {
+      const sx = rng() * ARENA_W;
+      const sw = 2 + rng() * 14;
+      const sy = 4 + rng() * 46;
+      const sh = 90 + rng() * 170;
+      const a = 0.05 + rng() * 0.18;
+      g.fillStyle = `rgba(30,39,49,${a.toFixed(3)})`;
+      g.fillRect(sx, sy, sw, sh);
+    }
+    // 2 — matte DRY ISLANDS: soft blobs that flatten the mirror locally
+    for (let i = 0; i < 11; i++) {
+      const bx = 60 + rng() * (ARENA_W - 120);
+      const by = 40 + rng() * 200;
+      const rx = 130 + rng() * 250;
+      const ry = 34 + rng() * 72;
+      const gr = g.createRadialGradient(bx, by, 0, bx, by, rx);
+      gr.addColorStop(0, 'rgba(32,42,52,0.52)');
+      gr.addColorStop(0.62, 'rgba(29,38,48,0.32)');
+      gr.addColorStop(1, 'rgba(26,34,44,0)');
+      g.save();
+      g.scale(1, ry / rx);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(bx, by * rx / ry, rx, 0, TAU); g.fill();
+      g.restore();
+    }
+    // 3 — PUDDLE WINDOWS: erase clearings where the sharp mirror lives
+    const wins: { x: number; y: number; r: number }[] = [];
+    for (const p of this.puddles) wins.push({ x: p.x - ARENA_X0, y: 52 + rng() * 170, r: p.rx * 3.1 });
+    for (let i = 0; i < 7; i++) wins.push({ x: 140 + rng() * (ARENA_W - 280), y: 56 + rng() * 160, r: 120 + rng() * 130 });
+    g.globalCompositeOperation = 'destination-out';
+    for (const wn of wins) {
+      const gr = g.createRadialGradient(wn.x, wn.y, 0, wn.x, wn.y, wn.r);
+      gr.addColorStop(0, 'rgba(0,0,0,1)');
+      gr.addColorStop(0.8, 'rgba(0,0,0,0.94)');
+      gr.addColorStop(1, 'rgba(0,0,0,0)');
+      g.save();
+      g.scale(1, 0.34);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(wn.x, wn.y / 0.34, wn.r, 0, TAU); g.fill();
+      g.restore();
+    }
+    g.globalCompositeOperation = 'source-over';
+    // 4 — moonlit specular rims: SHORT soft segments on the moon side only
+    // (a full ellipse outline reads as a drawn circle — an artifact)
+    g.lineWidth = 1.5;
+    for (const wn of wins) {
+      if (wn.r > 100 && rng() < 0.5) continue;             // big windows: rare rim
+      g.strokeStyle = `rgba(172,205,235,${(0.04 + rng() * 0.035).toFixed(3)})`;
+      const a0 = Math.PI * (1.12 + rng() * 0.18);
+      g.beginPath();
+      g.ellipse(wn.x, wn.y, wn.r * 0.84, wn.r * 0.28, 0, a0, a0 + 0.5 + rng() * 0.5);
+      g.stroke();
+    }
+    return c;
+  }
+
+  /** STAIRWELL HEAD-HOUSE with the warm practical door — the scene's warm
+   *  anchor against the cool moon (reference-image interior light). */
+  private buildDoorStructure(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(200, 186);
+    // box
+    let gr = g.createLinearGradient(0, 14, 0, 120);
+    gr.addColorStop(0, '#0d131a');
+    gr.addColorStop(1, '#080c11');
+    g.fillStyle = gr;
+    g.fillRect(16, 12, 168, 174);
+    // roof cap + moon rims (cool key from upper right)
+    g.fillStyle = '#0a0f15';
+    g.fillRect(8, 4, 184, 10);
+    g.fillStyle = 'rgba(150,185,220,0.4)';
+    g.fillRect(8, 4, 184, 1.5);
+    g.fillStyle = 'rgba(150,185,220,0.17)';
+    g.fillRect(189, 4, 1.5, 182);
+    // THE WARM DOOR — hot core, warm falloff, dark frame
+    gr = g.createLinearGradient(0, 62, 0, 186);
+    gr.addColorStop(0, '#f5d9ab');
+    gr.addColorStop(0.4, '#ffb066');
+    gr.addColorStop(1, '#c96f31');
+    g.fillStyle = gr;
+    g.fillRect(68, 62, 64, 124);
+    g.fillStyle = '#070a0e';
+    g.fillRect(63, 57, 74, 5);
+    g.fillRect(63, 57, 5, 129);
+    g.fillRect(128, 57, 5, 129);
+    // baked glow spill around the doorway
+    g.globalCompositeOperation = 'lighter';
+    gr = g.createRadialGradient(100, 128, 8, 100, 128, 120);
+    gr.addColorStop(0, 'rgba(255,150,72,0.34)');
+    gr.addColorStop(0.55, 'rgba(255,130,60,0.12)');
+    gr.addColorStop(1, 'rgba(255,120,50,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 20, 200, 166);
+    // small warm vent window
+    g.fillStyle = 'rgba(255,186,116,0.55)';
+    g.fillRect(28, 42, 26, 16);
+    g.fillStyle = '#070a0e';
+    g.fillRect(28, 49, 26, 2);
+    g.globalCompositeOperation = 'source-over';
+    return c;
+  }
+
+  /** warm pool the practical spills onto the deck (additive, breathing) */
+  private buildDoorPool(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(520, 300);
+    const gr = g.createRadialGradient(260, 150, 10, 260, 150, 258);
+    gr.addColorStop(0, 'rgba(255,152,74,0.5)');
+    gr.addColorStop(0.42, 'rgba(255,132,58,0.19)');
+    gr.addColorStop(1, 'rgba(255,120,46,0)');
+    g.save();
+    g.scale(1, 0.58);
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(260, 150 / 0.58, 258, 0, TAU); g.fill();
+    g.restore();
     return c;
   }
 
