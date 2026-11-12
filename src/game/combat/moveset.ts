@@ -447,18 +447,61 @@ const TWINPALM = clip('unarmedTwinPalm', [
 
 
 const BACKFIST = clip('unarmedBackfist', [
-  kf(0, G),
-  kf(0.06, { ...G, rootRot: -0.05, rootY: 4.5, ...handPose('left', 2, 6),
-    armLz: -0.4, chestYaw: 0.45, head: -0.15 }, 'outQuad'),
-  mid(0.11, { ...G, rootRot: -0.05, rootY: 4.5, ...handPose('left', 2, 6),
-      armLz: -0.4, chestYaw: 0.45, head: -0.15 },
-    { ...G, rootRot: 0.2, rootY: 3.8, ...handPose('left', 30, -4), wrL: -0.4,
-      armLz: 0.3, foreLz: 0.4, chestYaw: -0.5, pelvisYaw: -0.25, head: -0.2 }),
-  kf(0.16, { ...G, rootRot: 0.2, rootY: 3.8, ...handPose('left', 30, -4), wrL: -0.4,
-    armLz: 0.3, foreLz: 0.4, chestYaw: -0.5, pelvisYaw: -0.25, head: -0.2 }, 'inOutCubic'),
-  kf(0.26, { ...G, ...handPose('left', 18, 4), chestYaw: -0.25, head: -0.16 }, 'inOutCubic'),
-  mid(0.32, { ...G, ...handPose('left', 18, 4), chestYaw: -0.25, head: -0.16 }, G),
-  kf(0.38, G),
+  kf(0, stance('left')),
+  // LOAD — the retreat begins by going DOWN. Both knees fold under the
+  // hips and the weight sits on the balls of the feet: you cannot jump
+  // from a standing pose, and a hop whose crouch is missing reads as a
+  // slide no matter what the root does.
+  kf(0.045, chain('lift', 'left', {
+    drive: 0.15, travel: -1.6, sink: 3.2, lean: 0.10,
+    leadFoot: [10, 46], rearFoot: [-14, 47],
+    fist: [11, 6], offFist: [9, 5],
+  }), 'outQuad'),
+  // LAUNCH — legs snap straight, body leaves the ground. Sink goes
+  // negative (the body rises) and both feet trail: this is the airborne
+  // frame the arc is read from.
+  kf(0.065, chain('lift', 'left', {
+    drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06,
+    leadFoot: [7, 38], rearFoot: [-11, 39],
+    fist: [12, 5], offFist: [8, 5],
+  }), 'outCubic'),
+  // TUCK — the peak. Knees come up under the body and the backfist
+  // chambers: the off-hand is already carrying the rotation.
+  mid(0.145, chain('lift', 'left', {
+      drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06,
+      leadFoot: [7, 38], rearFoot: [-11, 39],
+      fist: [12, 5], offFist: [8, 5],
+    }),
+    contact('rotation', 'left', {
+      drive: 0.55, travel: -1.4, sink: -1.4, lean: 0.16,
+      leadFoot: [14, 34], rearFoot: [-8, 36],
+      fist: [38, -5], offFist: [2, 7],
+    })),
+  // CONTACT — the backfist lands as the feet come down. The strike is
+  // thrown OFF the landing, which is what makes the hop and the hit one
+  // action instead of two.
+  kf(0.195, contact('rotation', 'left', {
+    drive: 1.05, travel: 0.6, sink: 0.4, lean: 0.20,
+    leadFoot: [18, 41], rearFoot: [-20, 42],
+    fist: [40, -6], offFist: [-3, 8],
+  }), 'inOutCubic'),
+  // FOLLOW-THROUGH — the turn keeps going past the target while the
+  // body settles onto the rear foot.
+  kf(0.265, contact('rotation', 'left', {
+    drive: 1.25, travel: 0.0, sink: 1.6, lean: 0.14,
+    leadFoot: [16, 43], rearFoot: [-22, 43],
+    fist: [30, -2], offFist: [0, 7],
+  }), 'inOutCubic'),
+  // ABSORB — the knees take the landing. This is the frame that sells
+  // the weight: a hop that lands straight-legged looks weightless.
+  mid(0.315, contact('rotation', 'left', {
+      drive: 1.25, travel: 0.0, sink: 1.6, lean: 0.14,
+      leadFoot: [16, 43], rearFoot: [-22, 43],
+      fist: [30, -2], offFist: [0, 7],
+    }),
+    recover('left', { settle: 1 })),
+  kf(0.35, recover('left', { settle: 0.6 }), 'inOutCubic'),
+  kf(0.38, stance('left')),
 ])
 
 /** 07 · SPIN slot — CROUCHING HEEL SWEEP (J + down). Full-body drop,
@@ -1525,7 +1568,28 @@ const MOVES_SRC: MoveSpec[] = [
     chain: ['srOnslaught', 'omegaPalm'] },
   /* contextual lights */
   { id: 'retreat', label: 'HOP-BACK BACKFIST', kind: 'light', requires: 'ground', clip: BACKFIST, limb: 'left',
-    hitStart: 0.10, hitEnd: 0.22, dmg: 13, kb: 130, moveX: -110, moveXAt: 0.02 },
+    // window anchored on the measured fist peak (0.139): the backfist is
+    // thrown OFF the landing, so the hitbox must not open during the
+    // launch — it opens as the feet come down and the turn fires.
+    hitStart: 0.175, hitEnd: 0.295, dmg: 13, kb: 130,
+    // moveX is a VELOCITY and the attack damps it hard, so displacement is
+    // strongly compressed: -110 bought only 7px. -300 buys ~50px, which is
+    // what a hop-back has to cover for the legs and the root to agree.
+    // the impulse fires and finishes BEFORE the backfist lands. Retreat and
+    // reach were cancelling each other (moveX -300 -> never connects); the
+    // hop gets the first 100ms, the strike gets the rest.
+    // BALANCE: a hop-back and a counter are in direct tension — the body
+    // travels away while the fist reaches forward, so they subtract
+    // (measured: -110 -> reaches 45px, -200 -> 25px, -300 -> never lands).
+    // -200 is the point where the hop still reads as a hop (~35px of
+    // travel, an 80ms airborne arc) and the backfist still counters an
+    // enemy standing at its natural 30-45px engagement distance.
+    moveX: -150, moveXAt: 0.0,
+    // moveY actually leaves the floor. Without it the legs tuck in the
+    // pose while the engine keeps the feet planted, which is a mime of a
+    // hop rather than a hop. -230 at the launch beat gives a short,
+    // weighty arc that lands on the backfist.
+    moveY: -190, moveYAt: 0.06 },
   { id: 'spin', label: 'CROUCHING SWEEP', kind: 'spin', requires: 'ground', clip: SWEEP, limb: 'right', joint: 'foot',
     hitStart: 0.15, hitEnd: 0.29, dmg: 14, kb: 120, kbY: 60, launch: 80, stagger: 0.5 },
   { id: 'launcher', label: 'RISING DRAGON', kind: 'launcher', requires: 'ground', clip: UPPERcut, limb: 'right',

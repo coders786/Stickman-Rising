@@ -21,6 +21,16 @@ const ids = process.argv.slice(3).length
 const BEATS = Number(process.env.BEATS ?? 8)
 const SCALE = Number(process.env.RSCALE ?? 1.5)
 const CW = Math.round(100*SCALE), CH = Math.round(140*SCALE)
+/** Ballistic arc for a move that launches the body (player GRAVITY 2050).
+ * The clip alone never leaves the floor — the launch is an engine impulse —
+ * so a hop rendered from the clip is a crouch-and-stand. */
+function liftAt(since: number, v0: number): number {
+  if (since <= 0) return 0
+  const G = 2050
+  const tPeak = -v0 / G
+  if (since >= tPeak * 2) return 0
+  return -(v0 * since + 0.5 * G * since * since) * 1.32
+}
 const PAD = 26
 
 const canvas = createCanvas(ids.length ? BEATS * CW + PAD * 2 : 100, ids.length * CH + PAD * 2)
@@ -50,8 +60,25 @@ ids.forEach((id, row) => {
       g.fillStyle = '#2a6fb0'
       g.fillRect(PAD + i * CW, PAD + row * CH, CW, 3)
     }
+    // GROUND LINE. Without it a hop is unreadable: the figure is drawn
+    // relative to its own hip, so a body that leaves the floor looks
+    // identical to one that never moved. The line is drawn at the world
+    // floor projected through the same transform.
     g.save()
-    g.translate(cx, cy)
+    g.strokeStyle = 'rgba(40,120,200,0.45)'
+    g.lineWidth = 1
+    g.beginPath()
+    g.moveTo(PAD + i * CW + 6, cy + 66 * SCALE)
+    g.lineTo(PAD + i * CW + CW - 6, cy + 66 * SCALE)
+    g.stroke()
+    g.restore()
+    // the engine's launch arc, if this move has one: without it a hop reads
+    // as a crouch-and-stand, because the clip alone never leaves the floor
+    const lift = (def.moveY !== undefined && t >= (def.moveYAt ?? 0))
+      ? liftAt(t - (def.moveYAt ?? 0), def.moveY)
+      : 0
+    g.save()
+    g.translate(cx, cy + lift)
     g.scale(SCALE, SCALE)
     drawFighter3D(
       g as unknown as CanvasRenderingContext2D,
