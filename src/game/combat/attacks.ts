@@ -62,6 +62,11 @@ export interface AttackHit {
 }
 
 export interface AttackDef {
+  /** Authored world displacement (absolute px from attack start). The player
+   * samples this curve with the clip clock, so feet, body travel, contact and
+   * catch remain one deterministic performance instead of an unrelated vx
+   * impulse. Values are forward-positive and frame-rate independent. */
+  rootMotion?: ReadonlyArray<{ t: number; x: number; y?: number }>
   /** Empty-hand contact uses the visible forearm/fist, never a hidden blade. */
   strikeHand?: 'left' | 'right'
   /** Which visible limb IS the hitbox: fist (hand), elbow, foot/ankle,
@@ -1373,6 +1378,119 @@ const riposte: AttackDef = {
 }
 
 /* ------------------------------------------------------------------ */
+/* CONTEXTUAL CHARGED QUICK-DRAWS                                     */
+/* ------------------------------------------------------------------ */
+
+/** L1 hold-heavy — RISING GALE. Begins low at the hip where the first light
+ * finishes; rear-leg compression lifts the pelvis before the blade follows.
+ * Every key changes feet, hips, trunk and both arms. */
+const risingGale: AttackDef = {
+  id: 'risingGale', label: 'RISING GALE', kind: 'charged', requires: 'ground',
+  clip: makeClip('atk_risingGale', [
+    keyframe(0, {rootX:2,rootY:3.8,rootRot:.28,spine:.1,head:-.2,
+      hipR:.52,kneeR:-.88,footR:.16,hipL:-.48,kneeL:-.68,footL:.05,
+      shR:.22,elR:-.72,wrR:.42,shL:.35,elL:-1.0,wrL:-.2,
+      pelvisYaw:-.16,chestYaw:.14}, 'outQuad'),
+    keyframe(.09, {rootX:0,rootY:6.8,rootRot:.36,spine:.14,head:-.28,
+      hipR:.66,kneeR:-1.3,footR:.2,hipL:-.52,kneeL:-1.02,footL:0,
+      shR:-.05,elR:-.92,wrR:.28,shL:.22,elL:-1.18,wrL:-.25,
+      pelvisYaw:-.28,chestYaw:.22}, 'inOutCubic'),
+    keyframe(.15, {rootX:3,rootY:4.2,rootRot:.08,spine:0,head:-.32,
+      hipR:.3,kneeR:-.7,footR:.1,hipL:-.72,kneeL:-.42,footL:.06,
+      shR:.72,elR:-.35,wrR:.5,shL:.52,elL:-1.0,
+      pelvisYaw:.02,chestYaw:-.04}, 'outQuart'),
+    keyframe(.22, {rootX:7,rootY:.5,rootRot:-.24,spine:-.1,head:-.22,
+      hipR:-.18,kneeR:-.38,footR:.04,hipL:-.92,kneeL:-.25,footL:.08,
+      shR:2.0,elR:-.12,wrR:-.28,shL:.85,elL:-.72,
+      pelvisYaw:.34,chestYaw:-.3}, 'outExpo'),
+    keyframe(.32, {rootX:8,rootY:-1,rootRot:-.18,spine:-.06,head:-.18,
+      hipR:.55,kneeR:-1.12,footR:-.02,hipL:-.25,kneeL:-.9,footL:.08,
+      shR:2.25,elR:-.3,wrR:-.42,shL:.45,elL:-1.1,
+      pelvisYaw:.24,chestYaw:-.2}, 'outCubic'),
+    keyframe(.48, {...GUARD,rootY:1.5}, 'outQuad'),
+  ]),
+  hit:{start:.16,end:.3,dmg:24,stagger:.45,kb:105,launch:-560,juggle:-520,hitstop:.09,shake:.3,heavy:true,breakGuard:true,pad:9},
+  trail:{start:.13,end:.35},swingSfx:{t:.14,name:'swingHeavy'},cancel:.34,
+  chain:['a1','a2','h1'],moveY:-310,moveYAt:.16,grip:1,zArc:.65,
+  traj:{a0:.8,a1:-1.05,y0:-.25,y1:.28,e0:.48,e1:.96,band:68},
+}
+
+/** L2 hold-heavy — BLENDER. A planted two-cut pivot, not a rigid 360 spin:
+ * front edge crosses, feet exchange support, then the reverse edge returns. */
+const blenderCharge: AttackDef = {
+  id:'blenderCharge',label:'BLENDER',kind:'charged',requires:'ground',
+  clip:makeClip('atk_blenderCharge',[
+    keyframe(0,{rootX:3,rootY:3.5,rootRot:.2,spine:.08,head:-.18,
+      hipR:.55,kneeR:-.86,footR:.18,hipL:-.55,kneeL:-.72,footL:.04,
+      shR:.42,elR:-.76,wrR:.25,shL:.5,elL:-1.0,
+      pelvisYaw:-.3,chestYaw:.26},'outQuad'),
+    keyframe(.1,{rootX:1,rootY:6.2,rootRot:.3,spine:.12,head:-.26,
+      hipR:.7,kneeR:-1.24,footR:.22,hipL:-.62,kneeL:-1.05,footL:0,
+      shR:-.18,elR:-.9,wrR:-.5,shL:.25,elL:-1.2,
+      pelvisYaw:-.52,chestYaw:.42},'inOutCubic'),
+    keyframe(.18,{rootX:5,rootY:4,rootRot:.42,spine:.14,head:-.3,
+      hipR:.3,kneeR:-.55,footR:.1,hipL:-.82,kneeL:-.35,footL:.08,
+      shR:1.25,elR:-.18,wrR:.18,shL:.75,elL:-.75,
+      pelvisYaw:.35,chestYaw:-.32},'outExpo'),
+    keyframe(.27,{rootX:6,rootY:4.4,rootRot:.18,spine:.05,head:-.2,
+      hipR:-.48,kneeR:-.48,footR:.04,hipL:.5,kneeL:-.85,footL:.16,
+      shR:1.55,elR:-.28,wrR:-.75,shL:.3,elL:-1.15,
+      pelvisYaw:.62,chestYaw:-.52},'outCubic'),
+    keyframe(.36,{rootX:4,rootY:4.2,rootRot:-.12,spine:-.04,head:-.12,
+      hipR:-.72,kneeR:-.32,footR:.04,hipL:.62,kneeL:-1.0,footL:.18,
+      shR:.25,elR:-.35,wrR:1.35,shL:.7,elL:-.72,
+      pelvisYaw:-.38,chestYaw:.34},'outExpo'),
+    keyframe(.48,{rootX:2,rootY:3.5,rootRot:.12,spine:.04,head:-.12,
+      hipR:.4,kneeR:-.7,footR:.14,hipL:-.4,kneeL:-.62,footL:.08,
+      shR:.8,elR:-.5,wrR:.75,shL:.48,elL:-.9,
+      pelvisYaw:.08,chestYaw:-.06},'outCubic'),
+    keyframe(.62,GUARD,'outQuad'),
+  ]),
+  hit:{start:.15,end:.42,dmg:9,stagger:.24,kb:190,kbY:-50,hitstop:.045,shake:.16,heavy:true,multiHit:.12,breakGuard:true,pad:9},
+  trail:{start:.13,end:.46},swingSfx:{t:.14,name:'swingHeavy'},cancel:.47,
+  chain:['l1','h1','launcher'],grip:.8,zArc:.9,
+  traj:{a0:2.8,a1:.05,y0:-.75,y1:.7,e0:.5,e1:.92,band:48},
+}
+
+/** L3 hold-heavy — STORM FRONT. A long grounded diagonal release with a
+ * body-driven passing step. Its broad physical arc supplies the range; no
+ * disconnected projectile is spawned ahead of the visible blade. */
+const stormFront: AttackDef = {
+  id:'stormFront',label:'STORM FRONT',kind:'charged',requires:'ground',
+  clip:makeClip('atk_stormFront',[
+    keyframe(0,{rootX:4,rootY:3,rootRot:.18,spine:.06,head:-.18,
+      hipR:.48,kneeR:-.72,footR:.14,hipL:-.52,kneeL:-.65,footL:.06,
+      shR:1.65,elR:-.32,wrR:.15,shL:.9,elL:-.72,
+      pelvisYaw:.18,chestYaw:-.16},'outQuad'),
+    keyframe(.12,{rootX:0,rootY:6.5,rootRot:-.12,spine:-.04,head:-.2,
+      hipR:.72,kneeR:-1.25,footR:.2,hipL:-.62,kneeL:-.96,footL:0,
+      shR:2.55,elR:-.18,wrR:.12,shL:1.8,elL:-.5,
+      pelvisYaw:-.36,chestYaw:.3},'inOutCubic'),
+    keyframe(.2,{rootX:5,rootY:4.2,rootRot:.35,spine:.12,head:-.32,
+      hipR:.45,kneeR:-.62,footR:.12,hipL:-.82,kneeL:-.34,footL:.08,
+      shR:1.55,elR:-.22,wrR:.2,shL:1.2,elL:-.65,
+      pelvisYaw:.1,chestYaw:-.08},'outQuart'),
+    keyframe(.28,{rootX:10,rootY:3.5,rootRot:.55,spine:.2,head:-.38,
+      hipR:.9,kneeR:-.9,footR:.2,hipL:-1.0,kneeL:-.22,footL:.1,
+      shR:.72,elR:-.42,wrR:-.5,shL:.65,elL:-.95,
+      pelvisYaw:.46,chestYaw:-.4},'outExpo'),
+    keyframe(.4,{rootX:12,rootY:4.8,rootRot:.48,spine:.16,head:-.3,
+      hipR:1.0,kneeR:-1.25,footR:.22,hipL:-.78,kneeL:-.48,footL:.08,
+      shR:.5,elR:-.58,wrR:-.65,shL:.4,elL:-1.08,
+      pelvisYaw:.34,chestYaw:-.28},'outCubic'),
+    keyframe(.58,{rootX:5,rootY:3,rootRot:.2,spine:.07,head:-.16,
+      hipR:.5,kneeR:-.78,footR:.15,hipL:-.45,kneeL:-.65,footL:.08,
+      shR:.82,elR:-.52,wrR:.8,shL:.5,elL:-.9,
+      pelvisYaw:.1,chestYaw:-.08},'outQuad'),
+    keyframe(.72,GUARD,'outQuad'),
+  ]),
+  hit:{start:.2,end:.4,dmg:32,stagger:.52,kb:480,kbY:-80,hitstop:.11,shake:.4,heavy:true,breakGuard:true,pad:11,corridorBack:35,corridorFront:145,corridorY:52},
+  trail:{start:.17,end:.46},swingSfx:{t:.18,name:'swingHeavy'},cancel:.45,
+  chain:['l1','launcher'],grip:1,zArc:.75,drawFlash:true,
+  traj:{a0:-1.15,a1:.85,y0:-.38,y1:.42,e0:.5,e1:.98,band:52},
+}
+
+/* ------------------------------------------------------------------ */
 /* AIR ATTACKS                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -1504,13 +1622,70 @@ const a3: AttackDef = {
   trail: { start: 0.07, end: 0.39 },
   swingSfx: { t: 0.07, name: 'swing' },
   cancel: 0.31,
-  chain: ['dive', 'slam', 'a1', 'srMeteor'],
+  chain: ['a4', 'dive', 'slam', 'a1', 'srMeteor'],
   float: 0.34,
   grip: 0.8,
   zArc: 0.5,
   traj: { // AIR HORIZONTAL family: wide depth arc while airborne
     a0: 2.6, a1: 0.05, y0: -0.7, y1: 0.6, e0: 0.5, e1: 0.9, band: 48,
   },
+}
+
+/** A4 — SKY PURSUIT: a movement-gated air-combo extender. The knees gather
+ * behind the target, the lead leg reaches, hips spear forward, then the blade
+ * flashes across at chest height. Player air-assist steers the WHOLE body to
+ * a launched target before this contact frame; the clip itself remains a
+ * coherent legs→pelvis→chest→blade action rather than an arm-only slash. */
+const a4: AttackDef = {
+  id: 'a4', label: 'SKY PURSUIT', kind: 'air', requires: 'air',
+  clip: makeClip('atk_a4_skyPursuit', [
+    keyframe(0, {
+      rootX: -1, rootY: 1, rootRot: -.18, spine: -.05, head: -.08,
+      hipR: .75, kneeR: -1.5, footR: -.12,
+      hipL: .35, kneeL: -1.25, footL: .08,
+      shR: -.05, elR: -.85, wrR: -.55,
+      shL: .55, elL: -1.15,
+      pelvisYaw: -.18, chestYaw: .16,
+    }, 'outQuad'),
+    // chase: both legs extend behind the centre while the hips lead
+    keyframe(.07, {
+      rootX: 2.5, rootY: 0, rootRot: .25, spine: .06, head: -.22,
+      hipR: -.35, kneeR: -.55, footR: -.08,
+      hipL: -.75, kneeL: -.42, footL: .08,
+      shR: .35, elR: -.55, wrR: -.15,
+      shL: .8, elL: -1.0,
+      pelvisYaw: .12, chestYaw: -.1,
+    }, 'outQuart'),
+    // contact: hips and chest unwind into a compact horizontal draw-cut
+    keyframe(.13, {
+      rootX: 5.5, rootY: -.5, rootRot: .42, spine: .12, head: -.3,
+      hipR: -.72, kneeR: -.3, footR: -.04,
+      hipL: -.95, kneeL: -.25, footL: .06,
+      shR: 1.28, elR: -.18, wrR: .18,
+      shL: .45, elL: -1.28,
+      pelvisYaw: .3, chestYaw: -.26,
+    }, 'outExpo'),
+    // pass the target, fold the knees, retain aerial control
+    keyframe(.23, {
+      rootX: 4, rootY: 0, rootRot: .25, spine: .06, head: -.18,
+      hipR: .5, kneeR: -1.25, footR: -.05,
+      hipL: -.15, kneeL: -1.05, footL: .08,
+      shR: 1.0, elR: -.42, wrR: -.45,
+      shL: .3, elL: -1.1,
+      pelvisYaw: .16, chestYaw: -.12,
+    }, 'outCubic'),
+    keyframe(.34, { ...AIR_LEGS, rootRot: .08, head: -.1 }, 'outQuad'),
+  ]),
+  hit: { start: .095, end: .19, dmg: 13, stagger: .3, kb: 95, juggle: -360, hitstop: .06, shake: .16, heavy: false, pad: 6 },
+  trail: { start: .075, end: .23 },
+  swingSfx: { t: .075, name: 'swing' },
+  cancel: .205,
+  chain: ['a1', 'a2', 'dive', 'slam'],
+  moveX: 360, moveXAt: .035,
+  float: .2,
+  grip: .75,
+  zArc: .65,
+  traj: { a0: 2.8, a1: .02, y0: -.45, y1: .38, e0: .48, e1: .95, band: 52 },
 }
 
 /** DIVE — Falcon Dive: blade-first diagonal plunge, tip locked on the
@@ -1621,9 +1796,9 @@ const slam: AttackDef = {
 
 export const ATTACKS: Record<string, AttackDef> = {
   l1, l2, l3, l4, l5, retreat, spin, stabs,
-  h1, h2, h3, launcher,
+  h1, h2, h3, launcher, risingGale, blenderCharge, stormFront,
   dashSlash, dashHeavy, powerArc, powerSlash, charged, riposte,
-  a1, a2, a3, dive, slam,
+  a1, a2, a3, a4, dive, slam,
   /* empty-hand command moves — selected ONLY while sheathed
    * (see Player.pickHeavy / Player.pickLight air branch) */
   axeKick: MOVES.axeKick,
@@ -1658,6 +1833,28 @@ export const ATTACKS: Record<string, AttackDef> = {
    * combat/ronin-sakuga.ts); cinematic finisher tier for BOTH stances
    * (empty-hand variants live in MOVES — unarmedAttack swaps by id) */
   ...RONIN_ATTACKS,
+}
+
+/** Authored autonomous body travel. Each curve begins almost still during
+ * compression, accelerates through contact, then reaches a finite catch.
+ * These are deliberately conservative: target-aware scaling in Player keeps
+ * the final stance outside the opponent instead of walking through them. */
+const ROOT_MOTION: Record<string, ReadonlyArray<{ t: number; x: number }>> = {
+  l1: [{t:0,x:0},{t:.08,x:1},{t:.14,x:10},{t:.2,x:22},{t:.32,x:27}],
+  l2: [{t:0,x:0},{t:.09,x:1},{t:.15,x:9},{t:.24,x:20},{t:.36,x:24}],
+  l3: [{t:0,x:0},{t:.07,x:0},{t:.13,x:12},{t:.22,x:28},{t:.36,x:33}],
+  l4: [{t:0,x:0},{t:.12,x:2},{t:.2,x:13},{t:.31,x:20},{t:.46,x:23}],
+  l5: [{t:0,x:0},{t:.16,x:1},{t:.24,x:20},{t:.34,x:43},{t:.52,x:50}],
+  h1: [{t:0,x:0},{t:.22,x:1},{t:.28,x:12},{t:.38,x:31},{t:.56,x:37}],
+  h2: [{t:0,x:0},{t:.16,x:1},{t:.23,x:22},{t:.36,x:49},{t:.58,x:55}],
+  risingGale: [{t:0,x:0},{t:.09,x:1},{t:.16,x:8},{t:.24,x:24},{t:.42,x:29}],
+  blenderCharge: [{t:0,x:0},{t:.1,x:1},{t:.18,x:10},{t:.36,x:19},{t:.55,x:23}],
+  stormFront: [{t:0,x:0},{t:.12,x:1},{t:.2,x:16},{t:.3,x:43},{t:.5,x:61}],
+  a4: [{t:0,x:0},{t:.05,x:5},{t:.11,x:28},{t:.19,x:52},{t:.3,x:58}],
+  powerSlash: [{t:0,x:0},{t:.035,x:1},{t:.08,x:28},{t:.14,x:68},{t:.3,x:118},{t:.52,x:136}],
+}
+for (const [id, curve] of Object.entries(ROOT_MOTION)) {
+  if (ATTACKS[id]) ATTACKS[id].rootMotion = curve
 }
 
 /** A lunge that fires BEFORE the hit window carries the body past the first

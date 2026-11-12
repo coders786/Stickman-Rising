@@ -20,6 +20,8 @@ import {
 export { handPose, UNARMED_PARRY_CLIP as UNARMED_PARRY, UNARMED_CHARGE_CLIP as UNARMED_CHARGE,
   UNARMED_GUARD, UNARMED_ULT, UNARMED_FLOURISH_CLIP }
 export type { StrikeHand }
+export const CHARGED_PUNCH = MOVES.chargedPunch
+export const CHARGED_KICK = MOVES.chargedKick
 
 const cache = new Map<string, AttackDef>()
 
@@ -108,7 +110,10 @@ const UNARMED_DRIVE_ACCEL = 2400
  *  55.7px -- and the real advance is a little under `moveX * driveDur`
  *  because the motor starts from rest. 34px per strike is exactly the
  *  standoff, so even a whole string can only close to zero, never past. */
-const UNARMED_STEP_PX_MAX = 34
+// The range-aware standoff clamp in Player prevents overrun. A 40px ceiling
+// gives dramatic retro silhouettes enough body travel to put the *real limb*
+// on the opponent instead of solving short anatomy with invisible padding.
+const UNARMED_STEP_PX_MAX = 40
 
 /** The step is injected on the ignition beat, just as the fist fires —
  *  the same timing the sword kit uses (`moveXAt` ≈ contact minus a frame).

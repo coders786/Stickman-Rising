@@ -689,30 +689,42 @@ export const FALL_CLIP: Clip = makeClip('fall', [
 ], true)
 
 export const LAND_CLIP: Clip = makeClip('land', [
-  keyframe(0, {
-    rootY:2,rootRot:.24,spine:.06,head:-.23,
-    hipR:.48,kneeR:-.8,footR:.14,hipL:-.32,kneeL:-.7,footL:.12,
-    shR:1.2,elR:-.75,wrR:6.3,shL:.9,elL:-.85,armLz:.15,
-  }, 'inOutSine'),
-  keyframe(.045, { // IMPACT — deep squat, BOTH HANDS reach down past the knees
-    rootY: 7, rootRot: 0.4, spine: 0.14, head: -0.22,
-    hipR: 0.62, kneeR: -1.4, footR: 0.24,
-    hipL: -0.5, kneeL: -1.3, footL: 0.18,
-    shR: 0.85, elR: -0.35, wrR: 6.1,
-    shL: 0.7, elL: -0.4, armLz: 0.2,
-  }, 'outQuad'),
-  keyframe(.12, { // rebound: hands follow the core, not a second squat
-    rootY:4.5,rootRot:.29,spine:.07,head:-.25,
-    hipR:.52,kneeR:-1.0,footR:.18,hipL:-.4,kneeL:-.95,footL:.14,
-    shR:.95,elR:-.65,wrR:6.2,shL:.65,elL:-.85,
-  }, 'inOutSine'),
-  keyframe(0.26, { // RECOVER — rise, hands settle back toward the carry
-    rootY: 1.5, rootRot: 0.16, spine: 0.05, head: -0.1,
-    hipR: 0.35, kneeR: -0.5, footR: 0.12,
-    hipL: -0.3, kneeL: -0.45, footL: 0.1,
-    shR: 1.15, elR: -0.4, wrR: 6.35,
-    shL: 0.6, elL: -0.7,
-  }, 'outCubic'),
+  keyframe(0,{ // PRE-CONTACT: feet reach, hips remain above them
+    rootY:-.8,rootRot:.16,spine:.04,head:-.16,
+    hipR:.18,kneeR:-.5,footR:.18,hipL:-.28,kneeL:-.46,footL:.2,
+    shR:1.35,elR:-.55,wrR:6.35,shL:1.05,elL:-.65,armLz:.2,
+  },'inQuad'),
+  keyframe(.025,{ // BALL-OF-FOOT CONTACT: fast impact exposure; ankles and
+    // knees yield together before the slower maximum-compression drawing
+    rootY:5.1,rootRot:.24,spine:.055,head:-.23,
+    hipR:.44,kneeR:-1.02,footR:.25,hipL:-.4,kneeL:-.96,footL:.24,
+    shR:1.12,elR:-.7,wrR:6.28,shL:.88,elL:-.8,armLz:.16,
+  },'outQuad'),
+  keyframe(.06,{ // ABSORB: knees track over toes, pelvis descends vertically
+    rootY:5.4,rootRot:.28,spine:.07,head:-.27,
+    hipR:.5,kneeR:-1.2,footR:.22,hipL:-.44,kneeL:-1.12,footL:.2,
+    shR:.78,elR:-.9,wrR:6.16,shL:.58,elL:-1.0,armLz:.12,
+  },'outCubic'),
+  keyframe(.105,{ // MAX COMPRESSION: no folded-waist snap; head stays level
+    rootY:7.2,rootRot:.31,spine:.065,head:-.3,
+    hipR:.58,kneeR:-1.48,footR:.18,hipL:-.5,kneeL:-1.38,footL:.18,
+    shR:.6,elR:-1.05,wrR:6.08,shL:.45,elL:-1.12,armLz:.1,
+  },'inOutSine'),
+  keyframe(.155,{ // STABILIZE: compression holds one drawing before rebound
+    rootY:6.6,rootRot:.29,spine:.06,head:-.28,
+    hipR:.55,kneeR:-1.38,footR:.17,hipL:-.47,kneeL:-1.3,footL:.17,
+    shR:.68,elR:-.98,wrR:6.12,shL:.5,elL:-1.06,armLz:.1,
+  },'inOutSine'),
+  keyframe(.23,{ // EXTEND: glutes raise pelvis; arms recover after the core
+    rootY:3.5,rootRot:.22,spine:.05,head:-.21,
+    hipR:.43,kneeR:-.92,footR:.14,hipL:-.39,kneeL:-.86,footL:.14,
+    shR:.88,elR:-.78,wrR:6.23,shL:.58,elL:-.9,armLz:.08,
+  },'outCubic'),
+  keyframe(.34,{ // READY: weight remains athletic, never pops ramrod upright
+    rootY:1.5,rootRot:.14,spine:.04,head:-.13,
+    hipR:.34,kneeR:-.58,footR:.12,hipL:-.31,kneeL:-.54,footL:.12,
+    shR:1.08,elR:-.55,wrR:6.34,shL:.62,elL:-.76,
+  },'outCubic'),
 ])
 
 /* ------------------------------- SHEATHE / DRAW --------------------- */
@@ -777,6 +789,14 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
     hipR:.28,kneeR:-.64,footR:.1,hipL:-.3,kneeL:-.58,footL:.12,
     shR:.971,elR:-1.395,wrR:4.505,shL:.161,elL:-.934,armLz:-.30
   }, 'inOutSine'),
+  keyframe(0.56, { // MID-INSERTION — right elbow folds as the hilt advances;
+    // left thumb/index keep the mune centered at the koiguchi. Pelvis remains
+    // quiet so the hands, not a torso wobble, sell the final centimeters.
+    rootRot:.08,rootY:.68,spine:.02,head:-.004,
+    hipR:.28,kneeR:-.63,footR:.1,hipL:-.3,kneeL:-.58,footL:.12,
+    shR:.946,elR:-1.37,wrR:4.79,shL:.153,elL:-.93,armLz:-.295,
+    pelvisYaw:.015,chestYaw:-.01,
+  }, 'inOutSine'),
   keyframe(0.62, { // SLIDE — steel runs home to the kojiri. The right
     // fist rides the tsuka ~at the kashira line (IK: shR 0.8/elR −1.05
     // keeps the hand at navel-forward height — the old shR −0.25 drag
@@ -809,7 +829,10 @@ export const SHEATHE_CLIP: Clip = makeClip('sheathe', [
   }, 'outCubic'),
 ])
 
-/** IAI — the draw. Fast, three beats: stillness → grip → EXPLOSION into guard. */
+/** IAI — twelve drawings around six core anatomical beats:
+ * stillness → grip → collar release → sayabiki/extraction → edge turn and
+ * extension → follow-through/guard. Breakdown drawings preserve hand/socket
+ * contact and foot-to-pelvis force transfer between every core pose. */
 export const DRAW_CLIP: Clip = makeClip('draw', [
   keyframe(0, { // stillness — hand on the pommel (sheathed rest pose,
     // SAME anatomical rest as SHEATHE_CLIP's end: hand ON the kashira,
@@ -850,6 +873,14 @@ export const DRAW_CLIP: Clip = makeClip('draw', [
     hipR:.54,kneeR:-.94,footR:.22,hipL:-.47,kneeL:-.48,footL:.01,
     shR:1.487,elR:-1.010,wrR:6.282,shL:.327,elL:-1.211,armLz:-.185,pelvisYaw:.02,chestYaw:.01
   }, 'inOutSine'),
+  keyframe(0.14, { // EDGE TURN — kissaki is almost clear; forearm supinates
+    // while the shoulder stays packed. Rear heel drives pelvis first, chest
+    // follows one drawing later so the arm is not dragging the body.
+    rootRot:.255,rootY:-.48,spine:.09,head:-.245,
+    hipR:.575,kneeR:-1.0,footR:.24,hipL:-.515,kneeL:-.405,footL:-.04,
+    shR:1.66,elR:-.965,wrR:6.66,shL:.395,elL:-1.195,armLz:-.14,
+    pelvisYaw:.09,chestYaw:-.035,
+  }, 'outCubic'),
   keyframe(0.16, { // EXPLOSION — the steel rips out along the rising diagonal
     rootRot: 0.3, rootY: -1.2, spine: 0.12, head: -0.3,
     hipR: 0.6, kneeR: -1.05, footR: 0.26,
@@ -1303,31 +1334,51 @@ export const HURT_CLIP: Clip = makeClip('hurt', [
   }, 'outCubic'),
 ])
 
-/* Charge: the blade held high in a trembling jōdan gather (sum ≈ 3.0 —
- * blade UP) while energy condenses on the edge. */
-export const CHARGE_CLIP: Clip = makeClip('charge', [
+/* QUICK-DRAW CHARGE — replaces the disconnected overhead jōdan hold.
+ * The whole body prepares an iai release: feet widen, weight sinks onto the
+ * rear leg, hips wind away, the sword hand draws to the saya and the off hand
+ * braces its mouth. The final pose is held, not looped, so charging never
+ * breathes backward out of readiness. It is deliberately compatible with the
+ * charged horizontal release and the power-dash slash chamber. */
+export const CHARGE_CLIP: Clip = makeClip('quickDrawCharge', [
+  // live guard: blade and gaze still own the opponent
   keyframe(0, {
-    rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
-    hipR: 0.55, kneeR: -1.15, footR: 0.2,
-    hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: 0.15, wrR: 0.25,
-    shL: 1.85, elL: -0.5, wrL: -0.2,
-  }, 'linear'),
-  keyframe(0.3, {
-    rootY: 6.9, rootRot: 0.36, spine: 0.11, head: -0.2,
-    hipR: 0.58, kneeR: -1.2, footR: 0.2,
-    hipL: -0.42, kneeL: -1.0, footL: 0.15,
-    shR: 2.65, elR: 0.15, wrR: 0.2,
-    shL: 1.9, elL: -0.5, wrL: -0.22,
-  }, 'linear'),
-  keyframe(0.6, {
-    rootY: 6, rootRot: 0.34, spine: 0.1, head: -0.18,
-    hipR: 0.55, kneeR: -1.15, footR: 0.2,
-    hipL: -0.45, kneeL: -1.05, footL: 0.15,
-    shR: 2.6, elR: 0.15, wrR: 0.25,
-    shL: 1.85, elL: -0.5, wrL: -0.2,
-  }, 'linear'),
-], true)
+    rootX: 0, rootY: 1.5, rootRot: .12, spine: .04, head: -.12,
+    hipR: .34, kneeR: -.58, footR: .12,
+    hipL: -.32, kneeL: -.48, footL: .1,
+    shR: .82, elR: -.52, wrR: 1.05,
+    shL: .48, elL: -.82, wrL: -.24,
+    pelvisYaw: .04, chestYaw: -.03,
+  }, 'outQuad'),
+  // return the steel to the hip while the rear foot receives the weight
+  keyframe(.12, {
+    rootX: -.8, rootY: 3.4, rootRot: .2, spine: .06, head: -.18,
+    hipR: .48, kneeR: -.82, footR: .15,
+    hipL: -.42, kneeL: -.62, footL: .08,
+    shR: .18, elR: -.9, wrR: -.62,
+    shL: .3, elL: -.92, wrL: -.24,
+    pelvisYaw: -.12, chestYaw: .1,
+  }, 'inOutCubic'),
+  // deep iai chamber: sword hand seats at the saya, off hand locks the scabbard
+  keyframe(.28, {
+    rootX: -1.5, rootY: 5.4, rootRot: .34, spine: .08, head: -.3,
+    hipR: .62, kneeR: -1.12, footR: .18,
+    hipL: -.45, kneeL: -.78, footL: .02,
+    shR: -.12, elR: -1.02, wrR: -.72,
+    shL: .2, elL: -.96, wrL: -.28,
+    pelvisYaw: -.2, chestYaw: .18,
+  }, 'inOutCubic'),
+  // taut lock: legs, hips and hands all stop in the same ready frame
+  keyframe(.42, {
+    rootX: -1.5, rootY: 5.9, rootRot: .38, spine: .08, head: -.34,
+    hipR: .66, kneeR: -1.22, footR: .18,
+    hipL: -.46, kneeL: -.82, footL: 0,
+    shR: -.2, elR: -1.06, wrR: -.74,
+    shL: .18, elL: -.98, wrL: -.3,
+    pelvisYaw: -.23, chestYaw: .2,
+  }, 'outQuad'),
+])
+CHARGE_CLIP.interpolation = 'monotone'
 
 /* ------------------------------- EXECUTE IDLE POSE ------------------ */
 

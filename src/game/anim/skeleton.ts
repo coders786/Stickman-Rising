@@ -56,6 +56,8 @@ export const PLAYER_SPEC: SkelSpec = {
   headR: 6.1,
   shoulderFwd: 2.1,
   shoulderDrop: 2.5,
+  // Neutral anatomical arm length. Empty-hand reach comes from authored
+  // footwork/root travel rather than stretching the shared sword arm rig.
   upperArm: 22,
   foreArm: 20,
   hand: 6.6,

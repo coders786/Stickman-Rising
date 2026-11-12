@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Game } from '@/game/game'
-import { SWORDS, SWORD_ORDER, SwordId } from '@/game/combat/swords'
+import { SWORDS, SWORD_ORDER, SwordId, swordTier, upgradedSword } from '@/game/combat/swords'
 import { DEFAULT_SETTINGS, GameSettings, RunStats } from '@/game/core/types'
 import { Input as GameInput, Action } from '@/game/core/input'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,7 @@ export default function Home() {
   const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
   const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
   const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
+  const [loadout, setLoadout] = useState<SwordId[]>(['katana'])
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [name, setName] = useState('')
   const [submitted, setSubmitted] = useState(false)
@@ -71,7 +72,9 @@ export default function Home() {
       const s = loadSave()
       saveRef.current = s
       setSave(s)
-      setSelectedSword(s.unlocked[s.unlocked.length - 1] ?? 'katana')
+      const latest = s.unlocked[s.unlocked.length - 1] ?? 'katana'
+      setSelectedSword(latest)
+      setLoadout([latest])
       setSettings(loadSettings())
       setHydrated(true)
       setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
@@ -130,7 +133,8 @@ export default function Home() {
     })
     try {
       game.applySettings(loadSettings())
-      game.setUnlocked(loadSave().unlocked)
+      const progress = loadSave()
+      game.setUnlocked(progress.unlocked, progress.totalKills)
       game.mount(canvas)
       setGameInput(game.input)
     } catch (error) {
@@ -162,7 +166,7 @@ export default function Home() {
   }, [settings, hydrated])
 
   useEffect(() => {
-    gameRef.current?.setUnlocked(save.unlocked)
+    gameRef.current?.setUnlocked(save.unlocked, save.totalKills)
     saveRef.current = save
   }, [save.unlocked, save])
 
@@ -213,9 +217,10 @@ export default function Home() {
     setSubmitted(false)
     setSubmitError(null)
     setNewUnlocks([])
+    gameRef.current.setLoadout(loadout)
     gameRef.current.startRun(sword)
     setScreen('playing')
-  }, [hydrated])
+  }, [hydrated, loadout])
 
   const submitScore = useCallback(async () => {
     if (!stats || submitted || submittingRef.current) return
@@ -295,7 +300,7 @@ export default function Home() {
             <span className="h-3 w-px bg-zinc-800" />
             <span>TOTAL KILLS {fmt(save.totalKills)}</span>
             <span className="h-3 w-px bg-zinc-800" />
-            <span className="text-red-400/80">{SWORDS[selectedSword].name}</span>
+            <span className="text-red-400/80" suppressHydrationWarning>{hydrated ? SWORDS[selectedSword].name : 'LOADING ARSENAL'}</span>
           </div>
         </div>
       )}
@@ -305,12 +310,14 @@ export default function Home() {
         <div className="absolute inset-0 flex flex-col bg-black/85 px-4 py-6 sm:px-10">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-black tracking-widest text-white">ARSENAL</h2>
-            <span className="text-[10px] font-mono text-zinc-500">TOTAL KILLS {fmt(save.totalKills)}</span>
+            <span className="text-[10px] font-mono text-zinc-500">TOTAL KILLS {fmt(save.totalKills)} · LOADOUT {loadout.length}/3</span>
           </div>
           <ScrollArea className="mt-4 min-h-0 flex-1">
             <div className="grid grid-cols-1 gap-3 pb-4 sm:grid-cols-2 lg:grid-cols-3">
               {SWORD_ORDER.map((id) => {
-                const sw = SWORDS[id]
+                const base = SWORDS[id]
+                const tier = swordTier(id, save.totalKills)
+                const sw = upgradedSword(id, tier)
                 const unlocked = save.unlocked.includes(id)
                 const selected = selectedSword === id
                 return (
@@ -318,15 +325,37 @@ export default function Home() {
                     key={id}
                     type="button"
                     disabled={!unlocked}
-                    onClick={(e) => { e.currentTarget.blur(); if (unlocked) setSelectedSword(id) }}
+                    onClick={(e) => {
+                      e.currentTarget.blur()
+                      if (!unlocked) return
+                      const isHeavenly = id === 'katana' && tier === 2
+                      setSelectedSword(id)
+                      setLoadout((current) => {
+                        if (isHeavenly) return ['katana']
+                        const withoutHeavenly = current.filter((s) => !(s === 'katana' && swordTier('katana', save.totalKills) === 2))
+                        if (withoutHeavenly.includes(id)) return withoutHeavenly
+                        return [...withoutHeavenly, id].slice(-3)
+                      })
+                    }}
                     className={`relative overflow-hidden rounded-lg border p-4 text-left transition-all ${selected ? 'border-red-500 bg-red-950/40' : 'border-zinc-800 bg-zinc-950/80 hover:border-zinc-600'} ${unlocked ? '' : 'opacity-60'}`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-black tracking-wider" style={{ color: sw.colors.accent }}>{sw.name}</span>
-                      {selected && <Badge className="bg-red-600 text-white">EQUIPPED</Badge>}
+                      <div className="flex gap-1">
+                        {loadout.includes(id) && <Badge className="bg-zinc-700 text-white">LOADOUT {loadout.indexOf(id) + 1}</Badge>}
+                        {selected && <Badge className="bg-red-600 text-white">PRIMARY</Badge>}
+                      </div>
                     </div>
-                    <div className="mt-0.5 text-[9px] font-mono tracking-[0.25em] text-zinc-500">{sw.title}</div>
+                    <div className="mt-0.5 text-[9px] font-mono tracking-[0.25em] text-zinc-500">TIER {tier + 1} · {sw.title}</div>
                     <p className="mt-2 text-xs leading-relaxed text-zinc-400">{sw.desc}</p>
+                    <div className="mt-2 flex gap-1" aria-label={`${sw.name} upgrade path`}>
+                      {base.upgrades.map((upgrade, i) => {
+                        const earned = save.totalKills >= upgrade.kills
+                        return <span key={upgrade.name} className={`flex-1 rounded border px-1 py-1 text-center text-[8px] font-mono ${i === tier ? 'border-current bg-white/10' : earned ? 'border-zinc-700 text-zinc-400' : 'border-zinc-900 text-zinc-700'}`} title={upgrade.perk}>{earned ? upgrade.name : `${fmt(upgrade.kills)} KILLS`}</span>
+                      })}
+                    </div>
+                    <p className="mt-1 text-[9px] font-bold uppercase tracking-wider" style={{ color: sw.colors.glow }}>{base.upgrades[tier].style}</p>
+                    <p className="mt-0.5 text-[9px] text-zinc-500">{base.upgrades[tier].perk}</p>
                     <div className="mt-3 space-y-1.5">
                       <StatBar label="PWR" v={sw.stats.dmg / 1.4} color={sw.colors.accent} />
                       <StatBar label="SPD" v={sw.stats.spd / 1.25} color={sw.colors.accent} />

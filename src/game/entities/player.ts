@@ -9,9 +9,9 @@ import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,FIST_DUAL_CHARGE_CLIP,POWER_DASH_CLIP,
  */
 
 import {drawArticulatedHand} from '../anim/humanoid'
-import {drawDetail,DRAW_CLEAR,DRAW_GRIP} from '../anim/draw-detail'
+import {drawDetail,sheatheDetail,DRAW_CLEAR,DRAW_GRIP,SHEATHE_MEET,SHEATHE_SEAT} from '../anim/draw-detail'
 import {equipmentClip} from '../anim/equipment-motion'
-import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP} from '../combat/unarmed'
+import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP,CHARGED_PUNCH,CHARGED_KICK} from '../combat/unarmed'
 import {ComboDirector,type Requires} from '../combat/combo-director'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
@@ -39,7 +39,7 @@ import { ATTACKS, AttackDef, AttackRuntimeInfo, makeRuntimeInfo } from '../comba
 import {
   DashVariant, DashVariantCfg, DASH_VARIANTS, evaluateDash,
 } from '../combat/dash'
-import { drawSword, SWORDS, SwordDef, SwordId } from '../combat/swords'
+import { drawSword, SWORDS, SwordDef, SwordId, upgradedSword } from '../combat/swords'
 import { Trail } from '../fx/fx'
 import { WorldRef } from '../core/types'
 import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
@@ -128,6 +128,22 @@ function circleHitsSweptQuad(
   if (pointInTri(cx, cy, pbx, pby, ptx, pty, tx, ty)) return true
   if (pointInTri(cx, cy, pbx, pby, tx, ty, bx, by)) return true
   return false
+}
+
+function sampleRootMotion(curve: NonNullable<AttackDef['rootMotion']>, t: number): number {
+  if (curve.length === 0 || t <= curve[0].t) return curve[0]?.x ?? 0
+  for (let i = 1; i < curve.length; i++) {
+    const b = curve[i]
+    if (t <= b.t) {
+      const a = curve[i - 1]
+      const u = clamp01((t - a.t) / Math.max(1e-6, b.t - a.t))
+      // smoothstep gives planted acceleration/catch without introducing an
+      // extra simulation layer that can drift away from the authored clip.
+      const s = u * u * (3 - 2 * u)
+      return a.x + (b.x - a.x) * s
+    }
+  }
+  return curve[curve.length - 1].x
 }
 
 function pointInTri(px: number, py: number, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): boolean {
@@ -415,6 +431,8 @@ const DASH_GHOST_A0 = [0.38, 0.34, 0.24]
 interface ActionState {
   def: AttackDef
   animT: number
+  rootMotionPrev: number
+  rootMotionScale: number
   hitMap: Map<number, number>
   trail: Trail
   sfxDone: boolean
@@ -439,10 +457,6 @@ interface AbilityState {
   y: number
 }
 
-/** Anime cadence for empty-hand strikes: the clip clock ticks at the bake
- * rate, so a beat holds then snaps (the reference studio's BASE_FPS = 24). */
-const UNARMED_STEP_RATE = 24
-
 export class Player {
   x = 400
   y = 0
@@ -461,6 +475,9 @@ export class Player {
   meter = 0
 
   sword: SwordDef = SWORDS.katana
+  /** Plain carbon steel condition: rain slowly attacks the polish and edge.
+   * Elemental weapons do not use this maintenance model. */
+  swordCondition = 1
 
   state: PlayerState = 'move'
   private animator = new Animator(true)
@@ -548,7 +565,7 @@ export class Player {
   /** tap-vs-hold classifier for the sword button inside the dash charge */
   private dashHeavyArmT=-1
   /** sheathed dual-release alternation: RAIJIN KEN ↔ FUJIN KYAKU per use */
-  private fistDualAlt=false
+  // Dual-charge K is always a kick; J strings own all fist techniques.
   /** dash key released while the heavy still holds: grace beat before the
    * invested charge converts into the standing blade gather */
   private dualDashRelT=0
@@ -608,6 +625,7 @@ export class Player {
   private parryActive = 0
   riposteT = 0
   private parryPerfect = false
+  private parryPerfectT = 0
 
   /* ---- SWORD HOME (notō / iai): the sheath system. swordDrawn=false →
    * the steel rides inside the saya, locomotion arms are HANDS-ONLY, and
@@ -658,6 +676,11 @@ export class Player {
   private chargeT = 0
   charging = false
   private chargeReady = false
+  private unarmedChargeKind:'punch'|'kick'='kick'
+  /** Heavy is contextual: holding it out of a light's recovery stores the
+   * branch that recovery physically prepared (rising / circular / driving),
+   * instead of resetting into the same generic charged attack. */
+  private chargeBranch: 'neutral' | 'rising' | 'blender' | 'storm' | 'air' = 'neutral'
 
   private hurtT = 0
   private deadT = 0
@@ -787,6 +810,7 @@ export class Player {
     this.action = null
     this.ability = null
     this.charging = false
+    this.chargeBranch = 'neutral'
     this.hurtT = 0
     this.iframes = 0
     this.deadT = 0
@@ -832,6 +856,7 @@ export class Player {
     this.dashCd = 0
     this.retreatLockT = 0
     this.swordDrawn = false
+    this.swordCondition = 1
     this.sheathAct = null
     this.carryRelaxW=0
     this.peaceT = 0
@@ -845,20 +870,36 @@ export class Player {
     this.playAnimation(IDLE_CLIP, { blend: 0.05 })
   }
 
-  setSword(id: SwordId): void {
-    this.sword = SWORDS[id]
+  setSword(id: SwordId, tier: 0 | 1 | 2 = 0): void {
+    this.sword = upgradedSword(id, tier)
   }
 
   get atkSpeed(): number {
-    return this.sword.stats.spd
+    return this.sword.stats.spd * (this.sword.confidence ?? 1)
+  }
+
+  maintainSword(): void { this.swordCondition = 1 }
+
+  private get steelConditionScale(): number {
+    return this.sword.mundane ? 0.9 + this.swordCondition * 0.1 : 1
   }
 
   get busy(): boolean {
     return this.state === 'dashCharge' || this.state === 'attack' || this.state === 'charge' || this.state === 'parry' || this.state === 'scripted'
   }
 
+  /** Sheathed focus has no blade mass to stabilize, so it reaches the same
+   * power state in 70% of the drawn charge time (30% faster). */
+  private get heavyChargeTime(): number {
+    return this.swordDrawn ? 0.55 : 0.385
+  }
+
+  private get heavyChargeReleaseTime(): number {
+    return this.swordDrawn ? 0.4 : 0.28
+  }
+
   get chargeRatio(): number {
-    return clamp01(this.chargeT / 0.55)
+    return clamp01(this.chargeT / this.heavyChargeTime)
   }
 
   /** The blade's CHARGE for rendering: whichever live charge is driving the
@@ -888,11 +929,19 @@ export class Player {
   get slashReady():boolean {return this.dashDualArmed&&this.dashDualT>=POWER_DASH_SLASH_CHARGE}
   /** Next sheathed dual-release strike (HUD readout) — alternates per use:
    * RAIJIN KEN (dash cross) ↔ FUJIN KYAKU (dash spear kick). */
-  get fistStrikeNext():'punch'|'kick'{return this.fistDualAlt?'kick':'punch'}
+  get fistStrikeNext():'punch'|'kick'{return 'kick'}
   get staminaCooldown():number {return this.staminaRegenDelay}
 
   get parryWindowOpen(): boolean {
     return this.parryActive > 0
+  }
+
+  /** Sam-style precision: the first 45ms after the deliberate intercept
+   * input is the perfect redirect; the remaining active time is a safe but
+   * non-countering parry. This prevents every successful guard from being
+   * treated as a perfect counter. */
+  get parryWindowPerfect(): boolean {
+    return this.parryPerfectT > 0
   }
 
   get isDead(): boolean {
@@ -927,6 +976,13 @@ export class Player {
     this.flashT = Math.max(0, this.flashT - dt * 5)
     this.sinceHitT += dt
     this.swingGlow = Math.max(0, this.swingGlow - dt * 5)
+    // The rooftop is continuously rain-soaked. A drawn plain-steel katana
+    // slowly loses polish; active combat accelerates edge wear. The floor is
+    // deliberately gentle (10%) so maintenance matters without invalidating skill.
+    if (this.sword.mundane && this.swordDrawn) {
+      const working = this.state === 'attack' || this.state === 'parry' || this.state === 'dash'
+      this.swordCondition = Math.max(0, this.swordCondition - dt * (working ? .0022 : .00055))
+    }
     this.riposteT = Math.max(0, this.riposteT - dt)
     this.energy = Math.min(this.maxEnergy, this.energy + dt * 3)
     const staminaWait=this.staminaRegenDelay
@@ -1769,14 +1825,20 @@ export class Player {
     }
     // ult is handled by Game (cinematic)
 
-    // heavy: charge vs tap
+    // J+K together arms the charged piston without delaying ordinary J by
+    // even one frame. K alone owns the charged leg lane.
+    if(!this.swordDrawn&&this.grounded&&input.down('light')&&input.down('heavy')){
+      this.unarmedChargeKind='punch';this.enterCharge(w);return true
+    }
+    // K owns the charged leg lane.
     if (input.down('heavy') && this.grounded) {
+      if(!this.swordDrawn)this.unarmedChargeKind='kick'
       this.enterCharge(w)
       return true
     }
     if (input.pressed('heavy') || input.buffered('heavy')) {
       input.takeBuffered('heavy')
-      this.startAttack(this.grounded?this.pickHeavy(w):ATTACKS.slam, w)
+      this.startAttack(!this.swordDrawn?this.pickKick(w):(this.grounded?this.pickHeavy(w):ATTACKS.slam), w)
       return true
     }
     // light
@@ -1791,6 +1853,10 @@ export class Player {
         && Math.abs(this.vx) > 110
         && this.riposteT <= 0) {
         this.startAttack(ATTACKS.dashSlash, w)
+        return true
+      }
+      if(!this.swordDrawn){
+        this.startAttack(this.pickPunch(w),w)
         return true
       }
       const id = this.riposteT > 0 ? 'riposte' : this.pickLight(w, ax, ay)
@@ -1849,10 +1915,16 @@ export class Player {
     }
     // ---- the steel crossing the saya mouth (visual gate events) ----
     if (act.mode === 'sheathe') {
-      // the slide home begins at ~0.42 into the clip (the MEET beat)
-      if (before > act.dur - 0.42 && act.t <= act.dur - 0.42) {
-        this.swordDrawn = false
-        w.audio.play('swordSwitch', { volume: 0.4, pitch: 0.85 })
+      const seconds=act.dur-act.t
+      const beforeSeconds=act.dur-before
+      // MEET is a quiet collar contact; equipment remains physically drawn
+      // while the blade progressively traverses the saya. It becomes
+      // sheathed only when the kissaki has actually seated.
+      if(beforeSeconds<SHEATHE_MEET&&seconds>=SHEATHE_MEET)
+        w.audio.play('swordSwitch',{volume:.18,pitch:1.08})
+      if(beforeSeconds<SHEATHE_SEAT&&seconds>=SHEATHE_SEAT){
+        this.swordDrawn=false
+        w.audio.play('swordSwitch',{volume:.38,pitch:.78})
       }
     } else {
       // the tip clears after progressive extraction (not a visibility pop)
@@ -1879,13 +1951,13 @@ export class Player {
     if (input.pressed('light') || input.buffered('light')) {
       input.takeBuffered('light')
       this.sheathAct = null
-      this.startAttack(ATTACKS.l1, w) // the iai draw-cut
+      this.startAttack(this.swordDrawn?ATTACKS.l1:this.pickPunch(w),w)
       return
     }
     if (input.pressed('heavy') || input.buffered('heavy')) {
       input.takeBuffered('heavy')
       this.sheathAct = null
-      this.startAttack(this.pickHeavy(w), w)
+      this.startAttack(this.swordDrawn?this.pickHeavy(w):this.pickKick(w),w)
       return
     }
     if (input.pressed('parry')) {
@@ -1924,11 +1996,15 @@ export class Player {
       }
       w.audio.play('jump', { volume: 0.4 })
       w.fx.dust(this.x, 0, 4)
+      // Two short shoe arcs expose takeoff direction without an energy aura.
+      const dir=Math.sign(this.vx)||this.face
+      w.fx.motionLine(this.x-dir*7,this.y-4,dir*.55,-.84,30,.14,'#777d79')
+      w.fx.motionLine(this.x+dir*4,this.y-2,dir*.35,-.94,22,.11,'#4d524f')
     } else {
       // AIR JUMP — the mid-air redirect. Clean read: ONE small vertical
       // light streak under the boots (no particle puff cloud).
       this.playAnimation(AIR_JUMP_CLIP, { blend: 0.05 })
-      w.fx.motionLine(this.x, this.y - 12, 0, -1, 48, 0.2, '#dff3ff')
+      w.fx.motionLine(this.x, this.y - 12, this.face*.18, -1, 38, 0.16, '#747b77')
       w.audio.play('jump', { volume: 0.3, pitch: 1.18 })
     }
   }
@@ -2033,9 +2109,10 @@ export class Player {
    * committed hyper-armored drive — the corridor sweep THROUGH the whole
    * pack is the hit. */
   private firePowerDashSlash(w:WorldRef):void{
-    const sheathedStrike=!this.swordDrawn?(this.fistDualAlt?'powerKick':'powerPunch'):null
+    // K owns the leg lane even for the dual-charge release. Heavy fists are
+    // reached through J strings/commands, never by silently alternating K.
+    const sheathedStrike=!this.swordDrawn?'powerKick':null
     this.dropDualCharge()
-    if(sheathedStrike)this.fistDualAlt=!this.fistDualAlt
     this.startDash(w,this.dashChargeX,0,true)
     this.startAttack(sheathedStrike?ATTACKS[sheathedStrike]:ATTACKS.powerSlash,w)
     // detonation accents — physical: the ground releases the planted load
@@ -2079,7 +2156,7 @@ export class Player {
     if(input.pressed('light')||input.buffered('light')){
       input.takeBuffered('light')
       this.dropDualCharge()
-      this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
+      this.startAttack(this.swordDrawn?ATTACKS[this.pickLight(w,ax,ay)]:this.pickPunch(w),w);return
     }
     // HEAVY inside the charge: HOLD arms THE DUAL CHARGE (dash hold + heavy
     // hold = the release loads) in BOTH stances — drawn steel chambers the
@@ -2098,7 +2175,7 @@ export class Player {
           this.startAttack(ATTACKS.powerArc,w)
           return
         }
-        this.startAttack(this.pickHeavy(w),w);return
+        this.startAttack(this.swordDrawn?this.pickHeavy(w):this.pickKick(w),w);return
       }
       if(this.dashHeavyArmT>=HEAVY_HOLD_ARM){
         this.dashHeavyArmT=-1
@@ -2450,10 +2527,12 @@ export class Player {
     if (this.grounded && ax !== 0 && Math.sign(ax) !== this.face) return 'retreat'
     if (!this.grounded) {
       if (ay > 0.4) return 'dive'
-      // Empty-hand air command moves (twist kick / flying elbow) — sheathed
-      // only; the drawn air family keeps its a1–a3 cycle untouched.
-      if (!this.swordDrawn && ax !== 0) {
-        return Math.sign(ax) !== this.face ? 'airTwist' : 'airElbow'
+      // Direction is part of the aerial combo grammar. Holding toward the
+      // opponent performs SKY PURSUIT (armed draw-cut / sheathed elbow);
+      // holding away keeps the evasive twist kick. Neutral light cycles the
+      // three stationary launch-control attacks.
+      if (ax !== 0) {
+        return Math.sign(ax) !== this.face ? 'airTwist' : 'a4'
       }
       this.airIndex = (this.airIndex % 3) + 1
       return `a${this.airIndex}`
@@ -2465,6 +2544,63 @@ export class Player {
     this.lightIndex = Math.min(this.lightIndex + 1, 6)
     if (this.lightIndex >= 6) return 'srOnslaught'
     return `l${Math.min(this.lightIndex, 5)}`
+  }
+
+  /** Empty-hand J lane: fists/elbows/palms only. Neutral J,J,J is a fast
+   * jab/cross/heavy-fist punish; direction creates approach and launcher
+   * branches without ever borrowing a kick animation. */
+  private pickPunch(w:WorldRef):AttackDef {
+    const ax=w.input.axisX(),ay=w.input.axisY()
+    const forward=ax!==0&&Math.sign(ax)===this.face
+    if(!this.grounded){
+      this.airIndex=(this.airIndex%2)+1
+      return unarmedAttack(this.airIndex===1?ATTACKS.a2:ATTACKS.airElbow)
+    }
+    if(forward&&ay>.4){
+      const base=unarmedAttack(ATTACKS.launcher)
+      return {...base,id:'thunderRisingFist',label:'THUNDER RISING FIST',
+        hit:{...base.hit,dmg:22,launch:510,kbY:-285,hitstop:.075,shake:.2},
+        cancel:Math.min(base.cancel,.32),chain:['a1','a2','a3']}
+    }
+    if(forward){
+      const base=unarmedAttack(ATTACKS.viperPalm)
+      return {...base,id:'drivingDemonFist',label:'DRIVING DEMON FIST',
+        hit:{...base.hit,dmg:22,kb:250,heavy:true,breakGuard:true,hitstop:.07},
+        moveX:245,chain:['l1','l2','h3']}
+    }
+    if(ay<-.4)return unarmedAttack(ATTACKS.launcher)
+    if(ay>.4)return unarmedAttack(ATTACKS.ironRoot)
+    if(ax!==0)return unarmedAttack(ATTACKS.retreat)
+    if(w.time-this.lastLightAt>1.05)this.lightIndex=0
+    this.lightIndex=(this.lightIndex%3)+1
+    const id=this.lightIndex===1?'l1':this.lightIndex===2?'l2':'h3'
+    const base=unarmedAttack(ATTACKS[id])
+    return this.lightIndex===3?{...base,id:'flashPunchFinish',label:'FLASH PUNCH FINISH',
+      hit:{...base.hit,dmg:25,heavy:true,breakGuard:true},chain:['l1','launcher']}:base
+  }
+
+  /** Empty-hand K lane: legs only. Neutral presses rotate through roundhouse,
+   * hook and axe-kick; directional presses provide approach/launcher routes. */
+  private pickKick(w:WorldRef):AttackDef {
+    const ax=w.input.axisX(),ay=w.input.axisY()
+    const forward=ax!==0&&Math.sign(ax)===this.face
+    if(!this.grounded){
+      if(ay>.4)return unarmedAttack(ATTACKS.slam)
+      if(ay<-.4)return unarmedAttack(ATTACKS.a3)
+      const route=[ATTACKS.slam,ATTACKS.airTwist,ATTACKS.a3,ATTACKS.dive]
+      return unarmedAttack(route[this.airIndex++%route.length])
+    }
+    if(forward&&ay<-.4){
+      const base=unarmedAttack(ATTACKS.stepKick)
+      return {...base,id:'skyRocketKick',label:'SKY ROCKET KICK',
+        hit:{...base.hit,dmg:27,launch:440,kbY:-230,heavy:true,hitstop:.09},moveY:-150,chain:['a3','dive']}
+    }
+    if(forward)return unarmedAttack(ATTACKS.stepKick)
+    if(ay>.4)return unarmedAttack(ATTACKS.axeKick)
+    if(ax!==0)return unarmedAttack(ATTACKS.spinHook)
+    if(w.time-this.lastHeavyAt>1.15)this.heavyIndex=0
+    this.heavyIndex=(this.heavyIndex%3)+1
+    return unarmedAttack(this.heavyIndex===1?ATTACKS.h2:this.heavyIndex===2?ATTACKS.spinHook:ATTACKS.axeKick)
   }
 
   /** Heavy CHAIN: Kiri Oroshi → Tsuki → Grand Slam. Sequential like the
@@ -2528,9 +2664,26 @@ export class Player {
       this.combo.record(def.id)
     }
 
-    // face toward held direction at attack start
+    // AIR LOCK: launched/flying enemies are valid combo anchors. Aerial
+    // attacks receive one bounded steering impulse toward the nearest such
+    // body; this is not continuous homing, so the player still has to jump,
+    // choose a direction and press on the cancel rhythm. Moving away selects
+    // airTwist and intentionally opts out.
+    const airTarget = !this.grounded && def.requires === 'air' && def.id !== 'airTwist'
+      ? this.nearestAirTarget(w, 310, 190)
+      : null
+    if (airTarget) {
+      const dx = airTarget.x - this.x
+      const dy = airTarget.y - this.y
+      this.face = dx >= 0 ? 1 : -1
+      this.vx = clamp(dx * 5.2, -430, 430)
+      this.vy = clamp(dy * 5.5, -390, 390)
+    }
+
+    // face toward held direction at attack start. A valid air lock wins over
+    // a stale held axis so the visible strike cannot face away from its hit.
     const ax = w.input.axisX()
-    if (ax !== 0 && !fromParry) {
+    if (ax !== 0 && !fromParry && !airTarget) {
       this.face = ax > 0 ? 1 : -1
     } else if (!fromParry && def.kind === 'dash' && this.dashMotionActive && this.dashDx !== 0) {
       // A through-cut follows its travel, not a closer enemy left behind.
@@ -2561,16 +2714,40 @@ export class Player {
     if (def.id === 'powerSlash') this.armorT = 0.62
     if (def.id === 'powerPunch' || def.id === 'powerKick') this.armorT = 0.62
 
-    const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
+    // Plain carbon steel never enters the additive energy-trail pool. Its
+    // motion is communicated by the physical blade and body choreography.
+    const trail = def.strikeHand
+      ? this.emptyTrail
+      : this.sword.mundane
+        // A narrow, short-lived steel-grey motion trace: reflected ambient
+        // light and edge persistence, never an emissive aura.
+        ? w.fx.startTrail('#77807d', '#292d2c', 0.34)
+        : w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
     this.hasPrevAng = false
     this.attackTravel = 0
     this.attackPrevX = this.x
     this.sweptEdge.reset()
     this.limbPrimed = false
+    // Scale authored travel once at attack start. The curve's rhythm remains
+    // intact; only its distance shortens when a target is already inside the
+    // desired 34px fighting standoff.
+    let rootMotionScale = 1
+    const motionEnd = def.rootMotion?.[def.rootMotion.length - 1]?.x ?? 0
+    if (motionEnd > 0) {
+      let nearest = Infinity
+      for (const e of w.enemies) {
+        if (e.dead || e.spawning) continue
+        const ahead = (e.x - this.x) * this.face
+        if (ahead > 0 && ahead < nearest) nearest = ahead
+      }
+      if (nearest !== Infinity) rootMotionScale = clamp01((nearest - ATTACK_STANDOFF) / motionEnd)
+    }
     this.action = {
       def,
       animT: 0,
+      rootMotionPrev: 0,
+      rootMotionScale,
       hitMap: new Map(),
       trail,
       sfxDone: false,
@@ -2593,11 +2770,49 @@ export class Player {
     // and then snaps — anime limited animation — while the physics layers
     // (trails, cloth, camera) keep integrating at full rate. The drawn sword
     // keeps its continuous tempo.
+    // COMBAT TEMPO: lights are the rapid string-building tool; heavies keep
+    // an average, readable cadence so their anticipation and whole-body load
+    // remain visible. This scales the complete authored clip (feet, hips,
+    // torso and arms together), rather than accelerating only the weapon arm.
+    // Consequently contact, recovery and cancel clocks all stay in sync.
+    // Core lights and empty-hand light branches get the speed-up. Large
+    // armed sequence finishers keep their authored reference timing: simply
+    // retiming those multi-contact clips can skip a swept-edge sample at low
+    // frame rates and make the visible cut disagree with collision.
+    const rapidLight = !def.hit.heavy && def.kind === 'light' && /^l[1-5]$/.test(def.id)
+    // 18% is fast enough to distinguish lights without compressing the
+    // load/contact/follow-through into an unreadable flick. The previous
+    // 32% boost could put a single jab's contact almost entirely inside its
+    // entry blend, so the fist hit while the visible body was still leaving
+    // idle.
+    const lightTempo = rapidLight ? 1.18 : 1
+    const attackTempo = def.hit.heavy
+      ? 1
+      : lightTempo * (def.strikeHand ? 1 : this.atkSpeed)
     this.playAnimation(def.clip, {
-      blend: wasAttack ? 0.11 : 0.07,
-      speed: def.strikeHand ? 1 : this.atkSpeed,
-      stepRate: def.strikeHand ? UNARMED_STEP_RATE : undefined,
-      armBlendLimit: def.strikeHand ? def.hit.start * .75 : undefined,
+      // Attack poses must own the whole rig before contact. A fresh strike
+      // gets only a two-frame handoff; chained lights get an even shorter
+      // handoff because both clips already share a planted combat stance.
+      blend: def.strikeHand && !this.swordDrawn
+        ? (rapidLight ? (wasAttack ? 0.014 : 0.022) : (wasAttack ? 0.035 : 0.045))
+        : (rapidLight ? (wasAttack ? 0.025 : 0.032) : (wasAttack ? 0.11 : 0.07)),
+      speed: attackTempo,
+      // RETRO COMBAT EXPOSURE: empty-hand attacks deliberately read as
+      // A (guard/chamber) → B1 (ignition) → B2 (extension) → C (contact).
+      // Lights expose at 15fps (a 0.26s jab is four held drawings) and
+      // heavies at 10fps. 15fps also guarantees the 55ms jab contact window
+      // contains an exposure; 12fps could jump from 83ms to 166ms and skip
+      // that real collision entirely. The whole pose snaps as one drawing.
+      // Twin-palm l5 stays continuously sampled: both hands cross the body
+      // between exposures, and quantizing it can credit the swept segment a
+      // frame before either visible palm reaches the torso.
+      stepRate: def.strikeHand
+        ? (this.swordDrawn ? (!rapidLight ? 24 : undefined)
+          : def.id === 'l5' ? undefined : def.hit.heavy ? 10 : 15)
+        : undefined,
+      armBlendLimit: def.strikeHand
+        ? def.hit.start * (rapidLight ? .45 : .75)
+        : undefined,
     })
     // slight ground friction during attacks
   }
@@ -2611,6 +2826,17 @@ export class Player {
     const def = a.def
     a.animT = this.animator.getTime()
     const animT = a.animT
+
+    // AUTHORITATIVE ROOT MOTION: sample displacement from the same clip clock
+    // that poses the legs and blade. This moves the real player body through
+    // compression→contact→catch; it is not a cosmetic local translation.
+    if (def.rootMotion && !this.dashMotionActive) {
+      const displacement = sampleRootMotion(def.rootMotion, animT) * a.rootMotionScale
+      const dx = displacement - a.rootMotionPrev
+      this.x = clamp(this.x + this.face * dx, w.arenaMinX, w.arenaMaxX)
+      this.attackTravel += Math.abs(dx)
+      a.rootMotionPrev = displacement
+    }
 
     // A through-cut rides the live dash motor instead of braking it.
     if (this.grounded && !this.dashMotionActive) {
@@ -2633,7 +2859,7 @@ export class Player {
       this.swingScale = Math.max(this.swingScale, 1.3) // velocity stretch
     }
     // forward impulse
-    if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
+    if (!def.rootMotion && !a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
       a.moveDone = true
       // ---- RANGE-AWARE STEP ------------------------------------------------
       // A strike may step in to reach its target, never past it. The empty-
@@ -2732,7 +2958,11 @@ export class Player {
     }
     if (animT >= h.start && animT <= h.end) {
       this.swingGlow = 1
-      const info = makeRuntimeInfo(def, def.strikeHand?1:this.sword.stats.dmg)
+      // Heavy attacks trade the lights' speed for force in both stances.
+      // Apply the power budget at the shared runtime boundary so fists and
+      // every sword inherit it without duplicating/tuning dozens of defs.
+      const powerScale = def.hit.heavy ? 1.2 : 1
+      const info = makeRuntimeInfo(def, (def.strikeHand ? 1 : this.sword.stats.dmg * (this.sword.confidence ?? 1) * this.steelConditionScale) * powerScale)
       // DASH THROUGH-CUT: the iai pass cuts everything the dash swept
       // through — the player crosses the target at 980px/s BEFORE the
       // attack anim even starts, so the blade-only segment points past
@@ -2856,6 +3086,11 @@ export class Player {
         let next: string | null = null
         if (input.buffered('light')) {
           input.takeBuffered('light')
+          if(!this.swordDrawn){
+            w.fx.endTrail(a.trail)
+            this.startAttack(this.pickPunch(w),w)
+            return
+          }
           if (this.riposteT > 0 && this.grounded) {
             next = 'riposte'
           } else if (this.grounded && ax !== 0 && Math.sign(ax) === this.face && def.chain.includes('stabs')) {
@@ -2894,6 +3129,11 @@ export class Player {
           }
         } else if (input.buffered('heavy')) {
           input.takeBuffered('heavy')
+          if(!this.swordDrawn){
+            w.fx.endTrail(a.trail)
+            this.startAttack(this.pickKick(w),w)
+            return
+          }
           if (!this.grounded) {
             // THE SHADOW RONIN SET: air heavy after FALCON DIVE chains into
             // AVALANCHE METEOR DROP (the plunge alternative to METEOR FALL);
@@ -2964,6 +3204,14 @@ export class Player {
     if (info.hitstop >= 0.07 && this.impactFlashT <= 0) {
       this.impactFlashT = 0.085
     }
+    // Heavy contact gets one coherent visual sentence at the actual
+    // limb/blade contact. Keep this deterministic (no random particle call):
+    // combat geometry and QA must not change because an earlier hit happened
+    // to consume a different number of cosmetic random values.
+    if (info.heavy) {
+      w.fx.shockwave(ex, ey, 58, this.sword.colors.glow, 0.24, 4)
+      w.cam.addTrauma(0.12)
+    }
     if(!this.swordDrawn)return
     // elemental on-hit flourishes
     const c = this.sword.colors
@@ -3021,8 +3269,15 @@ export class Player {
     this.dashMotionActive=false
     w.input.takeBuffered('parry')
     this.state = 'parry'
-    this.parryT = 0.3
-    this.parryActive = 0.17
+    // Three defense weights, one ruleset: short weapons redirect early and
+    // recover quickly; long/heavy blades brace longer; an empty hand uses a
+    // compact forearm deflection. The perfect window is always the narrow
+    // opening slice of the larger guard window.
+    const form = this.swordDrawn ? this.sword.form : 'short'
+    const guardWindow = form === 'greatblade' ? .22 : form === 'nodachi' ? .195 : form === 'short' ? .145 : .17
+    this.parryT = form === 'greatblade' ? .39 : form === 'nodachi' ? .35 : form === 'short' ? .255 : .3
+    this.parryActive = guardWindow
+    this.parryPerfectT = form === 'short' ? .045 : form === 'greatblade' ? .055 : .05
     this.parryPerfect = true
     this.dropAction()
     this.charging = false
@@ -3035,6 +3290,27 @@ export class Player {
   private updateParry(dt: number, w: WorldRef): void {
     this.parryT -= dt
     this.parryActive -= dt
+    this.parryPerfectT = Math.max(0, this.parryPerfectT - dt)
+    // A perfect redirect opens an authored choice rather than auto-playing a
+    // canned riposte: light draws through, heavy launches with the whole-body
+    // step kick, and jump converts immediately into aerial pursuit.
+    if (this.riposteT > 0) {
+      if (w.input.pressed('heavy') || w.input.buffered('heavy')) {
+        w.input.takeBuffered('heavy')
+        this.startAttack(ATTACKS.stepKick, w, true)
+        return
+      }
+      if (w.input.pressed('light') || w.input.buffered('light')) {
+        w.input.takeBuffered('light')
+        this.startAttack(ATTACKS.riposte, w, true)
+        return
+      }
+      if (!this.grounded && (w.input.pressed('jump') || w.input.buffered('jump', .12))) {
+        this.doJump(w)
+        this.startAttack(ATTACKS.a4, w, true)
+        return
+      }
+    }
     const braceDt=Math.min(dt,this.parryBraceT)
     this.parryBraceT=Math.max(0,this.parryBraceT-dt)
     if (this.grounded) {
@@ -3049,21 +3325,26 @@ export class Player {
   /** Called by Game when an enemy strike connects while parry window is open. */
   onParrySuccess(w: WorldRef, sourceX: number, perfect: boolean): void {
     const colors = this.sword.colors
+    const plain = this.sword.mundane
+    const metal = plain ? '#aeb5b1' : colors.glow
     const px = (this.x + sourceX) / 2
     const py = this.y - 55
-    w.fx.impactFrame(px, py, colors.glow) // the counter's kill frame
-    w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), true, colors.glow, '#ffffff')
-    w.fx.shockwave(px, py, 90, colors.glow, 0.3, 5)
-    w.fx.screenFlash('#ffffff', 0.22, 6)
+    if (perfect) w.fx.impactFrame(px, py, metal)
+    w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), perfect && !plain, metal, plain ? '#d1d4d1' : '#ffffff')
+    // Physical parries throw brief steel filings; energy rings belong only to
+    // supernatural weapons. Perfect timing gets denser sparks, not neon.
+    if (plain) w.fx.burst(px, py, perfect ? 7 : 3, '#b5bbb7', perfect ? 210 : 120, .24, 'spark')
+    else w.fx.shockwave(px, py, perfect ? 90 : 52, colors.glow, perfect ? 0.3 : 0.18, perfect ? 5 : 3)
+    if (perfect) w.fx.screenFlash(plain ? '#d5d8d5' : '#ffffff', plain ? .1 : .22, plain ? 2 : 6)
     w.audio.play(perfect ? 'parryPerfect' : 'parry')
-    w.addHitstop(0.11, 0.1)
-    w.addSlowmo(0.25, 0.22)
-    w.cam.addTrauma(0.3)
-    w.cam.zoomPulse(0.12)
-    this.meter = Math.min(100, this.meter + 10)
-    this.energy = Math.min(this.maxEnergy, this.energy + 12)
-    this.riposteT = 0.95
-    this.parryT = 0.12
+    w.addHitstop(perfect ? 0.11 : 0.045, perfect ? 0.1 : 0)
+    if (perfect) w.addSlowmo(0.25, 0.22)
+    w.cam.addTrauma(perfect ? 0.3 : 0.1)
+    if (perfect) w.cam.zoomPulse(0.12)
+    this.meter = Math.min(100, this.meter + (perfect ? 10 : 3))
+    this.energy = Math.min(this.maxEnergy, this.energy + (perfect ? 12 : 4))
+    this.riposteT = perfect ? 0.95 : 0
+    this.parryT = perfect ? 0.12 : 0.2
     this.parryActive = 0
     this.flashT = 0.6
     // LIGHTNING PARRY (thunder): the incoming strike's kinetic line
@@ -3093,6 +3374,16 @@ export class Player {
 
   private enterCharge(w: WorldRef): void {
     this.dashMotionActive=false
+    // Read the outgoing pose BEFORE dropAction: each light leaves the blade
+    // in a different chamber and therefore earns a different held-heavy
+    // release. Air strings prepare the pursuit/plunge branch.
+    const from = this.action?.def.id
+    this.chargeBranch = !this.grounded
+      ? 'air'
+      : from === 'l1' ? 'rising'
+      : from === 'l2' ? 'blender'
+      : from === 'l3' ? 'storm'
+      : 'neutral'
     this.state = 'charge'
     this.charging = true
     this.chargeT = 0
@@ -3106,7 +3397,7 @@ export class Player {
   private updateCharge(dt: number, w: WorldRef): void {
     const input = w.input
     this.chargeT += dt
-    if (!this.chargeReady && this.chargeT >= 0.55) {
+    if (!this.chargeReady && this.chargeT >= this.heavyChargeTime) {
       this.chargeReady = true
       w.audio.play('chargeReady')
     }
@@ -3115,7 +3406,7 @@ export class Player {
     // edge glint / vibration ghost / tip star). The THUNDER sword keeps its
     // tesla-crawl — that is that blade's element identity, not the charge.
     if (this.chargeReady) {
-      if (this.swordDrawn && Math.random() < 0.3) {
+      if (this.swordDrawn && !this.sword.mundane && Math.random() < 0.3) {
         w.fx.sparks(this.blade.tx, this.blade.ty, -Math.PI / 2, .35, 1, '#eaf6ff', 200, .18)
       }
       if (this.swordDrawn && this.sword.id === 'thunder' && Math.random() < 0.55) {
@@ -3124,16 +3415,31 @@ export class Player {
     }
     if (this.grounded) this.vx = 0
 
-    // release
-    if (!input.down('heavy')) {
+    // Release follows the button that armed this stance: J for piston, K for
+    // orbital heel. Sword charge remains on K.
+    const chargeHeld=this.swordDrawn?input.down('heavy'):input.down(this.unarmedChargeKind==='punch'?'light':'heavy')
+    if (!chargeHeld) {
       this.charging = false
-      if (this.chargeT >= 0.4) {
-        this.startAttack(ATTACKS.charged, w)
+      if (this.chargeT >= this.heavyChargeReleaseTime) {
+        // Sam-style contextual quick draws: the preceding light determines
+        // which full-body chamber detonates. Existing authored attacks are
+        // reused only where their geometry already matches that purpose.
+        const release = this.chargeBranch === 'rising'
+          ? (this.swordDrawn ? ATTACKS.risingGale : ATTACKS.launcher)
+          : this.chargeBranch === 'blender'
+            ? (this.swordDrawn ? ATTACKS.blenderCharge : ATTACKS.spin)
+            : this.chargeBranch === 'storm'
+              ? (this.swordDrawn ? ATTACKS.stormFront : ATTACKS.powerArc)
+              : this.chargeBranch === 'air' ? ATTACKS.a4
+              : ATTACKS.charged
+        this.chargeBranch = 'neutral'
+        this.startAttack(this.swordDrawn?release:(this.unarmedChargeKind==='punch'?CHARGED_PUNCH:CHARGED_KICK),w)
         w.audio.play('chargeReady', { pitch: 0.8 })
         return
       }
-      // too short: treat as heavy tap
-      this.startAttack(this.pickHeavy(w), w)
+      // too short: treat as heavy tap; no stale combo chamber survives.
+      this.chargeBranch = 'neutral'
+      this.startAttack(this.swordDrawn?this.pickHeavy(w):(this.unarmedChargeKind==='punch'?this.pickPunch(w):this.pickKick(w)),w)
       return
     }
     // dash cancels charge
@@ -3272,109 +3578,94 @@ export class Player {
     w.fx.screenFlash(c.trail, 0.14, 4)
     w.cam.zoomPulse(0.1)
 
-    switch (this.sword.id) {
-      case 'katana': {
-        // BLADE STORM — chain of teleport dashes through nearest enemies
-        this.enterScripted()
-        w.audio.play('dash', { pitch: 1.2 })
-        break
-      }
-      case 'inferno': {
-        // INFERNO WAVE — rolling fire projectile
-        w.audio.play('fire', { intensity: 1 })
-        w.spawnProjectile({
-          kind: 'firewave', x: this.x + this.face * 46, y: -12,
-          vx: this.face * 560, vy: 0, dmg: 38 * this.sword.stats.dmg, life: 1.4,
-        })
-        w.fx.shockwave(this.x + this.face * 40, 0, 120, c.glow, 0.5, 7)
-        w.fx.burst(this.x + this.face * 50, -20, 18, c.trail, 420, 0.6, 'ember')
-        w.cam.addTrauma(0.35)
-        this.playAnimation(ATTACKS.l5.clip, { blend: 0.04, speed: 1.15 })
-        break
-      }
-      case 'thunder': {
-        // THUNDER RUSH — instant dash + RAY-TRACED chain lightning: the
-        // traveled line electrifies AND a discharge ray reflects
-        // body→body through the pack with intent (each reflection
-        // candidate is scored against the next live target)
-        this.enterScripted()
-        const startX = this.x
-        this.x = clamp(this.x + this.face * 300, w.arenaMinX + 30, w.arenaMaxX - 30)
-        w.audio.play('lightning', { intensity: 1 })
-        w.fx.afterimage(this.pose, this.x, this.hipY, this.face, c.trail, 0.4, SCALE)
-        w.fx.speedStreaks(this.x, this.y - 40, this.face * 900, 10, rgba(c.trail, 1))
-        const rw = { enemies: w.enemies, minX: w.arenaMinX, maxX: w.arenaMaxX }
-        // the path itself rides a bolt (no damage — pure line)
-        w.fx.lightningCast(rw, startX, this.y - 55, this.face, 0, {
-          color: c.trail, energy: 1, bounces: 1, width: 3, maxLen: 340,
-        })
-        // the discharge from the exit blade: bounces through the pack
-        w.fx.lightningCast(rw, this.x + this.face * 30, this.y - 55, this.face, -0.15, {
-          color: c.trail, energy: 1, bounces: 4, dmg: 24, width: 3.2, maxLen: 480,
-          hit: (e, d) => {
-            if (e.id === undefined) return
-            this.dealAbilityDamage(w, e as unknown as EnemyLike, d, 0.35, 160, -180)
-            w.fx.burst(e.x, e.y - 40, 6, c.accent, 200, 0.4, 'spark')
-          },
-        })
-        w.cam.addTrauma(0.4)
-        w.addHitstop(0.08)
-        this.exitScriptedSoon = 0.35
-        break
-      }
-      case 'void': {
-        // VOID STEP — teleport into densest cluster + implode
-        this.enterScripted()
-        const target = this.findDensest(w, 200)
-        if (target) {
-          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
-          this.x = clamp(target.x + (target.x > this.x ? -70 : 70), w.arenaMinX + 30, w.arenaMaxX - 30)
-          this.face = target.x > this.x ? 1 : -1
-          w.fx.dissolve(this.x, this.y - 50, c.core, c.glow)
-          w.audio.play('void', { intensity: 1 })
-          w.fx.shockwave(this.x, 0, 160, c.glow, 0.5, 8)
-          for (const e of w.enemies) {
-            if (e.dead || e.spawning) continue
-            if (Math.abs(e.x - this.x) < 130 && e.y > -160) {
-              this.dealAbilityDamage(w, e, 34, 0.5, 100, -420)
-            }
-          }
-          this.playAnimation(ATTACKS.charged.clip, { blend: 0.02, speed: 1.3 })
-          w.addHitstop(0.1, 0.12)
-          w.addSlowmo(0.3, 0.3)
-          w.cam.addTrauma(0.5)
-        }
-        this.exitScriptedSoon = 0.4
-        break
-      }
-      case 'gravity': {
-        // GRAVITY CRUSH — pull, suspend, slam
-        this.enterScripted()
-        w.audio.play('gravity', { intensity: 1 })
-        w.fx.shockwave(this.x, 0, 240, c.glow, 0.7, 9)
-        for (const e of w.enemies) {
-          if (e.dead || e.spawning) continue
-          const dx = this.x - e.x
-          if (Math.abs(dx) < 260 && e.y > -200) {
-            e.vx = dx * 3.2
-            e.vy = -rand(380, 480)
-            e.launched = true
-            this.ability.targets.push(e.id)
-          }
-        }
-        this.playAnimation(ATTACKS.h3.clip, { blend: 0.04, speed: 1.2 })
-        this.exitScriptedSoon = 0.75
-        break
-      }
-      case 'phantom': {
-        // PHANTOM BARRAGE — delayed echo slashes
-        this.enterScripted()
-        const targets = this.collectNearest(w, 4, 420)
-        this.ability.targets = targets.map((e) => e.id)
-        w.audio.play('phantom', { intensity: 1 })
-        break
-      }
+    // Weapon techniques are "playable cinematics": a bespoke full-body clip,
+    // authored travel, anticipation/contact/catch, hitstop and restrained FX,
+    // while enemies, input buffering and the camera continue running normally.
+    // They deliberately do NOT enter the scripted/cutscene state.
+    const techniques: Record<SwordId, { def: AttackDef; label: string; dmg: number; speed: number }> = {
+      katana:    { def: ATTACKS.stormFront,    label: 'CROSSING DRAW',   dmg: 31, speed: 1.08 },
+      wakizashi: { def: ATTACKS.blenderCharge, label: 'TURNING PAIR',    dmg: 24, speed: 1.22 },
+      chokuto:   { def: ATTACKS.stabs,         label: 'STRAIGHT THROUGH',dmg: 29, speed: 1.08 },
+      saber:     { def: ATTACKS.spin,          label: 'RUNNING MOULINET',dmg: 27, speed: 1.17 },
+      nodachi:   { def: ATTACKS.powerArc,      label: 'FALLING PINE',    dmg: 38, speed: .96 },
+      greatblade:{ def: ATTACKS.risingGale,    label: 'HALF-MOON BREAK', dmg: 42, speed: .9 },
+      inferno:   { def: ATTACKS.stormFront,    label: 'CINDER RETURN',   dmg: 36, speed: 1 },
+      thunder:   { def: ATTACKS.dashSlash,     label: 'STATIC PASS',     dmg: 28, speed: 1.2 },
+      frost:     { def: ATTACKS.h2,            label: 'COLD SNAP',       dmg: 34, speed: 1.02 },
+      gale:      { def: ATTACKS.dashHeavy,     label: 'WINDSTEP',        dmg: 29, speed: 1.18 },
+      earth:     { def: ATTACKS.powerArc,      label: 'FAULT LINE',      dmg: 44, speed: .86 },
+      void:      { def: ATTACKS.retreat,       label: 'BLIND-SIDE STEP', dmg: 30, speed: 1.12 },
+      gravity:   { def: ATTACKS.risingGale,    label: 'UPROOT',          dmg: 39, speed: .94 },
+      phantom:   { def: ATTACKS.blenderCharge, label: 'SECOND IMAGE',    dmg: 26, speed: 1.2 },
     }
+    let tech = techniques[this.sword.id]
+    const tier = this.sword.currentTier ?? 0
+    // Elemental rebuilds change choreography, not just numbers. Form II
+    // changes the attack's movement family; Form III changes it again into
+    // a larger two-phase-looking route with stronger contact punctuation.
+    const evolved: Partial<Record<SwordId, readonly [AttackDef, AttackDef, AttackDef]>> = {
+      katana: [ATTACKS.stormFront, ATTACKS.powerSlash, ATTACKS.riposte],
+      inferno: [ATTACKS.stormFront, ATTACKS.powerArc, ATTACKS.powerSlash],
+      thunder: [ATTACKS.dashSlash, ATTACKS.dashHeavy, ATTACKS.stormFront],
+      frost: [ATTACKS.h2, ATTACKS.risingGale, ATTACKS.powerArc],
+      gale: [ATTACKS.dashHeavy, ATTACKS.stormFront, ATTACKS.blenderCharge],
+      earth: [ATTACKS.powerArc, ATTACKS.risingGale, ATTACKS.powerSlash],
+      void: [ATTACKS.retreat, ATTACKS.dashSlash, ATTACKS.stormFront],
+      gravity: [ATTACKS.risingGale, ATTACKS.launcher, ATTACKS.powerArc],
+      phantom: [ATTACKS.blenderCharge, ATTACKS.spin, ATTACKS.dashHeavy],
+    }
+    const forms = evolved[this.sword.id]
+    if (forms) tech = { ...tech, def: forms[tier], dmg: tech.dmg + tier * (tier === 2 ? 7 : 4) }
+    const authored = tech.def
+    const special: AttackDef = {
+      ...authored,
+      id: `weapon-${this.sword.id}`,
+      label: tech.label,
+      clip: authored.clip,
+      hit: {
+        ...authored.hit,
+        dmg: tech.dmg,
+        heavy: tech.dmg >= 34,
+        breakGuard: tech.dmg >= 29,
+        hitstop: Math.max(authored.hit.hitstop, tech.dmg >= 34 ? .095 : .065),
+        shake: Math.max(authored.hit.shake, tech.dmg >= 34 ? .34 : .22),
+      },
+      cancel: Math.max(authored.hit.end + .06, authored.cancel * .92),
+    }
+    // One material accent per family. The blade and body remain the spectacle.
+    if (this.sword.mundane) {
+      // Plain steel gets only a tiny contact spark; never aura, elemental
+      // particles, dissolve, pressure ring or chromatic spectacle.
+      w.fx.burst(this.x + this.face * 34, this.y - 42, 2, '#d8dcda', 90, .18, 'spark')
+    } else if (this.sword.id === 'inferno') w.fx.burst(this.x + this.face * 38, this.y - 30, 8, c.trail, 180, .38, 'ember')
+    else if (this.sword.id === 'thunder') w.fx.burst(this.x + this.face * 30, this.y - 45, 7, c.trail, 210, .3, 'spark')
+    else if (this.sword.id === 'phantom') w.fx.afterimage(this.pose, this.x - this.face * 18, this.hipY, this.face, c.trail, .24, SCALE)
+    else if (this.sword.id === 'frost') {
+      w.fx.burst(this.x + this.face * 44, this.y - 42, 12, c.core, 230, .42, 'shard')
+      w.fx.screenFlash(c.trail, .1, 2)
+    } else if (this.sword.id === 'gale') {
+      w.fx.shockwave(this.x + this.face * 38, this.y - 38, 88, c.trail, .28, 3)
+      w.fx.speedStreaks(this.x, this.y - 42, this.face * 520, 7, rgba(c.trail, .8))
+    } else if (this.sword.id === 'earth') {
+      w.fx.groundCrack(this.x + this.face * 54, 0, 76)
+      w.fx.dust(this.x + this.face * 48, 0, 9)
+    } else if (this.sword.id === 'void') w.fx.dissolve(this.x - this.face * 14, this.y - 45, c.core, c.glow)
+    else if (this.sword.id === 'gravity' || this.sword.id === 'greatblade') w.fx.dust(this.x - this.face * 12, 0, 5)
+    else w.fx.burst(this.x + this.face * 28, this.y - 44, 4, c.accent, 120, .25, 'spark')
+    // Upgrade punctuation remains bounded: Form II adds a second material
+    // accent, Form III adds a pressure ring and stronger camera impulse.
+    if (forms && tier >= 1 && !this.sword.mundane) {
+      const particle = this.sword.id === 'inferno' ? 'ember' : this.sword.id === 'frost' || this.sword.id === 'earth' ? 'shard' : 'spark'
+      w.fx.burst(this.x + this.face * (48 + tier * 10), this.y - 38, 5 + tier * 3, c.trail, 180 + tier * 55, .32 + tier * .08, particle)
+    }
+    if (forms && tier === 2 && !this.sword.mundane) {
+      w.fx.shockwave(this.x + this.face * 52, this.y - 38, 105, c.glow, .32, 4)
+      w.cam.addTrauma(.16)
+    }
+    this.ability = null
+    this.startAttack(special, w, true)
+    // Base weapon speed still governs playback; the selected clips preserve
+    // each form's mass through their authored anticipation and recovery.
   }
 
   /** set > 0 to auto-exit scripted state after t seconds */
@@ -3815,6 +4106,28 @@ export class Player {
         }
       }
     }
+  }
+
+  /** Nearest enemy that can actually participate in an air string. Horizontal
+   * and vertical gates prevent snapping across the arena or diving at a body
+   * already lying on the floor. `launched` includes the rising/falling juggle;
+   * drones and other naturally airborne bodies qualify by height. */
+  private nearestAirTarget(w: WorldRef, rangeX: number, rangeY: number): { x: number; y: number } | null {
+    let best: { x: number; y: number } | null = null
+    let bestScore = Infinity
+    for (const e of w.enemies) {
+      if (e.dead || e.spawning || e.state === 'down' || e.state === 'getup') continue
+      if (e.state !== 'launched' && e.y > -18) continue
+      const dx = e.x - this.x
+      const dy = e.y - this.y
+      if (Math.abs(dx) > rangeX || Math.abs(dy) > rangeY) continue
+      const score = Math.abs(dx) + Math.abs(dy) * 1.35
+      if (score < bestScore) {
+        bestScore = score
+        best = { x: e.x, y: e.y }
+      }
+    }
+    return best
   }
 
   private nearestEnemy(w: WorldRef, range: number): { x: number; y: number } | null {
@@ -4530,16 +4843,16 @@ export class Player {
       const tipX = mouthX - Math.cos(ang) * sayLen
       const tipY = mouthY + Math.sin(ang) * sayLen
       // saya body (slightly lighter than the body so it reads on the hip)
-      ctx.strokeStyle = '#0d1219'
-      ctx.lineWidth = 4.6
+      ctx.strokeStyle = this.sword.mundane ? '#171412' : '#0d1219'
+      ctx.lineWidth = this.sword.mundane ? 3.5 : 4.6
       ctx.lineCap = 'round'
       ctx.beginPath()
       ctx.moveTo(mouthX, mouthY)
       ctx.lineTo(tipX, tipY)
       ctx.stroke()
       // rim highlight along the top edge — sells it as a scabbard
-      ctx.strokeStyle = '#465a7a'
-      ctx.lineWidth = 1.6
+      ctx.strokeStyle = this.sword.mundane ? '#55483d' : '#465a7a'
+      ctx.lineWidth = this.sword.mundane ? .7 : 1.6
       ctx.beginPath()
       ctx.moveTo(mouthX-.6, mouthY-2.2)
       ctx.lineTo(tipX + Math.cos(ang) * 2, tipY - Math.sin(ang) * 2)
@@ -4557,14 +4870,16 @@ export class Player {
       // bright tsuba at the mouth: two equal rings flipped the katana's
       // read at a glance (VLM: "the far back ring could be misread as the
       // pommel") — the forward hilt owns the bright metal.
-      ctx.fillStyle = '#0d1219'
+      ctx.fillStyle = this.sword.mundane ? '#27211c' : '#0d1219'
       ctx.beginPath()
-      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+      ctx.arc(tipX, tipY, this.sword.mundane ? 1.65 : 3.1, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.32)
-      ctx.beginPath()
-      ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
-      ctx.stroke()
+      if (!this.sword.mundane) {
+        ctx.strokeStyle = rgba(this.sword.colors.accent, 0.32)
+        ctx.beginPath()
+        ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+        ctx.stroke()
+      }
       // SHEATHED tsuka stub: moved to a FRONT pass (after the body) — the
       // grip pokes out FORWARD of the hip silhouette at navel height, and
       // the old behind-body draw swallowed it into the black pelvis blob
@@ -4573,8 +4888,9 @@ export class Player {
     // Rear-up carry belongs behind the torso. The opaque body occludes
     // the back blade rather than displaying steel through the ribcage.
     const drawing=this.sheathAct?.mode==='draw'
-    const rearCarry=!drawing&&this.swordDrawn&&this.state!=='attack'&&this.geom.tip.x<this.geom.grip.x&&this.geom.bladeYaw<0
-    if(rearCarry)drawSword(ctx,this.sword,{time,charge:this.bladeChargeRatio,alpha,swingGlow:0},
+    const sheathing=this.sheathAct?.mode==='sheathe'
+    const rearCarry=!drawing&&!sheathing&&this.swordDrawn&&this.state!=='attack'&&this.geom.tip.x<this.geom.grip.x&&this.geom.bladeYaw<0
+    if(rearCarry)drawSword(ctx,this.sword,{time,charge:this.bladeChargeRatio,alpha,swingGlow:0,condition:this.swordCondition},
       this.geom.grip.x,this.geom.grip.y,this.geom.bladeProjAngle,this.geom.bladeProjLen,this.geom.bladeTipZ)
     const currentClip=this.animator.getClip()
     const handPhase=currentClip && currentClip.dur>0
@@ -4653,6 +4969,24 @@ export class Player {
     // THE 3D BLADE: projected metrics from the rig — grip, projected angle
     // (after yaw + perspective), projected length, tip depth. Visual blade
     // == hitbox blade (updateBladeWorld consumes the same numbers).
+    // During noto, exposed steel decreases continuously across the saya
+    // mouth. The physical weapon is never replaced by a one-frame hide.
+    if(sheathing){
+      const seconds=this.sheathAct!.dur-this.sheathAct!.t
+      const d=sheatheDetail(seconds),g=this.geom
+      if(d.visible>.015){
+        const pelvisPitch=this.pose[CH.rootRot]+this.pose[CH.spine]*.35
+        const sayaAng=.24+pelvisPitch*.6
+        const home=Math.PI-sayaAng
+        let delta=g.bladeProjAngle-home;while(delta>Math.PI)delta-=Math.PI*2;while(delta< -Math.PI)delta+=Math.PI*2
+        const angle=g.bladeProjAngle-delta*d.align
+        // The clip's right-hand anatomy carries the hilt toward the mouth;
+        // shortening here represents only the section still outside the
+        // opaque saya, not a changing weapon length.
+        drawSword(ctx,this.sword,{time,charge:0,alpha,swingGlow:0,condition:this.swordCondition},
+          g.grip.x,g.grip.y,angle,Math.max(2,g.bladeProjLen*d.visible),g.bladeTipZ)
+      }
+    }
     // Sheathed → the steel is inside the saya: only the resting tsuka stub
     // renders (the saya block above); the live weapon pass is skipped.
     if(drawing){
@@ -4670,7 +5004,7 @@ export class Player {
       }
       const pull=PLAYER_SPEC.blade*this.sword.stats.range*1.06*d.extraction
       const gx=d.x+Math.cos(d.ang)*pull,gy=d.y-Math.sin(d.ang)*pull
-      drawSword(ctx,this.sword,{time,charge:0,alpha,swingGlow:0},
+      drawSword(ctx,this.sword,{time,charge:0,alpha,swingGlow:0,condition:this.swordCondition},
         gx+(g.handR.x-gx)*d.grip,gy+(g.handR.y-gy)*d.grip,angle,
         PLAYER_SPEC.blade*this.sword.stats.range*1.06*(1-d.turn)+g.bladeProjLen*d.turn,g.bladeTipZ)
       ctx.restore()
@@ -4682,12 +5016,13 @@ export class Player {
         drawArticulatedHand(ctx,'#000000',d.rightOpen);ctx.restore()
       }
     }
-    if (this.swordDrawn && !rearCarry && !drawing) {
+    if (this.swordDrawn && !rearCarry && !drawing && !sheathing) {
       drawSword(ctx, this.sword, {
         time,
         charge: this.bladeChargeRatio,
         alpha,
         swingGlow: this.swingGlow,
+        condition: this.swordCondition,
       }, this.geom.grip.x, this.geom.grip.y, this.geom.bladeProjAngle, this.geom.bladeProjLen, this.geom.bladeTipZ)
     }
     ctx.restore()
@@ -4703,7 +5038,7 @@ export class Player {
     // space, drawn here so it composites over the body with additive glow.
     const dA = this.hasPrevAng ? this.smearA1 - this.smearA0 : 0
     const tipSpd = Math.abs(dA) * 62 * PLAYER_SPEC.blade * SCALE * this.swingScale
-    if (tipSpd > 950 && this.state==='attack' && this.swordDrawn) {
+    if (tipSpd > 950 && this.state==='attack' && this.swordDrawn && !this.sword.mundane) {
       // pivot = the weapon grip (the blade's true rotation center), world space
       const px = this.x + this.face * SCALE * this.geom.grip.x
       const py = this.hipY + SCALE * this.geom.grip.y
@@ -4745,7 +5080,7 @@ export class Player {
     // localized light into the world (additive radial at blade mid). The
     // charge contributes only a third weight — the glint, not a furnace. ----
     const lightI = clamp01(this.swingGlow * 0.8 + this.bladeChargeRatio * 0.3)
-    if (lightI > 0.25 && this.swordDrawn) {
+    if (lightI > 0.25 && this.swordDrawn && !this.sword.mundane) {
       const mx = (this.blade.bx + this.blade.tx) / 2
       const my = (this.blade.by + this.blade.ty) / 2
       const r = 72 + lightI * 74 + this.bladeZ * 30
@@ -4761,7 +5096,7 @@ export class Player {
     }
 
     // parry aura
-    if (this.state === 'parry' && this.parryActive > 0) {
+    if (this.state === 'parry' && this.parryActive > 0 && !this.sword.mundane) {
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
       ctx.strokeStyle = rgba(this.sword.colors.glow, 0.4 + 0.2 * Math.sin(time * 30))
