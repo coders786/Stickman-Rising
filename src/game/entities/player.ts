@@ -4787,7 +4787,7 @@ export class Player {
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
 
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight): void {
+  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const g = this.geom
     const f = this.face * SCALE
@@ -4825,7 +4825,7 @@ export class Player {
       for (const c of this.snapContacts) contacts.push(c)
     }
     drawCastShadow(ctx, this.shFig, light, {
-      alpha: 0.66, width: 6.4, passes: 3, scale: SCALE,
+      alpha: 0.92 * alphaScale, width: 7.6, passes: 3, scale: SCALE,
       height: this.y, contacts,
     })
   }
@@ -5064,7 +5064,7 @@ export class Player {
       // MOONLIGHT RIM — the cool sky key carves the black ronin out of the
       // night; lightning strobes lift it (strobeK rides the key light, set
       // by the renderer each frame).
-      rimColor:'#8fc3ee',rimAlpha:0.5+this.strobeK*0.55,
+      rimColor:'#a5d2f2',rimAlpha:0.85+this.strobeK*0.15,
       alpha,
       // Null-black face/body stays black through hurt and impact frames.
       flash: 0, // null-black body; impacts remain in weapon/scene FX

@@ -81,6 +81,8 @@ export class ZenNightBackground{
  drawShaftMask(_ctx:CanvasRenderingContext2D,_cam:BgCam){}
  /** zen-night's water is its own garden mirror — no shared roughness plate */
  drawWetMask(_ctx:CanvasRenderingContext2D){}
+ /** zen-night's garden lights are its own system */
+ drawLightRig(_ctx:CanvasRenderingContext2D,_moonWorldX:number){}
  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();const w=this.w,h=this.h,t=this.t,hy=h*.5+(0-cam.y)*cam.zoom
   ctx.save();ctx.drawImage(this.staticFar!,0,0,w,h)
   // cached moon with a stable celestial parallax

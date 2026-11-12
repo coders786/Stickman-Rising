@@ -12,7 +12,7 @@ import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
-import { KeyLight, keyLightFromStorm } from './lighting'
+import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint } from './lighting'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
  * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
@@ -98,6 +98,12 @@ export class Renderer {
     // puddle windows let it through (static pre-baked world-space plate)
     bg.drawWetMask(ctx)
 
+    // TYPED LIGHT RIG (UE archetypes): directional key's diffuse pool (the
+    // LIT SURFACE the shadows read against), the moon's specular glitter
+    // lane on the wet mirror, sweeping spot pools, vent steam
+    const moonWorldX = cam.x + cam.offX + (bg.moonX - w / 2) / cam.zoom
+    bg.drawLightRig(ctx, moonWorldX)
+
     // ---- LIGHTING ENGINE: one dynamic key light (moon ↔ storm strobes)
     // drives PROJECTED SKELETON SHADOWS for every entity: each solved joint
     // (and the blade) casts along the light rays onto the ground plane —
@@ -111,11 +117,21 @@ export class Renderer {
     // long deck shadows breathe as the banks drift over the disc
     light.i *= 1 - 0.42 * bg.moonCover
     light.hard *= 1 - 0.32 * bg.moonCover
+    // DUAL SHADOWS — the directional moon key plus the point practical's
+    // own warm shadow falling away from the door (every light type shadows)
     player.drawShadow(ctx, light)
+    if (Math.abs(player.x - DOOR_LIGHT.x) < 1200) {
+      const dk = shadowKeyFromPoint(DOOR_LIGHT, player.x, player.y)
+      if (dk.i > 0.06) player.drawShadow(ctx, dk, 0.5)
+    }
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
       e.drawShadow(ctx, light)
+      if (Math.abs(e.x - DOOR_LIGHT.x) < 1200) {
+        const dk = shadowKeyFromPoint(DOOR_LIGHT, e.x, e.y)
+        if (dk.i > 0.06) e.drawShadow(ctx, dk, 0.5)
+      }
     }
 
     // STROBE RIM: light the casters — every figure's bolt-facing edge
@@ -165,8 +181,9 @@ export class Renderer {
     // 3.25 MOON GOD-RAY SHAFTS — occlusion → radial smear → additive
     this.drawMoonShafts(ctx, w, h, world)
 
-    // 3.5 CINEMATIC BLOOM — selective: emissives spill a soft halo
-    this.drawBloom(ctx, w, h)
+    // 3.5 CINEMATIC BLOOM — selective: emissives spill a soft halo; the
+    // storm's relight event pulses the whole bloom energy
+    this.drawBloom(ctx, w, h, clamp01(li))
 
     // 3.6 ANAMORPHIC STRIKE STREAKS — horizontal lens flare while the sky
     // strobes (the filmic signature of a lightning-lit frame)
@@ -223,7 +240,7 @@ export class Renderer {
    * pyramid (¼ → ⅛ → smooth ¼) and add it back with 'lighter'. Darks add
    * near-nothing; neon, blades, eyes, rain glints and lightning spill soft
    * halos. Plates are reused; only three low-res blits per frame. */
-  private drawBloom(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  private drawBloom(ctx: CanvasRenderingContext2D, w: number, h: number, relight = 0): void {
     if (this.quality === 'low') return
     const cw = Math.max(8, ctx.canvas.width), ch = Math.max(8, ctx.canvas.height)
     const bw = Math.max(2, cw >> 2), bh = Math.max(2, ch >> 2)
@@ -256,8 +273,9 @@ export class Renderer {
     a.drawImage(this.bloomB!, 0, 0, sw, sh, 0, 0, bw, bh)
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    // selective pass — emissives can carry more energy without a veil
-    ctx.globalAlpha = this.quality === 'ultra' ? 0.46 : this.quality === 'high' ? 0.36 : 0.24
+    // selective pass — emissives can carry more energy without a veil;
+    // the relight event pulses bloom with the strobe
+    ctx.globalAlpha = (this.quality === 'ultra' ? 0.46 : this.quality === 'high' ? 0.36 : 0.24) * (1 + 0.55 * relight)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(this.bloomA!, 0, 0, w, h)

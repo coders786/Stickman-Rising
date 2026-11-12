@@ -58,6 +58,9 @@ export interface BackgroundRenderer {
   drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** wet-deck roughness plate over the reflection band */
   drawWetMask(ctx:CanvasRenderingContext2D):void
+  /** typed light rig on the deck: directional pool, moon glitter lane,
+   *  spot pools, steam */
+  drawLightRig(ctx:CanvasRenderingContext2D,moonWorldX:number):void
 }
 
 /* ============================ seeded RNG ================================= */
@@ -521,6 +524,10 @@ export class CyberBackground {
   private wetMask!: HTMLCanvasElement;    // static wet-deck roughness plate
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
   private doorPool!: HTMLCanvasElement;   // warm pool the door spills
+  private moonGlitter!: HTMLCanvasElement; // specular lane of the moon key
+  private deckPool!: HTMLCanvasElement;   // directional key's diffuse wash
+  private spotPool!: HTMLCanvasElement;   // spot-cone cross section
+  private steamSpr!: HTMLCanvasElement;   // vent steam wisps
   /** moon state for the render pass (updated by drawSky): screen-space disc
    *  center + eclipse coverage 0..1 (how much cloud mass sits over it) */
   moonX = 0;
@@ -957,6 +964,40 @@ export class CyberBackground {
     this.storm.drawRain(ctx);
   }
 
+  /** TYPED LIGHT RIG on the deck (UE archetypes): directional key's diffuse
+   *  pool (the lit surface shadows read against), the moon's specular
+   *  glitter lane (the ray-traced wet look), two sweeping spot pools, and
+   *  vent steam. moonWorldX = where the moon's reflection lane lands. */
+  drawLightRig(ctx: CanvasRenderingContext2D, moonWorldX: number): void {
+    this.ensureBuilt();
+    const t = this.t, cov = this.moonCover, li = this.lightningI();
+    // DIRECTIONAL — diffuse pool on the deck (under everything else)
+    ctx.globalAlpha = (0.42 + 0.2 * li) * (1 - 0.5 * cov);
+    ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
+    ctx.globalAlpha = 1;
+    // steam wisps (behind the specular layers)
+    for (let i = 0; i < 3; i++) {
+      const sx = 300 + i * 860;
+      const rise = mod(t * (14 + i * 3) + i * 97, 190);
+      const sway = Math.sin(t * 0.5 + i * 2.1) * 14;
+      ctx.globalAlpha = 0.5 * (1 - rise / 190);
+      ctx.drawImage(this.steamSpr, sx + sway - 60, -rise - 20);
+    }
+    ctx.globalAlpha = 1;
+    // SPECULAR — the moon's glitter lane on the wet mirror
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = (0.34 + 0.18 * li) * (1 - 0.72 * cov);
+    ctx.drawImage(this.moonGlitter, moonWorldX - 190, -10, 380, 272);
+    // SPOT — slow-sweeping cool pools (cone cross-sections)
+    const sx1 = 560 + 150 * Math.sin(t * 0.21);
+    const sx2 = 2260 + 180 * Math.sin(t * 0.17 + 2);
+    ctx.globalAlpha = 0.3 * (1 - 0.4 * cov);
+    ctx.drawImage(this.spotPool, sx1 - 170, -8, 340, 120);
+    ctx.drawImage(this.spotPool, sx2 - 170, -8, 340, 120);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+  }
+
   /** WET-DECK ROUGHNESS — one static plate over the mirror band: matte
    *  dry islands + micro-striation chop the reflection, sharp puddle
    *  windows let it through with moonlit rims. */
@@ -1020,6 +1061,10 @@ export class CyberBackground {
     this.cloudShadowSpr = buildCloudShadowTile();
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
+    this.moonGlitter = this.buildMoonGlitter();
+    this.deckPool = this.buildDeckPool();
+    this.spotPool = this.buildSpotPool();
+    this.steamSpr = this.buildSteamWisp();
     this.fogSpr = buildFogSprite();
     this.mistSpr = buildMistSprite();
     this.beamSpr = buildBeamSprite();
@@ -1685,6 +1730,84 @@ export class CyberBackground {
     g.fillStyle = gr;
     g.beginPath(); g.arc(260, 150 / 0.58, 258, 0, TAU); g.fill();
     g.restore();
+    return c;
+  }
+
+  /** MOON GLITTER PATH — the specular column a directional light throws on
+   *  wet ground (moonlight-on-water). The ray-traced look in 2D: every
+   *  micro-facet of the wet mirror reflects the moon toward the eye as a
+   *  vertical shimmering lane. Pre-baked speckle + gradient, one blit. */
+  private buildMoonGlitter(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(380, 272);
+    const rng = mulberry32(0x91c3);
+    const gr = g.createLinearGradient(0, 0, 380, 0);
+    gr.addColorStop(0, 'rgba(180,208,238,0)');
+    gr.addColorStop(0.28, 'rgba(180,208,238,0.10)');
+    gr.addColorStop(0.5, 'rgba(196,220,246,0.30)');
+    gr.addColorStop(0.72, 'rgba(180,208,238,0.10)');
+    gr.addColorStop(1, 'rgba(180,208,238,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 380, 272);
+    // vertical falloff: brightest at the lip, dissolving toward the viewer
+    const vg = g.createLinearGradient(0, 0, 0, 272);
+    vg.addColorStop(0, 'rgba(2,4,8,0)');
+    vg.addColorStop(0.2, 'rgba(2,4,8,0)');
+    vg.addColorStop(1, 'rgba(2,4,8,0.85)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, 380, 272);
+    // micro-facet sparkle seeds
+    for (let i = 0; i < 90; i++) {
+      const x = 40 + rng() * 300, y = rng() * 130;
+      const a = 0.12 + rng() * 0.3;
+      g.fillStyle = `rgba(216,234,252,${a.toFixed(3)})`;
+      g.fillRect(x, y, 1.4 + rng() * 2.2, 1 + rng() * 1.6);
+    }
+    return c;
+  }
+
+  /** directional key's diffuse pool on the deck — the LIT SURFACE that makes
+   *  the shadows read (shadows on unlit ground are invisible). */
+  private buildDeckPool(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(512, 150);
+    const gr = g.createLinearGradient(0, 0, 0, 150);
+    gr.addColorStop(0, 'rgba(122,152,196,0.34)');
+    gr.addColorStop(0.45, 'rgba(112,142,188,0.17)');
+    gr.addColorStop(1, 'rgba(100,130,178,0)');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 150);
+    return c;
+  }
+
+  /** spot-light cone cross-section (UE spot: hot inner disc + soft outer) */
+  private buildSpotPool(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(340, 120);
+    const gr = g.createRadialGradient(170, 52, 8, 170, 52, 168);
+    gr.addColorStop(0, 'rgba(196,220,248,0.5)');
+    gr.addColorStop(0.38, 'rgba(176,202,236,0.18)');
+    gr.addColorStop(1, 'rgba(160,190,226,0)');
+    g.save();
+    g.scale(1, 0.35);
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(170, 52 / 0.35, 168, 0, TAU); g.fill();
+    g.restore();
+    return c;
+  }
+
+  /** drifting steam wisp for roof vents (environment life) */
+  private buildSteamWisp(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(120, 170);
+    const rng = mulberry32(0x51ea);
+    for (let i = 0; i < 6; i++) {
+      const y = 160 - i * 24 - rng() * 10;
+      const x = 60 + (rng() - 0.5) * (18 + i * 12);
+      const r = 16 + i * 7 + rng() * 12;
+      const a = 0.12 - i * 0.016;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, `rgba(148,168,188,${Math.max(0.02, a).toFixed(3)})`);
+      gr.addColorStop(1, 'rgba(148,168,188,0)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 120, 170);
+    }
     return c;
   }
 

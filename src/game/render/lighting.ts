@@ -45,6 +45,45 @@ export interface CastShadowOpts {
 
 
 const finite=(n:number,fallback:number)=>Number.isFinite(n)?n:fallback
+
+/* ===================== typed light rig (UE archetypes) =====================
+ * Directional = the moon key (KeyLight above). Point/spot/rect sources carry
+ * UE-style attenuation and cast their own shadows + wet-deck reflections. */
+export type LightKind = 'directional' | 'point' | 'spot' | 'rect'
+export interface Light2D {
+  kind: LightKind
+  x: number
+  y: number
+  /** attenuation radius (point/spot/rect) */
+  range: number
+  intensity: number
+  color: string
+  /** spot axis */
+  dirX?: number
+  dirY?: number
+  /** rect extent */
+  w?: number
+  h?: number
+}
+
+/** UE-style inverse-square-ish falloff, clamped at the attenuation radius */
+export function pointAt(l: Light2D, x: number, y: number): number {
+  const dx = x - l.x, dy = y - l.y
+  const r = Math.max(1, l.range)
+  return l.intensity / (1 + (dx * dx + dy * dy) / (r * r))
+}
+
+/** secondary shadow key from a point source: shadows fall AWAY from it */
+export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
+  const dx = x - l.x
+  const dirX = dx >= 0 ? 0.85 : -0.85
+  return {dirX, elev: .52, hard: .42, i: pointAt(l, x, y), color: '#170b05'}
+}
+
+/** the stairwell practical — scene point light (warm), world coords */
+export const DOOR_LIGHT: Light2D = {
+  kind: 'point', x: 1755, y: -120, range: 640, intensity: .95, color: '#ff9a4d',
+}
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
   // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt.
@@ -133,9 +172,9 @@ export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,lig
   }
   ctx.restore()
 }
-export function drawStrobeRim(ctx:CanvasRenderingContext2D,light:KeyLight,k:number,chains:number[][],head:{x:number;y:number;r:number},face:number,lineW:number):void {
+export function drawStrobeRim(ctx:CanvasRenderingContext2D,light:KeyLight,k:number,chains:number[][],head:{x:number;y:number;r:number},face:number,lineW:number,color='#cfe4ff'):void {
   const amount=clamp01(finite(k,0));if(amount<.04)return
-  ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=rgba('#cfe4ff',amount*.16)
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=rgba(color,amount*.2)
   ctx.lineWidth=.65;ctx.beginPath()
   const off=-clamp(finite(light.dirX,0),-1,1)*finite(face,1)*(clamp(finite(lineW,5),.1,20)*.5+.5)
   for(const chain of chains){let started=false;for(let i=0;i+1<chain.length;i+=2){
