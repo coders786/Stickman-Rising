@@ -2,10 +2,10 @@
  * World-space rain/splashes; real visual clock; quality changes draw budgets,
  * never weather existence or strike scheduling. Rendering cannot advance time.
  */
-export type StormQuality='low'|'medium'|'high'
+export type StormQuality='low'|'medium'|'high'|'ultra'
 export interface StormView{x:number;y:number;zoom:number}
 const CAP=288,SPLASHES=64
-const budgets={low:96,medium:180,high:288} as const
+const budgets={low:96,medium:180,high:288,ultra:288} as const
 export class StormEngine{
  private seed=0x7a32d19
  private t=0

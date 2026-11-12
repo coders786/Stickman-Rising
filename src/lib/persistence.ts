@@ -24,7 +24,8 @@ export function parseSettings(raw: string | null, coarse = false): GameSettings 
   const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : 'high' }
   const unit = (fallback: number) => z.number().min(0).max(1).catch(fallback)
   const schema = z.object({
-    quality: z.enum(['low', 'medium', 'high']).catch(defaults.quality),
+    quality: z.enum(['low', 'medium', 'high', 'ultra']).catch(defaults.quality),
+    level: z.enum(['rooftop', 'zen-night']).catch(defaults.level),
     shake: z.boolean().catch(defaults.shake),
     shakeIntensity: z.number().min(0.2).max(1.5).catch(defaults.shakeIntensity),
     sfxVolume: unit(defaults.sfxVolume),

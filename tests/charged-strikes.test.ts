@@ -7,10 +7,12 @@ test('charged punch and kick are newly authored clips, not library aliases',()=>
  assert.notEqual(CHARGED_PUNCH.clip,CHARGED_KICK.clip)
  assert.notEqual(CHARGED_PUNCH.clip,UNARMED_CHARGE)
  assert.notEqual(CHARGED_KICK.clip,UNARMED_CHARGE)
- assert.equal(CHARGED_PUNCH.clip.name,'unarmedChargedPiston')
- assert.equal(CHARGED_KICK.clip.name,'unarmedChargedOrbitalHeel')
- assert.ok(CHARGED_PUNCH.clip.frames.length>=9)
- assert.ok(CHARGED_KICK.clip.frames.length>=9)
+ assert.equal(CHARGED_PUNCH.clip.name,'abc_chargedPunch')
+ assert.equal(CHARGED_KICK.clip.name,'abcHuntingHawk')
+ assert.equal(CHARGED_PUNCH.clip.frames.length,3)
+ assert.equal(CHARGED_KICK.clip.frames.length,3)
+ assert.equal(CHARGED_PUNCH.clip.interpolation,'step')
+ assert.equal(CHARGED_KICK.clip.interpolation,'step')
 })
 
 test('charged lanes retain hand/foot contact and heavyweight payoff',()=>{

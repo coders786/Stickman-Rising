@@ -491,9 +491,18 @@ export default function Home() {
           <ScrollArea className="mt-4 min-h-0 flex-1">
             <div className="max-w-xl space-y-6 pb-4">
               <div>
+                <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">LEVEL</div>
+                <div className="flex gap-2">
+                  {([['zen-night','MOONLIT ZEN'],['rooftop','NEON ROOFTOP']] as const).map(([id,label]) => (
+                    <Button key={id} variant="outline" className={`flex-1 font-black tracking-widest ${settings.level === id ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, level: id })) }}>{label}</Button>
+                  ))}
+                </div>
+                <div className="mt-2 text-[10px] tracking-widest text-slate-500">LEVEL ART IS INDEPENDENT OF GRAPHICS QUALITY</div>
+              </div>
+              <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
                 <div className="flex gap-2">
-                  {(['low', 'medium', 'high'] as const).map((q) => (
+                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => (
                     <Button
                       key={q}
                       variant="outline"
@@ -502,6 +511,7 @@ export default function Home() {
                     >{q.toUpperCase()}</Button>
                   ))}
                 </div>
+                {settings.quality === 'ultra' && <div className="mt-2 text-[10px] tracking-widest text-slate-400">CINEMATIC 2.5D · VOLUMETRIC MOON FOG · WET REFLECTIONS · DEPTH SHADOWS</div>}
               </div>
               <div className="flex items-center justify-between">
                 <div>

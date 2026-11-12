@@ -11,7 +11,7 @@ import {DASH_CHARGE_CLIP,DUAL_CHARGE_CLIP,FIST_DUAL_CHARGE_CLIP,POWER_DASH_CLIP,
 import {drawArticulatedHand} from '../anim/humanoid'
 import {drawDetail,sheatheDetail,DRAW_CLEAR,DRAW_GRIP,SHEATHE_MEET,SHEATHE_SEAT} from '../anim/draw-detail'
 import {equipmentClip} from '../anim/equipment-motion'
-import {handPose,unarmedAttack,UNARMED_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP,CHARGED_PUNCH,CHARGED_KICK} from '../combat/unarmed'
+import {handPose,unarmedAttack,UNARMED_PUNCH_CHARGE,UNARMED_KICK_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP,CHARGED_PUNCH,CHARGED_KICK} from '../combat/unarmed'
 import {ComboDirector,type Requires} from '../combat/combo-director'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
@@ -709,6 +709,12 @@ export class Player {
    * physically-motivated furi-otoshi accent layered under the keyframes. */
   private bladeLag = 0
   private bladeLagVel = 0
+  /** The sheathed sword is a weighted rigid body on the obi, not a line
+   * welded to the pelvis. This spring stores hip acceleration through
+   * punches/uppercuts and settles after the body stops. */
+  private sayaLag=0
+  private sayaLagVel=0
+  private prevPelvisDrive=0
   private prevArmSum = 0
   /** signed arm angular velocity (rad/s) — drives lag, chain reaction, overshoot */
   private armVel = 0
@@ -821,6 +827,7 @@ export class Player {
     this.swingScale = 1
     this.bladeLag = 0
     this.bladeLagVel = 0
+    this.sayaLag=0;this.sayaLagVel=0;this.prevPelvisDrive=0
     this.chainLag = 0
     this.chainLagVel = 0
     this.prevArmSum = 0
@@ -1825,8 +1832,8 @@ export class Player {
     }
     // ult is handled by Game (cinematic)
 
-    // J+K together arms the charged piston without delaying ordinary J by
-    // even one frame. K alone owns the charged leg lane.
+    // J+K together arms the charged piston immediately. K alone owns the
+    // charged leg lane.
     if(!this.swordDrawn&&this.grounded&&input.down('light')&&input.down('heavy')){
       this.unarmedChargeKind='punch';this.enterCharge(w);return true
     }
@@ -2793,9 +2800,12 @@ export class Player {
       // Attack poses must own the whole rig before contact. A fresh strike
       // gets only a two-frame handoff; chained lights get an even shorter
       // handoff because both clips already share a planted combat stance.
-      blend: def.strikeHand && !this.swordDrawn
-        ? (rapidLight ? (wasAttack ? 0.014 : 0.022) : (wasAttack ? 0.035 : 0.045))
-        : (rapidLight ? (wasAttack ? 0.025 : 0.032) : (wasAttack ? 0.11 : 0.07)),
+      // Held-pose clips may never cross-fade: blending two drawings creates
+      // the exact rubber intermediate the A/B/C system forbids.
+      blend: def.clip.interpolation==='step' ? 0
+        : def.strikeHand && !this.swordDrawn
+          ? (rapidLight ? (wasAttack ? 0.014 : 0.022) : (wasAttack ? 0.035 : 0.045))
+          : (rapidLight ? (wasAttack ? 0.025 : 0.032) : (wasAttack ? 0.11 : 0.07)),
       speed: attackTempo,
       // RETRO COMBAT EXPOSURE: empty-hand attacks deliberately read as
       // A (guard/chamber) → B1 (ignition) → B2 (extension) → C (contact).
@@ -2806,7 +2816,7 @@ export class Player {
       // Twin-palm l5 stays continuously sampled: both hands cross the body
       // between exposures, and quantizing it can credit the swept segment a
       // frame before either visible palm reaches the torso.
-      stepRate: def.strikeHand
+      stepRate: def.clip.interpolation==='step' ? undefined : def.strikeHand
         ? (this.swordDrawn ? (!rapidLight ? 24 : undefined)
           : def.id === 'l5' ? undefined : def.hit.heavy ? 10 : 15)
         : undefined,
@@ -2826,6 +2836,14 @@ export class Player {
     const def = a.def
     a.animT = this.animator.getTime()
     const animT = a.animT
+
+    // J remains zero-latency on press, but holding it converts the opening
+    // chamber into punch charge before the first contact can fire. Thus taps
+    // stay fast and J-alone genuinely loads a punch.
+    if(!this.swordDrawn&&this.grounded&&w.input.down('light')&&!w.input.down('heavy')
+      &&w.input.holdTime('light')>=.07&&animT<def.hit.start){
+      this.unarmedChargeKind='punch';w.input.takeBuffered('light');this.enterCharge(w);return
+    }
 
     // AUTHORITATIVE ROOT MOTION: sample displacement from the same clip clock
     // that poses the legs and blade. This moves the real player body through
@@ -3390,7 +3408,8 @@ export class Player {
     this.chargeReady = false
     this.dropAction()
     if (this.grounded) this.vx = 0
-    this.playAnimation(this.swordDrawn?CHARGE_CLIP:UNARMED_CHARGE, { blend: 0.08 })
+    const chargeClip=this.swordDrawn?CHARGE_CLIP:this.unarmedChargeKind==='punch'?UNARMED_PUNCH_CHARGE:UNARMED_KICK_CHARGE
+    this.playAnimation(chargeClip,{blend:chargeClip.interpolation==='step'?0:.025,stepRate:chargeClip.interpolation==='step'?undefined:12})
     w.audio.play('charge', { volume: 0.5 })
   }
 
@@ -3973,8 +3992,18 @@ export class Player {
         [g.hipPtR, g.kneeR, g.ankleR, g.toeR],
       ]
       const iw = 1 - w // authority complement
-      const support=this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))
-        ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR):null
+      const dashSupport=this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0)
+      const kicking=this.state==='attack'&&(this.action?.def.strikeJoint==='foot'||this.action?.def.strikeJoint==='knee')
+      // Kicks plant the leg opposite the striking limb; punches plant the
+      // lowest authored foot. This gives every grounded attack an explicit
+      // support body instead of letting both feet float through FK.
+      const support=this.grounded?(dashSupport
+        ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR)
+        : kicking
+          ? (this.action?.def.strikeHand==='left'?g.ankleR:g.ankleL)
+          : this.state==='attack'||this.state==='charge'
+            ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR)
+            : null):null
       for (const [hipPt, knee, ankle, toe] of legs) {
         const ankleWy = this.hipY + SCALE * ankle.y
         const toeWy = this.hipY + SCALE * toe.y
@@ -4030,6 +4059,16 @@ export class Player {
     const armVel = (armSum - this.prevArmSum) / dt
     this.armVel = armVel
     this.prevArmSum = armSum
+    // Scabbard inertia is driven by the pelvis, including unarmed attacks.
+    // A critically bounded under-damped response gives a short overshoot
+    // without letting the saya detach from its belt suspension.
+    const pelvisDrive=p[CH.rootRot]+p[CH.pelvisYaw]*.32
+    const pelvisVel=(pelvisDrive-this.prevPelvisDrive)/dt
+    this.prevPelvisDrive=pelvisDrive
+    const sayaTarget=clamp(-pelvisVel*.018,-.13,.13)
+    this.sayaLagVel+=(125*(sayaTarget-this.sayaLag)-12*this.sayaLagVel)*dt
+    this.sayaLag=clamp(this.sayaLag+this.sayaLagVel*dt,-.15,.15)
+    this.sayaLagVel=clamp(this.sayaLagVel,-4,4)
     if(!this.swordDrawn&&!this.sheathAct){
       this.bladeLag=0;this.bladeLagVel=0;this.chainLag=0;this.chainLagVel=0
       return
@@ -4818,6 +4857,30 @@ export class Player {
     }
   }
 
+  /** Physical ink/air-displacement smear for A/B/C unarmed kicks. It is
+   * deliberately non-emissive: three tapered brush wakes sit behind the
+   * live silhouette, matching the contact drawing without inventing extra
+   * interpolated body poses. */
+  drawKickSmear(ctx:CanvasRenderingContext2D):void{
+    const a=this.action
+    if(!a||!a.def.strikeHand||(a.def.strikeJoint!=='foot'&&a.def.strikeJoint!=='knee')||!this.limbSeg.active)return
+    const start=a.def.hit.start-.035,end=a.def.hit.end+.055
+    if(a.animT<start||a.animT>end)return
+    const life=Math.max(0,Math.min(1,(a.animT-start)/.055))*Math.max(0,Math.min(1,(end-a.animT)/.07))
+    const tx=this.limbSeg.tx,ty=this.limbSeg.ty
+    const hx=this.x,hy=this.hipY-15
+    const dx=tx-hx,dy=ty-hy,L=Math.max(1,Math.hypot(dx,dy)),nx=-dy/L,ny=dx/L
+    const sx=hx-dx*.18-this.face*16,sy=hy+18
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='source-over'
+    // Broad sumi-e wake, darkest at the live foot and transparent at origin.
+    const g=ctx.createLinearGradient(sx,sy,tx,ty)
+    g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.07*life})`);g.addColorStop(1,`rgba(198,210,216,${.2*life})`)
+    ctx.strokeStyle=g;ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
+    // Separated brush filaments make speed readable without a neon ribbon.
+    for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(184,197,203,${(.1-Math.abs(i)*.018)*life})`;ctx.lineWidth=1.4+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
+    ctx.restore()
+  }
+
   draw(ctx: CanvasRenderingContext2D, time: number, reflection=false): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted' && this.state !== 'dash'
@@ -4838,7 +4901,7 @@ export class Player {
       // as a floating rod whenever the fighter committed forward
       const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
       const detail=this.sheathAct?.mode==='draw'?this.drawSocket():null
-      const ang = detail?.ang??Math.min(0.24+pelvisPitch*.6,this.state==='dash'&&this.grounded?.5:2)
+      const ang = detail?.ang??Math.min(0.24+pelvisPitch*.6+this.sayaLag,this.state==='dash'&&this.grounded?.5:2)
       const mouthX=detail?.x??hp.x+3,mouthY=detail?.y??hp.y+1
       const tipX = mouthX - Math.cos(ang) * sayLen
       const tipY = mouthY + Math.sin(ang) * sayLen

@@ -15,7 +15,8 @@ test('corrupt or incomplete saves always recover safe counters and katana', () =
 test('settings reject invalid types/ranges and retain valid fields', () => {
   assert.deepEqual(parseSettings('null'), DEFAULT_SETTINGS)
   const settings = parseSettings('{"musicVolume":-1,"sfxVolume":"loud","quality":"ultra","shake":false,"gore":null}', true)
-  assert.equal(settings.quality, 'medium')
+  assert.equal(settings.quality, 'ultra')
+  assert.equal(parseSettings('{"quality":"impossible"}', true).quality, 'medium')
   assert.equal(settings.shake, false)
   assert.equal(settings.musicVolume, DEFAULT_SETTINGS.musicVolume)
   assert.equal(settings.sfxVolume, DEFAULT_SETTINGS.sfxVolume)

@@ -30,13 +30,25 @@ import {StormEngine} from './storm'
 
 /* ============================== public API =============================== */
 
-export type Quality = 'low' | 'medium' | 'high';
+export type Quality = 'low' | 'medium' | 'high' | 'ultra';
 
 export interface BgCam {
   /** camera center in world coordinates */
   x: number;
   y: number;
   zoom: number;
+}
+
+export interface BackgroundRenderer {
+  readonly storm:StormEngine
+  onThunder:(()=>void)|null
+  resize(w:number,h:number):void
+  update(dt:number):void
+  lightningI():number
+  lightningAz():number
+  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
+  drawArena(ctx:CanvasRenderingContext2D):void
+  drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
 }
 
 /* ============================ seeded RNG ================================= */

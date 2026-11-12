@@ -26,7 +26,8 @@ test('every sword attack intent has a bounded, short-contact empty-hand equivale
   const a=unarmedAttack(base)
   assert.equal(a.id,base.id);assert.ok(a.strikeHand);assert.equal(a.requires,base.requires)
   assert.ok(!a.traj&&!a.drawFlash&&!a.hit.aoe&&!a.slamImpact)
-  assert.ok(a.clip.frames.length>=7&&a.hit.start<a.hit.end&&a.hit.end<a.cancel)
+  assert.equal(a.clip.frames.length,3);assert.equal(a.clip.interpolation,'step')
+  assert.ok(a.hit.start<a.hit.end&&a.hit.end<a.cancel)
   assert.ok(a.hit.pad!<=7);assert.equal(a.grip,0)
   for(const f of a.clip.frames){
    const safe=applyJointLimits(f.p.slice())
@@ -49,7 +50,7 @@ test('light, heavy, parry, charge, dash and ability do not silently draw the swo
   const {input,p,step,probe}=setup();input.setVirtual(key,true);step(.025)
   assert.equal(p.swordDrawn,false,key)
   if(key==='light')assert.ok(probe.action?.def.strikeHand)
-  if(key==='heavy'||key==='parry')assert.match(probe.animator.getClip()!.name,/^unarmed/)
+  if(key==='heavy'||key==='parry')assert.match(probe.animator.getClip()!.name,/^(unarmed|abc)/)
  }
 })
 test('Q draw selects real sword attacks and mode persists while idle',()=>{

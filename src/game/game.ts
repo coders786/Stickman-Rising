@@ -9,7 +9,8 @@ import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, RunStats, WorldRe
 import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
-import { CyberBackground } from './world/background'
+import { CyberBackground, type BackgroundRenderer } from './world/background'
+import { ZenNightBackground } from './world/zen-night'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
 import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
@@ -144,7 +145,7 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg = new CyberBackground('high',this.storm)
+  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
@@ -328,7 +329,7 @@ export class Game {
     const h = parent?.clientHeight ?? window.innerHeight
     this.cssW = Math.max(320, w)
     this.cssH = Math.max(240, h)
-    const cap = this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    const cap = this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
     this.dpr = Math.min(this.dprTarget, cap)
     this.canvas.width = Math.floor(this.cssW * this.dpr)
     this.canvas.height = Math.floor(this.cssH * this.dpr)
@@ -343,7 +344,7 @@ export class Game {
    * hysteresis. If DPR 1 still can't hold ~40fps, fall a quality tier
    * (rain/mote/fog/mist/reflection density all scale with tier). */
   private govern(dt: number): void {
-    if (!this.autoQuality || this.phase !== 'playing') return
+    if (!this.autoQuality || this.phase !== 'playing' || this.settings.quality==='ultra') return
     this.govT += dt
     this.govCool = Math.max(0, this.govCool - dt)
     if (this.govT < 0.8) return
@@ -360,7 +361,7 @@ export class Game {
       this.resize()
     } else if (this.fpsAvg < 36 && this.dprTarget <= 1) {
       // resolution floor reached and still drowning → drop a quality tier
-      const order: GameSettings['quality'][] = ['high', 'medium', 'low']
+      const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
       const i = order.indexOf(this.settings.quality)
       if (i < order.length - 1) {
         this.applySettings({ ...this.settings, quality: order[i + 1] })
@@ -389,6 +390,7 @@ export class Game {
    * proved the level unstable on this display: pin the session ceiling at
    * the pre-raise DPR so the governor stops gambling on it. */
   private detectCliff(dtRaw: number): void {
+    if(this.settings.quality==='ultra')return
     if (this.phase === 'paused' || document.visibilityState !== 'visible') {
       this.overRun = 0
       return
@@ -410,6 +412,7 @@ export class Game {
 
   applySettings(s: GameSettings): void {
     const qualityChanged = s.quality !== this.settings.quality
+    const levelChanged = s.level !== this.settings.level
     this.settings = { ...s }
     this.fx.setQuality(s.quality)
     this.fx.setGore(s.gore)
@@ -418,9 +421,9 @@ export class Game {
     this.audio.setSfxVolume(s.sfxVolume)
     this.audio.setMusicVolume(s.musicVolume)
     this.audio.setMuted(s.muted)
-    if (qualityChanged) {
+    if (qualityChanged || levelChanged) {
       this.storm.setQuality(s.quality)
-      this.bg = new CyberBackground(s.quality,this.storm)
+      this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
