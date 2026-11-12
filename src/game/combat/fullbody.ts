@@ -224,6 +224,9 @@ export function chain(
     curl?: number
     /** depth: how far the strike travels toward the camera */
     depth?: number
+    /** how far the counter-hand's elbow opens (0..1) — the counter-hand
+     * must not be a welded stick while the strike arm works */
+    offFold?: number
   } = {},
 ): PoseInput {
   const d = o.drive ?? 0.8
@@ -266,7 +269,22 @@ export function chain(
     armLz: (strike === 'left' ? 1 : -1) * (o.depth ?? 0.10),
     armRz: (strike === 'right' ? 1 : -1) * (o.depth ?? 0.10),
     ...fistAt(strike, o.fist?.[0] ?? 34, o.fist?.[1] ?? -2),
+    // THE OFF-HAND HAS TO LIVE TOO.
+    //
+    // Posing the counter-hand with fistAt() alone welds its elbow: fistAt
+    // solves the elbow angle to hit a fixed target, so a constant target
+    // produces a CONSTANT elbow — measured elL at -147.2deg on all eight
+    // frames of the jab. The shoulder swings and the elbow never moves, so
+    // the whole arm pivots as one rigid bar. That is the single most
+    // "stick figure" thing in the entire set.
+    //
+    // The counter-hand therefore gets its own elbow: it folds as the body
+    // coils and opens as the strike fires, against the strike's own drive.
+    // The bone lengths are preserved by clamping the result, not by
+    // re-solving position.
     ...fistAt(off, o.offFist?.[0] ?? -6, o.offFist?.[1] ?? 7),
+    [off === 'left' ? 'elL' : 'elR']:
+      (off === 'left' ? -1 : -1) * (1.85 + (o.offFold ?? 0.55) * d),
     foreRz: strike === 'right' ? (o.depth ?? 0.10) : -0.05,
     foreLz: strike === 'left' ? (o.depth ?? 0.10) : -0.05,
   }

@@ -174,3 +174,44 @@ test('every core strike can reach an enemy standing at fighting distance', () =>
     )
   }
 })
+
+/** NO WELDED JOINTS — the "stiff angles" contract.
+ *
+ * A stick figure reads as stiff when a limb never changes shape and just
+ * pivots from its root. The worst offender in this set was the COUNTER-HAND:
+ * posing it with fistAt() alone solves its elbow to hit a fixed target, so a
+ * constant target gives a constant elbow. Measured before the fix, elL
+ * travelled 0.0deg across the entire jab — the off arm was a rigid bar
+ * while the strike arm worked. That is the single most "stick figure" thing
+ * the choreography could do, and it was invisible to every existing gate
+ * (body-group amplitude only asks whether a GROUP moves, and the shoulder
+ * was moving).
+ *
+ * Every major joint must travel at least a few degrees somewhere in the
+ * clip. This is a floor, not a target: it exists to catch a joint that is
+ * structurally frozen, not to demand a particular amount of motion.
+ */
+test('no joint is welded shut in any core strike', () => {
+  const JOINTS: [keyof typeof CH, string][] = [
+    ['hipL', 'left hip'], ['kneeL', 'left knee'],
+    ['hipR', 'right hip'], ['kneeR', 'right knee'],
+    ['shL', 'left shoulder'], ['elL', 'left elbow'],
+    ['shR', 'right shoulder'], ['elR', 'right elbow'],
+  ]
+  const FROZEN = (5 * Math.PI) / 180
+  for (const id of ['l1', 'l2', 'l3', 'l4', 'l5', 'h1', 'h2', 'h3', 'retreat', 'dashSlash']) {
+    const def = MOVES[id]
+    const need: string[] = []
+    for (const [ch, label] of JOINTS) {
+      let lo = Infinity
+      let hi = -Infinity
+      for (const f of def.clip.frames) {
+        const v = f.p[CH[ch]]
+        if (v < lo) lo = v
+        if (v > hi) hi = v
+      }
+      if (hi - lo < FROZEN) need.push(label)
+    }
+    assert.deepEqual(need, [], `${id} has welded joints: ${need.join(', ')}`)
+  }
+})

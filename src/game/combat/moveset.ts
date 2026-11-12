@@ -330,6 +330,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
     pelvisYaw: 0.15, chestYaw: -0.22,
     ...footAt('right', 13, 39), ...footAt('left', -17, 40),
     ...fistAt('right', 11, 5), ...fistAt('left', 10, 5),
+    elL: -1.95,
     armLz: -0.08, armRz: -0.14, foreRz: 0.22, foreLz: -0.05,
   }, 'outQuad'),
   // SLIP: the whole silhouette drops and shifts off the centre line
@@ -339,6 +340,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
     pelvisYaw: 0.30, chestYaw: -0.42,
     ...footAt('right', 12, 36), ...footAt('left', -20, 38),
     ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
+    elL: -1.55,
     armLz: -0.28, armRz: -0.42, foreRz: 0.30, foreLz: -0.05,
   }, 'outQuad'),
   mid(0.15, {
@@ -355,6 +357,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
     ...footAt('right', 18, 40), ...footAt('left', -21, 42),
     shR: 1.22, elR: -2.18, wrR: 0,
     ...fistAt('left', 8, 6),
+    elL: -1.30,
     armRz: 0.42, foreRz: -0.34, armLz: -0.16, foreLz: -0.05,
   }),
   // CONTACT: the elbow is still DRIVING up and through. Measured against
@@ -666,6 +669,8 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     ...footAt('right', 12, 41), ...footAt('left', -16, 41),
     ...kickChamber('right', 9, 40),
     ...fistAt('right', 11, 4), ...fistAt('left', 6, 5),
+    // counter-hand elbow: folded while the body coils
+    elL: -2.05,
     armRz: -0.10, foreRz: 0.12, armLz: 0.14, foreLz: -0.10,
   }, 'outQuad'),
   // CHAMBER: the free knee now comes up across the body
@@ -676,6 +681,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     ...footAt('right', 8, 40), ...footAt('left', -17, 41),
     ...kickChamber('right', -2, 3),
     ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
+    elL: -1.80,
     armRz: -0.30, foreRz: 0.20, armLz: 0.35, foreLz: -0.20,
   }, 'outQuad'),
   mid(0.165, {
@@ -694,6 +700,8 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     ...footAt('right', 6, 41),
     ...kickExtend('right', 33, -20),
     ...fistAt('right', 3, 8), ...fistAt('left', 1, 8),
+    // opens as the kick swings through — this is the counter-rotation
+    elL: -1.35,
     armRz: 0.42, foreRz: 0.30, armLz: -0.60, foreLz: 0.35,
   }),
   // CONTACT — the leg is still swinging THROUGH the arc here, further
@@ -1052,22 +1060,58 @@ const OMEGAPALM = clip('unarmedOmegaPalm', [
 /** 16 · DASH LIGHT — SHOULDER TACKLE: lowered shoulder drives through
  * (hitbox tracks the glenohumeral point). */
 const TACKLE = clip('unarmedTackle', [
-  kf(0, G),
-  // GAP-1 · anticipation: rearward gather — the body pitches BACK, elbows
-  // fold, chest counter-winds before the shoulder drive fires forward
-  kf(0.08, { ...G, rootRot: 0.16, rootY: 5.5, spine: 0.05, head: -0.12,
-    shR: 1.15, shL: 1.05, elR: -1.9, elL: -2.0,
-    chestYaw: 0.28, pelvisYaw: -0.12 }, 'outQuad'),
-  kf(0.14, { ...G, rootRot: 0.5, spine: 0.12, rootY: 5, head: -0.15, shR: 0.3, shL: 0.0,
-    elR: -1.4, elL: -1.5, chestYaw: 0.15 }, 'outQuad'),
-  kf(0.22, { ...G, rootRot: 0.55, spine: 0.12, rootY: 4.5, head: -0.18, shR: -0.7, shL: -0.55,
-    elR: -1.5, elL: -1.35, chestYaw: 0.1 }, 'inOutCubic'),
-  mid(0.29, { ...G, rootRot: 0.55, spine: 0.12, rootY: 4.5, head: -0.18, shR: -0.7, shL: -0.55,
-      elR: -1.5, elL: -1.35, chestYaw: 0.1 },
-    { ...G, rootRot: 0.4, rootY: 4, head: -0.12, shR: 1.2, shL: 1.0 }),
-  kf(0.36, { ...G, rootRot: 0.4, rootY: 4, head: -0.12, shR: 1.2, shL: 1.0 }, 'inOutCubic'),
-  mid(0.41, { ...G, rootRot: 0.4, rootY: 4, head: -0.12, shR: 1.2, shL: 1.0 }, G),
-  kf(0.46, G),
+  kf(0, stance('right')),
+  // GATHER — the whole body goes DOWN and BACK before it goes anywhere.
+  // The legs are the engine of a tackle: knees fold under the hips, the
+  // trailing leg loads, the body coils away from the target. Previously
+  // the legs were frozen at one angle for the entire clip (measured:
+  // hipR 0.42 / kneeR -0.62 identical on all 13 frames) — a stick figure
+  // pivoting at the shoulder.
+  kf(0.075, chain('linear', 'right', {
+    drive: 0.10, travel: -2.0, sink: 3.4, lean: 0.08,
+    // CROUCH: ankles pulled UP toward the hips (down 28/29), not pushed
+    // away. down 45/47 would straighten the legs to 10-36deg.
+    leadFoot: [13, 28], rearFoot: [-15, 29],
+    fist: [12, 6], offFist: [10, 5],
+  }), 'outQuad'),
+  // DRIVE — the rear leg extends and throws the body. This is the beat a
+  // tackle lives on: hips leading, shoulder still behind, both feet
+  // pushing. Sink goes negative as the body launches into the tackle.
+  kf(0.145, chain('linear', 'right', {
+    drive: 0.75, travel: 3.0, sink: 0.4, lean: 0.30,
+    leadFoot: [22, 36], rearFoot: [-25, 38],
+    fist: [8, 8], offFist: [6, 8],
+  }), 'outCubic'),
+  // CONTACT — the shoulder arrives. The lead leg is planted and braced,
+  // the rear leg is fully extended behind and DRIVING: everything is
+  // behind the point of the shoulder. The head is down and through.
+  kf(0.215, contact('linear', 'right', {
+    drive: 1.15, travel: 4.6, sink: 0.9, lean: 0.42, curl: 0.10,
+    // the lead leg is PLANTED and braced (a real bend, not a stick), the
+    // rear leg extended long behind and driving: the diagonal that gives a
+    // tackle its line of force
+    leadFoot: [24, 33], rearFoot: [-33, 41],
+    // arms tucked TIGHT to the ribs so the shoulder is the leading edge,
+    // not the hands — a tackle that reaches with its hands is a shove
+    fist: [7, 9], offFist: [5, 9],
+  }), 'inOutCubic'),
+  // THROUGH — the shoulder keeps going past the target while the hips
+  // follow. The rear leg swings through: it has done its job.
+  kf(0.285, contact('linear', 'right', {
+    drive: 1.35, travel: 5.4, sink: 1.4, lean: 0.30, curl: 0.06,
+    leadFoot: [20, 34], rearFoot: [-26, 38],
+    fist: [10, 8], offFist: [8, 8],
+  }), 'inOutCubic'),
+  // BRACE — both feet wide and planted, weight settling. A tackle that
+  // does not brace after the hit has no weight.
+  mid(0.355, contact('linear', 'right', {
+      drive: 1.35, travel: 5.4, sink: 1.4, lean: 0.30, curl: 0.06,
+      leadFoot: [24, 40], rearFoot: [-18, 43],
+      fist: [10, 8], offFist: [8, 8],
+    }),
+    recover('right', { settle: 1 })),
+  kf(0.41, recover('right', { settle: 0.6 }), 'inOutCubic'),
+  kf(0.46, stance('right')),
 ])
 
 /** 17 · DASH HEAVY — TIGER SLIDE: drop into a sliding low kick with a
