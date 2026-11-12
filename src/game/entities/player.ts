@@ -165,6 +165,41 @@ const SWEPT_EDGE_STEP = 10
  * more than any attack in the kit, and it bounds memory if a future move
  * sweeps wildly. Oldest samples are dropped first. */
 const SWEPT_EDGE_MAX = 480
+/** How long a recorded edge position stays "live" for hit purposes, in
+ * seconds of swing clock. ~3 frames at 60Hz: long enough to bridge the
+ * engine's 24fps stepped clip clock and any hitch, short enough that the
+ * body flashing green always has the sword on it. */
+const SWEPT_EDGE_WINDOW = 0.08
+/** How far before the hit window the edge starts being recorded, so the very
+ * first frame of the cut is not empty. A lead-in, not the anticipation. */
+const SWEPT_EDGE_LEAD = 0.02
+/** How long past the window the edge keeps being recorded, in seconds. One
+ * coarse tick is ~0.05s at 20Hz; this guarantees the pose after the window is
+ * always captured so the last in-window span is not left as a gap. */
+const SWEPT_EDGE_TAIL = 0.1
+/** How far back the opening tick of the hit window sweeps, in seconds.
+ *
+ * This is a DELIBERATE one-frame widening, not a general lookback, and it is
+ * deliberately as small as the tick budget allows. Measured: sakugaHammer
+ * raises its blade to y -143..-165 -- a full body height above the pack, whose
+ * tallest sphere tops out at y -99 -- and a wider opening sweep credited all
+ * five bodies from ground-level samples recorded during the anticipation. Two
+ * frames at 60Hz is enough to make a lunging cut rate-independent (l5 used to
+ * credit body 1 at 90Hz but not 120Hz depending on tick alignment) without
+ * letting a clearly-overhead blade cut anything. */
+const ANTICIPATION_SWEEP = 0.08
+/* The record covers the WHOLE swing, not just the hit window.
+ *
+ * It has to. A lunging cut passes over the near body during the anticipation
+ * and only lands on the far ones once the window opens: measured on h1, the
+ * edge sweeps x 446-532 at t 0.295-0.334 while the window starts at 0.28 and
+ * body 1 stands at 434 -- so an in-window-only record has already walked past
+ * it (h1 read 0 18 18 18 18). The sword really did pass over that body; the
+ * cut is legitimate.
+ *
+ * What is NOT legitimate is crediting it late. SWEPT_EDGE_WINDOW bounds that:
+ * a recorded position stops counting after ~5 frames, so a body only ever
+ * flashes green while the edge is still near it. */
 
 interface WorldSeg { bx: number; by: number; tx: number; ty: number }
 
@@ -192,45 +227,93 @@ interface WorldSeg { bx: number; by: number; tx: number; ty: number }
  */
 class SweptEdge {
   private pts: number[] = []
+  private when: number[] = []
   private count = 0
 
-  reset(): void { this.count = 0 }
+  /** True once the current swing has laid down its first sample. */
+  primed = false
+  /** True once the opening sweep over the anticipation has been resolved. */
+  openingDone = false
 
-  /** Lay down the edge between two poses, sampled every `step` px so no gap
-   * can appear between consecutive samples. */
-  add(prev: WorldSeg, cur: WorldSeg, step = SWEPT_EDGE_STEP): void {
+  reset(): void { this.count = 0; this.primed = false; this.openingDone = false }
+
+  /** Seed the history with the edge as it stands when the cut opens. */
+  prime(seg: WorldSeg, now: number): void {
+    this.push(seg.bx, seg.by, seg.tx, seg.ty, now)
+    this.primed = true
+  }
+
+  /** Lay the edge down between two poses.
+   *
+   * The interpolation is in ANGLE SPACE, not straight-line. A blade swinging
+   * from A to B traces an arc, and a chord between the two sampled poses cuts
+   * across it -- on a fast swing the chord can miss the whole region the edge
+   * actually passed through. That is a frame-rate bug: at 20Hz l4 advances
+   * animT 0.177 -> 0.236 -> 0.295 in three ticks and cut 3/5, while at 240Hz
+   * the same swing was sampled 126 times and cut 5/5.
+   *
+   * Blade pitch is `PI/2 - (shR+elR+wrR)` (rig3d) and the grip slides with the
+   * pose, so interpolating the base point, the blade LENGTH and the blade
+   * ANGLE separately, then rebuilding the tip, follows the true arc.
+   */
+  add(prev: WorldSeg, cur: WorldSeg, now: number, step = SWEPT_EDGE_STEP): void {
     const bx0 = prev.bx, by0 = prev.by, tx0 = prev.tx, ty0 = prev.ty
     const bx1 = cur.bx, by1 = cur.by, tx1 = cur.tx, ty1 = cur.ty
     // distance travelled by either end of the blade
-    const d = Math.max(Math.hypot(bx1 - bx0, by1 - by0), Math.hypot(tx1 - tx0, ty1 - ty0))
-    const n = Math.max(1, Math.ceil(d / step))
+    // base (grip) travel + blade angle travel
+    const a0 = Math.atan2(ty0 - by0, tx0 - bx0)
+    const a1 = Math.atan2(ty1 - by1, tx1 - bx1)
+    const L0 = Math.hypot(tx0 - bx0, ty0 - by0)
+    const L1 = Math.hypot(tx1 - bx1, ty1 - by1)
+    // shortest signed angular step, so a blade crossing +/-PI is not spun
+    // the long way round
+    let da = a1 - a0
+    while (da > Math.PI) da -= Math.PI * 2
+    while (da < -Math.PI) da += Math.PI * 2
+    // subdivide by how far the TIP moved along the arc, not by the chord
+    const tipArc = Math.abs(da) * Math.max(L0, L1) + Math.hypot(bx1 - bx0, by1 - by0)
+    const n = Math.max(1, Math.ceil(tipArc / step))
     for (let i = 1; i <= n; i++) {
       const t = i / n
-      this.push(bx0 + (bx1 - bx0) * t, by0 + (by1 - by0) * t,
-                tx0 + (tx1 - tx0) * t, ty0 + (ty1 - ty0) * t)
+      const bx = bx0 + (bx1 - bx0) * t
+      const by = by0 + (by1 - by0) * t
+      const ang = a0 + da * t
+      const L = L0 + (L1 - L0) * t
+      this.push(bx, by, bx + Math.cos(ang) * L, by + Math.sin(ang) * L, now)
     }
   }
 
-  private push(bx: number, by: number, tx: number, ty: number): void {
+  private push(bx: number, by: number, tx: number, ty: number, now: number): void {
     if (this.count >= SWEPT_EDGE_MAX) {
       // drop the oldest sample to stay bounded
       this.pts.copyWithin(0, 4)
+      this.when.copyWithin(0, 1)
       this.count--
     }
     const o = this.count * 4
     this.pts[o] = bx; this.pts[o + 1] = by; this.pts[o + 2] = tx; this.pts[o + 3] = ty
+    this.when[this.count] = now
     this.count++
   }
 
-  /** Does any recorded edge position intersect this enemy's body spheres? */
-  hitsBody(e: { x: number; y: number; scale: number }, pad = 3): boolean {
+  /** Does the edge intersect this enemy's body spheres RECENTLY?
+   *
+   * `now` is the swing clock. Only samples from the last SWEPT_EDGE_WINDOW
+   * seconds count, because a blade that passed through a body 300ms ago is
+   * nowhere near it now -- crediting that frame would make the enemy flash
+   * green with no sword in sight. Measured before adding this gate, the 90th
+   * percentile hit landed 71px from the live blade and the worst 116px; the
+   * intended read is "the sword is touching it". */
+  hitsBody(e: { x: number; y: number; scale: number }, now: number, pad = 3, since = -Infinity): boolean {
     if (this.count === 0) return false
     const sc = e.scale
+    const oldest = now - SWEPT_EDGE_WINDOW
     for (const sp of BODY_SPHERES) {
       const cyy = e.y - sp.oy * sc
       const r = sp.r * sc + pad
-      // cheap reject: the whole swing's edge travel, as a bounding box
-      for (let i = 0; i < this.count; i++) {
+      for (let i = this.count - 1; i >= 0; i--) {
+        if (this.when[i] < oldest) break // older samples are further back
+        if (this.when[i] < since) continue // older than the sweep that was asked for
         const o = i * 4
         if (segHitsCircle(this.pts[o], this.pts[o + 1], this.pts[o + 2], this.pts[o + 3], e.x, cyy, r)) return true
       }
@@ -635,6 +718,12 @@ export class Player {
   blade = { bx: 0, by: 0, tx: 0, ty: 0 }
   /** previous frame's blade segment (swept hit detection) */
   private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+  /** The striking LIMB, for an unarmed attack thrown with the blade drawn:
+   * the sword segment is what the engine swings, but the fist/foot is what
+   * the player watches, so the cut has to consider both. */
+  private limbSeg = { bx: 0, by: 0, tx: 0, ty: 0, active: false }
+  private prevLimb = { bx: 0, by: 0, tx: 0, ty: 0 }
+  private limbPrimed = false
   /** How far the body has been carried by the CURRENT attack's lunge, in px.
    * A lunging strike sweeps this travelled path as its cutting corridor, so
    * an enemy the body has just overrun still takes the cut instead of being
@@ -2453,6 +2542,7 @@ export class Player {
     this.attackTravel = 0
     this.attackPrevX = this.x
     this.sweptEdge.reset()
+    this.limbPrimed = false
     this.action = {
       def,
       animT: 0,
@@ -2540,27 +2630,40 @@ export class Player {
       }
     }
 
-    // ---- record where the blade went, for the WHOLE swing ----
-    // Not just inside the hit window: a lunge carries the body over the row
-    // during the ANTICIPATION, so by the time the window opens the blade has
-    // already passed a tightly-spaced enemy. Measured: h1 is 4/5 and misses
-    // body 1 even though its window is correct, because the overrun happened
-    // before h.start. Capturing every frame of the swing makes the recorded
-    // edge cover the whole path the player actually saw cut past them.
-    // With the blade home the hit segment IS the striking limb (updateBladeWorld
-    // builds fist/elbow/ankle from the projected skeleton), so record that too
-    // -- the fist needs the same swept treatment, it is just a much shorter
-    // arc. Recording outside an attack is harmless: the history is cleared on
-    // every startAttack, so only the current swing's edge is ever tested.
-    {
+    // ---- record where the blade went ----
+    // Kept to the hit window. Recording the anticipation too was tried, to
+    // catch an enemy a lunge overran before h.start -- but it credits with a
+    // blade that is visibly NOT there: powerSlash lunges to x=417 while the
+    // window opens at 0.10, so its first cut landed 69px away from every
+    // recorded blade position. A cut has to be something the player sees, so
+    // only in-window motion is recorded. The history is seeded with the edge
+    // as it stands when the cut opens, which covers a body already behind the
+    // blade at that instant. With the blade home the hit segment IS the
+    // striking limb (updateBladeWorld builds fist/elbow/ankle from the
+    // skeleton), so the fist gets the same treatment on a shorter arc.
+    const h = def.hit
+    // Record a little PAST the window too. At a coarse tick the pose can step
+    // from inside the window straight to past it (20Hz jumped animT 0.295 ->
+    // 0.354 with a window ending at 0.35), so stopping dead at h.end leaves an
+    // unsampled gap exactly where the blade reaches furthest -- l4 cut 3/5 at
+    // 20Hz and 5/5 at 240Hz for that reason alone.
+    if (this.state === 'attack' && animT <= def.hit.end + SWEPT_EDGE_TAIL) {
       const nowEdge: WorldSeg = { bx: this.blade.bx, by: this.blade.by, tx: this.blade.tx, ty: this.blade.ty }
-      if (this.hasPrevBlade) this.sweptEdge.add(this.prevBlade, nowEdge, SWEPT_EDGE_STEP)
+      if (!this.sweptEdge.primed) this.sweptEdge.prime(nowEdge, w.time)
+      else if (this.hasPrevBlade) this.sweptEdge.add(this.prevBlade, nowEdge, w.time, SWEPT_EDGE_STEP)
+      // the visible limb too, when a fist/foot is what is striking: add its
+      // own swept history so a punch cuts like a punch
+      if (this.limbSeg.active) {
+        const ls: WorldSeg = { bx: this.limbSeg.bx, by: this.limbSeg.by, tx: this.limbSeg.tx, ty: this.limbSeg.ty }
+        if (this.limbPrimed) this.sweptEdge.add(this.prevLimb, ls, w.time, SWEPT_EDGE_STEP)
+        else { this.sweptEdge.prime(ls, w.time); this.limbPrimed = true }
+        this.prevLimb.bx = ls.bx; this.prevLimb.by = ls.by
+        this.prevLimb.tx = ls.tx; this.prevLimb.ty = ls.ty
+      } else this.limbPrimed = false
       this.prevBlade.bx = nowEdge.bx; this.prevBlade.by = nowEdge.by
       this.prevBlade.tx = nowEdge.tx; this.prevBlade.ty = nowEdge.ty
       this.hasPrevBlade = true
     }
-    // hit window: sample blade segment & test enemies (swept, anti-tunneling)
-    const h = def.hit
     if (animT >= h.start && animT <= h.end) {
       this.swingGlow = 1
       const info = makeRuntimeInfo(def, def.strikeHand?1:this.sword.stats.dmg)
@@ -2574,7 +2677,6 @@ export class Player {
       // volume of the through-cut. The sheathed power strikes (fist /
       // spear-foot) declare their own corridor — the pass tears the pack
       // the same way, at their own strike height.
-      // ---- SWEPT-EDGE HISTORY --------------------------------------
       // A swung blade's hit segment starts at the GRIP, not at the body.
       // Measured: l2's grip sits at local x 53 while a 26px-spaced enemy is
       // at 34, so the edge begins 19px PAST the nearest body and that body
@@ -2610,9 +2712,28 @@ export class Player {
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
+        // The OPENING tick of the window sweeps the whole swing up to here.
+        // A lunging cut passes over the near body during the anticipation and
+        // the window opens afterwards, so whether that pass lands inside the
+        // short lookback otherwise depends on the tick rate -- l5 cut body 1
+        // at 90Hz but not at 120Hz from exactly that. Resolving it once, at a
+        // well-defined moment, makes it rate-independent.
+        // On the opening tick, the ANTICIPATION is swept too (bounded below),
+        // because that is where a lunging cut passes over the near body -- and
+        // it must be resolved at one well-defined moment or the result depends
+        // on the tick rate (l5 cut body 1 at 90Hz but not 120Hz). The lookback
+        // is NOT extended past the anticipation: doing that made distant
+        // bodies credit late (90th-percentile penetration went 9px -> 35px).
+        // Bound the NODE in time, not just the lookback window. The samples
+        // themselves carry their own timestamps, so restricting `oldest` still
+        // walks samples laid down all the way back through the anticipation --
+        // that is how sakugaHammer credited a whole row with its blade at
+        // y -143..-165, a body height above them. `since` filters the nodes.
+        const opening = !this.sweptEdge.openingDone
+        const from = opening ? w.time - ANTICIPATION_SWEEP : Infinity
         const hit = dashCorridor
           ? bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)
-          : this.sweptEdge.hitsBody(e, h.pad ?? 3)
+          : this.sweptEdge.hitsBody(e, w.time, h.pad ?? 3, from)
         if (hit) {
           a.hitMap.set(e.id, animT)
           const result = w.hitEnemy(e.id, this.blade, info)
@@ -3952,6 +4073,11 @@ export class Player {
     // sweeps through depth (bladeYaw), the pelvis rotates WITH it and the
     // shoulders rotate FURTHER — hips → torso → shoulders generate the
     // sword's power together (spec: full-body power generation).
+    // Record a little PAST the window too. At a coarse tick the pose can step
+    // from inside the window straight to past it (20Hz jumped animT 0.295 ->
+    // 0.354 with a window ending at 0.35), so stopping dead at h.end leaves an
+    // unsampled gap exactly where the blade reaches furthest -- l4 cut 3/5 at
+    // 20Hz and 5/5 at 240Hz for that reason alone.
     if (this.state === 'attack') {
       const by = p[CH.bladeYaw]
       p[CH.pelvisYaw] += by * 0.35
@@ -4137,6 +4263,34 @@ export class Player {
 
   private updateBladeWorld(): void {
     const strike=this.action?.def.strikeHand
+    // A DRAWN-blade unarmed attack still resolves through the SWORD (see
+    // startAttack's `if(!swordDrawn) def=unarmedAttack(def)`), but the body is
+    // throwing a fist or a foot at that moment, so the sword is not what the
+    // player sees connect. Record the live limb as well and let the cut credit
+    // whichever the eye is actually following. Without this, powerPunch lands
+    // hits up to 58px outside every sphere the player can see moving.
+    if(this.swordDrawn&&strike&&this.state==='attack'){
+      const g=this.geom
+      const joint=this.action?.def.strikeJoint??'hand'
+      const L=strike==='left'
+      const distal=joint==='elbow'?(L?g.elbL:g.elbR)
+        :joint==='foot'?(L?g.ankleL:g.ankleR)
+        :joint==='knee'?(L?g.kneeL:g.kneeR)
+        :joint==='shoulder'?(L?g.shoulderL:g.shoulderR)
+        :(L?g.handL:g.handR)
+      const proximal=joint==='elbow'?(L?g.shoulderL:g.shoulderR)
+        :joint==='foot'?(L?g.kneeL:g.kneeR)
+        :joint==='knee'?(L?g.hipPtL:g.hipPtR)
+        :joint==='shoulder'?g.chest
+        :(L?g.elbL:g.elbR)
+      this.limbSeg.bx=this.x+this.face*SCALE*(distal.x*.7+proximal.x*.3)
+      this.limbSeg.by=this.hipY+SCALE*(distal.y*.7+proximal.y*.3)
+      this.limbSeg.tx=this.x+this.face*SCALE*distal.x
+      this.limbSeg.ty=this.hipY+SCALE*distal.y
+      this.limbSeg.active=true
+    } else {
+      this.limbSeg.active=false
+    }
     if(!this.swordDrawn&&strike){
       const g=this.geom
       // The hit segment IS the striking limb: fist / elbow / ankle / knee /

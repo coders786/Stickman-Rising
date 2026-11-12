@@ -89,24 +89,50 @@ Result: axeKick 2→5, spinHook 2→5, stepKick 2→5 on the sword path.
 
 ## Where it stands
 
-**41 of 48 attacks cut 5 of 5. 47 of 48 cut 4 or better.** Every attack now
-damages the FIRST body — the original complaint ("stuck on the first body")
-no longer reproduces anywhere in the kit. The single attack below 4 is
-`ultPalm`, a five-contact palm barrage whose blade oscillates forward and
-back through its window, so the two far bodies are reached on the forward
-phases only.
+**37 of 48 attacks cut 5 of 5; 47 of 48 cut 4 or better**, measured on a
+tight 26px formation with the pack standing 34px away — a real standing
+distance. The original complaint ("stuck on the first body") no longer
+reproduces.
 
-The six remaining 4/5 cases all miss **body 5 only** — the farthest body,
-sitting at the exact edge of the blade's reach. That is reach, not a defect.
+The 10 remaining 4/5 cases reach the whole row except the body that is
+genuinely out of blade reach (5 of them at 26px spacing put the last body at
+138px, and the longest blade in the kit reaches 189px — those all land), or
+they swing **over** the near body: `h1` and `srOnslaught` open their window
+with the blade at y −112..−124 while a body's tallest sphere tops out at
+y −99, so the edge clears the head by 13–25px. That is choreography, and
+`tests/blade-cleave.test.ts` proves it with geometry (`overhead-probe.ts`)
+rather than waiving those attacks by name.
+
+The one attack below 4 is `ultPalm`, a five-contact palm barrage whose blade
+oscillates forward and back through its window, so the two far bodies are
+reached on the forward phases only.
+
+### Fairness: is the body ever cut while the sword is somewhere else?
+
+Measured with `.qa/phantom-check.ts`, which records, at the exact frame each
+body is first damaged, how far the LIVE blade penetrates that body's nearest
+sphere: **median −8px (blade inside the body), 90th percentile +9px**. So
+essentially every credited hit has the sword on the target at that instant.
+The long tail is `powerPunch`, which is an authored `kind: 'dash'` corridor
+strike (150 back / 88 forward by design) rather than a blade sweep.
+
+Getting there required rejecting two tempting shortcuts: crediting the whole
+swing (90th percentile went to 71px, and `sakugaHammer` cut a row with its
+blade 143px underground... above them), and widening the time window
+(90th percentile 21px, and it still did not fix 20Hz).
 
 ### Frame-rate independence
 
-Measured at 30, 60, 90, 120, 144, 165 and 240 Hz: **zero attacks change how
-many of the first four bodies they hit.** Only the single far body at the
-very edge of reach can flip, and only because reach is sampled at tick
-boundaries — the true peak (`l4` 115, `srCross` 112) is only ~1px beyond what
-either 30 Hz or 60 Hz samples. A coarser tick actually *overestimates* the
-swept region, so 60 Hz is the honest number.
+Measured at 60, 90, 120, 144, 165 and 240 Hz: **46 of 48 attacks cut exactly
+the same number of the first four bodies at every rate.** The two that flip
+are `l5` and `srOnslaught` — the overhead cuts above, where whether the near
+body is clipped depends on which tick the window opens on. Every body the
+blade demonstrably passes through is stable at every rate.
+
+Below ~45Hz a tick is larger than the interval over which the blade crosses a
+body, so the pass is only seen if a tick happens to land on it. That is an
+interactive floor, not something the sweep can recover: widening the history
+to cover it made distant bodies credit late, which is strictly worse.
 
 ## The final architecture
 
