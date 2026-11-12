@@ -1195,25 +1195,36 @@ const TACKLE = clip('unarmedTackle', [
   // the legs were frozen at one angle for the entire clip (measured:
   // hipR 0.42 / kneeR -0.62 identical on all 13 frames) — a stick figure
   // pivoting at the shoulder.
-  kf(0.075, chain('linear', 'right', {
+  kf(0.075, {
+    ...chain('linear', 'right', {
     drive: 0.10, travel: -2.0, sink: 3.4, lean: 0.08,
     // CROUCH: ankles pulled UP toward the hips (down 28/29), not pushed
     // away. down 45/47 would straighten the legs to 10-36deg.
     leadFoot: [13, 28], rearFoot: [-15, 29],
     fist: [12, 6], offFist: [10, 5],
-  }), 'outQuad'),
+    // the crouch loads BEHIND the plane -- hands travelled only 5.9 units
+    // and the body never came to the camera
+    }),
+    // the crouch loads BEHIND the plane -- hands travelled only 5.9 units
+    // and the body never came to the camera
+    rootZ: -6.0, hipLz: -0.9, hipRz: 0.9,
+  }, 'outQuad'),
   // DRIVE — the rear leg extends and throws the body. This is the beat a
   // tackle lives on: hips leading, shoulder still behind, both feet
   // pushing. Sink goes negative as the body launches into the tackle.
-  kf(0.145, chain('linear', 'right', {
+  kf(0.145, {
+    ...chain('linear', 'right', {
     drive: 0.75, travel: 3.0, sink: 0.4, lean: 0.30,
     leadFoot: [22, 36], rearFoot: [-25, 38],
     fist: [8, 8], offFist: [6, 8],
-  }), 'outCubic'),
+    }),
+    rootZ: 1.0, hipLz: 0.6, hipRz: -0.6,
+  }, 'outCubic'),
   // CONTACT — the shoulder arrives. The lead leg is planted and braced,
   // the rear leg is fully extended behind and DRIVING: everything is
   // behind the point of the shoulder. The head is down and through.
-  kf(0.215, contact('linear', 'right', {
+  kf(0.215, {
+    ...contact('linear', 'right', {
     drive: 1.15, travel: 4.6, sink: 0.9, lean: 0.42, curl: 0.10, depth: 0.95,
     // the lead leg is PLANTED and braced (a real bend, not a stick), the
     // rear leg extended long behind and driving: the diagonal that gives a
@@ -1222,14 +1233,23 @@ const TACKLE = clip('unarmedTackle', [
     // arms tucked TIGHT to the ribs so the shoulder is the leading edge,
     // not the hands — a tackle that reaches with its hands is a shove
     fist: [7, 9], offFist: [5, 9],
-  }), 'inOutCubic'),
+    }),
+    // CONTACT: the shoulder arrives IN FRONT of the plane and the driving
+    // shoulder leads (right side nearest the camera). Hands stay tucked --
+    // this is a tackle, not a shove -- so the whole body carries the depth.
+    rootZ: 12.0, hipLz: 1.5, hipRz: -1.5,
+    armRz: 0.55, foreRz: 0.35,
+  }, 'inOutCubic'),
   // THROUGH — the shoulder keeps going past the target while the hips
   // follow. The rear leg swings through: it has done its job.
-  kf(0.285, contact('linear', 'right', {
-    drive: 1.35, travel: 5.4, sink: 1.4, lean: 0.30, curl: 0.06,
-    leadFoot: [20, 34], rearFoot: [-26, 38],
-    fist: [10, 8], offFist: [8, 8],
-  }), 'inOutCubic'),
+  kf(0.285, {
+    ...contact('linear', 'right', {
+      drive: 1.35, travel: 5.4, sink: 1.4, lean: 0.30, curl: 0.06,
+      leadFoot: [20, 34], rearFoot: [-26, 38],
+      fist: [10, 8], offFist: [8, 8],
+    }),
+    rootZ: 7.5, hipLz: 1.2, hipRz: -1.2, armRz: 0.30, foreRz: 0.20,
+  }, 'inOutCubic'),
   // BRACE — both feet wide and planted, weight settling. A tackle that
   // does not brace after the hit has no weight.
   mid(0.355, contact('linear', 'right', {

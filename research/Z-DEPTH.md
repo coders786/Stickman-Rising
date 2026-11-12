@@ -120,6 +120,20 @@ is the same failure the impact-timing audit measures.
 | `l1` KIZAMI JAB | 65.4 | **74.4** |
 | `l3` KAGI HOOK | 60.4 | **85.1** |
 
+### `dashSlash` — the span metric cannot see a tucked-hands move
+The shoulder tackle measured 51.5, the lowest in the set, which looked like
+it needed depth. But `dashSlash` strikes with the **shoulder**, and its hands
+are deliberately tucked to the ribs, so hand Z is the wrong surface to
+measure. `.qa/depthprofile.ts` now reports shoulder Z alongside hip / hand /
+foot. On that measure the hips travel **17.3** (was 6.4) and the shoulders
+10.1 after the Z pass, and the zoom sheet shows the lunge compressing and
+driving down-and-through with the shoulder leading.
+
+The summed `span` in `.qa/depth-check.ts` only tracks hip/hand/foot, so it
+still reports 52.1 for this move. **A low span on a tucked-hands move is not
+evidence of missing depth** — check which surface the move actually strikes
+with before authoring more.
+
 ### `l3` — a depth setting can delete the strike
 The hook's first Y depth pass used `armRz 1.25 / foreRz 0.95` and the fist
 **vanished into the torso** on the zoom sheet: yawing a hooking arm that far
