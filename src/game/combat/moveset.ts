@@ -219,6 +219,59 @@ const ABC_UPPERCUT=abcdClip('abcRisingUppercut',.42,
  // D — catch: recoil stance
  {...G,rootX:4,rootY:5,rootRot:.2,pelvisYaw:.12,chestYaw:-.08,hipR:.58,kneeR:-.8,hipL:-.42,kneeL:-.86,...handPose('right',10,5)})
 
+/* The reference-sheet trio — four drawings each, exactly as drawn:
+ * SPINNING BACKFIST (blind turn → mid-spin → backfist → re-stance),
+ * DOUBLE-FISTED HAMMER (wind-up → apex reach → slam → recovery),
+ * MACHINE-GUN JAB BLITZ (initiation → right fire → double-tap → straight).
+ * Secondary motion (the scabbard whip/dip/kick) is emergent physics — see
+ * the saya spring in player.ts — and the smear styles live in the renderer's
+ * strike-smear painter keyed by these moves' ids. */
+const ABC_SPIN=abcdClip('abcSpinningBackfist',.62,
+ // A — Blind Turn & Load: torso whips 180° away, head looks back over the
+ // lead shoulder, arms hug the chest, weight loads the lead foot
+ {...G,rootX:-2,rootY:5,rootRot:.3,head:-.75,pelvisYaw:1.35,chestYaw:-.85,hipR:.5,kneeR:-.85,hipL:-.62,kneeL:-.72,footL:.3,...handPose('right',6,7),...handPose('left',4,6),armRz:.2,armLz:-.18},
+ // B — Mid-Spin Blind Spot: body side/back-facing, right elbow chambers
+ // up and out, both feet light on the balls mid-pivot
+ {...G,rootX:3,rootY:3,rootRot:.62,head:-.35,pelvisYaw:-.6,chestYaw:.75,hipR:.35,kneeR:-.3,hipL:-.3,kneeL:-.26,footR:.55,footL:.5,...handPose('right',12,-18),...handPose('left',2,8),armRz:.3,armLz:-.1},
+ // C — Backfist Impact: whip-like backfist snaps fully horizontal at head
+ // height, rear foot plants to anchor the torque (crescent smear beat)
+ {...G,rootX:7,rootY:3.5,rootRot:-.18,head:-.18,pelvisYaw:.95,chestYaw:-.85,hipR:.72,kneeR:-.5,hipL:-.66,kneeL:-.78,footR:.15,...handPose('right',42,-13),...handPose('left',6,4),wrR:.25,armRz:.14},
+ // D — Recoil & Re-stance: rotation unwinds, arm snaps back to chest height
+ {...G,rootX:3,rootY:4.5,rootRot:.12,head:-.1,pelvisYaw:-.15,chestYaw:.12,hipR:.52,kneeR:-.7,hipL:-.44,kneeL:-.62,...handPose('right',8,4),...handPose('left',9,5)})
+const ABC_HAMMER=abcdClip('abcSkyHammer',.54,
+ // A — High Wind-Up: both fists lock together overhead, back arches, knees
+ // bend deep, weight even on both heels (scabbard dips under the lean-back)
+ {...G,rootY:9,rootRot:-.26,head:.18,pelvisYaw:-.18,chestYaw:.1,hipR:.5,kneeR:-.95,hipL:-.44,kneeL:-.9,footR:.12,footL:.12,...handPose('right',13,-25),...handPose('left',9,-26),armRz:.16,armLz:-.14},
+ // B — Apex Reach: maximum vertical extension, hands clasped, tall onto
+ // tiptoes (vertical up-smears ride the forearms)
+ {...G,rootY:-3.5,rootRot:-.12,head:.3,pelvisYaw:-.05,hipR:.28,kneeR:-.12,hipL:-.24,kneeL:-.1,footR:.62,footL:.58,...handPose('right',8,-38),...handPose('left',5,-38),armRz:.12,armLz:-.1},
+ // C — Overhead Slam Impact: both fists crash down at target level, torso
+ // crunches, weight stomps onto the balls, knees dip (descent streak beat)
+ {...G,rootX:6,rootY:12,rootRot:.52,head:-.32,pelvisYaw:.4,chestYaw:-.36,hipR:.85,kneeR:-1.35,hipL:-.62,kneeL:-1.3,footR:.38,footL:.34,...handPose('right',32,24),...handPose('left',28,26),wrR:.15,wrL:.12},
+ // D — Impact Recovery: fists rebound slightly up, torso unbends into a low
+ // stable squat (floor wisps fade)
+ {...G,rootX:4,rootY:10,rootRot:.3,head:-.18,pelvisYaw:.12,chestYaw:-.1,hipR:.62,kneeR:-1.05,hipL:-.5,kneeL:-1.0,footR:.22,footL:.2,...handPose('right',22,15),...handPose('left',19,16)})
+const ABC_BLITZ=abcdClip('abcMachineGunBlitz',.95,
+ // A — Blitz Initiation: shoulders lean in, left fist shoots halfway out,
+ // right hand cocked tight at the jaw (needle smear on the left)
+ {...G,rootX:3,rootY:4.5,rootRot:.18,head:-.14,pelvisYaw:-.3,chestYaw:.28,hipR:.58,kneeR:-.62,hipL:-.46,kneeL:-.58,...handPose('left',21,1),...handPose('right',8,2)},
+ // B — Rapid Right Fire: left snaps back to the jaw as the right fires
+ // forward, shoulders alternate (overlapping blur lines between fists)
+ {...G,rootX:5,rootY:4,rootRot:.02,head:-.08,pelvisYaw:.38,chestYaw:-.32,hipR:.62,kneeR:-.55,hipL:-.5,kneeL:-.55,...handPose('right',37,0),...handPose('left',8,3)},
+ // C — Double-Tap Left Repeat: right snaps back as the rapid double-left
+ // pops in succession, weight onto the front foot (double-peak smear)
+ {...G,rootX:7,rootY:3.5,rootRot:.1,head:-.1,pelvisYaw:-.42,chestYaw:.38,hipR:.78,kneeR:-.48,hipL:-.55,kneeL:-.5,...handPose('left',38,-1),...handPose('right',8,2)},
+ // D — Finisher Straight & Out: final hard right straight drives through to
+ // full extension, deep stride, right shoulder fully committed (solid smear)
+ {...G,rootX:10,rootY:2.5,rootRot:-.15,head:-.12,pelvisYaw:.82,chestYaw:-.78,hipR:.95,kneeR:-.35,hipL:-.72,kneeL:-.42,...handPose('right',43,-1),...handPose('left',7,3)})
+/** The J-lane closer: FLASH PUNCH FINISH is a committed right straight —
+ * the blitz sheet's final frame as its own four-drawing punch. */
+export const ABC_FLASH_STRAIGHT=abcdClip('abcFlashStraight',.40,
+ {...G,rootY:5.5,rootRot:.2,pelvisYaw:-.5,chestYaw:.4,hipR:.5,kneeR:-.8,hipL:-.58,kneeL:-.85,...handPose('right',7,4),...handPose('left',8,5)},
+ {...G,rootX:3,rootY:4,rootRot:.02,pelvisYaw:.15,chestYaw:-.08,hipR:.68,kneeR:-.55,hipL:-.6,kneeL:-.58,...handPose('right',20,0),...handPose('left',8,3)},
+ {...G,rootX:9,rootY:2.5,rootRot:-.12,head:-.1,pelvisYaw:.85,chestYaw:-.8,hipR:.92,kneeR:-.32,hipL:-.72,kneeL:-.4,...handPose('right',44,-1),...handPose('left',7,3)},
+ {...G,rootX:4,rootY:4.5,rootRot:.16,pelvisYaw:.05,hipR:.54,kneeR:-.66,hipL:-.44,kneeL:-.68})
+
 /** Exact pose-space midpoint of two authored keyframe inputs. Inserted
  * between beats as the explicit in-between ("ignition"/"settle") key —
  * halving every channel's delta across the split keeps each sub-span
@@ -2142,7 +2195,7 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.38, hitEnd: 0.517, dmg: 27, kb: 190, kbY: 90, heavy: true, breakGuard: true,
     stagger: 0.35, hitstop: 0.11, shake: 0.26, moveX: 55, moveXAt: 0.319,
     chain: ['l1', 'l2', 'omegaPalm', 'h2'] },
-  { id: 'cyclone', label: 'CYCLONE BACKFIST', kind: 'light', requires: 'ground', clip: CYCLONE, limb: 'left',
+  { id: 'cyclone', label: 'CYCLONE BACKFIST', kind: 'light', requires: 'ground', clip: CYCLONE, limb: 'right',
     hitStart: 0.429, hitEnd: 0.543, dmg: 18, kb: 155, stagger: 0.3, hitstop: 0.06, shake: 0.12,
     moveX: 40, moveXAt: 0.343, chain: ['l2', 'l4', 'spin', 'viperPalm'] },
   { id: 'ironRoot', label: 'IRON ROOT PALM', kind: 'light', requires: 'ground', clip: IRONROOT, limb: 'right',
@@ -2299,12 +2352,19 @@ const compressABCD=(m:AttackDef):Clip=>{
 }
 for(const m of Object.values(MOVES)){
   const leg=m.strikeJoint==='foot'||m.strikeJoint==='knee'
-  const authoredPunch=m.id==='launcher'?ABC_UPPERCUT:m.id==='l1'?ABC_JAB:m.id==='l2'?ABC_CROSS:null
+  const authoredPunch=m.id==='launcher'?ABC_UPPERCUT:m.id==='l1'?ABC_JAB:m.id==='l2'?ABC_CROSS
+    :m.id==='cyclone'?ABC_SPIN:m.id==='h3'?ABC_HAMMER:m.id==='sakugaBarrage'?ABC_BLITZ:null
   m.clip=leg?kickFor(m.id):authoredPunch??compressABCD(m)
   const impact=m.clip.dur*.46
   m.hit={...m.hit,start:impact,end:Math.min(m.clip.dur,impact+.1)}
   m.cancel=Math.max(m.hit.end+.045,Math.min(m.cancel,m.clip.dur*.82))
 }
+// THE MACHINE-GUN BLITZ is a staccato string: its six low-damage contacts
+// ride the WHOLE flurry (under each drawn pop, the double-tap counted
+// twice), not the single ABCD contact beat.
+{const b=MOVES.sakugaBarrage,d=b.clip.dur
+ b.hit={...b.hit,start:d*.08,end:d*.94,multiHit:(d*.94-d*.08)/5.5}
+ b.cancel=Math.max(b.hit.end+.045,Math.min(b.cancel,d*.82))}
 
 /** Unarmed ULT — registered in ATTACKS as `ultPalm`; routed by
  * startUnarmedFinisher (grounded ultimate). Five confirmed contacts × 13

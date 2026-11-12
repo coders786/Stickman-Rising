@@ -19,6 +19,7 @@ import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
 import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
 import { SWORDS, SwordId, SWORD_ORDER, swordTier, upgradedSword } from './combat/swords'
 import { crossedExecutionCuts, executionRoot, executionTimeline } from './combat/execution'
+import { MOVES } from './combat/moveset'
 import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
@@ -258,6 +259,8 @@ export class Game {
     this.bg.onThunder = this.thunderCb
     // debug/testing handle (harmless in production)
     ;(window as unknown as Record<string, unknown>).__sr = this
+    // the compiled empty-hand table, for sheet capture/automation
+    ;(window as unknown as Record<string, unknown>).__srMoves = MOVES
     // ANIMATION INSPECTION LAB (spec §12): skeleton viz, contact sheets,
     // state readout + scripted QA harness
     this.inspect = new Inspect()
