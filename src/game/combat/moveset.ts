@@ -805,24 +805,30 @@ const HAMMER = clip('unarmedHammer', [
   kf(0.115, {
     rootX: -1, rootY: 1.2, rootRot: -0.10,
     spine: -0.16, head: -0.34,
+    // Z: the gather loads the whole body BEHIND the plane -- hips back,
+    // weight on the heels. The pelvis channel is what was missing: hipZ
+    // travelled only 3.4 over the whole clip, so the hammer dropped in a
+    // flat plane and the move was indistinguishable from a push.
+    rootZ: -8.5, hipLz: 0.55, hipRz: 0.55,
     pelvisYaw: 0.02, chestYaw: -0.04,
     ...footAt('right', 12, 40), ...footAt('left', -13, 41),
     ...fistAt('right', 2, -14), ...fistAt('left', 2, -12),
-    armRz: -0.42, armLz: 0.42, foreRz: 0.30, foreLz: -0.30,
+    armRz: -0.95, armLz: 0.70, foreRz: -0.80, foreLz: 0.55,
   }, 'outQuad'),
   // the apex holds one beat — the anticipation IS the drama
   mid(0.155, {
     rootX: -1, rootY: 1.2, rootRot: -0.10,
     spine: -0.16, head: -0.34,
+    rootZ: -8.5, hipLz: 0.55, hipRz: 0.55,
     pelvisYaw: 0.02, chestYaw: -0.04,
     ...footAt('right', 12, 40), ...footAt('left', -13, 41),
     ...fistAt('right', 2, -14), ...fistAt('left', 2, -12),
-    armRz: -0.42, armLz: 0.42, foreRz: 0.30, foreLz: -0.30,
+    armRz: -0.95, armLz: 0.70, foreRz: -0.80, foreLz: 0.55,
   }, {
     // the DROP: everything compresses into a deep square stance
     rootX: 4, rootY: 10.5, rootRot: 0.44,
     spine: 0.34, head: 0.12,
-    rootZ: 2.6, hipLz: 0.35, hipRz: -0.35,
+    rootZ: 2.0, hipLz: 0.35, hipRz: -0.35,
     pelvisYaw: 0.0, chestYaw: 0.0,
     ...footAt('right', 17, 34), ...footAt('left', -18, 35),
     ...fistAt('right', 20, 12), ...fistAt('left', 20, 12),
@@ -834,19 +840,30 @@ const HAMMER = clip('unarmedHammer', [
   kf(0.215, {
     rootX: 5, rootY: 11.5, rootRot: 0.48,
     spine: 0.38, head: 0.14,
-    rootZ: 3.4, hipLz: 0.45, hipRz: -0.45,
+    // Z: the drop arrives IN FRONT of the plane and both fists lead it.
+    // rootZ -8.5 -> +13 is a 21.5-unit commitment through the strike, and
+    // the arm yaw goes positive with it so the fists are the nearest mass
+    // on the figure at contact -- the near-end-larger read.
+    rootZ: 13.0, hipLz: 1.10, hipRz: -1.10,
     pelvisYaw: 0.0, chestYaw: 0.0,
     ...footAt('right', 18, 33), ...footAt('left', -19, 34),
     ...fistAt('right', 24, 16), ...fistAt('left', 24, 16),
-    armRz: 0.24, armLz: -0.24, foreRz: 0.28, foreLz: -0.28,
+    // Staggered on purpose: both fists driving to the same yaw fused into
+    // one unreadable blob on the sheet. Splitting them in depth (lead hand
+    // nearer than the support hand, with the lead's wrist yawed further)
+    // keeps them legibly overlapping -- two shapes, one mass.
+    armRz: 1.20, armLz: -0.62, foreRz: 1.05, foreLz: -0.48,
   }, 'inOutCubic'),
   // the body stays low — a hammer does not bounce back up
   kf(0.375, {
     rootX: 3, rootY: 9, rootRot: 0.34,
     spine: 0.24, head: 0.02,
+    // stays forward of the plane as the body bottoms out -- the commitment
+    // is what the move is about, so it unwinds only part way
+    rootZ: 6.5, hipLz: 0.80, hipRz: -0.80,
     ...footAt('right', 16, 36), ...footAt('left', -17, 37),
     ...fistAt('right', 16, 8), ...fistAt('left', 16, 8),
-    armRz: 0.10, armLz: -0.10,
+    armRz: 0.42, armLz: -0.42, foreRz: 0.34, foreLz: -0.34,
   }, 'inOutCubic'),
   mid(0.46, {
     rootX: 3, rootY: 9, rootRot: 0.34,
@@ -1809,7 +1826,10 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.152, hitEnd: 0.292, dmg: 26, kb: 240, heavy: true, breakGuard: true,
     chain: ['l5', 'launcher', 'sakugaScorpion', 'omegaPalm'] },
   { id: 'h3', label: 'SKYHAMMER FIST', kind: 'heavy', requires: 'ground', clip: HAMMER, limb: 'right',
-    hitStart: 0.19, hitEnd: 0.33, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
+    // re-anchored: staggering the fists in depth moved the lead fist's speed
+    // peak from 0.174 to 0.174 but shortened the window's coverage -- at
+    // 0.19 the window opened 32ms after the peak and scored only 0.79.
+    hitStart: 0.155, hitEnd: 0.295, dmg: 30, kb: 210, kbY: 120, heavy: true, breakGuard: true,
     chain: ['l1', 'sakugaHammer', 'sakugaWrath', 'avalancheElbow'] },
   /* new command heavies */
   { id: 'axeKick', label: 'KAKATO AXE KICK', kind: 'heavy', requires: 'ground', clip: AXEKICK, limb: 'right', joint: 'foot',

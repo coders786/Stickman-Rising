@@ -44,15 +44,17 @@ ids.forEach((id, row) => {
   const def = MOVES[id]
   if (!def?.clip) return
   const clip = def.clip
-  // Mark which beat is the authored contact so the strike frame is visible.
-  const contactBeat = Math.round((def.hit.start / clip.dur) * (BEATS - 1))
   for (let i = 0; i < BEATS; i++) {
     const t = (i / (BEATS - 1)) * clip.dur
     const pose = sampleClip(clip, t, new Float32Array(28))
     solveFighter3D(pose, PLAYER_SPEC, geom, PLAYER_SPEC.blade * 1.06, 1)
     const cx = PAD + i * CW + CW / 2
     const cy = PAD + row * CH + CH * 0.58
-    const isContact = i === contactBeat
+    // A beat is the contact beat if the authored hit window COVERS its time.
+    // Rounding the window midpoint to the nearest beat mislabels short
+    // windows: h3's 0.19-0.33 centred on 0.26 lit beat 0.17, two beats
+    // before the fists actually land.
+    const isContact = t >= def.hit.start - 1e-6 && t <= def.hit.end + 1e-6
     // strike frame gets a highlight bar
     if (isContact) {
       g.fillStyle = 'rgba(40,120,200,0.13)'
