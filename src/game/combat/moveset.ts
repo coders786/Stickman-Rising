@@ -341,7 +341,9 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   kf(0.045, {
     rootX: -0.4, rootY: 7.0, rootRot: 0.185,
     spine: 0.13, head: -0.04,
-    rootZ: -1.6, hipLz: -0.2, hipRz: 0.2,
+    // the slip loads AWAY from the camera -- hip travel on this clip was
+    // 3.0 and it started FORWARD, so the body never came to the viewer
+    rootZ: -4.5, hipLz: -0.55, hipRz: 0.55,
     pelvisYaw: 0.15, chestYaw: -0.22,
     ...footAt('right', 13, 39), ...footAt('left', -17, 40),
     ...fistAt('right', 11, 5), ...fistAt('left', 10, 5),
@@ -352,7 +354,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   kf(0.105, {
     rootX: -1.5, rootY: 9, rootRot: 0.28,
     spine: 0.26, head: 0.10,
-    rootZ: -3.2, hipLz: -0.4, hipRz: 0.4,
+    rootZ: -9.0, hipLz: -1.0, hipRz: 1.0,
     pelvisYaw: 0.30, chestYaw: -0.42,
     ...footAt('right', 12, 36), ...footAt('left', -20, 38),
     ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
@@ -362,7 +364,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   mid(0.15, {
     rootX: -1.5, rootY: 9, rootRot: 0.28,
     spine: 0.26, head: 0.10,
-    rootZ: -3.2, hipLz: -0.4, hipRz: 0.4,
+    rootZ: -9.0, hipLz: -1.0, hipRz: 1.0,
     pelvisYaw: 0.30, chestYaw: -0.42,
     ...footAt('right', 12, 36), ...footAt('left', -20, 38),
     ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
@@ -370,6 +372,8 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   }, {
     rootX: 2.6, rootY: 4.9, rootRot: 0.185,
     spine: 0.10, head: 0.30,
+    // passing through: the slip unwinds and the elbow starts to arrive
+    rootZ: 2.0, hipLz: 0.9, hipRz: -0.9,
     pelvisYaw: -0.42, chestYaw: 0.52,
     ...footAt('right', 18, 40), ...footAt('left', -21, 42),
     shR: 1.22, elR: -2.18, wrR: 0,
@@ -384,17 +388,22 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   kf(0.215, {
     rootX: 5.0, rootY: 3.2, rootRot: 0.175,
     spine: 0.04, head: 0.38,
+    // CONTACT: the elbow arrives IN FRONT of the plane. A slipping body
+    // elbow whose body never crosses the axis is just a nudge -- rootZ
+    // -9 -> +10 makes the turn the strike.
+    rootZ: 10.0, hipLz: 1.35, hipRz: -1.35,
     pelvisYaw: -0.68, chestYaw: 0.76,
     ...footAt('right', 20, 39), ...footAt('left', -22, 41),
     shR: 1.55, elR: -1.42, wrR: 0,
     ...fistAt('left', 5, 7),
-    armRz: 0.68, foreRz: -0.50, armLz: -0.12, foreLz: -0.05,
+    armRz: 1.05, foreRz: 0.85, armLz: -0.12, foreLz: -0.05,
   }, 'inOutCubic'),
   kf(0.255, {
     ...recover('right', { settle: 1 }),
     rootY: 6.4, pelvisYaw: -0.25, chestYaw: 0.30,
     ...fistAt('right', 16, 4), ...fistAt('left', 8, 5),
-    armRz: 0.22, foreRz: -0.10,
+    rootZ: 4.0, hipLz: 1.0, hipRz: -1.0,
+    armRz: 0.36, foreRz: 0.20,
   }, 'inOutCubic'),
   mid(0.31, {
     ...recover('right', { settle: 1 }),

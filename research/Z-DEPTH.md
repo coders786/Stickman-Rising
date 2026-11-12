@@ -116,6 +116,7 @@ is the same failure the impact-timing audit measures.
 | `h2` TORNADO ROUNDHOUSE | 44.9 | **75.0** |
 | `h3` SKYHAMMER FIST | 43.1 | **97.8** |
 | `l2` GYAKU CROSS | 52.6 | **79.6** |
+| `l4` SLIP BODY ELBOW | 62.9 | **103.0** |
 
 ### `l2` — the pelvis was not on the Z axis at all
 The cross had 17.8 units of hand travel and only **2.4** of hip travel: the
