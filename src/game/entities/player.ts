@@ -72,6 +72,24 @@ function dashGuardPose(p:Pose,weight:number,progress:number,power:boolean,armed:
   if(armed)p[CH.wrR]+=old-p[CH.shR]-p[CH.elR]
 }
 
+/** Blade-arm forward reach floor, in local units, during a drawn-blade
+ * attack. A folded guard arm projects a hand reach near 14; a real strike
+ * reaches 37-40 of the 42-unit maximum (upperArm + foreArm). Clips below
+ * the floor get their sword arm extended for the duration of the swing,
+ * blending in over SPAN so a near-miss is only nudged rather than snapped. */
+const BLADE_REACH_MIN = 30
+const BLADE_REACH_SPAN = 12
+/** Blade pitch target for the extension above, as the rig's channel sum
+ * (`shR+elR+wrR`). rig3d turns that sum into a world angle with
+ * `bladeAngle = PI/2 - sum`, so 1.30 is ~15deg above horizontal -- the
+ * angle the hand-authored sword lights already use. */
+const BLADE_SUM = 1.30
+/** Below this channel sum the edge is closer to vertical/backward than to
+ * forward; a cut cannot happen. Kept under the working lights' 1.25 so a
+ * correctly aimed clip is never nudged. */
+const BLADE_SUM_FLOOR = 0.85
+const BLADE_SUM_SPAN = 0.45
+
 /** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
 function circleHitsSweptQuad(
   cx: number, cy: number, r: number,
@@ -953,6 +971,54 @@ export class Player {
       if(this.sprintExposure.active){
         this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
         this.motion.adoptDisplayArms(this.pose)
+      }
+      // ---- BLADE EXTENSION IN-HAND ----
+      // An empty-hand clip authors only the limb that strikes (a palm, an
+      // elbow, a spinning backfist) and leaves the sword arm to the guard.
+      // Thrown with the blade DRAWN it still swings the SWORD, because
+      // startAttack does `if(!swordDrawn) def=unarmedAttack(def)`. A guard
+      // arm is folded: cyclone sits at shR 2.43 / elR -2.43, i.e. the
+      // forearm points straight UP out of the elbow, so the grip lands at
+      // x=19 -- inside the player's own silhouette -- and a 100px blade has
+      // nowhere to go. Measured tip.x: cyclone 19, srVortex 53, ironRoot 57
+      // vs 110 on a functioning sword light.
+      //
+      // Measure the arm the way the rig does. limbDir() gives x = sin(swing),
+      // so the hand's forward reach along x is
+      //     sin(shR)*upperArm + sin(shR + elR)*foreArm
+      // (full extension = 42). Anything under REACH_MIN cannot carry the
+      // blade clear of the torso. Extending it there is purely additive: a
+      // properly authored sword clip already reaches further and is left
+      // completely untouched.
+      const atkDef=this.action?.def
+      const atkT=this.action?.animT??0
+      const inHitWin=!!atkDef&&atkT>=atkDef.hit.start&&atkT<=atkDef.hit.end
+      if(this.swordDrawn&&this.state==='attack'&&inHitWin){
+        const p=this.pose
+        const ua=PLAYER_SPEC.upperArm, fa=PLAYER_SPEC.foreArm
+        const reach=Math.sin(p[CH.shR])*ua+Math.sin(p[CH.shR]+p[CH.elR])*fa
+        const sum=p[CH.shR]+p[CH.elR]+p[CH.wrR]
+        // Two independent faults, both fatal to a cut. The ARM can be short
+        // (reach) and the WRIST can aim the blade up or backwards (sum) --
+        // ironRoot has an extended arm but sums to 0.14, which points the
+        // edge at the sky while the grip sits 49px out. Correct whichever
+        // is wrong, weighted by how wrong it is.
+        const wReach=clamp01((BLADE_REACH_MIN-reach)/BLADE_REACH_SPAN)
+        const wAim=clamp01((BLADE_SUM_FLOOR-sum)/BLADE_SUM_SPAN)
+        const k=Math.max(wReach,wAim)
+        if(k>0){
+          p[CH.shR]+=(1.35-p[CH.shR])*k
+          p[CH.elR]+=(-0.30-p[CH.elR])*k
+          // The blade's world pitch is set by the channel SUM, not by any
+          // one joint: rig3d does `bladeAngle = PI/2 - (shR+elR+wrR)`. A
+          // guard arm sums to ~0, which aims the blade straight UP -- that
+          // is why cyclone's tip.x could never exceed its grip.x. Preserving
+          // the sum across the elbow (the dashGuardPose invariant) would
+          // faithfully keep the sword vertical, so aim it instead: a sum of
+          // 1.30 puts the edge ~15deg above horizontal, the angle the
+          // working sword lights use (l1 sums to 1.25).
+          p[CH.wrR]+=(BLADE_SUM-p[CH.shR]-p[CH.elR]-p[CH.wrR])*k
+        }
       }
       // Final low-drive acting lives after entry smoothing, but its own
       // quintic envelope starts/ends at zero with zero velocity/acceleration.

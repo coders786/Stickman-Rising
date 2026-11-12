@@ -1,3 +1,4 @@
+(globalThis as any).__dbg = process.argv.includes('--dbg')
 /** Does one sword swing CUT THROUGH a pack, or stop at the first body?
  *
  * Builds a real Player + real WorldRef (same shape tests/dash-combat uses),
@@ -25,12 +26,13 @@ export function cleave(attackId: string, count = 5, spacing = 26, gap = 34) {
     },
   } as unknown as WorldRef
   p.reset(400)
-  // THE BLADE IS ONLY DRAWN FOR SWORD ATTACKS. An unarmed attack
-  // (strikeHand set) with the blade drawn is a state the game never
-  // enters -- updateBladeWorld checks (!swordDrawn && strike) before it
-  // builds the limb segment. Testing the impossible combination was
-  // reporting "stuck" for moves that are fine.
-  p.swordDrawn = !ATTACKS[attackId].strikeHand
+  // WITH THE BLADE DRAWN, EVERY attack resolves through the SWORD segment:
+  // player.ts:2251 does `if(!this.swordDrawn) def=unarmedAttack(def)`, so a
+  // kick thrown while holding the blade plays the KICK CLIP but swings the
+  // BLADE. That is precisely the reported case ("when I have blade"), so
+  // that is the state under test. (Sheathed, the same clip uses the fist,
+  // whose 55px reach cannot touch a second body by anatomy.)
+  p.swordDrawn = true
   for (let i = 0; i < count; i++) {
     const e = new Enemy('grunt', 400 + p.face * (gap + i * spacing), 1)
     e.spawning = false; e.state = 'chase'; e.face = -p.face
