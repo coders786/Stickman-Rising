@@ -201,3 +201,126 @@ Two lessons:
 The `l1` knockback is `kb: 95` and the enemy receives `kb * 0.45` → 43px/s,
 but the chain is only ~0.3s per strike, and `l2`'s own `moveX` (+3.0 rig
 units × 3.9 travel gain ≈ 11.7 rig = 15px) does not close a 16px gap.
+
+---
+
+# 3 · What was fixed, and what it measured
+
+Five defects came out of transcribing the sheets against the rig. Each was
+fixed at the one place it originates, not clip by clip.
+
+## 3.1 `l4` could not hit anything
+
+`strikeJoint` is `'elbow'`, but at contact the **hand** led the elbow by 25px —
+a palm strike wearing an elbow's name — and the elbow point itself peaked at
+**9.5px** forward, inside no body sphere at any distance.
+
+Solved against the rig rather than guessed. Brute-forcing `shR` × `elR` and
+reading the projected elbow/hand positions:
+
+| shR | elR −0.8 | −1.2 | −1.6 | −2.0 | −2.4 |
+|---|---|---|---|---|---|
+| 1.2 | 17/42 | 6/32 | −4/21 | −13/13 | −19/7 |
+| 2.0 | 31/56 | 27/50 | 18/42 | 9/31 | 0/21 |
+| **2.4** | 26/51 | 29/49 | **26/43** | 19/35 | 11/24 |
+| 2.8 | 15/38 | 16/41 | 18/39 | 21/33 | 19/25 |
+
+(elbow-forward / hand-forward, px). A *real* elbow needs the point to project
+past the forearm at a genuine fold — `shR 2.4 / elR −1.6` (92°) is the pair
+that does it. Reach went **9.5 → 36.8px**; `h1`'s 46.5px is the healthy
+reference.
+
+## 3.2 The stance was a narrow box, not the sheets' diagonal lunge
+
+Reference width/height (stance width ÷ body height, read off the silhouette)
+is **0.95–1.00**. Ours measured **0.49–0.55**.
+
+Fixed at `footAt()` — the single funnel all ~65 authored `leadFoot`/`rearFoot`
+pairs pass through — by an X gain `STANCE_SPREAD`.
+
+| spread | width/height | welded joints |
+|---|---|---|
+| 1.00 | 0.70 | none |
+| 1.10 | 0.76 | none |
+| **1.15** | **0.80** | **none** |
+| 1.20 | 0.82 | `h1` right hip |
+| 1.30 | 0.87 | `l2` right knee pinned at 0.0° |
+| 1.45 | 0.94 | `l1`/`l3`/`h1` knees pinned at 0.0° |
+
+Past ~1.18 the authored leg solutions run out of reach and `footAt`'s
+`d = min(LEG − 0.2, …)` clamp starts swallowing the animation — the knee stops
+moving entirely. `tests/full-body.test.ts` ("no joint is welded shut") catches
+exactly that, and it is right to. **1.15 is as wide as this rig's legs can
+actually stand.** The remaining gap to 0.98 is honest: the sheets' figures have
+longer legs relative to the torso than ours.
+
+## 3.3 A light hit pushed the combo out of its own range
+
+Knockback scale did not know what a combo is. With the body pinned
+(`.qa/combo-travel.ts`) the light chain `l1..l5` landed **only its first two
+strikes**:
+
+```
+l1  landed at 34px, shoved the grunt to 45
+l2  opened at 51, shoved to 69
+l3  opened at 76  -> MISS
+l5  opened at 126 -> MISS
+```
+
+Fixed by scaling a *light* hit's push (`LIGHT_HIT_PUSH = 0.34`): a light trades
+most of its shove for hitstun, because its job is to hold the body still for the
+next strike. Heavies keep full separation, because their job is to create space.
+The whole chain now lands 10/13/14/15/16.
+
+## 3.4 Hitstun was shorter than the strike that dealt it
+
+A light's default 0.20s of stagger against clips of 0.26–0.44s and a ~0.30s
+turnaround meant the body recovered and walked off mid-combo. Stagger is now
+derived from the clip (`LIGHT_STUN_LAG + hit-window + CLIP_STUN_GAIN`), with
+authored values still winning.
+
+## 3.5 No melee enemy stood inside its own attack range
+
+**This was the biggest one, and it was not an animation bug at all.**
+`ENEMY_CHASE` parks at `orbit`; the attack trigger is `range + 14`. Every
+melee type parked *outside* its trigger:
+
+| kind | range | orbit | slack |
+|---|---|---|---|
+| grunt | 68 | 120 | 52 |
+| assassin | 62 | 150 | 88 |
+| heavy | 82 | 130 | 48 |
+| shield | 72 | 110 | 38 |
+| drone | 90 | 170 | 80 |
+| elite | 74 | 140 | 66 |
+| boss | 150 | 200 | 50 |
+
+A grunt walked to 120px and stopped — beyond the player's ~70px hand range
+*and* beyond its own 82px trigger — so it could neither hit nor be hit, and it
+hovered there forever. Each `orbit` now sits just inside its own trigger; the
+gunner keeps 380, the one type that wants distance.
+
+### End-to-end result
+
+`.qa/combo-live.ts` — a real chasing grunt, 15 unseeded 6-second trials, the
+light chain thrown on repeat:
+
+| chain | median strikes connected | mean damage |
+|---|---|---|
+| `l1-l2-l3-l4-l5` | **0 → 9** | **49 → 92** |
+| `h2-h1-h3` | **0 → 2** | **19 → 46** |
+| `l1-l2-l1-l2` | 12 → 11 | 85 → 82 |
+
+`l1-l2-l1-l2` was already fine once the body was in range; the two-jab openers
+were the only thing that ever worked, because 34px is inside reach and the sum
+of two light pushes still is. Anything longer died in the gap.
+
+> Harness note: the multi-trial RNG is deliberately **not** seeded. Pinning
+> `Math.random` pins the grunt's orbit `side`, which produces one deterministic
+> standoff rather than the average case (measured: 2/16 seeded vs 9/16
+> unseeded). Do not "fix" this later.
+
+## Gates
+
+`npx tsx --test tests/*.test.ts` **201/201** · `npx tsc --noEmit` **0** ·
+`npx tsx .qa/pose-golden.ts` **PASS**.
