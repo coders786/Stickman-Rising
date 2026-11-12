@@ -123,7 +123,14 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify(out, null, 1))
   process.exit(0)
 }
-const rows = ids.map(audit).sort((a, b) => a.ratio - b.ratio)
+// A barrage has many contacts, so "peak speed vs the frame the window opens"
+// is not a meaningful question for it -- the --json branch has always skipped
+// these. Honour that here too instead of printing a misleading LATE/EARLY.
+const rows = ids.map((id) => {
+  if (!MOVES[id].hit.multiHit) return audit(id)
+  const r = audit(id)
+  return { ...r, verdict: 'n/a multi' as typeof r.verdict }
+}).sort((a, b) => a.ratio - b.ratio)
 
 console.log('EMPTY-HAND IMPACT TIMING  (ratio = limb speed when the hitbox opens / peak speed)')
 console.log('id'.padEnd(16), 'contact'.padStart(8), 'peak@'.padStart(7), 'offset'.padStart(8), 'peak u/s'.padStart(9), 'ratio'.padStart(7), '  verdict')

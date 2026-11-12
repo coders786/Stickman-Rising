@@ -39,12 +39,73 @@ function surface(ctx: CanvasRenderingContext2D, profile: SurfacePoint[], base: s
   ctx.strokeStyle = base; ctx.lineWidth = .45; ctx.stroke()
 }
 const withRadius = (p: Point, radius: number): SurfacePoint => ({ ...p, radius })
-function segmentProfile(a: Point, hinge: Point, b: Point, radii: number[]): SurfacePoint[] {
+
+/** DEPTH SCALE — the single technique that separates a foreshortened limb
+ * from a broken stub.
+ *
+ * A limb pointing at the camera compresses along its LENGTH (the perspective
+ * projection does that for free: measured 20.4 -> 2.2 units at full yaw).
+ * But a stick figure drawn with constant line weight then reads as a
+ * SHORTENED STICK, not a limb coming at you, because the near end never
+ * grows. Reference art is explicit that the fix is the opposite of what the
+ * word suggests: "when a limb points at the viewer, draw it LARGER, not
+ * smaller" — the wrist must occupy more pixels than the shoulder.
+ *
+ * So every limb radius is scaled by the perspective factor at ITS OWN
+ * depth. The camera FOCUS is 620 (near-orthographic, only 8.9% scale across
+ * the whole reachable depth range), which is far too subtle to carry the
+ * read on its own, so the effect is deliberately exaggerated here: this is
+ * the one place the renderer departs from the camera's true maths, and it
+ * is a drawing law rather than a projection.
+ */
+const DEPTH_GAIN = 5.0
+function depthScale(z: number): number {
+  const p = 620 / (620 - z)          // the camera's true perspective factor
+  return 1 + (p - 1) * DEPTH_GAIN    // exaggerated to a readable amount
+}
+/**
+ * THE HAND MAGNIFIES HARDER THAN THE LIMB.
+ *
+ * Dillon Wright's limb experiment ("Foreshortening and Limb Length in
+ * Perspective Made Easy", 2023) measured hand size against arm angle across
+ * hundreds of cartoon frames: at 45 deg the hand is ~1.5x, pointed straight
+ * at the viewer it is 2.0x (safe), 2.5x (splits the difference) to 3.0x
+ * (exaggerated but reads normal). Drawlikeasir's foreshortening tutorial
+ * puts the same rule on the shoulder/elbow/wrist circle stack -- "the more
+ * the circles overlap, the more foreshortened it looks", and the wrist is
+ * the smallest circle normally, so most of the growth lands on the hand.
+ *
+ * That is a far bigger multiplier than the taper on the limb itself, and it
+ * is anchored to the NEUTRAL wrist depth so a resting hand stays exactly 1.0.
+ */
+const HAND_GAIN = 14.0          // toward the camera: 1.0 -> ~2.05 at full yaw
+const HAND_FAR_GAIN = 4.0       // away: 1.0 -> ~0.78, readably smaller, never a dot
+const HAND_MIN = 0.7, HAND_MAX = 2.2
+const WRIST_REST_Z = 7.84              // measured: neutral-pose wrist depth
+const REST_P = 620 / (620 - WRIST_REST_Z)
+function handScale(z: number): number {
+  const d = (620 / (620 - z)) - REST_P
+  // Asymmetric on purpose: growth toward the viewer is the readable half of
+  // foreshortening, and the far hand only needs to lose a little size before
+  // it reads as behind. A single gain either saturated the far side into a
+  // flat 0.75 within 3 units or shrank a pointing-away arm to a 0.22 dot.
+  const s = 1 + d * (d >= 0 ? HAND_GAIN : HAND_FAR_GAIN)
+  return s < HAND_MIN ? HAND_MIN : s > HAND_MAX ? HAND_MAX : s
+}
+function segmentProfile(
+  a: Point, hinge: Point, b: Point, radii: number[],
+  za = 0, zh = 0, zb = 0,
+): SurfacePoint[] {
+  const sa = depthScale(za), sh = depthScale(zh), sb = depthScale(zb)
+  // the two intermediate points on each bone interpolate their own depth so
+  // the taper stays smooth instead of stepping at the joint
+  const s1 = sa + (sh - sa) * .34, s2 = sa + (sh - sa) * .76
+  const s4 = sh + (sb - sh) * .30, s5 = sh + (sb - sh) * .70
   return [
-    withRadius(a, radii[0]), withRadius(mix(a, hinge, .34), radii[1]),
-    withRadius(mix(a, hinge, .76), radii[2]), withRadius(hinge, radii[3]),
-    withRadius(mix(hinge, b, .30), radii[4]), withRadius(mix(hinge, b, .70), radii[5]),
-    withRadius(b, radii[6]),
+    withRadius(a, radii[0] * sa), withRadius(mix(a, hinge, .34), radii[1] * s1),
+    withRadius(mix(a, hinge, .76), radii[2] * s2), withRadius(hinge, radii[3] * sh),
+    withRadius(mix(hinge, b, .30), radii[4] * s4), withRadius(mix(hinge, b, .70), radii[5] * s5),
+    withRadius(b, radii[6] * sb),
   ]
 }
 
@@ -106,9 +167,12 @@ ctx.restore()
 }
 
 function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts:FighterDrawOpts):void {
-  const limb=(a:Point,b:Point,c:Point,r:number[])=>surface(ctx,segmentProfile(a,b,c,r),color)
+  // every limb is drawn with its joints' true depths, so the near end of a
+  // limb aimed at the camera widens while its length compresses
+  const limb=(a:Point,b:Point,c:Point,r:number[],za=0,zb=0,zc=0)=>
+    surface(ctx,segmentProfile(a,b,c,r,za,zb,zc),color)
   for(const [h,k,a,t] of [[g.hipPtL,g.kneeL,g.ankleL,g.toeL],[g.hipPtR,g.kneeR,g.ankleR,g.toeR]]){
-    limb(h,k,a,[4.2,4.35,3.1,2.0,2.75,1.9,1.35])
+    limb(h,k,a,[4.2,4.35,3.1,2.0,2.75,1.9,1.35],h.z,k.z,a.z)
     outline(ctx,[{x:a.x-2.4,y:a.y-2}, {x:a.x+2,y:a.y-2},
       {x:t.x+1.4,y:t.y-1},{x:t.x+1.8,y:t.y+1.8},{x:a.x-2.5,y:a.y+2}]);ctx.fillStyle=color;ctx.fill()
   }
@@ -156,9 +220,12 @@ function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string,opts
     // (2.25) and a 1.15 wrist: one continuous taper, no flare-pinch-flare,
     // so the outline has no diamond nodes left in it. Bicep still flexes
     // with elbow bend so a chambered arm reads as loaded, not tubular.
-    limb(sh,el,wr,[3.4,3.2+.22*flex,2.55,1.7,2.25,1.85,1.15])
+    limb(sh,el,wr,[3.4,3.2+.22*flex,2.55,1.7,2.25,1.85,1.15],sh.z,el.z,wr.z)
     // Palm/fingers articulate around the solved wrist, not an offset fist.
+    // Scaled by wrist depth LAST (innermost to the wrist) so rotation and
+    // position stay exact while the hand itself grows toward the camera.
     ctx.save();ctx.translate(wr.x,wr.y);ctx.rotate(Math.atan2(wr.y-el.y,wr.x-el.x)+roll)
+    const hs=handScale(wr.z);ctx.scale(hs,hs)
     drawArticulatedHand(ctx,color,open);ctx.restore()
   }
   ctx.save();ctx.translate(g.headC.x,g.headC.y);ctx.rotate(g.headAng);ctx.scale(.88,.92)

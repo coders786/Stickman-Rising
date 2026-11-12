@@ -535,14 +535,18 @@ const SWEEP = clip('unarmedSweep', [
 const UPPERcut = clip('unarmedUpperCut', [
   kf(0, G),
   kf(0.10, { ...G, rootY: 9, rootRot: 0.16, chestYaw: 0.3, ...handPose('right', 6, 16),
+    elL: -2.25, shL: 0.55,
     head: -0.16 }, 'outQuad'),
   mid(0.15, { ...G, rootY: 9, rootRot: 0.16, chestYaw: 0.3, ...handPose('right', 6, 16),
       head: -0.16 },
     { ...G, rootY: -1, rootRot: -0.08, chestYaw: -0.35, pelvisYaw: 0.2,
       ...handPose('right', 20, -30), armRz: 0.25,
+      // off arm DRIVES DOWN as the uppercut rises
+      shL: -0.45, elL: -1.15,
       hipR: 0.2, kneeR: -0.4, hipL: -0.5, kneeL: -0.7, head: -0.08 }),
   kf(0.20, { ...G, rootY: -1, rootRot: -0.08, chestYaw: -0.35, pelvisYaw: 0.2,
     ...handPose('right', 20, -30), armRz: 0.25,
+    shL: -0.55, elL: -1.05,
     hipR: 0.2, kneeR: -0.4, hipL: -0.5, kneeL: -0.7, head: -0.08 }, 'inOutCubic'),
   kf(0.30, { ...G, rootY: 1, rootRot: 0.02, ...handPose('right', 16, -22),
     chestYaw: -0.2 }, 'inOutCubic'),
@@ -559,13 +563,25 @@ const KNEEBARRAGE = clip('unarmedKneeBarrage', [
   // chest opens back, hips wind away before the first driving knee
   kf(0.03, { ...G, rootY: 5.5, rootRot: 0.1, chestYaw: 0.2, pelvisYaw: -0.12,
     hipR: 0.9, kneeR: -1.15, footR: 0.08 }, 'outQuad'),
-  kf(0.06, { ...G, rootY: 5, rootRot: 0.16, ...legPose('right', 8, 22), kneeR: -1.6 }, 'outQuad'),
+  kf(0.06, { ...G, rootY: 5, rootRot: 0.16, ...legPose('right', 8, 22), kneeR: -1.6,
+    shL: 0.75, elL: -1.75, shR: 1.05, elR: -2.10 }, 'outQuad'),
   kf(0.12, { ...G, rootY: 4, rootRot: 0.2, ...legPose('right', 27, 6), kneeR: -1.5, pelvisYaw: 0.15,
-    ...handPose('left', 8, 6), ...handPose('right', 10, 8) }, 'inOutCubic'),
-  kf(0.20, { ...G, rootY: 5.5, rootRot: 0.16, ...legPose('right', 6, 24), kneeR: -1.7, pelvisYaw: -0.05 }, 'outQuad'),
-  kf(0.27, { ...G, rootY: 4, rootRot: 0.2, ...legPose('right', 28, 4), kneeR: -1.4, pelvisYaw: 0.18 }, 'inOutCubic'),
-  kf(0.35, { ...G, rootY: 5.5, rootRot: 0.16, ...legPose('right', 7, 24), kneeR: -1.7, pelvisYaw: -0.05 }, 'outQuad'),
-  kf(0.42, { ...G, rootY: 4, rootRot: 0.22, ...legPose('right', 29, 3), kneeR: -1.35, pelvisYaw: 0.2 }, 'inOutCubic'),
+    // arms PUMP opposite the knee: right knee up -> right arm back
+    ...handPose('left', 8, 6), ...handPose('right', 10, 8),
+    shR: 0.35, elR: -1.15, shL: 1.25, elL: -2.25,
+    ...legPose('left', -8, 34), kneeL: -1.05 }, 'inOutCubic'),
+  kf(0.20, { ...G, rootY: 5.5, rootRot: 0.16, ...legPose('right', 6, 24), kneeR: -1.7, pelvisYaw: -0.05,
+    shR: 1.15, elR: -2.15, shL: 0.60, elL: -1.60,
+    ...legPose('left', -4, 30), kneeL: -0.90 }, 'outQuad'),
+  kf(0.27, { ...G, rootY: 4, rootRot: 0.2, ...legPose('right', 28, 4), kneeR: -1.4, pelvisYaw: 0.18,
+    shR: 0.30, elR: -1.10, shL: 1.20, elL: -2.20,
+    ...legPose('left', -9, 35), kneeL: -1.10 }, 'inOutCubic'),
+  kf(0.35, { ...G, rootY: 5.5, rootRot: 0.16, ...legPose('right', 7, 24), kneeR: -1.7, pelvisYaw: -0.05,
+    shR: 1.10, elR: -2.10, shL: 0.65, elL: -1.65,
+    ...legPose('left', -4, 30), kneeL: -0.85 }, 'outQuad'),
+  kf(0.42, { ...G, rootY: 4, rootRot: 0.22, ...legPose('right', 29, 3), kneeR: -1.35, pelvisYaw: 0.2,
+    shR: 0.28, elR: -1.05, shL: 1.22, elL: -2.22,
+    ...legPose('left', -9, 35), kneeL: -1.12 }, 'inOutCubic'),
   mid(0.485, { ...G, rootY: 4, rootRot: 0.22, ...legPose('right', 29, 3), kneeR: -1.35, pelvisYaw: 0.2 }, G),
   kf(0.55, G),
 ])
@@ -610,14 +626,19 @@ const ELBOW = clip('unarmedElbow', [
     ...footAt('right', 20, 39), ...footAt('left', -25, 40),
     shR: 1.72, elR: -2.10, wrR: 0,
     ...fistAt('left', 7, 5),
-    armRz: 0.10, armLz: 0.26, foreRz: 0.10, foreLz: 0.24,
+    // Z: the chest is quarter-turned AWAY, so the striking girdle loads
+    // behind the plane. Without this the whole move was a flat slab
+    // (measured span 37.0 vs 101.6 on `charged`) and the spin read as a
+    // 2D flip. Negative here is what the contact key spends.
+    rootZ: -9.5,
+    armRz: -0.62, armLz: 0.44, foreRz: -0.55, foreLz: 0.38,
   }),
   // CONTACT — elbow point at the outside edge of the turn. The arm is
   // STILL DRIVING here: shR 1.16 -> 1.36 and elR -2.30 -> -2.58 across the
   // contact beat, so the point keeps travelling through the hit instead
   // of arriving and stopping (which put the speed peak in the recovery).
   kf(0.165, {
-    rootX: 7.4, rootY: 4.2, rootRot: 0.27,
+    rootX: 10.6, rootY: 4.2, rootRot: 0.27,
     spine: 0.11, head: 0.16,
     pelvisYaw: 1.02, chestYaw: -1.32,
     ...footAt('right', 23, 38), ...footAt('left', -28, 39),
@@ -629,9 +650,25 @@ const ELBOW = clip('unarmedElbow', [
     // measured sweep: shR 2.1 / elR -1.9 = +14px elbow lead with a 109deg
     // fold. Deeper folds (+126deg) collapse the lead to +1px; shallower
     // (92deg) straightens the arm and reads as a punch.
-    shR: 2.10, elR: -1.90, wrR: 0,
+    // Fold re-solved at -1.40 once depth was added: see the note below.
+    shR: 2.10, elR: -1.40, wrR: 0,
     ...fistAt('left', 3, 6),
-    armRz: 0.44, armLz: 0.32, foreRz: 0.40, foreLz: 0.30,
+    // Z: the turn arrives IN FRONT of the plane. rootZ travels -9.5 -> +11
+    // through the contact so the elbow point comes at the viewer, and the
+    // arm yaw goes positive with it: the striking arm's wrist ends up the
+    // nearest thing on the figure, which is the near-end-larger read the
+    // whole depth pass is built on.
+    // rootX carries the extra reach the depth costs: yawing the arm toward
+    // the camera shortens its X projection, and the first pass dropped the
+    // elbow lead to 8.9px (the test floor is 15). The body travels further
+    // so the point still leads the hips by a readable margin.
+    rootZ: 11.0,
+    // Fold/yaw pair solved together, not guessed: folding the arm hard to
+    // swing it toward the camera costs X reach and dropped this test to
+    // 8.9px. Sweeping fold x yaw x fore-yaw for lead AND depth left one
+    // point that satisfies both -- elR -1.40 / armRz 0.55 / foreRz 0.60
+    // gives 16.4px lead with the elbow at z 35 and wrist at z 32.
+    armRz: 0.55, armLz: -0.30, foreRz: 0.60, foreLz: -0.26,
   }, 'inOutCubic'),
   // follow-through: still turning, the elbow folding back to the guard
   kf(0.285, {
@@ -639,7 +676,9 @@ const ELBOW = clip('unarmedElbow', [
     rootX: 4, rootY: 6, pelvisYaw: 0.45, chestYaw: -0.60,
     shR: 1.20, elR: -1.55, wrR: 0.18,
     ...fistAt('left', 7, 5),
-    armRz: -0.20, foreRz: -0.18,
+    // and the depth unwinds back toward the plane as the body settles
+    rootZ: 3.5,
+    armRz: 0.16, foreRz: 0.10,
   }, 'inOutCubic'),
   mid(0.355, {
     ...recover('right', { settle: 1 }),
@@ -1439,14 +1478,18 @@ const AIR_TUCK: PoseInput = { rootY: -1, hipR: 0.75, kneeR: -1.25, hipL: -0.25, 
 const FLYKNEE = clip('unarmedFlyKnee', [
   kf(0, G),
   kf(0.08, { ...G, ...AIR_TUCK, ...legPose('right', 8, 20), kneeR: -1.6, head: -0.18,
-    ...handPose('left', 10, 6), ...handPose('right', 10, 8) }, 'outQuad'),
+    ...handPose('left', 10, 6), ...handPose('right', 10, 8), elL: -2.10, elR: -2.25 }, 'outQuad'),
   mid(0.13, { ...G, ...AIR_TUCK, ...legPose('right', 8, 20), kneeR: -1.6, head: -0.18,
-      ...handPose('left', 10, 6), ...handPose('right', 10, 8) },
+      ...handPose('left', 10, 6), ...handPose('right', 10, 8), elL: -2.10, elR: -2.25 },
     { ...G, ...AIR_TUCK, rootY: -1, ...legPose('right', 30, 2), kneeR: -1.4,
-      pelvisYaw: 0.18, head: -0.2, ...handPose('left', 6, 10), ...handPose('right', 8, 12) }),
+      pelvisYaw: 0.18, head: -0.2, ...handPose('left', 6, 10), ...handPose('right', 8, 12),
+      // off arm PUMPS DOWN into the knee drive
+      elL: -1.20, elR: -1.85 }),
   kf(0.18, { ...G, ...AIR_TUCK, rootY: -1, ...legPose('right', 30, 2), kneeR: -1.4,
-    pelvisYaw: 0.18, head: -0.2, ...handPose('left', 6, 10), ...handPose('right', 8, 12) }, 'inOutCubic'),
-  kf(0.28, { ...G, ...AIR_TUCK, ...legPose('right', 20, 10), kneeR: -1.5 }, 'inOutCubic'),
+    pelvisYaw: 0.18, head: -0.2, ...handPose('left', 6, 10), ...handPose('right', 8, 12),
+    elL: -1.05, elR: -1.75 }, 'inOutCubic'),
+  kf(0.28, { ...G, ...AIR_TUCK, ...legPose('right', 20, 10), kneeR: -1.5,
+    elL: -1.70, elR: -2.05 }, 'inOutCubic'),
   mid(0.34, { ...G, ...AIR_TUCK, ...legPose('right', 20, 10), kneeR: -1.5 }, G),
   kf(0.40, G),
 ])
@@ -1455,15 +1498,18 @@ const FLYKNEE = clip('unarmedFlyKnee', [
 const AIRCROSS = clip('unarmedAirCross', [
   kf(0, G),
   mid(0.035, G, { ...G, ...AIR_TUCK, rootY: 0, chestYaw: -0.28, pelvisYaw: 0.14,
-      ...handPose('left', 6, 6) }),
+      ...handPose('left', 6, 6), elR: -2.20 }),
   kf(0.07, { ...G, ...AIR_TUCK, rootY: 0, chestYaw: -0.28, pelvisYaw: 0.14,
-    ...handPose('left', 6, 6) }, 'outQuad'),
+    ...handPose('left', 6, 6), elR: -2.20 }, 'outQuad'),
   mid(0.11, { ...G, ...AIR_TUCK, rootY: 0, chestYaw: -0.28, pelvisYaw: 0.14,
-      ...handPose('left', 6, 6) },
+      ...handPose('left', 6, 6), elR: -2.20 },
     { ...G, ...AIR_TUCK, rootY: 0, ...handPose('left', 33, 0),
-      chestYaw: 0.35, pelvisYaw: -0.2, head: -0.18, ...handPose('right', 10, 3) }),
+      chestYaw: 0.35, pelvisYaw: -0.2, head: -0.18, ...handPose('right', 10, 3),
+      // guard arm pulls back as the cross fires
+      shR: 0.75, elR: -1.55 }),
   kf(0.15, { ...G, ...AIR_TUCK, rootY: 0, ...handPose('left', 33, 0),
-    chestYaw: 0.35, pelvisYaw: -0.2, head: -0.18, ...handPose('right', 10, 3) }, 'inOutCubic'),
+    chestYaw: 0.35, pelvisYaw: -0.2, head: -0.18, ...handPose('right', 10, 3),
+    shR: 0.85, elR: -1.40 }, 'inOutCubic'),
   mid(0.235, { ...G, ...AIR_TUCK, rootY: 0, ...handPose('left', 33, 0),
       chestYaw: 0.35, pelvisYaw: -0.2, head: -0.18, ...handPose('right', 10, 3) }, G),
   kf(0.32, G),
@@ -1473,16 +1519,25 @@ const AIRCROSS = clip('unarmedAirCross', [
 const CRESCENT = clip('unarmedCrescent', [
   kf(0, G),
   kf(0.13, { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 8, -18, 'flat'), kneeR: -1.8,
+    // the arms load ACROSS as the leg winds out to the side
+    shL: 0.95, elL: -2.05, shR: 0.30, elR: -2.25, armLz: 0.45, armRz: -0.30,
     hipRz: 0.4, head: -0.14 }, 'outQuad'),
   mid(0.185, { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 8, -18, 'flat'), kneeR: -1.8,
+      shL: 0.95, elL: -2.05, shR: 0.30, elR: -2.25, armLz: 0.45, armRz: -0.30,
       hipRz: 0.4, head: -0.14 },
     { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 30, -14, 'point'), kneeR: -0.7,
+      // and SNAP the other way as the kick cuts across — the classic
+      // crescent counter-rotation
+      shL: -0.30, elL: -0.65, shR: 0.55, elR: -1.15, armLz: -1.05, armRz: 0.85,
       hipRz: -0.25, chestYaw: -0.4, pelvisYaw: 0.25, head: -0.16 }),
   kf(0.24, { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 30, -14, 'point'), kneeR: -0.7,
+    shL: -0.38, elL: -0.58, shR: 0.62, elR: -1.05, armLz: -1.20, armRz: 0.95,
     hipRz: -0.25, chestYaw: -0.4, pelvisYaw: 0.25, head: -0.16 }, 'inOutCubic'),
   kf(0.34, { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 22, -6, 'point'), kneeR: -1.2,
+    shL: 0.35, elL: -1.45, shR: 0.80, elR: -1.70, armLz: -0.45, armRz: 0.40,
     hipRz: 0.1 }, 'inOutCubic'),
   mid(0.40, { ...G, ...AIR_TUCK, rootY: 0, ...kickPose('right', 22, -6, 'point'), kneeR: -1.2,
+      shL: 0.35, elL: -1.45, shR: 0.80, elR: -1.70, armLz: -0.45, armRz: 0.40,
       hipRz: 0.1 }, G),
   kf(0.46, G),
 ])
@@ -1530,16 +1585,30 @@ const HEELDROP = clip('unarmedHeelDrop', [
 const AIRTWIST = clip('unarmedAirTwist', [
   kf(0, G),
   kf(0.08, { ...G, rootY: 0, pelvisYaw: 0.4, chestYaw: 0.5, head: 0.3, ...AIR_TUCK,
+    // arms WRAP ACROSS the body to load the spin
+    shL: 1.15, elL: -2.20, shR: 0.55, elR: -2.35,
+    armLz: 0.55, armRz: -0.35,
     ...legPose('right', 6, 18), kneeR: -1.8 }, 'outQuad'),
   mid(0.13, { ...G, rootY: 0, pelvisYaw: 0.4, chestYaw: 0.5, head: 0.3, ...AIR_TUCK,
+      shL: 1.15, elL: -2.20, shR: 0.55, elR: -2.35,
+      armLz: 0.55, armRz: -0.35,
       ...legPose('right', 6, 18), kneeR: -1.8 },
     { ...G, rootY: 0, pelvisYaw: -0.4, chestYaw: -0.55, head: -0.1, ...AIR_TUCK,
+      // arms FLING OUT wide: the spin is driven and then caught by them
+      shL: -0.35, elL: -0.55, shR: 0.20, elR: -0.75,
+      armLz: -1.15, armRz: 1.05,
       ...kickPose('right', 32, -10, 'point'), kneeR: -0.8, hipRz: 0.35 }),
   kf(0.18, { ...G, rootY: 0, pelvisYaw: -0.4, chestYaw: -0.55, head: -0.1, ...AIR_TUCK,
+    shL: -0.45, elL: -0.42, shR: 0.28, elR: -0.62,
+    armLz: -1.30, armRz: 1.20,
     ...kickPose('right', 32, -10, 'point'), kneeR: -0.8, hipRz: 0.35 }, 'inOutCubic'),
   kf(0.28, { ...G, rootY: 0, pelvisYaw: -0.15, chestYaw: -0.2, ...AIR_TUCK,
+    shL: 0.30, elL: -1.30, shR: 0.85, elR: -1.55,
+    armLz: -0.55, armRz: 0.50,
     ...kickPose('right', 20, -6, 'point'), kneeR: -1.3 }, 'inOutCubic'),
   mid(0.36, { ...G, rootY: 0, pelvisYaw: -0.15, chestYaw: -0.2, ...AIR_TUCK,
+      shL: 0.30, elL: -1.30, shR: 0.85, elR: -1.55,
+      armLz: -0.55, armRz: 0.50,
       ...kickPose('right', 20, -6, 'point'), kneeR: -1.3 }, G),
   kf(0.44, G),
 ])
@@ -1725,13 +1794,16 @@ const MOVES_SRC: MoveSpec[] = [
   { id: 'spin', label: 'CROUCHING SWEEP', kind: 'spin', requires: 'ground', clip: SWEEP, limb: 'right', joint: 'foot',
     hitStart: 0.15, hitEnd: 0.29, dmg: 14, kb: 120, kbY: 60, launch: 80, stagger: 0.5 },
   { id: 'launcher', label: 'RISING DRAGON', kind: 'launcher', requires: 'ground', clip: UPPERcut, limb: 'right',
-    hitStart: 0.12, hitEnd: 0.22, dmg: 16, kb: 100, kbY: -240, launch: 420, moveY: -300, moveYAt: 0.13,
+    hitStart: 0.15, hitEnd: 0.25, dmg: 16, kb: 100, kbY: -240, launch: 420, moveY: -300, moveYAt: 0.13,
     float: 0.75, chain: ['a1', 'a2', 'a3', 'dive', 'slam'] },
   { id: 'stabs', label: 'RENZOKU KNEE RUSH', kind: 'light', requires: 'ground', clip: KNEEBARRAGE, limb: 'right', joint: 'knee',
-    hitStart: 0.10, hitEnd: 0.42, dmg: 9, kb: 70, multiHit: 0.12, moveX: 120, moveXAt: 0.02 },
+    hitStart: 0.05, hitEnd: 0.50, dmg: 9, kb: 70, multiHit: 0.12, moveX: 120, moveXAt: 0.02 },
   /* heavies */
   { id: 'h1', label: 'RIPPLING ELBOW', kind: 'heavy', requires: 'ground', clip: ELBOW, limb: 'right', joint: 'elbow',
-    hitStart: 0.192, hitEnd: 0.312, dmg: 20, kb: 180, heavy: true,
+    // re-anchored: adding the Z travel moved the elbow's speed peak from
+    // 0.182 to 0.174, ahead of the old 0.192 window. Opening at 0.164
+    // keeps a 0.12s window and covers the peak outright.
+    hitStart: 0.164, hitEnd: 0.284, dmg: 20, kb: 180, heavy: true,
     chain: ['l1', 'l2', 'launcher', 'spin', 'avalancheElbow'] },
   { id: 'h2', label: 'TORNADO ROUNDHOUSE', kind: 'heavy', requires: 'ground', clip: ROUNDHOUSE, limb: 'right', joint: 'foot',
     hitStart: 0.152, hitEnd: 0.292, dmg: 26, kb: 240, heavy: true, breakGuard: true,
@@ -1805,19 +1877,19 @@ const MOVES_SRC: MoveSpec[] = [
     hitStart: 0.305, hitEnd: 0.445, dmg: 32, kb: 265, heavy: true, breakGuard: true },
   /* air family */
   { id: 'a1', label: 'FLYING KNEE', kind: 'air', requires: 'air', clip: FLYKNEE, limb: 'right', joint: 'knee',
-    hitStart: 0.10, hitEnd: 0.24, dmg: 15, kb: 145, float: 0.8,
+    hitStart: 0.02, hitEnd: 0.16, dmg: 15, kb: 145, float: 0.8,
     chain: ['a2', 'a3', 'dive'] },
   { id: 'a2', label: 'AIR CROSS', kind: 'air', requires: 'air', clip: AIRCROSS, limb: 'left',
-    hitStart: 0.08, hitEnd: 0.16, dmg: 13, kb: 105, float: 0.8,
+    hitStart: 0.11, hitEnd: 0.19, dmg: 13, kb: 105, float: 0.8,
     chain: ['a3', 'dive', 'slam'] },
   { id: 'a3', label: 'CRESCENT ARC KICK', kind: 'air', requires: 'air', clip: CRESCENT, limb: 'right', joint: 'foot',
-    hitStart: 0.16, hitEnd: 0.28, dmg: 17, kb: 165, float: 0.75,
+    hitStart: 0.355, hitEnd: 0.455, dmg: 17, kb: 165, float: 0.75,
     chain: ['dive', 'slam'] },
   { id: 'dive', label: 'METEOR DROPKICK', kind: 'air', requires: 'air', clip: DROPKICK, limb: 'right', joint: 'foot',
     hitStart: 0.12, hitEnd: 0.40, dmg: 24, kb: 245, heavy: true, float: 0.6,
     moveY: 650, moveYAt: 0.15 },
   { id: 'slam', label: 'SEISMIC HEEL DROP', kind: 'slam', requires: 'air', clip: HEELDROP, limb: 'right', joint: 'foot',
-    hitStart: 0.20, hitEnd: 0.45, dmg: 14, kb: 80, heavy: true, multiHit: 0.16,
+    hitStart: 0.28, hitEnd: 0.53, dmg: 14, kb: 80, heavy: true, multiHit: 0.16,
     moveY: 1050, moveYAt: 0.10, float: 0.4 },
   /* air command moves */
   { id: 'airTwist', label: 'TWIST KICK', kind: 'air', requires: 'air', clip: AIRTWIST, limb: 'right', joint: 'foot',
