@@ -58,6 +58,15 @@ function hitWindowOf(id: string): { start: number; end: number } {
   const ev = RONIN_META[id]?.events ?? []
   const first = ev.reduce((m, e) => Math.min(m, e.t), 0.5)
   const last = ev.reduce((m, e) => Math.max(m, e.t), 0.5)
+  // NOTE (cleave pass): this window is built from the reference's 24fps beat
+  // times, and those do NOT always line up with the measured forward sweep of
+  // the retargeted clip -- the port keeps the reference's rootZ/bladeZ travel,
+  // which re-times the arm. srOnslaught sweeps forward at animT 0.75-0.90 (tip
+  // x 531-566) while this returned 0.45-0.58, where the blade points up.
+  // Windows are therefore overridden per-spec (see `window` below) rather than
+  // trusted, and research/SPRITE-SHEETS.md records why: the reference puts the
+  // limb at maximum reach across the HIT *and* FOLLOW THRU beats, so a window
+  // derived from a single contact event is too short by construction.
   return { start: first - 0.05, end: last + 0.08 }
 }
 
@@ -73,6 +82,9 @@ interface RoninSpec {
   clip: Clip
   /** meta id in RONIN_META (beat source) */
   meta: string
+  /** Measured hit window override, when the beat-derived window does not
+   * match where the retargeted clip actually sweeps forward. */
+  window?: { start: number; end: number }
   dmg: number
   kb: number
   kbY?: number
@@ -139,10 +151,14 @@ const SPECS: RoninSpec[] = [
   {
     id: 'srVortex', label: 'HELIX VORTEX CUTTER', kind: 'spin', requires: 'ground',
     clip: RONIN_Vortex_CLIP, meta: 'vortex',
+    // Measured: this spin is still travelling backwards through the
+    // beat-derived window (tip x -33..+53 at 0.45-0.58); the blade comes
+    // forward at 0.72-0.98.
+    window: { start: 0.72, end: 0.98 },
     dmg: 16, kb: 170, kbY: -60, stagger: 0.38, shake: 0.24,
     moveX: 60, moveXAt: 0.15,
     chain: ['srCross', 'srOmega', 'l1'],
-    cancel: 0.74, trailBack: 0.21, trailFwd: 0.18,
+    cancel: 1.06, trailBack: 0.21, trailFwd: 0.18,
     unarmed: { limb: 'left', joint: 'hand', dmgScale: 0.9 },
   },
   {
@@ -158,10 +174,16 @@ const SPECS: RoninSpec[] = [
   {
     id: 'srOnslaught', label: 'ONSLAUGHT CHAIN X-SLASH', kind: 'finisher', requires: 'ground',
     clip: RONIN_Onslaught_CLIP, meta: 'onslaught',
+    // Measured: the ported clip sweeps forward at animT 0.75-0.90 (blade tip
+    // 531-566). The beat-derived window (0.45-0.58) lands on the upswing
+    // where the tip sits at 469-489, so it stopped on body 2.
+    window: { start: 0.74, end: 0.92 },
     dmg: 26, kb: 260, stagger: 0.5, shake: 0.3, heavy: true, breakGuard: true, pad: 9,
     moveX: 150, moveXAt: 0.2,
     chain: ['srOmega', 'l1', 'l2', 'launcher'],
-    cancel: 0.74, trailBack: 0.24, trailFwd: 0.18, sfx: 'swingHeavy',
+    // cancel must stay after the (corrected) window -- tests/dual-stance
+    // asserts hit.end < cancel, and the window moved later than the old one
+    cancel: 1.02, trailBack: 0.24, trailFwd: 0.18, sfx: 'swingHeavy',
     unarmed: { limb: 'left', joint: 'hand', dmgScale: 0.85 },
   },
   {
@@ -182,7 +204,7 @@ const SPECS: RoninSpec[] = [
 /* ------------------------------------------------------------------ */
 
 function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
-  const win = hitWindowOf(s.meta)
+  const win = s.window ?? hitWindowOf(s.meta)
   const hit: AttackHit = {
     start: win.start,
     end: win.end,

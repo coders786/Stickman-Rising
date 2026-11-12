@@ -150,6 +150,12 @@ const HIP_H = (25 + 24) * SCALE
  * lower 2/3 of the body, so chest/head-height slashes passed straight
  * through the sprite without connecting. Three spheres hug the visual body.
  */
+/** How far an attack must carry the body before its own path counts as a
+ * cutting corridor. A step-in of a few pixels is not a lunge; 12px is well
+ * under the 26px enemy spacing, so this cannot accidentally widen the arc of
+ * a move that stands still. */
+const LUNGE_CORRIDOR_MIN = 12
+
 const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
   { oy: 14, r: 15 }, // legs / hip mass
   { oy: 48, r: 21 }, // torso (the main target)
@@ -552,6 +558,15 @@ export class Player {
   blade = { bx: 0, by: 0, tx: 0, ty: 0 }
   /** previous frame's blade segment (swept hit detection) */
   private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+  /** How far the body has been carried by the CURRENT attack's lunge, in px.
+   * A lunging strike sweeps this travelled path as its cutting corridor, so
+   * an enemy the body has just overrun still takes the cut instead of being
+   * left behind. Reset on every startAttack. */
+  private attackTravel = 0
+  private attackPrevX = 0
+  /** True when the previous frame's hit segment was the lunge/dash corridor,
+   * so the sweep test compares like with like. */
+  private prevWasCorridor = false
   private hasPrevBlade = false
 
   constructor() {
@@ -2359,6 +2374,8 @@ export class Player {
     const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
     this.hasPrevAng = false
+    this.attackTravel = 0
+    this.attackPrevX = this.x
     this.action = {
       def,
       animT: 0,
@@ -2461,18 +2478,45 @@ export class Player {
       // volume of the through-cut. The sheathed power strikes (fist /
       // spear-foot) declare their own corridor — the pass tears the pack
       // the same way, at their own strike height.
+      // accumulate this attack's own lunge distance for the corridor below
+      if (a.moveDone) {
+        this.attackTravel += Math.abs(this.x - this.attackPrevX)
+      }
+      this.attackPrevX = this.x
       let curSeg = this.blade
       let usePrev = this.hasPrevBlade
       const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
-      if (def.kind === 'dash' && (!def.strikeHand || declaresCorridor)) {
+      // A LUNGE carries the body over the enemy row, and the blade is then
+      // geometrically BEHIND the nearest body: measured, l5 travels 400->434
+      // across its own hit window and enemy 1 sits at 434, so the tip is
+      // already past it. The sword is what makes the cut, so a lunging strike
+      // sweeps the path it just travelled exactly like a dash-through does --
+      // otherwise the move can never damage the body it started on. This is
+      // the "0 xx xx xx xx" signature seen on l5, h1, powerArc, the sakuga
+      // trio and the ronin finishers.
+      // Only a FORWARD lunge needs a corridor (retreat has moveX -240: it
+      // moves away and the enemy is never overrun). Capped at the dash tier
+      // so a 320px hard lunge keeps the full-path band it already had and a
+      // gentle 60-90px step-in gets a short, honest corridor.
+      const lunges = def.kind !== 'dash' && !def.strikeHand
+        && (def.moveX ?? 0) > 0 && (def.moveX ?? 0) <= 240
+        && this.attackTravel > LUNGE_CORRIDOR_MIN
+      const corridorSeg = (def.kind === 'dash' && (!def.strikeHand || declaresCorridor)) || lunges
+      if (corridorSeg) {
         const cy = h.corridorY ?? 55
+        // a lunge only needs to cover how far it actually moved (plus a body
+        // radius of slack); a dash keeps its authored full-path band
+        const back = h.corridorBack ?? (def.kind === 'dash' ? 124 : this.attackTravel + 30)
         curSeg = {
-          bx: this.x - this.face * (h.corridorBack ?? 124),
+          bx: this.x - this.face * back,
           by: this.y - cy,
           tx: this.x + this.face * (h.corridorFront ?? 66),
           ty: this.y - cy,
         }
-        usePrev = this.hasPrevBlade
+        // the corridor swept itself last frame only if the corridor was
+        // already active; otherwise prev is a stale sword pose from a
+        // different part of the swing and must not be swept against it
+        usePrev = this.prevWasCorridor && this.hasPrevBlade
       }
       for (const e of w.enemies) {
         // spawning enemies within blade reach (landing pods, y > -90) are
@@ -2493,6 +2537,7 @@ export class Player {
       this.prevBlade.tx = curSeg.tx
       this.prevBlade.ty = curSeg.ty
       this.hasPrevBlade = true
+      this.prevWasCorridor = corridorSeg
       // aoe shockwave at strike moment for heavy hits — the wave is REAL:
       // enemies inside the radius eat the strike (the charged/h3 promise:
       // the shockwave visual must connect, not just decorate)

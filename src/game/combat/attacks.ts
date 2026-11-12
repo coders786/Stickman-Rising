@@ -1660,6 +1660,28 @@ export const ATTACKS: Record<string, AttackDef> = {
   ...RONIN_ATTACKS,
 }
 
+/** A lunge that fires BEFORE the hit window carries the body past the first
+ * enemy: measured, l5 (moveX 240 @0.20, window 0.22) damages bodies 2-5 and
+ * skips body 1 entirely; h1, powerArc, sakugaJabCross/Hammer/Scorpion and the
+ * ronin finishers all show the identical `0 xx xx xx xx` pattern.
+ *
+ * Slide such a lunge forward so it starts ON the window rather than before
+ * it: the blade is then already swinging when the body moves and the near
+ * body is damaged on the way out. Conservative on purpose -- only the early
+ * lunges move, and only as far as the window edge, so clip-authored
+ * anticipation and the measured contact beats are untouched.
+ */
+const LUNGE_AFTER_WINDOW = new Set([
+  'l4', 'l5', 'h1', 'powerArc', 'sakugaJabCross', 'sakugaHammer',
+  'sakugaScorpion', 'srCross', 'srOnslaught', 'srViper', 'srVortex',
+])
+for (const [id, def] of Object.entries(ATTACKS)) {
+  if (!LUNGE_AFTER_WINDOW.has(id) || def.moveXAt === undefined) continue
+  if (def.moveXAt < def.hit.start) {
+    ;(def as { moveXAt?: number }).moveXAt = def.hit.start
+  }
+}
+
 export function getAttack(id: string): AttackDef | undefined {
   return ATTACKS[id]
 }
