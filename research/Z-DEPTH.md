@@ -119,6 +119,8 @@ is the same failure the impact-timing audit measures.
 | `l4` SLIP BODY ELBOW | 62.9 | **103.0** |
 | `l1` KIZAMI JAB | 65.4 | **74.4** |
 | `l3` KAGI HOOK | 60.4 | **85.1** |
+| `dashSlash` SHOULDER TACKLE | 51.5 | 67.3 (hip travel 6.4 → **17.3**) |
+| `retreat` HOP-BACK BACKFIST | 55.3 | **100.5** |
 
 ### `dashSlash` — the span metric cannot see a tucked-hands move
 The shoulder tackle measured 51.5, the lowest in the set, which looked like

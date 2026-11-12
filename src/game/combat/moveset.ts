@@ -514,31 +514,46 @@ const BACKFIST = clip('unarmedBackfist', [
   // LAUNCH — legs snap straight, body leaves the ground. Sink goes
   // negative (the body rises) and both feet trail: this is the airborne
   // frame the arc is read from.
-  kf(0.065, chain('lift', 'left', {
-    drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06, depth: -0.70,
-    leadFoot: [7, 38], rearFoot: [-11, 39],
-    fist: [12, 5], offFist: [8, 5],
-  }), 'outCubic'),
+  kf(0.065, {
+    ...chain('lift', 'left', {
+      drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06, depth: -0.70,
+      leadFoot: [7, 38], rearFoot: [-11, 39],
+      fist: [12, 5], offFist: [8, 5],
+    }),
+    // the hop recoils AWAY from the camera -- shoulder travel on this clip
+    // was 4.3 and hip travel 5.2, so the retreat retreated in height only
+    rootZ: -8.0, hipLz: -1.1, hipRz: 1.1,
+  }, 'outCubic'),
   // TUCK — the peak. Knees come up under the body and the backfist
   // chambers: the off-hand is already carrying the rotation.
-  mid(0.145, chain('lift', 'left', {
+  mid(0.145, {
+    ...chain('lift', 'left', {
       drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06,
       leadFoot: [7, 38], rearFoot: [-11, 39],
       fist: [12, 5], offFist: [8, 5],
     }),
-    contact('rotation', 'left', {
-      drive: 0.55, travel: -1.4, sink: -1.4, lean: 0.16,
-      leadFoot: [14, 34], rearFoot: [-8, 36],
-      fist: [38, -5], offFist: [2, 7],
-    })),
+    rootZ: -8.0, hipLz: -1.1, hipRz: 1.1,
+  },
+    {
+      ...contact('rotation', 'left', {
+        drive: 0.55, travel: -1.4, sink: -1.4, lean: 0.16,
+        leadFoot: [14, 34], rearFoot: [-8, 36],
+        fist: [38, -5], offFist: [2, 7],
+      }),
+      // the backfist is thrown THROUGH the plane as the body lands
+      rootZ: 6.0, hipLz: 1.2, hipRz: -1.2, armRz: 0.75, foreRz: 0.60,
+    }),
   // CONTACT — the backfist lands as the feet come down. The strike is
   // thrown OFF the landing, which is what makes the hop and the hit one
   // action instead of two.
-  kf(0.195, contact('rotation', 'left', {
-    drive: 1.05, travel: 0.6, sink: 0.4, lean: 0.20, depth: 0.55,
-    leadFoot: [18, 41], rearFoot: [-20, 42],
-    fist: [40, -6], offFist: [-3, 8],
-  }), 'inOutCubic'),
+  kf(0.195, {
+    ...contact('rotation', 'left', {
+      drive: 1.05, travel: 0.6, sink: 0.4, lean: 0.20, depth: 0.55,
+      leadFoot: [18, 41], rearFoot: [-20, 42],
+      fist: [40, -6], offFist: [-3, 8],
+    }),
+    rootZ: 12.0, hipLz: 1.5, hipRz: -1.5, armRz: 0.95, foreRz: 0.80,
+  }, 'inOutCubic'),
   // FOLLOW-THROUGH — the turn keeps going past the target while the
   // body settles onto the rear foot.
   kf(0.265, contact('rotation', 'left', {
