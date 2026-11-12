@@ -552,3 +552,42 @@ reports a working move as a miss. Bound by frames.
 
 **207/207** (6 in `tests/unarmed-step.test.ts`) · tsc 0 · pose-golden PASS ·
 blade phantom-check unchanged (median −8px).
+
+## 5.6 The measurement traps went three levels deep
+
+Getting an honest answer to "does a string connect every strike" took four
+attempts, and **the first three all reported defects that did not exist**.
+Recording them because each looked exactly like a gameplay bug:
+
+| attempt reported | what it actually was |
+|---|---|
+| `sakugaScorpion` / `srOnslaught` never connect | true, but they are long-range moves (see 5.3) |
+| the LAST strike of every string whiffs | loop guarded on `i < ids.length`, so it exited the moment the final strike *started* |
+| `l5` whiffs only after `l1..l4` | a `Set` of ids cannot represent a repeated id, and the prefix-depth walk broke on `l1,l2,l1,l2` |
+| `h1` whiffs in `h2-h1-h3` | **`h2` does not chain to `h1`** — an illegal sequence I invented |
+
+The last one is worth keeping: `h2` (TORNADO ROUNDHOUSE) chains to
+`l5, launcher, sakugaScorpion, omegaPalm`, while the authored heavy string is
+`h1 → h2 → h3`. Testing a sequence the player cannot perform says nothing
+about the game.
+
+## 5.7 Final result — every authored string, full depth
+
+`.qa/chain-depth.ts` (exported `runString`, so the test uses the same code
+path as the report):
+
+| string | pinned | chasing |
+|---|---|---|
+| `l1-l2-l3-l4-l5` | **5/5** | **5/5** |
+| `l1-l2-l1-l2` | **4/4** | **4/4** |
+| `h1-h2-h3` | **3/3** | **3/3** |
+| `l1-l2-h1-h3-l5` | **5/5** | **5/5** |
+
+No whiffs at any depth, against a body that is actively closing. Before this
+work the light string connected 2 of 16 in the bad case; the string now
+completes.
+
+## 5.8 Gates
+
+**208/208** (7 in `tests/unarmed-step.test.ts`) · tsc 0 · pose-golden PASS ·
+blade phantom-check unchanged (median −8px).

@@ -203,3 +203,23 @@ test('every reachable empty-hand strike has a working range band, and lands ON t
   }
   assert.deepEqual(failures, [], failures.join('; '))
 })
+
+test('every authored string connects every strike, against a live chaser', async () => {
+  // The user's acceptance criterion, stated plainly: "connect more strikes".
+  // These are the AUTHORED chains (h2 does not chain to h1 -- its chain is
+  // l5/launcher/sakugaScorpion/omegaPalm, so throwing h2-h1-h3 tests a
+  // sequence the player cannot perform).
+  const { runString } = await import('../.qa/chain-depth')
+  for (const ids of [
+    ['l1', 'l2', 'l3', 'l4', 'l5'],
+    ['l1', 'l2', 'l1', 'l2'],
+    ['h1', 'h2', 'h3'],
+    ['l1', 'l2', 'h1', 'h3', 'l5'],
+  ]) {
+    for (const pinned of [true, false]) {
+      const r = runString(ids, pinned)
+      assert.equal(r.depth, ids.length,
+        `${ids.join('-')} (${pinned ? 'pinned' : 'chasing'}) only reached ${r.mark}`)
+    }
+  }
+})
