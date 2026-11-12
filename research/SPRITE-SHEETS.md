@@ -324,3 +324,136 @@ of two light pushes still is. Anything longer died in the gap.
 
 `npx tsx --test tests/*.test.ts` **201/201** · `npx tsc --noEmit` **0** ·
 `npx tsx .qa/pose-golden.ts` **PASS**.
+
+---
+
+# 4 · The turret bug: the unarmed kit never travelled
+
+Transcribing the sheets produced five fixes (§3). Running the *end-to-end*
+harness afterwards showed the hand-to-hand string was still a coin flip, and
+the reason turned out to be one missing channel that all five fixes sat on
+top of.
+
+## 4.1 Every empty-hand strike had `moveX: undefined`
+
+The reference sheets advance the fighter on **every frame** (§2, measured
+~5px/frame, `.qa/ref-motion.ts`). Measured against that, the unarmed kit did
+this:
+
+```
+l1 root advance 0.0 px   vx 0
+l2 root advance 0.0 px   vx 0
+l3 root advance 0.0 px   vx 0
+l4 root advance 0.0 px   vx 0
+l5 root advance 0.0 px   vx 0
+```
+
+Zero. The sword kit all carries `moveX: 90-250`; the empty-hand defs carried
+nothing at all. The feet still moved *forward inside the clip* — `footAt`
+places them further along the local X on every strike key — so the animation
+depicted a step while the root stayed pinned. A treadmill: the legs reached,
+the body never arrived.
+
+That is the mechanism behind the user's complaint. A grunt starts at a 34px
+standoff; strike 1 connects and shoves it out to ~45px; because the player
+never closes, strikes 3-5 open their windows outside hand reach and the
+string dies after its first hit. Measured live before the fix:
+`l1-l2-l3-l4-l5` connected **2 of 16** in the bad case, and the median over
+12 trials was 9 with a range of **2-9** — a coin flip, not a combo.
+
+## 4.2 The first fix over-corrected: five steps walked through the body
+
+Giving every strike a step raised the string to 11-13 connections, and broke
+something else: measured gap went `19 -> -15`, i.e. the player ended up
+*behind* the grunt. There is **no player/enemy body collision anywhere in the
+game**, so nothing stops a stepping attack from striding over its target.
+
+The step therefore has to be range-aware, at the one place that knows where
+the bodies are. `Player.updateAttack` clamps the drive to
+`(distance to nearest body in front) - ATTACK_STANDOFF`, and the clamp had to
+read `w.enemies` directly: `this.threatX` is refreshed by `scanEnemies`
+inside `updateMove`, which **does not run during an attack**, so it is stale
+exactly when a chained strike fires.
+
+## 4.3 The drive motor's real distance law
+
+Calibrating the clamp against the wrong constant made every clamped step
+overshoot its budget by ~40% (a 24px budget landed at 33.4px) — which is
+what walked strikes through their targets. The motor is cut off at the end
+of `groundDrive.duration` but the body keeps **coasting** while
+`brakeVelocity` bleeds the rest at 900px/s². Measured
+(`.qa/tmp/cal.ts`, no enemy in world so the clamp cannot fire):
+
+| speed | 40 | 60 | 80 | 100 | 120 | 150 | 180 | 200 |
+|---|---|---|---|---|---|---|---|---|
+| advance px | 5.6 | 8.7 | 12.0 | 15.5 | 19.2 | 25.1 | 31.3 | 33.4 |
+
+So `px ≈ speed × 0.165`, not `× 0.12`. Two consequences: **duration is the
+lever and magnitude is only the ceiling** (past ~200px/s the drive saturates
+and more `moveX` does nothing), and the per-strike distance budget has to be
+a *sum over the string*, not a per-strike maximum.
+
+## 4.4 The wind-up scales with the clip
+
+A fixed 0.12s drive is wrong for the heavies. `h1`'s window is 0.16-0.28;
+at a 60px standoff it found the body still 50px away at `aT 0.25` and only
+closed to 34px by `aT 0.42` — after the window had shut, so the push landed
+in the recovery beat. The drive span is now a fraction of the clip
+(`0.55 × dur`, clamped to 0.10-0.24s), so a jab steps short and quick and a
+finisher steps through its whole wind-up and arrives on time.
+
+## 4.5 Result
+
+`.qa/combo-live.ts`, 12 unseeded trials each (median; the harness is
+deliberately unseeded — see §3's note on why seeding pins the grunt's orbit):
+
+| chain | before | after |
+|---|---|---|
+| `l1-l2-l3-l4-l5` | 2-9, **unstable** | **14 connected, 14/14/14 min-max** — deterministic |
+| `h2-h1-h3` | 2 | **8**, stable |
+| `l1-l2-l1-l2` | 11 | **15**, stable |
+| damage (light string) | 32-92 | **191** |
+
+The range of 2-9 collapsing to a flat 14 is the real result: the string no
+longer depends on where the grunt happened to drift.
+
+## 4.6 Contact fairness, measured the same way as the blade
+
+`phantom-check.ts` asks whether the BLADE reached the body. The unarmed kit
+needs the same question asked of the LIMB, because it credits through a
+different path — with the blade sheathed, `updateBladeWorld` writes the
+striking joint into `this.blade`'s fields (`limbSeg` is only populated on the
+drawn-blade-but-punching path, which is why a probe reading `limbSeg` here
+records nothing).
+
+`.qa/unarmed-connect.ts`, slack = distance from the striking joint to the
+nearest body sphere minus its radius at the first-damage frame:
+
+| strike | joint | slack px | pad |
+|---|---|---|---|
+| h1 | elbow | 5.1 | 7 |
+| h2 | foot | 2.3 | 7 |
+| h3 | hand | 1.6 | 7 |
+| l1 | hand | −4.7 | 5 |
+| l5 | hand | −6.5 | 5 |
+| l2 | hand | −6.7 | 5 |
+| cyclone | hand | −10.8 | 5 |
+| l4 | elbow | −12.1 | 5 |
+| l3 | hand | −12.5 | 5 |
+
+**9/9 within their own authored `pad`**, at both a 34px and a 48px standoff
+(worst 5.1px, inside the 7px tolerance). Negative means the striking joint is
+*inside* the body — that is real, visible contact.
+
+Excluded from that table: `powerPunch`, a `kind: 'dash'` corridor attack that
+is *designed* to hit bodies it dashes past (it keeps its own authored
+`moveX: 240, moveXAt: 0.02`). It is the same exclusion `phantom-check.ts`
+makes for AOE, and it is the documented worst case in `research/CLEAVE.md`.
+
+## 4.7 Gates
+
+`npx tsx --test tests/*.test.ts` **206/206** (5 new in
+`tests/unarmed-step.test.ts`, pinning: no def is a turret, an individual step
+is bounded so a string cannot outrun its standoff, the clamp engages, the
+joint reaches the body, and the live string connects) · `npx tsc --noEmit`
+**0** · pose-golden **PASS** · blade phantom-check unchanged (median −8px).

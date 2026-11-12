@@ -90,6 +90,28 @@ const BLADE_SUM = 1.30
 const BLADE_SUM_FLOOR = 0.85
 const BLADE_SUM_SPAN = 0.45
 
+/** Where a stepping strike wants to end up relative to its target, in px.
+ *  The unarmed hit windows bottom out around 34px (`GAP` in
+ *  tests/blade-cleave.test.ts is the same number for the sword), so a step
+ *  that stops at 34 still has the body inside the fist's reach while
+ *  leaving the two silhouettes visibly separate. */
+const ATTACK_STANDOFF = 34
+/** Converts "px still to travel" into the drive speed that covers it.
+ *
+ *  NOT the drive duration (0.12s): the motor is cut off at the end of its
+ *  duration but the body keeps COASTING while `brakeVelocity` bleeds the
+ *  remainder at 900px/s2, so the real ratio is nearer px = speed * 0.165.
+ *  Measured (`.qa/tmp/cal.ts`, no enemy in world so the clamp cannot fire):
+ *
+ *      speed   40    60    80   100   120   150   180   200
+ *      px     5.6   8.7  12.0  15.5  19.2  25.1  31.3  33.4
+ *
+ *  Using 0.12 here made every clamped step overshoot its budget by ~40%
+ *  (a 24px budget landed at 33.4px), which is how a strike walked through
+ *  its target. 0.165 is the measured gradient through the useful band;
+ *  it is deliberately slightly generous so the clamp errs SHORT. */
+const ATTACK_STEP_SECONDS = 0.165
+
 /** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
 function circleHitsSweptQuad(
   cx: number, cy: number, r: number,
@@ -397,6 +419,9 @@ interface ActionState {
   trail: Trail
   sfxDone: boolean
   driveRemaining:number
+  /** Per-strike override of drive speed, set by the range-aware step so a
+   *  strike with a body in reach does not overrun it. Undefined = use moveX. */
+  driveSpeed?:number
   moveDone: boolean
   moveYDone: boolean
   impactDone: boolean
@@ -2610,14 +2635,55 @@ export class Player {
     // forward impulse
     if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
       a.moveDone = true
-      if(def.groundDrive&&this.grounded)a.driveRemaining=def.groundDrive.duration
-      else if(!def.groundDrive && !(def.kind==='dash' && (this.dashMotionActive || this.vx*this.face>def.moveX)))this.vx=this.face*def.moveX
+      // ---- RANGE-AWARE STEP ------------------------------------------------
+      // A strike may step in to reach its target, never past it. The empty-
+      // hand kit did not travel at all (0.0px -- the turret bug), and the
+      // first fix over-corrected: five chained steps carried the player
+      // straight THROUGH a chasing grunt (measured gap closing 19 -> -15px),
+      // because nothing in the game separates a player's body from an
+      // enemy's. There is no collision to stop the overrun, so the step
+      // itself has to know where the body is.
+      //
+      // `stepBudget` is how far the feet may still travel this strike:
+      // the distance to the nearest threat in front, less the standoff we
+      // want to land at (hit windows bottom out around 34px). Negative
+      // (target behind, or already too close) means "plant, do not step".
+      // Only the authored forward drive is clamped; a dash/retreat keeps
+      // its own semantics.
+      // NOTE: read the world here, not `this.threatX` — that is refreshed by
+      // `scanEnemies` inside `updateMove`, which does not run during an
+      // attack, so by the time a chained strike fires it is stale.
+      let drive = def.moveX
+      if (def.strikeHand && drive > 0) {
+        let nearest = Infinity
+        for (const e of w.enemies) {
+          if (e.dead || e.spawning) continue
+          const ahead = (e.x - this.x) * this.face
+          if (ahead > 0 && ahead < nearest) nearest = ahead
+        }
+        if (nearest !== Infinity) {
+          const reachable = nearest - ATTACK_STANDOFF
+          if (reachable < drive * ATTACK_STEP_SECONDS) {
+            drive = Math.max(0, reachable / ATTACK_STEP_SECONDS)
+          }
+        }
+      }
+      if (drive !== def.moveX && def.groundDrive && this.grounded) {
+        a.driveRemaining = def.groundDrive.duration
+        a.driveSpeed = drive
+      } else if (def.groundDrive && this.grounded) {
+        a.driveRemaining = def.groundDrive.duration
+        a.driveSpeed = undefined
+      } else if (!def.groundDrive && !(def.kind === 'dash' && (this.dashMotionActive || this.vx * this.face > def.moveX))) {
+        this.vx = this.face * def.moveX
+      }
     }
     // Drive follows the authored ignition beat without erasing running carry.
     // The finite budget belongs to this action and is discarded on cancel.
     if(a.driveRemaining>0&&def.groundDrive&&def.moveX!==undefined){
       const driveDt=Math.min(dt,a.driveRemaining)
-      if(this.grounded)this.vx=attackDriveVelocity(this.vx,this.face*def.moveX,def.groundDrive.acceleration,driveDt)
+      const speed=a.driveSpeed??def.moveX
+      if(this.grounded)this.vx=attackDriveVelocity(this.vx,this.face*speed,def.groundDrive.acceleration,driveDt)
       a.driveRemaining=Math.max(0,a.driveRemaining-dt)
     }
     // vertical impulse (launcher hop / slam plunge)
