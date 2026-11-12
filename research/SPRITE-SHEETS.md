@@ -457,3 +457,98 @@ makes for AOE, and it is the documented worst case in `research/CLEAVE.md`.
 is bounded so a string cannot outrun its standoff, the clamp engages, the
 joint reaches the body, and the live string connects) · `npx tsc --noEmit`
 **0** · pose-golden **PASS** · blade phantom-check unchanged (median −8px).
+
+---
+
+# 5 · "Compose these as they are": coverage, and two measurement traps
+
+## 5.1 Coverage
+
+`.qa/sheet-coverage.ts` maps every technique transcribed from the seven
+sheets onto the move that serves it, matching on label and striking joint:
+
+**20 of 20 sheet techniques have a roster move.** The uppercut is
+`RISING DRAGON` (the `launcher`, built on the `unarmedUpperCut` clip); the
+run-in is `SHOULDER TACKLE` / `CHARGED RAM`; the charged overhead raise is
+`SHINRA PALM`; the slip-and-counter is `REKKA COUNTER PALM`. Nothing had to
+be authored to complete the set — the gaps were in the *mapping*, not the
+kit (I initially mis-scored uppercut and run-in as missing because the
+matcher looked for the literal words).
+
+`.qa/render-sheet.ts` lays any clip out as a numbered silhouette row so the
+choreography can be compared to the sheets directly instead of by channel
+number. The kit matches the references on the laws they encode: wide
+diagonal lunge, knee fully folded in the chamber, every kick extending to
+straight, fist clear above the head on the uppercut, saya never drawn.
+
+## 5.2 TRAP: "peak reach is outside the hit window" is not a defect
+
+`.qa/peak-window.ts` finds, for every unarmed clip, the beat at which the
+def's own striking limb is farthest forward, and reports any whose window
+does not contain it. It found **18 of 49**. That looks damning, and it is
+exactly the shape of the Slynyrd conclusion recorded in §1b — so the
+temptation is to move 18 windows onto their peaks.
+
+Doing that is wrong, and the measurement that proves it is a live one. Of
+the 18, ten are reachable as unarmed chain moves; testing each against a
+body at the standoff before and after the proposed window:
+
+| strike | connects NOW | connects with window moved onto its peak |
+|---|---|---|
+| `sakugaDragon` | **yes** (aT 0.33) | **no** — opens on air |
+| `omegaPalm` | **yes** (aT 0.46) | **no** |
+| `srOmega` | **yes** (aT 0.71) | **no** |
+| `l1`, `a3`, `viperPalm`, `srOnslaught` | yes | yes (no gain) |
+| `ironRoot`, `sakugaScorpion` | yes | worse or equal |
+
+The geometry explains it. At a 34px standoff the body is *already* inside the
+fist's sphere on the way through, so the strike lands well before maximum
+extension, and by the time the limb peaks the target has been knocked back —
+a peak-placed window opens on empty air. Peak reach is the right question for
+a blade sweeping through a crowd (that is why it mattered for `srOnslaught`'s
+*blade* in the cleave pass); it is the wrong question for a fist against one
+body at contact range.
+
+**Do not retune a window from `.qa/peak-window.ts` alone.** The acceptance
+test is `.qa/unarmed-connect.ts`: is the striking joint on the body at the
+frame damage is dealt? All 9 reachable strikes answer yes.
+
+## 5.3 TRAP: moves have range BANDS, not a single reach
+
+Asserting "every move connects at the 34px standoff" reported
+`sakugaScorpion` and `srOnslaught` as broken. They are not — they are
+*long-range* moves, and both connect at exactly the range their wind-up
+needs:
+
+| move | 34px | 50 | 67 | 85 | 100 | 120 |
+|---|---|---|---|---|---|---|
+| `sakugaScorpion` | miss | miss | **hit** | **hit** | **hit** | miss |
+| `srOnslaught` | miss | **hit** | **hit** | **hit** | **hit** | miss |
+
+At point-blank a lunging whip is still travelling when its window shuts; at
+120px it has run out of clip. Both are correct. `tests/unarmed-step.test.ts`
+therefore asserts that each move has a *working band* and that it lands on
+the body inside it, not that it works at one fixed distance.
+
+## 5.4 Two harness bugs worth remembering
+
+Both of these produced convincing false results:
+
+* **`Enemy` sets `this.side = Math.random()` in its constructor.** A chasing
+  grunt therefore orbits randomly, and over a 1.33s clip it can walk out of
+  the move entirely — the same test failed in 5 of 6 runs, always on the two
+  longest clips. Pin `e.x` when the question is about the strike, not the AI.
+* **`e.id = nextId++` is a module-global counter.** A test that builds its
+  enemy per case and does not pin `e.id` will have `hitEnemy` resolve against
+  an enemy from an earlier test, so the hit is applied to nothing and the
+  move "never connects". Pin the id.
+
+And one about loop bounds: clips run 1.33s and leave the attack state at
+their `cancel` beat, which lands *before* the hit window of the slowest
+finisher. A `while (p.state === 'attack')` loop silently truncates and
+reports a working move as a miss. Bound by frames.
+
+## 5.5 Gates
+
+**207/207** (6 in `tests/unarmed-step.test.ts`) · tsc 0 · pose-golden PASS ·
+blade phantom-check unchanged (median −8px).

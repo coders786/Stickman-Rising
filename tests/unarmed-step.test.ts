@@ -38,6 +38,10 @@ function world(gap: number) {
   p.reset(400); p.swordDrawn = false
   const e = new Enemy('grunt', 400 + gap, 1)
   e.spawning = false; e.state = 'chase'; e.face = -1; e.hp = 999999
+  // Pin the id: Enemy auto-assigns a global incrementing id, so without this
+  // `hitEnemy` resolves against whichever enemy was constructed in an earlier
+  // test and the hit is applied to nothing.
+  e.id = 1
   enemies.push(e)
   return { p, w, e, input }
 }
@@ -148,3 +152,54 @@ function distSeg(px: number, py: number, s: { bx: number; by: number; tx: number
   const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - s.bx) * dx + (py - s.by) * dy) / L2)) : 0
   return Math.hypot(px - (s.bx + t * dx), py - (s.by + t * dy))
 }
+
+test('every reachable empty-hand strike has a working range band, and lands ON the body in it', () => {
+  // The acceptance criterion behind "connect more strikes", stated as a
+  // property: every unarmed move the player can chain into must connect
+  // somewhere useful AND put the striking joint on the body when it does.
+  //
+  // It must NOT be "connects at 34px". A lunging move needs room for its own
+  // wind-up: measured, sakugaScorpion connects at 67-100px and misses at
+  // 34px, srOnslaught at 50-100 and misses at 34 -- both correctly, because
+  // at point-blank they are still travelling when their window closes. The
+  // first version of this test asserted point-blank for every move and
+  // reported those two as broken.
+  const moves = ['l1', 'l2', 'l3', 'l4', 'l5', 'h1', 'h2', 'h3',
+    'viperPalm', 'ironRoot', 'omegaPalm', 'sakugaScorpion', 'srOnslaught', 'srOmega']
+  const failures: string[] = []
+  for (const id of moves) {
+    const def = unarmedAttack((ATTACKS as unknown as Record<string, never>)[id]) as {
+      hit: { pad?: number }
+    }
+    const bands: number[] = []
+    let bestSlackAt = Infinity, bestGap = -1
+    for (const gap of [34, 50, 67, 85, 100, 120]) {
+      const { p, w, e, input } = world(gap)
+      p.startAttack(unarmedAttack((ATTACKS as unknown as Record<string, never>)[id]), w)
+      for (let f = 0; f < 160; f++) {
+        // pin the body: Enemy picks a random `side` in its constructor, so a
+        // chasing grunt orbits away during these 1.33s clips and the result
+        // goes flaky (measured: failed in 5 of 6 runs before pinning).
+        e.x = 400 + gap
+        const limb = { bx: p.blade.bx, by: p.blade.by, tx: p.blade.tx, ty: p.blade.ty }
+        const bodyX = e.x, hp0 = e.hp
+        w.time += 1 / 60; p.update(1 / 60, w); e.update(1 / 60, w); input.endFrame(1 / 60)
+        if (e.hp < hp0) {
+          let slack = Infinity
+          for (const sp of [{ oy: 14, r: 15 }, { oy: 48, r: 21 }, { oy: 78, r: 17 }]) {
+            const cy = e.y - sp.oy * e.scale
+            slack = Math.min(slack, distSeg(bodyX, cy, limb) - sp.r * e.scale)
+          }
+          bands.push(gap)
+          if (slack < bestSlackAt) { bestSlackAt = slack; bestGap = gap }
+          break
+        }
+      }
+    }
+    if (!bands.length) { failures.push(`${id} (connects at no tested range)`); continue }
+    if (bestSlackAt > (def.hit.pad ?? 0) + 1) {
+      failures.push(`${id} (best contact ${bestSlackAt.toFixed(1)}px off at ${bestGap}px, pad ${def.hit.pad})`)
+    }
+  }
+  assert.deepEqual(failures, [], failures.join('; '))
+})
