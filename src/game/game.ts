@@ -16,7 +16,8 @@ import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
 import { Player } from './entities/player'
 import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
 import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
-import { SWORDS, SwordId, SWORD_ORDER } from './combat/swords'
+import { SWORDS, SwordId, SWORD_ORDER, swordTier, upgradedSword } from './combat/swords'
+import { crossedExecutionCuts, executionRoot, executionTimeline } from './combat/execution'
 import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
@@ -86,6 +87,34 @@ interface ExecState {
   enemy: Enemy
   t: number
   step: number
+  sheathed: boolean
+  startX: number
+  side: 1 | -1
+}
+
+type ExecutionProfile = {
+  name:string; beats:readonly [number,number,number];
+  clips:readonly [keyof typeof ATTACKS,keyof typeof ATTACKS,keyof typeof ATTACKS]
+  angles:readonly [number,number,number]; material:'steel'|'embers'|'spark'|'shard'|'dust'|'echo'
+}
+
+/** Every blade family finishes with its own cadence and geometry. Elemental
+ * punctuation remains material-bound; the body/weapon route does the work. */
+const EXECUTIONS:Record<SwordId,ExecutionProfile>={
+  katana:{name:'SHEATHED CROSS',beats:[.17,.43,.72],clips:['riposte','l1','retreat'],angles:[-.18,.72,-.86],material:'steel'},
+  wakizashi:{name:'CLOSE QUARTERS',beats:[.12,.29,.51],clips:['stabs','spin','l5'],angles:[0,.95,-.55],material:'steel'},
+  chokuto:{name:'THREE GATES',beats:[.16,.39,.69],clips:['stabs','h1','dashSlash'],angles:[0,-.38,.28],material:'steel'},
+  saber:{name:'CAVALRY TURN',beats:[.13,.34,.59],clips:['spin','dashSlash','retreat'],angles:[.85,-.72,.42],material:'steel'},
+  nodachi:{name:'FIELD HARVEST',beats:[.24,.58,.93],clips:['h1','powerArc','h2'],angles:[-.78,.18,.92],material:'steel'},
+  greatblade:{name:'IRON VERDICT',beats:[.29,.66,1.02],clips:['launcher','powerArc','powerSlash'],angles:[-1.05,.12,.86],material:'dust'},
+  inferno:{name:'CINDER CREMATION',beats:[.18,.43,.75],clips:['stormFront','powerArc','powerSlash'],angles:[-.65,.7,.08],material:'embers'},
+  thunder:{name:'CIRCUIT BREAK',beats:[.11,.28,.5],clips:['dashSlash','stabs','stormFront'],angles:[0,.82,-.7],material:'spark'},
+  frost:{name:'COLD FRACTURE',beats:[.2,.49,.82],clips:['h2','risingGale','powerArc'],angles:[-.55,.3,.9],material:'shard'},
+  gale:{name:'CROSSWIND END',beats:[.12,.31,.56],clips:['dashHeavy','spin','stormFront'],angles:[.7,-.68,.15],material:'dust'},
+  earth:{name:'FAULT SENTENCE',beats:[.28,.63,.98],clips:['powerArc','launcher','powerSlash'],angles:[-.9,.05,.82],material:'dust'},
+  void:{name:'BLIND-SIDE END',beats:[.15,.37,.64],clips:['retreat','dashSlash','riposte'],angles:[-.2,.88,-.75],material:'echo'},
+  gravity:{name:'WEIGHT OF JUDGMENT',beats:[.25,.59,.94],clips:['risingGale','launcher','powerArc'],angles:[.35,-.85,.72],material:'dust'},
+  phantom:{name:'MIRROR FUNERAL',beats:[.1,.27,.49],clips:['blenderCharge','spin','dashHeavy'],angles:[.9,-.5,.28],material:'echo'},
 }
 
 interface UltState {
@@ -107,6 +136,8 @@ export class Game {
   phase: GamePhase = 'attract'
   settings: GameSettings = { ...DEFAULT_SETTINGS }
   unlocked: SwordId[] = ['katana']
+  private lifetimeKills = 0
+  private loadout: SwordId[] = ['katana']
 
   input = new Input()
   audio = new AudioEngine()
@@ -396,8 +427,21 @@ export class Game {
     }
   }
 
-  setUnlocked(list: SwordId[]): void {
+  setUnlocked(list: SwordId[], totalKills = this.lifetimeKills): void {
     this.unlocked = list
+    this.lifetimeKills = totalKills
+  }
+
+  private equipProgressedSword(id: SwordId): void {
+    this.player.setSword(id, swordTier(id, this.lifetimeKills))
+  }
+
+  setLoadout(ids: SwordId[]): void {
+    const legal = [...new Set(ids)].filter((id) => this.unlocked.includes(id)).slice(0, 3)
+    const heavenly = legal.includes('katana') && swordTier('katana', this.lifetimeKills) === 2
+    // Heavenly Steel is intentionally self-sufficient: choosing it closes
+    // the other scabbard slots for this round.
+    this.loadout = heavenly ? ['katana'] : legal.length ? legal : ['katana']
   }
 
   /* ------------------------------------------------------------------ */
@@ -408,7 +452,8 @@ export class Game {
     this.audio.resume()
     this.audio.startMusic()
     this.audio.setMusicIntensity(0.55)
-    this.player.setSword(swordId)
+    if (!this.loadout.includes(swordId)) this.setLoadout([swordId])
+    this.equipProgressedSword(this.loadout.includes(swordId) ? swordId : this.loadout[0])
     this.player.reset(1300)
     this.enemies.length = 0
     this.projectiles.clear()
@@ -666,7 +711,7 @@ export class Game {
       return
     }
     // sword switching
-    const swordIds: SwordId[] = ['katana', 'inferno', 'thunder', 'void', 'gravity', 'phantom']
+    const swordIds: SwordId[] = SWORD_ORDER.slice(0, 6)
     const swordActions = ['sword1', 'sword2', 'sword3', 'sword4', 'sword5', 'sword6'] as const
     for (let i = 0; i < 6; i++) {
       if (this.input.pressed(swordActions[i])) {
@@ -675,9 +720,9 @@ export class Game {
     }
     if (this.input.pressed('cycleSword')) {
       const idx = SWORD_ORDER.indexOf(this.player.sword.id)
-      for (let i = 1; i <= 6; i++) {
-        const next = SWORD_ORDER[(idx + i) % 6]
-        if (this.unlocked.includes(next)) {
+      for (let i = 1; i <= SWORD_ORDER.length; i++) {
+        const next = SWORD_ORDER[(idx + i) % SWORD_ORDER.length]
+        if (this.loadout.includes(next)) {
           this.trySwitchSword(next)
           break
         }
@@ -695,15 +740,16 @@ export class Game {
   }
 
   trySwitchSword(id: SwordId): void {
-    if (!this.unlocked.includes(id)) return
+    if (!this.unlocked.includes(id) || !this.loadout.includes(id)) return
     if (this.player.sword.id === id) return
     if (this.player.state === 'dead' || this.player.state === 'scripted') return
-    const colors = SWORDS[id].colors
-    this.player.setSword(id)
+    const evolved = upgradedSword(id, swordTier(id, this.lifetimeKills))
+    const colors = evolved.colors
+    this.equipProgressedSword(id)
     this.audio.play('swordSwitch')
     this.fx.dissolve(this.player.x, this.player.y - 40, colors.core, colors.glow)
     this.fx.burst(this.player.x, this.player.y - 50, 12, colors.glow, 260, 0.5, 'spark')
-    this.fx.text(this.player.x, this.player.y - 90, SWORDS[id].name, colors.accent, 13)
+    this.fx.text(this.player.x, this.player.y - 90, evolved.name, colors.accent, 13)
   }
 
   /* ------------------------------------------------------------------ */
@@ -740,6 +786,10 @@ export class Game {
     this.stats.score += bonus
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 18)
     this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 25)
+    if (this.player.sword.mundane) {
+      this.player.maintainSword()
+      this.fx.text(this.player.x, this.player.y - 88, 'BLADE WIPED · EDGE CHECKED', '#d7dcda', 10)
+    }
     this.banner = { title: 'WAVE CLEAR', sub: `+${fmt(bonus)} BONUS — SYSTEMS RESTORED`, t: 0, dur: 2.2, color: '#46ffb4' }
     this.audio.play('heal')
     this.fx.burst(this.player.x, this.player.y - 50, 10, '#46ffb4', 200, 0.8, 'ember')
@@ -887,6 +937,15 @@ export class Game {
     this.fx.text(e.x, e.y - 80, `+${heal}`, '#46ffb4', 11)
   }
 
+  /** Execution owns its breakup, audio and rewards. Routing it through the
+   * generic death spectacle duplicated dissolve/dismember debris and healing. */
+  private onEnemyExecuted(e:Enemy):void {
+    if(e.dead)return
+    this.stats.kills++
+    this.stats.score+=Math.round(e.cfg.score*this.combo.mult)
+    e.dead=true
+  }
+
   private bossDeath(e: Enemy): void {
     this.audio.play('explosion', { volume: 1 })
     this.audio.play('deathHeavy', { volume: 1, pitch: 0.6 })
@@ -910,7 +969,7 @@ export class Game {
   private enemyStrikePlayer(dmg: number, dir: number, heavy: boolean, sourceX: number): boolean {
     if (this.phase !== 'playing') return false
     if (this.player.parryWindowOpen) {
-      this.player.onParrySuccess(this.worldRef, sourceX, true)
+      this.player.onParrySuccess(this.worldRef, sourceX, this.player.parryWindowPerfect)
       return true
     }
     this.player.takeDamage(this.worldRef, dmg, dir, heavy)
@@ -943,13 +1002,9 @@ export class Game {
   }
 
   private startExecution(target: Enemy): void {
-    if(!this.player.swordDrawn){
-      this.player.face=target.x>this.player.x?1:-1
-      this.player.startUnarmedFinisher(this.worldRef)
-      return
-    }
-
-    this.exec = { enemy: target, t: 0, step: 0 }
+    const sheathed = !this.player.swordDrawn
+    const side=(target.x>this.player.x?1:-1) as 1|-1
+    this.exec = { enemy: target, t: 0, step: 0, sheathed, startX:this.player.x, side }
     this.player.enterScripted()
     this.player.face = (target.x > this.player.x ? 1 : -1) as 1 | -1
     this.addSlowmo(0.16, 1.15)
@@ -968,49 +1023,65 @@ export class Game {
       ex.t += dt
       const e = ex.enemy
       const sword = this.player.sword
-      const midX = (this.player.x + e.x) / 2
-      const midY = (this.player.y + e.y) / 2 - 40
-      if (ex.step === 0 && ex.t >= 0.16) {
-        ex.step = 1
-        this.execSlash(midX, midY, sword.colors.trail, 0)
-        this.player.playClip(ATTACKS.l1.clip, 1.7)
-      } else if (ex.step === 1 && ex.t >= 0.38) {
-        ex.step = 2
-        this.execSlash(midX, midY, sword.colors.trail, 1)
-        this.player.playClip(ATTACKS.l2.clip, 1.7)
-      } else if (ex.step === 2 && ex.t >= 0.6) {
-        ex.step = 3
-        this.execSlash(midX, midY, sword.colors.accent, 2)
-        this.player.playClip(ATTACKS.l5.clip, 1.4)
-      } else if (ex.step === 3 && ex.t >= 0.82) {
-        ex.step = 4
-        // final blow
-        this.audio.play('explosion', { volume: 0.8 })
-        this.audio.play('deathHeavy', { volume: 1 })
-        this.fx.impactFrame(e.x, e.y - 40, sword.colors.accent) // the kill frame
-        this.fx.screenFlash('#ffffff', 0.4, 3)
-        this.fx.dismember(e.x, e.y, this.player.face, e.cfg.style.body, this.settings.gore === 'blood' ? '#c31432' : sword.colors.glow)
-        this.fx.shockwave(e.x, e.y - 30, 140, sword.colors.glow, 0.5, 8)
-        this.cam.addTrauma(0.6)
-        this.addHitstop(0.12, 0.12)
-        this.onEnemyKilled(e)
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 22)
-        this.player.energy = Math.min(this.player.maxEnergy, this.player.energy + 40)
-        this.player.meter = Math.min(100, this.player.meter + 18)
-        this.stats.score += Math.round(300 * this.combo.mult)
-        this.fx.text(e.x, e.y - 96, 'EXECUTED', '#ff2a4a', 16)
-        this.fx.text(e.x, e.y - 72, '+22 HP', '#46ffb4', 12)
-        // KILL-FRAME HOLD (the samurai-film beat): at the kill flash the
-        // finisher settles into the authored execution pose — sword low,
-        // split stance, stillness while the enemy falls. PAVE keeps the hold
-        // alive with micro-motion (moving holds). This gives the once-orphaned
-        // execPose clip its authored home in the choreography.
-        this.player.playClip(EXECUTE_POSE_CLIP, 1)
-      } else if (ex.step === 4 && ex.t >= 1.15) {
+      const profile = EXECUTIONS[sword.id]
+      const midY = e.y - 43 * e.scale
+      const timeline=executionTimeline(sword.form,profile.beats[0])
+      const cuts=timeline.cuts
+      const finalT=timeline.finalCut
+
+      // Target-relative 3D stage projected onto the side-view floor. Smooth
+      // root arcs carry the real player around the victim; cuts never occur
+      // from a stationary effects emitter.
+      const q=clamp01(ex.t/Math.max(.01,finalT))
+      this.player.x=executionRoot(ex.t,timeline,e.x,ex.side)
+      this.player.face=(q<.52?ex.side:-ex.side) as 1|-1
+
+      // Consume every crossed beat: low frame rates may cross two 50ms rapid
+      // cuts in one render frame, but may never silently delete one.
+      for(const i of crossedExecutionCuts(ex.step,ex.t,timeline)){
+        ex.step=i+1
+        if(i===0&&ex.sheathed)this.player.swordDrawn=true
+        const rapid=i>=4&&i<9
+        const final=i===cuts.length-1
+        const base=profile.angles[i%3]
+        const cross=(i%2===0?1:-1)*(.22+Math.min(i,6)*.1)
+        const ang=final?profile.angles[2]:base+cross
+        const y=midY+(i%5-2)*9
+        const color=sword.mundane?(i%2?'#68716d':'#89918d'):(final?sword.colors.accent:sword.colors.trail)
+        this.execSlash(e.x,y,color,ang,profile.material,rapid,final)
+        const key=i===0&&ex.sheathed?'riposte':profile.clips[i%3]
+        // Cinematic timeline uses real time while the world is slowed. Cancel
+        // that scale for the animator or a 50ms beat would only expose 8ms of
+        // pose and every restart would remain trapped in anticipation.
+        const cinematicComp=1/Math.max(.12,this.timeScale)
+        this.player.playClip(ATTACKS[key].clip,(rapid?2.25:final?1.15:1.65)*cinematicComp)
+      }
+
+      // False ending: the target remains intact while the player catches the
+      // blade. Only after the quiet hold do recorded cross-planes separate.
+      if(ex.step===cuts.length&&ex.t>=timeline.separateAt){
+        ex.step++
+        this.audio.play('deathHeavy',{volume:.9,pitch:.82})
+        this.fx.impactFrame(e.x,e.y-42,sword.mundane?'#c7ccc9':sword.colors.accent)
+        this.fx.executionPieces(e.x,e.y,this.player.face,e.cfg.style.body,
+          this.settings.gore==='blood'?'#c31432':sword.mundane?'#737a76':sword.colors.glow,
+          sword.form==='greatblade'?8:sword.id==='katana'?12:10)
+        if(sword.mundane){this.fx.dust(e.x,e.y,6);this.fx.burst(e.x,e.y-40,6,'#aeb3af',140,.24,'spark')}
+        this.cam.addTrauma(sword.form==='greatblade'?.72:.48)
+        this.addHitstop(.1,.08)
+        this.onEnemyExecuted(e)
+        this.player.hp=Math.min(this.player.maxHp,this.player.hp+22)
+        this.player.energy=Math.min(this.player.maxEnergy,this.player.energy+40)
+        this.player.meter=Math.min(100,this.player.meter+18)
+        this.stats.score+=Math.round(300*this.combo.mult)
+        this.fx.text(e.x,e.y-96,profile.name,sword.mundane?'#d0d4d1':sword.colors.accent,16)
+        this.fx.text(e.x,e.y-72,'+22 HP','#46ffb4',12)
+        this.player.playClip(EXECUTE_POSE_CLIP,1)
+      }else if(ex.step>cuts.length&&ex.t>=timeline.releaseAt){
         this.player.exitScripted()
-        this.exec = null
-        this.timeScale = 1
-        this.slowmoT = 0
+        this.exec=null
+        this.timeScale=1
+        this.slowmoT=0
       }
     }
     if (this.ult) {
@@ -1099,13 +1170,23 @@ export class Game {
     }
   }
 
-  private execSlash(x: number, y: number, color: string, index: number): void {
-    const ang = -0.6 + index * 0.7
-    this.fx.slashArc(x, y, ang, 2.8, 110, color, '#ffffff', 1.6)
-    this.fx.impact(x, y, ang, true, color, '#ffffff')
-    this.audio.play('swingHeavy', { pitch: 1.2 + index * 0.15, volume: 0.9 })
-    this.cam.addTrauma(0.25)
-    this.addHitstop(0.05)
+  private execSlash(x:number,y:number,color:string,ang:number,material:ExecutionProfile['material'],rapid=false,final=false):void {
+    const mundane=this.player.sword.mundane
+    // Rapid links are narrow photographed-steel persistence; only the entry
+    // and final receive broad readable silhouettes and meaningful hitstop.
+    const spread=rapid?.72:final?1.35:1.05
+    const radius=rapid?58:final?104:76
+    this.fx.slashArc(x,y,ang,spread,radius,color,mundane?'#343938':'#ffffff',mundane?(rapid?.24:.42):rapid?.72:1.25)
+    this.fx.impact(x,y,ang,final&&!mundane,color,mundane?'#aeb4b0':'#ffffff')
+    if(material==='dust')this.fx.dust(x,y+35,5)
+    else if(material==='embers')this.fx.burst(x,y,7,color,170,.32,'ember')
+    else if(material==='spark')this.fx.burst(x,y,5,color,190,.22,'spark')
+    else if(material==='shard')this.fx.burst(x,y,7,color,180,.3,'shard')
+    else if(material==='echo')this.fx.afterimage(this.player.pose,this.player.x-this.player.face*12,this.player.hipY,this.player.face,color,.18,1.32)
+    else this.fx.burst(x,y,3,'#aeb3af',100,.18,'spark')
+    this.audio.play(rapid?'swing':'swingHeavy',{pitch:(rapid?1.35:1.05)+Math.abs(ang)*.12,volume:rapid?.56:.82})
+    if(!rapid)this.cam.addTrauma(final?(mundane?.22:.42):(mundane?.1:.2))
+    this.addHitstop(rapid?.008:final?.075:mundane?.03:.045)
   }
 
   private startUlt(): void {

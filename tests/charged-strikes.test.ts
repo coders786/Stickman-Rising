@@ -1,0 +1,23 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import {CHARGED_KICK,CHARGED_PUNCH,UNARMED_CHARGE} from '../src/game/combat/unarmed'
+import {MOVES} from '../src/game/combat/moveset'
+
+test('charged punch and kick are newly authored clips, not library aliases',()=>{
+ assert.notEqual(CHARGED_PUNCH.clip,CHARGED_KICK.clip)
+ assert.notEqual(CHARGED_PUNCH.clip,UNARMED_CHARGE)
+ assert.notEqual(CHARGED_KICK.clip,UNARMED_CHARGE)
+ assert.equal(CHARGED_PUNCH.clip.name,'unarmedChargedPiston')
+ assert.equal(CHARGED_KICK.clip.name,'unarmedChargedOrbitalHeel')
+ assert.ok(CHARGED_PUNCH.clip.frames.length>=9)
+ assert.ok(CHARGED_KICK.clip.frames.length>=9)
+})
+
+test('charged lanes retain hand/foot contact and heavyweight payoff',()=>{
+ assert.equal(MOVES.chargedPunch.strikeJoint,'hand')
+ assert.equal(MOVES.chargedKick.strikeJoint,'foot')
+ assert.ok(MOVES.chargedPunch.hit.heavy&&MOVES.chargedKick.hit.heavy)
+ assert.ok(MOVES.chargedPunch.hit.dmg>=38)
+ assert.ok(MOVES.chargedKick.hit.dmg>=42)
+ assert.ok((MOVES.chargedPunch.hit.launch??0)>0)
+})

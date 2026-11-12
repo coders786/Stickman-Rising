@@ -1527,6 +1527,50 @@ const COUNTERPALM = clip('unarmedCounterPalm', [
   kf(0.40, stance('right')),
 ])
 
+/** CHARGED PUNCH — PISTON BREAK. Entirely new silhouette grammar: a low
+ * three-point crouch corkscrews upward into a rear-hand body piston. */
+const CHARGED_PISTON = clip('unarmedChargedPiston', [
+  kf(0,{...G,rootY:6,rootRot:.38,head:-.3,hipR:.7,kneeR:-1.55,hipL:-.55,kneeL:-1.3,
+    ...handPose('right',-3,17),...handPose('left',13,3),pelvisYaw:-.65,chestYaw:.48},'outQuad'),
+  kf(.055,{...G,rootX:-2,rootY:8,rootRot:.45,head:-.34,hipR:.82,kneeR:-1.8,hipL:-.66,kneeL:-1.55,
+    ...handPose('right',-6,19),...handPose('left',15,1),pelvisYaw:-.9,chestYaw:.62},'inOutCubic'),
+  kf(.11,{...G,rootX:-3,rootY:8.6,rootRot:.42,head:-.31,hipR:.9,kneeR:-1.95,hipL:-.72,kneeL:-1.62,
+    ...handPose('right',-8,18),...handPose('left',16,0),pelvisYaw:-1.05,chestYaw:.72,armRz:-.5},'inOutSine'),
+  kf(.16,{...G,rootX:-3,rootY:8.8,rootRot:.4,head:-.29,hipR:.92,kneeR:-2,hipL:-.74,kneeL:-1.65,
+    ...handPose('right',-9,17),...handPose('left',16,0),pelvisYaw:-1.12,chestYaw:.76,armRz:-.6},'inOutSine'),
+  kf(.205,{...G,rootX:1,rootY:4.2,rootRot:.28,head:-.22,hipR:.5,kneeR:-1.1,hipL:-.52,kneeL:-.8,
+    ...handPose('right',18,3),...handPose('left',9,2),pelvisYaw:-.25,chestYaw:.2,armRz:-.15},'outQuart'),
+  kf(.255,{...G,rootX:7,rootY:-.5,rootRot:.18,head:-.15,hipR:.18,kneeR:-.35,hipL:-.7,kneeL:-.3,
+    ...handPose('right',40,-2),...handPose('left',5,5),pelvisYaw:.72,chestYaw:-.82,armRz:.5},'outQuart'),
+  kf(.32,{...G,rootX:9,rootY:.8,rootRot:.12,head:-.1,hipR:.08,kneeR:-.3,hipL:-.58,kneeL:-.5,
+    ...handPose('right',37,1),...handPose('left',4,6),pelvisYaw:.58,chestYaw:-.65,armRz:.38},'inOutCubic'),
+  kf(.42,{...G,rootX:4,rootY:3.5,rootRot:.1,head:-.08,hipR:.3,kneeR:-.75,hipL:-.38,kneeL:-.7,
+    ...handPose('right',18,7),...handPose('left',9,4),pelvisYaw:.18,chestYaw:-.2},'inOutCubic'),
+  kf(.54,G,'outCubic'),
+])
+
+/** CHARGED KICK — ORBITAL HEEL. A planted spiral rises around the support
+ * hip, hangs with the heel behind the head, then scythes down-forward. */
+const CHARGED_ORBITAL = clip('unarmedChargedOrbitalHeel', [
+  kf(0,{...G,rootY:5.5,rootRot:.12,head:-.1,hipL:-.5,kneeL:-1.35,hipR:.55,kneeR:-1.5,
+    shR:.4,elR:-1.2,shL:.2,elL:-1.1,pelvisYaw:.45,chestYaw:-.38},'outQuad'),
+  kf(.07,{...G,rootY:7.8,rootRot:.05,head:-.03,hipL:-.7,kneeL:-1.7,hipR:.9,kneeR:-2.05,
+    shR:.1,elR:-.7,shL:.8,elL:-.8,pelvisYaw:.8,chestYaw:-.62,hipRz:.35},'inOutCubic'),
+  kf(.14,{...G,rootY:4,rootRot:-.08,head:.06,hipL:-.52,kneeL:-.8,hipR:1.65,kneeR:-1.5,footR:.45,
+    shR:-.25,elR:-.5,shL:1.05,elL:-.55,pelvisYaw:1.15,chestYaw:-.8,hipRz:.7},'outCubic'),
+  kf(.21,{...G,rootY:1,rootRot:-.18,head:.12,hipL:-.38,kneeL:-.45,hipR:2.25,kneeR:-.72,footR:.7,
+    shR:-.45,elR:-.35,shL:1.2,elL:-.45,pelvisYaw:1.35,chestYaw:-.92,hipRz:.95},'inOutSine'),
+  kf(.27,{...G,rootY:.2,rootRot:-.12,head:.08,hipL:-.3,kneeL:-.38,hipR:2.02,kneeR:-.18,footR:1.25,
+    shR:-.55,elR:-.3,shL:1.1,elL:-.4,pelvisYaw:.9,chestYaw:-.55,hipRz:.75},'outQuart'),
+  kf(.34,{...G,rootX:6,rootY:2.2,rootRot:.35,head:-.3,hipL:-.45,kneeL:-.72,hipR:1.28,kneeR:-.12,footR:1.5,
+    shR:-.4,elR:-.45,shL:.75,elL:-.65,pelvisYaw:-.35,chestYaw:.28,hipRz:.2},'outQuart'),
+  kf(.42,{...G,rootX:7,rootY:5.8,rootRot:.42,head:-.34,hipL:-.5,kneeL:-1.15,hipR:.75,kneeR:-1.25,footR:.25,
+    shR:.2,elR:-.8,shL:.45,elL:-.9,pelvisYaw:-.18,chestYaw:.12},'inOutCubic'),
+  kf(.53,{...G,rootX:3,rootY:4,rootRot:.18,head:-.14,hipL:-.4,kneeL:-.85,hipR:.45,kneeR:-.9,
+    shR:.45,elR:-1.1,shL:.35,elL:-1.05},'inOutCubic'),
+  kf(.66,G,'outCubic'),
+])
+
 /** 19 · CHARGED — SHINRA PALM: coiled hold → twin-palm shockwave. */
 const SHINRA = clip('unarmedShinraPalm', [
   kf(0, stance('right')),
@@ -2029,9 +2073,13 @@ const MOVES_SRC: MoveSpec[] = [
     // window on the measured palm peak (0.173), not the pre-recompose value
     hitStart: 0.165, hitEnd: 0.285, dmg: 24, kb: 215, breakGuard: true },
   { id: 'charged', label: 'SHINRA PALM', kind: 'charged', requires: 'ground', clip: SHINRA, limb: 'right',
-    // window on the measured release peak (0.315): the charge holds,
-    // then the explosion is the fast frame
     hitStart: 0.305, hitEnd: 0.445, dmg: 32, kb: 265, heavy: true, breakGuard: true },
+  { id:'chargedPunch',label:'PISTON BREAK',kind:'charged',requires:'ground',clip:CHARGED_PISTON,limb:'right',joint:'hand',
+    hitStart:.245,hitEnd:.335,dmg:38,kb:330,kbY:-80,launch:220,heavy:true,breakGuard:true,hitstop:.12,shake:.34,
+    moveX:250,moveXAt:.19,chain:['launcher','l1'] },
+  { id:'chargedKick',label:'ORBITAL HEEL BREAK',kind:'charged',requires:'ground',clip:CHARGED_ORBITAL,limb:'right',joint:'foot',
+    hitStart:.265,hitEnd:.39,dmg:42,kb:390,kbY:80,heavy:true,breakGuard:true,hitstop:.14,shake:.4,
+    moveX:215,moveXAt:.25,chain:['axeKick','h2'] },
   /* air family */
   { id: 'a1', label: 'FLYING KNEE', kind: 'air', requires: 'air', clip: FLYKNEE, limb: 'right', joint: 'knee',
     hitStart: 0.02, hitEnd: 0.16, dmg: 15, kb: 145, float: 0.8,
@@ -2054,6 +2102,11 @@ const MOVES_SRC: MoveSpec[] = [
   { id: 'airElbow', label: 'FLYING ELBOW', kind: 'air', requires: 'air', clip: AIRELBOW, limb: 'right', joint: 'elbow',
     hitStart: 0.10, hitEnd: 0.26, dmg: 22, kb: 185, heavy: true, float: 0.5,
     moveY: 320, moveYAt: 0.12 },
+  // Movement + light during an air string: the body chases the launched
+  // target and the elbow lands only after the hips/legs have driven across.
+  { id: 'a4', label: 'SKY CHASE ELBOW', kind: 'air', requires: 'air', clip: AIRELBOW, limb: 'right', joint: 'elbow',
+    hitStart: 0.10, hitEnd: 0.26, dmg: 18, kb: 105, juggle: -340, float: 0.3,
+    moveX: 300, moveXAt: 0.04, chain: ['a1', 'a2', 'dive', 'slam'] },
   /* THE SAKUGA SET — the uploaded "THE DARK LORD — Sakuga Study"
    * transcribed 1:1 into this rig (clips in combat/sakuga.ts): every key
    * pose at the study's exact 24fps beat grid, IK-authored contacts on the

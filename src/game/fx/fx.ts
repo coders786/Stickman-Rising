@@ -471,6 +471,31 @@ export class FX {
     if (!gore) this.burst(x, y - 20, 10, '#ffffff', 300, 0.4, 'spark')
   }
 
+  /** Execution breakup: 8–12 compact silhouette sections separate along the
+   * recorded alternating cut normals. Unlike dismember(), this is a delayed
+   * controlled slide first, then gravity—not a radial grenade burst. */
+  executionPieces(x:number,y:number,dir:number,bodyColor:string,accent:string,count=10):void {
+    const gore=this.gore==='blood'
+    const n=this.scaleCount(Math.max(8,Math.min(12,count)))
+    for(let i=0;i<n;i++){
+      const d=this.dFree.pop()??{active:false,x:0,y:0,vx:0,vy:0,rot:0,vrot:0,len:10,color:'#fff',age:0,life:1}
+      const row=i%5, side=i%2===0?-1:1
+      d.active=true
+      d.x=x+side*(3+Math.floor(i/5)*5)
+      d.y=y-14-row*13
+      // Alternating plane normals preserve the cross-hatched cut map.
+      d.vx=dir*side*(70+row*18)
+      d.vy=-35-row*16
+      d.rot=(side*.18)+(row-2)*.06
+      d.vrot=side*(2.2+row*.55)
+      d.len=12+(i%3)*5
+      d.color=i%4===0?accent:bodyColor
+      d.age=0;d.life=1.35+(i%4)*.13
+      this.debris.push(d)
+    }
+    this.burst(x,y-38,gore?14:8,gore?'#c31432':accent,190,.52,gore?'dot':'spark')
+  }
+
   /** enemy death dissolve */
   dissolve(x: number, y: number, color: string, accent: string): void {
     this.burst(x, y - 30, 16, color, 260, 0.6, 'ember')

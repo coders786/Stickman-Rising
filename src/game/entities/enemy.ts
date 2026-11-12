@@ -365,7 +365,9 @@ export class Enemy {
         const dir = dx > 0 ? 1 : -1
         // hit test against player (front circle)
         const reach = this.cfg.range * this.scale
-        if (this.strikeHits > 0 && adx < reach && Math.abs(this.y - py) < 90) {
+        // Ground swings do not own a floor-to-ceiling hurtbox. Above roughly
+        // chest height the airborne player has visibly cleared the weapon.
+        if (this.strikeHits > 0 && adx < reach && Math.abs(this.y - py) < 64 * this.scale) {
           const res = w.enemyStrikePlayer(this.dmg, dir, this.kind === 'heavy' || this.kind === 'boss', this.x)
           this.strikeHits = 0
           if (res) {
@@ -467,7 +469,16 @@ export class Enemy {
     if (this.kind !== 'drone' && this.state !== 'launched' && this.state !== 'dive') {
       const pdx = this.x - px
       const FLOOR = 30 * this.scale
-      if (Math.abs(pdx) < FLOOR) {
+      // Horizontal separation is valid only while the two visible body
+      // capsules substantially overlap vertically. The old X-only test made
+      // an airborne player an invisible floor-to-ceiling wall: jumping over
+      // a grunt still shoved the grunt sideways from 80+ pixels above it.
+      const playerTop = py - 92
+      const playerBottom = py
+      const enemyTop = this.y - 88 * this.scale
+      const enemyBottom = this.y
+      const verticalOverlap = Math.min(playerBottom, enemyBottom) - Math.max(playerTop, enemyTop)
+      if (verticalOverlap > 22 && Math.abs(pdx) < FLOOR) {
         const dir = pdx >= 0 ? 1 : -1
         // the player is the anchor: push the lighter body out, not them
         this.x = px + dir * FLOOR
