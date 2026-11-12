@@ -14,6 +14,14 @@ import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm } from './lighting'
 
+/** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
+ * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
+ * is the selectivity trick: it crushes near-black midtones to 0 and lets
+ * >0.5 values through, killing the old full-environment veil. Research:
+ * quarter-res `brightness(.75) contrast(2.6) blur(3px)` in ONE filter blit.
+ * Cached strings — zero per-frame allocs. */
+const BLOOM_BRIGHTPASS = 'brightness(0.72) contrast(2.5)'
+
 export interface RenderWorld {
   cam: Camera
   fx: FX
@@ -225,7 +233,10 @@ export class Renderer {
     a.imageSmoothingEnabled = true
     a.imageSmoothingQuality = 'medium'
     a.clearRect(0, 0, bw, bh)
+    // bright-pass at the ¼-res downsample: one filtered blit, no extra pass
+    a.filter = BLOOM_BRIGHTPASS
     a.drawImage(ctx.canvas, 0, 0, cw, ch, 0, 0, bw, bh)
+    a.filter = 'none'
     b.imageSmoothingEnabled = true
     b.clearRect(0, 0, sw, sh)
     b.drawImage(this.bloomA!, 0, 0, bw, bh, 0, 0, sw, sh)
@@ -234,7 +245,8 @@ export class Renderer {
     a.drawImage(this.bloomB!, 0, 0, sw, sh, 0, 0, bw, bh)
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = this.quality === 'ultra' ? 0.30 : this.quality === 'high' ? 0.24 : 0.15
+    // selective pass — emissives can carry more energy without a veil
+    ctx.globalAlpha = this.quality === 'ultra' ? 0.46 : this.quality === 'high' ? 0.36 : 0.24
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(this.bloomA!, 0, 0, w, h)

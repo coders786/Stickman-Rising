@@ -47,8 +47,12 @@ export interface CastShadowOpts {
 const finite=(n:number,fallback:number)=>Number.isFinite(n)?n:fallback
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
-  return {dirX:lerp(-.42,-.92*az,k),elev:lerp(1.02,.42,k),hard:lerp(.14,1,k),
-    i:lerp(.55,1,k),color:'#020409'}
+  // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt.
+  // Moon mode (k→0): KEY LIGHT = moon upper-right — LOW elevation so shadows
+  // rake LONG down-left across the deck (~1.5 body-lengths at elev .58),
+  // soft-edged, violet-black (invented chroma — real moonlight is gray).
+  return {dirX:lerp(-.85,-.92*az,k),elev:lerp(.58,.42,k),hard:lerp(.12,1,k),
+    i:lerp(.62,1,k),color:'#050310'}
 }
 export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y:number}|null {
   if(!Number.isFinite(x)||!Number.isFinite(y))return null
@@ -98,14 +102,29 @@ export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,lig
   const weights=[.62,.26,.12],sum=weights.slice(0,passes).reduce((a,b)=>a+b,0)
   const target=alpha*(.8+.2*clamp01(finite(opts.lightBoost??light.i,.55)))
   const tint=/^#[0-9a-f]{6}$/i.test(light.color)?light.color:'#020409'
+  // LONG-SHADOW TIP FADE: opacity dies toward the far tip the way a real
+  // penumbra dissolves with distance from the contact patch. One gradient
+  // per caster per frame (never per stroke) — passes share it via globalAlpha.
+  const rootX=fig.chains.length&&fig.chains[0].length?fig.chains[0][0]:(fig.head?fig.head.x:0)
+  let maxH=20
+  for(const ch of fig.chains)for(let i=1;i<ch.length;i+=2)if(1.5-ch[i]>maxH)maxH=1.5-ch[i]
+  if(fig.head&&1.5-fig.head.y>maxH)maxH=1.5-fig.head.y
+  if(fig.blade){if(1.5-fig.blade.y0>maxH)maxH=1.5-fig.blade.y0;if(1.5-fig.blade.y1>maxH)maxH=1.5-fig.blade.y1}
+  const tipOff=Math.min(320,maxH*Math.abs(Math.cos(finite(light.elev,.58)))/Math.max(.24,Math.sin(finite(light.elev,.58))))*finite(light.dirX,-.85)
+  const shade=ctx.createLinearGradient(rootX,0,rootX+tipOff*1.3,0)
+  shade.addColorStop(0,rgba(tint,1))
+  shade.addColorStop(.55,rgba(tint,.7))
+  shade.addColorStop(1,rgba(tint,.26))
+  ctx.fillStyle=shade
   // Outside-in soft passes. Normalize accumulated center opacity so adding
   // quality passes cannot darken the entire character shadow three times.
   for(let pass=passes-1;pass>=0;pass--){
     const opacity=1-Math.pow(1-target,weights[pass]/sum)
-    ctx.fillStyle=rgba(tint,opacity)
+    ctx.globalAlpha=opacity
     shadowPath(ctx,fig,light,radius*(1+pass*(soft*.65+Math.min(.65,alt/400))))
     ctx.fill()
   }
+  ctx.globalAlpha=1
   // AO belongs only to actual foot contact; stale airborne anchors are ignored.
   if(height>=-1.5){
     ctx.fillStyle=rgba('#010307',alpha*.35)

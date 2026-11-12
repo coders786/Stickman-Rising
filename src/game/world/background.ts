@@ -569,16 +569,14 @@ export class CyberBackground {
       }
     }
     ctx.globalAlpha = 1;
-    ctx.drawImage(this.moonSpr, w * 0.62 - cx * 0.03 * cz - 110, h * 0.16 - (cy - NOMINAL_Y) * 0.08 * cz - 110);
-
-    /* 2.5 — DRIFTING CLOUD DECK: dark banks crossing the moon; while
-     * lightning scatters through them the LIT twin re-blits additively, so
-     * the storm above pulses with each strike. Behind the skyline. */
+    /* 2.5 — DRIFTING CLOUD DECK: dark banks; while lightning scatters through
+     * them the LIT twin re-blits additively, so the storm above pulses with
+     * each strike. Behind the skyline. */
     {
       const Ic = this.lightningI();
       const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
       const clOff = mod(-t * 5 - cx * 0.02 * cz, TILE);
-      ctx.globalAlpha = 0.9;
+      ctx.globalAlpha = 0.74;
       this.blitRow(ctx, this.cloudDark, clOff, cloudY);
       ctx.globalAlpha = 1;
       if (Ic > 0.02) {
@@ -724,6 +722,19 @@ export class CyberBackground {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
+    /* 5.5 — THE MOON over the whole skyline (the reference image's
+     * moon-over-mountains composition, with the city as the mountains).
+     * All tower layers sit behind it; drifting clouds + fog veil it back
+     * into the depth. Slow celestial parallax. */
+    ctx.drawImage(this.moonSpr, w * 0.68 - cx * 0.03 * cz - 110, h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110);
+    {
+      const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
+      const cloudY2 = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
+      ctx.globalAlpha = 0.38;
+      this.blitRow(ctx, this.cloudDark, clOff2, cloudY2);
+      ctx.globalAlpha = 1;
+    }
+
     /* 6 — drifting fog bands (they scatter the lightning: glow during strikes) */
     for (let i = 0; i < this.fogCount; i++) {
       const F = FOG_BANDS[i];
@@ -771,8 +782,8 @@ export class CyberBackground {
       const I = this.lightningI();
       const s1 = mod(t * MIST_SP, MIST_W);
       const s2 = mod(1024 - t * MIST_SP * 0.55, MIST_W);
-      let a1 = (0.30 + 0.16 * this.gust) * (1 + 1.6 * I);
-      if (a1 > 0.62) a1 = 0.62;
+      let a1 = (0.22 + 0.12 * this.gust) * (1 + 1.6 * I);
+      if (a1 > 0.52) a1 = 0.52;
       ctx.globalAlpha = a1;
       for (let x = ARENA_X0 - MIST_W + s1; x < ARENA_X1; x += MIST_W) {
         ctx.drawImage(this.mistSpr, x, -34, MIST_W, 62);
@@ -1120,9 +1131,9 @@ export class CyberBackground {
 
     /* rooftop lip (world y 0..14) */
     let gr = g.createLinearGradient(0, 0, 0, LIP_H);
-    gr.addColorStop(0, '#242c33');
-    gr.addColorStop(0.45, '#2d363d');
-    gr.addColorStop(1, '#1b2227');
+    gr.addColorStop(0, '#1d242a');
+    gr.addColorStop(0.45, '#252d34');
+    gr.addColorStop(1, '#161c21');
     g.fillStyle = gr;
     g.fillRect(0, 0, W, LIP_H);
     g.fillStyle = 'rgba(0,0,0,0.38)';                      // contact shadow

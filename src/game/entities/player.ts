@@ -4825,7 +4825,7 @@ export class Player {
       for (const c of this.snapContacts) contacts.push(c)
     }
     drawCastShadow(ctx, this.shFig, light, {
-      alpha: 0.58, width: 6.4, passes: 3, scale: SCALE,
+      alpha: 0.66, width: 6.4, passes: 3, scale: SCALE,
       height: this.y, contacts,
     })
   }
