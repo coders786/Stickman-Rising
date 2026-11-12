@@ -113,6 +113,29 @@ is the same failure the impact-timing audit measures.
 | move | span before | span after |
 |---|---|---|
 | `h1` RIPPLING ELBOW | 37.0 | **78.5** |
+| `h2` TORNADO ROUNDHOUSE | 44.9 | **75.0** |
+| `h3` SKYHAMMER FIST | 43.1 | **97.8** |
+
+### `h2` — depth alone was not enough
+Giving the roundhouse real Z travel (rootZ coil −10.5 → arrive +14) raised its
+span to 75, but a close-up read of the contact frames still showed a **knee
+lift**: the shin was folded to **77°** at the moment of impact. `kickExtend`
+spaces the foot by a goal offset, and the goal `38/−24` happens to sit near
+the edge of the leg's reach.
+
+A measured sweep of `kickExtend` (fold angle = thigh-to-shin, 180° straight):
+
+| fwd / up | fold | hip→foot reach |
+|---|---|---|
+| 33 / −20 | 94° | 46.1u |
+| 38 / −24 | **77°** | 52.8u |
+| 44 / −27 | 50° | 60.7u |
+| 46 / −26 | 38° | 63.4u |
+| 47 / −28 | 30° | 64.7u (up clamps past −36) |
+
+Contact now uses `46 / −26`: still a body-height kick, leg straightened to
+38°, foot leading the hip by 63px instead of 53. Ignition uses `41 / −27` so
+the leg passes *through* the arc rather than snapping open at contact.
 
 `h1` also had its hit window re-anchored (0.192 → 0.164) because adding the Z
 travel moved the elbow's speed peak from 0.182 to 0.174; the old window opened

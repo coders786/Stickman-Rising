@@ -708,7 +708,8 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 0.5, rootY: 6.2, rootRot: 0.115,
     spine: 0.09, head: -0.06,
     pelvisYaw: -0.22, chestYaw: 0.28,
-    rootZ: -2.6, hipLz: -0.5, hipRz: 0.5,
+    // Z: the coil loads behind the plane and DEEPENS through the wind
+    rootZ: -6.5, hipLz: -0.7, hipRz: 0.7,
     ...footAt('right', 12, 41), ...footAt('left', -16, 41),
     ...kickChamber('right', 9, 40),
     ...fistAt('right', 11, 4), ...fistAt('left', 6, 5),
@@ -721,7 +722,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: -1.0, rootY: 7.2, rootRot: 0.10,
     spine: 0.14, head: 0.02,
     pelvisYaw: -0.55, chestYaw: 0.70,
-    rootZ: -3.4, hipLz: -0.7, hipRz: 0.7,
+    rootZ: -10.5, hipLz: -1.1, hipRz: 1.1,
     ...footAt('right', 8, 40), ...footAt('left', -17, 41),
     ...kickChamber('right', -2, 3),
     ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
@@ -742,9 +743,9 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 4.5, rootY: 5.0, rootRot: 0.22,
     spine: 0.02, head: 0.26,
     pelvisYaw: 1.05, chestYaw: -0.85,
-    rootZ: 3.8, hipLz: 0.8, hipRz: -0.8,
+    rootZ: 6.0, hipLz: 1.2, hipRz: -1.2,
     ...footAt('right', 6, 41),
-    ...kickExtend('right', 33, -20),
+    ...kickExtend('right', 41, -27),
     ...fistAt('right', 3, 8), ...fistAt('left', 1, 8),
     // opens as the kick swings through — this is the counter-rotation
     elL: -1.35,
@@ -758,9 +759,21 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 5.0, rootY: 4.6, rootRot: 0.235,
     spine: 0.0, head: 0.30,
     pelvisYaw: 1.20, chestYaw: -0.98,
-    rootZ: 5.2, hipLz: 1.0,
+    // Z: the kick arrives IN FRONT of the plane. A tornado roundhouse is a
+    // move whose whole point is rotation -- without Z travel the sweep was
+    // a flat arc and the depth span sat at 44.9, the second weakest in the
+    // set. rootZ coil -10.5 -> +14 is a 24.5-unit commitment, and the
+    // kicking hip leads it (+1.7) so the foot is the nearest mass.
+    rootZ: 14.0, hipLz: 1.7,
     ...footAt('right', 5, 41),
-    ...kickExtend('right', 38, -24),
+    // The shin was still folded to 77deg at contact, so the strike read as
+    // a KNEE LIFT rather than a roundhouse no matter how much depth it had.
+    // Measured sweep of kickExtend: fold angle vs reach is
+    //   40/-26 69deg 55.4u | 44/-27 50deg 60.7u | 46/-26 38deg 63.4u
+    //   47/-28 30deg 64.7u (up clamps past -36)
+    // 46/-26 keeps the strike low enough to be a body kick and straightens
+    // the leg to 38deg, so the foot leads the hip by 63px instead of 53.
+    ...kickExtend('right', 46, -26),
     hipRz: -1.0 + 0.30,
     ...fistAt('right', 0, 9), ...fistAt('left', -1, 9),
     armRz: 0.50, foreRz: 0.34, armLz: -0.68, foreLz: 0.40,
@@ -770,7 +783,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 3.5, rootY: 6.2, rootRot: 0.20,
     spine: 0.08, head: 0.16,
     pelvisYaw: 0.70, chestYaw: -0.50,
-    rootZ: 2.4, hipLz: 0.5, hipRz: -0.5,
+    rootZ: 7.5, hipLz: 1.1, hipRz: -1.1,
     ...footAt('right', 8, 40), ...footAt('left', -18, 41),
     ...kickExtend('right', 24, -10),
     ...fistAt('right', 8, 6), ...fistAt('left', 5, 6),
