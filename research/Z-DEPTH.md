@@ -115,6 +115,19 @@ is the same failure the impact-timing audit measures.
 | `h1` RIPPLING ELBOW | 37.0 | **78.5** |
 | `h2` TORNADO ROUNDHOUSE | 44.9 | **75.0** |
 | `h3` SKYHAMMER FIST | 43.1 | **97.8** |
+| `l2` GYAKU CROSS | 52.6 | **79.6** |
+
+### `l2` — the pelvis was not on the Z axis at all
+The cross had 17.8 units of hand travel and only **2.4** of hip travel: the
+arm did all the depth work while the pelvis stayed a flat slab. Authoring
+the hip channel (wind `rootZ −5.5` / `hipLz −0.9`, contact `+9.0` /
+`hipLz +1.5`, hold `+5.0`) took hip travel to 10.1 and the span to 79.6.
+
+One trap worth recording: `chamber()` and `contact()` have a **closed**
+option type, so `rootZ` cannot be passed inside them. It has to be merged
+from outside — `kf(t, { ...contact(...), rootZ: 9 })` — and a bare
+trailing `{...}` argument is rejected because `kf`/`mid` seal their
+signatures.
 
 ### `h2` — depth alone was not enough
 Giving the roundhouse real Z travel (rootZ coil −10.5 → arrive +14) raised its

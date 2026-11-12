@@ -232,24 +232,38 @@ const CROSS = clip('unarmedCross', [
   kf(0.06, chamber('rotation', 'left', { coil: 0.9, sink: 1.4 }), 'outQuad'),
   // ignition — hips start to turn before the fist moves (proximal first)
   mid(0.10, chamber('rotation', 'left', { coil: 0.9, sink: 1.4 }),
-    contact('rotation', 'left', {
-      drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.75,
+    {
+      ...contact('rotation', 'left', {
+        drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.75,
+        leadFoot: [22, 38], rearFoot: [-26, 39],
+        fist: [40, -2], offFist: [3, 5],
+      }),
+      // hips turn OUT of the plane on the way through -- hip travel on this
+      // clip was 2.4 units, so the pelvis was a flat slab and all the depth
+      // was the arm's alone
+      rootZ: -5.5, hipLz: -0.9, hipRz: 0.9,
+    }),
+  // CONTACT: rear hip through, fist at full reach, head down the line
+  kf(0.145, {
+    ...contact('rotation', 'left', {
+      drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.80,
       leadFoot: [22, 38], rearFoot: [-26, 39],
       fist: [40, -2], offFist: [3, 5],
-    })),
-  // CONTACT: rear hip through, fist at full reach, head down the line
-  kf(0.145, contact('rotation', 'left', {
-    drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.80,
-    leadFoot: [22, 38], rearFoot: [-26, 39],
-    fist: [40, -2], offFist: [3, 5],
-  }), 'inOutCubic'),
+    }),
+    // CONTACT: hips arrive IN FRONT of the plane, rear hip leading, so the
+    // punching side is the nearest mass on the figure
+    rootZ: 9.0, hipLz: 1.5, hipRz: -1.5, armRz: 1.15, foreRz: 0.85,
+  }, 'inOutCubic'),
   // the rear hip lands; the fist stays out one beat longer than the body,
   // then the arm relaxes while the torso is still turned through
-  kf(0.205, contact('rotation', 'left', {
-    drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
-    leadFoot: [21, 38], rearFoot: [-24, 40],
-    fist: [39, 0], offFist: [5, 6],
-  }), 'inOutCubic'),
+  kf(0.205, {
+    ...contact('rotation', 'left', {
+      drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
+      leadFoot: [21, 38], rearFoot: [-24, 40],
+      fist: [39, 0], offFist: [5, 6],
+    }),
+    rootZ: 5.0, hipLz: 1.1, hipRz: -1.1, foreRz: 0.55,
+  }, 'inOutCubic'),
   mid(0.245, contact('rotation', 'left', {
     drive: 0.95, travel: 5.4, sink: 0.6, lean: 0.22,
     leadFoot: [21, 38], rearFoot: [-24, 40],
