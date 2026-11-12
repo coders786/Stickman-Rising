@@ -72,6 +72,46 @@ function dashGuardPose(p:Pose,weight:number,progress:number,power:boolean,armed:
   if(armed)p[CH.wrR]+=old-p[CH.shR]-p[CH.elR]
 }
 
+/** Blade-arm forward reach floor, in local units, during a drawn-blade
+ * attack. A folded guard arm projects a hand reach near 14; a real strike
+ * reaches 37-40 of the 42-unit maximum (upperArm + foreArm). Clips below
+ * the floor get their sword arm extended for the duration of the swing,
+ * blending in over SPAN so a near-miss is only nudged rather than snapped. */
+const BLADE_REACH_MIN = 30
+const BLADE_REACH_SPAN = 12
+/** Blade pitch target for the extension above, as the rig's channel sum
+ * (`shR+elR+wrR`). rig3d turns that sum into a world angle with
+ * `bladeAngle = PI/2 - sum`, so 1.30 is ~15deg above horizontal -- the
+ * angle the hand-authored sword lights already use. */
+const BLADE_SUM = 1.30
+/** Below this channel sum the edge is closer to vertical/backward than to
+ * forward; a cut cannot happen. Kept under the working lights' 1.25 so a
+ * correctly aimed clip is never nudged. */
+const BLADE_SUM_FLOOR = 0.85
+const BLADE_SUM_SPAN = 0.45
+
+/** Where a stepping strike wants to end up relative to its target, in px.
+ *  The unarmed hit windows bottom out around 34px (`GAP` in
+ *  tests/blade-cleave.test.ts is the same number for the sword), so a step
+ *  that stops at 34 still has the body inside the fist's reach while
+ *  leaving the two silhouettes visibly separate. */
+const ATTACK_STANDOFF = 34
+/** Converts "px still to travel" into the drive speed that covers it.
+ *
+ *  NOT the drive duration (0.12s): the motor is cut off at the end of its
+ *  duration but the body keeps COASTING while `brakeVelocity` bleeds the
+ *  remainder at 900px/s2, so the real ratio is nearer px = speed * 0.165.
+ *  Measured (`.qa/tmp/cal.ts`, no enemy in world so the clamp cannot fire):
+ *
+ *      speed   40    60    80   100   120   150   180   200
+ *      px     5.6   8.7  12.0  15.5  19.2  25.1  31.3  33.4
+ *
+ *  Using 0.12 here made every clamped step overshoot its budget by ~40%
+ *  (a 24px budget landed at 33.4px), which is how a strike walked through
+ *  its target. 0.165 is the measured gradient through the useful band;
+ *  it is deliberately slightly generous so the clamp errs SHORT. */
+const ATTACK_STEP_SECONDS = 0.165
+
 /** circle vs swept blade quad (prev segment + current segment) — prevents tunneling */
 function circleHitsSweptQuad(
   cx: number, cy: number, r: number,
@@ -137,6 +177,172 @@ const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
   { oy: 48, r: 21 }, // torso (the main target)
   { oy: 78, r: 17 }, // chest / head zone
 ]
+
+/** How far apart consecutive blade samples are laid down while a swing is in
+ * flight. A katana edge is ~4px thick and an enemy torso sphere is ~21px at
+ * scale 1, so 10px leaves a large overlap margin while keeping the history
+ * short enough to stay cache-friendly for a whole combo. */
+const SWEPT_EDGE_STEP = 10
+/** Hard cap on stored samples. At 10px apart this is 4.8m of edge travel --
+ * more than any attack in the kit, and it bounds memory if a future move
+ * sweeps wildly. Oldest samples are dropped first. */
+const SWEPT_EDGE_MAX = 480
+/** How long a recorded edge position stays "live" for hit purposes, in
+ * seconds of swing clock. ~3 frames at 60Hz: long enough to bridge the
+ * engine's 24fps stepped clip clock and any hitch, short enough that the
+ * body flashing green always has the sword on it. */
+const SWEPT_EDGE_WINDOW = 0.08
+/** How far before the hit window the edge starts being recorded, so the very
+ * first frame of the cut is not empty. A lead-in, not the anticipation. */
+const SWEPT_EDGE_LEAD = 0.02
+/** How long past the window the edge keeps being recorded, in seconds. One
+ * coarse tick is ~0.05s at 20Hz; this guarantees the pose after the window is
+ * always captured so the last in-window span is not left as a gap. */
+const SWEPT_EDGE_TAIL = 0.1
+/** How far back the opening tick of the hit window sweeps, in seconds.
+ *
+ * This is a DELIBERATE one-frame widening, not a general lookback, and it is
+ * deliberately as small as the tick budget allows. Measured: sakugaHammer
+ * raises its blade to y -143..-165 -- a full body height above the pack, whose
+ * tallest sphere tops out at y -99 -- and a wider opening sweep credited all
+ * five bodies from ground-level samples recorded during the anticipation. Two
+ * frames at 60Hz is enough to make a lunging cut rate-independent (l5 used to
+ * credit body 1 at 90Hz but not 120Hz depending on tick alignment) without
+ * letting a clearly-overhead blade cut anything. */
+const ANTICIPATION_SWEEP = 0.08
+/* The record covers the WHOLE swing, not just the hit window.
+ *
+ * It has to. A lunging cut passes over the near body during the anticipation
+ * and only lands on the far ones once the window opens: measured on h1, the
+ * edge sweeps x 446-532 at t 0.295-0.334 while the window starts at 0.28 and
+ * body 1 stands at 434 -- so an in-window-only record has already walked past
+ * it (h1 read 0 18 18 18 18). The sword really did pass over that body; the
+ * cut is legitimate.
+ *
+ * What is NOT legitimate is crediting it late. SWEPT_EDGE_WINDOW bounds that:
+ * a recorded position stops counting after ~5 frames, so a body only ever
+ * flashes green while the edge is still near it. */
+
+interface WorldSeg { bx: number; by: number; tx: number; ty: number }
+
+/** THE SWEPT EDGE.
+ *
+ * The set of world segments the drawn blade has actually occupied during the
+ * current swing, sampled so consecutive segments always overlap. An enemy is
+ * cut if it intersects ANY of them.
+ *
+ * Why this exists: the blade is a segment that starts at the GRIP, and a
+ * swing both rotates that segment and carries the whole body forward. Both
+ * effects leave real holes:
+ *   · the grip is ~50px out from the centre, so the edge begins past a
+ *     tightly-spaced enemy (l2's grip at local 53 vs an enemy at 34);
+ *   · a lunge moves the body over the row mid-swing, leaving the nearest
+ *     enemy behind the blade (l5 travels 400 -> 434 across its own window).
+ * Recording where the edge actually went closes both holes with geometry
+ * rather than with a tuned rectangle, so what the player sees pass through a
+ * body is exactly what cuts it.
+ *
+ * This is the standard "swept volume against a moving target" used for
+ * fast-moving hitboxes; because the samples are real positions it also
+ * survives the 24fps stepped clip clock that made frame-to-frame position
+ * jumps of 80-180px.
+ */
+class SweptEdge {
+  private pts: number[] = []
+  private when: number[] = []
+  private count = 0
+
+  /** True once the current swing has laid down its first sample. */
+  primed = false
+  /** True once the opening sweep over the anticipation has been resolved. */
+  openingDone = false
+
+  reset(): void { this.count = 0; this.primed = false; this.openingDone = false }
+
+  /** Seed the history with the edge as it stands when the cut opens. */
+  prime(seg: WorldSeg, now: number): void {
+    this.push(seg.bx, seg.by, seg.tx, seg.ty, now)
+    this.primed = true
+  }
+
+  /** Lay the edge down between two poses.
+   *
+   * The interpolation is in ANGLE SPACE, not straight-line. A blade swinging
+   * from A to B traces an arc, and a chord between the two sampled poses cuts
+   * across it -- on a fast swing the chord can miss the whole region the edge
+   * actually passed through. That is a frame-rate bug: at 20Hz l4 advances
+   * animT 0.177 -> 0.236 -> 0.295 in three ticks and cut 3/5, while at 240Hz
+   * the same swing was sampled 126 times and cut 5/5.
+   *
+   * Blade pitch is `PI/2 - (shR+elR+wrR)` (rig3d) and the grip slides with the
+   * pose, so interpolating the base point, the blade LENGTH and the blade
+   * ANGLE separately, then rebuilding the tip, follows the true arc.
+   */
+  add(prev: WorldSeg, cur: WorldSeg, now: number, step = SWEPT_EDGE_STEP): void {
+    const bx0 = prev.bx, by0 = prev.by, tx0 = prev.tx, ty0 = prev.ty
+    const bx1 = cur.bx, by1 = cur.by, tx1 = cur.tx, ty1 = cur.ty
+    // distance travelled by either end of the blade
+    // base (grip) travel + blade angle travel
+    const a0 = Math.atan2(ty0 - by0, tx0 - bx0)
+    const a1 = Math.atan2(ty1 - by1, tx1 - bx1)
+    const L0 = Math.hypot(tx0 - bx0, ty0 - by0)
+    const L1 = Math.hypot(tx1 - bx1, ty1 - by1)
+    // shortest signed angular step, so a blade crossing +/-PI is not spun
+    // the long way round
+    let da = a1 - a0
+    while (da > Math.PI) da -= Math.PI * 2
+    while (da < -Math.PI) da += Math.PI * 2
+    // subdivide by how far the TIP moved along the arc, not by the chord
+    const tipArc = Math.abs(da) * Math.max(L0, L1) + Math.hypot(bx1 - bx0, by1 - by0)
+    const n = Math.max(1, Math.ceil(tipArc / step))
+    for (let i = 1; i <= n; i++) {
+      const t = i / n
+      const bx = bx0 + (bx1 - bx0) * t
+      const by = by0 + (by1 - by0) * t
+      const ang = a0 + da * t
+      const L = L0 + (L1 - L0) * t
+      this.push(bx, by, bx + Math.cos(ang) * L, by + Math.sin(ang) * L, now)
+    }
+  }
+
+  private push(bx: number, by: number, tx: number, ty: number, now: number): void {
+    if (this.count >= SWEPT_EDGE_MAX) {
+      // drop the oldest sample to stay bounded
+      this.pts.copyWithin(0, 4)
+      this.when.copyWithin(0, 1)
+      this.count--
+    }
+    const o = this.count * 4
+    this.pts[o] = bx; this.pts[o + 1] = by; this.pts[o + 2] = tx; this.pts[o + 3] = ty
+    this.when[this.count] = now
+    this.count++
+  }
+
+  /** Does the edge intersect this enemy's body spheres RECENTLY?
+   *
+   * `now` is the swing clock. Only samples from the last SWEPT_EDGE_WINDOW
+   * seconds count, because a blade that passed through a body 300ms ago is
+   * nowhere near it now -- crediting that frame would make the enemy flash
+   * green with no sword in sight. Measured before adding this gate, the 90th
+   * percentile hit landed 71px from the live blade and the worst 116px; the
+   * intended read is "the sword is touching it". */
+  hitsBody(e: { x: number; y: number; scale: number }, now: number, pad = 3, since = -Infinity): boolean {
+    if (this.count === 0) return false
+    const sc = e.scale
+    const oldest = now - SWEPT_EDGE_WINDOW
+    for (const sp of BODY_SPHERES) {
+      const cyy = e.y - sp.oy * sc
+      const r = sp.r * sc + pad
+      for (let i = this.count - 1; i >= 0; i--) {
+        if (this.when[i] < oldest) break // older samples are further back
+        if (this.when[i] < since) continue // older than the sweep that was asked for
+        const o = i * 4
+        if (segHitsCircle(this.pts[o], this.pts[o + 1], this.pts[o + 2], this.pts[o + 3], e.x, cyy, r)) return true
+      }
+    }
+    return false
+  }
+}
 
 /** blade segment vs an enemy's full visual body (any sphere, swept-aware).
  * `pad` fattens the radius per-attack — a katana edge is a plane; the hit
@@ -213,6 +419,9 @@ interface ActionState {
   trail: Trail
   sfxDone: boolean
   driveRemaining:number
+  /** Per-strike override of drive speed, set by the range-aware step so a
+   *  strike with a body in reach does not overrun it. Undefined = use moveX. */
+  driveSpeed?:number
   moveDone: boolean
   moveYDone: boolean
   impactDone: boolean
@@ -534,6 +743,20 @@ export class Player {
   blade = { bx: 0, by: 0, tx: 0, ty: 0 }
   /** previous frame's blade segment (swept hit detection) */
   private prevBlade = { bx: 0, by: 0, tx: 0, ty: 0 }
+  /** The striking LIMB, for an unarmed attack thrown with the blade drawn:
+   * the sword segment is what the engine swings, but the fist/foot is what
+   * the player watches, so the cut has to consider both. */
+  private limbSeg = { bx: 0, by: 0, tx: 0, ty: 0, active: false }
+  private prevLimb = { bx: 0, by: 0, tx: 0, ty: 0 }
+  private limbPrimed = false
+  /** How far the body has been carried by the CURRENT attack's lunge, in px.
+   * A lunging strike sweeps this travelled path as its cutting corridor, so
+   * an enemy the body has just overrun still takes the cut instead of being
+   * left behind. Reset on every startAttack. */
+  private attackTravel = 0
+  private attackPrevX = 0
+  /** Every world position the drawn blade has occupied this swing. */
+  private sweptEdge = new SweptEdge()
   private hasPrevBlade = false
 
   constructor() {
@@ -713,7 +936,13 @@ export class Player {
     // logically STANDING while the button is held) rests at full rate; a
     // moving gait recovers slower; a full sprint barely trickles back.
     // Swinging and dashing are exertion: those states pause the meter.
-    if(this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dead'&&this.state!=='attack'&&this.state!=='dash'){
+    // A HELD CHARGE IS NOT REST. It reads as planted, but it is a committed
+    // investment, and the release is priced against the meter at the moment it
+    // fires. Letting the still-rate climb run during the hold let a player who
+    // approached the coil with 100 stamina regen past the 120 threshold and
+    // fire a power dash they could not afford when they committed to it.
+    const investing = this.state==='dashCharge'||this.state==='charge'
+    if(!investing&&this.staminaRegenDelay<=0&&!this.dashMotionActive&&this.state!=='dead'&&this.state!=='attack'&&this.state!=='dash'){
       const still=this.grounded&&Math.abs(this.vx)<30
       const rate=still?DASH_STAMINA_REGEN_STILL:this.loco==='sprint'?DASH_STAMINA_REGEN_SPRINT:DASH_STAMINA_REGEN
       this.stamina=Math.min(this.maxStamina,this.stamina+rate*Math.max(0,dt-staminaWait))
@@ -872,180 +1101,271 @@ export class Player {
     // Without this copy, procedural += deltas integrate unbounded → spine
     // spin + root sink. (Same contract as Spine's AnimationState.apply /
     // Godot AnimationTree → Skeleton2D.)
-    this.pose.set(this.animator.pose)
-    this.applyProcedural(dt)
-    if(this.state==='dash'&&this.dashBody){
-      const b=this.dashBody
-      const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
-      this.pose[CH.rootRot]+=forcePitch
-      this.pose[CH.head]-=forcePitch
-      if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
-      this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
-    }
-    const motionClip=this.animator.getClip()
-    if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
-    const motionPhase=motionClip&&motionClip.dur>0
-      ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
-    Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
-      speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
-      threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
-      grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
-      landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
-      attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
-    this.contextMotion.apply(this.pose,this.motionContext,dt)
-    this.animationVariation=this.contextMotion.variation
-    this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
-    // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
-    // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
-    this.animator.applyPreparedTransition(this.pose,dt)
-    const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
-      &&/^sprint/.test(motionClip?.name??'')
-    if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
-    this.sprintExposure.apply(this.pose,
-      this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      motionPhase,dt,sprintActing)
-    if(this.sprintExposure.active){
-      this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
-      this.motion.adoptDisplayArms(this.pose)
-    }
-    // Final low-drive acting lives after entry smoothing, but its own
-    // quintic envelope starts/ends at zero with zero velocity/acceleration.
-    // Never tip a backward guard or an aerial dodge onto the floor.
-    this.dashSink=0;this.dashSkim=0;this.dashLift=0
-    if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
-      const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
-      const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
-      const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
-      // Normal dash remains upright throughout; its own footwork, not a
-      // scaled copy of the power lean, supplies the sense of speed.
-      p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]+=(.02-p[CH.spine])*a.weight
-      p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
-      const brace=a.compression*a.weight,reach=a.rearReach*a.weight
-      const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
-      const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
-      p[CH.rootX]+=1.5*brace
-      p[rear]-=.16*reach;p[lead]+=.08*reach
-      p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
-      if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
-      dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
-      this.dashSink=a.drop*a.weight
-    }
-    // A charged release uses its own authored performance; dash strikes keep
-    // their attack arms, while the grounded body follows the same power arc.
-    if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
-      const a=powerDashAct(this.dashBody.progress),p=this.pose
-      const pitch=.35+1.0*a.drive-.31*a.catch
-      p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
-      this.dashDisplayPitch=p[CH.rootRot]
-      p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
-      // The moving guard remains separate from the dash-attack arm layer.
-      if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
-      dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
-      this.dashSink=a.drop
-      this.dashLift=powerDashLift(this.dashBody.age)
-      // Both soles follow the low ballistic body arc before returning to the
-      // close-to-ground skim and then the planted braking catch.
-      this.dashSkim=7*a.drive+this.dashLift
-    }
-    // Charge/stabilization are planted body-language beats, not flight.
-    if(this.grounded&&this.state==='dashCharge'){
-      // The planted COIL clip owns the stance (plant → sink → lock — its
-      // keyframes are the choreography). This layer adds only what a clip
-      // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
-      // and a micro tremble in the sword arm itself, the steel visibly
-      // straining under stored tension. IK keeps the soles grounded.
-      // THE DUAL CHAMBER strains under the fuller load: amplitude grows
-      // with the blade segment (the body carries steel, not static weight).
-      const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
-      const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
-      const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
-      p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
-      p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
-      this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
-    } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
-      const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
-      const q=powerDashRecovery(progress),p=this.pose
-      // A bounded, damped joint response absorbs impact before standing.
-      const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
-      p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
-      p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
-      // Upper body settles just after the legs, rather than every joint
-      // snapping to idle on the same frame. Sword attacks still own their arms.
-      const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
-      dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
-      p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
-      p[CH.rootY]+=1.5*Math.max(0,wobble)
-      this.dashSink=q
-    }
-    this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
-    // procedural layers (bounded, frame-local — never accumulate):
-    // SWORD-LED ARC first: it rewrites the arm channels, so the blade
-    // dynamics spring below sees the ARC's angular velocity — the whip
-    // lags/overshoots the real swing, not the raw keyframes.
-    this.swordArc.update(dt, {
-      pose: this.pose,
-      shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
-      shoulderZ: this.geom.shoulderR.z,
-      handX: this.geom.handR.x, handY: this.geom.handR.y,
-      handZ: this.geom.handR.z,
-      def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
-      animT: this.action ? this.action.animT : 0,
-      enemies: w.enemies,
-      face: this.face,
-      x: this.x,
-      hipY: this.hipY,
-      reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
-    })
-    this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
-    this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
-    // ---- PAVE (bounded organic variation): the additive secondary-motion
-    // pass. Positioned deliberately AFTER every authored/procedural writer
-    // and the grip IK but BEFORE the anatomical gate + FK solve, so:
-    //   (a) the off-hand grip + foot IK re-solve against the varied pose
-    //       (a gripping hand never gets uncontrolled noise — brief §6),
-    //   (b) applyJointLimits bounds every additive offset,
-    //   (c) the arm channels are gated to near-zero inside strike/trail
-    //       windows so hitboxes and trails stay crisp.
-    {
-      const a = this.action
-      const striking = this.state === 'attack' && a != null
-        && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
-      // Precision actions gate the arm channels: strike/trail windows and
-      // the dash family are authored contact silhouettes (hand separation,
-      // blade arcs) — noise there would blur readable beats. Rituals,
-      // parries and the scripted cinematic keep a partial gate so holds
-      // stay alive without smearing choreography.
-      const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
-        : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
-        : 1
-      const hpFrac = this.hp / this.maxHp
-      const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
-      applyPave(this.pose, {
-        time: this.now,
-        dt,
-        hp: hpFrac,
-        comboHits: w.combo?.hits ?? 0,
-        speedRatio,
-        airborne: !this.grounded,
-        airborneT: this.airT,
-        chargeRatio: this.chargeRatio,
-        sinceHitTaken: this.sinceHitT,
-        sword: this.sword.id,
-        armGate,
-        // contextual breath: calm 14 bpm → combat threat + sprint exertion
-        // + near-death labor climb toward ~40 (spec §4.3)
-        breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
-        jumpStyle: this.jumpStyle,
-      }, this.pave)
-    }
-    // ANATOMICAL LIMITS: the last writer before the solve. Clips, additive
-    // layers, crossfades and every IK all pass through the same human ROM
-    // gate — elbows never cross their flexion side, knees never fold
-    // forward, shoulders stay in the glenohumeral envelope.
+    // ---- THE POSE PIPELINE ----
+    // Ordered stages, resolved by LayerStack (see anim/layers.ts). The
+    // ordering argument lives in one place, not in comments above each
+    // writer. Behaviour is pinned by .qa/pose-golden.ts.
+    this.updatePose(dt, w)
+    this.animator.captureDisplayPose(this.pose,dt)
+    this.updateBladeWorld()
+    this.updateSwingScale(dt)
+    this.updateScarf(dt, w.time)
+  }
+
+  /* ================================================================== */
+  /* THE POSE PIPELINE                                                   */
+  /* ================================================================== */
+  /** Build this frame's pose, in explicitly ordered stages.
+   *
+   * This was 182 lines inline in update(), where the correctness of the
+   * result depended on the writers happening to run in a particular order
+   * that existed only as prose comments. It is now one method with the
+   * stages named, so the ordering argument is visible and a writer cannot
+   * be inserted "somewhere in the middle" without choosing a stage.
+   *
+   * Stage meanings (see anim/layers.ts):
+   *   base        the authored clip, absolute (never accumulates)
+   *   procedural  authored additive body language (dash, charge, tremor)
+   *   context     speed/threat/health-reactive secondary motion
+   *   smoothing   damped anatomical tracking — deliberately AFTER the
+   *               authored layers so it smooths their output
+   *   secondary   blade arc, wrist dynamics, grip IK
+   *   variation   seeded PAVE noise, gated off during contact windows
+   *   constraint  the ROM gate — the LAST pose writer, always
+   *   solve       FK/IK projection; writes geom, never the pose
+   *
+   * Pinned by .qa/pose-golden.ts: this ordering changed nothing, bit-exact.
+   */
+  private updatePose(dt: number, w: WorldRef): void {
+    // ---- base: the clip owns the pose absolutely ----
+      this.pose.set(this.animator.pose)
+      this.applyProcedural(dt)
+    // ---- procedural: authored additive body language ----
+    // (this used to run BEFORE the context/smoothing layers; it still does)
+      if(this.state==='dash'&&this.dashBody){
+        const b=this.dashBody
+        const forcePitch=clamp(b.ax*this.face/18000,-.055,.055)
+        this.pose[CH.rootRot]+=forcePitch
+        this.pose[CH.head]-=forcePitch
+        if(b.phase==='load'||b.phase==='wall')this.pose[CH.rootY]+=b.phase==='wall'?1.5:.7
+        this.pose[CH.elL]-=clamp(Math.abs(b.ax)/220000,0,.075)
+      }
+      const motionClip=this.animator.getClip()
+      if(this.contextClip!==motionClip?.name){this.contextClip=motionClip?.name??'';this.contextEntrySpeed=Math.abs(this.vx)}
+      const motionPhase=motionClip&&motionClip.dur>0
+        ? (motionClip.loop?(this.animator.getTime()/motionClip.dur)%1:Math.min(1,this.animator.getTime()/motionClip.dur)):0
+      Object.assign(this.motionContext,{state:this.state,clip:motionClip?.name??'idle',phase:motionPhase,
+        speed:Math.abs(this.vx),forward:this.vx*this.face,acceleration:this.accelSm*this.face,
+        threat:this.enemyNearW,surrounded:this.surrounded,health:this.hp/Math.max(1,this.maxHp),
+        grounded:this.grounded,vy:this.vy,swordDrawn:this.swordDrawn,entrySpeed:/stop|brake/i.test(motionClip?.name??'')?this.stopEntrySpeed:this.contextEntrySpeed,
+        landingImpact:this.landingImpact,counter:this.action?.fromParry??false,
+        attackKind:this.action?.def.kind??'light',dashVariant:this.dashVariant})
+      this.contextMotion.apply(this.pose,this.motionContext,dt)
+      this.animationVariation=this.contextMotion.variation
+    // ---- smoothing: damped pose tracking ----
+      this.motion.update(this.pose, dt, this.state !== 'dead',!this.action?.def.strikeHand)
+      // Deliberate 10 Hz sprint acting, AFTER smoothing so holds are not smeared.
+      // Attacks/dash/draw interrupt instantly; final contact/grip IK is never cached.
+      this.animator.applyPreparedTransition(this.pose,dt)
+      const sprintActing=!this.animator.transitioning&&this.state==='move'&&this.grounded&&!this.braking&&!this.sheathAct
+        &&/^sprint/.test(motionClip?.name??'')
+      if(sprintActing)this.contextMotion.composeSprintArms(this.pose,this.motionContext)
+      this.sprintExposure.apply(this.pose,
+        this.contextMotion.hands(handGestures(motionClip?.name??'idle',motionPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
+        motionPhase,dt,sprintActing)
+      if(this.sprintExposure.active){
+        this.animator.adoptDisplayPose(this.pose,SPRINT_EXPOSURE_CHANNELS)
+        this.motion.adoptDisplayArms(this.pose)
+      }
+      // ---- BLADE EXTENSION IN-HAND ----
+      // An empty-hand clip authors only the limb that strikes (a palm, an
+      // elbow, a spinning backfist) and leaves the sword arm to the guard.
+      // Thrown with the blade DRAWN it still swings the SWORD, because
+      // startAttack does `if(!swordDrawn) def=unarmedAttack(def)`. A guard
+      // arm is folded: cyclone sits at shR 2.43 / elR -2.43, i.e. the
+      // forearm points straight UP out of the elbow, so the grip lands at
+      // x=19 -- inside the player's own silhouette -- and a 100px blade has
+      // nowhere to go. Measured tip.x: cyclone 19, srVortex 53, ironRoot 57
+      // vs 110 on a functioning sword light.
+      //
+      // Measure the arm the way the rig does. limbDir() gives x = sin(swing),
+      // so the hand's forward reach along x is
+      //     sin(shR)*upperArm + sin(shR + elR)*foreArm
+      // (full extension = 42). Anything under REACH_MIN cannot carry the
+      // blade clear of the torso. Extending it there is purely additive: a
+      // properly authored sword clip already reaches further and is left
+      // completely untouched.
+      const atkDef=this.action?.def
+      const atkT=this.action?.animT??0
+      const inHitWin=!!atkDef&&atkT>=atkDef.hit.start&&atkT<=atkDef.hit.end
+      if(this.swordDrawn&&this.state==='attack'&&inHitWin){
+        const p=this.pose
+        const ua=PLAYER_SPEC.upperArm, fa=PLAYER_SPEC.foreArm
+        const reach=Math.sin(p[CH.shR])*ua+Math.sin(p[CH.shR]+p[CH.elR])*fa
+        const sum=p[CH.shR]+p[CH.elR]+p[CH.wrR]
+        // Two independent faults, both fatal to a cut. The ARM can be short
+        // (reach) and the WRIST can aim the blade up or backwards (sum) --
+        // ironRoot has an extended arm but sums to 0.14, which points the
+        // edge at the sky while the grip sits 49px out. Correct whichever
+        // is wrong, weighted by how wrong it is.
+        const wReach=clamp01((BLADE_REACH_MIN-reach)/BLADE_REACH_SPAN)
+        const wAim=clamp01((BLADE_SUM_FLOOR-sum)/BLADE_SUM_SPAN)
+        const k=Math.max(wReach,wAim)
+        if(k>0){
+          p[CH.shR]+=(1.35-p[CH.shR])*k
+          p[CH.elR]+=(-0.30-p[CH.elR])*k
+          // The blade's world pitch is set by the channel SUM, not by any
+          // one joint: rig3d does `bladeAngle = PI/2 - (shR+elR+wrR)`. A
+          // guard arm sums to ~0, which aims the blade straight UP -- that
+          // is why cyclone's tip.x could never exceed its grip.x. Preserving
+          // the sum across the elbow (the dashGuardPose invariant) would
+          // faithfully keep the sword vertical, so aim it instead: a sum of
+          // 1.30 puts the edge ~15deg above horizontal, the angle the
+          // working sword lights use (l1 sums to 1.25).
+          p[CH.wrR]+=(BLADE_SUM-p[CH.shR]-p[CH.elR]-p[CH.wrR])*k
+        }
+      }
+      // Final low-drive acting lives after entry smoothing, but its own
+      // quintic envelope starts/ends at zero with zero velocity/acceleration.
+      // Never tip a backward guard or an aerial dodge onto the floor.
+      this.dashSink=0;this.dashSkim=0;this.dashLift=0
+      if((this.state==='dash'||(this.state==='attack'&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&!this.dashPower){
+        const cfg=this.dashCfg,load=(cfg.anticipation??.08)*cfg.dur
+        const drive=cfg.driveDuration??Math.max(.04,(cfg.dur-load)*.58)
+        const a=groundedDashAct(this.dashBody.age,this.dashBody.duration,load,drive),p=this.pose
+        // Normal dash remains upright throughout; its own footwork, not a
+        // scaled copy of the power lean, supplies the sense of speed.
+        p[CH.rootRot]=clamp(a.pitch,this.dashDisplayPitch-14*dt,this.dashDisplayPitch+14*dt)
+        this.dashDisplayPitch=p[CH.rootRot]
+        p[CH.spine]+=(.02-p[CH.spine])*a.weight
+        p[CH.head]+=(-a.pitch-p[CH.head])*a.weight
+        const brace=a.compression*a.weight,reach=a.rearReach*a.weight
+        const rear=this.dashVariant==='chain'?CH.hipR:CH.hipL
+        const lead=this.dashVariant==='chain'?CH.hipL:CH.hipR
+        p[CH.rootX]+=1.5*brace
+        p[rear]-=.16*reach;p[lead]+=.08*reach
+        p[CH.kneeL]-=.12*brace;p[CH.kneeR]-=.12*brace
+        if(this.state==='dash')dashGuardPose(p,a.weight*(1-a.catch),this.dashBody.progress,false,this.swordDrawn)
+        dashFinishPose(p,a.catch*a.weight,this.dashVariant==='chain',this.state==='dash',a.catch*a.weight,this.swordDrawn)
+        this.dashSink=a.drop*a.weight
+      }
+      // A charged release uses its own authored performance; dash strikes keep
+      // their attack arms, while the grounded body follows the same power arc.
+      if(this.dashPower&&this.dashMotionActive&&this.grounded&&this.dashBody&&this.dashDx*this.face>.5&&this.dashBody.phase!=='wall'&&(this.state==='dash'||(this.state==='attack'&&this.action?.def.kind==='dash'))){
+        const a=powerDashAct(this.dashBody.progress),p=this.pose
+        const pitch=.35+1.0*a.drive-.31*a.catch
+        p[CH.rootRot]=clamp(pitch,this.dashDisplayPitch-10*dt,this.dashDisplayPitch+10*dt)
+        this.dashDisplayPitch=p[CH.rootRot]
+        p[CH.spine]=.025;p[CH.head]=-Math.min(.85,Math.max(-.1,p[CH.rootRot]))
+        // The moving guard remains separate from the dash-attack arm layer.
+        if(this.state==='dash')dashGuardPose(p,a.drive*(1-a.catch),this.dashBody.progress,true,this.swordDrawn)
+        dashFinishPose(p,a.catch,this.dashVariant==='chain',this.state==='dash',a.catch,this.swordDrawn)
+        this.dashSink=a.drop
+        this.dashLift=powerDashLift(this.dashBody.age)
+        // Both soles follow the low ballistic body arc before returning to the
+        // close-to-ground skim and then the planted braking catch.
+        this.dashSkim=7*a.drive+this.dashLift
+      }
+      // Charge/stabilization are planted body-language beats, not flight.
+      if(this.grounded&&this.state==='dashCharge'){
+        // The planted COIL clip owns the stance (plant → sink → lock — its
+        // keyframes are the choreography). This layer adds only what a clip
+        // cannot: the live isometric LOAD — an opposing knee/pelvis tremor
+        // and a micro tremble in the sword arm itself, the steel visibly
+        // straining under stored tension. IK keeps the soles grounded.
+        // THE DUAL CHAMBER strains under the fuller load: amplitude grows
+        // with the blade segment (the body carries steel, not static weight).
+        const u=clamp01(this.dashChargeT/POWER_DASH_CHARGE),q=u*u*(3-2*u),p=this.pose
+        const dual=this.dashDualArmed?clamp01(this.dashDualT/POWER_DASH_SLASH_CHARGE):0
+        const tremor=Math.sin(this.now*55)*(q*(1+dual*.75))
+        p[CH.rootX]+=tremor*.7;p[CH.kneeL]+=.045*tremor;p[CH.kneeR]-=.045*tremor
+        p[CH.shR]+=.022*tremor;p[CH.elR]+=.016*tremor
+        this.dashSink=Math.max(this.dashSink,.4*q+dual*.5)
+      } else if(this.grounded&&!this.dashMotionActive&&this.state==='move'&&(this.dashRecoverT>0||this.dashFinishT>0)){
+        const progress=this.dashRecoverT>0?1-this.dashRecoverT/POWER_DASH_RECOVERY:1-this.dashFinishT/DASH_FINISH_RISE
+        const q=powerDashRecovery(progress),p=this.pose
+        // A bounded, damped joint response absorbs impact before standing.
+        const wobble=Math.sin(progress*Math.PI*2)*q*(1-progress)
+        p[CH.rootRot]+=(.04+.09*wobble-p[CH.rootRot])*q
+        p[CH.head]+=(-.04-.04*wobble-p[CH.head])*q
+        // Upper body settles just after the legs, rather than every joint
+        // snapping to idle on the same frame. Sword attacks still own their arms.
+        const armQ=powerDashRecovery(clamp01((progress-.08)/.92))
+        dashFinishPose(p,q,this.dashVariant==='chain',true,armQ,this.swordDrawn)
+        p[CH.kneeL]-=.10*wobble;p[CH.kneeR]+=.08*wobble
+        p[CH.rootY]+=1.5*Math.max(0,wobble)
+        this.dashSink=q
+      }
+    // ---- secondary: blade, wrist, grip ----
+      this.updateBladeZ(dt) // zArc → bladeYaw channel (BEFORE the 3D solve)
+      // procedural layers (bounded, frame-local — never accumulate):
+      // SWORD-LED ARC first: it rewrites the arm channels, so the blade
+      // dynamics spring below sees the ARC's angular velocity — the whip
+      // lags/overshoots the real swing, not the raw keyframes.
+      this.swordArc.update(dt, {
+        pose: this.pose,
+        shoulderX: this.geom.shoulderR.x, shoulderY: this.geom.shoulderR.y,
+        shoulderZ: this.geom.shoulderR.z,
+        handX: this.geom.handR.x, handY: this.geom.handR.y,
+        handZ: this.geom.handR.z,
+        def: this.state === 'attack' && this.swordDrawn ? this.action?.def ?? null : null,
+        animT: this.action ? this.action.animT : 0,
+        enemies: w.enemies,
+        face: this.face,
+        x: this.x,
+        hipY: this.hipY,
+        reach: PLAYER_SPEC.blade * this.sword.stats.range * SCALE * 1.1 + 130,
+      })
+      this.updateBladeDynamics(dt, w) // wrist lag spring + kinetic chain — feeds hitboxes
+      this.applyTwoHandGrip(dt)       // off-hand IK onto the tsuka
+      // ---- PAVE (bounded organic variation): the additive secondary-motion
+      // pass. Positioned deliberately AFTER every authored/procedural writer
+      // and the grip IK but BEFORE the anatomical gate + FK solve, so:
+      //   (a) the off-hand grip + foot IK re-solve against the varied pose
+      //       (a gripping hand never gets uncontrolled noise — brief §6),
+      //   (b) applyJointLimits bounds every additive offset,
+      //   (c) the arm channels are gated to near-zero inside strike/trail
+      //       windows so hitboxes and trails stay crisp.
+      {
+        const a = this.action
+        const striking = this.state === 'attack' && a != null
+          && a.animT >= a.def.trail.start - 0.07 && a.animT <= a.def.trail.end + 0.09
+        // Precision actions gate the arm channels: strike/trail windows and
+        // the dash family are authored contact silhouettes (hand separation,
+        // blade arcs) — noise there would blur readable beats. Rituals,
+        // parries and the scripted cinematic keep a partial gate so holds
+        // stay alive without smearing choreography.
+        const armGate = striking || this.state === 'dash' || this.state === 'dashCharge' ? 0.15
+          : this.sheathAct != null || this.state === 'parry' || this.state === 'scripted' ? 0.35
+          : 1
+        const hpFrac = this.hp / this.maxHp
+        const speedRatio = clamp01(Math.abs(this.vx) / SPRINT_MAX)
+    // ---- variation: seeded, bounded, frame-local ----
+        applyPave(this.pose, {
+          time: this.now,
+          dt,
+          hp: hpFrac,
+          comboHits: w.combo?.hits ?? 0,
+          speedRatio,
+          airborne: !this.grounded,
+          airborneT: this.airT,
+          chargeRatio: this.chargeRatio,
+          sinceHitTaken: this.sinceHitT,
+          sword: this.sword.id,
+          armGate,
+          // contextual breath: calm 14 bpm → combat threat + sprint exertion
+          // + near-death labor climb toward ~40 (spec §4.3)
+          breathRate: 14 + 12 * this.enemyNearW + 9 * speedRatio + 8 * (1 - hpFrac),
+          jumpStyle: this.jumpStyle,
+        }, this.pave)
+      }
+    // ---- constraint: the anatomical gate is always the last writer ----
+    // Clips, additive layers, crossfades and every IK all pass through the
+    // same human ROM gate — elbows never cross their flexion side, knees
+    // never fold forward, shoulders stay in the glenohumeral envelope.
     applyJointLimits(this.pose,(this.state==='dash'||(this.state==='attack'&&this.dashPower&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.dashDx*this.face>.5?1.58:1.1)
-    // 3D SOLVE: sagittal channels + depth channels → projected joints + blade
+
+    // ---- solve: project the pose; never write it back ----
     solveFighter3D(
       this.pose, PLAYER_SPEC, this.geom,
       PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
@@ -1054,10 +1374,6 @@ export class Player {
     this.applyDrawContact()
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
-    this.animator.captureDisplayPose(this.pose,dt)
-    this.updateBladeWorld()
-    this.updateSwingScale(dt)
-    this.updateScarf(dt, w.time)
   }
 
   private drawSocket(){
@@ -1746,18 +2062,23 @@ export class Player {
     this.vx=brakeVelocity(this.vx,tractionAcceleration(3200),dt)
     const ax=input.axisX(),ay=input.axisY()
     if(Math.abs(ax)>.2)this.dashChargeX=ax
-    // Attack from the charge: a FULLY charged release converts directly into
-    // the power dash attack (the startup was already paid in the coil —
-    // the blade is charged, so the strike rides the release). Early presses
-    // remain plain attacks, exactly as before.
+    // ATTACK from the charge: a light attack CANCELS the charge and throws a
+    // normal light strike. It must not silently convert into the power dash.
+    //
+    // This used to fire `startDash(..., power)` + powerArc whenever the coil
+    // was ready and stamina allowed, which had two consequences the player
+    // could not read: the press spent 120 stamina instead of nothing, and the
+    // strike that came out was the charged dash attack rather than the light
+    // the player asked for. The stamina law in combat/stamina.ts is explicit —
+    // "costs are charged on launch, not on button down, so cancelled charges
+    // and failed requests are free". A cancel into an attack is a cancel.
+    //
+    // The charged release remains reachable: release the DASH key (drawn
+    // steel: the coil fires powerArc/powerSlash), or hold HEAVY to arm the
+    // dual chamber.
     if(input.pressed('light')||input.buffered('light')){
       input.takeBuffered('light')
       this.dropDualCharge()
-      if(this.dashChargeReady&&this.stamina>=POWER_DASH_STAMINA_COST){
-        this.startDash(w,this.dashChargeX,0,true)
-        this.startAttack(ATTACKS.powerArc,w)
-        return
-      }
       this.startAttack(ATTACKS[this.pickLight(w,ax,ay)],w);return
     }
     // HEAVY inside the charge: HOLD arms THE DUAL CHARGE (dash hold + heavy
@@ -2243,6 +2564,10 @@ export class Player {
     const trail = def.strikeHand?this.emptyTrail:w.fx.startTrail(this.sword.colors.trail, this.sword.colors.trail2, this.sword.trailWidth)
     this.hasPrevBlade = false
     this.hasPrevAng = false
+    this.attackTravel = 0
+    this.attackPrevX = this.x
+    this.sweptEdge.reset()
+    this.limbPrimed = false
     this.action = {
       def,
       animT: 0,
@@ -2310,14 +2635,55 @@ export class Player {
     // forward impulse
     if (!a.moveDone && def.moveX !== undefined && animT >= (def.moveXAt ?? def.hit.start)) {
       a.moveDone = true
-      if(def.groundDrive&&this.grounded)a.driveRemaining=def.groundDrive.duration
-      else if(!def.groundDrive && !(def.kind==='dash' && (this.dashMotionActive || this.vx*this.face>def.moveX)))this.vx=this.face*def.moveX
+      // ---- RANGE-AWARE STEP ------------------------------------------------
+      // A strike may step in to reach its target, never past it. The empty-
+      // hand kit did not travel at all (0.0px -- the turret bug), and the
+      // first fix over-corrected: five chained steps carried the player
+      // straight THROUGH a chasing grunt (measured gap closing 19 -> -15px),
+      // because nothing in the game separates a player's body from an
+      // enemy's. There is no collision to stop the overrun, so the step
+      // itself has to know where the body is.
+      //
+      // `stepBudget` is how far the feet may still travel this strike:
+      // the distance to the nearest threat in front, less the standoff we
+      // want to land at (hit windows bottom out around 34px). Negative
+      // (target behind, or already too close) means "plant, do not step".
+      // Only the authored forward drive is clamped; a dash/retreat keeps
+      // its own semantics.
+      // NOTE: read the world here, not `this.threatX` — that is refreshed by
+      // `scanEnemies` inside `updateMove`, which does not run during an
+      // attack, so by the time a chained strike fires it is stale.
+      let drive = def.moveX
+      if (def.strikeHand && drive > 0) {
+        let nearest = Infinity
+        for (const e of w.enemies) {
+          if (e.dead || e.spawning) continue
+          const ahead = (e.x - this.x) * this.face
+          if (ahead > 0 && ahead < nearest) nearest = ahead
+        }
+        if (nearest !== Infinity) {
+          const reachable = nearest - ATTACK_STANDOFF
+          if (reachable < drive * ATTACK_STEP_SECONDS) {
+            drive = Math.max(0, reachable / ATTACK_STEP_SECONDS)
+          }
+        }
+      }
+      if (drive !== def.moveX && def.groundDrive && this.grounded) {
+        a.driveRemaining = def.groundDrive.duration
+        a.driveSpeed = drive
+      } else if (def.groundDrive && this.grounded) {
+        a.driveRemaining = def.groundDrive.duration
+        a.driveSpeed = undefined
+      } else if (!def.groundDrive && !(def.kind === 'dash' && (this.dashMotionActive || this.vx * this.face > def.moveX))) {
+        this.vx = this.face * def.moveX
+      }
     }
     // Drive follows the authored ignition beat without erasing running carry.
     // The finite budget belongs to this action and is discarded on cancel.
     if(a.driveRemaining>0&&def.groundDrive&&def.moveX!==undefined){
       const driveDt=Math.min(dt,a.driveRemaining)
-      if(this.grounded)this.vx=attackDriveVelocity(this.vx,this.face*def.moveX,def.groundDrive.acceleration,driveDt)
+      const speed=a.driveSpeed??def.moveX
+      if(this.grounded)this.vx=attackDriveVelocity(this.vx,this.face*speed,def.groundDrive.acceleration,driveDt)
       a.driveRemaining=Math.max(0,a.driveRemaining-dt)
     }
     // vertical impulse (launcher hop / slam plunge)
@@ -2330,8 +2696,40 @@ export class Player {
       }
     }
 
-    // hit window: sample blade segment & test enemies (swept, anti-tunneling)
+    // ---- record where the blade went ----
+    // Kept to the hit window. Recording the anticipation too was tried, to
+    // catch an enemy a lunge overran before h.start -- but it credits with a
+    // blade that is visibly NOT there: powerSlash lunges to x=417 while the
+    // window opens at 0.10, so its first cut landed 69px away from every
+    // recorded blade position. A cut has to be something the player sees, so
+    // only in-window motion is recorded. The history is seeded with the edge
+    // as it stands when the cut opens, which covers a body already behind the
+    // blade at that instant. With the blade home the hit segment IS the
+    // striking limb (updateBladeWorld builds fist/elbow/ankle from the
+    // skeleton), so the fist gets the same treatment on a shorter arc.
     const h = def.hit
+    // Record a little PAST the window too. At a coarse tick the pose can step
+    // from inside the window straight to past it (20Hz jumped animT 0.295 ->
+    // 0.354 with a window ending at 0.35), so stopping dead at h.end leaves an
+    // unsampled gap exactly where the blade reaches furthest -- l4 cut 3/5 at
+    // 20Hz and 5/5 at 240Hz for that reason alone.
+    if (this.state === 'attack' && animT <= def.hit.end + SWEPT_EDGE_TAIL) {
+      const nowEdge: WorldSeg = { bx: this.blade.bx, by: this.blade.by, tx: this.blade.tx, ty: this.blade.ty }
+      if (!this.sweptEdge.primed) this.sweptEdge.prime(nowEdge, w.time)
+      else if (this.hasPrevBlade) this.sweptEdge.add(this.prevBlade, nowEdge, w.time, SWEPT_EDGE_STEP)
+      // the visible limb too, when a fist/foot is what is striking: add its
+      // own swept history so a punch cuts like a punch
+      if (this.limbSeg.active) {
+        const ls: WorldSeg = { bx: this.limbSeg.bx, by: this.limbSeg.by, tx: this.limbSeg.tx, ty: this.limbSeg.ty }
+        if (this.limbPrimed) this.sweptEdge.add(this.prevLimb, ls, w.time, SWEPT_EDGE_STEP)
+        else { this.sweptEdge.prime(ls, w.time); this.limbPrimed = true }
+        this.prevLimb.bx = ls.bx; this.prevLimb.by = ls.by
+        this.prevLimb.tx = ls.tx; this.prevLimb.ty = ls.ty
+      } else this.limbPrimed = false
+      this.prevBlade.bx = nowEdge.bx; this.prevBlade.by = nowEdge.by
+      this.prevBlade.tx = nowEdge.tx; this.prevBlade.ty = nowEdge.ty
+      this.hasPrevBlade = true
+    }
     if (animT >= h.start && animT <= h.end) {
       this.swingGlow = 1
       const info = makeRuntimeInfo(def, def.strikeHand?1:this.sword.stats.dmg)
@@ -2345,38 +2743,69 @@ export class Player {
       // volume of the through-cut. The sheathed power strikes (fist /
       // spear-foot) declare their own corridor — the pass tears the pack
       // the same way, at their own strike height.
+      // A swung blade's hit segment starts at the GRIP, not at the body.
+      // Measured: l2's grip sits at local x 53 while a 26px-spaced enemy is
+      // at 34, so the edge begins 19px PAST the nearest body and that body
+      // can only ever be caught by the swept quad of a swing that happens to
+      // close on it. On a lunging strike the body also travels over the row
+      // (l5 walks 400 -> 434 across its own window), leaving the nearest
+      // enemy behind the blade entirely -- the "0 xx xx xx xx" signature.
+      //
+      // The fix is not a hand-tuned box. The blade already has REAL world
+      // coordinates every frame, and the body really does move, so record
+      // where the edge actually passed and test the pack against that. This
+      // keeps the engine's contract -- visual contact == gameplay contact --
+      // instead of crediting hits inside a magic rectangle.
+      const cy = h.corridorY ?? 55
+      // a dash-through keeps its authored corridor (the blade is not what
+      // crosses the target there -- the body is), so leave that path alone
+      const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
+      const dashCorridor = def.kind === 'dash' && (!def.strikeHand || declaresCorridor)
+      // the segment the hit test sees: the authored corridor for a dash
+      // through-cut, otherwise the live blade itself
       let curSeg = this.blade
       let usePrev = this.hasPrevBlade
-      const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
-      if (def.kind === 'dash' && (!def.strikeHand || declaresCorridor)) {
-        const cy = h.corridorY ?? 55
+      if (dashCorridor) {
         curSeg = {
           bx: this.x - this.face * (h.corridorBack ?? 124),
           by: this.y - cy,
           tx: this.x + this.face * (h.corridorFront ?? 66),
           ty: this.y - cy,
         }
-        usePrev = this.hasPrevBlade
       }
       for (const e of w.enemies) {
-        // spawning enemies within blade reach (landing pods, y > -90) are
-        // fair game — the swing connects the moment the body crosses the arc
         if (e.dead || (e.spawning && e.y < -90)) continue
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
-        if (bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)) {
+        // The OPENING tick of the window sweeps the whole swing up to here.
+        // A lunging cut passes over the near body during the anticipation and
+        // the window opens afterwards, so whether that pass lands inside the
+        // short lookback otherwise depends on the tick rate -- l5 cut body 1
+        // at 90Hz but not at 120Hz from exactly that. Resolving it once, at a
+        // well-defined moment, makes it rate-independent.
+        // On the opening tick, the ANTICIPATION is swept too (bounded below),
+        // because that is where a lunging cut passes over the near body -- and
+        // it must be resolved at one well-defined moment or the result depends
+        // on the tick rate (l5 cut body 1 at 90Hz but not 120Hz). The lookback
+        // is NOT extended past the anticipation: doing that made distant
+        // bodies credit late (90th-percentile penetration went 9px -> 35px).
+        // Bound the NODE in time, not just the lookback window. The samples
+        // themselves carry their own timestamps, so restricting `oldest` still
+        // walks samples laid down all the way back through the anticipation --
+        // that is how sakugaHammer credited a whole row with its blade at
+        // y -143..-165, a body height above them. `since` filters the nodes.
+        const opening = !this.sweptEdge.openingDone
+        const from = opening ? w.time - ANTICIPATION_SWEEP : Infinity
+        const hit = dashCorridor
+          ? bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)
+          : this.sweptEdge.hitsBody(e, w.time, h.pad ?? 3, from)
+        if (hit) {
           a.hitMap.set(e.id, animT)
-          const result=w.hitEnemy(e.id, this.blade, info)
-          if(rewardsConfirmedHit(result))this.onLandedHit(w, {...info,dmg:result.actualDamage}, e.x, e.y - 48 * e.scale)
+          const result = w.hitEnemy(e.id, this.blade, info)
+          if (rewardsConfirmedHit(result)) this.onLandedHit(w, {...info, dmg: result.actualDamage}, e.x, e.y - 48 * e.scale)
         }
       }
-      // remember this frame's blade for the next sweep test
-      this.prevBlade.bx = curSeg.bx
-      this.prevBlade.by = curSeg.by
-      this.prevBlade.tx = curSeg.tx
-      this.prevBlade.ty = curSeg.ty
-      this.hasPrevBlade = true
       // aoe shockwave at strike moment for heavy hits — the wave is REAL:
       // enemies inside the radius eat the strike (the charged/h3 promise:
       // the shockwave visual must connect, not just decorate)
@@ -3710,6 +4139,11 @@ export class Player {
     // sweeps through depth (bladeYaw), the pelvis rotates WITH it and the
     // shoulders rotate FURTHER — hips → torso → shoulders generate the
     // sword's power together (spec: full-body power generation).
+    // Record a little PAST the window too. At a coarse tick the pose can step
+    // from inside the window straight to past it (20Hz jumped animT 0.295 ->
+    // 0.354 with a window ending at 0.35), so stopping dead at h.end leaves an
+    // unsampled gap exactly where the blade reaches furthest -- l4 cut 3/5 at
+    // 20Hz and 5/5 at 240Hz for that reason alone.
     if (this.state === 'attack') {
       const by = p[CH.bladeYaw]
       p[CH.pelvisYaw] += by * 0.35
@@ -3895,6 +4329,34 @@ export class Player {
 
   private updateBladeWorld(): void {
     const strike=this.action?.def.strikeHand
+    // A DRAWN-blade unarmed attack still resolves through the SWORD (see
+    // startAttack's `if(!swordDrawn) def=unarmedAttack(def)`), but the body is
+    // throwing a fist or a foot at that moment, so the sword is not what the
+    // player sees connect. Record the live limb as well and let the cut credit
+    // whichever the eye is actually following. Without this, powerPunch lands
+    // hits up to 58px outside every sphere the player can see moving.
+    if(this.swordDrawn&&strike&&this.state==='attack'){
+      const g=this.geom
+      const joint=this.action?.def.strikeJoint??'hand'
+      const L=strike==='left'
+      const distal=joint==='elbow'?(L?g.elbL:g.elbR)
+        :joint==='foot'?(L?g.ankleL:g.ankleR)
+        :joint==='knee'?(L?g.kneeL:g.kneeR)
+        :joint==='shoulder'?(L?g.shoulderL:g.shoulderR)
+        :(L?g.handL:g.handR)
+      const proximal=joint==='elbow'?(L?g.shoulderL:g.shoulderR)
+        :joint==='foot'?(L?g.kneeL:g.kneeR)
+        :joint==='knee'?(L?g.hipPtL:g.hipPtR)
+        :joint==='shoulder'?g.chest
+        :(L?g.elbL:g.elbR)
+      this.limbSeg.bx=this.x+this.face*SCALE*(distal.x*.7+proximal.x*.3)
+      this.limbSeg.by=this.hipY+SCALE*(distal.y*.7+proximal.y*.3)
+      this.limbSeg.tx=this.x+this.face*SCALE*distal.x
+      this.limbSeg.ty=this.hipY+SCALE*distal.y
+      this.limbSeg.active=true
+    } else {
+      this.limbSeg.active=false
+    }
     if(!this.swordDrawn&&strike){
       const g=this.geom
       // The hit segment IS the striking limb: fist / elbow / ankle / knee /

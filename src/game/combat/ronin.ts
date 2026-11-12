@@ -32,6 +32,7 @@
  *  · srMeteor     air heavy after FALCON DIVE (the plunge alternative)
  */
 import type { AttackDef, AttackKind, AttackHit } from './attacks'
+import { EMPTY_HAND_PAD_MAX } from './contracts'
 import {
   RONIN_META, RONIN_Iai_CLIP, RONIN_Cross_CLIP, RONIN_Meteor_CLIP,
   RONIN_Vortex_CLIP, RONIN_Viper_CLIP, RONIN_Onslaught_CLIP, RONIN_Omega_CLIP,
@@ -57,6 +58,15 @@ function hitWindowOf(id: string): { start: number; end: number } {
   const ev = RONIN_META[id]?.events ?? []
   const first = ev.reduce((m, e) => Math.min(m, e.t), 0.5)
   const last = ev.reduce((m, e) => Math.max(m, e.t), 0.5)
+  // NOTE (cleave pass): this window is built from the reference's 24fps beat
+  // times, and those do NOT always line up with the measured forward sweep of
+  // the retargeted clip -- the port keeps the reference's rootZ/bladeZ travel,
+  // which re-times the arm. srOnslaught sweeps forward at animT 0.75-0.90 (tip
+  // x 531-566) while this returned 0.45-0.58, where the blade points up.
+  // Windows are therefore overridden per-spec (see `window` below) rather than
+  // trusted, and research/SPRITE-SHEETS.md records why: the reference puts the
+  // limb at maximum reach across the HIT *and* FOLLOW THRU beats, so a window
+  // derived from a single contact event is too short by construction.
   return { start: first - 0.05, end: last + 0.08 }
 }
 
@@ -72,6 +82,9 @@ interface RoninSpec {
   clip: Clip
   /** meta id in RONIN_META (beat source) */
   meta: string
+  /** Measured hit window override, when the beat-derived window does not
+   * match where the retargeted clip actually sweeps forward. */
+  window?: { start: number; end: number }
   dmg: number
   kb: number
   kbY?: number
@@ -138,10 +151,14 @@ const SPECS: RoninSpec[] = [
   {
     id: 'srVortex', label: 'HELIX VORTEX CUTTER', kind: 'spin', requires: 'ground',
     clip: RONIN_Vortex_CLIP, meta: 'vortex',
+    // Measured: this spin is still travelling backwards through the
+    // beat-derived window (tip x -33..+53 at 0.45-0.58); the blade comes
+    // forward at 0.72-0.98.
+    window: { start: 0.72, end: 0.98 },
     dmg: 16, kb: 170, kbY: -60, stagger: 0.38, shake: 0.24,
     moveX: 60, moveXAt: 0.15,
     chain: ['srCross', 'srOmega', 'l1'],
-    cancel: 0.74, trailBack: 0.21, trailFwd: 0.18,
+    cancel: 1.06, trailBack: 0.21, trailFwd: 0.18,
     unarmed: { limb: 'left', joint: 'hand', dmgScale: 0.9 },
   },
   {
@@ -157,10 +174,16 @@ const SPECS: RoninSpec[] = [
   {
     id: 'srOnslaught', label: 'ONSLAUGHT CHAIN X-SLASH', kind: 'finisher', requires: 'ground',
     clip: RONIN_Onslaught_CLIP, meta: 'onslaught',
+    // Measured: the ported clip sweeps forward at animT 0.75-0.90 (blade tip
+    // 531-566). The beat-derived window (0.45-0.58) lands on the upswing
+    // where the tip sits at 469-489, so it stopped on body 2.
+    window: { start: 0.74, end: 0.92 },
     dmg: 26, kb: 260, stagger: 0.5, shake: 0.3, heavy: true, breakGuard: true, pad: 9,
     moveX: 150, moveXAt: 0.2,
     chain: ['srOmega', 'l1', 'l2', 'launcher'],
-    cancel: 0.74, trailBack: 0.24, trailFwd: 0.18, sfx: 'swingHeavy',
+    // cancel must stay after the (corrected) window -- tests/dual-stance
+    // asserts hit.end < cancel, and the window moved later than the old one
+    cancel: 1.02, trailBack: 0.24, trailFwd: 0.18, sfx: 'swingHeavy',
     unarmed: { limb: 'left', joint: 'hand', dmgScale: 0.85 },
   },
   {
@@ -181,7 +204,7 @@ const SPECS: RoninSpec[] = [
 /* ------------------------------------------------------------------ */
 
 function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
-  const win = hitWindowOf(s.meta)
+  const win = s.window ?? hitWindowOf(s.meta)
   const hit: AttackHit = {
     start: win.start,
     end: win.end,
@@ -194,10 +217,18 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     hitstop: hitstopOf(s.meta),
     shake: s.shake ?? (s.heavy ? 0.15 : 0.07),
     heavy: !!s.heavy,
-    aoe: s.aoe,
+    // aoe is a blade-arc property — see the note on the returned def below.
+    aoe: unarmed ? undefined : s.aoe,
     multiHit: s.multiHit,
     breakGuard: s.breakGuard,
-    pad: s.pad ?? (s.heavy ? 8 : 5),
+    // A FIST IS NARROWER THAN A BLADE. This used to pass the sword's pad
+    // straight through to the empty-hand variant, so srViper kept its
+    // katana's 8 px contact radius while it was a punch and srOmega kept 12
+    // — the hitbox was fatter than the limb that supposedly made it. The
+    // empty-hand contract (see moveset.ts `move`) caps the pad at 7 px;
+    // clamp rather than drop, so a punch reads slightly more generous than
+    // the 5/7 defaults without ever exceeding the documented bound.
+    pad: unarmed ? Math.min(EMPTY_HAND_PAD_MAX, s.pad ?? 5) : (s.pad ?? (s.heavy ? 8 : 5)),
     corridorBack: s.corridor?.back,
     corridorFront: s.corridor?.front,
     corridorY: s.corridor?.y,
@@ -226,8 +257,18 @@ function buildDef(s: RoninSpec, unarmed: boolean): AttackDef {
     moveYAt: s.moveYAt,
     float: s.float,
     groundDrive: s.groundDrive,
-    slamImpact: s.slamImpact,
-    drawFlash: s.drawFlash,
+    // ARMED-ONLY EFFECTS DO NOT SURVIVE THE SHEATHE. Each of these is a
+    // property of the steel, not of the movement:
+    //   · drawFlash — the iai glint off a blade leaving the saya; a fist has
+    //     nothing to flash.
+    //   · slamImpact — the katana's impact authored off the blade tip's
+    //     arrival; the empty-hand equivalent lands on a limb and re-derives
+    //     its own weight.
+    //   · aoe — srOmega's 150 px horizon burst is the blade's arc radius. The
+    //     same choreography thrown as a palm strike has no 150 px reach, and
+    //     keeping it silently gave a punch a sword's sweep.
+    slamImpact: unarmed ? undefined : s.slamImpact,
+    drawFlash: unarmed ? undefined : s.drawFlash,
     grip: unarmed ? 0 : s.grip,
     ...(unarmed ? { strikeHand: s.unarmed.limb, strikeJoint: s.unarmed.joint } : {}),
   }

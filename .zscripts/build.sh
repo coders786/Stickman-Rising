@@ -35,9 +35,6 @@ mkdir -p "$BUILD_DIR"
 echo "📦 安装依赖..."
 bun install
 
-# The generated Prisma client is not committed and is required by the build.
-bun run db:generate
-
 # 构建 Next.js 应用
 echo "🔨 构建 Next.js 应用..."
 bun run build

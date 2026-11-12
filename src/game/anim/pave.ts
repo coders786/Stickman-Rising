@@ -196,13 +196,29 @@ export interface PaveContext {
 
 /** Per-entity mutable state (seed, breath phase, spin accumulator). */
 export class PaveState {
-  /** unique per-entity noise seed */
-  seed = (Math.random() * 0x7fffffff) | 0
+  /** Unique per-entity noise seed.
+   *
+   * DETERMINISM: this used to be `Math.random()`, which made the whole
+   * pose pipeline irreproducible — the same inputs produced a different
+   * pose every run, so the animation could not be regression-tested and a
+   * "did my change alter the animation?" question had no answer. The seed
+   * now derives from an entity salt, so two entities still vary from each
+   * other (the spec's per-entity uniqueness) while a single entity is
+   * perfectly repeatable for a given salt.
+   */
+  seed: number
+  /** Airborne spin accumulator etc. */
+  constructor(salt = 0x5eed) {
+    this.seed = (Math.imul(salt | 0, 2654435761) ^ 0x9e3779b9) >>> 0
+    this.breathT = ((this.seed >>> 8) & 0xffff) / 0xffff * 6
+  }
   /** reseed on combo/attack start → per-combo uniqueness (spec var #27) */
   reseed(time: number, x: number): void {
     this.seed = (Math.imul((time * 1000) | 0, 2654435761) ^ ((x * 131) | 0)) >>> 0
   }
-  breathT = Math.random() * 6
+  /** Breath phase. Derived from the seed above rather than randomised, for
+   * the same determinism reason. */
+  breathT: number
   /** accumulated airborne spin (radians) — never wrapped, damped to the
    * nearest full turn on landing so rendered pose stays continuous */
   spin = 0

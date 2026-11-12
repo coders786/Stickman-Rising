@@ -65,8 +65,10 @@ export class ComboDirector {
   /** turns since each move was last thrown (variety memory) */
   private unseen = new Map<string, number>()
 
-  constructor() {
-    this.reseed(Math.random() * 1e6, Math.random() * 1000)
+  /** `salt` keeps two entities' first string distinct while making a single
+   * entity's behaviour reproducible — see PaveState's determinism note. */
+  constructor(salt = 0x00c0ffee) {
+    this.reseed((salt >>> 8) & 0xffff, salt & 0xff)
   }
 
   /** Per-combo seed — same law as PAVE: time + position. */

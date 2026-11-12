@@ -40,11 +40,21 @@ function jointOf(def: typeof MOVES[string]) {
 /** The limb is "extended" (the strike itself) when it is far from its root.
  * Retracting to the guard travels fast too — without this filter the recovery
  * looks like the fastest frame and an auto-retime would put the hitbox on the
- * way back. */
+ * way back.
+ *
+ * `empi` EXCEPTION: an elbow strike is thrown with the forearm FOLDED, so
+ * its distance from the shoulder is short by design and the extension floor
+ * would filter out the entire strike — reporting the wind-up as the fastest
+ * frame. For joint 'elbow' the relevant measure is how far the BODY has
+ * swung the elbow away from the spine, so the root is the hip centre. */
 function rootOf(def: typeof MOVES[string]) {
   const left = def.strikeHand === 'left'
-  const leg = (def.strikeJoint ?? 'hand') === 'foot' || def.strikeJoint === 'knee'
-  return (g: ReturnType<typeof solveFighter3D>): { x: number; y: number } =>
+  const joint = def.strikeJoint ?? 'hand'
+  const leg = joint === 'foot' || joint === 'knee'
+  // folded-elbow strikes: measure travel from the body's centre, not the
+  // shoulder the elbow is folded against
+  if (joint === 'elbow') return (g: ReturnType<typeof solveFighter3D>) => g.hip
+  return (g: ReturnType<typeof solveFighter3D>) =>
     leg ? (left ? g.hipPtL : g.hipPtR) : (left ? g.shoulderL : g.shoulderR)
 }
 
@@ -113,7 +123,14 @@ if (process.argv.includes('--json')) {
   console.log(JSON.stringify(out, null, 1))
   process.exit(0)
 }
-const rows = ids.map(audit).sort((a, b) => a.ratio - b.ratio)
+// A barrage has many contacts, so "peak speed vs the frame the window opens"
+// is not a meaningful question for it -- the --json branch has always skipped
+// these. Honour that here too instead of printing a misleading LATE/EARLY.
+const rows = ids.map((id) => {
+  if (!MOVES[id].hit.multiHit) return audit(id)
+  const r = audit(id)
+  return { ...r, verdict: 'n/a multi' as typeof r.verdict }
+}).sort((a, b) => a.ratio - b.ratio)
 
 console.log('EMPTY-HAND IMPACT TIMING  (ratio = limb speed when the hitbox opens / peak speed)')
 console.log('id'.padEnd(16), 'contact'.padStart(8), 'peak@'.padStart(7), 'offset'.padStart(8), 'peak u/s'.padStart(9), 'ratio'.padStart(7), '  verdict')
