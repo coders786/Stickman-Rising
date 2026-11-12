@@ -257,8 +257,29 @@ export function chain(
   const leadFoot = o.leadFoot ?? [13, 44]
   const rearFoot = o.rearFoot ?? [-13, 45]
 
+  // ---- SEMI-3D: the body has a Z axis --------------------------------
+  // A strike that lives entirely on z=0 is a 2D drawing. Two things put the
+  // body into depth:
+  //
+  //   rootZ  — the whole pelvis travels toward/away from camera. Drives the
+  //            step-in and the recoil, and shifts the figure under the
+  //            perspective camera so limbs foreshorten. This is the big one.
+  //   hipZ   — the pelvis YAW already swings the hips apart in z
+  //            (±1.7/2.1 per unit of sin(pelvisYaw)); adding a per-hip z
+  //            offset lets the stance be genuinely bladed rather than flat.
+  //
+  // A rotation strike plants one hip forward and one back (a real pivot);
+  // a linear strike steps in on the lead side; a drop stays square but
+  // settles back. None of it is simulated — all authored from `depth`.
+  const dz = o.depth ?? 0.10
+  const rootZ = (o.depth ?? 0.10) * (source === 'rotation' ? 3.2 : source === 'linear' ? 7.0 : 5.0)
+
   return {
-    rootX, rootY, rootRot,
+    rootX, rootY, rootRot, rootZ,
+    // bladed stance: on a rotation the lead hip is driven toward camera and
+    // the rear hip away, which is what makes a pivot read as a pivot
+    hipLz: source === 'rotation' ? -dz * 0.55 * sign : dz * 0.18,
+    hipRz: source === 'rotation' ? dz * 0.55 * sign : dz * 0.18,
     spine: (source === 'drop' ? 0.24 : source === 'rotation' ? 0.10 : 0.06) + (o.curl ?? 0),
     head: -0.13 + headLead + (o.curl ?? 0) * 0.8,
     pelvisYaw,

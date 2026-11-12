@@ -188,18 +188,18 @@ const JAB = clip('unarmedJab', [
   // here, so the split is authored rather than left to the sampler.
   mid(0.105, chamber('linear', 'right', { coil: 0.55, sink: 0.5 }),
     contact('linear', 'right', {
-      drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+      drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.55,
       leadFoot: [21, 39], rearFoot: [-23, 41],
       fist: [40, -1], offFist: [-2, 8],
     })),
   // SNAP — contact. Fist at full reach, rear fist pulled hard back.
   kf(0.145, contact('linear', 'right', {
-    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.60,
     leadFoot: [21, 39], rearFoot: [-23, 41],
     fist: [40, -1], offFist: [-2, 8],
   }), 'inOutCubic'),
   mid(0.172, contact('linear', 'right', {
-    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20,
+    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.60,
     leadFoot: [21, 39], rearFoot: [-23, 41],
     fist: [40, -1], offFist: [-2, 8],
   }), contact('linear', 'right', {
@@ -233,13 +233,13 @@ const CROSS = clip('unarmedCross', [
   // ignition — hips start to turn before the fist moves (proximal first)
   mid(0.10, chamber('rotation', 'left', { coil: 0.9, sink: 1.4 }),
     contact('rotation', 'left', {
-      drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
+      drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.75,
       leadFoot: [22, 38], rearFoot: [-26, 39],
       fist: [40, -2], offFist: [3, 5],
     })),
   // CONTACT: rear hip through, fist at full reach, head down the line
   kf(0.145, contact('rotation', 'left', {
-    drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24,
+    drive: 1.15, travel: 6.5, sink: 0.4, lean: 0.24, depth: 0.80,
     leadFoot: [22, 38], rearFoot: [-26, 39],
     fist: [40, -2], offFist: [3, 5],
   }), 'inOutCubic'),
@@ -327,6 +327,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   kf(0.045, {
     rootX: -0.4, rootY: 7.0, rootRot: 0.185,
     spine: 0.13, head: -0.04,
+    rootZ: -1.6, hipLz: -0.2, hipRz: 0.2,
     pelvisYaw: 0.15, chestYaw: -0.22,
     ...footAt('right', 13, 39), ...footAt('left', -17, 40),
     ...fistAt('right', 11, 5), ...fistAt('left', 10, 5),
@@ -337,6 +338,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   kf(0.105, {
     rootX: -1.5, rootY: 9, rootRot: 0.28,
     spine: 0.26, head: 0.10,
+    rootZ: -3.2, hipLz: -0.4, hipRz: 0.4,
     pelvisYaw: 0.30, chestYaw: -0.42,
     ...footAt('right', 12, 36), ...footAt('left', -20, 38),
     ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
@@ -346,6 +348,7 @@ const BODYBLOW = clip('unarmedBodyElbow', [
   mid(0.15, {
     rootX: -1.5, rootY: 9, rootRot: 0.28,
     spine: 0.26, head: 0.10,
+    rootZ: -3.2, hipLz: -0.4, hipRz: 0.4,
     pelvisYaw: 0.30, chestYaw: -0.42,
     ...footAt('right', 12, 36), ...footAt('left', -20, 38),
     ...fistAt('right', 4, 9), ...fistAt('left', 9, 6),
@@ -435,7 +438,7 @@ const TWINPALM = clip('unarmedTwinPalm', [
   }, 'inOutCubic'),
   // the push continues past the palms; the body then re-blades
   kf(0.27, contact('linear', 'right', {
-    drive: 0.5, travel: 7.2, sink: 0.2, lean: 0.18,
+    drive: 0.5, travel: 7.2, sink: 0.2, lean: 0.18, depth: 1.05,
     leadFoot: [23, 41], rearFoot: [-24, 42],
     fist: [26, 0], offFist: [22, 2],
   }), 'inOutCubic'),
@@ -464,7 +467,7 @@ const BACKFIST = clip('unarmedBackfist', [
   // negative (the body rises) and both feet trail: this is the airborne
   // frame the arc is read from.
   kf(0.065, chain('lift', 'left', {
-    drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06,
+    drive: -0.10, travel: -2.6, sink: -2.2, lean: -0.06, depth: -0.70,
     leadFoot: [7, 38], rearFoot: [-11, 39],
     fist: [12, 5], offFist: [8, 5],
   }), 'outCubic'),
@@ -484,7 +487,7 @@ const BACKFIST = clip('unarmedBackfist', [
   // thrown OFF the landing, which is what makes the hop and the hit one
   // action instead of two.
   kf(0.195, contact('rotation', 'left', {
-    drive: 1.05, travel: 0.6, sink: 0.4, lean: 0.20,
+    drive: 1.05, travel: 0.6, sink: 0.4, lean: 0.20, depth: 0.55,
     leadFoot: [18, 41], rearFoot: [-20, 42],
     fist: [40, -6], offFist: [-3, 8],
   }), 'inOutCubic'),
@@ -590,12 +593,12 @@ const ELBOW = clip('unarmedElbow', [
   // departure from the stance — a big negative-drive jolt on frame 1 put
   // the limb's speed peak at t=0.018, before the strike had even begun.
   kf(0.095, chain('rotation', 'right', {
-    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.20,
+    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.55,
     leadFoot: [13, 40], rearFoot: [-19, 41],
     fist: [10, 6], offFist: [9, 5],
   }), 'outQuad'),
   mid(0.145, chain('rotation', 'right', {
-    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.20,
+    drive: -0.18, travel: 0.5, sink: 0.6, lean: 0.13, depth: -0.55,
     leadFoot: [13, 40], rearFoot: [-19, 41],
     fist: [10, 6], offFist: [9, 5],
   }), {
@@ -666,6 +669,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 0.5, rootY: 6.2, rootRot: 0.115,
     spine: 0.09, head: -0.06,
     pelvisYaw: -0.22, chestYaw: 0.28,
+    rootZ: -2.6, hipLz: -0.5, hipRz: 0.5,
     ...footAt('right', 12, 41), ...footAt('left', -16, 41),
     ...kickChamber('right', 9, 40),
     ...fistAt('right', 11, 4), ...fistAt('left', 6, 5),
@@ -678,6 +682,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: -1.0, rootY: 7.2, rootRot: 0.10,
     spine: 0.14, head: 0.02,
     pelvisYaw: -0.55, chestYaw: 0.70,
+    rootZ: -3.4, hipLz: -0.7, hipRz: 0.7,
     ...footAt('right', 8, 40), ...footAt('left', -17, 41),
     ...kickChamber('right', -2, 3),
     ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
@@ -688,6 +693,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: -1.0, rootY: 7.2, rootRot: 0.10,
     spine: 0.14, head: 0.02,
     pelvisYaw: -0.55, chestYaw: 0.70,
+    rootZ: -3.4, hipLz: -0.7, hipRz: 0.7,
     ...footAt('right', 8, 40), ...footAt('left', -17, 41),
     ...kickChamber('right', -2, 3),
     ...fistAt('right', 10, 5), ...fistAt('left', 2, 6),
@@ -697,6 +703,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 4.5, rootY: 5.0, rootRot: 0.22,
     spine: 0.02, head: 0.26,
     pelvisYaw: 1.05, chestYaw: -0.85,
+    rootZ: 3.8, hipLz: 0.8, hipRz: -0.8,
     ...footAt('right', 6, 41),
     ...kickExtend('right', 33, -20),
     ...fistAt('right', 3, 8), ...fistAt('left', 1, 8),
@@ -712,9 +719,10 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 5.0, rootY: 4.6, rootRot: 0.235,
     spine: 0.0, head: 0.30,
     pelvisYaw: 1.20, chestYaw: -0.98,
+    rootZ: 5.2, hipLz: 1.0,
     ...footAt('right', 5, 41),
     ...kickExtend('right', 38, -24),
-    hipRz: 0.30,
+    hipRz: -1.0 + 0.30,
     ...fistAt('right', 0, 9), ...fistAt('left', -1, 9),
     armRz: 0.50, foreRz: 0.34, armLz: -0.68, foreLz: 0.40,
   }, 'inOutCubic'),
@@ -723,6 +731,7 @@ const ROUNDHOUSE = clip('unarmedRoundhouse', [
     rootX: 3.5, rootY: 6.2, rootRot: 0.20,
     spine: 0.08, head: 0.16,
     pelvisYaw: 0.70, chestYaw: -0.50,
+    rootZ: 2.4, hipLz: 0.5, hipRz: -0.5,
     ...footAt('right', 8, 40), ...footAt('left', -18, 41),
     ...kickExtend('right', 24, -10),
     ...fistAt('right', 8, 6), ...fistAt('left', 5, 6),
@@ -774,6 +783,7 @@ const HAMMER = clip('unarmedHammer', [
     // the DROP: everything compresses into a deep square stance
     rootX: 4, rootY: 10.5, rootRot: 0.44,
     spine: 0.34, head: 0.12,
+    rootZ: 2.6, hipLz: 0.35, hipRz: -0.35,
     pelvisYaw: 0.0, chestYaw: 0.0,
     ...footAt('right', 17, 34), ...footAt('left', -18, 35),
     ...fistAt('right', 20, 12), ...fistAt('left', 20, 12),
@@ -785,6 +795,7 @@ const HAMMER = clip('unarmedHammer', [
   kf(0.215, {
     rootX: 5, rootY: 11.5, rootRot: 0.48,
     spine: 0.38, head: 0.14,
+    rootZ: 3.4, hipLz: 0.45, hipRz: -0.45,
     pelvisYaw: 0.0, chestYaw: 0.0,
     ...footAt('right', 18, 33), ...footAt('left', -19, 34),
     ...fistAt('right', 24, 16), ...fistAt('left', 24, 16),
@@ -1086,7 +1097,7 @@ const TACKLE = clip('unarmedTackle', [
   // the rear leg is fully extended behind and DRIVING: everything is
   // behind the point of the shoulder. The head is down and through.
   kf(0.215, contact('linear', 'right', {
-    drive: 1.15, travel: 4.6, sink: 0.9, lean: 0.42, curl: 0.10,
+    drive: 1.15, travel: 4.6, sink: 0.9, lean: 0.42, curl: 0.10, depth: 0.95,
     // the lead leg is PLANTED and braced (a real bend, not a stick), the
     // rear leg extended long behind and driving: the diagonal that gives a
     // tackle its line of force
@@ -1291,35 +1302,112 @@ const POWERKICK = clip('unarmedPowerKick', [
 
 /** 18 · RIPOSTE — REKKA COUNTER PALM: parry-convert cross-step burst. */
 const COUNTERPALM = clip('unarmedCounterPalm', [
-  kf(0, G),
-  kf(0.08, { ...G, rootY: 4.5, rootRot: 0.14, ...handPose('left', 14, -2),
-    ...handPose('right', 12, 0), chestYaw: 0.3, head: -0.14 }, 'outQuad'),
-  mid(0.13, { ...G, rootY: 4.5, rootRot: 0.14, ...handPose('left', 14, -2),
-      ...handPose('right', 12, 0), chestYaw: 0.3, head: -0.14 },
-    { ...G, rootY: 3.8, rootRot: 0.24, rootX: 6, ...handPose('right', 36, 0),
-      wrR: -0.5, chestYaw: -0.32, pelvisYaw: 0.22, head: -0.18 }),
-  kf(0.18, { ...G, rootY: 3.8, rootRot: 0.24, rootX: 6, ...handPose('right', 36, 0),
-    wrR: -0.5, chestYaw: -0.32, pelvisYaw: 0.22, head: -0.18 }, 'inOutCubic'),
-  kf(0.28, { ...G, ...handPose('right', 30, 2), chestYaw: -0.2 }, 'inOutCubic'),
-  mid(0.34, { ...G, ...handPose('right', 30, 2), chestYaw: -0.2 }, G),
-  kf(0.40, G),
+  kf(0, stance('right')),
+  // ABSORB — a counter does not start by attacking. The body gives ground,
+  // sinks onto the back leg, and turns SLIGHTLY AWAY: it is receiving the
+  // incoming blow. depth -0.55 opens the girdle toward the camera so the
+  // sink reads as the body going back and down in 3D, not just squatting.
+  kf(0.075, chain('linear', 'right', {
+    drive: -0.15, travel: -1.8, sink: 2.6, lean: 0.02, depth: -0.55,
+    leadFoot: [14, 31], rearFoot: [-18, 33],
+    fist: [10, 7], offFist: [11, 6],
+    offFold: 0.30,
+  }), 'outQuad'),
+  // PLANT — the counter's launch is the REAR FOOT driving. Weight drops
+  // through the floor and the hips start to square, but the palm has not
+  // moved yet: proximal first, exactly as in the strike chain.
+  kf(0.135, chain('linear', 'right', {
+    drive: 0.35, travel: 0.4, sink: 1.9, lean: 0.10, depth: -0.20,
+    leadFoot: [17, 33], rearFoot: [-21, 35],
+    fist: [14, 6], offFist: [10, 6],
+    offFold: 0.45,
+  }), 'outCubic'),
+  // CONTACT — the palm arrives with everything behind it. The lead leg is
+  // braced, the rear leg is extended and has just finished driving, the
+  // chest has rotated through, and the whole girdle opens FORWARD in depth
+  // (+0.85) so the palm comes toward the player as well as across.
+  kf(0.205, contact('linear', 'right', {
+    drive: 1.10, travel: 4.2, sink: 0.6, lean: 0.26, depth: 0.85,
+    leadFoot: [23, 34], rearFoot: [-27, 36],
+    fist: [40, -3], offFist: [-2, 8],
+    offFold: 0.85,
+  }), 'inOutCubic'),
+  // THROUGH — the palm keeps going past the target line and the body
+  // follows it. depth peaks here: the strike has come fully round.
+  kf(0.275, contact('linear', 'right', {
+    drive: 1.30, travel: 4.8, sink: 1.2, lean: 0.18, depth: 0.70,
+    leadFoot: [21, 37], rearFoot: [-22, 40],
+    fist: [34, 0], offFist: [1, 8],
+    offFold: 0.60,
+  }), 'inOutCubic'),
+  // SETTLE — weight comes back to centre, the girdle closes.
+  mid(0.34, contact('linear', 'right', {
+      drive: 1.30, travel: 4.8, sink: 1.2, lean: 0.18, depth: 0.70,
+      leadFoot: [21, 37], rearFoot: [-22, 40],
+      fist: [34, 0], offFist: [1, 8],
+      offFold: 0.60,
+    }),
+    recover('right', { settle: 1 })),
+  kf(0.40, stance('right')),
 ])
 
 /** 19 · CHARGED — SHINRA PALM: coiled hold → twin-palm shockwave. */
 const SHINRA = clip('unarmedShinraPalm', [
-  kf(0, G),
-  kf(0.10, { ...G, rootY: 8, rootRot: 0.15, chestYaw: 0.3, pelvisYaw: -0.12,
-    ...handPose('left', 2, 16), ...handPose('right', 2, 18),
-    wrL: -0.3, wrR: -0.3 }, 'outQuad'),
-  kf(0.20, { ...G, rootY: 8.5, rootRot: 0.16, chestYaw: 0.32, pelvisYaw: -0.14,
-    ...handPose('left', 2, 16), ...handPose('right', 2, 18),
-    wrL: -0.3, wrR: -0.3 }, 'inOutCubic'),
-  kf(0.28, { ...G, rootY: 4, rootRot: 0.3, spine: 0.06, rootX: 5, ...handPose('left', 34, 0),
-    ...handPose('right', 34, 8), wrL: -0.55, wrR: -0.55,
-    chestYaw: -0.35, pelvisYaw: 0.2, head: -0.15 }, 'inOutCubic'),
-  kf(0.40, { ...G, rootY: 4.5, rootRot: 0.24, ...handPose('left', 30, 2), ...handPose('right', 30, 9) }, 'inOutCubic'),
-  mid(0.50, { ...G, rootY: 4.5, rootRot: 0.24, ...handPose('left', 30, 2), ...handPose('right', 30, 9) }, G),
-  kf(0.60, G),
+  kf(0, stance('right')),
+  // GATHER — the charge begins by SINKING. Both knees fold, the body turns
+  // away in depth (girdle opens to -0.8) and the palms draw in to the
+  // ribs. A charged move earns its weight from the load, not from a hold.
+  kf(0.10, chain('linear', 'right', {
+    drive: -0.30, travel: -2.2, sink: 3.6, lean: 0.04, depth: -0.80,
+    leadFoot: [13, 29], rearFoot: [-17, 30],
+    fist: [7, 6], offFist: [7, 7],
+    offFold: 0.25,
+  }), 'outQuad'),
+  // COMPRESS — deeper, and now BOTH hands are cocked. This is the frame the
+  // player reads as "charging": the body is a coiled spring, feet wide,
+  // knees loaded, both palms back.
+  kf(0.20, chain('linear', 'right', {
+    drive: -0.45, travel: -3.0, sink: 4.4, lean: 0.02, depth: -1.05,
+    leadFoot: [12, 27], rearFoot: [-16, 28],
+    fist: [4, 7], offFist: [3, 7],
+    offFold: 0.15,
+  }), 'inOutCubic'),
+  // THE HOLD — two frames of real stillness. It is deliberately short: a
+  // charge has to be FELT before it breaks, but a long freeze is what made
+  // this clip read flat. The pose creeps one hair deeper so it is alive.
+  kf(0.30, chain('linear', 'right', {
+    drive: -0.50, travel: -3.2, sink: 4.6, lean: 0.02, depth: -1.10,
+    leadFoot: [12, 26], rearFoot: [-16, 28],
+    fist: [3, 7], offFist: [2, 7],
+    offFold: 0.12,
+  }), 'inOutSine'),
+  // RELEASE — everything fires at once. Hips square, rear leg extends and
+  // throws, and BOTH palms go through the target line while the girdle
+  // slams open to +1.0. The legs are the engine here: the sink drops from
+  // 4.6 to -0.4, so the body literally rises and drives into the hit.
+  kf(0.395, contact('linear', 'right', {
+    drive: 1.25, travel: 5.0, sink: -0.4, lean: 0.30, depth: 1.00, curl: 0.06,
+    leadFoot: [25, 38], rearFoot: [-29, 35],
+    fist: [41, -4], offFist: [34, -1],
+    offFold: 0.95,
+  }), 'outQuart'),
+  // IMPACT — the follow-through: palms past the line, the body still
+  // traveling. Legs braced wide.
+  kf(0.475, contact('linear', 'right', {
+    drive: 1.40, travel: 5.6, sink: 0.6, lean: 0.20, depth: 0.85, curl: 0.04,
+    leadFoot: [22, 40], rearFoot: [-25, 40],
+    fist: [36, 0], offFist: [30, 2],
+    offFold: 0.75,
+  }), 'inOutCubic'),
+  // SETTLE — the heavy recovery. Weight comes back down and centre.
+  mid(0.545, contact('linear', 'right', {
+      drive: 1.40, travel: 5.6, sink: 0.6, lean: 0.20, depth: 0.85, curl: 0.04,
+      leadFoot: [22, 40], rearFoot: [-25, 40],
+      fist: [36, 0], offFist: [30, 2],
+      offFold: 0.75,
+    }),
+    recover('right', { settle: 1 })),
+  kf(0.60, stance('right')),
 ])
 
 /** 20 · PARRY — FLOWING DEFLECT: both hands sweep inward past the core. */
@@ -1709,9 +1797,12 @@ const MOVES_SRC: MoveSpec[] = [
     moveX: 150, moveXAt: 0.476, chain: ['l1', 'l2'] },
   /* specials */
   { id: 'riposte', label: 'REKKA COUNTER PALM', kind: 'riposte', requires: 'any', clip: COUNTERPALM, limb: 'right',
-    hitStart: 0.13, hitEnd: 0.24, dmg: 24, kb: 215, breakGuard: true },
+    // window on the measured palm peak (0.173), not the pre-recompose value
+    hitStart: 0.165, hitEnd: 0.285, dmg: 24, kb: 215, breakGuard: true },
   { id: 'charged', label: 'SHINRA PALM', kind: 'charged', requires: 'ground', clip: SHINRA, limb: 'right',
-    hitStart: 0.24, hitEnd: 0.38, dmg: 32, kb: 265, heavy: true, breakGuard: true },
+    // window on the measured release peak (0.315): the charge holds,
+    // then the explosion is the fast frame
+    hitStart: 0.305, hitEnd: 0.445, dmg: 32, kb: 265, heavy: true, breakGuard: true },
   /* air family */
   { id: 'a1', label: 'FLYING KNEE', kind: 'air', requires: 'air', clip: FLYKNEE, limb: 'right', joint: 'knee',
     hitStart: 0.10, hitEnd: 0.24, dmg: 15, kb: 145, float: 0.8,
