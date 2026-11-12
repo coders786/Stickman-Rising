@@ -69,3 +69,22 @@ test('a swung sword reaches several bodies at once, not just one', () => {
   assert.equal(r.dmg.filter((d) => d > 0).length, 5,
     `a basic sword light must damage the whole row, got ${r.dmg.join(' ')}`)
 })
+
+test('how deep the blade cuts does not depend on the frame rate', () => {
+  // Depth must be a property of the swing, not of how often the engine ticks.
+  // The farthest body sits exactly at the edge of reach, so whether it is
+  // caught can differ by one at the extremes; everything the player is
+  // actually aiming at must be stable.
+  const HZ = [30, 60, 120, 240]
+  for (const id of Object.keys(ATTACKS)) {
+    if (id === 'h3') continue // throws w.addHitstop in a bare harness
+    const near = HZ.map((hz) => {
+      const r = cleave(id, 5, 26, 0, 1 / hz)
+      return [0, 1, 2, 3].filter((i) => r.dmg[i] > 0).length
+    })
+    assert.equal(new Set(near).size, 1,
+      `${id} cut a different number of the first four bodies at different ` +
+      `frame rates (${HZ.map((hz, i) => hz + 'hz=' + near[i]).join(' ')}); ` +
+      'the cut must not depend on tick rate.')
+  }
+})

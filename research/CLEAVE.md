@@ -89,6 +89,55 @@ Result: axeKick 2→5, spinHook 2→5, stepKick 2→5 on the sword path.
 
 ## Where it stands
 
-Sword moves cut through a pack reliably (4-5 of 5 on a tight formation).
-The remaining 4/5 cases are the `moveX`-lunge ordering issue above, which
-is a clip-authoring fix, not an engine one.
+**41 of 48 attacks cut 5 of 5. 47 of 48 cut 4 or better.** Every attack now
+damages the FIRST body — the original complaint ("stuck on the first body")
+no longer reproduces anywhere in the kit. The single attack below 4 is
+`ultPalm`, a five-contact palm barrage whose blade oscillates forward and
+back through its window, so the two far bodies are reached on the forward
+phases only.
+
+The six remaining 4/5 cases all miss **body 5 only** — the farthest body,
+sitting at the exact edge of the blade's reach. That is reach, not a defect.
+
+### Frame-rate independence
+
+Measured at 30, 60, 90, 120, 144, 165 and 240 Hz: **zero attacks change how
+many of the first four bodies they hit.** Only the single far body at the
+very edge of reach can flip, and only because reach is sampled at tick
+boundaries — the true peak (`l4` 115, `srCross` 112) is only ~1px beyond what
+either 30 Hz or 60 Hz samples. A coarser tick actually *overestimates* the
+swept region, so 60 Hz is the honest number.
+
+## The final architecture
+
+The first fix used a hand-tuned corridor rectangle. It worked but it was
+wrong in principle: an enemy could be cut by a blade the player never saw
+pass through it, which breaks this engine's contract that visual contact IS
+gameplay contact. It was replaced by `SweptEdge` in `player.ts`: the world
+segment the drawn blade has actually occupied, sampled every 10px so
+consecutive samples always overlap, recorded for the WHOLE swing (not just
+the hit window — h1 and sakugaHammer overrun their first body during the
+anticipation). An enemy is cut if it intersects any recorded position.
+
+Two holes close geometrically with no magic numbers:
+- the grip sits ~50px out, so the edge *begins* past a tightly-spaced enemy;
+- a lunge carries the body over the row mid-swing, leaving the nearest enemy
+  behind the blade.
+
+It also subsumes the old tunnelling worry for free: the samples are real
+positions, so the 80-180px frame-to-frame jumps from the 24fps stepped clock
+can no longer skip a body lying between two poses.
+
+The dash through-cut keeps its authored corridor, because there the *body*
+crosses the target rather than the blade, so the blade-only segment is
+genuinely the wrong witness.
+
+## Regression cover
+
+`tests/blade-cleave.test.ts` pins all of it: the 26px floor for every attack,
+that spacing does not change the depth of the cut, that no attack may damage
+bodies 2-5 while doing nothing to body 1, and that depth does not depend on
+frame rate.
+
+`research/cleave-visual.png` is the visual proof: the real `BODY_SPHERES` at
+their true heights, hit for real, each body marked hit or not.

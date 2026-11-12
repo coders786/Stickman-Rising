@@ -14,7 +14,7 @@ import { resolveEnemyHit } from '../src/game/combat/hit-resolution'
 import { ATTACKS } from '../src/game/combat/attacks'
 import type { WorldRef } from '../src/game/core/types'
 
-export function cleave(attackId: string, count = 5, spacing = 26, gap = 34) {
+export function cleave(attackId: string, count = 5, spacing = 26, gap = 34, dt = 1 / 60) {
   const input = new Input(), p = new Player(), fx = new FX(), noop = () => {}
   const enemies: Enemy[] = []
   const w = {
@@ -42,8 +42,8 @@ export function cleave(attackId: string, count = 5, spacing = 26, gap = 34) {
   const before = enemies.map((e) => e.hp)
   p.startAttack(ATTACKS[attackId], w)
   let frames = 0
-  while (p.state === 'attack' && frames++ < 240) {
-    w.time += 1 / 60; p.update(1 / 60, w); input.endFrame(1 / 60)
+  while (p.state === 'attack' && frames++ < 240 * (1 / 60) / dt) {
+    w.time += dt; p.update(dt, w); input.endFrame(dt)
     // HOLD the pack still: an enemy that walks during the swing changes
     // the test. This harness measures the BLADE, not enemy AI.
     for (const e of enemies) { e.x = 400 + p.face * (gap + enemies.indexOf(e) * spacing) }
