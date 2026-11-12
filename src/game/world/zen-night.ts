@@ -86,6 +86,9 @@ export class ZenNightBackground{
   ctx.globalAlpha=1
   // pre-softened shafts: no hard polygon edges and no runtime blur/filter
   ctx.globalCompositeOperation='screen';ctx.globalAlpha=this.moonVisibility;for(let i=0;i<3;i++){const x=mx-72+i*72;ctx.save();ctx.translate(x,my+46);ctx.rotate(-.18+i*.035);ctx.drawImage(this.shaft!,-48,0,96,Math.max(260,hy-my));ctx.restore()}ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
+  // THE STORM ABOVE THE GARDEN — forked bolt + sky glow, drawn over the
+  // cloud deck but occluded by the foreground garden silhouette below
+  this.storm.drawSky(ctx)
   // mid garden cache parallax
   const shift=-(cam.x*.075)%w;ctx.drawImage(this.staticMid!,shift,0,w,h);ctx.drawImage(this.staticMid!,shift+(shift>0?-w:w),0,w,h)
   // two wrapped fog depths

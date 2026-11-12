@@ -4962,7 +4962,10 @@ export class Player {
       time,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
       hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      rimColor:'#000000',rimAlpha:0,
+      // MOONLIGHT RIM — the cool sky key carves the black ronin out of the
+      // night; lightning strobes lift it (strobeK rides the key light, set
+      // by the renderer each frame).
+      rimColor:'#8fc3ee',rimAlpha:0.5+this.strobeK*0.55,
       alpha,
       // Null-black face/body stays black through hurt and impact frames.
       flash: 0, // null-black body; impacts remain in weapon/scene FX

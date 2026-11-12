@@ -132,12 +132,14 @@ const SKY_BELOW = '#070d12';
 const TWINK_COL = '#cfe0e8';
 const BEACON_CORE = '#ff5040';
 const SIGN_PANEL = '#04070a';
-const SIGN_INK: ReadonlyArray<string> = ['#ff2d95', '#29e6d2', '#ffb02e'];
-const SIGN_CORE: ReadonlyArray<string> = ['#ffd7ec', '#d9fff8', '#ffe9c6'];
+const SIGN_INK: ReadonlyArray<string> = ['#ff2d95', '#29e6d2', '#ffb02e', '#8d5bff', '#3fa9ff'];
+const SIGN_CORE: ReadonlyArray<string> = ['#ffd7ec', '#d9fff8', '#ffe9c6', '#e8dcff', '#dcefff'];
 const SIGN_BORDER: ReadonlyArray<string> = [
   'rgba(255,45,149,0.55)', 'rgba(41,230,210,0.55)', 'rgba(255,176,46,0.55)',
+  'rgba(141,91,255,0.55)', 'rgba(63,169,255,0.55)',
 ];
 const LIFT_COL: ReadonlyArray<string> = ['#ffd9a0', '#9df0e2'];
+const SPARK_COL: ReadonlyArray<string> = ['#bfe9ff', '#ffd9a0', '#ff9ed8']; // moon / sodium / neon glints
 const SVC_COL = '#ffb02e';
 const MIST_W = 3072;           // ground-mist tiling period in world px (fogSpr × 3)
 const MIST_SP = 26;            // ground-mist scroll speed, world px/s
@@ -150,6 +152,7 @@ interface SignRec { x: number; yA: number; w: number; h: number; ci: number; ph:
 interface LiftRec { x: number; yA0: number; yA1: number; sp: number; ph: number; ci: number }
 interface BeamRec { x: number; yA: number; amp: number; sp: number; ph: number }
 interface PuddleRec { x: number; rx: number; ry: number; ci: number; ph: number; sp: number }
+interface SparkRec { x: number; y: number; ph: number; sp: number; ci: number }
 interface SvcRec { x: number; y: number; ph: number; sp: number }
 interface GlyphStroke { x0: number; y0: number; x1: number; y1: number; dot: boolean }
 
@@ -159,13 +162,15 @@ interface GlyphStroke { x0: number; y0: number; x1: number; y1: number; dot: boo
 function buildSkyStrip(): HTMLCanvasElement {
   const { c, g } = makeCanvas(8, 600);
   const gr = g.createLinearGradient(0, 0, 0, 600);
-  gr.addColorStop(0, '#04070c');
-  gr.addColorStop(0.42, '#081019');
-  gr.addColorStop(0.62, '#0a1118');
-  gr.addColorStop(0.8, '#0e1720');
-  gr.addColorStop(0.9, '#16222b');      // faint horizon glow
-  gr.addColorStop(0.955, '#252a22');    // subtle warm smog band just above horizon
-  gr.addColorStop(1, '#121b20');
+  gr.addColorStop(0, '#04060f');       // deep space navy
+  gr.addColorStop(0.28, '#071022');    // upper atmosphere blue
+  gr.addColorStop(0.5, '#0a1626');
+  gr.addColorStop(0.66, '#0f1d31');    // city glow begins to climb
+  gr.addColorStop(0.8, '#172741');     // horizon glow
+  gr.addColorStop(0.885, '#223352');   // bright light-pollution band
+  gr.addColorStop(0.93, '#2b2f3f');    // warm smog layer over the glow
+  gr.addColorStop(0.965, '#1a2130');
+  gr.addColorStop(1, '#101821');
   g.fillStyle = gr;
   g.fillRect(0, 0, 8, 600);
   return c;
@@ -173,28 +178,68 @@ function buildSkyStrip(): HTMLCanvasElement {
 
 /** dim moon disc + halo */
 function buildMoon(): HTMLCanvasElement {
-  const { c, g } = makeCanvas(160, 160);
-  let gr = g.createRadialGradient(80, 80, 30, 80, 80, 79);
-  gr.addColorStop(0, 'rgba(150,178,184,0.16)');
-  gr.addColorStop(1, 'rgba(150,178,184,0)');
+  const { c, g } = makeCanvas(220, 220);
+  // wide atmospheric halo (three soft rings of scattering)
+  let gr = g.createRadialGradient(110, 110, 24, 110, 110, 108);
+  gr.addColorStop(0, 'rgba(168,196,208,0.22)');
+  gr.addColorStop(0.35, 'rgba(140,172,192,0.1)');
+  gr.addColorStop(0.7, 'rgba(120,150,180,0.045)');
+  gr.addColorStop(1, 'rgba(110,140,175,0)');
   g.fillStyle = gr;
-  g.fillRect(0, 0, 160, 160);
-  gr = g.createRadialGradient(72, 72, 6, 80, 80, 34);
-  gr.addColorStop(0, '#c4d0d3');
-  gr.addColorStop(1, '#8b9ca0');
+  g.fillRect(0, 0, 220, 220);
+  // moon body with an off-center key so the limb reads as a sphere
+  gr = g.createRadialGradient(100, 100, 8, 110, 110, 47);
+  gr.addColorStop(0, '#e8eef0');
+  gr.addColorStop(0.55, '#c2ced2');
+  gr.addColorStop(0.85, '#93a4a9');
+  gr.addColorStop(1, '#7c8d92');
   g.fillStyle = gr;
-  g.beginPath(); g.arc(80, 80, 34, 0, TAU); g.fill();
-  g.fillStyle = 'rgba(66,84,88,0.2)';                     // faint craters
-  g.beginPath(); g.arc(68, 70, 7, 0, TAU); g.fill();
-  g.beginPath(); g.arc(88, 92, 5, 0, TAU); g.fill();
-  g.beginPath(); g.arc(93, 66, 3.5, 0, TAU); g.fill();
-  g.strokeStyle = 'rgba(214,229,232,0.28)';
-  g.lineWidth = 1;
-  g.beginPath(); g.arc(80, 80, 34, 0, TAU); g.stroke();
+  g.beginPath(); g.arc(110, 110, 47, 0, TAU); g.fill();
+  // maria + craters (soft, low-contrast)
+  g.fillStyle = 'rgba(66,84,88,0.16)';
+  g.beginPath(); g.arc(94, 96, 10, 0, TAU); g.fill();
+  g.beginPath(); g.arc(122, 128, 7, 0, TAU); g.fill();
+  g.beginPath(); g.arc(130, 92, 5, 0, TAU); g.fill();
+  g.beginPath(); g.arc(103, 124, 4, 0, TAU); g.fill();
+  g.fillStyle = 'rgba(232,242,245,0.28)';                    // crater rims
+  g.beginPath(); g.arc(94, 94, 10, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
+  // bright limb — the thin lit edge that sells the sphere
+  g.strokeStyle = 'rgba(226,240,244,0.5)';
+  g.lineWidth = 1.4;
+  g.beginPath(); g.arc(110, 110, 46.2, Math.PI * 0.62, Math.PI * 1.72); g.stroke();
   return c;
 }
 
 /* ======================== storm sprite pre-renders ======================= */
+
+/** seamless drifting cloud bank — two flavours built from one layout:
+ *  DARK (source-over, the night silhouette) and LIT (additive, re-blitted
+ *  while lightning scatters through the deck). Horizontally periodic. */
+function buildCloudTile(lit: boolean): HTMLCanvasElement {
+  const { c, g } = makeCanvas(TILE, 300);
+  const rng = mulberry32(0x3c19d2);
+  for (let i = 0; i < 16; i++) {
+    const cx = rng() * TILE;
+    const cy = 60 + rng() * 170;
+    const rx = 130 + rng() * 220;
+    const ry = 26 + rng() * 58;
+    const a = lit ? 0.1 + rng() * 0.12 : 0.16 + rng() * 0.16;
+    const col = lit ? '168,198,236' : '16,24,40';
+    for (let k = -1; k <= 1; k++) {
+      const x = cx + k * TILE;
+      const gr = g.createRadialGradient(x, cy, 0, x, cy, rx);
+      gr.addColorStop(0, `rgba(${col},${a.toFixed(3)})`);
+      gr.addColorStop(0.55, `rgba(${col},${(a * 0.55).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(${col},0)`);
+      g.save();
+      g.scale(1, ry / rx);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(x, cy * rx / ry, rx, 0, TAU); g.fill();
+      g.restore();
+    }
+  }
+  return c;
+}
 
 /** cheap bokeh depth-of-field: downsample, then smooth-upsample back to the
  *  original tile size (one-time build, zero per-frame cost). */
@@ -398,6 +443,8 @@ export class CyberBackground {
   private midTile!: HTMLCanvasElement;
   private nearTile!: HTMLCanvasElement;
   private arenaTile!: HTMLCanvasElement;
+  private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
+  private cloudLit!: HTMLCanvasElement;    // same deck, lightning-lit flavour
   private fogSpr!: HTMLCanvasElement;
   private mistSpr!: HTMLCanvasElement;    // denser ground mist (rain spray)
   private beamSpr!: HTMLCanvasElement;
@@ -413,6 +460,7 @@ export class CyberBackground {
   private beams: BeamRec[] = [];
   private puddles: PuddleRec[] = [];
   private puddleA = new Float32Array(0);
+  private sparks: SparkRec[] = [];   // wet-lip glints (city light caught in the rain film)
   private svcLights: SvcRec[] = [];
 
   /** City art consumes a persistent external weather service. */
@@ -491,6 +539,22 @@ export class CyberBackground {
     ctx.fillStyle = SKY_BELOW;
     this.fillBelow(ctx, hy);
 
+    /* 1.5 — CITY LIGHT-POLLUTION GLOW: the megapolis below breathes color
+     * up into the cloud deck — cool electric blue at altitude, warm sodium
+     * and magenta neon right at the skyline. Additive; towers occlude it. */
+    {
+      const I0 = this.lightningI();
+      const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
+      pg.addColorStop(0, 'rgba(40,70,140,0)');
+      pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
+      pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
+      pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = pg;
+      ctx.fillRect(0, hy - 210, w, 216);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
     /* 2 — stars + moon (celestial parallax) */
     const starBase = hy - 70 > h * 0.25 ? hy - 70 : h * 0.25;
     const ms = mod(cx * 0.02 * cz, TILE);
@@ -505,7 +569,26 @@ export class CyberBackground {
       }
     }
     ctx.globalAlpha = 1;
-    ctx.drawImage(this.moonSpr, w * 0.62 - cx * 0.03 * cz - 80, h * 0.16 - (cy - NOMINAL_Y) * 0.08 * cz - 80);
+    ctx.drawImage(this.moonSpr, w * 0.62 - cx * 0.03 * cz - 110, h * 0.16 - (cy - NOMINAL_Y) * 0.08 * cz - 110);
+
+    /* 2.5 — DRIFTING CLOUD DECK: dark banks crossing the moon; while
+     * lightning scatters through them the LIT twin re-blits additively, so
+     * the storm above pulses with each strike. Behind the skyline. */
+    {
+      const Ic = this.lightningI();
+      const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
+      const clOff = mod(-t * 5 - cx * 0.02 * cz, TILE);
+      ctx.globalAlpha = 0.9;
+      this.blitRow(ctx, this.cloudDark, clOff, cloudY);
+      ctx.globalAlpha = 1;
+      if (Ic > 0.02) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, Ic * 0.95);
+        this.blitRow(ctx, this.cloudLit, clOff, cloudY);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      }
+    }
 
     /* 3 — far mega-city (parallax 0.05) + blinking antenna beacons.
      * Far layer draws from its pre-blurred DOF variant (rainy-night bokeh);
@@ -577,7 +660,9 @@ export class CyberBackground {
         ctx.strokeStyle = SIGN_BORDER[s.ci];
         ctx.stroke();
         ctx.globalCompositeOperation = 'lighter';          // fake bloom
-        ctx.globalAlpha = a * 0.22;
+        ctx.globalAlpha = a * 0.18;
+        ctx.drawImage(this.glyphSpr[s.ci], x + 5 - iw * 0.72, y0 + 5 - ih * 0.95, iw * 2.44, ih * 2.9);
+        ctx.globalAlpha = a * 0.32;
         ctx.drawImage(this.glyphSpr[s.ci], x + 5 - iw * 0.38, y0 + 5 - ih * 0.45, iw * 1.76, ih * 1.9);
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = a;
@@ -598,6 +683,13 @@ export class CyberBackground {
     ctx.fillStyle = LAY_NEAR.below;
     this.fillBelow(ctx, byN);
     this.blitRow(ctx, this.nearTile, mN, byN - NEAR_H);
+    if (I > 0.02) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.12 * I;
+      this.blitRow(ctx, this.nearTile, mN, byN - NEAR_H);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
     for (let i = 0; i < this.lifts.length; i++) {
       const L = this.lifts[i];
       const v = t * L.sp + L.ph;
@@ -660,6 +752,19 @@ export class CyberBackground {
       ctx.globalAlpha = a;
       ctx.drawImage(this.puddleSpr[p.ci], p.x - p.rx, 7.5 - p.ry, p.rx * 2, p.ry * 2);
     }
+    // twinkling wet-lip glints — the rain film catches moon and neon as
+    // slow sparkle points that breathe across the metal
+    for (let i = 0; i < this.sparks.length; i++) {
+      const s = this.sparks[i];
+      const tw = 0.5 + 0.5 * Math.sin(t * s.sp + s.ph);
+      const a = tw * tw * tw;
+      if (a < 0.06) continue;
+      ctx.globalAlpha = a * 0.8;
+      ctx.fillStyle = SPARK_COL[s.ci];
+      ctx.fillRect(s.x - 1.4, s.y - 0.6, 2.8, 1.2);
+      ctx.globalAlpha = a * 0.22;
+      ctx.fillRect(s.x - 3, s.y - 1.8, 6, 3.6);
+    }
     // ground mist hugging the arena lip — two counter-scrolling soft bands,
     // density riding the wind gust, lit up when lightning scatters through
     if (this.q !== 'low') {
@@ -719,7 +824,9 @@ export class CyberBackground {
     this.beamSpr = buildBeamSprite();
     this.beaconSpr = buildBeaconSprite();
     this.puddleSpr = buildPuddleSprites();
-    for (let ci = 0; ci < 3; ci++) this.glyphSpr.push(buildGlyph(ci));
+    for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
+    this.cloudDark = buildCloudTile(false);
+    this.cloudLit = buildCloudTile(true);
     this.starTile = this.buildStarTile();
     this.farTile = this.buildFar();
     this.midTile = this.buildMid();
@@ -791,9 +898,9 @@ export class CyberBackground {
       const stepX = 6.5 + rng() * 2.5, stepY = 8 + rng() * 3.5;
       for (let wx = x + 4; wx < x + bw - 4; wx += stepX) { // sparse lit windows
         for (let wy = FAR_H - bh + 5; wy < FAR_H - 6; wy += stepY) {
-          if (rng() < 0.085) {
+          if (rng() < 0.15) {
             const warm = rng() < 0.82;
-            const a = 0.4 + rng() * 0.4;
+            const a = 0.5 + rng() * 0.45;
             g.fillStyle = warm ? `rgba(255,180,107,${a.toFixed(3)})` : `rgba(125,232,220,${a.toFixed(3)})`;
             g.fillRect(wx, wy, 2, rng() < 0.3 ? 3 : 2);
           }
@@ -824,6 +931,11 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, MID_H - bh, bw, bh);
+      const bg2 = g.createLinearGradient(0, MID_H - bh, 0, MID_H - bh + bh * 0.6);
+      bg2.addColorStop(0, 'rgba(30,48,68,0.24)');
+      bg2.addColorStop(1, 'rgba(30,48,68,0)');
+      g.fillStyle = bg2;
+      g.fillRect(x, MID_H - bh, bw, bh * 0.6);
       g.fillStyle = 'rgba(60,82,90,0.18)';                 // parapet catch-light
       g.fillRect(x, MID_H - bh, bw, 2);
       if (rng() < 0.32 && bw > 110) {                      // rooftop tank
@@ -847,13 +959,25 @@ export class CyberBackground {
           }
         }
       }
-      if (rng() >= 0.3) {                                  // windows (some towers unlit)
+      if (rng() < 0.35 && bw > 60) {                       // vertical neon edge tube
+        const ex = rng() < 0.5 ? x + 1.5 : x + bw - 3.5;
+        const ci = (rng() * SIGN_INK.length) | 0;
+        const eh = bh * (0.5 + rng() * 0.4);
+        const ey = MID_H - bh + rng() * (bh - eh);
+        g.fillStyle = SIGN_INK[ci];
+        g.globalAlpha = 0.5;
+        g.fillRect(ex, ey, 1.6, eh);
+        g.globalAlpha = 0.14;                              // tube bloom
+        g.fillRect(ex - 1.4, ey, 4.4, eh);
+        g.globalAlpha = 1;
+      }
+      if (rng() >= 0.22) {                                 // windows (some towers unlit)
         const stepX = 11 + rng() * 4, stepY = 14 + rng() * 4;
         for (let wx = x + 6; wx < x + bw - 8; wx += stepX) {
           for (let wy = MID_H - bh + 8; wy < MID_H - 12; wy += stepY) {
-            if (rng() < 0.1) {
+            if (rng() < 0.2) {
               const warm = rng() < 0.8;
-              const a = 0.38 + rng() * 0.34;
+              const a = 0.5 + rng() * 0.42;
               g.fillStyle = warm ? `rgba(255,184,119,${a.toFixed(3)})` : `rgba(141,240,226,${a.toFixed(3)})`;
               g.fillRect(wx, wy, 3, 4);
             }
@@ -863,9 +987,9 @@ export class CyberBackground {
       if (bw > 130) cands.push({ bx: x, bw, bh });
       x += bw + (rng() < 0.35 ? 12 + rng() * 40 : 0);
     }
-    if (cands.length >= 3) {                               // 3 neon signs, spread out
-      for (let k = 0; k < 3; k++) {
-        let idx = (cands.length * (0.18 + 0.32 * k) + rng() * 2) | 0;
+    if (cands.length >= 3) {                               // 5 neon signs, spread out
+      for (let k = 0; k < 5; k++) {
+        let idx = (cands.length * (0.1 + 0.2 * k) + rng() * 2) | 0;
         if (idx >= cands.length) idx = cands.length - 1;
         const b = cands[idx];
         const sw = Math.min(116, b.bw - 30);
@@ -875,7 +999,7 @@ export class CyberBackground {
           yA: 40 + rng() * Math.max(10, b.bh - sh - 60),
           w: sw,
           h: sh,
-          ci: k,
+          ci: k % SIGN_INK.length,
           ph: rng() * TAU,
           state: 0,
           timer: 0,
@@ -904,6 +1028,14 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, NEAR_H - bh, bw, bh);
+      // sky bounce: the upper faces catch faint light-pollution so the
+      // slabs read as buildings, not voids
+      const bg2 = g.createLinearGradient(0, NEAR_H - bh, 0, NEAR_H - bh + bh * 0.72);
+      bg2.addColorStop(0, 'rgba(36,54,74,0.30)');
+      bg2.addColorStop(0.5, 'rgba(22,34,50,0.12)');
+      bg2.addColorStop(1, 'rgba(22,34,50,0)');
+      g.fillStyle = bg2;
+      g.fillRect(x, NEAR_H - bh, bw, bh * 0.72);
       g.fillStyle = 'rgba(52,74,84,0.22)';                 // parapet
       g.fillRect(x, NEAR_H - bh, bw, 2);
       const nb = 1 + ((rng() * 3) | 0);                    // rooftop boxes
@@ -918,8 +1050,8 @@ export class CyberBackground {
       if (rng() < 0.7) {                                   // sparse dim windows
         for (let wx = x + 10; wx < x + bw - 10; wx += 17 + rng() * 8) {
           for (let wy = NEAR_H - bh + 12; wy < NEAR_H - 20; wy += 23 + rng() * 9) {
-            if (rng() < 0.035) {
-              g.fillStyle = 'rgba(64,86,92,0.3)';
+            if (rng() < 0.08) {
+              g.fillStyle = 'rgba(84,112,122,0.42)';
               g.fillRect(wx, wy, 2, 2);
             }
           }
@@ -1036,10 +1168,35 @@ export class CyberBackground {
     }
     gr = g.createLinearGradient(700, 0, 1500, 0);          // broad static sheen
     gr.addColorStop(0, 'rgba(160,185,195,0)');
-    gr.addColorStop(0.5, 'rgba(160,185,195,0.05)');
+    gr.addColorStop(0.5, 'rgba(160,185,195,0.08)');
     gr.addColorStop(1, 'rgba(160,185,195,0)');
     g.fillStyle = gr;
     g.fillRect(700, 2, 800, 11);
+    for (const [sx, sw] of [[210, 420], [1240, 520], [1900, 460]] as const) { // extra gloss lanes
+      const gl = g.createLinearGradient(sx, 0, sx + sw, 0);
+      gl.addColorStop(0, 'rgba(170,196,208,0)');
+      gl.addColorStop(0.5, 'rgba(170,196,208,0.055)');
+      gl.addColorStop(1, 'rgba(170,196,208,0)');
+      g.fillStyle = gl;
+      g.fillRect(sx, 2, sw, 11);
+    }
+    /* NEON SMEAR REFLECTIONS — the city's signs smear across the wet lip as
+     * soft color pools (magenta / cyan / amber / violet). Pre-baked into the
+     * tile; live shimmer rides on top via the puddle + glint records. */
+    const smearCols: ReadonlyArray<string> = ['255,45,149', '41,230,210', '255,176,46', '141,91,255'];
+    for (let i = 0; i < 8; i++) {
+      const col = smearCols[i % smearCols.length];
+      const mx = 120 + rng() * (W - 260);
+      const mw = 70 + rng() * 170;
+      const sg = g.createRadialGradient(mx, 7, 0, mx, 7, mw);
+      sg.addColorStop(0, `rgba(${col},${(0.1 + rng() * 0.07).toFixed(3)})`);
+      sg.addColorStop(1, `rgba(${col},0)`);
+      g.save();
+      g.scale(1, 0.16);                                    // squash into the lip band
+      g.fillStyle = sg;
+      g.beginPath(); g.arc(mx, 7 / 0.16, mw, 0, TAU); g.fill();
+      g.restore();
+    }
     this.hazardTrim(g, rng, 0, 44);                        // worn edge trim
     this.hazardTrim(g, rng, W - 44, 44);
 
@@ -1086,6 +1243,19 @@ export class CyberBackground {
       g.fillRect(rx, 40, 2, 2);
       g.fillRect(rx, 121, 2, 2);
     }
+    /* wet-facade neon bounce: the wall just under the lip catches the sign
+     * colors as soft vertical drips of reflected light */
+    for (let i = 0; i < 9; i++) {
+      const col = smearCols[i % smearCols.length];
+      const mx = 100 + rng() * (W - 200);
+      const mw = 40 + rng() * 90;
+      const mh = 30 + rng() * 55;
+      const fg = g.createLinearGradient(0, LIP_H, 0, LIP_H + mh);
+      fg.addColorStop(0, `rgba(${col},${(0.08 + rng() * 0.05).toFixed(3)})`);
+      fg.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = fg;
+      g.fillRect(mx - mw / 2, LIP_H, mw, mh);
+    }
     gr = g.createLinearGradient(0, 120, 0, 255);           // fade into darkness
     gr.addColorStop(0, 'rgba(2,5,8,0)');
     gr.addColorStop(1, 'rgba(2,5,8,0.96)');
@@ -1101,18 +1271,29 @@ export class CyberBackground {
     g.fillRect(W - 3, LIP_H, 1, H - LIP_H);
 
     /* animated decal records (world coords) */
-    for (let i = 0; i < 6; i++) {
-      const rx = 18 + rng() * 24;
+    for (let i = 0; i < 11; i++) {
+      const rx = 18 + rng() * 30;
       this.puddles.push({
         x: 130 + rng() * 2340,
         rx,
-        ry: Math.max(3, Math.min(6, rx * 0.13)),
+        ry: Math.max(3, Math.min(7, rx * 0.13)),
         ci: rng() < 0.5 ? 0 : 1,
         ph: rng() * TAU,
         sp: 0.7 + rng() * 1.3,
       });
     }
     this.puddleA = new Float32Array(this.puddles.length);
+    /* wet-lip glints: the rain film on the metal catches distant neon and
+     * moonlight as twinkle points (animated in drawArena) */
+    for (let i = 0; i < 26; i++) {
+      this.sparks.push({
+        x: 40 + rng() * (W - 80),
+        y: 2.2 + rng() * 9.5,
+        ph: rng() * TAU,
+        sp: 0.9 + rng() * 2.2,
+        ci: rng() < 0.45 ? 0 : rng() < 0.75 ? 1 : 2,
+      });
+    }
     for (let i = 0; i < 3; i++) {
       this.svcLights.push({
         x: 240 + i * 900 + rng() * 260,

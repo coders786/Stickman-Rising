@@ -245,9 +245,15 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
   if(alpha<=.001)return
   ctx.save();ctx.globalAlpha*=alpha;ctx.lineJoin='round';ctx.lineCap='round'
   // Thin whole-contour rim goes BEHIND the opaque surface. No bone overlay.
+  // TWO TAPS — a moon-key sliver up-left and a weaker city-fill sliver on
+  // the right — so the black figure separates from the night with light
+  // rather than an outline.
   if((opts.rimAlpha??0)>.01){
-    ctx.save();ctx.globalAlpha*=clamp01(opts.rimAlpha??0)*.24
-    ctx.translate(-.65,-.25);silhouette(ctx,g,opts.rimColor??'#b5c9da',opts);ctx.restore()
+    const rk=clamp01(opts.rimAlpha??0)
+    ctx.save();ctx.globalAlpha*=rk*.44
+    ctx.translate(-1.15,-.7);silhouette(ctx,g,opts.rimColor??'#b5c9da',opts);ctx.restore()
+    ctx.save();ctx.globalAlpha*=rk*.3
+    ctx.translate(1.05,-.3);silhouette(ctx,g,opts.rimColor??'#b5c9da',opts);ctx.restore()
   }
   silhouette(ctx,g,opts.ghost??'#000000',opts)
   // Impact flashes remain an explicit temporary combat effect, not clothing.

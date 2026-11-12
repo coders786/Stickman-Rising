@@ -32,6 +32,23 @@ export class Renderer {
   private vigH = 0
   /* wet-floor reflection fade gradient (built once; world-space strip) */
   private reflFade: HTMLCanvasElement | null = null
+  /* CINEMATIC BLOOM — two-bounce downsample/upsample pyramid. The finished
+   * frame is copied to a quarter-res plate, blurred again to eighth-res,
+   * smooth-upsampled and added back with 'lighter'. On a near-black neon
+   * scene the darks contribute almost nothing while every light source
+   * (neon signs, blade glow, lightning, rain glints) spills a soft halo —
+   * the look that instantly reads as "produced". Cost: three low-res blits. */
+  private bloomA: HTMLCanvasElement | null = null
+  private bloomB: HTMLCanvasElement | null = null
+  private bloomW = 0
+  private bloomH = 0
+  /* ANAMORPHIC STRIPE — pre-baked horizontal lens streak (blue-white core,
+   * long soft falloff) flashed across the sky where lightning strikes. */
+  private streakSpr: HTMLCanvasElement | null = null
+  /* FILM GRADE plate — pre-baked vertical color gradient (cool sky shadow
+   * lift, warm city bounce below) blended 'lighter' to give the blacks a
+   * color instead of dead gray. */
+  private gradePl: HTMLCanvasElement | null = null
   /* film grain: pre-baked quarter-res noise PLATES + animated blit.
    * The old live pattern-fill (160×160 tile × ~40 repeats over the full
    * canvas, every frame, with alpha blending) measured up to 27ms/frame on
@@ -128,11 +145,21 @@ export class Renderer {
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
 
+    // 3.5 CINEMATIC BLOOM — every light in the frame spills a soft halo
+    this.drawBloom(ctx, w, h)
+
+    // 3.6 ANAMORPHIC STRIKE STREAKS — horizontal lens flare while the sky
+    // strobes (the filmic signature of a lightning-lit frame)
+    this.drawStrikeStreaks(ctx, w, h, world)
+
     // 4. chromatic aberration (lens strain on dashes / heavy impacts)
     this.drawChroma(ctx, w, h, fx.caIntensity)
 
     // 5. vignette
     this.drawVignette(ctx, w, h)
+
+    // 5.5 FILM GRADE — cool shadow lift + warm horizon bounce
+    this.drawGrade(ctx, w, h)
 
     // 6. film grain — 3.5% monochrome noise ties 2D art + FX into one film
     this.drawGrain(ctx, w, h)
@@ -151,10 +178,18 @@ export class Renderer {
       c.height = Math.max(2, Math.floor(h))
       const vctx = c.getContext('2d')
       if (vctx) {
-        const g = vctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.42, w / 2, h / 2, Math.max(w, h) * 0.75)
+        // two nested falloffs: a broad soft one for shaping + a tighter one
+        // that pulls the far corners down — cinematic without tunneling
+        const g = vctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.38, w / 2, h / 2, Math.max(w, h) * 0.78)
         g.addColorStop(0, 'rgba(0,0,0,0)')
-        g.addColorStop(1, 'rgba(2,4,8,0.55)')
+        g.addColorStop(0.62, 'rgba(3,6,14,0.18)')
+        g.addColorStop(1, 'rgba(2,4,10,0.52)')
         vctx.fillStyle = g
+        vctx.fillRect(0, 0, w, h)
+        const g2 = vctx.createRadialGradient(w / 2, h * 0.46, Math.min(w, h) * 0.62, w / 2, h * 0.46, Math.max(w, h) * 0.92)
+        g2.addColorStop(0, 'rgba(0,0,0,0)')
+        g2.addColorStop(1, 'rgba(1,2,6,0.34)')
+        vctx.fillStyle = g2
         vctx.fillRect(0, 0, w, h)
       }
       this.vignette = c
@@ -162,6 +197,114 @@ export class Renderer {
       this.vigH = h
     }
     ctx.drawImage(this.vignette, 0, 0, w, h)
+  }
+
+  /** CINEMATIC BLOOM — downsample the finished frame through a two-step
+   * pyramid (¼ → ⅛ → smooth ¼) and add it back with 'lighter'. Darks add
+   * near-nothing; neon, blades, eyes, rain glints and lightning spill soft
+   * halos. Plates are reused; only three low-res blits per frame. */
+  private drawBloom(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    if (this.quality === 'low') return
+    const cw = Math.max(8, ctx.canvas.width), ch = Math.max(8, ctx.canvas.height)
+    const bw = Math.max(2, cw >> 2), bh = Math.max(2, ch >> 2)
+    const sw = Math.max(2, cw >> 3), sh = Math.max(2, ch >> 3)
+    if (!this.bloomA || this.bloomW !== bw || this.bloomH !== bh) {
+      this.bloomA = document.createElement('canvas')
+      this.bloomA.width = bw
+      this.bloomA.height = bh
+      this.bloomB = document.createElement('canvas')
+      this.bloomB.width = sw
+      this.bloomB.height = sh
+      this.bloomW = bw
+      this.bloomH = bh
+    }
+    const a = this.bloomA.getContext('2d')
+    const b = this.bloomB!.getContext('2d')
+    if (!a || !b) return
+    a.imageSmoothingEnabled = true
+    a.imageSmoothingQuality = 'medium'
+    a.clearRect(0, 0, bw, bh)
+    a.drawImage(ctx.canvas, 0, 0, cw, ch, 0, 0, bw, bh)
+    b.imageSmoothingEnabled = true
+    b.clearRect(0, 0, sw, sh)
+    b.drawImage(this.bloomA!, 0, 0, bw, bh, 0, 0, sw, sh)
+    // smooth re-upsample: the ⅛ plate scaled back to ¼ IS the blur
+    a.clearRect(0, 0, bw, bh)
+    a.drawImage(this.bloomB!, 0, 0, sw, sh, 0, 0, bw, bh)
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = this.quality === 'ultra' ? 0.30 : this.quality === 'high' ? 0.24 : 0.15
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(this.bloomA!, 0, 0, w, h)
+    ctx.restore()
+  }
+
+  /** ANAMORPHIC STRIKE STREAKS — while lightning owns the sky, a long
+   * horizontal lens streak burns across the strike azimuth. Pre-baked
+   * sprite, one additive blit. */
+  private drawStrikeStreaks(ctx: CanvasRenderingContext2D, w: number, h: number, world: RenderWorld): void {
+    const k = clamp01(world.bg.lightningI())
+    if (k <= 0.03) return
+    if (!this.streakSpr) {
+      const c = document.createElement('canvas')
+      c.width = 512
+      c.height = 48
+      const g = c.getContext('2d')
+      if (g) {
+        const gr = g.createLinearGradient(0, 0, 512, 0)
+        gr.addColorStop(0, 'rgba(120,170,255,0)')
+        gr.addColorStop(0.28, 'rgba(150,195,255,0.16)')
+        gr.addColorStop(0.5, 'rgba(220,238,255,0.5)')
+        gr.addColorStop(0.72, 'rgba(150,195,255,0.16)')
+        gr.addColorStop(1, 'rgba(120,170,255,0)')
+        g.fillStyle = gr
+        // vertical core falloff baked by drawing the strip twice, squashed
+        g.fillRect(0, 14, 512, 20)
+        g.globalAlpha = 0.55
+        g.fillRect(0, 6, 512, 36)
+        g.globalAlpha = 0.3
+        g.fillRect(0, 0, 512, 48)
+      }
+      this.streakSpr = c
+    }
+    const az = world.bg.lightningAz()
+    const cx = w * (0.5 + az * 0.4)
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = k * 0.55
+    ctx.drawImage(this.streakSpr, cx - w * 0.62, h * 0.2 - 24, w * 1.24, 48)
+    ctx.globalAlpha = k * 0.22
+    ctx.drawImage(this.streakSpr, cx - w * 0.78, h * 0.2 - 60, w * 1.56, 120)
+    ctx.restore()
+  }
+
+  /** FILM GRADE — the blacks get a color: cool blue lift from the sky down,
+   * a whisper of warm city bounce near the floor line. Subtle enough to
+   * never wash the contrast, strong enough that pure black stops reading as
+   * "unrendered". */
+  private drawGrade(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    if (!this.gradePl) {
+      const c = document.createElement('canvas')
+      c.width = 8
+      c.height = 256
+      const g = c.getContext('2d')
+      if (g) {
+        const gr = g.createLinearGradient(0, 0, 0, 256)
+        gr.addColorStop(0, 'rgba(36,62,116,0.075)')
+        gr.addColorStop(0.45, 'rgba(24,38,74,0.03)')
+        gr.addColorStop(0.62, 'rgba(30,32,60,0.02)')
+        gr.addColorStop(0.8, 'rgba(84,42,44,0.028)')
+        gr.addColorStop(1, 'rgba(110,58,36,0.05)')
+        g.fillStyle = gr
+        g.fillRect(0, 0, 8, 256)
+      }
+      this.gradePl = c
+    }
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.drawImage(this.gradePl, 0, 0, w, h)
+    ctx.restore()
   }
 
   /** CHROMATIC ABERRATION — selective edge lens strain. A true per-pixel
@@ -247,9 +390,9 @@ export class Renderer {
     ctx.save()
     ctx.beginPath();ctx.rect(cam.x-viewHalfW,0,viewHalfW*2,240);ctx.clip()
     const li = bg.lightningI()
-    // the mirror still snaps brighter on strobes, but gently — the CAST
-    // shadow (stretching away from the bolt) owns the directional read
-    const a = 0.20 + li * 0.16
+    // the mirror still snaps brighter on strobes — the rain-soaked roof is a
+    // black mirror that catches every light in the sky
+    const a = 0.27 + li * 0.22
     ctx.save()
     ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
     ctx.globalAlpha = a

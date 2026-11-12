@@ -26,6 +26,8 @@ export class StormEngine{
  private splashHead=0
  private impacts=0
  private bolt=new Float32Array(42)
+ /** fork branches spawned with each strike: 3 forks × 2 points × [x,y] + dir */
+ private forks=new Float32Array(3*2*2)
  onThunder:(()=>void)|null=null
  constructor(quality:StormQuality='high'){
   this.quality=quality
@@ -64,6 +66,15 @@ export class StormEngine{
   if(this.nextStrike<=0){
    this.strikeAge=0;this.nextStrike=4+this.random()*3;this.strikes++;this.azimuth=this.random()*1.6-.8
    for(let i=0;i<21;i++){this.bolt[i*2]=(this.random()-.5)*.12;this.bolt[i*2+1]=i/20}
+   // fork branches peel off the main channel at random heights
+   for(let f=0;f<3;f++){
+    const j=3+((this.random()*15)|0)
+    const fx=this.bolt[j*2],fy=this.bolt[j*2+1]
+    const dir=this.random()<.5?-1:1
+    const seg=.05+this.random()*.11
+    this.forks[f*4]=fx;this.forks[f*4+1]=fy
+    this.forks[f*4+2]=fx+dir*seg;this.forks[f*4+3]=fy+seg*.85
+   }
    this.onThunder?.()
   }
   const z=this.view.zoom,span=this.width/z+180,top=Math.min(-180,this.view.y-this.height/(2*z)-80)
@@ -90,14 +101,26 @@ export class StormEngine{
   const w=this.width,h=this.height,bx=w*(.5+this.azimuth*.4)
   ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=k
   const glow=ctx.createRadialGradient(bx,h*.18,0,bx,h*.18,w*.6)
-  glow.addColorStop(0,'rgba(170,205,255,.38)');glow.addColorStop(1,'rgba(110,150,220,0)')
+  glow.addColorStop(0,'rgba(180,212,255,.5)');glow.addColorStop(.35,'rgba(140,180,245,.18)');glow.addColorStop(1,'rgba(110,150,220,0)')
   ctx.fillStyle=glow;ctx.fillRect(0,0,w,h)
   // No pre-baked bolt offscreen above the skyline: normalized viewport path.
   if(this.strikeAge<.23){
-   ctx.beginPath()
-   for(let i=0;i<21;i++){const x=bx+this.bolt[i*2]*w,y=-10+this.bolt[i*2+1]*h*.7;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
-   ctx.lineJoin='round';ctx.strokeStyle='rgba(125,180,255,.35)';ctx.lineWidth=16;ctx.stroke()
-   ctx.strokeStyle='#c8e8ff';ctx.lineWidth=4;ctx.stroke();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.stroke()
+   const px=(i:number)=>bx+this.bolt[i*2]*w
+   const py=(i:number)=>-10+this.bolt[i*2+1]*h*.7
+   const trace=()=>{ctx.beginPath();for(let i=0;i<21;i++){if(i===0)ctx.moveTo(px(i),py(i));else ctx.lineTo(px(i),py(i))}}
+   ctx.lineJoin='round';ctx.lineCap='round'
+   // atmospheric glow around the channel first (wide, translucent)
+   trace();ctx.strokeStyle='rgba(125,180,255,.12)';ctx.lineWidth=38;ctx.stroke()
+   trace();ctx.strokeStyle='rgba(125,180,255,.35)';ctx.lineWidth=16;ctx.stroke()
+   // fork branches — thinner, dimmer, peeling off the main channel
+   for(let f=0;f<3;f++){
+    ctx.beginPath()
+    ctx.moveTo(bx+this.forks[f*4]*w,-10+this.forks[f*4+1]*h*.7)
+    ctx.lineTo(bx+this.forks[f*4+2]*w,-10+this.forks[f*4+3]*h*.7)
+    ctx.strokeStyle='rgba(125,180,255,.22)';ctx.lineWidth=8;ctx.stroke()
+    ctx.strokeStyle='rgba(200,232,255,.6)';ctx.lineWidth=2;ctx.stroke()
+   }
+   trace();ctx.strokeStyle='#c8e8ff';ctx.lineWidth=4;ctx.stroke();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.stroke()
   }
   ctx.restore()
  }
@@ -106,10 +129,12 @@ export class StormEngine{
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,Math.max(0,Math.min(h,ground)));ctx.clip()
   ctx.lineCap='round'
   // Three coherent world-space depth treatments. Low still draws every band.
+  // Each band is a WIDE DIM HALO plus a BRIGHT CORE — the core additive so
+  // the bloom pass turns every streak into a lit filament.
   const n=budgets[this.quality]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(.27+band*.12)*(1+this.intensity*.8)
-   ctx.strokeStyle=band===2?'#d2eaf7':'#91b3cb';ctx.lineWidth=band===2?1.5:1
+   ctx.globalAlpha=(.16+band*.08)*(1+this.intensity*.9)
+   ctx.strokeStyle=band===2?'#3d5468':'#2c4152';ctx.lineWidth=band===2?2.6:1.9
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
@@ -117,16 +142,34 @@ export class StormEngine{
    }
    ctx.stroke()
   }
+  ctx.globalCompositeOperation='lighter'
+  for(let band=0;band<3;band++){
+   ctx.globalAlpha=(.3+band*.14)*(1+this.intensity*.85)
+   ctx.strokeStyle=band===2?'#d2eaf7':'#7fa6c2';ctx.lineWidth=band===2?1.4:.9
+   ctx.beginPath()
+   for(let i=band;i<n;i+=3){
+    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
+   }
+   ctx.stroke()
+  }
+  ctx.globalCompositeOperation='source-over'
   ctx.restore()
   ctx.save();ctx.strokeStyle='#b8ddec';ctx.lineWidth=1
   for(let i=0;i<SPLASHES;i++){
    const age=this.splashAge[i];if(age>=.4)continue
    const u=age/.4,x=w*.5+(this.splashX[i]-cx)*z,y=ground+3*z,r=(2+u*10)*z
-   ctx.globalAlpha=(1-u)*(.38+.25*this.intensity)
+   ctx.globalAlpha=(1-u)*(.42+.3*this.intensity)
    ctx.beginPath();ctx.ellipse(x,y,r,r*.23,0,0,Math.PI*2);ctx.stroke()
    if(u<.35){ctx.beginPath();ctx.moveTo(x-3*z,y);ctx.lineTo(x-5*z,y-6*z*(1-u));ctx.moveTo(x+3*z,y);ctx.lineTo(x+5*z,y-6*z*(1-u));ctx.stroke()}
+   // impact sparkle where the drop met the roof film
+   if(u<.18){
+    ctx.globalAlpha=(1-u/.18)*.5
+    ctx.fillStyle='#cfe9f8'
+    ctx.fillRect(x-1,y-1.2*z,2,2.4*z)
+   }
   }
-  if(this.intensity>.01){ctx.globalAlpha=this.intensity*.13;ctx.fillStyle='#c2d9ff';ctx.fillRect(0,0,w,h)}
+  if(this.intensity>.01){ctx.globalAlpha=this.intensity*.22;ctx.fillStyle='#cfe0ff';ctx.fillRect(0,0,w,h)}
   ctx.restore()
  }
 }
