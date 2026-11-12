@@ -117,6 +117,19 @@ is the same failure the impact-timing audit measures.
 | `h3` SKYHAMMER FIST | 43.1 | **97.8** |
 | `l2` GYAKU CROSS | 52.6 | **79.6** |
 | `l4` SLIP BODY ELBOW | 62.9 | **103.0** |
+| `l1` KIZAMI JAB | 65.4 | **74.4** |
+| `l3` KAGI HOOK | 60.4 | **85.1** |
+
+### `l3` — a depth setting can delete the strike
+The hook's first Y depth pass used `armRz 1.25 / foreRz 0.95` and the fist
+**vanished into the torso** on the zoom sheet: yawing a hooking arm that far
+round swings it *behind* the chest silhouette. The numbers were excellent
+(span 88.7) while the strike was invisible. Yaw is now held at 0.35 and the
+depth is carried by the hips (`rootZ 11`, `hipLz ±1.6`) and reach, which
+keeps the fist in front of the body where it reads. Span 85.1.
+
+This is the general trap: **depth must never push the striking surface out
+of the silhouette.** Check the zoom sheet, not just the span.
 
 ### `l2` — the pelvis was not on the Z axis at all
 The cross had 17.8 units of hand travel and only **2.4** of hip travel: the

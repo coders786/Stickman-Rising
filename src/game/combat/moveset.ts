@@ -187,17 +187,27 @@ const JAB = clip('unarmedJab', [
   // exceeds the 60fps continuity budget. The elbow is the fastest channel
   // here, so the split is authored rather than left to the sampler.
   mid(0.105, chamber('linear', 'right', { coil: 0.55, sink: 0.5 }),
-    contact('linear', 'right', {
-      drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.55,
+    {
+      ...contact('linear', 'right', {
+        drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.55,
+        leadFoot: [21, 39], rearFoot: [-23, 41],
+        fist: [40, -1], offFist: [-2, 8],
+      }),
+      // the step carries the hips through the plane -- hip travel on this
+      // clip was 4.1 while the fist travelled 26.6
+      rootZ: 3.0, hipLz: 0.6, hipRz: -0.6,
+    }),
+  // SNAP — contact. Fist at full reach, rear fist pulled hard back.
+  kf(0.145, {
+    ...contact('linear', 'right', {
+      drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.60,
       leadFoot: [21, 39], rearFoot: [-23, 41],
       fist: [40, -1], offFist: [-2, 8],
-    })),
-  // SNAP — contact. Fist at full reach, rear fist pulled hard back.
-  kf(0.145, contact('linear', 'right', {
-    drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.60,
-    leadFoot: [21, 39], rearFoot: [-23, 41],
-    fist: [40, -1], offFist: [-2, 8],
-  }), 'inOutCubic'),
+    }),
+    // CONTACT: hips arrive in front, punching side nearest the camera
+    rootZ: 7.0, hipLz: 1.1, hipRz: -1.1,
+    armRz: 0.85, foreRz: 0.70,
+  }, 'inOutCubic'),
   mid(0.172, contact('linear', 'right', {
     drive: 0.85, travel: 3.6, sink: 0.2, lean: 0.20, depth: 0.60,
     leadFoot: [21, 39], rearFoot: [-23, 41],
@@ -298,17 +308,32 @@ const HOOK = clip('unarmedHook', [
     drive: -0.55, travel: -2.0, sink: 1.6, lean: 0.10, depth: -0.55,
     leadFoot: [12, 40], rearFoot: [-19, 41],
     fist: [7, 5], offFist: [8, 5],
-  }), contact('rotation', 'right', {
-    drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
-    leadFoot: [20, 38], rearFoot: [-25, 39],
-    fist: [38, 2], offFist: [1, 6],
-  })),
+  }), {
+    ...contact('rotation', 'right', {
+      drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
+      leadFoot: [20, 38], rearFoot: [-25, 39],
+      fist: [38, 2], offFist: [1, 6],
+    }),
+    // a hook IS rotation, so the hips carry the depth
+    rootZ: -1.0, hipLz: 0.5, hipRz: -0.5,
+  }),
   // CONTACT — elbow high, fist arriving from outside the target line
-  kf(0.16, contact('rotation', 'right', {
-    drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
-    leadFoot: [20, 38], rearFoot: [-25, 39],
-    fist: [38, 2], offFist: [1, 6],
-  }), 'inOutCubic'),
+  kf(0.16, {
+    ...contact('rotation', 'right', {
+      drive: 1.0, travel: 4.5, sink: 0.5, lean: 0.18, depth: 0.5,
+      leadFoot: [20, 38], rearFoot: [-25, 39],
+      fist: [38, 2], offFist: [1, 6],
+    }),
+    // CONTACT: the arc comes AROUND the target -- the striking arm sweeps
+    // across the FRONT of the body, never behind it.
+    // First attempt used armRz 1.25 / foreRz 0.95 and the fist vanished
+    // into the torso on the zoom sheet: yawing the arm that far round put
+    // it behind the chest silhouette. The fist is only readable while it
+    // stays in front, so the yaw is held to 0.35 and the DEPTH is carried
+    // by the hips and the reach instead.
+    rootZ: 11.0, hipLz: 1.6, hipRz: -1.6,
+    armRz: 0.35, foreRz: 0.30,
+  }, 'inOutCubic'),
   // FOLLOW-THROUGH: the torso keeps turning PAST the target, arm folding
   kf(0.225, contact('rotation', 'right', {
     drive: 1.35, travel: 3.4, sink: 0.9, lean: 0.14, depth: 0.7,
