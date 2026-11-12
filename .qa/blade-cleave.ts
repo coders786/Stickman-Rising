@@ -35,7 +35,7 @@ export function cleave(attackId: string, count = 5, spacing = 26, gap = 34) {
   p.swordDrawn = true
   for (let i = 0; i < count; i++) {
     const e = new Enemy('grunt', 400 + p.face * (gap + i * spacing), 1)
-    e.spawning = false; e.state = 'chase'; e.face = -p.face
+    e.spawning = false; e.state = 'chase'; e.face = (p.face > 0 ? -1 : 1) as 1 | -1
     e.hp = 99999
     enemies.push(e)
   }

@@ -13,6 +13,15 @@ import { FX } from '../src/game/fx/fx'
 import { ATTACKS } from '../src/game/combat/attacks'
 import { drawFighter3D, makeFighterGeom, solveFighter3D } from '../src/game/anim/rig3d'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../src/game/anim/skeleton'
+import { Enemy } from '../src/game/entities/enemy'
+import { resolveEnemyHit } from '../src/game/combat/hit-resolution'
+
+/** The SAME body spheres the hit test uses, so what is drawn is what is hit. */
+const BODY_SPHERES = [
+  { oy: 14, r: 15 }, // legs / hip mass
+  { oy: 48, r: 21 }, // torso
+  { oy: 78, r: 17 }, // chest / head
+]
 import type { WorldRef } from '../src/game/core/types'
 
 const out = process.argv[2]
@@ -29,16 +38,26 @@ const sy = (wy: number) => HIP - wy
 
 ids.forEach((id, row) => {
   const input = new Input(), p = new Player() as any, fx = new FX(), noop = () => {}
-  const w = { time: 0, timeScale: 1, arenaMinX: -5000, arenaMaxX: 5000, enemies: [], input, fx,
-    audio: { play: noop }, cam: { addTrauma: noop }, addHitstop: noop, hitEnemy: noop,
+  const enemies: Enemy[] = []
+  const w = { time: 0, timeScale: 1, arenaMinX: -5000, arenaMaxX: 5000, enemies, input, fx,
+    audio: { play: noop }, cam: { addTrauma: noop }, addHitstop: noop,
+    hitEnemy: (eid: number, _b: unknown, atk: any) =>
+      resolveEnemyHit(enemies.find((x) => x.id === eid)!, atk, p.face, p.x),
   } as unknown as WorldRef
   p.reset(400); p.swordDrawn = true
+  for (let e = 0; e < 5; e++) {
+    const en = new Enemy('grunt', 400 + p.face * (e * 26), 1)
+    en.spawning = false; en.state = 'chase'; en.face = (p.face > 0 ? -1 : 1) as 1 | -1
+    en.hp = 99999
+    enemies.push(en)
+  }
   const d = ATTACKS[id]
   p.startAttack(d, w)
   // step to the middle of the hit window (the contact beat)
   const target = (d.hit.start + d.hit.end) / 2
   for (let f = 0; f < 400 && p.state === 'attack'; f++) {
     if ((p.action?.animT ?? 0) >= target) break
+    for (const en of enemies) en.x = 400 + p.face * ((en.id % 5) * 26) // pinned+deterministic
     w.time += 1 / 60; p.update(1 / 60, w); input.endFrame(1 / 60)
   }
   const g = makeFighterGeom()
@@ -67,9 +86,10 @@ ids.forEach((id, row) => {
   drawFighter3D(ctx, g, PLAYER_STYLE, {})
   // the blade: grip -> tip, in the same local space
   ctx.strokeStyle = '#1b6fd0'; ctx.lineWidth = 5; ctx.lineCap = 'round'
-  ctx.beginPath(); ctx.moveTo(g.grip.x, -g.grip.y); ctx.lineTo(g.tip.x, -g.tip.y); ctx.stroke()
+  // same local space drawFighter3D uses (do NOT re-negate y here)
+  ctx.beginPath(); ctx.moveTo(g.grip.x, g.grip.y); ctx.lineTo(g.tip.x, g.tip.y); ctx.stroke()
   ctx.fillStyle = '#1b6fd0'
-  ctx.beginPath(); ctx.arc(g.tip.x, -g.tip.y, 3.5, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.arc(g.tip.x, g.tip.y, 3.5, 0, Math.PI * 2); ctx.fill()
   ctx.restore()
   // label + the measured world tip
   const worldTip = pvx + p.face * SCALE * g.tip.x

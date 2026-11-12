@@ -150,17 +150,94 @@ const HIP_H = (25 + 24) * SCALE
  * lower 2/3 of the body, so chest/head-height slashes passed straight
  * through the sprite without connecting. Three spheres hug the visual body.
  */
-/** How far an attack must carry the body before its own path counts as a
- * cutting corridor. A step-in of a few pixels is not a lunge; 12px is well
- * under the 26px enemy spacing, so this cannot accidentally widen the arc of
- * a move that stands still. */
-const LUNGE_CORRIDOR_MIN = 12
-
 const BODY_SPHERES: ReadonlyArray<{ oy: number; r: number }> = [
   { oy: 14, r: 15 }, // legs / hip mass
   { oy: 48, r: 21 }, // torso (the main target)
   { oy: 78, r: 17 }, // chest / head zone
 ]
+
+/** How far apart consecutive blade samples are laid down while a swing is in
+ * flight. A katana edge is ~4px thick and an enemy torso sphere is ~21px at
+ * scale 1, so 10px leaves a large overlap margin while keeping the history
+ * short enough to stay cache-friendly for a whole combo. */
+const SWEPT_EDGE_STEP = 10
+/** Hard cap on stored samples. At 10px apart this is 4.8m of edge travel --
+ * more than any attack in the kit, and it bounds memory if a future move
+ * sweeps wildly. Oldest samples are dropped first. */
+const SWEPT_EDGE_MAX = 480
+
+interface WorldSeg { bx: number; by: number; tx: number; ty: number }
+
+/** THE SWEPT EDGE.
+ *
+ * The set of world segments the drawn blade has actually occupied during the
+ * current swing, sampled so consecutive segments always overlap. An enemy is
+ * cut if it intersects ANY of them.
+ *
+ * Why this exists: the blade is a segment that starts at the GRIP, and a
+ * swing both rotates that segment and carries the whole body forward. Both
+ * effects leave real holes:
+ *   · the grip is ~50px out from the centre, so the edge begins past a
+ *     tightly-spaced enemy (l2's grip at local 53 vs an enemy at 34);
+ *   · a lunge moves the body over the row mid-swing, leaving the nearest
+ *     enemy behind the blade (l5 travels 400 -> 434 across its own window).
+ * Recording where the edge actually went closes both holes with geometry
+ * rather than with a tuned rectangle, so what the player sees pass through a
+ * body is exactly what cuts it.
+ *
+ * This is the standard "swept volume against a moving target" used for
+ * fast-moving hitboxes; because the samples are real positions it also
+ * survives the 24fps stepped clip clock that made frame-to-frame position
+ * jumps of 80-180px.
+ */
+class SweptEdge {
+  private pts: number[] = []
+  private count = 0
+
+  reset(): void { this.count = 0 }
+
+  /** Lay down the edge between two poses, sampled every `step` px so no gap
+   * can appear between consecutive samples. */
+  add(prev: WorldSeg, cur: WorldSeg, step = SWEPT_EDGE_STEP): void {
+    const bx0 = prev.bx, by0 = prev.by, tx0 = prev.tx, ty0 = prev.ty
+    const bx1 = cur.bx, by1 = cur.by, tx1 = cur.tx, ty1 = cur.ty
+    // distance travelled by either end of the blade
+    const d = Math.max(Math.hypot(bx1 - bx0, by1 - by0), Math.hypot(tx1 - tx0, ty1 - ty0))
+    const n = Math.max(1, Math.ceil(d / step))
+    for (let i = 1; i <= n; i++) {
+      const t = i / n
+      this.push(bx0 + (bx1 - bx0) * t, by0 + (by1 - by0) * t,
+                tx0 + (tx1 - tx0) * t, ty0 + (ty1 - ty0) * t)
+    }
+  }
+
+  private push(bx: number, by: number, tx: number, ty: number): void {
+    if (this.count >= SWEPT_EDGE_MAX) {
+      // drop the oldest sample to stay bounded
+      this.pts.copyWithin(0, 4)
+      this.count--
+    }
+    const o = this.count * 4
+    this.pts[o] = bx; this.pts[o + 1] = by; this.pts[o + 2] = tx; this.pts[o + 3] = ty
+    this.count++
+  }
+
+  /** Does any recorded edge position intersect this enemy's body spheres? */
+  hitsBody(e: { x: number; y: number; scale: number }, pad = 3): boolean {
+    if (this.count === 0) return false
+    const sc = e.scale
+    for (const sp of BODY_SPHERES) {
+      const cyy = e.y - sp.oy * sc
+      const r = sp.r * sc + pad
+      // cheap reject: the whole swing's edge travel, as a bounding box
+      for (let i = 0; i < this.count; i++) {
+        const o = i * 4
+        if (segHitsCircle(this.pts[o], this.pts[o + 1], this.pts[o + 2], this.pts[o + 3], e.x, cyy, r)) return true
+      }
+    }
+    return false
+  }
+}
 
 /** blade segment vs an enemy's full visual body (any sphere, swept-aware).
  * `pad` fattens the radius per-attack — a katana edge is a plane; the hit
@@ -564,9 +641,8 @@ export class Player {
    * left behind. Reset on every startAttack. */
   private attackTravel = 0
   private attackPrevX = 0
-  /** True when the previous frame's hit segment was the lunge/dash corridor,
-   * so the sweep test compares like with like. */
-  private prevWasCorridor = false
+  /** Every world position the drawn blade has occupied this swing. */
+  private sweptEdge = new SweptEdge()
   private hasPrevBlade = false
 
   constructor() {
@@ -2376,6 +2452,7 @@ export class Player {
     this.hasPrevAng = false
     this.attackTravel = 0
     this.attackPrevX = this.x
+    this.sweptEdge.reset()
     this.action = {
       def,
       animT: 0,
@@ -2463,6 +2540,25 @@ export class Player {
       }
     }
 
+    // ---- record where the blade went, for the WHOLE swing ----
+    // Not just inside the hit window: a lunge carries the body over the row
+    // during the ANTICIPATION, so by the time the window opens the blade has
+    // already passed a tightly-spaced enemy. Measured: h1 is 4/5 and misses
+    // body 1 even though its window is correct, because the overrun happened
+    // before h.start. Capturing every frame of the swing makes the recorded
+    // edge cover the whole path the player actually saw cut past them.
+    // With the blade home the hit segment IS the striking limb (updateBladeWorld
+    // builds fist/elbow/ankle from the projected skeleton), so record that too
+    // -- the fist needs the same swept treatment, it is just a much shorter
+    // arc. Recording outside an attack is harmless: the history is cleared on
+    // every startAttack, so only the current swing's edge is ever tested.
+    {
+      const nowEdge: WorldSeg = { bx: this.blade.bx, by: this.blade.by, tx: this.blade.tx, ty: this.blade.ty }
+      if (this.hasPrevBlade) this.sweptEdge.add(this.prevBlade, nowEdge, SWEPT_EDGE_STEP)
+      this.prevBlade.bx = nowEdge.bx; this.prevBlade.by = nowEdge.by
+      this.prevBlade.tx = nowEdge.tx; this.prevBlade.ty = nowEdge.ty
+      this.hasPrevBlade = true
+    }
     // hit window: sample blade segment & test enemies (swept, anti-tunneling)
     const h = def.hit
     if (animT >= h.start && animT <= h.end) {
@@ -2478,66 +2574,51 @@ export class Player {
       // volume of the through-cut. The sheathed power strikes (fist /
       // spear-foot) declare their own corridor — the pass tears the pack
       // the same way, at their own strike height.
-      // accumulate this attack's own lunge distance for the corridor below
-      if (a.moveDone) {
-        this.attackTravel += Math.abs(this.x - this.attackPrevX)
-      }
-      this.attackPrevX = this.x
+      // ---- SWEPT-EDGE HISTORY --------------------------------------
+      // A swung blade's hit segment starts at the GRIP, not at the body.
+      // Measured: l2's grip sits at local x 53 while a 26px-spaced enemy is
+      // at 34, so the edge begins 19px PAST the nearest body and that body
+      // can only ever be caught by the swept quad of a swing that happens to
+      // close on it. On a lunging strike the body also travels over the row
+      // (l5 walks 400 -> 434 across its own window), leaving the nearest
+      // enemy behind the blade entirely -- the "0 xx xx xx xx" signature.
+      //
+      // The fix is not a hand-tuned box. The blade already has REAL world
+      // coordinates every frame, and the body really does move, so record
+      // where the edge actually passed and test the pack against that. This
+      // keeps the engine's contract -- visual contact == gameplay contact --
+      // instead of crediting hits inside a magic rectangle.
+      const cy = h.corridorY ?? 55
+      // a dash-through keeps its authored corridor (the blade is not what
+      // crosses the target there -- the body is), so leave that path alone
+      const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
+      const dashCorridor = def.kind === 'dash' && (!def.strikeHand || declaresCorridor)
+      // the segment the hit test sees: the authored corridor for a dash
+      // through-cut, otherwise the live blade itself
       let curSeg = this.blade
       let usePrev = this.hasPrevBlade
-      const declaresCorridor = h.corridorBack !== undefined || h.corridorFront !== undefined
-      // A LUNGE carries the body over the enemy row, and the blade is then
-      // geometrically BEHIND the nearest body: measured, l5 travels 400->434
-      // across its own hit window and enemy 1 sits at 434, so the tip is
-      // already past it. The sword is what makes the cut, so a lunging strike
-      // sweeps the path it just travelled exactly like a dash-through does --
-      // otherwise the move can never damage the body it started on. This is
-      // the "0 xx xx xx xx" signature seen on l5, h1, powerArc, the sakuga
-      // trio and the ronin finishers.
-      // Only a FORWARD lunge needs a corridor (retreat has moveX -240: it
-      // moves away and the enemy is never overrun). Capped at the dash tier
-      // so a 320px hard lunge keeps the full-path band it already had and a
-      // gentle 60-90px step-in gets a short, honest corridor.
-      const lunges = def.kind !== 'dash' && !def.strikeHand
-        && (def.moveX ?? 0) > 0 && (def.moveX ?? 0) <= 240
-        && this.attackTravel > LUNGE_CORRIDOR_MIN
-      const corridorSeg = (def.kind === 'dash' && (!def.strikeHand || declaresCorridor)) || lunges
-      if (corridorSeg) {
-        const cy = h.corridorY ?? 55
-        // a lunge only needs to cover how far it actually moved (plus a body
-        // radius of slack); a dash keeps its authored full-path band
-        const back = h.corridorBack ?? (def.kind === 'dash' ? 124 : this.attackTravel + 30)
+      if (dashCorridor) {
         curSeg = {
-          bx: this.x - this.face * back,
+          bx: this.x - this.face * (h.corridorBack ?? 124),
           by: this.y - cy,
           tx: this.x + this.face * (h.corridorFront ?? 66),
           ty: this.y - cy,
         }
-        // the corridor swept itself last frame only if the corridor was
-        // already active; otherwise prev is a stale sword pose from a
-        // different part of the swing and must not be swept against it
-        usePrev = this.prevWasCorridor && this.hasPrevBlade
       }
       for (const e of w.enemies) {
-        // spawning enemies within blade reach (landing pods, y > -90) are
-        // fair game — the swing connects the moment the body crosses the arc
         if (e.dead || (e.spawning && e.y < -90)) continue
         const last = a.hitMap.get(e.id)
         const reArm = h.multiHit ? (last === undefined || animT - last >= h.multiHit) : last === undefined
         if (!reArm) continue
-        if (bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)) {
+        const hit = dashCorridor
+          ? bladeHitsBody(e, usePrev, this.prevBlade, curSeg, h.pad ?? 3)
+          : this.sweptEdge.hitsBody(e, h.pad ?? 3)
+        if (hit) {
           a.hitMap.set(e.id, animT)
-          const result=w.hitEnemy(e.id, this.blade, info)
-          if(rewardsConfirmedHit(result))this.onLandedHit(w, {...info,dmg:result.actualDamage}, e.x, e.y - 48 * e.scale)
+          const result = w.hitEnemy(e.id, this.blade, info)
+          if (rewardsConfirmedHit(result)) this.onLandedHit(w, {...info, dmg: result.actualDamage}, e.x, e.y - 48 * e.scale)
         }
       }
-      // remember this frame's blade for the next sweep test
-      this.prevBlade.bx = curSeg.bx
-      this.prevBlade.by = curSeg.by
-      this.prevBlade.tx = curSeg.tx
-      this.prevBlade.ty = curSeg.ty
-      this.hasPrevBlade = true
-      this.prevWasCorridor = corridorSeg
       // aoe shockwave at strike moment for heavy hits — the wave is REAL:
       // enemies inside the radius eat the strike (the charged/h3 promise:
       // the shockwave visual must connect, not just decorate)
