@@ -42,6 +42,11 @@ export interface BgCam {
 export interface BackgroundRenderer {
   readonly storm:StormEngine
   onThunder:(()=>void)|null
+  /** moon state, updated by drawSky: disc center (screen space) + eclipse
+   *  coverage 0..1 — how much cloud mass currently sits over the disc */
+  moonX:number
+  moonY:number
+  moonCover:number
   resize(w:number,h:number):void
   update(dt:number):void
   lightningI():number
@@ -49,6 +54,8 @@ export interface BackgroundRenderer {
   drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
   drawArena(ctx:CanvasRenderingContext2D):void
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
+  /** moon-shaft occlusion source for the renderer's god-ray pass */
+  drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam):void
 }
 
 /* ============================ seeded RNG ================================= */
@@ -176,14 +183,14 @@ function buildSkyStrip(): HTMLCanvasElement {
   return c;
 }
 
-/** dim moon disc + halo */
+/** dim moon disc + inner corona (the wide halo lives in buildMoonHalo) */
 function buildMoon(): HTMLCanvasElement {
   const { c, g } = makeCanvas(220, 220);
-  // wide atmospheric halo (three soft rings of scattering)
-  let gr = g.createRadialGradient(110, 110, 24, 110, 110, 108);
-  gr.addColorStop(0, 'rgba(168,196,208,0.22)');
-  gr.addColorStop(0.35, 'rgba(140,172,192,0.1)');
-  gr.addColorStop(0.7, 'rgba(120,150,180,0.045)');
+  // tight inner corona only — the big atmospheric rings are the additive
+  // halo sprite (4-ring bake), so eclipse can dim disc + halo independently
+  let gr = g.createRadialGradient(110, 110, 24, 110, 110, 62);
+  gr.addColorStop(0, 'rgba(168,196,208,0.20)');
+  gr.addColorStop(0.5, 'rgba(140,172,192,0.08)');
   gr.addColorStop(1, 'rgba(110,140,175,0)');
   g.fillStyle = gr;
   g.fillRect(0, 0, 220, 220);
@@ -210,6 +217,66 @@ function buildMoon(): HTMLCanvasElement {
   return c;
 }
 
+/** 4-RING MOON HALO — pre-baked additive scattering sprite (research law:
+ *  glow = additive gradient sprites, never per-frame gradients, never global
+ *  bloom). Four concentric falloffs with distinct color temps — tight warm
+ *  corona → wide cool atmosphere — composited 'lighter' inside the bake so
+ *  the energy stacks like real scattering. One additive blit at runtime. */
+function buildMoonHalo(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(512, 512);
+  const C = 256;
+  const rings: ReadonlyArray<[number, string, number, number]> = [
+    // [radius, rgba color, peak alpha, inner stop]
+    [78, '196,218,232', 0.34, 30],
+    [168, '152,184,216', 0.135, 60],
+    [262, '116,154,198', 0.055, 110],
+    [392, '86,124,170', 0.026, 170],
+  ];
+  g.globalCompositeOperation = 'lighter';
+  for (const [r, col, a, inner] of rings) {
+    const gr = g.createRadialGradient(C, C, inner, C, C, r);
+    gr.addColorStop(0, `rgba(${col},${a})`);
+    gr.addColorStop(0.55, `rgba(${col},${(a * 0.42).toFixed(4)})`);
+    gr.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 512, 512);
+  }
+  return c;
+}
+
+/** drifting CLOUD-SHADOW plate for the wet deck — soft dark masses on
+ *  transparent, pre-baked, scrolled in world space. The deck's own texture
+ *  lives in the arena tile; this adds slow moving light variance. */
+function buildCloudShadowTile(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(TILE, 140);
+  const rng = mulberry32(0x7c10d5);
+  for (let i = 0; i < 11; i++) {
+    const cx = rng() * TILE;
+    const cy = 12 + rng() * 116;
+    const rx = 190 + rng() * 300;
+    const ry = 30 + rng() * 62;
+    const a = 0.32 + rng() * 0.3;
+    for (let k = -1; k <= 1; k++) {
+      const x = cx + k * TILE;
+      const gr = g.createRadialGradient(x, cy, 0, x, cy, rx);
+      gr.addColorStop(0, `rgba(2,5,11,${a.toFixed(3)})`);
+      gr.addColorStop(0.6, `rgba(2,5,11,${(a * 0.5).toFixed(3)})`);
+      gr.addColorStop(1, 'rgba(2,5,11,0)');
+      g.save();
+      g.scale(1, ry / rx);
+      g.fillStyle = gr;
+      g.beginPath(); g.arc(x, cy * rx / ry, rx, 0, TAU); g.fill();
+      g.restore();
+    }
+  }
+  return c;
+}
+
+/** cloud blob layout of the dark tile — drives the eclipse coverage math
+ *  (how much cloud mass currently sits over the moon disc). Filled once at
+ *  build; lookup is O(16)/frame. */
+const CLOUD_BLOBS: { x: number; y: number; r: number }[] = [];
+
 /* ======================== storm sprite pre-renders ======================= */
 
 /** seamless drifting cloud bank — two flavours built from one layout:
@@ -223,6 +290,7 @@ function buildCloudTile(lit: boolean): HTMLCanvasElement {
     const cy = 60 + rng() * 170;
     const rx = 130 + rng() * 220;
     const ry = 26 + rng() * 58;
+    if (!lit) CLOUD_BLOBS.push({ x: cx, y: cy, r: rx });
     const a = lit ? 0.1 + rng() * 0.12 : 0.16 + rng() * 0.16;
     const col = lit ? '168,198,236' : '16,24,40';
     for (let k = -1; k <= 1; k++) {
@@ -439,12 +507,19 @@ export class CyberBackground {
   private skyStrip!: HTMLCanvasElement;
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
+  private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
   private farTile!: HTMLCanvasElement;
   private midTile!: HTMLCanvasElement;
   private nearTile!: HTMLCanvasElement;
   private arenaTile!: HTMLCanvasElement;
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private cloudLit!: HTMLCanvasElement;    // same deck, lightning-lit flavour
+  private cloudShadowSpr!: HTMLCanvasElement; // drifting deck-shadow plates
+  /** moon state for the render pass (updated by drawSky): screen-space disc
+   *  center + eclipse coverage 0..1 (how much cloud mass sits over it) */
+  moonX = 0;
+  moonY = 0;
+  moonCover = 0;
   private fogSpr!: HTMLCanvasElement;
   private mistSpr!: HTMLCanvasElement;    // denser ground mist (rain spray)
   private beamSpr!: HTMLCanvasElement;
@@ -569,20 +644,28 @@ export class CyberBackground {
       }
     }
     ctx.globalAlpha = 1;
-    /* 2.5 — DRIFTING CLOUD DECK: dark banks; while lightning scatters through
-     * them the LIT twin re-blits additively, so the storm above pulses with
-     * each strike. Behind the skyline. */
+    /* 2.5 — DRIFTING CLOUD DECKS: three parallax sheets (high slow thin /
+     * main bank / low fast wisps). While lightning scatters through them the
+     * LIT twin re-blits additively on the lower two decks. Behind skyline. */
     {
       const Ic = this.lightningI();
       const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
-      const clOff = mod(-t * 5 - cx * 0.02 * cz, TILE);
-      ctx.globalAlpha = 0.74;
-      this.blitRow(ctx, this.cloudDark, clOff, cloudY);
+      const offA = mod(-t * 3.2 - cx * 0.013 * cz, TILE);
+      const offB = mod(-t * 5 - cx * 0.02 * cz, TILE);
+      const offC = mod(-t * 8.4 - cx * 0.03 * cz, TILE);
+      ctx.globalAlpha = 0.5;
+      this.blitRow(ctx, this.cloudDark, offA, cloudY - 84);
+      ctx.globalAlpha = 0.72;
+      this.blitRow(ctx, this.cloudDark, offB, cloudY);
+      ctx.globalAlpha = 0.44;
+      this.blitRow(ctx, this.cloudDark, offC, cloudY + 104);
       ctx.globalAlpha = 1;
       if (Ic > 0.02) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, Ic * 0.95);
-        this.blitRow(ctx, this.cloudLit, clOff, cloudY);
+        ctx.globalAlpha = Math.min(1, Ic * 0.85);
+        this.blitRow(ctx, this.cloudLit, offB, cloudY);
+        ctx.globalAlpha = Math.min(1, Ic * 0.6);
+        this.blitRow(ctx, this.cloudLit, offC, cloudY + 104);
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1;
       }
@@ -724,13 +807,40 @@ export class CyberBackground {
 
     /* 5.5 — THE MOON over the whole skyline (the reference image's
      * moon-over-mountains composition, with the city as the mountains).
-     * All tower layers sit behind it; drifting clouds + fog veil it back
-     * into the depth. Slow celestial parallax. */
-    ctx.drawImage(this.moonSpr, w * 0.68 - cx * 0.03 * cz - 110, h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110);
+     * ECLIPSE: the drifting cloud deck modulates the disc + halo + the key
+     * light below (the reference's clouded-moon lighting). 4-ring additive
+     * halo bakes the scattering; a light cloud re-blit veils the disc. */
     {
+      const moonX = w * 0.68 - cx * 0.03 * cz - 110;
+      const moonY = h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110;
       const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
       const cloudY2 = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
-      ctx.globalAlpha = 0.38;
+      // eclipse coverage: O(16) blob falloff around the disc's tile x
+      let cov = 0;
+      const mxT = mod(moonX + 110 - clOff2, TILE);
+      for (const b of CLOUD_BLOBS) {
+        let dx = Math.abs(b.x - mxT);
+        if (dx > TILE / 2) dx = TILE - dx;
+        const wgt = Math.max(0, 1 - dx / (b.r * 1.12));
+        cov += wgt * wgt * 0.62;
+      }
+      if (cov > 1) cov = 1;
+      this.moonX = moonX + 110;
+      this.moonY = moonY + 110;
+      this.moonCover = cov;
+      const discA = 1 - 0.52 * cov;
+      const haloA = (1 - 0.78 * cov) * (0.82 + 0.18 * Math.sin(t * 0.13));
+      const haloA2 = (1 - 0.78 * cov) * (0.7 + 0.3 * Math.sin(t * 0.087 + 1.7));
+      ctx.globalAlpha = discA;
+      ctx.drawImage(this.moonSpr, moonX, moonY);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = haloA;
+      ctx.drawImage(this.moonHalo, moonX + 110 - 256, moonY + 110 - 256);
+      ctx.globalAlpha = haloA2 * 0.62;
+      ctx.drawImage(this.moonHalo, moonX + 110 - 408, moonY + 110 - 408, 816, 816);
+      ctx.globalCompositeOperation = 'source-over';
+      // the cloud cage over the disc thickens with coverage
+      ctx.globalAlpha = 0.34 + 0.3 * cov;
       this.blitRow(ctx, this.cloudDark, clOff2, cloudY2);
       ctx.globalAlpha = 1;
     }
@@ -793,6 +903,16 @@ export class CyberBackground {
         ctx.drawImage(this.mistSpr, x, -6, MIST_W, 44);
       }
     }
+    // drifting CLOUD SHADOWS on the wet deck — pre-baked dark plates with
+    // slow parallax drift; the eclipse deepens them as banks cross the moon
+    if (this.q !== 'low') {
+      const csOff = mod(t * 26, TILE);
+      ctx.globalAlpha = 0.18 + 0.12 * this.moonCover;
+      for (let x = ARENA_X0 - TILE + csOff; x < ARENA_X1; x += TILE) {
+        ctx.drawImage(this.cloudShadowSpr, x, -34, TILE, 140);
+      }
+      ctx.globalAlpha = 1;
+    }
     // tiny blinking facade service lamps
     ctx.fillStyle = SVC_COL;
     for (let i = 0; i < this.svcLights.length; i++) {
@@ -813,6 +933,40 @@ export class CyberBackground {
     this.storm.drawRain(ctx);
   }
 
+  /** MOON-SHAFT OCCLUSION SOURCE — drawn into a scaled quarter-res ctx by
+   *  the renderer's god-ray pass: moon glow bright, near skyline + cloud
+   *  decks dark. The radial smear then streaks the sky gaps outward as
+   *  shafts (GPU Gems 3 occlusion→radial-blur recipe, 2D style). Note the
+   *  mask obeys light PHYSICS (towers in front of the glow) even though the
+   *  painted moon floats over the skyline. */
+  drawShaftMask(ctx: CanvasRenderingContext2D, cam: BgCam): void {
+    const cx = Number.isFinite(cam.x) ? cam.x : 0;
+    const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
+    const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
+    const t = this.t;
+    const w = this.vw, h = this.vh;
+    const hy = h * 0.5 + (0 - cy) * cz;
+    const moonX = w * 0.68 - cx * 0.03 * cz - 110;
+    const moonY = h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110;
+    ctx.drawImage(this.moonSpr, moonX, moonY);
+    ctx.drawImage(this.moonHalo, moonX + 110 - 256, moonY + 110 - 256);
+    // extra wide bright pool so the smear has source mass for long shafts
+    ctx.globalAlpha = 0.7;
+    ctx.drawImage(this.moonHalo, moonX + 110 - 384, moonY + 110 - 384, 768, 768);
+    ctx.globalAlpha = 1;
+    const byN = h * 0.5 + (LAY_NEAR.lift - cy * LAY_NEAR.vf) * cz;
+    const mN = mod(cx * LAY_NEAR.f * cz, TILE);
+    this.blitRow(ctx, this.nearTile, mN, byN - NEAR_H);
+    const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
+    const offB = mod(-t * 5 - cx * 0.02 * cz, TILE);
+    const offC = mod(-t * 8.4 - cx * 0.03 * cz, TILE);
+    ctx.globalAlpha = 0.85;
+    this.blitRow(ctx, this.cloudDark, offB, cloudY);
+    ctx.globalAlpha = 0.7;
+    this.blitRow(ctx, this.cloudDark, offC, cloudY + 104);
+    ctx.globalAlpha = 1;
+  }
+
   /* --------------------------- private helpers --------------------------- */
 
   /** screen-space baseline of a parallax layer for the current camera */
@@ -830,6 +984,8 @@ export class CyberBackground {
     this.built = true;
     this.skyStrip = buildSkyStrip();
     this.moonSpr = buildMoon();
+    this.moonHalo = buildMoonHalo();
+    this.cloudShadowSpr = buildCloudShadowTile();
     this.fogSpr = buildFogSprite();
     this.mistSpr = buildMistSprite();
     this.beamSpr = buildBeamSprite();

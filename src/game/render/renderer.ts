@@ -103,6 +103,10 @@ export class Renderer {
     const li = bg.lightningI()
     const az = bg.lightningAz()
     const light: KeyLight = keyLightFromStorm(li, az)
+    // ECLIPSE — cloud mass crossing the moon dims + softens the key, so the
+    // long deck shadows breathe as the banks drift over the disc
+    light.i *= 1 - 0.42 * bg.moonCover
+    light.hard *= 1 - 0.32 * bg.moonCover
     player.drawShadow(ctx, light)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
@@ -154,7 +158,10 @@ export class Renderer {
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
 
-    // 3.5 CINEMATIC BLOOM — every light in the frame spills a soft halo
+    // 3.25 MOON GOD-RAY SHAFTS — occlusion → radial smear → additive
+    this.drawMoonShafts(ctx, w, h, world)
+
+    // 3.5 CINEMATIC BLOOM — selective: emissives spill a soft halo
     this.drawBloom(ctx, w, h)
 
     // 3.6 ANAMORPHIC STRIKE STREAKS — horizontal lens flare while the sky
@@ -250,6 +257,66 @@ export class Renderer {
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(this.bloomA!, 0, 0, w, h)
+    ctx.restore()
+  }
+
+  /** MOON GOD-RAY SHAFTS — GPU Gems 3 recipe, Canvas2D at quarter-res:
+   *  1) occlusion mask: moon glow bright, skyline + clouds dark
+   *  2) radial smear outward from the moon (zoom blur, 9–14 cheap blits)
+   *  3) additive composite, eclipse + lightning coupled, slow breathing.
+   *  Research laws honored: blur once per effect per frame at quarter-res,
+   *  all sprites pre-baked, two small buffers allocated once per resolution,
+   *  zero per-frame gradient allocs, quality-gated (off at low). */
+  private shaftA: HTMLCanvasElement | null = null
+  private shaftB: HTMLCanvasElement | null = null
+  private shaftW = 0
+  private shaftH = 0
+
+  private drawMoonShafts(ctx: CanvasRenderingContext2D, w: number, h: number, world: RenderWorld): void {
+    if (this.quality === 'low') return
+    const { bg, cam } = world
+    const cover = bg.moonCover
+    if (cover > 0.88) return                      // fully caged → no rays
+    const qw = Math.max(2, w >> 2), qh = Math.max(2, h >> 2)
+    if (!this.shaftA || this.shaftW !== qw || this.shaftH !== qh) {
+      this.shaftA = document.createElement('canvas')
+      this.shaftA.width = qw
+      this.shaftA.height = qh
+      this.shaftB = document.createElement('canvas')
+      this.shaftB.width = qw
+      this.shaftB.height = qh
+      this.shaftW = qw
+      this.shaftH = qh
+    }
+    const a = this.shaftA!.getContext('2d'), b = this.shaftB!.getContext('2d')
+    if (!a || !b) return
+    // 1 — occlusion mask in screen coords (bg knows the moon + skyline)
+    a.setTransform(qw / w, 0, 0, qh / h, 0, 0)
+    a.clearRect(0, 0, w, h)
+    bg.drawShaftMask(a, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
+    // 2 — radial smear outward from the moon: each step scales the mask up
+    // around the moon point with decaying alpha (the zoom-blur god rays)
+    const mx = bg.moonX * (qw / w), my = bg.moonY * (qh / h)
+    b.setTransform(1, 0, 0, 1, 0, 0)
+    b.clearRect(0, 0, qw, qh)
+    b.globalCompositeOperation = 'lighter'
+    const n = this.quality === 'ultra' ? 14 : 9
+    for (let i = 1; i <= n; i++) {
+      const s = 1 + i * 0.048
+      b.globalAlpha = Math.pow(0.86, i) * 1.05
+      b.drawImage(this.shaftA!, mx - mx * s, my - my * s, qw * s, qh * s)
+    }
+    b.globalAlpha = 1
+    b.globalCompositeOperation = 'source-over'
+    // 3 — additive composite: rays breathe, flash with the storm, and die
+    // as the eclipse closes over the disc
+    const li = clamp01(bg.lightningI())
+    const str = 0.31 * Math.pow(1 - cover, 1.5) * (this.quality === 'ultra' ? 1 : 0.72)
+      * (1 + li * 1.3) * (0.82 + 0.18 * Math.sin(world.time * 0.22))
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = Math.min(0.42, str)
+    ctx.drawImage(this.shaftB!, 0, 0, w, h)
     ctx.restore()
   }
 
