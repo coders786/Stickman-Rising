@@ -383,6 +383,48 @@ function buildZodi(): HTMLCanvasElement {
   return c;
 }
 
+/** MACRO-RAIN BOKEH — a defocused highlight disc: soft core with a
+ *  slightly brighter rim (the soap-bubble edge of real bokeh). */
+function buildBokehDisc(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(64, 64);
+  const gr = g.createRadialGradient(32, 32, 4, 32, 32, 31);
+  gr.addColorStop(0, 'rgba(207,224,255,0.5)');
+  gr.addColorStop(0.62, 'rgba(207,224,255,0.32)');
+  gr.addColorStop(0.86, 'rgba(214,230,255,0.42)');
+  gr.addColorStop(1, 'rgba(207,224,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+/** LENS DIRT — sparse sensor/front-element smudges that flare when a bright
+ *  source hits the lens. Near-invisible at rest; drawn ONLY at flash energy
+ *  (the selective-bloom law — never permanent full-screen glow). */
+function buildLensDirt(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(320, 180);
+  let seed = 41.7;
+  const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  for (let i = 0; i < 46; i++) {
+    const x = rand() * 320, y = rand() * 180, r = 1 + rand() * 6;
+    const a = 0.05 + rand() * 0.16;
+    const d = g.createRadialGradient(x, y, 0, x, y, r);
+    d.addColorStop(0, `rgba(220,232,248,${a.toFixed(3)})`);
+    d.addColorStop(1, 'rgba(220,232,248,0)');
+    g.fillStyle = d; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = rand() * 320, y = rand() * 180;
+    const w = 14 + rand() * 40, h = 5 + rand() * 10;
+    const a = 0.03 + rand() * 0.05;
+    const sm = g.createRadialGradient(0, 0, 0, 0, 0, w);
+    sm.addColorStop(0, `rgba(210,224,244,${a.toFixed(3)})`);
+    sm.addColorStop(1, 'rgba(210,224,244,0)');
+    g.save(); g.translate(x, y); g.rotate((rand() - 0.5) * 0.8); g.scale(1, h / w);
+    g.fillStyle = sm;
+    g.beginPath(); g.arc(0, 0, w, 0, Math.PI * 2); g.fill(); g.restore();
+  }
+  return c;
+}
+
 /** drifting CLOUD-SHADOW plate for the wet deck — soft dark masses on
  *  transparent, pre-baked, scrolled in world space. The deck's own texture
  *  lives in the arena tile; this adds slow moving light variance. */
@@ -662,6 +704,11 @@ export class CyberBackground {
   private shaftFan!: HTMLCanvasElement;    // crepuscular wedge fan (gap rays)
   private moonPillar!: HTMLCanvasElement;  // plate-crystal light pillar
   private zodiSpr!: HTMLCanvasElement;     // zodiacal / airglow band
+  private bokehDisc!: HTMLCanvasElement;   // macro-rain defocus disc
+  private lensDirt!: HTMLCanvasElement;    // flash-gated lens smudges
+  /** near-lens defocused droplets (screen-space weather, parallax ~2.4) */
+  private bokeh: { x: number; y: number; r: number; ph: number; sp: number }[] = [];
+  private lastWX = NaN;
   /** live fresnel-lane glints that dance along the moon's specular lane */
   private glints: { x: number; y: number; w: number; ph: number; sp: number; c: number }[] = [];
   private deckPool!: HTMLCanvasElement;   // directional key's diffuse wash
@@ -1119,8 +1166,37 @@ export class CyberBackground {
   /* ---------------------- screen-space weather pass ---------------------- */
 
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void{
+    this.ensureBuilt();
     this.storm.setView(cam);
     this.storm.drawRain(ctx);
+    const t = this.t, w = this.vw, h = this.vh;
+    // MACRO-RAIN BOKEH — defocused droplets drifting near the lens: the
+    // single strongest "real photo" cue (research #20). High parallax,
+    // slow fall, sparse; soap-bubble rim discs over the rain.
+    const lx = Number.isFinite(this.lastWX) ? this.lastWX : cam.x;
+    const dxW = lx - cam.x;
+    this.lastWX = cam.x;
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < this.bokeh.length; i++) {
+      const b = this.bokeh[i];
+      b.x += dxW * 2.4; b.y += b.sp;
+      if (b.y > h + 40) {
+        b.y = -40;
+        b.x = ((b.ph * 713) % (w + 160)) - 80;
+      }
+      if (b.x > w + 80) b.x -= w + 160; else if (b.x < -80) b.x += w + 160;
+      ctx.globalAlpha = (0.05 + 0.0045 * b.r) * (0.82 + 0.18 * Math.sin(t * 0.7 + b.ph));
+      ctx.drawImage(this.bokehDisc, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+    }
+    // LENS DIRT FLARE — the front element's smudges flare only while the
+    // storm flashes (selective glow law — never permanent bloom)
+    const li = this.lightningI();
+    if (li > 0.02) {
+      ctx.globalAlpha = li * 0.12;
+      ctx.drawImage(this.lensDirt, 0, 0, w, h);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
   }
 
   /** TYPED LIGHT RIG on the deck (UE archetypes): directional key's diffuse
@@ -1154,6 +1230,17 @@ export class CyberBackground {
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.13 * (1 - 0.4 * cov);
     ctx.drawImage(this.doorPool, DOOR_X - 430, -46, 860, 130);
+    // DEFOCUSED PRACTICAL BOKEH — droplets on the lens catching the warm
+    // door source (staged near the practical, slow breathing)
+    const doorBokehA = 0.075 * (1 - 0.5 * cov);
+    if (doorBokehA > 0.006) {
+      ctx.globalAlpha = doorBokehA * (0.8 + 0.2 * Math.sin(t * 0.9));
+      ctx.drawImage(this.bokehDisc, DOOR_X - 210, -120, 46, 46);
+      ctx.globalAlpha = doorBokehA * (0.7 + 0.2 * Math.sin(t * 1.13 + 2));
+      ctx.drawImage(this.bokehDisc, DOOR_X + 120, -78, 30, 30);
+      ctx.globalAlpha = doorBokehA * (0.75 + 0.2 * Math.sin(t * 0.77 + 4));
+      ctx.drawImage(this.bokehDisc, DOOR_X - 60, -172, 22, 22);
+    }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     // steam wisps (behind the specular layers)
@@ -1260,6 +1347,8 @@ export class CyberBackground {
     this.shaftFan = buildShaftFan();
     this.moonPillar = buildMoonPillar();
     this.zodiSpr = buildZodi();
+    this.bokehDisc = buildBokehDisc();
+    this.lensDirt = buildLensDirt();
     this.cloudShadowSpr = buildCloudShadowTile();
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
@@ -1316,6 +1405,13 @@ export class CyberBackground {
     // scintillation draw groups: sort by spectral bucket so each tint costs
     // ONE fillStyle switch (never per-star state changes)
     this.twinks.sort((a, b) => a.spec - b.spec);
+    // MACRO-RAIN BOKEH droplets — sparse, deterministic seeds
+    for (let i = 0; i < 11; i++) {
+      this.bokeh.push({
+        x: rng() * 1440 - 80, y: rng() * 620 - 60,
+        r: 4 + rng() * 5.5, ph: rng() * TAU, sp: 0.16 + rng() * 0.5,
+      });
+    }
     return c;
   }
 
@@ -1386,7 +1482,17 @@ export class CyberBackground {
     g.fillStyle = FOG.farLift;
     g.fillRect(0, 0, TILE, FAR_H);
     g.globalCompositeOperation = 'source-over';
-    return c;
+    // AERIAL FOCUS — the far plate sits past the focal plane: bake a one-
+    // time soft blur (runtime cost ZERO — same drawImage) with wrap-aware
+    // edges so the tile seam stays invisible; the fog carries the rest of
+    // the depth read (bokeh DOF law).
+    const blurred = makeCanvas(TILE, FAR_H);
+    blurred.g.filter = 'blur(2px)';
+    blurred.g.drawImage(c, -TILE, 0);
+    blurred.g.drawImage(c, 0, 0);
+    blurred.g.drawImage(c, TILE, 0);
+    blurred.g.filter = 'none';
+    return blurred.c;
   }
 
   private buildMid(): HTMLCanvasElement {
@@ -1481,7 +1587,15 @@ export class CyberBackground {
     g.fillStyle = 'rgba(36,56,80,0.09)';
     g.fillRect(0, 0, TILE, MID_H);
     g.globalCompositeOperation = 'source-over';
-    return c;
+    // AERIAL FOCUS (mid): lighter than the far plate — the action plane
+    // stays crisp, only the depth layers soften (wrap-aware bake blur).
+    const blurred = makeCanvas(TILE, MID_H);
+    blurred.g.filter = 'blur(1.1px)';
+    blurred.g.drawImage(c, -TILE, 0);
+    blurred.g.drawImage(c, 0, 0);
+    blurred.g.drawImage(c, TILE, 0);
+    blurred.g.filter = 'none';
+    return blurred.c;
   }
 
   private buildNear(): HTMLCanvasElement {

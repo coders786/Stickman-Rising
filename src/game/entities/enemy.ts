@@ -10,7 +10,7 @@ import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
-import { emitterFill } from '../render/look'
+import { emitterFill, smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
 import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
@@ -1090,6 +1090,20 @@ export class Enemy {
     const s = this.scale
     const cfg = this.cfg
     ctx.save()
+    // SHUTTER SMEAR — universal velocity ghosts (look.smearPlan)
+    const smS = smearPlan(this.vx)
+    if (smS.n > 0) {
+      const dirS = this.vx > 0 ? 1 : -1
+      for (let i = smS.n; i >= 1; i--) {
+        ctx.save()
+        ctx.translate(this.x - dirS * smS.dist * i, this.hipY)
+        ctx.scale(this.face * s, s)
+        drawStick(ctx, this.geom, cfg.style, {
+          time, ghost: '#0b101c', ghostAlpha: smS.a * (1 - (i - 1) * 0.3), simple: true,
+        })
+        ctx.restore()
+      }
+    }
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * s, s)
     drawStick(ctx, this.geom, cfg.style, {

@@ -29,7 +29,7 @@ import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
 import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
-import { emitterFill } from '../render/look'
+import { emitterFill, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -5058,6 +5058,23 @@ export class Player {
     const currentClip=this.animator.getClip()
     const handPhase=currentClip && currentClip.dur>0
       ? (currentClip.loop ? (this.animator.getTime()/currentClip.dur)%1 : Math.min(1,this.animator.getTime()/currentClip.dur)) : 0
+    // SHUTTER SMEAR — universal velocity ghosts (look.smearPlan): the held
+    // frame smeared back along -v, punch-sheet style (discrete layers,
+    // never interpolated poses). Dashes move via dashDisplacement (vx stays
+    // 0), so the smear reads the EFFECTIVE per-frame speed.
+    const smDx = this.dashDisplacement ? Math.abs((this.dashDisplacement as { x: number }).x) * 60 : 0
+    const smS = smearPlan(Math.max(smDx, Math.abs(this.vx)))
+    if (smS.n > 0) {
+      const dirS = (smDx >= Math.abs(this.vx) ? (this.dashDisplacement as { x: number }).x : this.vx) >= 0 ? 1 : -1
+      for (let i = smS.n; i >= 1; i--) {
+        ctx.save()
+        ctx.translate(-dirS * smS.dist * i, 0)
+        drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
+          time, ghost: '#0b101c', ghostAlpha: smS.a * (1 - (i - 1) * 0.3), alpha: 1,
+        })
+        ctx.restore()
+      }
+    }
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),

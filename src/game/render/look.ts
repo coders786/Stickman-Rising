@@ -97,6 +97,16 @@ const NO_FILL: SideFill = { color: '', a: 0, dx: 1 }
 /** colored bounce fill from the nearest practical light (UE inverse-square
  *  falloff): the character's shadow side catches the warm door, the neon
  *  side catches signage. Returns zero fill when nothing reaches. */
+/** UNIVERSAL SHUTTER SMEAR (the lens law): fast movers smear along -v —
+ *  the punch-sheet fan language of the reference sheet. Discrete held-frame
+ *  layers only (ABCD law): the held pose is ghosted, never interpolated. */
+export function smearPlan(speed: number): { n: number; dist: number; a: number } {
+  const s = Math.abs(Number.isFinite(speed) ? speed : 0);
+  if (s < 300) return { n: 0, dist: 0, a: 0 };
+  const k = Math.min(1, (s - 300) / 520);
+  return { n: k > 0.5 ? 3 : 2, dist: 8 + k * 22, a: 0.13 + k * 0.14 };
+}
+
 export function emitterFill(x: number, y: number): SideFill {
   let best = 0
   let col = ''
