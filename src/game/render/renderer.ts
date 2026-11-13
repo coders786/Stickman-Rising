@@ -13,7 +13,7 @@ import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint } from './lighting'
-import { setSceneKey, REFLECTION } from './look'
+import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
  * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
@@ -124,8 +124,10 @@ export class Renderer {
     const li = bg.lightningI()
     const az = bg.lightningAz()
     const light: KeyLight = keyLightFromStorm(li, az)
-    // UNIVERSAL LOOK: the rim/reflection rules read the live key each frame
+    // UNIVERSAL LOOK: the rim/reflection rules read the live key each frame;
+    // practical lights feed the light-transport fill automatically
     setSceneKey(light)
+    setSceneEmitters([DOOR_LIGHT])
     // ECLIPSE — cloud mass crossing the moon dims + softens the key, so the
     // long deck shadows breathe as the banks drift over the disc
     light.i *= 1 - 0.42 * bg.moonCover

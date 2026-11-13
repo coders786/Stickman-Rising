@@ -251,6 +251,36 @@ function buildMoonHalo(): HTMLCanvasElement {
   return c;
 }
 
+/** 22° ICE-CRYSTAL HALO RING — real atmospheric optics: rays refracting
+ *  through hexagonal ice pile up at the 60°-prism minimum deviation (~22°),
+ *  so the halo has a BRIGHT INNER EDGE, a red inner rim, a darker interior
+ *  and a gradual outer fade. The "how is this so real" detail. */
+function buildMoonRing(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(440, 440);
+  const C = 220;
+  g.globalCompositeOperation = 'lighter';
+  const inner = g.createRadialGradient(C, C, 60, C, C, 176);
+  inner.addColorStop(0, 'rgba(150,180,215,0)');
+  inner.addColorStop(0.88, 'rgba(150,180,215,0.022)');
+  inner.addColorStop(1, 'rgba(150,180,215,0)');
+  g.fillStyle = inner; g.fillRect(0, 0, 440, 440);
+  const rim = g.createRadialGradient(C, C, 146, C, C, 176);
+  rim.addColorStop(0, 'rgba(255,120,90,0)');
+  rim.addColorStop(0.82, 'rgba(255,120,90,0.1)');
+  rim.addColorStop(1, 'rgba(255,120,90,0)');
+  g.fillStyle = rim; g.fillRect(0, 0, 440, 440);
+  const edge = g.createRadialGradient(C, C, 158, C, C, 184);
+  edge.addColorStop(0, 'rgba(226,238,252,0)');
+  edge.addColorStop(0.55, 'rgba(226,238,252,0.3)');
+  edge.addColorStop(1, 'rgba(216,232,250,0)');
+  g.fillStyle = edge; g.fillRect(0, 0, 440, 440);
+  const outer = g.createRadialGradient(C, C, 176, C, C, 232);
+  outer.addColorStop(0, 'rgba(160,190,224,0.085)');
+  outer.addColorStop(1, 'rgba(160,190,224,0)');
+  g.fillStyle = outer; g.fillRect(0, 0, 440, 440);
+  return c;
+}
+
 /** drifting CLOUD-SHADOW plate for the wet deck — soft dark masses on
  *  transparent, pre-baked, scrolled in world space. The deck's own texture
  *  lives in the arena tile; this adds slow moving light variance. */
@@ -526,6 +556,9 @@ export class CyberBackground {
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
   private doorPool!: HTMLCanvasElement;   // warm pool the door spills
   private moonGlitter!: HTMLCanvasElement; // specular lane of the moon key
+  private moonRing!: HTMLCanvasElement;    // 22° ice-crystal halo ring
+  /** live fresnel-lane glints that dance along the moon's specular lane */
+  private glints: { x: number; y: number; w: number; ph: number; sp: number; c: number }[] = [];
   private deckPool!: HTMLCanvasElement;   // directional key's diffuse wash
   private spotPool!: HTMLCanvasElement;   // spot-cone cross section
   private steamSpr!: HTMLCanvasElement;   // vent steam wisps
@@ -732,6 +765,9 @@ export class CyberBackground {
       ctx.drawImage(this.moonHalo, moonX + 84 - 141, moonY + 84 - 141, 282, 282);
       ctx.globalAlpha = haloA2 * 0.32;
       ctx.drawImage(this.moonHalo, moonX + 84 - 184, moonY + 84 - 184, 368, 368);
+      // 22° ice-crystal halo ring — the physical optics detail
+      ctx.globalAlpha = haloA * 0.9;
+      ctx.drawImage(this.moonRing, moonX + 84 - 280, moonY + 84 - 280, 560, 560);
       ctx.globalCompositeOperation = 'source-over';
       // the cloud cage over the disc thickens with coverage
       ctx.globalAlpha = 0.34 + 0.3 * cov;
@@ -978,6 +1014,13 @@ export class CyberBackground {
     ctx.globalAlpha = (0.58 + 0.22 * li) * (1 - 0.5 * cov);
     ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
     ctx.globalAlpha = 1;
+    // LIGHT TRANSPORT — the door practical's warm bounce: scattered light
+    // spreads wider and dimmer than the direct pool
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.13 * (1 - 0.4 * cov);
+    ctx.drawImage(this.doorPool, DOOR_X - 430, -46, 860, 130);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     // steam wisps (behind the specular layers)
     for (let i = 0; i < 3; i++) {
       const sx = 300 + i * 860;
@@ -987,10 +1030,26 @@ export class CyberBackground {
       ctx.drawImage(this.steamSpr, sx + sway - 60, -rise - 20);
     }
     ctx.globalAlpha = 1;
-    // SPECULAR — the moon's glitter lane on the wet mirror
+    // SPECULAR — the moon's fresnel glitter lane on the wet mirror: dual-
+    // drift shimmer (two micro-facet fields interfering) + live glints that
+    // dance along the lane. The FRESNEL law (brighter/denser toward the
+    // grazing edge) is baked into the plate.
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = (0.34 + 0.18 * li) * (1 - 0.72 * cov);
-    ctx.drawImage(this.moonGlitter, moonWorldX - 190, -10, 380, 160);
+    const glA = (0.34 + 0.18 * li) * (1 - 0.72 * cov);
+    const w1 = Math.sin(t * 2.1) * 2.4, w2 = Math.sin(t * 3.7 + 1.3) * 1.7;
+    ctx.globalAlpha = glA;
+    ctx.drawImage(this.moonGlitter, moonWorldX - 190 + w1, -10, 380, 160);
+    ctx.globalAlpha = glA * 0.55;
+    ctx.drawImage(this.moonGlitter, moonWorldX - 190 + w2, -10, 380, 160);
+    for (let i = 0; i < this.glints.length; i++) {
+      const gl = this.glints[i];
+      const tw = 0.5 + 0.5 * Math.sin(t * gl.sp + gl.ph);
+      const a = tw * tw * glA * 1.5;
+      if (a < 0.02) continue;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = gl.c === 0 ? '#dceafc' : '#ffe9c8';
+      ctx.fillRect(moonWorldX - 190 + gl.x, gl.y, gl.w, 1.4);
+    }
     // SPOT — slow-sweeping cool pools (cone cross-sections)
     const sx1 = 560 + 150 * Math.sin(t * 0.21);
     const sx2 = 2260 + 180 * Math.sin(t * 0.17 + 2);
@@ -1062,6 +1121,7 @@ export class CyberBackground {
     this.skyStrip = buildSkyStrip();
     this.moonSpr = buildMoon();
     this.moonHalo = buildMoonHalo();
+    this.moonRing = buildMoonRing();
     this.cloudShadowSpr = buildCloudShadowTile();
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
@@ -1593,6 +1653,18 @@ export class CyberBackground {
         ci: rng() < 0.45 ? 0 : rng() < 0.75 ? 1 : 2,
       });
     }
+    /* fresnel-lane glints: live sparkle points dancing along the moon's
+     * specular lane (dual-drift shimmer over the baked plate) */
+    for (let i = 0; i < 14; i++) {
+      this.glints.push({
+        x: 20 + rng() * 340,
+        y: 6 + rng() * 118,
+        w: 2 + rng() * 5,
+        ph: rng() * TAU,
+        sp: 1.6 + rng() * 3.4,
+        c: rng() < 0.75 ? 0 : 1,
+      });
+    }
     for (let i = 0; i < 3; i++) {
       this.svcLights.push({
         x: 240 + i * 900 + rng() * 260,
@@ -1744,19 +1816,22 @@ export class CyberBackground {
     gr.addColorStop(1, 'rgba(180,208,238,0)');
     g.fillStyle = gr;
     g.fillRect(0, 0, 380, 272);
-    // vertical falloff: brightest at the lip, dissolving toward the viewer
+    // vertical FRESNEL: grazing angles toward the viewer reflect MORE — the
+    // lane brightens and densifies toward the deck's front edge (the old
+    // bake dissolved it there; physics says the opposite)
     const vg = g.createLinearGradient(0, 0, 0, 272);
-    vg.addColorStop(0, 'rgba(2,4,8,0)');
-    vg.addColorStop(0.2, 'rgba(2,4,8,0)');
-    vg.addColorStop(1, 'rgba(2,4,8,0.85)');
+    vg.addColorStop(0, 'rgba(2,4,8,0.78)');
+    vg.addColorStop(0.3, 'rgba(2,4,8,0.32)');
+    vg.addColorStop(0.62, 'rgba(2,4,8,0)');
+    vg.addColorStop(1, 'rgba(2,4,8,0)');
     g.fillStyle = vg;
     g.fillRect(0, 0, 380, 272);
-    // micro-facet sparkle seeds
-    for (let i = 0; i < 90; i++) {
-      const x = 40 + rng() * 300, y = rng() * 130;
-      const a = 0.12 + rng() * 0.3;
+    // micro-facet sparkle seeds — density + size grow toward the grazing edge
+    for (let i = 0; i < 130; i++) {
+      const x = 30 + rng() * 320, y = Math.pow(rng(), 0.62) * 258;
+      const a = 0.12 + rng() * 0.34;
       g.fillStyle = `rgba(216,234,252,${a.toFixed(3)})`;
-      g.fillRect(x, y, 1.4 + rng() * 2.2, 1 + rng() * 1.6);
+      g.fillRect(x, y, 1.4 + rng() * 2.6, 1 + rng() * 1.8);
     }
     return c;
   }

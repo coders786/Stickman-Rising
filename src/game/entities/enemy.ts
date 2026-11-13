@@ -10,6 +10,7 @@ import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
+import { emitterFill } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
 import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
@@ -1095,6 +1096,7 @@ export class Enemy {
       time,
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',
+      sideFill: emitterFill(this.x, this.y),
     })
     this.drawWeapon(ctx, time)
     // LIGHTNING RIM: the bolt's channel lights the body it struck. A true

@@ -37,6 +37,12 @@ export interface RimPlan {
   keyDY: number
   keyColor: string
   keyA: number
+  /** LIGHT WRAP — a wide soft key-side halo: light bleeds around the thin
+   *  limbs (translucency read), the volume cue that separates 3D form from
+   *  a flat sticker */
+  wrapDX: number
+  wrapDY: number
+  wrapA: number
   /** warm-cool bounce on the lower edges that face the neon city */
   bounceCyanDX: number
   bounceCyanDY: number
@@ -55,12 +61,58 @@ export function rimPlan(): RimPlan {
     keyDY: -0.72,
     keyColor: '#a5d2f2',
     keyA: 0.62 + 0.38 * keyI + 0.12 * keyHard,
+    wrapDX: towardLight * 2.1,
+    wrapDY: -1.35,
+    wrapA: 0.1 + 0.08 * keyI,
     bounceCyanDX: -towardLight * 1.02,
     bounceCyanDY: 0.5,
     bounceMagentaDX: -towardLight * 1.28,
     bounceMagentaDY: 0.78,
     bounceA: 0.24 + 0.1 * keyI,
   }
+}
+
+/* ================= SCENE EMITTERS (light transport) =================
+ * Scenes register their practical lights; characters pick up colored fill
+ * from whatever shines on them — warm from the stairwell door, cyan from
+ * signage — automatically, in every scene. */
+export interface EmitterLight {
+  x: number
+  y: number
+  range: number
+  intensity: number
+  color: string
+}
+let emitters: EmitterLight[] = []
+export function setSceneEmitters(list: EmitterLight[]): void {
+  emitters = list
+}
+export interface SideFill {
+  color: string
+  a: number
+  /** +1 = emitter stands to the right of the subject */
+  dx: number
+}
+const NO_FILL: SideFill = { color: '', a: 0, dx: 1 }
+/** colored bounce fill from the nearest practical light (UE inverse-square
+ *  falloff): the character's shadow side catches the warm door, the neon
+ *  side catches signage. Returns zero fill when nothing reaches. */
+export function emitterFill(x: number, y: number): SideFill {
+  let best = 0
+  let col = ''
+  let ex = x + 1
+  for (const l of emitters) {
+    const ddx = x - l.x, ddy = y - l.y
+    const r = Math.max(1, l.range)
+    const v = l.intensity / (1 + (ddx * ddx + ddy * ddy) / (r * r))
+    if (v > best) {
+      best = v
+      col = l.color
+      ex = l.x
+    }
+  }
+  if (best < 0.05 || !col) return NO_FILL
+  return { color: col, a: Math.min(0.4, best * 0.48), dx: ex >= x ? 1 : -1 }
 }
 
 /** REFLECTION POLICY — wet concrete, not polished glass: broken-up, low
