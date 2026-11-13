@@ -971,8 +971,10 @@ export class CyberBackground {
   drawLightRig(ctx: CanvasRenderingContext2D, moonWorldX: number): void {
     this.ensureBuilt();
     const t = this.t, cov = this.moonCover, li = this.lightningI();
-    // DIRECTIONAL — diffuse pool on the deck (under everything else)
-    ctx.globalAlpha = (0.42 + 0.2 * li) * (1 - 0.5 * cov);
+    // DIRECTIONAL — diffuse pool on the deck (under everything else).
+    // Target-art calibration (image-2.png): shadows only read DRAMATICALLY
+    // against a BRIGHT moonlit deck — this pool is the key's diffuse term.
+    ctx.globalAlpha = (0.58 + 0.22 * li) * (1 - 0.5 * cov);
     ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
     ctx.globalAlpha = 1;
     // steam wisps (behind the specular layers)
@@ -1770,8 +1772,8 @@ export class CyberBackground {
   private buildDeckPool(): HTMLCanvasElement {
     const { c, g } = makeCanvas(512, 150);
     const gr = g.createLinearGradient(0, 0, 0, 150);
-    gr.addColorStop(0, 'rgba(122,152,196,0.34)');
-    gr.addColorStop(0.45, 'rgba(112,142,188,0.17)');
+    gr.addColorStop(0, 'rgba(136,164,206,0.42)');
+    gr.addColorStop(0.45, 'rgba(118,148,192,0.24)');
     gr.addColorStop(1, 'rgba(100,130,178,0)');
     g.fillStyle = gr;
     g.fillRect(0, 0, 512, 150);

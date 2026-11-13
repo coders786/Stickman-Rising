@@ -22,6 +22,11 @@ import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint } from './l
  * Cached strings — zero per-frame allocs. */
 const BLOOM_BRIGHTPASS = 'brightness(0.72) contrast(2.5)'
 
+/** HALATION — film backscatter always bleeds WARM around the hottest
+ * highlights (ARRI/Dehancer science), even from cool sources like the moon.
+ * One multiply-tint of the ⅛ blur plate = the whole effect. */
+const HALATION_TINT = '#c2522e'
+
 export interface RenderWorld {
   cam: Camera
   fx: FX
@@ -272,13 +277,35 @@ export class Renderer {
     a.clearRect(0, 0, bw, bh)
     a.drawImage(this.bloomB!, 0, 0, sw, sh, 0, 0, bw, bh)
     ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    // selective pass — emissives can carry more energy without a veil;
-    // the relight event pulses bloom with the strobe
-    ctx.globalAlpha = (this.quality === 'ultra' ? 0.46 : this.quality === 'high' ? 0.36 : 0.24) * (1 + 0.55 * relight)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
+    // selective pass — emissives carry more energy without a veil; the
+    // relight event pulses bloom with the strobe. TWO shares: raw add for
+    // the glow body, screen share for the AgX-style soft-clip highlight
+    // rolloff (asymptotes at white instead of clipping). Energy-neutral on
+    // darks (add+screen = old add α), so no new veil.
+    const pulse = 1 + 0.55 * relight
+    const q = this.quality
+    const addShare = q === 'ultra' ? 0.3 : q === 'high' ? 0.23 : 0.15
+    const scrShare = q === 'ultra' ? 0.16 : q === 'high' ? 0.13 : 0.09
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = addShare * pulse
     ctx.drawImage(this.bloomA!, 0, 0, w, h)
+    ctx.globalCompositeOperation = 'screen'
+    ctx.globalAlpha = scrShare * pulse
+    ctx.drawImage(this.bloomA!, 0, 0, w, h)
+    // HALATION — warm backscatter around the hottest highlights: tint the
+    // ⅛ blur plate warm in place (opaque plate ⇒ exact multiply; next frame
+    // clears it) and add it back wide and soft. Moon, door, neon and bolt
+    // cores all bleed warm like film stock.
+    const halA = (q === 'ultra' ? 0.13 : q === 'high' ? 0.11 : 0.07) * (1 + 0.45 * relight)
+    b.globalCompositeOperation = 'multiply'
+    b.fillStyle = HALATION_TINT
+    b.fillRect(0, 0, sw, sh)
+    b.globalCompositeOperation = 'source-over'
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = halA
+    ctx.drawImage(this.bloomB!, 0, 0, w, h)
     ctx.restore()
   }
 

@@ -1,4 +1,4 @@
-/** Ground-shadow rewrite, pass 3: bounded penumbra, normalized compositing and contacts.
+/** Ground-shadow rewrite, pass 4: sky-colored shadows + PCSS contact-hardening.
  * World joint Y ALREADY includes jump height. Never add it again to the skull.
  */
 import { clamp,clamp01,lerp,rgba } from '../core/utils'
@@ -45,6 +45,13 @@ export interface CastShadowOpts {
 
 
 const finite=(n:number,fallback:number)=>Number.isFinite(n)?n:fallback
+const mixHex=(a:string,b:string,t:number)=>{
+  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16),u=clamp01(finite(t,0))
+  const r=Math.round(((pa>>16)&255)*(1-u)+((pb>>16)&255)*u)
+  const g=Math.round(((pa>>8)&255)*(1-u)+((pb>>8)&255)*u)
+  const bl=Math.round((pa&255)*(1-u)+(pb&255)*u)
+  return '#'+((1<<24)|(r<<16)|(g<<8)|bl).toString(16).slice(1)
+}
 
 /* ===================== typed light rig (UE archetypes) =====================
  * Directional = the moon key (KeyLight above). Point/spot/rect sources carry
@@ -73,11 +80,14 @@ export function pointAt(l: Light2D, x: number, y: number): number {
   return l.intensity / (1 + (dx * dx + dy * dy) / (r * r))
 }
 
-/** secondary shadow key from a point source: shadows fall AWAY from it */
+  /** secondary shadow key from a point source: shadows fall AWAY from it */
 export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
   const dx = x - l.x
   const dirX = dx >= 0 ? 0.85 : -0.85
-  return {dirX, elev: .52, hard: .42, i: pointAt(l, x, y), color: '#170b05'}
+  // warm-dark umber: the blocked door light leaves a warm-shaped smudge,
+  // visually distinct from the moon key's violet (research: shadow = the
+  // remaining ambient, never pure black)
+  return {dirX, elev: .52, hard: .42, i: pointAt(l, x, y), color: '#2a1410'}
 }
 
 /** the stairwell practical — scene point light (warm), world coords */
@@ -86,12 +96,15 @@ export const DOOR_LIGHT: Light2D = {
 }
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
-  // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt.
-  // Moon mode (k→0): KEY LIGHT = moon upper-right — LOW elevation so shadows
-  // rake LONG down-left across the deck (~1.5 body-lengths at elev .58),
-  // soft-edged, violet-black (invented chroma — real moonlight is gray).
-  return {dirX:lerp(-.85,-.92*az,k),elev:lerp(.58,.42,k),hard:lerp(.12,1,k),
-    i:lerp(.62,1,k),color:'#050310'}
+  // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt —
+  // shadows snap tight and near-black (ambient drowned). Moon mode (k→0):
+  // KEY LIGHT = moon upper-right — LOW elevation so shadows rake LONG
+  // down-left across the deck (~1.8 body-lengths at elev .50), soft-edged.
+  // SKY-COLORED SHADOWS law: shadow = the remaining skylight — a DARK
+  // violet-blue that pops against the bright moonlit deck (target-art
+  // contrast: bright ground, deep shadow), never dead black.
+  return {dirX:lerp(-.85,-.92*az,k),elev:lerp(.50,.40,k),hard:lerp(.12,1,k),
+    i:lerp(.62,1,k),color:mixHex('#231d48','#0d0c22',k)}
 }
 export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y:number}|null {
   if(!Number.isFinite(x)||!Number.isFinite(y))return null
@@ -103,28 +116,38 @@ export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y
 /** Build every body primitive into ONE fill path: crossings/duplicates do
  * not multiply opacity. World coordinates already contain the airborne Y. */
 function shadowPath(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight,radius:number):void {
-  const rx=radius,ry=Math.max(.5,radius*.32)
-  const ellipse=(x:number,y:number,xr=rx,yr=ry)=>{ctx.moveTo(x+xr,y);ctx.ellipse(x,y,xr,yr,0,0,Math.PI*2)}
+  // PCSS CONTACT-HARDENING (research: penumbra width ∝ distance from the
+  // contact patch): each joint's penumbra radius scales with ITS height above
+  // the deck — feet razor-tight, head/tip blooming wide; soft keys widen
+  // more than strobes. Each segment fills a TRAPEZOID quad whose width grows
+  // from the contact end toward the raised end = the slembcke penumbra wedge.
+  const hard=clamp01(finite(light.hard,.14))
+  const rAt=(y:number)=>radius*(1+(1-hard)*1.2*clamp01(Math.max(0,-y)/70))
+  const ryR=.32
+  const ellipse=(x:number,y:number,xr:number,yr?:number)=>{ctx.moveTo(x+xr,y);ctx.ellipse(x,y,xr,yr??Math.max(.5,xr*ryR),0,0,Math.PI*2)}
   ctx.beginPath()
   for(const chain of fig.chains){
-    let prev:{x:number;y:number}|null=null
+    let prev:{x:number;y:number}|null=null,prevR=radius
     for(let i=0;i+1<chain.length;i+=2){
       const q=projectGroundPoint(chain[i],chain[i+1],light)
       if(!q){prev=null;continue}
-      ellipse(q.x,q.y)
+      const rQ=rAt(chain[i+1])
+      ellipse(q.x,q.y,rQ)
       if(prev){const dx=q.x-prev.x,dy=q.y-prev.y,l=Math.hypot(dx,dy)||1
-        const nx=-dy/l*rx,ny=dx/l*ry
+        const kx=-dy/l,ky=dx/l*ryR
+        const n0x=kx*prevR,n0y=ky*prevR,n1x=kx*rQ,n1y=ky*rQ
         // Same winding as ellipses, so overlapping shapes form a solid union.
-        ctx.moveTo(prev.x-nx,prev.y-ny);ctx.lineTo(q.x-nx,q.y-ny)
-        ctx.lineTo(q.x+nx,q.y+ny);ctx.lineTo(prev.x+nx,prev.y+ny);ctx.closePath()}
-      prev=q
+        ctx.moveTo(prev.x-n0x,prev.y-n0y);ctx.lineTo(q.x-n1x,q.y-n1y)
+        ctx.lineTo(q.x+n1x,q.y+n1y);ctx.lineTo(prev.x+n0x,prev.y+n0y);ctx.closePath()}
+      prev=q;prevR=rQ
     }
   }
   if(fig.head){const q=projectGroundPoint(fig.head.x,fig.head.y,light)
-    if(q){const r=clamp(finite(fig.head.r,6),1,30);ellipse(q.x,q.y,r*.9+radius*.25,Math.max(1,r*.26))}}
+    if(q){const r=clamp(finite(fig.head.r,6),1,30);const rr=rAt(fig.head.y)
+      ellipse(q.x,q.y,r*.9+rr*.25,Math.max(1,r*.26))}}
   if(fig.blade){const b=fig.blade,a=projectGroundPoint(b.x0,b.y0,light),z=projectGroundPoint(b.x1,b.y1,light)
-    if(a&&z){const r=Math.max(.7,radius*.22)
-      ctx.moveTo(a.x,a.y-r);ctx.lineTo(z.x,z.y-r);ctx.lineTo(z.x,z.y+r);ctx.lineTo(a.x,a.y+r);ctx.closePath()}}
+    if(a&&z){const r0=Math.max(.7,rAt(b.y0)*.22),r1=Math.max(.7,rAt(b.y1)*.22)
+      ctx.moveTo(a.x,a.y-r0);ctx.lineTo(z.x,z.y-r1);ctx.lineTo(z.x,z.y+r1);ctx.lineTo(a.x,a.y+r0);ctx.closePath()}}
 }
 export function shadowOpacity(height:number,alpha=.55):number {
   // Height changes softness/opacity, NOT a second displacement of the head.
@@ -139,7 +162,7 @@ export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,lig
   const passes=Math.round(clamp(finite(opts.passes??2,2),1,3))
   const soft=1-clamp01(finite(light.hard,.14)),alt=Math.max(0,-height)
   const weights=[.62,.26,.12],sum=weights.slice(0,passes).reduce((a,b)=>a+b,0)
-  const target=alpha*(.8+.2*clamp01(finite(opts.lightBoost??light.i,.55)))
+  const target=alpha*(.88+.12*clamp01(finite(opts.lightBoost??light.i,.55)))
   const tint=/^#[0-9a-f]{6}$/i.test(light.color)?light.color:'#020409'
   // LONG-SHADOW TIP FADE: opacity dies toward the far tip the way a real
   // penumbra dissolves with distance from the contact patch. One gradient
@@ -152,21 +175,21 @@ export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,lig
   const tipOff=Math.min(320,maxH*Math.abs(Math.cos(finite(light.elev,.58)))/Math.max(.24,Math.sin(finite(light.elev,.58))))*finite(light.dirX,-.85)
   const shade=ctx.createLinearGradient(rootX,0,rootX+tipOff*1.3,0)
   shade.addColorStop(0,rgba(tint,1))
-  shade.addColorStop(.55,rgba(tint,.7))
-  shade.addColorStop(1,rgba(tint,.26))
+  shade.addColorStop(.55,rgba(tint,.78))
+  shade.addColorStop(1,rgba(tint,.32))
   ctx.fillStyle=shade
   // Outside-in soft passes. Normalize accumulated center opacity so adding
   // quality passes cannot darken the entire character shadow three times.
   for(let pass=passes-1;pass>=0;pass--){
     const opacity=1-Math.pow(1-target,weights[pass]/sum)
     ctx.globalAlpha=opacity
-    shadowPath(ctx,fig,light,radius*(1+pass*(soft*.65+Math.min(.65,alt/400))))
+    shadowPath(ctx,fig,light,radius*(1+pass*(soft*.42+Math.min(.65,alt/400))))
     ctx.fill()
   }
   ctx.globalAlpha=1
   // AO belongs only to actual foot contact; stale airborne anchors are ignored.
   if(height>=-1.5){
-    ctx.fillStyle=rgba('#010307',alpha*.35)
+    ctx.fillStyle=rgba('#0c0a20',alpha*.45)
     const unique=new Set((opts.contacts??[]).filter(Number.isFinite).map(x=>Math.round(x*4)/4))
     ctx.beginPath();for(const x of unique){ctx.moveTo(x+6*scale,2);ctx.ellipse(x,2,6*scale,1.6*scale,0,0,Math.PI*2)}ctx.fill()
   }
