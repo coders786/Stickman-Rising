@@ -409,6 +409,11 @@ export interface FighterDrawOpts {
   /** colored fills from nearby practicals (look.emitterFills) — one tap
    *  per source so light lands on the side facing EACH emitter */
   sideFills?: { color: string; a: number; dx: number }[]
+  /** face sign + context scale of the caller's transform — world-space tap
+   *  offsets must be un-flipped/un-scaled or lighting lands on the wrong
+   *  side of a left-facing figure */
+  flipX?: number
+  unit?: number
   scarfNodes?: ReadonlyArray<{ x: number; y: number }>
   scarfColor?: string
 }

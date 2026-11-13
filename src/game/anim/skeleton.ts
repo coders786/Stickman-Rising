@@ -282,8 +282,8 @@ export interface DrawOpts {
   time?: number
   flash?: number
   flashColor?: string
-  /** ghost/afterimage mode: single flat color, no detail */
-  ghost?: string
+  /** ghost/afterimage mode: single flat color/gradient, no detail */
+  ghost?: string | CanvasGradient
   ghostAlpha?: number
   /** skip outline+details (perf for far enemies) */
   simple?: boolean
@@ -295,6 +295,9 @@ export interface DrawOpts {
   sideFills?: { color: string; a: number; dx: number }[]
   /** legacy single-fill alias */
   sideFill?: { color: string; a: number; dx: number }
+  /** face sign + context scale of the caller's transform (see rig3d) */
+  flipX?: number
+  unit?: number
 }
 
 function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, cx: number, cy: number): void {
@@ -357,43 +360,52 @@ export function drawStick(
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
-  // LIGHT TRANSPORT (universal look) — colored fill from nearby practicals:
-  // a flat pass offset toward the emitter, body covers the middle. Reuses
-  // the ghost machinery; recursion terminates (ghost skips this block).
-  // One tap PER practical so light lands on the side facing each source.
+  // LIGHT TRANSPORT (universal look) — the body TAKES the key and the
+  // practicals as directional gradient washes (real-time 2D lighting), and
+  // thin rim taps carve the light-facing edge. Tap offsets are un-flipped
+  // and un-scaled (fx/u) so the light lands on the correct side even when
+  // the caller's context is mirrored for facing.
   if (!ghost) {
-    const sfs = [...(opts.sideFills ?? []), ...(opts.sideFill ? [opts.sideFill] : [])]
-    for (const sf of sfs) {
-      if (sf.a <= 0.01) continue
+    const fx = opts.flipX ?? 1, u = opts.unit ?? 1
+    const tap = (dx: number, dy: number) => ctx.translate(dx * fx / u, dy / u)
+    const hexA = (hex: string, a: number): string => {
+      const m = /^#([0-9a-f]{6})$/i.exec(hex)
+      const n = parseInt(m ? m[1] : '8899aa', 16)
+      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`
+    }
+    const wash = (dirWorld: number, col: string, peak: number) => {
+      if (peak <= 0.012) return
+      const tL = Math.sign(dirWorld || 1) * fx
+      const gr = ctx.createLinearGradient(-95 * tL, 0, 95 * tL, 0)
+      gr.addColorStop(0, hexA(col, 0))
+      gr.addColorStop(0.58, hexA(col, peak * 0.36))
+      gr.addColorStop(1, hexA(col, peak))
       ctx.save()
-      ctx.translate(sf.dx * 1.1, 0.3)
-      drawStick(ctx, g, style, {
-        time: t,
-        ghost: sf.color,
-        ghostAlpha: Math.min(1, sf.a) * 0.5,
-        simple: true,
-      })
+      drawStick(ctx, g, style, { time: t, ghost: gr, ghostAlpha: 1, simple: true })
       ctx.restore()
     }
-    // DIRECTIONAL RIM (universal look contract) — the moon/strobe key carves
-    // the light-facing edge of EVERY figure, not just the player (wrap =
-    // translucency bleed around thin limbs, key = tight lit edge).
     const rim = rimPlan()
+    // key form wash + one wash per practical (light on the side facing it)
+    wash(rim.keyDX, rim.keyColor, rim.keyA * 0.34)
+    for (const sf of [...(opts.sideFills ?? []), ...(opts.sideFill ? [opts.sideFill] : [])]) {
+      wash(sf.dx, sf.color, Math.min(0.85, sf.a) * 0.85)
+    }
+    // edge accents (thin)
     if (rim.wrapA > 0.015) {
       ctx.save()
-      ctx.translate(rim.wrapDX, rim.wrapDY)
+      tap(rim.wrapDX, rim.wrapDY)
       drawStick(ctx, g, style, {
         time: t, ghost: rim.keyColor,
-        ghostAlpha: Math.min(0.9, rim.wrapA * 0.85), simple: true,
+        ghostAlpha: Math.min(0.9, rim.wrapA * 0.7), simple: true,
       })
       ctx.restore()
     }
     if (rim.keyA > 0.015) {
       ctx.save()
-      ctx.translate(rim.keyDX * 1.25, rim.keyDY * 1.25)
+      tap(rim.keyDX * 1.25, rim.keyDY * 1.25)
       drawStick(ctx, g, style, {
         time: t, ghost: rim.keyColor,
-        ghostAlpha: Math.min(0.9, rim.keyA * 0.55), simple: true,
+        ghostAlpha: Math.min(0.9, rim.keyA * 0.5), simple: true,
       })
       ctx.restore()
     }

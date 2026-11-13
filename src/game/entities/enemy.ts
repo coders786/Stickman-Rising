@@ -9,7 +9,7 @@
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
-import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
+import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow, drawStrobeRim } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
@@ -1079,9 +1079,15 @@ export class Enemy {
       for (const c of this.snapContacts) contacts.push(c)
     }
     const flying = this.kind === 'drone' ? this.y : this.y
-    drawCastShadow(ctx, this.shFig, light, {
-      alpha: (this.kind === 'drone' ? 0.5 : 0.68) * alphaScale, width: 6, passes: 2, scale: s,
-      height: flying, contacts,
+    // PROJECTED SILHOUETTE SHADOW — body shape along the rays, not smears
+    drawProjectedShadow(ctx, light, (c, col) => {
+      c.save()
+      c.translate(this.x, this.hipY)
+      c.scale(this.face * s, s)
+      drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
+      c.restore()
+    }, {
+      alpha: (this.kind === 'drone' ? 0.5 : 0.68) * alphaScale, height: flying, rootX: this.x,
     })
   }
 
@@ -1111,6 +1117,7 @@ export class Enemy {
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',
       sideFills: emitterFills(this.x, this.y),
+      flipX: this.face, unit: s,
     })
     this.drawWeapon(ctx, time)
     // LIGHTNING RIM: the bolt's channel lights the body it struck. A true

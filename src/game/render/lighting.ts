@@ -106,6 +106,54 @@ export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
  *  the key. Its four silhouette corners are projected along the light rays
  *  onto the deck and unioned into one smeared quad — the wall-shadows
  *  technique (Tigsource research) on the play field. */
+/** PROJECTED SILHOUETTE SHADOW — the body's ACTUAL shape cast along the
+ *  light rays onto the ground plane (real-time game shadows, not capsule
+ *  smears): an affine shear+squash maps the figure onto the deck, a
+ *  tip-fade gradient dissolves the far end along the lean, and a blurred
+ *  second pass supplies the penumbra. The entity passes its own body
+ *  drawer so the shadow matches the pose (limbs, weapon and all). */
+export function drawProjectedShadow(
+  ctx: CanvasRenderingContext2D, light: KeyLight,
+  drawBody: (c: CanvasRenderingContext2D, col: string | CanvasGradient) => void,
+  opts: { alpha?: number; height?: number; rootX?: number; lightBoost?: number } = {},
+): void {
+  const height = finite(opts.height ?? 0, 0)
+  let alpha = shadowOpacity(height, opts.alpha ?? 0.55)
+  if (alpha < 0.006) return
+  alpha *= 0.86 + 0.14 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
+  const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
+  const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.3, 1.45))
+  const shear = -cot * clamp(finite(light.dirX, 0), -1, 1)
+  const rootX = finite(opts.rootX ?? 0, 0)
+  // tip-fade: level sets along (1, shear) = the projected direction, so the
+  // far end of the CAST (the head/tip) dissolves while the feet stay solid
+  const k = -175 * shear / (1 + shear * shear || 1)
+  const grad = ctx.createLinearGradient(rootX, 0, rootX + k, k * shear)
+  grad.addColorStop(0, rgba(tint, 1))
+  grad.addColorStop(0.55, rgba(tint, 0.7))
+  grad.addColorStop(1, rgba(tint, 0.2))
+  const project = () => { ctx.transform(1, 0, shear, -0.055, 0, 1.5) }
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  // sharp core
+  ctx.save()
+  ctx.globalAlpha = alpha * 0.82
+  project()
+  drawBody(ctx, grad)
+  ctx.restore()
+  // penumbra: one offset double-tap for the moon (the long, read-the-shape
+  // cast); practicals keep the single pass — their pools blur them anyway
+  if (light.ox === undefined) {
+    ctx.save()
+    ctx.globalAlpha = alpha * 0.34
+    ctx.translate(shear * 3.2, -0.2)
+    project()
+    drawBody(ctx, grad)
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
 export function drawPropShadow(
   ctx: CanvasRenderingContext2D, light: KeyLight,
   cx: number, halfW: number, topY: number,
