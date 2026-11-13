@@ -264,10 +264,13 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
     ctx.save();ctx.globalAlpha*=rk*rim.bounceA*.62
     ctx.translate(rim.bounceMagentaDX,rim.bounceMagentaDY);silhouette(ctx,g,'#d45bc8',opts);ctx.restore()
   }
-  if((opts.sideFill?.a??0)>.01){
-    const sf=opts.sideFill!
-    ctx.save();ctx.globalAlpha*=clamp01(sf.a)*.55
-    ctx.translate(sf.dx*1.05,0.3);silhouette(ctx,g,sf.color,opts);ctx.restore()
+  // LIGHT TRANSPORT — one colored tap per practical: standing between two
+  // sources lights BOTH sides of the silhouette (real multi-light).
+  for(const sf of opts.sideFills??[]){
+    if(sf.a>.01){
+      ctx.save();ctx.globalAlpha*=clamp01(sf.a)*.55
+      ctx.translate(sf.dx*1.05,0.3);silhouette(ctx,g,sf.color,opts);ctx.restore()
+    }
   }
   silhouette(ctx,g,opts.ghost??'#000000',opts)
   // Impact flashes remain an explicit temporary combat effect, not clothing.

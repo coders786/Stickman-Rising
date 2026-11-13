@@ -92,10 +92,13 @@ export function pointAt(l: Light2D, x: number, y: number): number {
 export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
   const dx = x - l.x
   const dirX = dx >= 0 ? 0.85 : -0.85
-  // warm-dark umber: the blocked door light leaves a warm-shaped smudge,
-  // visually distinct from the moon key's violet (research: shadow = the
-  // remaining ambient, never pure black)
-  return {dirX, elev: .52, hard: .5, i: pointAt(l, x, y), color: '#2a1410',
+  // shadow tint follows the blocked light's temperature: a warm practical
+  // leaves a warm-dark umber smudge, a cool one a cool-dark slate — each
+  // shadow reads distinctly against its own pool (shadow = the remaining
+  // ambient, never pure black)
+  const r = parseInt(l.color.slice(1, 3), 16), bl = parseInt(l.color.slice(5, 7), 16)
+  const tint = bl > r ? '#0e1722' : '#2a1410'
+  return {dirX, elev: .52, hard: .5, i: pointAt(l, x, y), color: tint,
     ox: l.x, oy: l.y}
 }
 
@@ -137,6 +140,12 @@ export function drawPropShadow(
 /** the stairwell practical — scene point light (warm), world coords */
 export const DOOR_LIGHT: Light2D = {
   kind: 'point', x: 1755, y: -120, range: 640, intensity: .95, color: '#ff9a4d',
+}
+/** the broken streetlight (left field) — cool practical. Its presence is
+ *  what makes shadows fall on BOTH sides of every figure: moon + door throw
+ *  left, the lamp throws right. Flicker lives in the background's pool draw. */
+export const STREET_LIGHT: Light2D = {
+  kind: 'point', x: 830, y: -252, range: 620, intensity: .9, color: '#b8e4ff',
 }
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)

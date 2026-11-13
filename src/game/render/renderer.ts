@@ -12,7 +12,7 @@ import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
-import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint, drawPropShadow } from './lighting'
+import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, shadowKeyFromPoint, drawPropShadow } from './lighting'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
@@ -128,28 +128,35 @@ export class Renderer {
     // UNIVERSAL LOOK: the rim/reflection rules read the live key each frame;
     // practical lights feed the light-transport fill automatically
     setSceneKey(light)
-    setSceneEmitters([DOOR_LIGHT])
+    setSceneEmitters([DOOR_LIGHT, STREET_LIGHT])
     // ECLIPSE — cloud mass crossing the moon dims + softens the key, so the
     // long deck shadows breathe as the banks drift over the disc
     light.i *= 1 - 0.42 * bg.moonCover
     light.hard *= 1 - 0.32 * bg.moonCover
-    // DUAL SHADOWS — the directional moon key plus the point practical's
-    // own warm shadow falling away from the door (every light type shadows)
-    // RAY-TRACED PROP SHADOW — the stairwell head blocks the moon key too
+    // MULTI-LIGHT SHADOWS — every light source casts its own shadow along
+    // its own rays: moon key (down-left), door practical (left), street
+    // practical (RIGHT). Shadows form on BOTH sides of every figure, like
+    // real life — nothing is a one-sided skew.
+    // RAY-TRACED PROP SHADOWS — the stairwell head and the lamp pole also
+    // block the key (wall-shadows technique on the play field)
     drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.3)
-    player.drawShadow(ctx, light)
-    if (Math.abs(player.x - DOOR_LIGHT.x) < 1200) {
-      const dk = shadowKeyFromPoint(DOOR_LIGHT, player.x, player.y)
-      if (dk.i > 0.06) player.drawShadow(ctx, dk, 0.5)
+    drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.24)
+    const drawEntityShadows = (ent: { drawShadow: (c: CanvasRenderingContext2D, k: KeyLight, s?: number) => void }, x: number, y: number) => {
+      ent.drawShadow(ctx, light)
+      if (Math.abs(x - DOOR_LIGHT.x) < 1200) {
+        const dk = shadowKeyFromPoint(DOOR_LIGHT, x, y)
+        if (dk.i > 0.06) ent.drawShadow(ctx, dk, 0.58)
+      }
+      if (Math.abs(x - STREET_LIGHT.x) < 1150) {
+        const sk = shadowKeyFromPoint(STREET_LIGHT, x, y)
+        if (sk.i > 0.06) ent.drawShadow(ctx, sk, 0.62)
+      }
     }
+    drawEntityShadows(player, player.x, player.y)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      e.drawShadow(ctx, light)
-      if (Math.abs(e.x - DOOR_LIGHT.x) < 1200) {
-        const dk = shadowKeyFromPoint(DOOR_LIGHT, e.x, e.y)
-        if (dk.i > 0.06) e.drawShadow(ctx, dk, 0.5)
-      }
+      drawEntityShadows(e, e.x, e.y)
     }
 
     // STROBE RIM: light the casters — every figure's bolt-facing edge

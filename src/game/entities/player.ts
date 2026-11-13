@@ -29,7 +29,7 @@ import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
 import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
-import { emitterFill, smearPlan } from '../render/look'
+import { emitterFills, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -5084,7 +5084,7 @@ export class Player {
       // by the renderer each frame).
       rimColor:'#a5d2f2',rimAlpha:0.85+this.strobeK*0.15,
       // LIGHT TRANSPORT — colored fill from practicals near the ronin
-      sideFill: emitterFill(this.x, this.y),
+      sideFills: emitterFills(this.x, this.y),
       alpha,
       // Null-black face/body stays black through hurt and impact frames.
       flash: 0, // null-black body; impacts remain in weapon/scene FX

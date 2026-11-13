@@ -108,21 +108,26 @@ export function smearPlan(speed: number): { n: number; dist: number; a: number }
 }
 
 export function emitterFill(x: number, y: number): SideFill {
-  let best = 0
-  let col = ''
-  let ex = x + 1
+  const fs = emitterFills(x, y)
+  return fs.length ? fs[0] : NO_FILL
+}
+/** TOP-2 practicals at a point (dominant first). Real multi-light: standing
+ *  between two sources lights BOTH sides of the silhouette — one tap per
+ *  source, each falling on the side that faces it. */
+export function emitterFills(x: number, y: number): SideFill[] {
+  const scored: { v: number; col: string; ex: number }[] = []
   for (const l of emitters) {
     const ddx = x - l.x, ddy = y - l.y
     const r = Math.max(1, l.range)
     const v = l.intensity / (1 + (ddx * ddx + ddy * ddy) / (r * r))
-    if (v > best) {
-      best = v
-      col = l.color
-      ex = l.x
-    }
+    if (v >= 0.05) scored.push({ v, col: l.color, ex: l.x })
   }
-  if (best < 0.05 || !col) return NO_FILL
-  return { color: col, a: Math.min(0.4, best * 0.48), dx: ex >= x ? 1 : -1 }
+  scored.sort((a, b) => b.v - a.v)
+  return scored.slice(0, 2).map((s) => ({
+    color: s.col,
+    a: Math.min(0.4, s.v * 0.48),
+    dx: s.ex >= x ? 1 : -1,
+  }))
 }
 
 /** REFLECTION POLICY — wet concrete, not polished glass: broken-up, low

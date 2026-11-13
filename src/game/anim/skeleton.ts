@@ -7,6 +7,7 @@
 
 import { Pose } from './pose'
 import { clamp01, rgba } from '../core/utils'
+import { rimPlan } from '../render/look'
 
 export interface Vec2 {
   x: number
@@ -289,7 +290,10 @@ export interface DrawOpts {
   /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
    * the swinging/charging edge illuminates the body that carries it */
   edgeLight?: { color: string; a: number }
-  /** colored fill from a nearby practical light (look.emitterFill) */
+  /** colored fills from nearby practicals (look.emitterFills) — one tap
+   *  per source so light lands on the side facing EACH emitter */
+  sideFills?: { color: string; a: number; dx: number }[]
+  /** legacy single-fill alias */
   sideFill?: { color: string; a: number; dx: number }
 }
 
@@ -356,17 +360,43 @@ export function drawStick(
   // LIGHT TRANSPORT (universal look) — colored fill from nearby practicals:
   // a flat pass offset toward the emitter, body covers the middle. Reuses
   // the ghost machinery; recursion terminates (ghost skips this block).
-  if (!ghost && (opts.sideFill?.a ?? 0) > 0.01) {
-    const sf = opts.sideFill!
-    ctx.save()
-    ctx.translate(sf.dx * 1.1, 0.3)
-    drawStick(ctx, g, style, {
-      time: t,
-      ghost: sf.color,
-      ghostAlpha: Math.min(1, sf.a) * 0.5,
-      simple: true,
-    })
-    ctx.restore()
+  // One tap PER practical so light lands on the side facing each source.
+  if (!ghost) {
+    const sfs = [...(opts.sideFills ?? []), ...(opts.sideFill ? [opts.sideFill] : [])]
+    for (const sf of sfs) {
+      if (sf.a <= 0.01) continue
+      ctx.save()
+      ctx.translate(sf.dx * 1.1, 0.3)
+      drawStick(ctx, g, style, {
+        time: t,
+        ghost: sf.color,
+        ghostAlpha: Math.min(1, sf.a) * 0.5,
+        simple: true,
+      })
+      ctx.restore()
+    }
+    // DIRECTIONAL RIM (universal look contract) — the moon/strobe key carves
+    // the light-facing edge of EVERY figure, not just the player (wrap =
+    // translucency bleed around thin limbs, key = tight lit edge).
+    const rim = rimPlan()
+    if (rim.wrapA > 0.015) {
+      ctx.save()
+      ctx.translate(rim.wrapDX, rim.wrapDY)
+      drawStick(ctx, g, style, {
+        time: t, ghost: rim.keyColor,
+        ghostAlpha: Math.min(0.9, rim.wrapA * 0.85), simple: true,
+      })
+      ctx.restore()
+    }
+    if (rim.keyA > 0.015) {
+      ctx.save()
+      ctx.translate(rim.keyDX * 1.25, rim.keyDY * 1.25)
+      drawStick(ctx, g, style, {
+        time: t, ghost: rim.keyColor,
+        ghostAlpha: Math.min(0.9, rim.keyA * 0.55), simple: true,
+      })
+      ctx.restore()
+    }
   }
 
   if (ghost) {

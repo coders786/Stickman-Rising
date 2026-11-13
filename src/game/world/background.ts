@@ -1,6 +1,7 @@
 import {StormEngine} from './storm'
 import {FOG} from '../render/look'
 import {clamp01} from '../core/utils'
+import { keyLightFromStorm, STREET_LIGHT } from '../render/lighting'
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -1219,11 +1220,28 @@ export class CyberBackground {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
-    // DIRECTIONAL — diffuse pool on the deck (under everything else).
-    // Target-art calibration (image-2.png): shadows only read DRAMATICALLY
-    // against a BRIGHT moonlit deck — this pool is the key's diffuse term.
-    ctx.globalAlpha = (0.58 + 0.22 * li) * (1 - 0.5 * cov);
-    ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
+    // DIRECTIONAL — diffuse pool on the deck. LIVE, not baked-in-place:
+    // brightness follows the key's real intensity (a total eclipse KILLS the
+    // pool instead of leaving it half-lit) and a directional lean tracks the
+    // azimuth — when lightning swings the key, the bright side swings too.
+    const key = keyLightFromStorm(li, this.lightningAz());
+    const poolA = (0.34 + 0.62 * clamp01(key.i)) * (1 - 0.92 * cov);
+    if (poolA > 0.012) {
+      ctx.globalAlpha = poolA;
+      ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
+      const lightOnRight = key.dirX < 0;   // shadows lean left ⇒ light sits right
+      const bx = lightOnRight ? ARENA_X0 + ARENA_W : ARENA_X0;
+      const ex2 = lightOnRight ? ARENA_X0 : ARENA_X0 + ARENA_W;
+      const lean = ctx.createLinearGradient(bx, 0, ex2, 0);
+      lean.addColorStop(0, 'rgba(190,214,240,0.1)');
+      lean.addColorStop(0.55, 'rgba(190,214,240,0.03)');
+      lean.addColorStop(1, 'rgba(190,214,240,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = clamp01(key.i) * (1 - 0.92 * cov);
+      ctx.fillStyle = lean;
+      ctx.fillRect(ARENA_X0, -10, ARENA_W, 150);
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.globalAlpha = 1;
     // LIGHT TRANSPORT — the door practical's warm bounce: scattered light
     // spreads wider and dimmer than the direct pool
@@ -1242,6 +1260,36 @@ export class CyberBackground {
       ctx.drawImage(this.bokehDisc, DOOR_X - 60, -172, 22, 22);
     }
     ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    // BROKEN STREETLIGHT (left practical) — the SECOND field light. Its pool,
+    // glow and flicker are LIVE (the pool dies with the bulb), its shadows
+    // fall RIGHT (opposite the moon + door) and every figure picks up a cool
+    // fill on its left side. Multi-light, shadows on BOTH sides.
+    const flick = 0.9 + 0.08 * Math.sin(t * 13.7) + 0.04 * Math.sin(t * 31.3);
+    const dropout = Math.sin(t * 0.41 + 2.2) > 0.995 ? 0.3 : 1;
+    const lampI = 0.9 * flick * dropout;
+    if (lampI > 0.02) {
+      ctx.globalCompositeOperation = 'lighter';
+      const poolR = 470;
+      const lg = ctx.createRadialGradient(STREET_LIGHT.x, 10, 20, STREET_LIGHT.x, 10, poolR);
+      lg.addColorStop(0, `rgba(150,200,240,${(0.21 * lampI).toFixed(3)})`);
+      lg.addColorStop(0.5, `rgba(130,185,235,${(0.09 * lampI).toFixed(3)})`);
+      lg.addColorStop(1, 'rgba(120,175,230,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(STREET_LIGHT.x - poolR, -10, poolR * 2, 150);
+      const bg2 = ctx.createRadialGradient(STREET_LIGHT.x, -252, 2, STREET_LIGHT.x, -252, 92);
+      bg2.addColorStop(0, `rgba(214,238,255,${(0.5 * lampI).toFixed(3)})`);
+      bg2.addColorStop(0.25, `rgba(160,210,250,${(0.17 * lampI).toFixed(3)})`);
+      bg2.addColorStop(1, 'rgba(150,200,245,0)');
+      ctx.fillStyle = bg2;
+      ctx.fillRect(STREET_LIGHT.x - 92, -344, 184, 184);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // pole shaft + housing (solid, pools light it from within)
+    ctx.fillStyle = '#0a0e15';
+    ctx.fillRect(STREET_LIGHT.x - 4.5, -258, 9, 260);
+    ctx.fillRect(STREET_LIGHT.x - 16, -274, 32, 17);
+    ctx.fillRect(STREET_LIGHT.x + 4, -266, 30, 5);
     ctx.globalAlpha = 1;
     // steam wisps (behind the specular layers)
     for (let i = 0; i < 3; i++) {
