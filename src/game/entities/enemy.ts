@@ -131,6 +131,9 @@ export class Enemy {
   cfg: EnemyConfig
   x: number
   y = 0
+  /** render interpolation: sim position one step ago (see Game.frame) */
+  px = NaN
+  py = NaN
   vx = 0
   vy = 0
   face: 1 | -1 = 1

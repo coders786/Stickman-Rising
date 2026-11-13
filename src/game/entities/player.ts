@@ -463,6 +463,9 @@ interface AbilityState {
 export class Player {
   x = 400
   y = 0
+  /** render interpolation: sim position one step ago (see Game.frame) */
+  px = NaN
+  py = NaN
   vx = 0
   vy = 0
   face: 1 | -1 = 1
@@ -801,6 +804,8 @@ export class Player {
     this.motion.reset()
     this.x = x
     this.y = 0
+    this.px = NaN // render-interp history dies with the old run
+    this.py = NaN
     this.vx = 0
     this.vy = 0
     this.physicsMetrics.momentumX=0;this.physicsMetrics.momentumY=0;this.physicsMetrics.energy=0

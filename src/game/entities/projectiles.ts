@@ -21,6 +21,9 @@ export class Projectile {
   kind: ProjectileSpawn['kind'] = 'bullet'
   x = 0
   y = 0
+  /** render interpolation: sim position one step ago (see Game.frame) */
+  px = NaN
+  py = NaN
   vx = 0
   vy = 0
   dmg = 5
@@ -266,6 +269,40 @@ export class ProjectilePool {
         this.free.push(pr)
         this.list.splice(i, 1)
       }
+    }
+  }
+
+  /** Render interpolation (Game.frame): snapshot sim positions before a step. */
+  recordPrev(): void {
+    for (const pr of this.list) {
+      if (!pr.active) continue
+      pr.px = pr.x
+      pr.py = pr.y
+    }
+  }
+
+  /** Install interpolated render positions (alpha in [0,1]); current values
+   *  are stashed in px/py and restored by unlerpRender(). */
+  lerpRender(alpha: number): void {
+    for (const pr of this.list) {
+      if (!pr.active) continue
+      const cx = pr.x
+      const px = Number.isFinite(pr.px) ? pr.px : pr.x
+      pr.x = px + (pr.x - px) * alpha
+      pr.px = cx
+      const cy = pr.y
+      const py = Number.isFinite(pr.py) ? pr.py : pr.y
+      pr.y = py + (pr.y - py) * alpha
+      pr.py = cy
+    }
+  }
+
+  /** Restore the true sim positions (px/py hold them after lerpRender). */
+  unlerpRender(): void {
+    for (const pr of this.list) {
+      if (!pr.active) continue
+      pr.x = pr.px
+      pr.y = pr.py
     }
   }
 

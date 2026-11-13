@@ -130,6 +130,15 @@ export class Game {
   private canvas: HTMLCanvasElement | null = null
   private ctx: CanvasRenderingContext2D | null = null
   private raf = 0
+  // --- render interpolation ("fix your timestep"): the sim advances in
+  // fixed 1/60 steps (the tested configuration) into an accumulator; the
+  // render samples motion BETWEEN the last two sim states so every display
+  // frame advances smoothly at any refresh rate. Physics and sprite frames
+  // are untouched — only the drawn position/time are sampled continuously.
+  private simAccum = 0
+  private prevStepTime = 0
+  private renderTime = 0
+  private interpInstalled = false
   private lastFrame = 0
   private cssW = 1280
   private cssH = 720
@@ -476,6 +485,8 @@ export class Game {
     this.stats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
     this.runTime = 0
     this.time = 0
+    this.prevStepTime = 0
+    this.simAccum = 0
     this.timeScale = 1
     this.slowmoT = 0
     this.hitstopT = 0
@@ -562,6 +573,7 @@ export class Game {
     this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
     this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 1.2, dtRaw)
     this.wall = now / 1000
+    this.renderTime = this.time // frozen/paused frames render the sim time
     this.govern(dtRaw)
     this.detectCliff(dtRaw)
     // Weather has its own real visual clock, independent of combat hitstop.
@@ -593,13 +605,17 @@ export class Game {
       // --- cinematics run on real time ---
       this.updateCinematics(dtRaw)
 
-      // --- capped substeps for stable physics (NO death spiral: cost of a
-      // frame is bounded no matter how slow the machine runs) ---
-      let remaining = simDt
+      // --- fixed-timestep substeps + accumulator (render interpolation):
+      // the sim always advances in exact 1/60 steps (the tested, tuned
+      // configuration at EVERY frame rate) and the leftover time carries
+      // over. NO death spiral: at most 3 steps + one clamped catch-up tick
+      // per frame, so the cost of a frame stays bounded on slow machines.
+      this.simAccum += simDt
       let substeps = 0
-      while (remaining > 1e-6 && substeps < 3) {
-        const stepDt = Math.min(remaining, 1 / 60)
-        this.step(stepDt)
+      let caughtUp = false
+      while (this.simAccum >= 1 / 60 && substeps < 3) {
+        this.recordPrev()
+        this.step(1 / 60)
         // EDGE LIFETIME = ONE SUBSTEP. pressed()/released() edges must be
         // visible to exactly ONE simulation step: clearing them only once
         // per RENDERED frame let a single jump press fire doJump in BOTH
@@ -609,43 +625,119 @@ export class Game {
         // rAF callbacks, so no press is ever missed; presses that land while
         // a state ignores them are still caught by the combo BUFFER, which
         // is pressTime-based and deliberately spans substeps and frames.
-        this.input.endFrame(stepDt)
-        remaining -= stepDt
+        this.input.endFrame(1 / 60)
+        this.simAccum -= 1 / 60
         substeps++
       }
-      if (remaining > 1e-6) {
+      if (this.simAccum >= 1 / 60) {
         // very slow frame: consume the backlog as one clamped catch-up tick
         // so the world keeps roughly real-time without multiplying cost
-        this.step(Math.min(remaining, 0.05))
+        this.recordPrev()
+        this.step(Math.min(this.simAccum, 0.05))
         this.input.endFrame(0.05)
+        this.simAccum = 0
+        caughtUp = true
+        // collapse the interpolation history onto the frontier: the jump is
+        // shown on this frame (the display froze anyway) and the NEXT frames
+        // interpolate strictly forward from here — never rewind.
+        this.recordPrev()
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
       this.fx.update(simDt)
       this.bg.update(simDt)
+      // --- sample the render between the last two sim states ---
+      // alpha sweeps 0..1 as the leftover accumulator fills toward the next
+      // step, so motion advances a little EVERY display frame instead of
+      // jumping at sim steps (the "90fps feel": smooth at 60/90/120/144Hz
+      // and through timing jitter). On a hitch catch-up frame the frontier
+      // state is shown directly (alpha=1) — no duplicate frame.
+      const alpha = caughtUp ? 1 : Math.min(1, Math.max(0, this.simAccum * 60))
+      this.renderTime = this.prevStepTime + alpha * (this.time - this.prevStepTime)
+      this.installRenderLerp(alpha)
       this.updateCamera(simDt)
     }
 
     // --- render ---
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    const world: RenderWorld = {
-      cam: this.cam,
-      fx: this.fx,
-      bg: this.bg,
-      enemies: this.enemies,
-      player: this.player,
-      projectiles: this.projectiles,
-      hud: this.hud,
-      hudState: this.buildHudState(),
-      time: this.time,
+    try {
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      const world: RenderWorld = {
+        cam: this.cam,
+        fx: this.fx,
+        bg: this.bg,
+        enemies: this.enemies,
+        player: this.player,
+        projectiles: this.projectiles,
+        hud: this.hud,
+        hudState: this.buildHudState(),
+        time: this.renderTime,
+      }
+      this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
+      // pose editor tick (keys + preview + solve) while its freeze is active;
+      // MUST run before endFrame so raw editor key edges survive one frame
+      if (editFrozen) this.inspect.editorFrame(this, dtRaw)
+      // inspection overlay (solo/sheet/edit views + state readout)
+      this.inspect.draw(ctx, this, this.renderTime)
+    } finally {
+      // ALWAYS hand the sim its true positions back (crash-safe)
+      this.uninstallRenderLerp()
     }
-    this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
-    // pose editor tick (keys + preview + solve) while its freeze is active;
-    // MUST run before endFrame so raw editor key edges survive one frame
-    if (editFrozen) this.inspect.editorFrame(this, dtRaw)
-    // inspection overlay (solo/sheet/edit views + state readout)
-    this.inspect.draw(ctx, this, this.time)
 
     this.input.endFrame(dtRaw)
+  }
+
+  /** Snapshot sim positions before a step (render interpolation). */
+  private recordPrev(): void {
+    this.prevStepTime = this.time
+    const p = this.player
+    p.px = p.x
+    p.py = p.y
+    for (const e of this.enemies) {
+      e.px = e.x
+      e.py = e.y
+    }
+    this.projectiles.recordPrev()
+  }
+
+  /** Install interpolated render positions (swap trick: px/py hold the true
+   *  sim values until uninstallRenderLerp restores them). */
+  private installRenderLerp(alpha: number): void {
+    const p = this.player
+    {
+      const cx = p.x
+      const px = Number.isFinite(p.px) ? p.px : p.x
+      p.x = px + (p.x - px) * alpha
+      p.px = cx
+      const cy = p.y
+      const py = Number.isFinite(p.py) ? p.py : p.y
+      p.y = py + (p.y - py) * alpha
+      p.py = cy
+    }
+    for (const e of this.enemies) {
+      const cx = e.x
+      const px = Number.isFinite(e.px) ? e.px : e.x
+      e.x = px + (e.x - px) * alpha
+      e.px = cx
+      const cy = e.y
+      const py = Number.isFinite(e.py) ? e.py : e.y
+      e.y = py + (e.y - py) * alpha
+      e.py = cy
+    }
+    this.projectiles.lerpRender(alpha)
+    this.interpInstalled = true
+  }
+
+  /** Restore the true sim positions after the frame has been drawn. */
+  private uninstallRenderLerp(): void {
+    if (!this.interpInstalled) return
+    this.interpInstalled = false
+    const p = this.player
+    p.x = p.px
+    p.y = p.py
+    for (const e of this.enemies) {
+      e.x = e.px
+      e.y = e.py
+    }
+    this.projectiles.unlerpRender()
   }
 
   private step(dt: number): void {
