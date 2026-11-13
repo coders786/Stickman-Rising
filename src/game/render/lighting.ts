@@ -112,6 +112,8 @@ export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
  *  tip-fade gradient dissolves the far end along the lean, and a blurred
  *  second pass supplies the penumbra. The entity passes its own body
  *  drawer so the shadow matches the pose (limbs, weapon and all). */
+const shadowGradCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
+
 export function drawProjectedShadow(
   ctx: CanvasRenderingContext2D, light: KeyLight,
   drawBody: (c: CanvasRenderingContext2D, col: string | CanvasGradient) => void,
@@ -130,11 +132,18 @@ export function drawProjectedShadow(
   const lean = clamp(cot * 0.55, 0.35, 1.15)
   const shear = -lean * clamp(finite(light.dirX, 0), -1, 1)
   const rootX = finite(opts.rootX ?? 0, 0)
-  // tip-fade: solid at the feet (y=0), dissolving toward the head tip
-  const grad = ctx.createLinearGradient(rootX, 0, rootX, -185)
-  grad.addColorStop(0, rgba(tint, 1))
-  grad.addColorStop(0.55, rgba(tint, 0.74))
-  grad.addColorStop(1, rgba(tint, 0.26))
+  // tip-fade: solid at the feet (y=0), dissolving toward the head tip.
+  // Purely vertical ⇒ x is irrelevant; cache one gradient per tint color.
+  let tintMap = shadowGradCache.get(ctx)
+  if (!tintMap) { tintMap = new Map(); shadowGradCache.set(ctx, tintMap) }
+  let grad = tintMap.get(tint)
+  if (!grad) {
+    grad = ctx.createLinearGradient(0, 0, 0, -185)
+    grad.addColorStop(0, rgba(tint, 1))
+    grad.addColorStop(0.55, rgba(tint, 0.74))
+    grad.addColorStop(1, rgba(tint, 0.26))
+    tintMap.set(tint, grad)
+  }
   const project = () => { ctx.transform(1, 0, shear, -0.22, 0, 0) }
   ctx.save()
   ctx.globalCompositeOperation = 'source-over'

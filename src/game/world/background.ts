@@ -687,6 +687,8 @@ export class CyberBackground {
   /* pre-rendered art (built once, resolution independent) */
   private built = false;
   private skyStrip!: HTMLCanvasElement;
+  /** light-pollution glow plate (perf, no-lightning case) */
+  private pollPlate: HTMLCanvasElement | null = null;
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
   private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
@@ -800,6 +802,7 @@ export class CyberBackground {
 
   drawSky(ctx: CanvasRenderingContext2D, cam: BgCam): void {
     this.ensureBuilt();
+    // light-pollution glow plate (perf): vertical gradient, no-lightning case
     const cx = Number.isFinite(cam.x) ? cam.x : 0;
     const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
     const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
@@ -830,17 +833,38 @@ export class CyberBackground {
 
     /* 1.5 — CITY LIGHT-POLLUTION GLOW: the megapolis below breathes color
      * up into the cloud deck — cool electric blue at altitude, warm sodium
-     * and magenta neon right at the skyline. Additive; towers occlude it. */
+     * and magenta neon right at the skyline. Additive; towers occlude it.
+     * PERF: the gradient is vertical-only, so the no-lightning case comes
+     * from a baked 8×216 strip stretched full width (identical pixels — a
+     * horizontal stretch interpolates identical columns); the rare
+     * lightning-modulated case keeps the live gradient. */
     {
       const I0 = this.lightningI();
-      const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
-      pg.addColorStop(0, 'rgba(40,70,140,0)');
-      pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
-      pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
-      pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = pg;
-      ctx.fillRect(0, hy - 210, w, 216);
+      if (I0 <= 0) {
+        if (!this.pollPlate) {
+          const pc = document.createElement('canvas');
+          pc.width = 8; pc.height = 216;
+          const pg2 = pc.getContext('2d')!;
+          const lg = pg2.createLinearGradient(0, 0, 0, 216);
+          lg.addColorStop(0, 'rgba(40,70,140,0)');
+          lg.addColorStop(0.55, 'rgba(46,78,152,0.075)');
+          lg.addColorStop(0.84, 'rgba(122,64,150,0.1)');
+          lg.addColorStop(1, 'rgba(255,116,84,0.115)');
+          pg2.fillStyle = lg;
+          pg2.fillRect(0, 0, 8, 216);
+          this.pollPlate = pc;
+        }
+        ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
+      } else {
+        const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
+        pg.addColorStop(0, 'rgba(40,70,140,0)');
+        pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
+        pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
+        pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
+        ctx.fillStyle = pg;
+        ctx.fillRect(0, hy - 210, w, 216);
+      }
       ctx.globalCompositeOperation = 'source-over';
     }
 

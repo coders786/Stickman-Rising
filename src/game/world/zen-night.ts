@@ -47,6 +47,7 @@ export class ZenNightBackground{
  private cloud:HTMLCanvasElement|null=null
  private shaft:HTMLCanvasElement|null=null
  private petal:HTMLCanvasElement|null=null
+ private vignette:HTMLCanvasElement|null=null
  private deckPool:HTMLCanvasElement|null=null
  private warmPool:HTMLCanvasElement|null=null
  private glitter:HTMLCanvasElement|null=null
@@ -85,6 +86,9 @@ export class ZenNightBackground{
  }
  private buildStatic(){
   const W=Math.min(1920,Math.ceil(this.w*1.25)),H=Math.min(1080,Math.ceil(this.h*1.25)),r=noise(0x2204)
+  /** pre-downsample a 1.25x supersampled bake to exact screen size once —
+   *  per-frame blits become 1:1 copies instead of bilinear resamples */
+  const finalize=(src:HTMLCanvasElement)=>{const{c,g}=canvas(this.w,this.h);g.drawImage(src,0,0,this.w,this.h);return c}
   // ---------------- staticFar: sky + stars + atmospheric mountains --------
   {const {c,g}=canvas(W,H);const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#04070f');sky.addColorStop(.46,'#0a1421');sky.addColorStop(.74,'#17242e');sky.addColorStop(1,'#243139');g.fillStyle=sky;g.fillRect(0,0,W,H)
    for(let i=0;i<150;i++){const y=r()*H*.5,a=.1+r()*.5,s=r()<.08?1.8:1;g.fillStyle=`rgba(205,221,222,${a})`;g.fillRect(r()*W,y,s,s)}
@@ -98,7 +102,7 @@ export class ZenNightBackground{
    const city=noise(0x9e11)
    for(let cluster=0;cluster<4;cluster++){const cx0=W*(.12+cluster*.23)+city()*70,cy0=H*(.62+city()*.1),n=14+city()*12
     for(let i=0;i<n;i++){const x=cx0+city()*130,y=cy0-city()*46,w2=2+city()*2.4,h2=1.4+city()*2.2;const warm=city()<.62;g.fillStyle=warm?`rgba(255,206,150,${.08+city()*.2})`:`rgba(168,200,222,${.06+city()*.16})`;g.fillRect(x,y,w2,h2)}}
-   this.staticFar=c}
+   this.staticFar=finalize(c)}
   // ---------------- staticMid: bamboo grove band (parallax) --------------
   {const {c,g}=canvas(W,H),r2=noise(0x77c1);const ground=H*.80
    g.fillStyle='#081116';g.fillRect(0,ground-8,W,H-ground+8)
@@ -111,7 +115,7 @@ export class ZenNightBackground{
     // leaf sprays near the top
     for(let k=0;k<7;k++){const u=.62+r2()*.38,xx=x+lean*u*u,yy=ground-h2*u,an=-.7-r2()*1.7,ln=14+r2()*26
      g.strokeStyle=`rgba(20,34,38,${.5+r2()*.4})`;g.lineWidth=1.8;g.beginPath();g.moveTo(xx,yy);g.lineTo(xx+Math.cos(an)*ln,yy+Math.sin(an)*ln);g.stroke()}}
-   this.staticMid=c}
+   this.staticMid=c /* native: subpixel scroll needs the direct per-frame resample (pixel parity) */}
   // ---------------- staticDeck: the engawa boards (world-space) ----------
   {const {c,g}=canvas(ARENA_W,270)
    const grad=g.createLinearGradient(0,0,0,270);grad.addColorStop(0,'#374347');grad.addColorStop(.18,'#242e31');grad.addColorStop(1,'#0a1013');g.fillStyle=grad;g.fillRect(0,0,ARENA_W,270)
@@ -213,6 +217,12 @@ export class ZenNightBackground{
     g.fillStyle=`rgba(${r5()<.5?'10,16,20':'150,175,182'},${.03+r5()*.07})`;g.beginPath();g.ellipse(x,y,rx,ry,r5()*.6,0,TAU);g.fill()}
    for(let x=0;x<ARENA_W;x+=74){g.strokeStyle='rgba(8,13,16,.16)';g.lineWidth=1.2;g.beginPath();g.moveTo(x,0);g.lineTo(x+16,150);g.stroke()}
    this.wetPlate=c}
+  // screen-space atmospheric grade — baked once per resize (was a full-screen
+  // radial-gradient fillRect every frame)
+  {const {c,g}=canvas(this.w,this.h)
+   const v=g.createRadialGradient(this.w*.5,this.h*.5,Math.min(this.w,this.h)*.25,this.w*.5,this.h*.5,Math.max(this.w,this.h)*.72)
+   v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,4,11,.32)')
+   g.fillStyle=v;g.fillRect(0,0,this.w,this.h);this.vignette=c}
  }
 
  drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam){
@@ -321,6 +331,6 @@ export class ZenNightBackground{
  drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();this.storm.setView(cam);this.storm.drawRain(ctx);const w=this.w,h=this.h,t=this.t
   // pooled depth petals; one atlas sprite, no allocations
   for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(12+25*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(9+18*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.18+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
-  // restrained cool atmospheric grade
-  const v=ctx.createRadialGradient(w*.5,h*.5,Math.min(w,h)*.25,w*.5,h*.5,Math.max(w,h)*.72);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,4,11,.32)');ctx.fillStyle=v;ctx.fillRect(0,0,w,h)}
+  // restrained cool atmospheric grade (pre-baked per resize)
+  ctx.drawImage(this.vignette!,0,0)}
 }

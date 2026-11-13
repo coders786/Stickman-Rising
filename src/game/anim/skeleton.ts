@@ -343,6 +343,8 @@ function fillFoot(
  * Draws the stickman. The ctx is expected to be pre-translated to the hip
  * position, flipped horizontally for facing, and scaled — geom is local space.
  */
+const washCaches = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
+
 export function drawStick(
   ctx: CanvasRenderingContext2D,
   g: SkelGeom,
@@ -373,15 +375,23 @@ export function drawStick(
       const n = parseInt(m ? m[1] : '8899aa', 16)
       return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`
     }
+    // cached gradient per (ctx, color, direction); live intensity rides
+    // ghostAlpha — identical products, zero per-frame allocations
+    const washCache = washCaches.get(ctx) ?? (() => { const m = new Map<string, CanvasGradient>(); washCaches.set(ctx, m); return m })()
     const wash = (dirWorld: number, col: string, peak: number) => {
       if (peak <= 0.012) return
-      const tL = Math.sign(dirWorld || 1) * fx
-      const gr = ctx.createLinearGradient(-95 * tL, 0, 95 * tL, 0)
-      gr.addColorStop(0, hexA(col, 0))
-      gr.addColorStop(0.58, hexA(col, peak * 0.36))
-      gr.addColorStop(1, hexA(col, peak))
+      const d = Math.sign(dirWorld || 1) < 0 ? -1 : 1
+      const key = col + (d < 0 ? '|L' : '|R')
+      let gr = washCache.get(key)
+      if (!gr) {
+        gr = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
+        gr.addColorStop(0, hexA(col, 0))
+        gr.addColorStop(0.58, hexA(col, 0.36))
+        gr.addColorStop(1, hexA(col, 1))
+        washCache.set(key, gr)
+      }
       ctx.save()
-      drawStick(ctx, g, style, { time: t, ghost: gr, ghostAlpha: 1, simple: true })
+      drawStick(ctx, g, style, { time: t, ghost: gr, ghostAlpha: peak, simple: true })
       ctx.restore()
     }
     const rim = rimPlan()

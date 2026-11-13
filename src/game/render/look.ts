@@ -54,22 +54,25 @@ export interface RimPlan {
 /** rim geometry DERIVED FROM THE KEY — if the key moves, the rim follows.
  *  Light falls from upper-right (moon): the rim only appears on edges that
  *  face it; the opposite lower edges pick up faint sign bounce. */
+/** Allocation-free: one mutable plan object reused every read (callers read
+ *  the fields immediately; the frame has a single key). */
+const rimPlanObj: RimPlan = {
+  keyDX: 0, keyDY: -0.72, keyColor: '#a5d2f2', keyA: 0.9,
+  wrapDX: 0, wrapDY: -1.35, wrapA: 0.16,
+  bounceCyanDX: 0, bounceCyanDY: 0.5,
+  bounceMagentaDX: 0, bounceMagentaDY: 0.78, bounceA: 0.24,
+}
 export function rimPlan(): RimPlan {
   const towardLight = -keyDirX // shadows fall dirX ⇒ light sits opposite
-  return {
-    keyDX: towardLight * 1.18,
-    keyDY: -0.72,
-    keyColor: '#a5d2f2',
-    keyA: 0.62 + 0.38 * keyI + 0.12 * keyHard,
-    wrapDX: towardLight * 2.1,
-    wrapDY: -1.35,
-    wrapA: 0.1 + 0.08 * keyI,
-    bounceCyanDX: -towardLight * 1.02,
-    bounceCyanDY: 0.5,
-    bounceMagentaDX: -towardLight * 1.28,
-    bounceMagentaDY: 0.78,
-    bounceA: 0.24 + 0.1 * keyI,
-  }
+  const r = rimPlanObj
+  r.keyDX = towardLight * 1.18
+  r.keyA = 0.62 + 0.38 * keyI + 0.12 * keyHard
+  r.wrapDX = towardLight * 2.1
+  r.wrapA = 0.1 + 0.08 * keyI
+  r.bounceCyanDX = -towardLight * 1.02
+  r.bounceMagentaDX = -towardLight * 1.28
+  r.bounceA = 0.24 + 0.1 * keyI
+  return r
 }
 
 /* ================= SCENE EMITTERS (light transport) =================

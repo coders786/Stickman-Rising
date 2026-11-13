@@ -9,6 +9,42 @@ import { rimPlan } from '../render/look'
 type Point = { x: number; y: number }
 type SurfacePoint = Point & { radius: number }
 
+/* Per-ctx wash gradient caches: the wash STOP colors are fixed (full
+ * intensity); live brightness rides globalAlpha — the composited product is
+ * identical to baking alpha into the stops, but zero gradients/strings are
+ * allocated per frame (GC was ~30% of frame CPU). */
+const keyWashCache = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasGradient>>()
+function keyWashGrad(ctx: CanvasRenderingContext2D, dir: number): CanvasGradient {
+  let m = keyWashCache.get(ctx)
+  if (!m) { m = new Map(); keyWashCache.set(ctx, m) }
+  const d = dir < 0 ? -1 : 1
+  let g = m.get(d)
+  if (!g) {
+    g = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
+    g.addColorStop(0, 'rgba(165,210,242,0)')
+    g.addColorStop(0.62, 'rgba(165,210,242,0.17)')
+    g.addColorStop(1, 'rgba(185,222,248,0.34)')
+    m.set(d, g)
+  }
+  return g
+}
+const sfWashCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
+function sfWashGrad(ctx: CanvasRenderingContext2D, color: string, dir: number): CanvasGradient {
+  let m = sfWashCache.get(ctx)
+  if (!m) { m = new Map(); sfWashCache.set(ctx, m) }
+  const k = color + (dir < 0 ? '|L' : '|R')
+  let g = m.get(k)
+  if (!g) {
+    const d = dir < 0 ? -1 : 1
+    g = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
+    g.addColorStop(0, 'rgba(255,255,255,0)')
+    g.addColorStop(0.58, hexA(color, 0.32))
+    g.addColorStop(1, hexA(color, 0.85))
+    m.set(k, g)
+  }
+  return g
+}
+
 /** '#rrggbb' + alpha → 'rgba(r,g,b,a)' (gradient stops need components) */
 const hexA = (hex: string, a: number): string => {
   const m = /^#([0-9a-f]{6})$/i.exec(hex)
@@ -272,23 +308,15 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
     // a directional gradient — bright toward the light, falling to dark
     // across the form. This is what makes figures look LIT, not outlined.
     const tL=Math.sign(rim.keyDX)*fx
-    const kw=ctx.createLinearGradient(-95*tL,0,95*tL,0)
-    kw.addColorStop(0,'rgba(165,210,242,0)')
-    kw.addColorStop(0.62,`rgba(165,210,242,${(rk*rim.keyA*0.17).toFixed(3)})`)
-    kw.addColorStop(1,`rgba(185,222,248,${(rk*rim.keyA*0.34).toFixed(3)})`)
-    ctx.save();ctx.globalAlpha*=1;silhouette(ctx,g,kw,opts);ctx.restore()
+    ctx.save();ctx.globalAlpha*=rk*rim.keyA;silhouette(ctx,g,keyWashGrad(ctx,tL),opts);ctx.restore()
     // PRACTICAL WASHES — near a bright practical the body visibly warms/
     // cools on the side facing it (inverse-square via emitterFills) — the
     // 'lighting updates near the house light' behavior, one gradient per
     // source so light lands on the side facing EACH emitter.
     for(const sf of opts.sideFills??[]){
       if(sf.a>.01){
-        const tF=sf.dx*fx
-        const pw=ctx.createLinearGradient(-95*tF,0,95*tF,0)
-        pw.addColorStop(0,`rgba(255,255,255,0)`)
-        pw.addColorStop(0.58,hexA(sf.color,clamp01(sf.a)*0.32))
-        pw.addColorStop(1,hexA(sf.color,clamp01(sf.a)*0.85))
-        ctx.save();silhouette(ctx,g,pw,opts);ctx.restore()
+        ctx.save();ctx.globalAlpha*=clamp01(sf.a)
+        silhouette(ctx,g,sfWashGrad(ctx,sf.color,sf.dx*fx),opts);ctx.restore()
       }
     }
     // edge accents (thin, corrected): wrap translucency + tight key rim
