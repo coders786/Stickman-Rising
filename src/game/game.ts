@@ -701,8 +701,8 @@ export class Game {
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
         ctx.font = '10px ui-monospace,monospace'
         ctx.fillStyle = 'rgba(190,220,232,.55)'
-        ctx.textAlign = 'left'
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}`, 12, this.cssH - 26)
+        ctx.textAlign = 'right'
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}`, this.cssW - 12, 62)
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)

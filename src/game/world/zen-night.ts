@@ -81,6 +81,8 @@ export class ZenNightBackground{
    let q=g.createRadialGradient(180,180,26,180,180,180);q.addColorStop(0,'rgba(214,236,244,.17)');q.addColorStop(.26,'rgba(158,196,214,.09)');q.addColorStop(.58,'rgba(120,162,184,.035)');q.addColorStop(1,'rgba(90,130,152,0)');g.fillStyle=q;g.fillRect(0,0,360,360)
    // tight bright ring hugging the limb
    q=g.createRadialGradient(180,180,58,180,180,84);q.addColorStop(0,'rgba(244,250,250,0)');q.addColorStop(.5,'rgba(244,250,250,.20)');q.addColorStop(1,'rgba(244,250,250,0)');g.fillStyle=q;g.fillRect(0,0,360,360)
+   // faint CORONA RING at ~1.35R — diffraction ring around the disc
+   q=g.createRadialGradient(180,180,84,180,180,106);q.addColorStop(0,'rgba(210,232,242,0)');q.addColorStop(.5,'rgba(210,232,242,.055)');q.addColorStop(1,'rgba(210,232,242,0)');g.fillStyle=q;g.fillRect(0,0,360,360)
    // the DISC — bright near-white (the scene's brightest object), soft limb
    q=g.createRadialGradient(166,162,8,180,180,68);q.addColorStop(0,'#f6faf8');q.addColorStop(.62,'#e8efec');q.addColorStop(.9,'#d4e0dd');q.addColorStop(1,'#b9c9c8');g.fillStyle=q;g.beginPath();g.arc(180,180,68,0,TAU);g.fill()
    // mare mottling — TONE, not dirt (very low contrast, cool)
@@ -126,7 +128,7 @@ export class ZenNightBackground{
   {const {c,g}=canvas(20,16);g.fillStyle='#d9a8b8';g.beginPath();g.moveTo(2,8);g.quadraticCurveTo(8,0,18,5);g.quadraticCurveTo(10,15,2,8);g.fill();g.strokeStyle='rgba(240,214,222,.55)';g.lineWidth=.7;g.stroke();this.petal=c}
   {const {c,g}=canvas(64,64);const q=g.createRadialGradient(32,32,2,32,32,30);q.addColorStop(0,'rgba(255,200,216,.5)');q.addColorStop(.35,'rgba(240,170,196,.22)');q.addColorStop(1,'rgba(220,140,170,0)');g.fillStyle=q;g.fillRect(0,0,64,64);this.petalGlow=c}
   // MOON DIFFUSE POOL — the lit surface the long shadows read against
-  {const {c,g}=canvas(512,128);const q=g.createRadialGradient(256,64,14,256,64,250);q.addColorStop(0,'rgba(196,222,244,.52)');q.addColorStop(.45,'rgba(162,194,224,.24)');q.addColorStop(1,'rgba(124,162,198,0)');g.fillStyle=q;g.fillRect(0,0,512,128);this.deckPool=c}
+  {const {c,g}=canvas(512,128);const q=g.createRadialGradient(256,64,14,256,64,250);q.addColorStop(0,'rgba(196,222,244,.34)');q.addColorStop(.45,'rgba(162,194,224,.16)');q.addColorStop(1,'rgba(124,162,198,0)');g.fillStyle=q;g.fillRect(0,0,512,128);this.deckPool=c}
   // PRACTICAL WARM POOL — door / lantern bounce (inverse-ish falloff)
   {const {c,g}=canvas(256,256);const q=g.createRadialGradient(128,128,8,128,128,126);q.addColorStop(0,'rgba(255,178,112,.5)');q.addColorStop(.42,'rgba(232,132,74,.2)');q.addColorStop(1,'rgba(180,88,40,0)');g.fillStyle=q;g.fillRect(0,0,256,256);this.warmPool=c}
   // SPECULAR GLITTER LANE — broken horizontal sparkle for the wet mirror
@@ -360,6 +362,13 @@ export class ZenNightBackground{
   this.storm.drawSky(ctx)
   // mid garden cache parallax
   const shift=-(cam.x*.075)%w;ctx.drawImage(this.staticMid!,shift,0,w,h);ctx.drawImage(this.staticMid!,shift+(shift>0?-w:w),0,w,h)
+  // NIGHT BIRDS — rare, slow silhouettes crossing the moonlit sky (living
+  // motion is real physics: slow drift + wing stroke; never decorative spins)
+  {for(let k=0;k<2;k++){
+    const bt=((t*.011+k*.53)%1),bx=-90+bt*(this.w+180),by=this.h*.15+Math.sin(bt*6+k*2.1)*34
+    const flap=Math.sin(t*3.1+k*2.2)*.55
+    ctx.strokeStyle='rgba(30,44,58,.34)';ctx.lineWidth=2.2;ctx.lineCap='round'
+    ctx.beginPath();ctx.moveTo(bx-9,by-4*flap);ctx.quadraticCurveTo(bx-3,by+2,bx,by);ctx.quadraticCurveTo(bx+3,by+2,bx+9,by-4*flap);ctx.stroke()}}
   // FOG SYSTEM v2 (height fog + directional inscattering):
   // two mist banks hugging the valley/deck line, CREEPING (≤2px/s) with a
   // slow density breath — painted atmosphere, never sliding smoke.
@@ -426,15 +435,15 @@ export class ZenNightBackground{
   // viewer, broken by high-frequency horizontal wave glints (water-physics
   // reflection policy). Classic semi-3D light path on a wet plane.
   ctx.globalCompositeOperation='lighter'
-  const glintA=clamp01(key.i)*(1-cov)*0.72
+  const glintA=clamp01(key.i)*(1-cov)*0.52
   if(glintA>0.01){
    for(let i=0;i<16;i++){
     const u=i/15
     const y=-8+u*u*258
-    const wpath=26+u*u*430
+    const wpath=26+u*u*320
     const jitter=Math.sin(t*1.9+i*2.3)*18*(0.25+u)
     const cx2=moonWorldX+jitter
-    ctx.globalAlpha=glintA*(0.30+0.85*u)*(0.74+0.26*Math.sin(t*1.7+i*1.1))
+    ctx.globalAlpha=glintA*(0.20+0.62*u)*(0.74+0.26*Math.sin(t*1.7+i*1.1))
     ctx.fillRect(cx2-wpath/2,y,wpath,1.6+u*2.2)
    }
   }
@@ -444,6 +453,15 @@ export class ZenNightBackground{
   // STONE LANTERN practical
   ctx.globalAlpha=0.2*(1-0.4*cov)*(0.9+0.1*Math.sin(t*9.1+1.7))
   ctx.drawImage(this.warmPool!,LANTERN_X-270,-360,540,420)
+  // WET-FLOOR PRACTICAL STREAKS — warm practicals stretch down the wet deck
+  // toward the viewer (mirror law: 25-35% + high-frequency wave distortion)
+  const streak=(sx:number,sw:number,base:number)=>{
+   for(let k=0;k<7;k++){
+    const yy=-18+k*40,u=k/6,wob=Math.sin(t*1.4+k*1.9)*7
+    ctx.globalAlpha=base*(1-u)*(.72+.28*Math.sin(t*2.1+k*2.6))
+    ctx.fillRect(sx+wob-sw*(.35+.65*u)*.5,yy,sw*(.35+.65*u),24)}}
+  streak(DOOR_X-30,78,.30)
+  streak(LANTERN_X,56,.24)
   // pond glint
   if(glintA>0.01){ctx.globalAlpha=glintA*0.85;ctx.drawImage(this.glitter!,POND_X-190,POND_Y+2,380,70)}
   // defocused warm bokeh droplets near the door practical
@@ -461,6 +479,18 @@ export class ZenNightBackground{
   for(let i=0,nP=this.quality==='low'?30:this.quality==='medium'?50:70;i<nP;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;const gs=5+11*z;ctx.globalAlpha=.24+.5*z;ctx.drawImage(this.petalGlow!,x-gs,y-gs,gs*2,gs*2)}
   ctx.globalCompositeOperation='source-over'
   for(let i=0,nP=this.quality==='low'?30:this.quality==='medium'?50:70;i<nP;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.42+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
+  // FOREGROUND PARALLAX SILHOUETTES — near-camera grass tufts + rocks frame
+  // the bottom edge. Fastest parallax of any layer: the signature semi-3D cue.
+  {const fs=(cam.x*1.35)%(w+360)
+   ctx.fillStyle='rgba(5,10,14,.85)'
+   for(let k=0;k<9;k++){
+    const x=(((((k*167+(k%3)*53-fs)%(w+360))+(w+360))%(w+360))-180)
+    if(k%3===2){const rw=32+((k*13)%26);ctx.beginPath();ctx.ellipse(x,h-10,rw,rw*.5,0,0,TAU);ctx.fill()}
+    else{const hh=68+((k*37)%86)
+     ctx.beginPath();ctx.moveTo(x-16,h)
+     ctx.quadraticCurveTo(x-6,h-hh*1.25,x+1,h-hh)
+     ctx.quadraticCurveTo(x+5,h-hh*.62,x+8,h-hh*.92)
+     ctx.quadraticCurveTo(x+12,h-hh*.5,x+18,h);ctx.fill()}}}
   // restrained cool atmospheric grade (pre-baked per resize)
   ctx.drawImage(this.vignette!,0,0)}
 }
