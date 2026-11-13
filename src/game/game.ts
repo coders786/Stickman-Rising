@@ -197,6 +197,11 @@ export class Game {
    *      not per substep — rain never integrates at 450Hz
    *   3. render resolution (DPR) auto-scales to the measured frame rate */
   private dprTarget = 1
+  /** perf readout: JS frame cost vs the leftover inter-frame gap (a raster/
+   * compositor/present ESTIMATE) — the bottleneck, shown instead of hidden. */
+  private jsMs = 0
+  private rastMs = 0
+  private lastGapAt = 0
   /** session resolution ceiling — pinned DOWN the moment a raise proves
    * unstable. Without this, the governor's raise-on-calm path gambles
    * repeatedly: calm 60fps → raise DPR → next wave spawns → frame-cost
@@ -368,15 +373,15 @@ export class Game {
     this.govT = 0
     if (this.govCool > 0) return
     const cap = Math.min(
-      this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
+      this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
       this.dprCeil,
     )
-    if (this.fpsAvg < 44 && this.dprTarget > 0.8) {
-      this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
+    if (this.fpsAvg < 44 && this.dprTarget > 0.6) {
+      this.dprTarget = Math.max(0.6, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 0.8
       this.resize()
-    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.81 && this.settings.quality !== 'ultra') {
+    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.61 && this.settings.quality !== 'ultra') {
       // resolution floor reached and still drowning → drop a quality tier
       const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
       const i = order.indexOf(this.settings.quality)
@@ -407,7 +412,6 @@ export class Game {
    * proved the level unstable on this display: pin the session ceiling at
    * the pre-raise DPR so the governor stops gambling on it. */
   private detectCliff(dtRaw: number): void {
-    if(this.settings.quality==='ultra')return
     if (this.phase === 'paused' || document.visibilityState !== 'visible') {
       this.overRun = 0
       return
@@ -441,6 +445,7 @@ export class Game {
     if (qualityChanged || levelChanged) {
       this.storm.setQuality(s.quality)
       this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      ;(this.bg as {setQuality?: (q: GameSettings['quality']) => void}).setQuality?.(s.quality)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
@@ -554,7 +559,15 @@ export class Game {
   /* ------------------------------------------------------------------ */
 
   private loop = (now: number): void => {
-    try { this.frame(now) } catch (error) {
+    try {
+      const t0 = performance.now()
+      this.frame(now)
+      const js = performance.now() - t0
+      this.jsMs += (js - this.jsMs) * 0.12
+      const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
+      this.lastGapAt = now
+      if (gap > 0) this.rastMs += (Math.max(0, gap - js) - this.rastMs) * 0.1
+    } catch (error) {
       console.error('Game loop stopped after an unexpected error', error)
       cancelAnimationFrame(this.raf)
       this.input.setEnabled(false)
@@ -679,6 +692,18 @@ export class Game {
       if (editFrozen) this.inspect.editorFrame(this, dtRaw)
       // inspection overlay (solo/sheet/edit views + state readout)
       this.inspect.draw(ctx, this, this.renderTime)
+      // PERF READOUT — the bottleneck, SHOWN live: JS frame cost vs the
+      // leftover inter-frame gap (raster/present estimate), the bound class,
+      // and the governor's active levers. "Something is bottlenecked but not
+      // shown" — now it is shown.
+      {
+        const bound = this.rastMs > this.jsMs * 1.5 ? 'GPU' : this.jsMs > this.rastMs * 1.5 ? 'CPU' : 'MIX'
+        ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+        ctx.font = '10px ui-monospace,monospace'
+        ctx.fillStyle = 'rgba(190,220,232,.55)'
+        ctx.textAlign = 'left'
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}`, 12, this.cssH - 26)
+      }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)
       this.uninstallRenderLerp()

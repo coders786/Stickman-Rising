@@ -48,6 +48,8 @@ export class ZenNightBackground{
  private cloudLit:HTMLCanvasElement|null=null
  private shaft:HTMLCanvasElement|null=null
  private petal:HTMLCanvasElement|null=null
+  private quality:'low'|'medium'|'high'|'ultra'='high'
+  setQuality(q:'low'|'medium'|'high'|'ultra'){this.quality=q}
  private petalGlow:HTMLCanvasElement|null=null
  private vignette:HTMLCanvasElement|null=null
  private deckPool:HTMLCanvasElement|null=null
@@ -312,7 +314,7 @@ export class ZenNightBackground{
   ctx.fillStyle=halo;ctx.fillRect(mx-330,my-330,660,660)
   // cloud banks occlude (dark) so shafts breathe as they drift across
   ctx.globalAlpha=.9
-  for(let k=0;k<this.cloudX.length;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cx*(.008+.025*z)*cz,y=my-105+(z-.5)*88
+  for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cx*(.008+.025*z)*cz,y=my-105+(z-.5)*88
    ctx.save();ctx.globalCompositeOperation='multiply';ctx.drawImage(this.cloud!,x,y,cw,ch);ctx.restore()}
   ctx.globalAlpha=1
   // ridge + garden canopy occlude the lower sky
@@ -329,7 +331,7 @@ export class ZenNightBackground{
   // drift supply volume while remaining only five cached image blits/frame.
   let transmission=1
   const cloudDraws:{x:number,y:number,cw:number,ch:number,z:number,near:number}[]=[]
-  for(let k=0;k<this.cloudX.length;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}ctx.globalAlpha=.22+.17*z;ctx.drawImage(this.cloud!,x,y,cw,ch)
+  for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}ctx.globalAlpha=.22+.17*z;ctx.drawImage(this.cloud!,x,y,cw,ch)
    cloudDraws.push({x,y,cw,ch,z,near:clamp01(1-Math.abs((x+cw*.5)-mx)/(w*.55))})}
   // MOONLIGHT SPILL THROUGH THE CLOUDS: the moon-facing flanks of the near
   // banks re-blit LIT (silver lining) — the brightness tracks the gap over
@@ -388,7 +390,7 @@ export class ZenNightBackground{
   // CLOUD SHADOWS ON THE GROUND — the moon's light patches drift across the
   // deck as the sky moves (dynamic lighting on a 2D plane).
   {ctx.save();ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.20
-   for(let k=0;k<this.cloudX.length;k++){const z=this.cloudZ[k]
+   for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k]
     const x=((this.cloudX[k]*2.1+z*640+t*2.2)%(ARENA_W+2400))-1400
     ctx.drawImage(this.cloud!,x,-40,520+z*330,300)}
    ctx.restore()}
@@ -456,9 +458,9 @@ export class ZenNightBackground{
   // with soft pink halos (two-pass: additive glow, then the petal body).
   // Pooled depth sprites, no allocations.
   ctx.globalCompositeOperation='lighter'
-  for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;const gs=5+11*z;ctx.globalAlpha=.24+.5*z;ctx.drawImage(this.petalGlow!,x-gs,y-gs,gs*2,gs*2)}
+  for(let i=0,nP=this.quality==='low'?30:this.quality==='medium'?50:70;i<nP;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;const gs=5+11*z;ctx.globalAlpha=.24+.5*z;ctx.drawImage(this.petalGlow!,x-gs,y-gs,gs*2,gs*2)}
   ctx.globalCompositeOperation='source-over'
-  for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.42+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
+  for(let i=0,nP=this.quality==='low'?30:this.quality==='medium'?50:70;i<nP;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.42+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
   // restrained cool atmospheric grade (pre-baked per resize)
   ctx.drawImage(this.vignette!,0,0)}
 }

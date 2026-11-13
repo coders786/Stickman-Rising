@@ -393,6 +393,7 @@ export class Renderer {
    * horizontal lens streak burns across the strike azimuth. Pre-baked
    * sprite, one additive blit. */
   private drawStrikeStreaks(ctx: CanvasRenderingContext2D, w: number, h: number, world: RenderWorld): void {
+    if (this.quality === 'low') return
     const k = clamp01(world.bg.lightningI())
     if (k <= 0.03) return
     if (!this.streakSpr) {
@@ -433,6 +434,7 @@ export class Renderer {
    * never wash the contrast, strong enough that pure black stops reading as
    * "unrendered". */
   private drawGrade(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    if (this.quality === 'low') return
     if (!this.gradePl) {
       const c = document.createElement('canvas')
       c.width = 8
@@ -461,6 +463,7 @@ export class Renderer {
    * tints opposing screen edges red/cyan (radial CA's visible symptom) and
    * only while the camera is being strained (dash / heavy connect). */
   private drawChroma(ctx: CanvasRenderingContext2D, w: number, h: number, i: number): void {
+    if (this.quality === 'low' || this.quality === 'medium') return
     if (i <= 0.02) return
     ctx.save()
     const a = 0.1 * Math.min(1, i)
