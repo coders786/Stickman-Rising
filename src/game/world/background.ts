@@ -1,4 +1,5 @@
 import {StormEngine} from './storm'
+import {FOG} from '../render/look'
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -698,6 +699,46 @@ export class CyberBackground {
       }
     }
 
+    /* 2.8 — THE MOON (deep sky, BEHIND the city: the skyline occludes it,
+     * never the other way around — a distant celestial body, not a disco
+     * ball hanging in front of the towers). ECLIPSE: the drifting cloud
+     * deck modulates disc + halo + the key light below. Halo tamed to
+     * ~45% of the old bloom radius. */
+    {
+      const moonX = w * 0.68 - cx * 0.03 * cz - 84;
+      const moonY = h * 0.15 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
+      const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
+      const cloudY2 = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
+      // eclipse coverage: O(16) blob falloff around the disc's tile x
+      let cov = 0;
+      const mxT = mod(moonX + 84 - clOff2, TILE);
+      for (const b of CLOUD_BLOBS) {
+        let dx = Math.abs(b.x - mxT);
+        if (dx > TILE / 2) dx = TILE - dx;
+        const wgt = Math.max(0, 1 - dx / (b.r * 1.12));
+        cov += wgt * wgt * 0.62;
+      }
+      if (cov > 1) cov = 1;
+      this.moonX = moonX + 84;
+      this.moonY = moonY + 84;
+      this.moonCover = cov;
+      const discA = 1 - 0.52 * cov;
+      const haloA = (1 - 0.78 * cov) * (0.82 + 0.18 * Math.sin(t * 0.13));
+      const haloA2 = (1 - 0.78 * cov) * (0.7 + 0.3 * Math.sin(t * 0.087 + 1.7));
+      ctx.globalAlpha = discA;
+      ctx.drawImage(this.moonSpr, moonX, moonY, 168, 168);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = haloA * 0.78;
+      ctx.drawImage(this.moonHalo, moonX + 84 - 141, moonY + 84 - 141, 282, 282);
+      ctx.globalAlpha = haloA2 * 0.32;
+      ctx.drawImage(this.moonHalo, moonX + 84 - 184, moonY + 84 - 184, 368, 368);
+      ctx.globalCompositeOperation = 'source-over';
+      // the cloud cage over the disc thickens with coverage
+      ctx.globalAlpha = 0.34 + 0.3 * cov;
+      this.blitRow(ctx, this.cloudDark, clOff2, cloudY2);
+      ctx.globalAlpha = 1;
+    }
+
     /* 3 — far mega-city (parallax 0.05) + blinking antenna beacons.
      * Far layer draws from its pre-blurred DOF variant (rainy-night bokeh);
      * during a strike the sharp tile re-blits additively → silhouette pop. */
@@ -836,46 +877,6 @@ export class CyberBackground {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
-    /* 5.5 — THE MOON over the whole skyline (the reference image's
-     * moon-over-mountains composition, with the city as the mountains).
-     * ECLIPSE: the drifting cloud deck modulates the disc + halo + the key
-     * light below (the reference's clouded-moon lighting). 4-ring additive
-     * halo bakes the scattering; a light cloud re-blit veils the disc. */
-    {
-      const moonX = w * 0.68 - cx * 0.03 * cz - 110;
-      const moonY = h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110;
-      const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
-      const cloudY2 = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
-      // eclipse coverage: O(16) blob falloff around the disc's tile x
-      let cov = 0;
-      const mxT = mod(moonX + 110 - clOff2, TILE);
-      for (const b of CLOUD_BLOBS) {
-        let dx = Math.abs(b.x - mxT);
-        if (dx > TILE / 2) dx = TILE - dx;
-        const wgt = Math.max(0, 1 - dx / (b.r * 1.12));
-        cov += wgt * wgt * 0.62;
-      }
-      if (cov > 1) cov = 1;
-      this.moonX = moonX + 110;
-      this.moonY = moonY + 110;
-      this.moonCover = cov;
-      const discA = 1 - 0.52 * cov;
-      const haloA = (1 - 0.78 * cov) * (0.82 + 0.18 * Math.sin(t * 0.13));
-      const haloA2 = (1 - 0.78 * cov) * (0.7 + 0.3 * Math.sin(t * 0.087 + 1.7));
-      ctx.globalAlpha = discA;
-      ctx.drawImage(this.moonSpr, moonX, moonY);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = haloA;
-      ctx.drawImage(this.moonHalo, moonX + 110 - 256, moonY + 110 - 256);
-      ctx.globalAlpha = haloA2 * 0.62;
-      ctx.drawImage(this.moonHalo, moonX + 110 - 408, moonY + 110 - 408, 816, 816);
-      ctx.globalCompositeOperation = 'source-over';
-      // the cloud cage over the disc thickens with coverage
-      ctx.globalAlpha = 0.34 + 0.3 * cov;
-      this.blitRow(ctx, this.cloudDark, clOff2, cloudY2);
-      ctx.globalAlpha = 1;
-    }
-
     /* 6 — front fog band (bands 0/1 already interleaved between the depth
      * planes above — fog is a volume BETWEEN depths, not one curtain) */
     fogBand(2);
@@ -989,7 +990,7 @@ export class CyberBackground {
     // SPECULAR — the moon's glitter lane on the wet mirror
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = (0.34 + 0.18 * li) * (1 - 0.72 * cov);
-    ctx.drawImage(this.moonGlitter, moonWorldX - 190, -10, 380, 272);
+    ctx.drawImage(this.moonGlitter, moonWorldX - 190, -10, 380, 160);
     // SPOT — slow-sweeping cool pools (cone cross-sections)
     const sx1 = 560 + 150 * Math.sin(t * 0.21);
     const sx2 = 2260 + 180 * Math.sin(t * 0.17 + 2);
@@ -1005,7 +1006,8 @@ export class CyberBackground {
    *  windows let it through with moonlit rims. */
   drawWetMask(ctx: CanvasRenderingContext2D): void {
     this.ensureBuilt();
-    ctx.drawImage(this.wetMask, ARENA_X0, 12);
+    // strict deck band: the wet layer lives below the foot line only
+    ctx.drawImage(this.wetMask, ARENA_X0, 12, ARENA_W, 142);
   }
 
   /** MOON-SHAFT OCCLUSION SOURCE — drawn into a scaled quarter-res ctx by
@@ -1124,10 +1126,8 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, FAR_H - bh, bw, bh);
-      g.fillStyle = 'rgba(142,176,212,0.10)';               // moon rim: top
+      g.fillStyle = 'rgba(142,176,212,0.055)';              // moon catch: top only
       g.fillRect(x, FAR_H - bh, bw, 1);
-      g.fillStyle = 'rgba(142,176,212,0.06)';               // moon rim: right
-      g.fillRect(x + bw - 1, FAR_H - bh, 1, bh);
       if (rng() < 0.25) {                                  // crowning setback
         const sw = bw * (0.35 + rng() * 0.3);
         let sh = 22 + rng() * 70;
@@ -1149,8 +1149,10 @@ export class CyberBackground {
         }
       }
       const stepX = 6.5 + rng() * 2.5, stepY = 8 + rng() * 3.5;
-      for (let wx = x + 4; wx < x + bw - 4; wx += stepX) { // sparse lit windows
+      for (let wx = x + 4; wx < x + bw - 4; wx += stepX) { // window grid INSIDE the facade
         for (let wy = FAR_H - bh + 5; wy < FAR_H - 6; wy += stepY) {
+          g.fillStyle = 'rgba(9,14,21,0.55)';               // unlit cell = the grid reads
+          g.fillRect(wx, wy, 2, 2);
           if (rng() < 0.15) {
             const warm = rng() < 0.82;
             const a = 0.5 + rng() * 0.45;
@@ -1166,11 +1168,15 @@ export class CyberBackground {
     gr.addColorStop(1, 'rgba(10,16,22,0.55)');
     g.fillStyle = gr;
     g.fillRect(0, FAR_H - 90, TILE, 90);
-    // AERIAL PERSPECTIVE — lift only tower pixels toward the sky color
-    // (source-atop keeps sky gaps clean). Research law: far layers blend
-    // toward sky color, never desaturate.
+    // ATMOSPHERIC PERSPECTIVE — far towers dissolve INTO the night sky:
+    // top fade + aerial lift, both source-atop (sky gaps stay clean).
     g.globalCompositeOperation = 'source-atop';
-    g.fillStyle = 'rgba(42,64,92,0.16)';
+    const tg = g.createLinearGradient(0, 0, 0, FOG.topFadeH);
+    tg.addColorStop(0, 'rgba(26,42,66,0.5)');
+    tg.addColorStop(1, 'rgba(26,42,66,0)');
+    g.fillStyle = tg;
+    g.fillRect(0, 0, TILE, FOG.topFadeH);
+    g.fillStyle = FOG.farLift;
     g.fillRect(0, 0, TILE, FAR_H);
     g.globalCompositeOperation = 'source-over';
     return c;
@@ -1191,10 +1197,8 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, MID_H - bh, bw, bh);
-      g.fillStyle = 'rgba(150,185,215,0.13)';               // moon rim: top
+      g.fillStyle = 'rgba(150,185,215,0.07)';               // moon catch: top only
       g.fillRect(x, MID_H - bh, bw, 1);
-      g.fillStyle = 'rgba(150,185,215,0.08)';               // moon rim: right
-      g.fillRect(x + bw - 1, MID_H - bh, 1, bh);
       const bg2 = g.createLinearGradient(0, MID_H - bh, 0, MID_H - bh + bh * 0.6);
       bg2.addColorStop(0, 'rgba(30,48,68,0.24)');
       bg2.addColorStop(1, 'rgba(30,48,68,0)');
@@ -1223,18 +1227,8 @@ export class CyberBackground {
           }
         }
       }
-      if (rng() < 0.35 && bw > 60) {                       // vertical neon edge tube
-        const ex = rng() < 0.5 ? x + 1.5 : x + bw - 3.5;
-        const ci = (rng() * SIGN_INK.length) | 0;
-        const eh = bh * (0.5 + rng() * 0.4);
-        const ey = MID_H - bh + rng() * (bh - eh);
-        g.fillStyle = SIGN_INK[ci];
-        g.globalAlpha = 0.5;
-        g.fillRect(ex, ey, 1.6, eh);
-        g.globalAlpha = 0.14;                              // tube bloom
-        g.fillRect(ex - 1.4, ey, 4.4, eh);
-        g.globalAlpha = 1;
-      }
+      // (vertical neon edge tubes REMOVED — glowing edge-strokes made the
+      // towers read as floating rectangles; signage lives on faces only)
       if (rng() >= 0.22) {                                 // windows (some towers unlit)
         const stepX = 11 + rng() * 4, stepY = 14 + rng() * 4;
         for (let wx = x + 6; wx < x + bw - 8; wx += stepX) {
@@ -1296,10 +1290,8 @@ export class CyberBackground {
       const shade = shades[(rng() * shades.length) | 0];
       g.fillStyle = shade;
       g.fillRect(x, NEAR_H - bh, bw, bh);
-      g.fillStyle = 'rgba(160,195,228,0.2)';                // moon rim: top
+      g.fillStyle = 'rgba(160,195,228,0.11)';               // moon catch: top only
       g.fillRect(x, NEAR_H - bh, bw, 1);
-      g.fillStyle = 'rgba(160,195,228,0.12)';               // moon rim: right
-      g.fillRect(x + bw - 1, NEAR_H - bh, 1, bh);
       // sky bounce: the upper faces catch faint light-pollution so the
       // slabs read as buildings, not voids
       const bg2 = g.createLinearGradient(0, NEAR_H - bh, 0, NEAR_H - bh + bh * 0.72);
@@ -1322,6 +1314,8 @@ export class CyberBackground {
       if (rng() < 0.7) {                                   // sparse dim windows
         for (let wx = x + 10; wx < x + bw - 10; wx += 17 + rng() * 8) {
           for (let wy = NEAR_H - bh + 12; wy < NEAR_H - 20; wy += 23 + rng() * 9) {
+            g.fillStyle = 'rgba(10,16,22,0.5)';             // unlit cell (facade grid)
+            g.fillRect(wx, wy, 2, 2);
             if (rng() < 0.08) {
               g.fillStyle = 'rgba(84,112,122,0.42)';
               g.fillRect(wx, wy, 2, 2);
@@ -1476,51 +1470,51 @@ export class CyberBackground {
     this.hazardTrim(g, rng, 0, 44);                        // worn edge trim
     this.hazardTrim(g, rng, W - 44, 44);
 
-    /* facade (world y 14..260): X-braced girder skeleton */
-    gr = g.createLinearGradient(0, LIP_H, 0, H);
-    gr.addColorStop(0, '#151c22');
-    gr.addColorStop(0.22, '#0d1319');
-    gr.addColorStop(0.5, '#070c10');
-    gr.addColorStop(0.82, '#020407');
-    gr.addColorStop(1, '#000306');
+    /* SHALLOW 2.5D DECK (world y 14..150) — GROUND REBIRTH: the old
+     * X-braced girder wall read as a perspective ice-rink grid under the
+     * mirror. New ground = concrete deck band in shallow orthographic, the
+     * reflective wet layer strictly below the character foot line. */
+    gr = g.createLinearGradient(0, LIP_H, 0, 150);
+    gr.addColorStop(0, '#242d36');
+    gr.addColorStop(0.35, '#1c242c');
+    gr.addColorStop(1, '#12181e');
     g.fillStyle = gr;
-    g.fillRect(0, LIP_H, W, FACADE_H);
-    for (let cx0 = 8; cx0 < W - 240; cx0 += 232) {         // X-braced bays
-      const cx1 = cx0 + 232;
-      g.lineWidth = 2.5;
-      g.strokeStyle = 'rgba(24,33,41,0.85)';
-      g.beginPath(); g.moveTo(cx0 + 6, 49); g.lineTo(cx1 - 6, 116); g.stroke();
-      g.beginPath(); g.moveTo(cx1 - 6, 49); g.lineTo(cx0 + 6, 116); g.stroke();
-      g.lineWidth = 3;
-      g.strokeStyle = 'rgba(20,28,35,0.6)';
-      g.beginPath(); g.moveTo(cx0 + 6, 129); g.lineTo(cx1 - 6, 206); g.stroke();
-      g.beginPath(); g.moveTo(cx1 - 6, 129); g.lineTo(cx0 + 6, 206); g.stroke();
+    g.fillRect(0, LIP_H, W, 150 - LIP_H);
+    for (let sy = 34; sy < 150; sy += 38) {                // concrete pour seams
+      g.fillStyle = 'rgba(0,0,0,0.32)'; g.fillRect(0, sy, W, 1.4);
+      g.fillStyle = 'rgba(150,172,186,0.07)'; g.fillRect(0, sy + 1.4, W, 1);
     }
-    g.fillStyle = '#18212a';                               // horizontal beams
-    g.fillRect(0, 36, W, 11);
-    g.fillStyle = 'rgba(80,102,112,0.22)';
-    g.fillRect(0, 36, W, 1);
-    g.fillStyle = '#141d25';
-    g.fillRect(0, 118, W, 9);
-    g.fillStyle = 'rgba(70,92,102,0.18)';
-    g.fillRect(0, 118, W, 1);
-    g.fillStyle = '#121a22';
-    g.fillRect(0, 168, W, 3);
-    for (let cx0 = 8; cx0 < W; cx0 += 232) {               // columns
-      g.fillStyle = '#1a232b';
-      g.fillRect(cx0, LIP_H, 10, H - LIP_H);
-      g.fillStyle = 'rgba(70,92,102,0.25)';
-      g.fillRect(cx0, LIP_H, 1, H - LIP_H);
-      g.fillStyle = 'rgba(0,0,0,0.5)';
-      g.fillRect(cx0 + 9, LIP_H, 1, H - LIP_H);
+    for (let i = 0; i < 46; i++) {                         // aggregate speckle
+      const px = rng() * W, py = 16 + rng() * 130, pr = 1 + rng() * 2.4;
+      g.fillStyle = rng() < 0.5
+        ? `rgba(255,255,255,${(0.02 + rng() * 0.04).toFixed(3)})`
+        : `rgba(0,0,0,${(0.03 + rng() * 0.05).toFixed(3)})`;
+      g.fillRect(px, py, pr, pr);
     }
-    for (let rx = 14; rx < W; rx += 58) {                  // rivets
-      g.fillStyle = '#0a0f13';
-      g.fillRect(rx, 40, 2, 2);
-      g.fillRect(rx, 121, 2, 2);
+    /* PARAPET EDGE (y 150..168) — the defined rooftop edge; its moonlit top
+     * line is the ground-contact cue that anchors the whole scene */
+    g.fillStyle = '#0d1216'; g.fillRect(0, 150, W, 18);
+    g.fillStyle = 'rgba(158,186,206,0.16)'; g.fillRect(0, 150, W, 1.2);
+    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 151.2, W, 2);
+    for (let px = 0; px < W; px += 64) {                   // parapet posts
+      g.fillStyle = 'rgba(120,142,158,0.10)'; g.fillRect(px, 152, 2, 16);
     }
-    /* wet-facade neon bounce: the wall just under the lip catches the sign
-     * colors as soft vertical drips of reflected light */
+    /* THE FALL (y 168..260) — the building drops away into the city dark:
+     * sparse far-below lights give height, no grid, no mirror */
+    gr = g.createLinearGradient(0, 168, 0, 258);
+    gr.addColorStop(0, '#05080c');
+    gr.addColorStop(1, '#010304');
+    g.fillStyle = gr;
+    g.fillRect(0, 168, W, 92);
+    for (let i = 0; i < 64; i++) {                         // distant lower city
+      const lx = rng() * W, ly = 176 + rng() * 76;
+      g.fillStyle = rng() < 0.7
+        ? `rgba(255,186,112,${(0.05 + rng() * 0.12).toFixed(3)})`
+        : `rgba(120,210,220,${(0.04 + rng() * 0.1).toFixed(3)})`;
+      g.fillRect(lx, ly, 1.6, 1.2);
+    }
+    /* wet-deck neon bounce: the deck just under the lip catches the sign
+     * colors as soft pools of reflected light */
     for (let i = 0; i < 9; i++) {
       const col = smearCols[i % smearCols.length];
       const mx = 100 + rng() * (W - 200);
@@ -1532,11 +1526,11 @@ export class CyberBackground {
       g.fillStyle = fg;
       g.fillRect(mx - mw / 2, LIP_H, mw, mh);
     }
-    gr = g.createLinearGradient(0, 120, 0, 255);           // fade into darkness
+    gr = g.createLinearGradient(0, 152, 0, 255);           // fade into darkness
     gr.addColorStop(0, 'rgba(2,5,8,0)');
     gr.addColorStop(1, 'rgba(2,5,8,0.96)');
     g.fillStyle = gr;
-    g.fillRect(0, 120, W, 135);
+    g.fillRect(0, 152, W, 108);
     g.fillStyle = '#010304';
     g.fillRect(0, 252, W, 8);
     g.fillStyle = 'rgba(0,0,0,0.6)';                       // end caps
@@ -1550,17 +1544,17 @@ export class CyberBackground {
      * facade as a soft column with drip streaks; the wet-mask puddle
      * windows let it read as reflected firelight */
     const dgx = DOOR_X - ARENA_X0;
-    const dg = g.createLinearGradient(0, 18, 0, 246);
+    const dg = g.createLinearGradient(0, 18, 0, 150);
     dg.addColorStop(0, 'rgba(255,150,80,0.17)');
     dg.addColorStop(0.55, 'rgba(255,130,60,0.08)');
     dg.addColorStop(1, 'rgba(255,120,50,0)');
     g.fillStyle = dg;
-    g.fillRect(dgx - 78, 18, 156, 228);
+    g.fillRect(dgx - 78, 18, 156, 132);
     for (let i = 0; i < 7; i++) {                        // drip streaks
       const dx = dgx - 60 + rng() * 120;
       const dw = 2 + rng() * 7;
       const dy0 = 22 + rng() * 26;
-      const dl = 60 + rng() * 130;
+      const dl = 50 + rng() * 76;
       const da = 0.06 + rng() * 0.12;
       const dgr = g.createLinearGradient(0, dy0, 0, dy0 + dl);
       dgr.addColorStop(0, `rgba(255,160,90,${da.toFixed(3)})`);

@@ -13,6 +13,7 @@ import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint } from './lighting'
+import { setSceneKey, REFLECTION } from './look'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
  * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
@@ -45,6 +46,11 @@ export class Renderer {
   private vigH = 0
   /* wet-floor reflection fade gradient (built once; world-space strip) */
   private reflFade: HTMLCanvasElement | null = null
+  /* broken-mirror plate: the reflection is rendered once, then blitted back
+   * in strips with a high-frequency horizontal wave (wet concrete, not glass) */
+  private reflPlate: HTMLCanvasElement | null = null
+  private reflPW = 0
+  private reflPH = 0
   /* CINEMATIC BLOOM — two-bounce downsample/upsample pyramid. The finished
    * frame is copied to a quarter-res plate, blurred again to eighth-res,
    * smooth-upsampled and added back with 'lighter'. On a near-black neon
@@ -118,6 +124,8 @@ export class Renderer {
     const li = bg.lightningI()
     const az = bg.lightningAz()
     const light: KeyLight = keyLightFromStorm(li, az)
+    // UNIVERSAL LOOK: the rim/reflection rules read the live key each frame
+    setSceneKey(light)
     // ECLIPSE — cloud mass crossing the moon dims + softens the key, so the
     // long deck shadows breathe as the banks drift over the disc
     light.i *= 1 - 0.42 * bg.moonCover
@@ -516,25 +524,47 @@ export class Renderer {
    *  killer once waves scaled — the mirror only needs a silhouette). */
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world
-    ctx.save()
-    ctx.beginPath();ctx.rect(cam.x-viewHalfW,0,viewHalfW*2,240);ctx.clip()
     const li = bg.lightningI()
-    // the mirror still snaps brighter on strobes — the rain-soaked roof is a
-    // black mirror that catches every light in the sky
-    const a = 0.27 + li * 0.22
-    ctx.save()
-    ctx.scale(1, -0.66)                        // mirror about y=0 + perspective squash
-    ctx.globalAlpha = a
-    player.draw(ctx, time, true)
-    ctx.globalAlpha = a * 0.8
+    const depth = REFLECTION.depth
+    const pw = Math.max(64, Math.ceil(viewHalfW * 2)), ph = depth + 8
+    if (!this.reflPlate || this.reflPW !== pw || this.reflPH !== ph) {
+      const c = document.createElement('canvas')
+      c.width = pw
+      c.height = ph
+      this.reflPlate = c
+      this.reflPW = pw
+      this.reflPH = ph
+    }
+    const p = this.reflPlate!.getContext('2d')
+    if (!p) return
+    p.clearRect(0, 0, pw, ph)
+    p.save()
+    p.translate(-(cam.x - viewHalfW), 0)
+    p.scale(1, -0.66)                        // mirror about y=0 + perspective squash
+    player.draw(p, time, true)
+    p.globalAlpha = 0.8
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      e.drawGhost(ctx, time)
+      e.drawGhost(p, time)
     }
-    ctx.restore()
+    p.restore()
+    // BROKEN MIRROR (universal reflection policy): the plate returns in
+    // horizontal strips, each displaced by a high-frequency wave — heavy
+    // rain disturbs standing water, so the mirror is never a dry glass.
+    const a = REFLECTION.opacity + li * REFLECTION.strobeGain
+    ctx.save()
+    ctx.beginPath(); ctx.rect(cam.x - viewHalfW, 0, viewHalfW * 2, depth + 6); ctx.clip()
+    ctx.globalAlpha = a
+    const n = REFLECTION.strips
+    const sh = ph / n
+    for (let i = 0; i < n; i++) {
+      const wave = Math.sin(time * REFLECTION.waveFreq + i * 1.7) * REFLECTION.waveAmp
+        + Math.sin(time * REFLECTION.waveFreq2 + i * 4.1) * REFLECTION.waveAmp2
+      ctx.drawImage(this.reflPlate!, 0, i * sh, pw, sh + 1, cam.x - viewHalfW + wave, i * sh, pw, sh + 1)
+    }
+    ctx.globalAlpha = 1
     // vertical falloff: reflections dissolve into the wet dark with depth
-    // (tall enough to swallow airborne entities' deep mirrored strokes)
     if (!this.reflFade) {
       const c = document.createElement('canvas')
       c.width = 8
@@ -551,8 +581,7 @@ export class Renderer {
       }
       this.reflFade = c
     }
-    ctx.globalAlpha = 1
-    ctx.drawImage(this.reflFade, cam.x - viewHalfW, 0, viewHalfW * 2, 195)
+    ctx.drawImage(this.reflFade, cam.x - viewHalfW, 0, viewHalfW * 2, depth)
     ctx.restore()
   }
 }

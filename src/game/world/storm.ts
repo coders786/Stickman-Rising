@@ -1,7 +1,11 @@
 /** Persistent storm simulation. Owned by Game, never by disposable city art.
  * World-space rain/splashes; real visual clock; quality changes draw budgets,
  * never weather existence or strike scheduling. Rendering cannot advance time.
+ * WEATHER PHYSICS SYNC (universal look contract): splash geometry rides the
+ * wind vector with per-impact variety (never a runway grid); rain is depth-
+ * layered — thin/dark/slow far, large/translucent near.
  */
+import { SPLASH } from '../render/look'
 export type StormQuality='low'|'medium'|'high'|'ultra'
 export interface StormView{x:number;y:number;zoom:number}
 const CAP=288,SPLASHES=64
@@ -23,6 +27,7 @@ export class StormEngine{
  private length=new Float32Array(CAP)
  private splashX=new Float32Array(SPLASHES)
  private splashAge=new Float32Array(SPLASHES).fill(9)
+ private splashSeed=new Float32Array(SPLASHES)
  private splashHead=0
  private impacts=0
  private bolt=new Float32Array(42)
@@ -32,10 +37,12 @@ export class StormEngine{
  constructor(quality:StormQuality='high'){
   this.quality=quality
   for(let i=0;i<CAP;i++){
+   const band=i%3
    this.x[i]=this.view.x+(this.random()-.5)*1500
    this.y[i]=-this.random()*850
-   this.velocity[i]=400+this.random()*480
-   this.length[i]=11+this.random()*18
+   // depth layering: far drops thinner/slower, near drops faster/larger
+   this.velocity[i]=band===0?300+this.random()*240:band===1?430+this.random()*320:520+this.random()*420
+   this.length[i]=band===0?9+this.random()*11:band===1?12+this.random()*14:14+this.random()*20
   }
  }
  private random(){this.seed^=this.seed<<13;this.seed^=this.seed>>>17;this.seed^=this.seed<<5;return(this.seed>>>0)/4294967296}
@@ -84,6 +91,7 @@ export class StormEngine{
    if(this.y[i]>=0){
     if(i<budgets[this.quality]){
      this.splashX[this.splashHead]=this.x[i];this.splashAge[this.splashHead]=0
+     this.splashSeed[this.splashHead]=this.random()
      this.splashHead=(this.splashHead+1)%SPLASHES;this.impacts++
     }
     this.y[i]=top-this.random()*180
@@ -132,9 +140,12 @@ export class StormEngine{
   // Each band is a WIDE DIM HALO plus a BRIGHT CORE — the core additive so
   // the bloom pass turns every streak into a lit filament.
   const n=budgets[this.quality]
+  // DEPTH LAYERING (weather-physics sync): far rain thin/dark/dim, near rain
+  // larger but MORE transparent so it never clutters the playable foreground.
+  const hA=[.11,.15,.17],hC=['#22323f','#2c4152','#3a5062'],hW=[1.1,1.7,3.0]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(.16+band*.08)*(1+this.intensity*.9)
-   ctx.strokeStyle=band===2?'#3d5468':'#2c4152';ctx.lineWidth=band===2?2.6:1.9
+   ctx.globalAlpha=(hA[band]+this.intensity*.1)*(1+band*.35)
+   ctx.strokeStyle=hC[band];ctx.lineWidth=hW[band]
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
@@ -143,9 +154,10 @@ export class StormEngine{
    ctx.stroke()
   }
   ctx.globalCompositeOperation='lighter'
+  const cA=[.24,.32,.3],cC=['#5c7d96','#7fa6c2','#a8c8dd'],cW=[.7,1.0,1.6]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(.3+band*.14)*(1+this.intensity*.85)
-   ctx.strokeStyle=band===2?'#d2eaf7':'#7fa6c2';ctx.lineWidth=band===2?1.4:.9
+   ctx.globalAlpha=(cA[band])*(1+this.intensity*.8)
+   ctx.strokeStyle=cC[band];ctx.lineWidth=cW[band]
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
@@ -155,16 +167,26 @@ export class StormEngine{
   }
   ctx.globalCompositeOperation='source-over'
   ctx.restore()
+  // SPLASHES — per-impact variety: seeded size/tilt/jitter, rings ride the
+  // wind vector. Not every impact pops a ring, so the roof never reads as a
+  // grid of identical runway lights.
   ctx.save();ctx.strokeStyle='#b8ddec';ctx.lineWidth=1
+  const windTilt=this.wind*SPLASH.tiltGain
   for(let i=0;i<SPLASHES;i++){
    const age=this.splashAge[i];if(age>=.4)continue
-   const u=age/.4,x=w*.5+(this.splashX[i]-cx)*z,y=ground+3*z,r=(2+u*10)*z
-   ctx.globalAlpha=(1-u)*(.42+.3*this.intensity)
-   ctx.beginPath();ctx.ellipse(x,y,r,r*.23,0,0,Math.PI*2);ctx.stroke()
-   if(u<.35){ctx.beginPath();ctx.moveTo(x-3*z,y);ctx.lineTo(x-5*z,y-6*z*(1-u));ctx.moveTo(x+3*z,y);ctx.lineTo(x+5*z,y-6*z*(1-u));ctx.stroke()}
+   const sd=this.splashSeed[i]
+   if(sd<.24)continue
+   const u=age/.4,x=w*.5+(this.splashX[i]-cx)*z,y=ground+(3+(sd-.5)*8)*z
+   const r=(2+u*10)*z*(.65+sd*.8)
+   ctx.globalAlpha=(1-u)*(SPLASH.baseAlpha+.26*this.intensity)*(.65+sd*.7)
+   const tilt=windTilt+(sd-.5)*.2
+   ctx.beginPath();ctx.ellipse(x,y,r,r*SPLASH.squash,tilt,0,Math.PI*2);ctx.stroke()
+   if(u<.35&&sd>.42){ // crown ticks lean with the wind vector
+    const lean=windTilt*10*z
+    ctx.beginPath();ctx.moveTo(x-3*z,y);ctx.lineTo(x-5*z+lean,y-6*z*(1-u));ctx.moveTo(x+3*z,y);ctx.lineTo(x+5*z+lean,y-6*z*(1-u));ctx.stroke()}
    // impact sparkle where the drop met the roof film
    if(u<.18){
-    ctx.globalAlpha=(1-u/.18)*.5
+    ctx.globalAlpha=(1-u/.18)*.42
     ctx.fillStyle='#cfe9f8'
     ctx.fillRect(x-1,y-1.2*z,2,2.4*z)
    }
