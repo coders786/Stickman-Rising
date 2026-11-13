@@ -12,7 +12,7 @@ import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
-import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint } from './lighting'
+import { KeyLight, keyLightFromStorm, DOOR_LIGHT, shadowKeyFromPoint, drawPropShadow } from './lighting'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
@@ -113,7 +113,8 @@ export class Renderer {
     // LIT SURFACE the shadows read against), the moon's specular glitter
     // lane on the wet mirror, sweeping spot pools, vent steam
     const moonWorldX = cam.x + cam.offX + (bg.moonX - w / 2) / cam.zoom
-    bg.drawLightRig(ctx, moonWorldX)
+    const moonWorldY = cam.y + cam.offY + (bg.moonY - h / 2) / cam.zoom
+    bg.drawLightRig(ctx, moonWorldX, moonWorldY)
 
     // ---- LIGHTING ENGINE: one dynamic key light (moon ↔ storm strobes)
     // drives PROJECTED SKELETON SHADOWS for every entity: each solved joint
@@ -134,6 +135,8 @@ export class Renderer {
     light.hard *= 1 - 0.32 * bg.moonCover
     // DUAL SHADOWS — the directional moon key plus the point practical's
     // own warm shadow falling away from the door (every light type shadows)
+    // RAY-TRACED PROP SHADOW — the stairwell head blocks the moon key too
+    drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.3)
     player.drawShadow(ctx, light)
     if (Math.abs(player.x - DOOR_LIGHT.x) < 1200) {
       const dk = shadowKeyFromPoint(DOOR_LIGHT, player.x, player.y)
