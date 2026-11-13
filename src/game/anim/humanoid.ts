@@ -4,6 +4,7 @@
 import type { FighterGeom, FighterDrawOpts } from './rig3d'
 import type { StickStyle } from './skeleton'
 import { clamp01 } from '../core/utils'
+import { rimPlan } from '../render/look'
 
 type Point = { x: number; y: number }
 type SurfacePoint = Point & { radius: number }
@@ -244,10 +245,29 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
   const alpha=clamp01(opts.alpha??1)*clamp01(opts.ghostAlpha??1)
   if(alpha<=.001)return
   ctx.save();ctx.globalAlpha*=alpha;ctx.lineJoin='round';ctx.lineCap='round'
-  // Thin whole-contour rim goes BEHIND the opaque surface. No bone overlay.
+  // DIRECTIONAL RIM (universal look contract) — the rim exists only on
+  // edges FACING the key light (moon upper-right), carved behind the opaque
+  // surface; the lower edges facing the neon city pick up faint cyan/
+  // magenta sign bounce. NEVER a uniform outline around the silhouette.
+  // LIGHT WRAP + EMITTER FILL: a wide soft key-side halo bleeds around the
+  // thin limbs (translucency/volume cue), and the shadow side catches
+  // colored bounce from whatever practical light reaches the subject.
   if((opts.rimAlpha??0)>.01){
-    ctx.save();ctx.globalAlpha*=clamp01(opts.rimAlpha??0)*.24
-    ctx.translate(-.65,-.25);silhouette(ctx,g,opts.rimColor??'#b5c9da',opts);ctx.restore()
+    const rk=clamp01(opts.rimAlpha??0)
+    const rim=rimPlan()
+    ctx.save();ctx.globalAlpha*=rk*rim.wrapA
+    ctx.translate(rim.wrapDX,rim.wrapDY);silhouette(ctx,g,opts.rimColor??rim.keyColor,opts);ctx.restore()
+    ctx.save();ctx.globalAlpha*=rk*rim.keyA*.72
+    ctx.translate(rim.keyDX,rim.keyDY);silhouette(ctx,g,opts.rimColor??rim.keyColor,opts);ctx.restore()
+    ctx.save();ctx.globalAlpha*=rk*rim.bounceA
+    ctx.translate(rim.bounceCyanDX,rim.bounceCyanDY);silhouette(ctx,g,'#3fd8e8',opts);ctx.restore()
+    ctx.save();ctx.globalAlpha*=rk*rim.bounceA*.62
+    ctx.translate(rim.bounceMagentaDX,rim.bounceMagentaDY);silhouette(ctx,g,'#d45bc8',opts);ctx.restore()
+  }
+  if((opts.sideFill?.a??0)>.01){
+    const sf=opts.sideFill!
+    ctx.save();ctx.globalAlpha*=clamp01(sf.a)*.55
+    ctx.translate(sf.dx*1.05,0.3);silhouette(ctx,g,sf.color,opts);ctx.restore()
   }
   silhouette(ctx,g,opts.ghost??'#000000',opts)
   // Impact flashes remain an explicit temporary combat effect, not clothing.

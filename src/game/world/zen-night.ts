@@ -21,7 +21,12 @@ export class ZenNightBackground{
  private shaft:HTMLCanvasElement|null=null
  private petal:HTMLCanvasElement|null=null
  private px=new Float32Array(70);private py=new Float32Array(70);private pz=new Float32Array(70);private pp=new Float32Array(70)
- private moonVisibility=.9
+  private moonVisibility=.9
+  /** shared moon state for the render pass (BackgroundRenderer contract):
+   *  disc center + eclipse coverage from the analytic cloud transmission */
+  moonX=0
+  moonY=0
+  moonCover=0
  // Five depth-sorted cloud banks create a cheap 3D skybox. Their coverage is
  // solved analytically, so moonlight can be occluded without canvas readback.
  private cloudX=new Float32Array([-520,-80,410,880,1330])
@@ -71,6 +76,13 @@ export class ZenNightBackground{
    this.staticMid=c}
  }
 
+ /** zen-night draws its own pre-softened beam shafts (zero runtime blur by
+  *  design) — the generic god-ray pass gets an empty mask here. */
+ drawShaftMask(_ctx:CanvasRenderingContext2D,_cam:BgCam){}
+ /** zen-night's water is its own garden mirror — no shared roughness plate */
+ drawWetMask(_ctx:CanvasRenderingContext2D){}
+ /** zen-night's garden lights are its own system */
+ drawLightRig(_ctx:CanvasRenderingContext2D,_moonWorldX:number){}
  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();const w=this.w,h=this.h,t=this.t,hy=h*.5+(0-cam.y)*cam.zoom
   ctx.save();ctx.drawImage(this.staticFar!,0,0,w,h)
   // cached moon with a stable celestial parallax
@@ -83,9 +95,13 @@ export class ZenNightBackground{
   // Slow attack/release prevents light popping as soft cloud edges cross.
   const target=.06+.94*transmission,rate=target<this.moonVisibility?.018:.006
   this.moonVisibility+=(target-this.moonVisibility)*rate*60
+  this.moonX=mx;this.moonY=my;this.moonCover=1-this.moonVisibility
   ctx.globalAlpha=1
   // pre-softened shafts: no hard polygon edges and no runtime blur/filter
   ctx.globalCompositeOperation='screen';ctx.globalAlpha=this.moonVisibility;for(let i=0;i<3;i++){const x=mx-72+i*72;ctx.save();ctx.translate(x,my+46);ctx.rotate(-.18+i*.035);ctx.drawImage(this.shaft!,-48,0,96,Math.max(260,hy-my));ctx.restore()}ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
+  // THE STORM ABOVE THE GARDEN — forked bolt + sky glow, drawn over the
+  // cloud deck but occluded by the foreground garden silhouette below
+  this.storm.drawSky(ctx)
   // mid garden cache parallax
   const shift=-(cam.x*.075)%w;ctx.drawImage(this.staticMid!,shift,0,w,h);ctx.drawImage(this.staticMid!,shift+(shift>0?-w:w),0,w,h)
   // two wrapped fog depths

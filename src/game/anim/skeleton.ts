@@ -289,6 +289,8 @@ export interface DrawOpts {
   /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
    * the swinging/charging edge illuminates the body that carries it */
   edgeLight?: { color: string; a: number }
+  /** colored fill from a nearby practical light (look.emitterFill) */
+  sideFill?: { color: string; a: number; dx: number }
 }
 
 function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, cx: number, cy: number): void {
@@ -350,6 +352,22 @@ export function drawStick(
   ctx.globalAlpha *= alpha
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
+
+  // LIGHT TRANSPORT (universal look) — colored fill from nearby practicals:
+  // a flat pass offset toward the emitter, body covers the middle. Reuses
+  // the ghost machinery; recursion terminates (ghost skips this block).
+  if (!ghost && (opts.sideFill?.a ?? 0) > 0.01) {
+    const sf = opts.sideFill!
+    ctx.save()
+    ctx.translate(sf.dx * 1.1, 0.3)
+    drawStick(ctx, g, style, {
+      time: t,
+      ghost: sf.color,
+      ghostAlpha: Math.min(1, sf.a) * 0.5,
+      simple: true,
+    })
+    ctx.restore()
+  }
 
   if (ghost) {
     // ---- afterimage pass: flat, cheap, gorgeous ----

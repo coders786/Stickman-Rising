@@ -405,6 +405,8 @@ export interface FighterDrawOpts {
   flashColor?: string
   simple?: boolean
   edgeLight?: { color: string; a: number }
+  /** colored fill from a nearby practical light (look.emitterFill) */
+  sideFill?: { color: string; a: number; dx: number }
   scarfNodes?: ReadonlyArray<{ x: number; y: number }>
   scarfColor?: string
 }

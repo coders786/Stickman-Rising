@@ -10,6 +10,7 @@ import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
 import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
+import { emitterFill } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
 import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
@@ -1035,7 +1036,7 @@ export class Enemy {
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
 
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight): void {
+  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
     const g = this.geom
     const s = this.scale
     const f = this.face * s
@@ -1079,7 +1080,7 @@ export class Enemy {
     }
     const flying = this.kind === 'drone' ? this.y : this.y
     drawCastShadow(ctx, this.shFig, light, {
-      alpha: this.kind === 'drone' ? 0.36 : 0.5, width: 6, passes: 2, scale: s,
+      alpha: (this.kind === 'drone' ? 0.5 : 0.68) * alphaScale, width: 6, passes: 2, scale: s,
       height: flying, contacts,
     })
   }
@@ -1095,6 +1096,7 @@ export class Enemy {
       time,
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',
+      sideFill: emitterFill(this.x, this.y),
     })
     this.drawWeapon(ctx, time)
     // LIGHTNING RIM: the bolt's channel lights the body it struck. A true
@@ -1115,7 +1117,7 @@ export class Enemy {
     }
     // STROBE RIM (lighting engine): the sky bolt lights every figure's
     // lit side — same additive edge pass the player gets
-    if (this.strobeLight && this.strobeK > 0.04 && this.kind !== 'drone') {
+    if (this.strobeLight && this.kind !== 'drone') {
       const g = this.geom
       const rc = this.rimChains
       const L = (j: { x: number; y: number }, out: number[]) => { out.push(j.x, j.y) }
@@ -1129,8 +1131,8 @@ export class Enemy {
       L(g.shoulderL, rc[3]); L(g.elbL, rc[3]); L(g.handL, rc[3])
       rc[4].length = 0
       L(g.shoulderR, rc[4]); L(g.elbR, rc[4]); L(g.handR, rc[4])
-      drawStrobeRim(ctx, this.strobeLight, this.strobeK, rc,
-        { x: g.headC.x, y: g.headC.y, r: 8.4 }, this.face, 4)
+      drawStrobeRim(ctx, this.strobeLight, Math.max(this.strobeK, 0.45), rc,
+        { x: g.headC.x, y: g.headC.y, r: 8.4 }, this.face, 3.4)
     }
     ctx.restore()
 

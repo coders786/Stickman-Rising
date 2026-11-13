@@ -12,6 +12,7 @@ import {drawArticulatedHand} from '../anim/humanoid'
 import {drawDetail,sheatheDetail,DRAW_CLEAR,DRAW_GRIP,SHEATHE_MEET,SHEATHE_SEAT} from '../anim/draw-detail'
 import {equipmentClip} from '../anim/equipment-motion'
 import {handPose,unarmedAttack,UNARMED_PUNCH_CHARGE,UNARMED_KICK_CHARGE,UNARMED_PARRY,UNARMED_ULT,UNARMED_FLOURISH_CLIP,CHARGED_PUNCH,CHARGED_KICK} from '../combat/unarmed'
+import {ABC_FLASH_STRAIGHT} from '../combat/moveset'
 import {ComboDirector,type Requires} from '../combat/combo-director'
 import type {Clip,PlayOpts} from '../anim/animator'
 import { DashBody } from '../physics/dash-body'
@@ -28,6 +29,7 @@ import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
 import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
+import { emitterFill } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -2583,7 +2585,10 @@ export class Player {
     const id=this.lightIndex===1?'l1':this.lightIndex===2?'l2':'h3'
     const base=unarmedAttack(ATTACKS[id])
     return this.lightIndex===3?{...base,id:'flashPunchFinish',label:'FLASH PUNCH FINISH',
-      hit:{...base.hit,dmg:25,heavy:true,breakGuard:true},chain:['l1','launcher']}:base
+      clip:ABC_FLASH_STRAIGHT,
+      hit:{...base.hit,dmg:25,heavy:true,breakGuard:true,
+        start:ABC_FLASH_STRAIGHT.dur*.46,end:ABC_FLASH_STRAIGHT.dur*.46+.1},
+      chain:['l1','launcher']}:base
   }
 
   /** Empty-hand K lane: legs only. Neutral presses rotate through roundhouse,
@@ -4059,16 +4064,19 @@ export class Player {
     const armVel = (armSum - this.prevArmSum) / dt
     this.armVel = armVel
     this.prevArmSum = armSum
-    // Scabbard inertia is driven by the pelvis, including unarmed attacks.
-    // A critically bounded under-damped response gives a short overshoot
-    // without letting the saya detach from its belt suspension.
-    const pelvisDrive=p[CH.rootRot]+p[CH.pelvisYaw]*.32
+    // Scabbard inertia is driven by the pelvis AND chest, including unarmed
+    // attacks — the secondary motion of the reference sheets: it whips
+    // outward on a spin, dips under a lean-back, kicks up behind a slam and
+    // settles with a short overshoot. A bounded under-damped response keeps
+    // the whip expressive without letting the saya detach from its belt
+    // suspension (±17° — visible arcs, never a floating scabbard).
+    const pelvisDrive=p[CH.rootRot]+p[CH.pelvisYaw]*.32+p[CH.chestYaw]*.22
     const pelvisVel=(pelvisDrive-this.prevPelvisDrive)/dt
     this.prevPelvisDrive=pelvisDrive
-    const sayaTarget=clamp(-pelvisVel*.018,-.13,.13)
+    const sayaTarget=clamp(-pelvisVel*.032,-.26,.26)
     this.sayaLagVel+=(125*(sayaTarget-this.sayaLag)-12*this.sayaLagVel)*dt
-    this.sayaLag=clamp(this.sayaLag+this.sayaLagVel*dt,-.15,.15)
-    this.sayaLagVel=clamp(this.sayaLagVel,-4,4)
+    this.sayaLag=clamp(this.sayaLag+this.sayaLagVel*dt,-.3,.3)
+    this.sayaLagVel=clamp(this.sayaLagVel,-7,7)
     if(!this.swordDrawn&&!this.sheathAct){
       this.bladeLag=0;this.bladeLagVel=0;this.chainLag=0;this.chainLagVel=0
       return
@@ -4780,7 +4788,7 @@ export class Player {
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
 
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight): void {
+  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const g = this.geom
     const f = this.face * SCALE
@@ -4818,7 +4826,7 @@ export class Player {
       for (const c of this.snapContacts) contacts.push(c)
     }
     drawCastShadow(ctx, this.shFig, light, {
-      alpha: 0.58, width: 6.4, passes: 3, scale: SCALE,
+      alpha: 0.92 * alphaScale, width: 7.6, passes: 3, scale: SCALE,
       height: this.y, contacts,
     })
   }
@@ -4857,27 +4865,119 @@ export class Player {
     }
   }
 
-  /** Physical ink/air-displacement smear for A/B/C unarmed kicks. It is
-   * deliberately non-emissive: three tapered brush wakes sit behind the
-   * live silhouette, matching the contact drawing without inventing extra
-   * interpolated body poses. */
-  drawKickSmear(ctx:CanvasRenderingContext2D):void{
+  /** Physical ink/air-displacement smear for the held-drawing strikes — the
+   * speed lines of a hand-drawn punch sheet. Deliberately non-emissive: the
+   * smear is the motion BETWEEN drawings, drawn as a logical physical trail:
+   *   · wake  — tapered brush wake behind fist/heel/knee/elbow (default)
+   *   · spin  — a wide circular arc wraps behind the torso mid-spin, then a
+   *     crescent radiates off the striking fist at contact (backfist sheet)
+   *   · drop  — vertical up-streaks on the wind-up, one long descent streak
+   *     on the slam, fading floor wisps at recovery (hammer sheet)
+   *   · flurry— needle smears per staccato pop, a layered double-peak under
+   *     the double-tap, a thick solid slab behind the finishing straight
+   *     (machine-gun sheet). Nothing here invents body poses: the silhouette
+   *     stays the authored drawing; these are pure speed lines. */
+  drawStrikeSmear(ctx:CanvasRenderingContext2D):void{
     const a=this.action
-    if(!a||!a.def.strikeHand||(a.def.strikeJoint!=='foot'&&a.def.strikeJoint!=='knee')||!this.limbSeg.active)return
-    const start=a.def.hit.start-.035,end=a.def.hit.end+.055
+    const joint=a?.def.strikeJoint
+    if(!a||!a.def.strikeHand||!joint)return
+    const id=a.def.id
+    const style=id==='cyclone'?'spin':(id==='h3'||id==='sakugaHammer')?'drop':id==='sakugaBarrage'?'flurry':id==='flashPunchFinish'?'solid':'wake'
+    const hit=a.def.hit
+    const wide=style==='spin'?.19:.035
+    const start=hit.start-wide,end=hit.end+(style==='spin'?.16:style==='drop'?.15:.065)
     if(a.animT<start||a.animT>end)return
     const life=Math.max(0,Math.min(1,(a.animT-start)/.055))*Math.max(0,Math.min(1,(end-a.animT)/.07))
-    const tx=this.limbSeg.tx,ty=this.limbSeg.ty
-    const hx=this.x,hy=this.hipY-15
-    const dx=tx-hx,dy=ty-hy,L=Math.max(1,Math.hypot(dx,dy)),nx=-dy/L,ny=dx/L
-    const sx=hx-dx*.18-this.face*16,sy=hy+18
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='source-over'
-    // Broad sumi-e wake, darkest at the live foot and transparent at origin.
-    const g=ctx.createLinearGradient(sx,sy,tx,ty)
-    g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.07*life})`);g.addColorStop(1,`rgba(198,210,216,${.2*life})`)
-    ctx.strokeStyle=g;ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
-    // Separated brush filaments make speed readable without a neon ribbon.
-    for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(184,197,203,${(.1-Math.abs(i)*.018)*life})`;ctx.lineWidth=1.4+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
+    // needle: a short sharp horizontal streak trailing one fist
+    const needle=(px:number,py:number,len:number,w:number,alpha:number)=>{
+      const gx=px-this.face*len
+      const ng=ctx.createLinearGradient(gx,py,px,py)
+      ng.addColorStop(0,'rgba(192,205,211,0)');ng.addColorStop(1,`rgba(212,224,230,${alpha})`)
+      ctx.strokeStyle=ng;ctx.lineWidth=w
+      ctx.beginPath();ctx.moveTo(gx,py);ctx.lineTo(px-this.face*2,py);ctx.stroke()
+    }
+    // live hand positions from the same projected skeleton the renderer draws
+    const hand=(side:'L'|'R')=>({x:this.x+this.face*SCALE*(side==='R'?this.geom.handR.x:this.geom.handL.x),
+      y:this.hipY+SCALE*(side==='R'?this.geom.handR.y:this.geom.handL.y)})
+    if(style==='flurry'){
+      // step-exposure holds flip at .14d/.37d/.73d — each drawn pop smears
+      // the fist it actually threw (A left needle · B right · C double-tap
+      // left with a layered double-peak · D the solid finishing straight)
+      const d=a.def.clip.dur,t=a.animT
+      if(t<.37*d){
+        const p=t<.14*d?hand('L'):hand('R')
+        needle(p.x,p.y,26,3.2,.17*life)
+        const q=hand(t<.14*d?'R':'L') // the cocked fist gets a faint blur line
+        needle(q.x,q.y,15,1.8,.08*life)
+      } else if(t<.73*d){
+        const p=hand('L') // layered double-peak: two overlapping needles
+        needle(p.x,p.y-5,24,2.6,.14*life)
+        needle(p.x,p.y+5,30,3.2,.19*life)
+      } else {
+        const p=hand('R') // thick, solid horizontal impact smear
+        needle(p.x,p.y,44,11,.24*life)
+      }
+      ctx.restore();return
+    }
+    // Sheathed strikes carry the visible limb as the hit segment (blade :=
+    // fist/heel/knee); drawn-blade body strikes expose limbSeg instead.
+    const seg=this.limbSeg.active?this.limbSeg
+      :(!this.swordDrawn&&this.blade.tx!==this.blade.bx?this.blade:null)
+    if(!seg){ctx.restore();return}
+    const tx=seg.tx,ty=seg.ty
+    const arm=joint==='hand'||joint==='elbow'
+    const hx=this.x+(joint==='shoulder'?-this.face*8:0),hy=this.hipY-(arm?40:joint==='shoulder'?32:15)
+    const dx=tx-hx,dy=ty-hy,L=Math.max(1,Math.hypot(dx,dy)),nx=-dy/L,ny=dx/L
+    const sx=hx-dx*(arm?.3:.18)-this.face*(arm?10:joint==='shoulder'?22:16),sy=hy+(arm?-dy*.12:18)
+    if(style==='spin'){
+      if(a.animT<hit.start){
+        // mid-spin blind spot: a wide 180° circular motion-blur arc wraps
+        // behind the torso (the sweep the body just traveled)
+        for(let i=0;i<3;i++){
+          ctx.strokeStyle=`rgba(192,205,211,${(.09-i*.022)*life})`
+          ctx.lineWidth=7-i*2.2
+          ctx.beginPath();ctx.arc(this.x,this.hipY-28,46+i*9,Math.PI*.55,Math.PI*1.62,false);ctx.stroke()
+        }
+      } else {
+        // contact: a thick high-velocity crescent radiates off the fist
+        // along the arc the arm actually swung through
+        const ang=Math.atan2(ty-hy,tx-hx)
+        for(let i=0;i<3;i++){
+          ctx.strokeStyle=`rgba(200,212,218,${(.17-i*.032)*life})`
+          ctx.lineWidth=8-i*2.4
+          ctx.beginPath();ctx.arc(hx,hy,L-i*7,ang-.85,ang-.16,false);ctx.stroke()
+        }
+      }
+      // fading horizontal wisps around the knuckles
+      for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(206,218,224,${(.13-i*.032)*life})`;ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(tx-this.face*(8+i*8),ty+(i-1)*5);ctx.lineTo(tx-this.face*(2+i*8),ty+(i-1)*5);ctx.stroke()}
+    } else if(style==='drop'){
+      const both=[hand('R'),hand('L')]
+      if(a.animT<hit.start){
+        // wind-up/apex: short vertical up-streaks trail below both forearms
+        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(192,205,211,${(.13-i*.03)*life})`;ctx.lineWidth=2.4+i*.8;ctx.beginPath();ctx.moveTo(p.x+(i-1)*8-5,p.y+6);ctx.lineTo(p.x+(i-1)*8+3,p.y+30+i*10);ctx.stroke()}
+      } else if(a.animT<=hit.end){
+        // slam: one long dramatic descent streak covers the whole fall path
+        for(const p of both){
+          const dg=ctx.createLinearGradient(p.x,p.y-132,p.x,p.y)
+          dg.addColorStop(0,'rgba(206,218,224,0)');dg.addColorStop(1,`rgba(216,228,234,${.27*life})`)
+          ctx.strokeStyle=dg;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(p.x,p.y-126);ctx.lineTo(p.x,p.y-4);ctx.stroke()
+          for(let i=-1;i<=1;i+=2){ctx.strokeStyle=`rgba(192,205,211,${.12*life})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x+i*13,p.y-114);ctx.lineTo(p.x+i*13,p.y-2);ctx.stroke()}
+        }
+      } else {
+        // recovery: fading downward wisps at floor level
+        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(192,205,211,${(.11-i*.026)*life})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(p.x+(i-1)*12,p.y-27-i*7);ctx.lineTo(p.x+(i-1)*12+this.face*3,p.y-2);ctx.stroke()}
+      }
+    } else {
+      const mul=style==='solid'?1.5:1
+      // Broad sumi-e wake, darkest at the live limb tip and transparent at origin.
+      const g=ctx.createLinearGradient(sx,sy,tx,ty)
+      g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.09*life})`);g.addColorStop(1,`rgba(206,218,224,${(.22+.05*mul)*life})`)
+      ctx.strokeStyle=g;ctx.lineWidth=(arm?10:12)*mul;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
+      // Separated brush filaments make speed readable without a neon ribbon —
+      // three streaks of varying length, exactly like the reference sheet.
+      for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(192,205,211,${(.15-Math.abs(i)*.026)*life*mul})`;ctx.lineWidth=1.5+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
+    }
     ctx.restore()
   }
 
@@ -4962,7 +5062,12 @@ export class Player {
       time,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
       hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      rimColor:'#000000',rimAlpha:0,
+      // MOONLIGHT RIM — the cool sky key carves the black ronin out of the
+      // night; lightning strobes lift it (strobeK rides the key light, set
+      // by the renderer each frame).
+      rimColor:'#a5d2f2',rimAlpha:0.85+this.strobeK*0.15,
+      // LIGHT TRANSPORT — colored fill from practicals near the ronin
+      sideFill: emitterFill(this.x, this.y),
       alpha,
       // Null-black face/body stays black through hurt and impact frames.
       flash: 0, // null-black body; impacts remain in weapon/scene FX
