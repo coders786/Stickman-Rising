@@ -361,7 +361,7 @@ export class Game {
    * hysteresis. If DPR 1 still can't hold ~40fps, fall a quality tier
    * (rain/mote/fog/mist/reflection density all scale with tier). */
   private govern(dt: number): void {
-    if (!this.autoQuality || this.phase !== 'playing' || this.settings.quality==='ultra') return
+    if (!this.autoQuality || this.phase !== 'playing') return
     this.govT += dt
     this.govCool = Math.max(0, this.govCool - dt)
     if (this.govT < 0.8) return
@@ -371,12 +371,12 @@ export class Game {
       this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
       this.dprCeil,
     )
-    if (this.fpsAvg < 44 && this.dprTarget > 1) {
-      this.dprTarget = Math.max(1, this.dprTarget - 0.25)
+    if (this.fpsAvg < 44 && this.dprTarget > 0.8) {
+      this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 0.8
       this.resize()
-    } else if (this.fpsAvg < 36 && this.dprTarget <= 1) {
+    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.81 && this.settings.quality !== 'ultra') {
       // resolution floor reached and still drowning → drop a quality tier
       const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
       const i = order.indexOf(this.settings.quality)
@@ -568,10 +568,12 @@ export class Game {
     this.raf = requestAnimationFrame(this.loop)
     let dtRaw = (now - this.lastFrame) / 1000
     this.lastFrame = now
-    if (dtRaw > 0.05) dtRaw = 0.05
+    // NO FPS FLOOR: the old 0.05 clamp made every slow frame read as exactly
+    // 20fps (a fake plateau). Only guard true stalls; report TRUE frame rate.
+    if (dtRaw > 0.25) dtRaw = 0.25
     if (dtRaw <= 0) dtRaw = 0.0001
-    this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
-    this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 1.2, dtRaw)
+    this.fps = damp(this.fps, 1 / dtRaw, 10, dtRaw)
+    this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 2.2, dtRaw)
     this.wall = now / 1000
     this.renderTime = this.time // frozen/paused frames render the sim time
     this.govern(dtRaw)
