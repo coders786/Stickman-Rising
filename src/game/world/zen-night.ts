@@ -47,6 +47,7 @@ export class ZenNightBackground{
  private cloud:HTMLCanvasElement|null=null
  private shaft:HTMLCanvasElement|null=null
  private petal:HTMLCanvasElement|null=null
+ private petalGlow:HTMLCanvasElement|null=null
  private vignette:HTMLCanvasElement|null=null
  private deckPool:HTMLCanvasElement|null=null
  private warmPool:HTMLCanvasElement|null=null
@@ -63,22 +64,53 @@ export class ZenNightBackground{
  private cloudX=new Float32Array([-520,-80,410,880,1330])
  private cloudZ=new Float32Array([.18,.34,.52,.72,.9])
  get onThunder(){return this.storm.onThunder}set onThunder(v:(()=>void)|null){this.storm.onThunder=v}
- constructor(storm=new StormEngine('ultra')){this.storm=storm;const r=noise(0x51a9c3);for(let i=0;i<70;i++){this.px[i]=r()*2200;this.py[i]=r()*720;this.pz[i]=r();this.pp[i]=r()*TAU}}
+ constructor(storm=new StormEngine('medium')){this.storm=storm;this.storm.setRainScale(.48);const r=noise(0x51a9c3);for(let i=0;i<70;i++){this.px[i]=r()*2200;this.py[i]=r()*720;this.pz[i]=r();this.pp[i]=r()*TAU}}
  resize(w:number,h:number){this.w=Math.max(1,w);this.h=Math.max(1,h);this.storm.resize(w,h);this.built=false}
- update(dt:number){const d=Math.min(.1,Math.max(0,dt));this.t+=d;for(let i=0;i<this.cloudX.length;i++){this.cloudX[i]+=d*(3.2+this.cloudZ[i]*4.8);if(this.cloudX[i]>this.w+620)this.cloudX[i]=-720}}
+ update(dt:number){const d=Math.min(.1,Math.max(0,dt));this.t+=d;for(let i=0;i<this.cloudX.length;i++){this.cloudX[i]+=d*(1.1+this.cloudZ[i]*1.7);if(this.cloudX[i]>this.w+620)this.cloudX[i]=-720}}
  lightningI(){return this.storm.intensity}
  lightningAz(){return this.storm.azimuthValue}
 
  private ensure(){if(this.built)return;this.built=true;this.buildSprites();this.buildStatic()}
  private buildSprites(){
   // MOON — distant celestial body: pale disc + mare mottling + soft halo
-  {const {c,g}=canvas(360,360);let q=g.createRadialGradient(180,180,42,180,180,176);q.addColorStop(0,'rgba(190,207,207,.25)');q.addColorStop(.48,'rgba(112,143,151,.09)');q.addColorStop(1,'rgba(70,100,112,0)');g.fillStyle=q;g.fillRect(0,0,360,360);q=g.createRadialGradient(168,162,10,180,180,72);q.addColorStop(0,'#e1e1d6');q.addColorStop(.72,'#c2c8c3');q.addColorStop(1,'#818f91');g.fillStyle=q;g.beginPath();g.arc(180,180,72,0,TAU);g.fill();const r=noise(77);for(let i=0;i<22;i++){g.fillStyle=`rgba(54,68,70,${.025+r()*.07})`;g.beginPath();g.ellipse(145+r()*75,140+r()*80,3+r()*12,2+r()*7,r()*TAU,0,TAU);g.fill()}this.moon=c}
-  {const {c,g}=canvas(1024,220),r=noise(912);for(let i=0;i<16;i++){const x=r()*1024,y=75+r()*95,rx=75+r()*145,ry=18+r()*40,q=g.createRadialGradient(x,y,0,x,y,rx);q.addColorStop(0,`rgba(147,169,171,${.07+r()*.09})`);q.addColorStop(1,'rgba(115,142,146,0)');g.save();g.scale(1,ry/rx);g.fillStyle=q;g.beginPath();g.arc(x,y*rx/ry,rx,0,TAU);g.fill();g.restore()}this.fog=c}
+  {const {c,g}=canvas(360,360)
+   // wide soft AUREOLE (Mie forward-scatter halo) — the moon's atmosphere glow
+   let q=g.createRadialGradient(180,180,26,180,180,180);q.addColorStop(0,'rgba(214,236,244,.17)');q.addColorStop(.26,'rgba(158,196,214,.09)');q.addColorStop(.58,'rgba(120,162,184,.035)');q.addColorStop(1,'rgba(90,130,152,0)');g.fillStyle=q;g.fillRect(0,0,360,360)
+   // tight bright ring hugging the limb
+   q=g.createRadialGradient(180,180,58,180,180,84);q.addColorStop(0,'rgba(244,250,250,0)');q.addColorStop(.5,'rgba(244,250,250,.20)');q.addColorStop(1,'rgba(244,250,250,0)');g.fillStyle=q;g.fillRect(0,0,360,360)
+   // the DISC — bright near-white (the scene's brightest object), soft limb
+   q=g.createRadialGradient(166,162,8,180,180,68);q.addColorStop(0,'#f6faf8');q.addColorStop(.62,'#e8efec');q.addColorStop(.9,'#d4e0dd');q.addColorStop(1,'#b9c9c8');g.fillStyle=q;g.beginPath();g.arc(180,180,68,0,TAU);g.fill()
+   // mare mottling — TONE, not dirt (very low contrast, cool)
+   const r=noise(77);for(let i=0;i<16;i++){g.fillStyle=`rgba(122,152,166,${.02+r()*.038})`;g.beginPath();g.ellipse(150+r()*62,148+r()*66,4+r()*14,3+r()*9,r()*TAU,0,TAU);g.fill()}
+   this.moon=c}
+  {const {c,g}=canvas(1024,260),r=noise(912)
+   // mist body: dense near the base (exp height-fog look), wisps lifting above
+   for(let i=0;i<22;i++){const x=r()*1024,y=150+r()*95,rx=90+r()*170,ry=16+r()*34,q=g.createRadialGradient(x,y,0,x,y,rx);q.addColorStop(0,`rgba(158,186,196,${.09+r()*.11})`);q.addColorStop(1,'rgba(122,152,162,0)');g.save();g.scale(1,ry/rx);g.fillStyle=q;g.beginPath();g.arc(x,y*rx/ry,rx,0,TAU);g.fill();g.restore()}
+   for(let i=0;i<12;i++){const x=r()*1024,y=60+r()*90,rx=60+r()*120,ry=12+r()*22,q=g.createRadialGradient(x,y,0,x,y,rx);q.addColorStop(0,`rgba(140,170,182,${.05+r()*.06})`);q.addColorStop(1,'rgba(110,142,152,0)');g.save();g.scale(1,ry/rx);g.fillStyle=q;g.beginPath();g.arc(x,y*rx/ry,rx,0,TAU);g.fill();g.restore()}
+   // base line of haze so the bank's floor is solid, top is airy
+   const base=g.createLinearGradient(0,110,0,258);base.addColorStop(0,'rgba(150,180,190,0)');base.addColorStop(.45,'rgba(150,180,190,.11)');base.addColorStop(.82,'rgba(150,180,190,.045)');base.addColorStop(1,'rgba(150,180,190,0)');g.fillStyle=base;g.fillRect(0,110,1024,150)
+   this.fog=c}
   {const {c,g}=canvas(800,220),r=noise(318);for(let i=0;i<15;i++){const x=45+r()*710,y=64+r()*82,rx=68+r()*125,ry=24+r()*38,q=g.createRadialGradient(x,y-ry*.32,2,x,y,rx);q.addColorStop(0,`rgba(80,99,113,${.22+r()*.1})`);q.addColorStop(.48,`rgba(25,37,51,${.42+r()*.16})`);q.addColorStop(1,'rgba(3,7,14,0)');g.save();g.scale(1,ry/rx);g.fillStyle=q;g.beginPath();g.arc(x,y*rx/ry,rx,0,TAU);g.fill();g.restore()}const under=g.createLinearGradient(0,105,0,210);under.addColorStop(0,'rgba(2,6,13,0)');under.addColorStop(.52,'rgba(2,5,12,.28)');under.addColorStop(1,'rgba(2,5,12,0)');g.fillStyle=under;g.fillRect(0,90,800,120);this.cloud=c}
-  {const {c,g}=canvas(96,360);for(let y=0;y<360;y++){const u=y/360,half=5+u*38,a=.055*(1-u)*Math.sin(Math.PI*u);const q=g.createLinearGradient(48-half,y,48+half,y);q.addColorStop(0,'rgba(164,190,191,0)');q.addColorStop(.5,`rgba(164,190,191,${a})`);q.addColorStop(1,'rgba(164,190,191,0)');g.fillStyle=q;g.fillRect(48-half,y,half*2,1)}this.shaft=c}
-  {const {c,g}=canvas(20,16);g.fillStyle='#b5a1aa';g.beginPath();g.moveTo(2,8);g.quadraticCurveTo(8,0,18,5);g.quadraticCurveTo(10,15,2,8);g.fill();g.strokeStyle='rgba(226,215,217,.45)';g.lineWidth=.7;g.stroke();this.petal=c}
+  {const {c,g}=canvas(720,720)
+   // 9 soft wedges radiating from the top-center (the moon) toward the lower
+   // left — painted ONCE and never animated (research: stable god rays; only
+   // their alpha breathes with cloud cover). Wide-faint + narrow-bright pairs.
+   const ox=360,oy=18
+   const wedges=[[-42,7,.10],[-33,5,.13],[-25,9,.09],[-18,4,.14],[-9,7,.10],[-1,3,.12],[7,8,.08],[15,5,.10],[24,6,.07]]
+   for(const [deg,wid,amp] of wedges){
+    const a=(deg-90)*Math.PI/180  // -90 = straight down; negative = to the left
+    for(const [w2,f] of [[wid*3.2,.35],[wid,1]] as const){
+     const g2=g.createLinearGradient(ox,oy,ox+Math.cos(a)*660,oy+Math.sin(a)*660)
+     g2.addColorStop(0,`rgba(196,224,236,${amp*f})`);g2.addColorStop(.55,`rgba(172,204,220,${amp*f*.45})`);g2.addColorStop(1,'rgba(150,184,202,0)')
+     g.fillStyle=g2;g.beginPath();g.moveTo(ox,oy)
+     const hw=w2*Math.PI/360
+     g.arc(ox,oy,660,a-hw,a+hw);g.closePath();g.fill()
+    }}
+   this.shaft=c}
+  {const {c,g}=canvas(20,16);g.fillStyle='#d9a8b8';g.beginPath();g.moveTo(2,8);g.quadraticCurveTo(8,0,18,5);g.quadraticCurveTo(10,15,2,8);g.fill();g.strokeStyle='rgba(240,214,222,.55)';g.lineWidth=.7;g.stroke();this.petal=c}
+  {const {c,g}=canvas(64,64);const q=g.createRadialGradient(32,32,2,32,32,30);q.addColorStop(0,'rgba(255,200,216,.5)');q.addColorStop(.35,'rgba(240,170,196,.22)');q.addColorStop(1,'rgba(220,140,170,0)');g.fillStyle=q;g.fillRect(0,0,64,64);this.petalGlow=c}
   // MOON DIFFUSE POOL — the lit surface the long shadows read against
-  {const {c,g}=canvas(512,128);const q=g.createRadialGradient(256,64,14,256,64,250);q.addColorStop(0,'rgba(178,206,232,.4)');q.addColorStop(.5,'rgba(150,182,212,.16)');q.addColorStop(1,'rgba(120,155,190,0)');g.fillStyle=q;g.fillRect(0,0,512,128);this.deckPool=c}
+  {const {c,g}=canvas(512,128);const q=g.createRadialGradient(256,64,14,256,64,250);q.addColorStop(0,'rgba(196,222,244,.52)');q.addColorStop(.45,'rgba(162,194,224,.24)');q.addColorStop(1,'rgba(124,162,198,0)');g.fillStyle=q;g.fillRect(0,0,512,128);this.deckPool=c}
   // PRACTICAL WARM POOL — door / lantern bounce (inverse-ish falloff)
   {const {c,g}=canvas(256,256);const q=g.createRadialGradient(128,128,8,128,128,126);q.addColorStop(0,'rgba(255,178,112,.5)');q.addColorStop(.42,'rgba(232,132,74,.2)');q.addColorStop(1,'rgba(180,88,40,0)');g.fillStyle=q;g.fillRect(0,0,256,256);this.warmPool=c}
   // SPECULAR GLITTER LANE — broken horizontal sparkle for the wet mirror
@@ -90,14 +122,29 @@ export class ZenNightBackground{
    *  per-frame blits become 1:1 copies instead of bilinear resamples */
   const finalize=(src:HTMLCanvasElement)=>{const{c,g}=canvas(this.w,this.h);g.drawImage(src,0,0,this.w,this.h);return c}
   // ---------------- staticFar: sky + stars + atmospheric mountains --------
-  {const {c,g}=canvas(W,H);const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#04070f');sky.addColorStop(.46,'#0a1421');sky.addColorStop(.74,'#17242e');sky.addColorStop(1,'#243139');g.fillStyle=sky;g.fillRect(0,0,W,H)
-   for(let i=0;i<150;i++){const y=r()*H*.5,a=.1+r()*.5,s=r()<.08?1.8:1;g.fillStyle=`rgba(205,221,222,${a})`;g.fillRect(r()*W,y,s,s)}
-   // three mountain planes — atmospheric perspective: FAR LIGHTER (haze),
-   // each ridge carries a thin moonlit rim on its sky edge
-   const ridge=(base:number,amp:number,col:string,rim:string,step:number)=>{g.fillStyle=col;g.beginPath();g.moveTo(0,H);g.lineTo(0,base);const pts:[number,number][]=[];for(let x=0;x<=W+step;x+=step){const y=base-(.25+r()*.75)*amp;pts.push([x,y]);g.lineTo(x,y)}g.lineTo(W,H);g.fill();g.strokeStyle=rim;g.lineWidth=1.6;g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke()}
-   ridge(H*.60,H*.17,'#1d2b37','rgba(146,182,202,.16)',130)
-   ridge(H*.68,H*.13,'#131f29','rgba(126,162,184,.12)',100)
-   ridge(H*.76,H*.10,'#0c161e','rgba(110,146,168,.09)',80)
+  {const {c,g}=canvas(W,H)
+   // SKY — deep blue zenith into a bright teal horizon haze (the "sky eating
+   // the world" band the ridges dissolve into). Purkinje blue-green cast.
+   const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#071022');sky.addColorStop(.34,'#0c1a2e');sky.addColorStop(.58,'#16303f');sky.addColorStop(.78,'#244451');sky.addColorStop(1,'#2c4a56');g.fillStyle=sky;g.fillRect(0,0,W,H)
+   // MILKY WAY — a soft diagonal star-cloud band with faint mauve nebula
+   // (upper-left, as in the target). STATIC: celestial structure never moves.
+   const mw=g.createLinearGradient(W*.06,H*.02,W*.52,H*.42);mw.addColorStop(0,'rgba(120,132,178,0)');mw.addColorStop(.3,'rgba(126,138,186,.10)');mw.addColorStop(.52,'rgba(152,132,178,.09)');mw.addColorStop(.75,'rgba(120,132,178,.06)');mw.addColorStop(1,'rgba(110,124,170,0)');g.fillStyle=mw
+   g.save();g.translate(W*.28,H*.2);g.rotate(-.42);g.fillRect(-W*.42,-H*.09,W*.84,H*.18);g.restore()
+   const neb=noise(0x4d21);for(let i=0;i<26;i++){const x=neb()*W*.5,y=neb()*H*.34,rr=18+neb()*66;q2(x,y,rr)}
+   function q2(x:number,y:number,rr:number){const q=g.createRadialGradient(x,y,0,x,y,rr);const tint=neb()<.55?'148,130,182':'120,148,190';q.addColorStop(0,`rgba(${tint},${.028+neb()*.05})`);q.addColorStop(1,`rgba(${tint},0)`);g.fillStyle=q;g.fillRect(x-rr,y-rr,rr*2,rr*2)}
+   // STARS — dense small field + a few glow-stars (still; twinkle subset is live)
+   for(let i=0;i<230;i++){const y=r()*H*.62,a=.12+r()*.62,s=r()<.06?2:1;const warm=r()<.22;g.fillStyle=warm?`rgba(226,214,196,${a})`:`rgba(205,224,232,${a})`;g.fillRect(r()*W,y,s,s)}
+   for(let i=0;i<6;i++){const x=r()*W,y=r()*H*.5,rr=1.6+r()*1.8;const q=g.createRadialGradient(x,y,0,x,y,rr*3.4);q.addColorStop(0,'rgba(232,242,248,.8)');q.addColorStop(.3,'rgba(200,222,238,.28)');q.addColorStop(1,'rgba(180,206,226,0)');g.fillStyle=q;g.fillRect(x-rr*3.4,y-rr*3.4,rr*6.8,rr*6.8)}
+   // HORIZON HAZE — the bright mist band (fog system component 1)
+   const hz=g.createLinearGradient(0,H*.60,0,H*.80);hz.addColorStop(0,'rgba(84,124,140,0)');hz.addColorStop(.55,'rgba(96,138,152,.14)');hz.addColorStop(1,'rgba(110,152,164,.05)');g.fillStyle=hz;g.fillRect(0,H*.60,W,H*.22)
+   // RIDGES — strong aerial perspective: far planes nearly dissolve into the
+   // haze (65%-saturation rule), soft edges, mist pooling at the valley floor.
+   const ridge=(base:number,amp:number,col:string,rim:string,step:number)=>{g.fillStyle=col;g.beginPath();g.moveTo(0,H);g.lineTo(0,base);const pts:[number,number][]=[];for(let x=0;x<=W+step;x+=step){const y=base-(.25+r()*.75)*amp;pts.push([x,y]);g.lineTo(x,y)}g.lineTo(W,H);g.fill();g.strokeStyle=rim;g.lineWidth=1.2;g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke()}
+   ridge(H*.635,H*.15,'#20323d','rgba(150,186,202,.10)',130)
+   ridge(H*.705,H*.115,'#182b36','rgba(136,172,190,.09)',100)
+   ridge(H*.775,H*.085,'#12222c','rgba(122,158,178,.08)',80)
+   // valley mist: soft haze in front of the ridge bases (component 2, baked)
+   for(let i=0;i<18;i++){const x=r()*W,y=H*(.74+r()*.12),rx=120+r()*220,ry=12+r()*20,q=g.createRadialGradient(x,y,0,x,y,rx);q.addColorStop(0,`rgba(132,168,182,${.05+r()*.07})`);q.addColorStop(1,'rgba(110,148,162,0)');g.save();g.scale(1,ry/rx);g.fillStyle=q;g.beginPath();g.arc(x,y*rx/ry,rx,0,TAU);g.fill();g.restore()}
    // distant sleeping city beyond the ridge gaps — sparse DIM windows only
    const city=noise(0x9e11)
    for(let cluster=0;cluster<4;cluster++){const cx0=W*(.12+cluster*.23)+city()*70,cy0=H*(.62+city()*.1),n=14+city()*12
@@ -105,9 +152,9 @@ export class ZenNightBackground{
    this.staticFar=finalize(c)}
   // ---------------- staticMid: bamboo grove band (parallax) --------------
   {const {c,g}=canvas(W,H),r2=noise(0x77c1);const ground=H*.80
-   g.fillStyle='#081116';g.fillRect(0,ground-8,W,H-ground+8)
-   for(let i=0;i<26;i++){const x=r2()*W,h2=H*(.34+r2()*.3),w2=5+r2()*9,lean=(r2()-.5)*36
-    g.strokeStyle='#0a1418';g.lineWidth=w2;g.beginPath();g.moveTo(x,ground);g.quadraticCurveTo(x+lean*.4,ground-h2*.55,x+lean,ground-h2);g.stroke()
+   g.fillStyle='#070f14';g.fillRect(0,ground-8,W,H-ground+8)
+   const gx=[W*.08,W*.30,W*.62,W*.88];for(let i=0;i<16;i++){const x=gx[i%4]+(r2()-.5)*W*.13,h2=H*(.26+r2()*.26),w2=9+r2()*12,lean=(r2()-.5)*24
+    g.strokeStyle='rgba(7,14,19,.94)';g.lineWidth=w2;g.beginPath();g.moveTo(x,ground);g.quadraticCurveTo(x+lean*.4,ground-h2*.55,x+lean,ground-h2);g.stroke()
     // node ticks + moonlit edge (moon sits upper-right)
     g.strokeStyle='rgba(122,158,180,.10)';g.lineWidth=1.1
     for(let k=1;k<5;k++){const u=k/5,xx=x+lean*u*u,yy=ground-h2*u;g.beginPath();g.moveTo(xx-w2*.55,yy);g.lineTo(xx+w2*.55,yy);g.stroke()}
@@ -118,13 +165,20 @@ export class ZenNightBackground{
    this.staticMid=c /* native: subpixel scroll needs the direct per-frame resample (pixel parity) */}
   // ---------------- staticDeck: the engawa boards (world-space) ----------
   {const {c,g}=canvas(ARENA_W,270)
-   const grad=g.createLinearGradient(0,0,0,270);grad.addColorStop(0,'#374347');grad.addColorStop(.18,'#242e31');grad.addColorStop(1,'#0a1013');g.fillStyle=grad;g.fillRect(0,0,ARENA_W,270)
+   // A receding FLOOR: brighter moonlit base + steep diagonal board seams
+   // (the target's deck is a floor plane seen from a low angle — planks run
+   // toward the vanishing line, not a wall grid).
+   const grad=g.createLinearGradient(0,0,0,270);grad.addColorStop(0,'#4c5c66');grad.addColorStop(.16,'#3a4852');grad.addColorStop(.55,'#232e36');grad.addColorStop(1,'#10161b');g.fillStyle=grad;g.fillRect(0,0,ARENA_W,270)
    const r3=noise(0x33b8)
-   for(let x=0;x<ARENA_W;x+=74){const i=x/74|0
-    g.fillStyle=(i&1)?'rgba(128,150,148,.05)':'rgba(4,10,12,.05)';g.fillRect(x,1,73,196)
-    g.strokeStyle='rgba(4,9,12,.5)';g.lineWidth=1.4;g.beginPath();g.moveTo(x,0);g.lineTo(x+19,232);g.stroke()
-    g.strokeStyle='rgba(168,188,182,.1)';g.lineWidth=.7
-    for(let q=0;q<3;q++){const yy=24+q*46+Math.sin(x*.07+q)*8;g.beginPath();g.moveTo(x+8,yy);g.bezierCurveTo(x+25,yy-5,x+43,yy+6,x+66,yy);g.stroke()}}
+   for(let x=-260;x<ARENA_W;x+=78){
+    // steep diagonal seam + subtle board-edge highlight
+    g.strokeStyle='rgba(6,11,15,.5)';g.lineWidth=1.5;g.beginPath();g.moveTo(x,0);g.lineTo(x+58,236);g.stroke()
+    g.strokeStyle='rgba(158,182,188,.07)';g.lineWidth=1;g.beginPath();g.moveTo(x+2,0);g.lineTo(x+60,236);g.stroke()}
+   g.strokeStyle='rgba(6,11,15,.35)';g.lineWidth=1.1
+   for(let q=1;q<4;q++){const yy=q*62;g.beginPath();g.moveTo(0,yy);g.lineTo(ARENA_W,yy);g.stroke()}
+   // long board-direction grain streaks
+   g.strokeStyle='rgba(170,192,196,.05)';g.lineWidth=.8
+   for(let i=0;i<22;i++){const x=r3()*ARENA_W,y=r3()*240,ln=120+r3()*260;g.beginPath();g.moveTo(x,y);g.lineTo(x+ln*.24,y+ln);g.stroke()}
    for(let y=82;y<250;y+=83){g.strokeStyle='rgba(5,10,13,.42)';g.beginPath();g.moveTo(0,y);g.lineTo(ARENA_W,y);g.stroke()}
    // moonlit wet sheen along the board direction (baked; live pool adds on top)
    g.globalCompositeOperation='screen'
@@ -213,9 +267,11 @@ export class ZenNightBackground{
    this.staticGarden=c}
   // wet-deck roughness plate (matte islands + seams chop the mirror)
   {const {c,g}=canvas(ARENA_W,150),r5=noise(0x4ab2)
-   for(let i=0;i<130;i++){const x=r5()*ARENA_W,y=r5()*150,rx=20+r5()*90,ry=5+r5()*16
-    g.fillStyle=`rgba(${r5()<.5?'10,16,20':'150,175,182'},${.03+r5()*.07})`;g.beginPath();g.ellipse(x,y,rx,ry,r5()*.6,0,TAU);g.fill()}
-   for(let x=0;x<ARENA_W;x+=74){g.strokeStyle='rgba(8,13,16,.16)';g.lineWidth=1.2;g.beginPath();g.moveTo(x,0);g.lineTo(x+16,150);g.stroke()}
+   // MATTE ISLANDS ONLY (dark, faint) — the old bright blobs read as dirt on
+   // camera. The mirror stays mostly clean; roughness just breaks it slightly.
+   for(let i=0;i<90;i++){const x=r5()*ARENA_W,y=r5()*150,rx=26+r5()*90,ry=6+r5()*14
+    g.fillStyle=`rgba(12,18,22,${.015+r5()*.028})`;g.beginPath();g.ellipse(x,y,rx,ry,r5()*.6,0,TAU);g.fill()}
+   for(let x=0;x<ARENA_W;x+=78){g.strokeStyle='rgba(8,13,16,.05)';g.lineWidth=1;g.beginPath();g.moveTo(x+10,0);g.lineTo(x+26,150);g.stroke()}
    this.wetPlate=c}
   // screen-space atmospheric grade — baked once per resize (was a full-screen
   // radial-gradient fillRect every frame)
@@ -231,7 +287,7 @@ export class ZenNightBackground{
   const cy=Number.isFinite(cam.y)?cam.y:NOMINAL_Y
   const cz=Number.isFinite(cam.zoom)?cam.zoom:1
   // twin of drawSky's celestial anchor — the mask obeys the same parallax
-  const mx=this.w*.72-cx*.018*cz,my=this.h*.18-(cy+170)*.035*cz
+  const mx=this.w*.72-cx*.018*cz,my=this.h*.15-(cy+170)*.035*cz
   // bright moon mass + wide halo = the god-ray source
   ctx.drawImage(this.moon!,mx-180,my-180,360,360)
   const halo=ctx.createRadialGradient(mx,my,20,mx,my,320)
@@ -250,26 +306,49 @@ export class ZenNightBackground{
  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();const w=this.w,h=this.h,t=this.t,hy=h*.5+(0-cam.y)*cam.zoom
   ctx.save();ctx.drawImage(this.staticFar!,0,0,w,h)
   // cached moon with a stable celestial parallax
-  const mx=w*.72-cam.x*.018,my=h*.18-(cam.y+170)*.035
+  const mx=w*.72-cam.x*.018,my=h*.15-(cam.y+170)*.035
   ctx.drawImage(this.moon!,mx-180,my-180,360,360)
   // Depth-sorted cloud skybox. Scale, vertical parallax and differential
   // drift supply volume while remaining only five cached image blits/frame.
   let transmission=1
-  for(let k=0;k<this.cloudX.length;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}ctx.globalAlpha=.38+.28*z;ctx.drawImage(this.cloud!,x,y,cw,ch)}
+  for(let k=0;k<this.cloudX.length;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}ctx.globalAlpha=.22+.17*z;ctx.drawImage(this.cloud!,x,y,cw,ch)}
   // Slow attack/release prevents light popping as soft cloud edges cross.
   const target=.06+.94*transmission,rate=target<this.moonVisibility?.018:.006
   this.moonVisibility+=(target-this.moonVisibility)*rate*60
   this.moonX=mx;this.moonY=my;this.moonCover=1-this.moonVisibility
   ctx.globalAlpha=1
-  // pre-softened shafts: no hard polygon edges and no runtime blur/filter
-  ctx.globalCompositeOperation='screen';ctx.globalAlpha=this.moonVisibility;for(let i=0;i<3;i++){const x=mx-72+i*72;ctx.save();ctx.translate(x,my+46);ctx.rotate(-.18+i*.035);ctx.drawImage(this.shaft!,-48,0,96,Math.max(260,hy-my));ctx.restore()}ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
+  // MOON SHAFTS — one painted fan, STILL (research: god rays are physically
+  // stable; they breathe only as cloud cover modulates the source). The fan
+  // radiates down-left from the moon toward the deck.
+  ctx.globalCompositeOperation='screen'
+  const breathe=1+.04*Math.sin(t*.31)
+  ctx.globalAlpha=clamp01(this.moonVisibility*.8)*breathe
+  ctx.drawImage(this.shaft!,mx-360,my-16,720,720)
+  ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
   // THE STORM ABOVE THE GARDEN — forked bolt + sky glow, drawn over the
   // cloud deck but occluded by the foreground garden silhouette below
   this.storm.drawSky(ctx)
   // mid garden cache parallax
   const shift=-(cam.x*.075)%w;ctx.drawImage(this.staticMid!,shift,0,w,h);ctx.drawImage(this.staticMid!,shift+(shift>0?-w:w),0,w,h)
-  // two wrapped fog depths
-  for(let band=0;band<2;band++){ctx.globalAlpha=(band?.19:.13)*this.moonVisibility;const y=hy-135+band*80,off=((t*(band?7:-4)-cam.x*(band?.13:.07))%1024+1024)%1024;for(let x=off-1024;x<w;x+=1024)ctx.drawImage(this.fog!,x,y,1024,220)}ctx.globalAlpha=1
+  // FOG SYSTEM v2 (height fog + directional inscattering):
+  // two mist banks hugging the valley/deck line, CREEPING (≤2px/s) with a
+  // slow density breath — painted atmosphere, never sliding smoke.
+  for(let band=0;band<2;band++){
+   ctx.globalAlpha=(band?.09:.13)*this.moonVisibility
+   const y=hy-150+band*92
+   const off=((t*(band?1.0:-1.4)-cam.x*(band?.11:.06))%1024+1024)%1024
+   const scale=band?1.1:1.35
+   for(let x=off-1024;x<w;x+=1024)ctx.drawImage(this.fog!,x,y,1024*scale,260*scale)}
+  ctx.globalAlpha=1
+  // DIRECTIONAL INSCATTERING — the mist brightens toward the moon azimuth
+  // (Mie forward-scatter): a soft additive glow sits over the banks near the
+  // moon's side of the sky, fading across the frame.
+  {const scatter=clamp01(this.moonVisibility)*.06
+   if(scatter>.004){ctx.globalCompositeOperation='lighter'
+    const sg=ctx.createRadialGradient(mx,hy-95,20,mx,hy-95,w*.62)
+    sg.addColorStop(0,`rgba(150,192,212,${scatter})`);sg.addColorStop(.5,`rgba(120,164,190,${scatter*.4})`);sg.addColorStop(1,'rgba(100,146,176,0)')
+    ctx.fillStyle=sg;ctx.fillRect(0,Math.max(0,hy-320),w,340)
+    ctx.globalCompositeOperation='source-over'}}
   // quiet combat pocket: lifts the value immediately behind silhouettes
   const pocket=ctx.createRadialGradient(w*.5,hy-75,20,w*.5,hy-75,285);pocket.addColorStop(0,'rgba(112,137,139,.115)');pocket.addColorStop(.55,'rgba(70,93,99,.045)');pocket.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=pocket;ctx.fillRect(0,Math.max(0,hy-390),w,390)
   ctx.restore()}
@@ -284,8 +363,8 @@ export class ZenNightBackground{
   ctx.strokeStyle='rgba(168,196,204,.26)';ctx.lineWidth=1.2
   for(let i=0;i<7;i++){const rw=38+i*19+Math.sin(t*.8+i)*7;ctx.beginPath();ctx.ellipse(Math.sin(i*2.4)*42,35+i%2*8,rw,5+i*.45,0,0,TAU);ctx.stroke()}
   ctx.restore()
-  // low world-space mist
-  ctx.globalAlpha=.12;const off=((t*9)%1024+1024)%1024;for(let x=ARENA_X0-1024+off;x<ARENA_X1;x+=1024)ctx.drawImage(this.fog!,x,-85,1024,170);ctx.globalAlpha=1}
+  // deck-edge ground mist (height fog at the play line) — creeping, not sliding
+  ctx.globalAlpha=.085;const off=((t*1.6)%1024+1024)%1024;for(let x=ARENA_X0-1024+off;x<ARENA_X1;x+=1024)ctx.drawImage(this.fog!,x,-140,1280,230);ctx.globalAlpha=1}
 
  drawWetMask(ctx:CanvasRenderingContext2D){this.ensure();ctx.drawImage(this.wetPlate!,ARENA_X0,10,ARENA_W,150)}
 
@@ -329,8 +408,13 @@ export class ZenNightBackground{
  }
 
  drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam){this.ensure();this.storm.setView(cam);this.storm.drawRain(ctx);const w=this.w,h=this.h,t=this.t
-  // pooled depth petals; one atlas sprite, no allocations
-  for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(12+25*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(9+18*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.18+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
+  // GLOWING BLOSSOM PETALS — the target's signature: drifting sakura petals
+  // with soft pink halos (two-pass: additive glow, then the petal body).
+  // Pooled depth sprites, no allocations.
+  ctx.globalCompositeOperation='lighter'
+  for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;const gs=5+11*z;ctx.globalAlpha=.24+.5*z;ctx.drawImage(this.petalGlow!,x-gs,y-gs,gs*2,gs*2)}
+  ctx.globalCompositeOperation='source-over'
+  for(let i=0;i<70;i++){const z=this.pz[i],x=((this.px[i]+t*(9+17*z)+Math.sin(t*.7+this.pp[i])*22)%(w+120))-60,y=(this.py[i]+t*(7+13*z))%(h+80)-40;if(y>h*.82)continue;ctx.save();ctx.globalAlpha=.42+.5*z;ctx.translate(x,y);ctx.rotate(t*(.35+z)+this.pp[i]);const s=3+7*z;ctx.drawImage(this.petal!,-s,-s*.55,s*2,s*1.1);ctx.restore()}
   // restrained cool atmospheric grade (pre-baked per resize)
   ctx.drawImage(this.vignette!,0,0)}
 }
