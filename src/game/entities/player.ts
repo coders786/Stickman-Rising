@@ -4835,7 +4835,7 @@ export class Player {
       silhouette(c, this.geom, col, { flipX: this.face, unit: SCALE })
       c.restore()
     }, {
-      alpha: 0.92 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i,
+      alpha: 1.0 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i,
     })
   }
 

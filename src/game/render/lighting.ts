@@ -123,16 +123,19 @@ export function drawProjectedShadow(
   alpha *= 0.86 + 0.14 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
   const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
   const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.3, 1.45))
-  const shear = -cot * clamp(finite(light.dirX, 0), -1, 1)
+  // SIDE-VIEW GAME SHADOW (Hades/Dead Cells convention): a true ground-plane
+  // projection is edge-on from a side camera and reads as a flat streak —
+  // instead the figure is squashed downward at the feet and leans away from
+  // the light, so the shadow reads as the BODY's shape lying on the deck.
+  const lean = clamp(cot * 0.55, 0.35, 1.15)
+  const shear = -lean * clamp(finite(light.dirX, 0), -1, 1)
   const rootX = finite(opts.rootX ?? 0, 0)
-  // tip-fade: level sets along (1, shear) = the projected direction, so the
-  // far end of the CAST (the head/tip) dissolves while the feet stay solid
-  const k = -175 * shear / (1 + shear * shear || 1)
-  const grad = ctx.createLinearGradient(rootX, 0, rootX + k, k * shear)
+  // tip-fade: solid at the feet (y=0), dissolving toward the head tip
+  const grad = ctx.createLinearGradient(rootX, 0, rootX, -185)
   grad.addColorStop(0, rgba(tint, 1))
-  grad.addColorStop(0.55, rgba(tint, 0.7))
-  grad.addColorStop(1, rgba(tint, 0.2))
-  const project = () => { ctx.transform(1, 0, shear, -0.055, 0, 1.5) }
+  grad.addColorStop(0.55, rgba(tint, 0.74))
+  grad.addColorStop(1, rgba(tint, 0.26))
+  const project = () => { ctx.transform(1, 0, shear, -0.22, 0, 0) }
   ctx.save()
   ctx.globalCompositeOperation = 'source-over'
   // sharp core

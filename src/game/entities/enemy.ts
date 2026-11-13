@@ -1087,7 +1087,7 @@ export class Enemy {
       drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
       c.restore()
     }, {
-      alpha: (this.kind === 'drone' ? 0.5 : 0.68) * alphaScale, height: flying, rootX: this.x,
+      alpha: (this.kind === 'drone' ? 0.55 : 0.8) * alphaScale, height: flying, rootX: this.x,
     })
   }
 

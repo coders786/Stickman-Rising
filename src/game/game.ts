@@ -5,7 +5,7 @@ import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolut
 
 import { Camera } from './core/camera'
 import { Input } from './core/input'
-import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, RunStats, WorldRef } from './core/types'
+import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, LevelId, RunStats, WorldRef } from './core/types'
 import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
@@ -146,7 +146,12 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
+  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground('high',this.storm)
+  /** which level the current bg was built for — applySettings rebuilds on
+   *  mismatch, so the saved/default stage actually loads at startup (the
+   *  old levelChanged check compared settings-to-settings and silently
+   *  kept CyberBackground for a zen-night save) */
+  private bgLevel:LevelId = DEFAULT_SETTINGS.level
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
@@ -415,7 +420,7 @@ export class Game {
 
   applySettings(s: GameSettings): void {
     const qualityChanged = s.quality !== this.settings.quality
-    const levelChanged = s.level !== this.settings.level
+    const levelChanged = s.level !== this.bgLevel
     this.settings = { ...s }
     this.fx.setQuality(s.quality)
     this.fx.setGore(s.gore)
@@ -427,6 +432,7 @@ export class Game {
     if (qualityChanged || levelChanged) {
       this.storm.setQuality(s.quality)
       this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
