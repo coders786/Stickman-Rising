@@ -1,0 +1,22 @@
+[
+  {
+    "variant": "baseline",
+    "ms": 115.2
+  },
+  {
+    "variant": "A: full-res grade plate",
+    "ms": 100.3
+  },
+  {
+    "variant": "A+B: cheaper bloom (1/8, 1 add)",
+    "ms": 86.1
+  },
+  {
+    "variant": "A+B+C: no bounce pass",
+    "ms": 83.4
+  },
+  {
+    "variant": "A+B+C+D: cheaper god rays",
+    "ms": 77.9
+  }
+]

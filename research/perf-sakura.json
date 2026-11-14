@@ -1,0 +1,24 @@
+{
+  "frameMs": 13.64,
+  "fps": 73.3,
+  "passes": {
+    "drawReflections": 0.91,
+    "drawVignette": 0.01,
+    "drawBloom": 10.03,
+    "drawGrade": 0.01,
+    "drawGrain": 0,
+    "drawChroma": 0,
+    "drawStrikeStreaks": 0,
+    "drawMoonShafts": 0,
+    "drawSky": 0.08,
+    "drawArena": 0.1,
+    "drawWetMask": 0,
+    "drawLightRig": 0.09,
+    "drawWeather": 0.32
+  },
+  "canvas": [
+    1024,
+    576
+  ],
+  "errors": []
+}

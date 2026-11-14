@@ -1040,40 +1040,9 @@ export class Enemy {
   private snapContacts: number[] = []
 
   drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
-    const g = this.geom
     const s = this.scale
-    const f = this.face * s
-    const hy = this.hipY
-    const W = (j: { x: number; y: number }, out: number[]) => {
-      out.push(this.x + f * j.x, hy + s * j.y)
-    }
-    const chains = this.shChains
-    chains[0].length = 0
-    W(g.hipPtL, chains[0]); W(g.kneeL, chains[0]); W(g.ankleL, chains[0]); W(g.toeL, chains[0])
-    chains[1].length = 0
-    W(g.hipPtR, chains[1]); W(g.kneeR, chains[1]); W(g.ankleR, chains[1]); W(g.toeR, chains[1])
-    chains[2].length = 0
-    W(g.hip, chains[2]); W(g.waist, chains[2]); W(g.chest, chains[2]); W(g.neckTop, chains[2])
-    chains[3].length = 0
-    W(g.shoulderL, chains[3]); W(g.elbL, chains[3]); W(g.handL, chains[3])
-    chains[4].length = 0
-    W(g.shoulderR, chains[4]); W(g.elbR, chains[4]); W(g.handR, chains[4])
-    this.shHead.x = this.x + f * g.headC.x
-    this.shHead.y = hy + s * g.headC.y
-    this.shHead.r = 8.6 * s
-    // weapon streak (matches drawWeapon's reach)
-    const wlen = this.cfg.weapon === 'bossblade' ? 92
-      : this.cfg.weapon === 'none' || this.cfg.weapon === 'shield' ? 0 : 34
-    if (wlen > 0) {
-      this.shBlade.x0 = this.x + f * g.handR.x
-      this.shBlade.y0 = hy + s * g.handR.y
-      this.shBlade.x1 = this.x + f * (g.handR.x + Math.cos(g.bladeAngle) * wlen)
-      this.shBlade.y1 = hy + s * (g.handR.y + Math.sin(g.bladeAngle) * wlen)
-      this.shFig.blade = this.shBlade
-    } else {
-      this.shFig.blade = null
-    }
-    const contacts: number[] = []
+    const contacts = this.shChains[0]
+    contacts.length = 0
     if (this.y > -0.5) {
       if (this.gaitW > 0.5) {
         if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
@@ -1082,7 +1051,8 @@ export class Enemy {
       for (const c of this.snapContacts) contacts.push(c)
     }
     const flying = this.kind === 'drone' ? this.y : this.y
-    // PROJECTED SILHOUETTE SHADOW — body shape along the rays, not smears
+    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
+    // pose along the resultant local light vector
     drawProjectedShadow(ctx, light, (c, col) => {
       c.save()
       c.translate(this.x, this.hipY)
@@ -1090,7 +1060,7 @@ export class Enemy {
       drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
       c.restore()
     }, {
-      alpha: (this.kind === 'drone' ? 0.55 : 0.8) * alphaScale, height: flying, rootX: this.x,
+      alpha: (this.kind === 'drone' ? 0.52 : 0.76) * alphaScale, height: flying, rootX: this.x, contacts, scale: s,
     })
   }
 

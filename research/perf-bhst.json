@@ -1,0 +1,106 @@
+{
+  "errors": [],
+  "passes": {
+    "frames": 131,
+    "frameMs": 37.74,
+    "fps": 26.5,
+    "rows": [
+      {
+        "pass": "bg.drawArena",
+        "ms": 6.04
+      },
+      {
+        "pass": "player.draw",
+        "ms": 5.6
+      },
+      {
+        "pass": "bg.drawWeather",
+        "ms": 4.39
+      },
+      {
+        "pass": "drawReflections",
+        "ms": 4.25
+      },
+      {
+        "pass": "bg.drawLightRig",
+        "ms": 4.23
+      },
+      {
+        "pass": "drawBloom",
+        "ms": 4.18
+      },
+      {
+        "pass": "storm.drawRain",
+        "ms": 3.25
+      },
+      {
+        "pass": "bg.drawSky",
+        "ms": 2.79
+      },
+      {
+        "pass": "drawGrade",
+        "ms": 1.61
+      },
+      {
+        "pass": "lightmap.composite (multiply)",
+        "ms": 1.42
+      },
+      {
+        "pass": "bg.drawWetMask",
+        "ms": 0.95
+      },
+      {
+        "pass": "drawVignette",
+        "ms": 0.9
+      },
+      {
+        "pass": "drawGrain",
+        "ms": 0.55
+      },
+      {
+        "pass": "player.drawShadow",
+        "ms": 0.54
+      },
+      {
+        "pass": "hud.draw",
+        "ms": 0.32
+      },
+      {
+        "pass": "lightmap.render",
+        "ms": 0.03
+      },
+      {
+        "pass": "drawStrikeStreaks",
+        "ms": 0.03
+      },
+      {
+        "pass": "drawChroma",
+        "ms": 0.01
+      },
+      {
+        "pass": "storm.drawSky (bolt glow)",
+        "ms": 0
+      },
+      {
+        "pass": "drawMoonShafts",
+        "ms": 0
+      }
+    ]
+  },
+  "overdraw": {
+    "frames": 70,
+    "screensPerFrame": 9.57,
+    "drawOpsPerFrame": 277.6,
+    "byCompositeOp": {
+      "source-over": 4.9,
+      "multiply": 1.42,
+      "lighter": 3.25
+    }
+  },
+  "qualitySwitch": {
+    "applyMs": 0.3,
+    "nextTwoFramesMs": 75.1,
+    "sameBgInstance": true,
+    "qualityCeiling": 1
+  }
+}

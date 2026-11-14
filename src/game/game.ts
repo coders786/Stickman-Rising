@@ -200,7 +200,13 @@ export class Game {
   /** perf readout: JS frame cost vs the leftover inter-frame gap (a raster/
    * compositor/present ESTIMATE) — the bottleneck, shown instead of hidden. */
   private jsMs = 0
-  private rastMs = 0
+  /** Damped rAF interval (ms) — the real presented frame time. */
+  private frameMs = 16.7
+  /** frameMs - jsMs. This is NOT GPU time: it is vsync idle + compositor +
+   *  whatever raster we cannot attribute from JS. It is reported as
+   *  `wait` and never used to claim a GPU bottleneck. The old code labelled
+   *  this `gpu~` and called a healthy vsync-paced frame "GPU-bound". */
+  private waitMs = 0
   private lastGapAt = 0
   /** session resolution ceiling — pinned DOWN the moment a raise proves
    * unstable. Without this, the governor's raise-on-calm path gambles
@@ -217,6 +223,23 @@ export class Game {
   private lastRaiseAt = -60
   /** consecutive over-budget frames (the cliff detector's run counter) */
   private overRun = 0
+  /** Fastest frame interval ever observed (seconds) → the display's offer.
+   *  vsync quantizes to exact multiples of the refresh interval, so the
+   *  fastest frame seen is the best estimate of what the panel can do.
+   *  Used to stop the governor chasing 60fps on a 30Hz panel. Relaxes
+   *  upward very slowly so a display-mode change can re-baseline. */
+  private frameFloor = 1 / 60
+  /** Damped recent frame interval (seconds) — the pace we are ACTUALLY
+   *  holding right now. A cliff is a sustained regression against this,
+   *  never an absolute 25ms: on a 30Hz panel, a battery-saver throttle or a
+   *  software rasterizer every frame exceeds 25ms, and an absolute
+   *  threshold reads a healthy steady pace as a permanent cliff. */
+  private paceAvg = 1 / 60
+  /** Best quality tier the user chose (index into ultra/high/medium/low).
+   *  The governor may drop below it under load, but may never recover above
+   *  it — otherwise a transient hitch would permanently rewrite the user's
+   *  settings. Only user-initiated applySettings calls move this. */
+  private qualityCeiling = (['ultra','high','medium','low'] as const).indexOf(DEFAULT_SETTINGS.quality)
   private autoQuality = true
 
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
@@ -380,21 +403,28 @@ export class Game {
       this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
       this.dprCeil,
     )
-    if (this.fpsAvg < 44 && this.dprTarget > 0.8) {
+    // What is this display actually offering? Only trust a sub-60 offer
+    // when we are demonstrably NOT the ones spending the frame (js is a
+    // small slice of it) — otherwise a slow machine would "prove" the panel
+    // is slow and the governor would stop trying to improve.
+    const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 1
+    const offer = busy < 0.35 ? Math.min(60, 1 / Math.max(1e-4, this.frameFloor)) : 60
+    const scale = offer / 60
+    const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
+    const tier = order.indexOf(this.settings.quality)
+    if (this.fpsAvg < 44 * scale && this.dprTarget > 0.8) {
       this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
       this.resize()
-    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.81 && this.settings.quality !== 'ultra') {
-      // resolution floor reached and still drowning → drop a quality tier
-      const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
-      const i = order.indexOf(this.settings.quality)
-      if (i < order.length - 1) {
-        this.applySettings({ ...this.settings, quality: order[i + 1] })
-        this.govCool = 4
-      }
+    } else if (this.fpsAvg < 36 * scale && this.dprTarget <= 0.81 && tier < order.length - 1) {
+      // Resolution floor reached and still drowning → drop a draw tier.
+      // This is now CHEAP (setQuality, no re-bake) and reversible below.
+      this.applySettings({ ...this.settings, quality: order[tier + 1] }, true)
+      this.lastDropAt = this.wall
+      this.govCool = 4
     } else if (
-      this.fpsAvg > 57
+      this.fpsAvg > 57 * scale
       && this.dprTarget < cap
       && this.wall - this.lastDropAt > 12 // respect every drop for 12s
       && this.wall - this.lastRaiseAt > 3 // one raise at a time
@@ -404,6 +434,21 @@ export class Game {
       this.lastRaiseAt = this.wall
       this.govCool = 3
       this.resize()
+    } else if (
+      // TIER RECOVERY. Quality used to be a one-way ratchet: one transient
+      // hitch permanently downgraded the session's art. Only climb back at
+      // the resolution ceiling after a long calm spell, and never above the
+      // tier the user actually chose.
+      this.fpsAvg > 57 * scale
+      && this.dprTarget >= cap
+      && tier > this.qualityCeiling
+      && this.wall - this.lastDropAt > 25
+      && this.wall - this.lastRaiseAt > 8
+      && this.enemies.length < 3
+    ) {
+      this.applySettings({ ...this.settings, quality: order[tier - 1] }, true)
+      this.lastRaiseAt = this.wall
+      this.govCool = 6
     }
   }
 
@@ -411,17 +456,33 @@ export class Game {
    * 33.3 / 49.9ms steps), so the damped fpsAvg reacts sluggishly: by the
    * time the 0.8s polling cadence notices, the player has already eaten
    * 2–5 seconds of 20fps. A real cliff instead shows as a RUN of frames at
-   * ≥1.5× the 60Hz budget — react within ~0.15s by stepping the render DPR
-   * down immediately. If the cliff lands within 6s of a raise, that raise
-   * proved the level unstable on this display: pin the session ceiling at
-   * the pre-raise DPR so the governor stops gambling on it. */
+   * ≥1.6× the pace this machine has actually been holding — react within
+   * ~0.15s by stepping the render DPR down immediately. If the cliff lands
+   * within 6s of a raise, that raise proved the level unstable on this
+   * display: pin the session ceiling at the pre-raise DPR so the governor
+   * stops gambling on it.
+   *
+   * The threshold is RELATIVE to our recent pace (`paceAvg`), not a fixed
+   * 25ms. A fixed
+   * threshold cannot tell "this display is paced at 30Hz" from "we just
+   * fell off a cliff", so on any throttled/software-rasterized context it
+   * fired on every single frame and dragged the tier down permanently. */
   private detectCliff(dtRaw: number): void {
     if (this.phase === 'paused' || document.visibilityState !== 'visible') {
       this.overRun = 0
       return
     }
-    if (dtRaw > 0.025) this.overRun++
-    else if (dtRaw < 0.019) this.overRun = 0
+    // The display's offer: snap down to a new best immediately; drift up
+    // only ~1%/s so a slow machine never masquerades as a slow display.
+    if (dtRaw < this.frameFloor) this.frameFloor = dtRaw
+    else this.frameFloor = Math.min(0.25, this.frameFloor * (1 + dtRaw * 0.01))
+    // Our own recent pace (≈2s time constant). Compared against ITSELF, a
+    // steady 30Hz or steady 8fps software pace is not a cliff — only a
+    // sustained 1.6× regression from what we were just holding is.
+    this.paceAvg += (dtRaw - this.paceAvg) * Math.min(1, dtRaw * 0.5)
+    const cliffAt = Math.max(0.025, this.paceAvg * 1.6)
+    if (dtRaw > cliffAt) this.overRun++
+    else if (dtRaw < this.paceAvg * 1.25) this.overRun = 0
     if (this.overRun < 8) return
     this.overRun = 0
     if (this.dprTarget <= 1) return
@@ -435,25 +496,48 @@ export class Game {
     this.resize()
   }
 
-  applySettings(s: GameSettings): void {
+  applySettings(s: GameSettings, fromGovernor = false): void {
     const qualityChanged = s.quality !== this.settings.quality
     const levelChanged = s.level !== this.bgLevel
+    if (!fromGovernor) {
+      this.qualityCeiling = (['ultra', 'high', 'medium', 'low'] as const).indexOf(s.quality)
+    }
     this.settings = { ...s }
-    this.fx.setQuality(s.quality)
+    this.fx.setQuality?.(s.quality)
     this.fx.setGore(s.gore)
-    this.renderer.setQuality(s.quality) // grain cadence follows the tier
+    this.renderer.setQuality?.(s.quality) // grain cadence follows the tier
     this.cam.setShakeEnabled(s.shake, s.shakeIntensity)
     this.audio.setSfxVolume(s.sfxVolume)
     this.audio.setMusicVolume(s.musicVolume)
     this.audio.setMuted(s.muted)
-    if (qualityChanged || levelChanged) {
-      this.storm.setQuality(s.quality)
+    const syncBgQuality = (bg: BackgroundRenderer, q: GameSettings['quality']) => {
+      if (typeof bg.setQuality === 'function') {
+        bg.setQuality(q)
+      } else {
+        const raw = bg as unknown as Record<string, unknown>
+        if ('q' in raw) raw.q = q
+        if ('quality' in raw) raw.quality = q
+      }
+    }
+    // QUALITY vs LEVEL are different operations.
+    // A LEVEL change needs new art → construct the scene.
+    // A QUALITY change is only a draw budget → tell the live scene, keep
+    // every baked tile. Reconstructing on a tier change discarded all the
+    // bakes and stalled the next frames for ~1.6s re-baking them, which the
+    // cliff detector then read as a fresh cliff and dropped the tier again
+    // — the self-inflicted "hangs when enemies appear" loop.
+    if (levelChanged) {
+      this.storm.setQuality?.(s.quality)
       this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
-      ;(this.bg as {setQuality?: (q: GameSettings['quality']) => void}).setQuality?.(s.quality)
+      syncBgQuality(this.bg, s.quality)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
+    } else if (qualityChanged) {
+      this.storm.setQuality?.(s.quality)
+      syncBgQuality(this.bg, s.quality)
+      this.resize() // the DPR cap is tier-dependent
     }
   }
 
@@ -570,7 +654,12 @@ export class Game {
       this.jsMs += (js - this.jsMs) * 0.12
       const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
       this.lastGapAt = now
-      if (gap > 0) this.rastMs += (Math.max(0, gap - js) - this.rastMs) * 0.1
+      if (gap > 0) {
+        this.frameMs += (gap - this.frameMs) * 0.1
+        // Residual, NOT a GPU measurement. Most of it is vsync idle on a
+        // healthy frame; keep it honest so it cannot fake a bottleneck.
+        this.waitMs += (Math.max(0, gap - js) - this.waitMs) * 0.1
+      }
     } catch (error) {
       console.error('Game loop stopped after an unexpected error', error)
       cancelAnimationFrame(this.raf)
@@ -701,13 +790,21 @@ export class Game {
       // and the governor's active levers. "Something is bottlenecked but not
       // shown" — now it is shown.
       {
-        const bound = this.rastMs > this.jsMs * 1.5 ? 'GPU' : this.jsMs > this.rastMs * 1.5 ? 'CPU' : 'MIX'
-        const locked = this.fpsAvg > 25 && this.fpsAvg < 35 && this.jsMs < 12 ? ' · 30Hz-lock? (browser throttle: battery-saver / iframe / vsync-half)' : ''
+        // Bound classification from what we can ACTUALLY measure. `wait`
+        // is vsync idle + compositor + unattributed raster; a large wait
+        // with small js means we are NOT the bottleneck (usually pacing).
+        // We do not claim "GPU-bound" — JS cannot see GPU time here.
+        const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 0
+        const bound = busy > 0.6 ? 'cpu' : busy < 0.25 ? 'paced/wait' : 'mixed'
+        const offer = Math.min(60, 1 / Math.max(1e-4, this.frameFloor))
+        const locked = this.fpsAvg < offer * 0.62 && busy < 0.25
+          ? ` · presented below the ~${Math.round(offer)}Hz this display offers (throttle/iframe/vsync?)`
+          : ''
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
         ctx.font = '10px ui-monospace,monospace'
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · frame ${this.frameMs.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · wait ${this.waitMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)

@@ -102,67 +102,113 @@ export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
     ox: l.x, oy: l.y}
 }
 
-/** RAY-TRACED PROP SHADOW: a box prop (stairwell head, vent stack) blocking
- *  the key. Its four silhouette corners are projected along the light rays
- *  onto the deck and unioned into one smeared quad — the wall-shadows
- *  technique (Tigsource research) on the play field. */
-/** PROJECTED SILHOUETTE SHADOW — the body's ACTUAL shape cast along the
- *  light rays onto the ground plane (real-time game shadows, not capsule
- *  smears): an affine shear+squash maps the figure onto the deck, a
- *  tip-fade gradient dissolves the far end along the lean, and a blurred
- *  second pass supplies the penumbra. The entity passes its own body
- *  drawer so the shadow matches the pose (limbs, weapon and all). */
+/**
+ * UNIFIED RESULTANT SHADOW VECTOR (`composeShadowKey`)
+ * ----------------------------------------------------
+ * Replaces casting 3–4 separate full-body shadows per entity (moon + door +
+ * streetlamp) with a single resultant ground-plane light vector solved at the
+ * caster's world coordinate `(x, y)`.
+ *
+ * When a fighter approaches a practical emitter (shoji door or stone lantern),
+ * the local shadow vector smoothly bends away from the emitter, elevates as
+ * the source nears overhead, softens when cross-lit from opposing directions,
+ * and shifts shadow temperature between cool indigo, warm umber, and slate.
+ */
+export function composeShadowKey(moonKey: KeyLight, x: number, y: number): KeyLight {
+  const wMoon = Math.max(0.15, finite(moonKey.i, 0.62))
+  const wDoor = pointAt(DOOR_LIGHT, x, y) * 0.72
+  const wStreet = pointAt(STREET_LIGHT, x, y) * 0.68
+
+  if (wDoor < 0.04 && wStreet < 0.04) return moonKey
+
+  const dirDoor = clamp((x - DOOR_LIGHT.x) / 260, -0.92, 0.92)
+  const dirStreet = clamp((x - STREET_LIGHT.x) / 260, -0.92, 0.92)
+  const wSum = wMoon + wDoor + wStreet
+  const dirX = (moonKey.dirX * wMoon + dirDoor * wDoor + dirStreet * wStreet) / wSum
+  const elev = (moonKey.elev * wMoon + 0.66 * wDoor + 0.68 * wStreet) / wSum
+  // Opposing lights fill each other's shadow and reduce directional hardness
+  const agreement = Math.abs(dirX) / Math.max(0.2, (Math.abs(moonKey.dirX) * wMoon + Math.abs(dirDoor) * wDoor + Math.abs(dirStreet) * wStreet) / wSum)
+  const hard = clamp01(moonKey.hard * agreement)
+  const i = clamp01(Math.max(moonKey.i, (wMoon + (wDoor + wStreet) * 0.65)))
+
+  let color = moonKey.color
+  if (wDoor > 0.05) color = mixHex(color, '#261410', clamp01(wDoor / (wMoon + wDoor)))
+  if (wStreet > 0.05) color = mixHex(color, '#0e1722', clamp01(wStreet / (wMoon + wStreet)))
+
+  return { dirX, elev, hard, i, color }
+}
+
+/**
+ * ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW (`drawProjectedShadow`)
+ * -----------------------------------------------------------------
+ * Low-stature semi-3D ground projection:
+ *   1. Uses shallow perspective foreshortening (`squash = -0.125` instead of
+ *      `-0.22` — 43% less vertical stature) and a restrained horizontal lean
+ *      so shadows hug the deck boards rather than standing like a second figure.
+ *   2. Anchors the vertical squash to the ground contact plane (`y = 0`) so
+ *      airborne jumps detach and compress along the floor instead of pushing
+ *      the shadow downward into the foreground.
+ *   3. Renders in a single unified pass with planted-foot Contact-AO anchors,
+ *      cutting per-entity shadow draw calls from 4 full-body passes to 1.
+ */
 const shadowGradCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
 
 export function drawProjectedShadow(
   ctx: CanvasRenderingContext2D, light: KeyLight,
   drawBody: (c: CanvasRenderingContext2D, col: string | CanvasGradient) => void,
-  opts: { alpha?: number; height?: number; rootX?: number; lightBoost?: number } = {},
+  opts: { alpha?: number; height?: number; rootX?: number; lightBoost?: number; contacts?: number[]; scale?: number } = {},
 ): void {
   const height = finite(opts.height ?? 0, 0)
-  let alpha = shadowOpacity(height, opts.alpha ?? 0.55)
-  if (alpha < 0.006) return
-  alpha *= 0.86 + 0.14 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
+  const air = Math.max(0, -height)
+  let alpha = shadowOpacity(height, opts.alpha ?? 0.52)
+  if (alpha < 0.008) return
+  alpha *= 0.84 + 0.16 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
   const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
-  const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.3, 1.45))
-  // SIDE-VIEW GAME SHADOW (Hades/Dead Cells convention): a true ground-plane
-  // projection is edge-on from a side camera and reads as a flat streak —
-  // instead the figure is squashed downward at the feet and leans away from
-  // the light, so the shadow reads as the BODY's shape lying on the deck.
-  const lean = clamp(cot * 0.55, 0.35, 1.15)
+  const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.35, 1.45))
+
+  // Low-stature ground-plane foreshortening: compact lean + shallow -0.125 squash
+  const lean = clamp(cot * 0.42, 0.22, 0.78)
   const shear = -lean * clamp(finite(light.dirX, 0), -1, 1)
-  const rootX = finite(opts.rootX ?? 0, 0)
-  // tip-fade: solid at the feet (y=0), dissolving toward the head tip.
-  // Purely vertical ⇒ x is irrelevant; cache one gradient per tint color.
+  const squash = -0.125 * clamp(1 - air / 320, 0.55, 1)
+  // Keep airborne shadow anchored to the deck plane (y = 2) rather than
+  // drifting down-screen by `-squash * height`
+  const deckAnchorY = 2 + height * squash
+
   let tintMap = shadowGradCache.get(ctx)
   if (!tintMap) { tintMap = new Map(); shadowGradCache.set(ctx, tintMap) }
   let grad = tintMap.get(tint)
   if (!grad) {
-    grad = ctx.createLinearGradient(0, 0, 0, -185)
-    grad.addColorStop(0, rgba(tint, 1))
-    grad.addColorStop(0.55, rgba(tint, 0.74))
-    grad.addColorStop(1, rgba(tint, 0.26))
+    grad = ctx.createLinearGradient(0, 0, 0, -175)
+    grad.addColorStop(0, rgba(tint, 0.95))
+    grad.addColorStop(0.48, rgba(tint, 0.62))
+    grad.addColorStop(1, rgba(tint, 0.08))
     tintMap.set(tint, grad)
   }
-  const project = () => { ctx.transform(1, 0, shear, -0.22, 0, 0) }
+
   ctx.save()
   ctx.globalCompositeOperation = 'source-over'
-  // sharp core
+
+  // 1. Single-pass foreshortened ground silhouette
   ctx.save()
-  ctx.globalAlpha = alpha * 0.82
-  project()
+  ctx.globalAlpha = alpha * 0.78
+  ctx.transform(1, 0, shear, squash, -shear * height * 0.35, deckAnchorY)
   drawBody(ctx, grad)
   ctx.restore()
-  // penumbra: one offset double-tap for the moon (the long, read-the-shape
-  // cast); practicals keep the single pass — their pools blur them anyway
-  if (light.ox === undefined) {
-    ctx.save()
-    ctx.globalAlpha = alpha * 0.34
-    ctx.translate(shear * 3.2, -0.2)
-    project()
-    drawBody(ctx, grad)
-    ctx.restore()
+
+  // 2. Crisp planted-foot Contact-AO pads (grounds the figure on the deck)
+  if (height >= -1.5 && opts.contacts && opts.contacts.length > 0) {
+    const sc = clamp(finite(opts.scale ?? 1, 1), 0.4, 3)
+    ctx.fillStyle = rgba(tint, alpha * 0.52)
+    ctx.beginPath()
+    for (let i = 0; i < opts.contacts.length; i++) {
+      const cx = opts.contacts[i]
+      if (!Number.isFinite(cx)) continue
+      ctx.moveTo(cx + 8 * sc, 2)
+      ctx.ellipse(cx, 2, 8 * sc, 1.8 * sc, 0, 0, Math.PI * 2)
+    }
+    ctx.fill()
   }
+
   ctx.restore()
 }
 

@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "level": "zen-night",
+    "bg": "ZenNightBackground",
+    "quality": "high",
+    "canvas": [
+      1280,
+      720
+    ],
+    "ctxAttrs": {
+      "alpha": false,
+      "colorSpace": "srgb",
+      "colorType": "unorm8",
+      "desynchronized": true,
+      "toneMapping": {
+        "mode": "standard"
+      },
+      "willReadFrequently": false
+    }
+  },
+  "frames": 47,
+  "frameMs": 127.16,
+  "fps": 7.9,
+  "rows": [
+    {
+      "pass": "bg.drawSky",
+      "ms": 28.2
+    },
+    {
+      "pass": "drawBloom",
+      "ms": 27.12
+    },
+    {
+      "pass": "lightmap.composite (multiply)",
+      "ms": 17.17
+    },
+    {
+      "pass": "storm.drawSky (bolt glow)",
+      "ms": 12.77
+    },
+    {
+      "pass": "bg.drawArena",
+      "ms": 10.7
+    },
+    {
+      "pass": "drawMoonShafts",
+      "ms": 10.5
+    },
+    {
+      "pass": "bg.drawWeather",
+      "ms": 6.76
+    },
+    {
+      "pass": "drawGrade",
+      "ms": 6.55
+    },
+    {
+      "pass": "drawReflections",
+      "ms": 5.46
+    },
+    {
+      "pass": "bg.drawLightRig",
+      "ms": 4.78
+    },
+    {
+      "pass": "player.draw",
+      "ms": 4.23
+    },
+    {
+      "pass": "storm.drawRain",
+      "ms": 4.06
+    },
+    {
+      "pass": "player.drawShadow",
+      "ms": 2.44
+    },
+    {
+      "pass": "drawVignette",
+      "ms": 1.29
+    },
+    {
+      "pass": "bg.drawWetMask",
+      "ms": 1.01
+    },
+    {
+      "pass": "drawGrain",
+      "ms": 0.65
+    },
+    {
+      "pass": "hud.draw",
+      "ms": 0.46
+    },
+    {
+      "pass": "drawStrikeStreaks",
+      "ms": 0.2
+    },
+    {
+      "pass": "lightmap.render",
+      "ms": 0.15
+    },
+    {
+      "pass": "drawChroma",
+      "ms": 0.01
+    },
+    {
+      "pass": "inspect.draw",
+      "ms": 0.01
+    }
+  ]
+}

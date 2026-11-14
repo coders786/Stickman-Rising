@@ -35,6 +35,9 @@ export class StormEngine{
  private bolt=new Float32Array(42)
  /** fork branches spawned with each strike: 3 forks × 2 points × [x,y] + dir */
  private forks=new Float32Array(3*2*2)
+ /** pre-baked radial sky-flash sprite (avoids a full-screen radial-gradient
+  *  shader evaluation on every frame of the 1.1s post-strike decay) */
+ private glowSpr:HTMLCanvasElement|null=null
  onThunder:(()=>void)|null=null
  constructor(quality:StormQuality='high'){
   this.quality=quality
@@ -63,6 +66,7 @@ export class StormEngine{
   return a<1.1?.6*Math.exp(-(a-.19)*6):0
  }
  get azimuthValue(){return this.azimuth}
+ get boltActive(){return this.strikeAge<.23}
  get gust(){return .5+.25*Math.sin(this.t*.7)}
  get snapshot(){return{time:this.t,quality:this.quality,visibleDrops:budgets[this.quality],strikes:this.strikes,intensity:this.intensity,impacts:this.impacts,activeSplashes:this.splashAge.filter(a=>a<.4).length}}
  update(dt:number){
@@ -109,11 +113,25 @@ export class StormEngine{
  }
  drawSky(ctx:CanvasRenderingContext2D){
   const k=this.intensity;if(k<.015)return
-  const w=this.width,h=this.height,bx=w*(.5+this.azimuth*.4)
+  const w=this.width,h=this.height,bx=w*(.5+this.azimuth*.4),r=w*.6,cy=h*.18
   ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=k
-  const glow=ctx.createRadialGradient(bx,h*.18,0,bx,h*.18,w*.6)
-  glow.addColorStop(0,'rgba(180,212,255,.5)');glow.addColorStop(.35,'rgba(140,180,245,.18)');glow.addColorStop(1,'rgba(110,150,220,0)')
-  ctx.fillStyle=glow;ctx.fillRect(0,0,w,h)
+  if(!this.glowSpr&&typeof document!=='undefined'){
+   const c=document.createElement('canvas');c.width=256;c.height=256
+   const g=c.getContext('2d')
+   if(g){
+    const q=g.createRadialGradient(128,128,0,128,128,128)
+    q.addColorStop(0,'rgba(180,212,255,.5)');q.addColorStop(.35,'rgba(140,180,245,.18)');q.addColorStop(1,'rgba(110,150,220,0)')
+    g.fillStyle=q;g.fillRect(0,0,256,256)
+    this.glowSpr=c
+   }
+  }
+  if(this.glowSpr){
+   ctx.drawImage(this.glowSpr,bx-r,cy-r,r*2,r*2)
+  }else{
+   const glow=ctx.createRadialGradient(bx,cy,0,bx,cy,r)
+   glow.addColorStop(0,'rgba(180,212,255,.5)');glow.addColorStop(.35,'rgba(140,180,245,.18)');glow.addColorStop(1,'rgba(110,150,220,0)')
+   ctx.fillStyle=glow;ctx.fillRect(0,0,w,h)
+  }
   // No pre-baked bolt offscreen above the skyline: normalized viewport path.
   if(this.strikeAge<.23){
    const px=(i:number)=>bx+this.bolt[i*2]*w
