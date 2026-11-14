@@ -146,13 +146,15 @@ export class Renderer {
     drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.24)
     const drawEntityShadows = (ent: { drawShadow: (c: CanvasRenderingContext2D, k: KeyLight, s?: number) => void }, x: number, y: number) => {
       ent.drawShadow(ctx, light)
-      if (Math.abs(x - DOOR_LIGHT.x) < 1200) {
-        const dk = shadowKeyFromPoint(DOOR_LIGHT, x, y)
-        if (dk.i > 0.06) ent.drawShadow(ctx, dk, 0.58)
-      }
-      if (Math.abs(x - STREET_LIGHT.x) < 1150) {
-        const sk = shadowKeyFromPoint(STREET_LIGHT, x, y)
-        if (sk.i > 0.06) ent.drawShadow(ctx, sk, 0.62)
+      if (this.quality !== 'low') {
+        if (Math.abs(x - DOOR_LIGHT.x) < 1200) {
+          const dk = shadowKeyFromPoint(DOOR_LIGHT, x, y)
+          if (dk.i > 0.06) ent.drawShadow(ctx, dk, 0.58)
+        }
+        if (Math.abs(x - STREET_LIGHT.x) < 1150) {
+          const sk = shadowKeyFromPoint(STREET_LIGHT, x, y)
+          if (sk.i > 0.06) ent.drawShadow(ctx, sk, 0.62)
+        }
       }
     }
     drawEntityShadows(player, player.x, player.y)
@@ -233,7 +235,7 @@ export class Renderer {
         lights.push({ kind: 'point', x: bx, y: -h * 0.2, range: Math.hypot(w, h) * 1.2, intensity: 0.55 * li2, color: [190, 214, 255] })
       }
       this.rig.render(w, h, [162, 170, 185], lights)
-      this.rig.composite(ctx, w, h, 0.05)
+      this.rig.composite(ctx, w, h, this.quality === 'low' ? 0 : 0.05)
 
       // N·L SURFACE WASH — the source ON the bodies: every figure's lit edge
       // faces the moon's live position (dimming under cloud), warm bounce
@@ -345,10 +347,15 @@ export class Renderer {
     a.imageSmoothingEnabled = true
     a.imageSmoothingQuality = 'medium'
     a.clearRect(0, 0, bw, bh)
-    // bright-pass at the ¼-res downsample: one filtered blit, no extra pass
-    a.filter = BLOOM_BRIGHTPASS
+    // bright-pass WITHOUT ctx.filter — the filter property falls into a
+    // software-raster path on many drivers (a hidden CPU cost the perf
+    // line showed as js time). A plain downsample + two self-multiples
+    // curves the response so darks crush and brights survive: same job.
     a.drawImage(ctx.canvas, 0, 0, cw, ch, 0, 0, bw, bh)
-    a.filter = 'none'
+    a.globalCompositeOperation = 'multiply'
+    a.drawImage(a.canvas, 0, 0, bw, bh, 0, 0, bw, bh)
+    a.drawImage(a.canvas, 0, 0, bw, bh, 0, 0, bw, bh)
+    a.globalCompositeOperation = 'source-over'
     b.imageSmoothingEnabled = true
     b.clearRect(0, 0, sw, sh)
     b.drawImage(this.bloomA!, 0, 0, bw, bh, 0, 0, sw, sh)
@@ -357,7 +364,7 @@ export class Renderer {
     a.drawImage(this.bloomB!, 0, 0, sw, sh, 0, 0, bw, bh)
     ctx.save()
     ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
+    ctx.imageSmoothingQuality = 'medium'
     // selective pass — emissives carry more energy without a veil; the
     // relight event pulses bloom with the strobe. TWO shares: raw add for
     // the glow body, screen share for the AgX-style soft-clip highlight
@@ -617,10 +624,12 @@ export class Renderer {
     p.scale(1, -0.66)                        // mirror about y=0 + perspective squash
     player.draw(p, time, true)
     p.globalAlpha = 0.8
-    for (const e of enemies) {
-      if (e.dead || e.spawning) continue
-      if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      e.drawGhost(p, time)
+    if (this.quality !== 'low') {
+      for (const e of enemies) {
+        if (e.dead || e.spawning) continue
+        if (Math.abs(e.x - cam.x) > viewHalfW) continue
+        e.drawGhost(p, time)
+      }
     }
     p.restore()
     // BROKEN MIRROR (universal reflection policy): the plate returns in

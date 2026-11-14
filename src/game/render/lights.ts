@@ -156,16 +156,28 @@ export function surfaceWash(
   const dist = Math.hypot(dx, dy) || 1
   const ux = dx / dist
   const uy = dy / dist
-  const cx = ex + ux * spread * 0.5
-  const cy = ey - 66 + uy * spread * 0.5
-  const g = ctx.createLinearGradient(cx - ux * spread, cy - uy * spread, cx + ux * spread, cy + uy * spread)
+  const cx = ex + ux * spread * 0.4
+  const cy = ey - 66 + uy * spread * 0.4
   const [r, gr, b] = color
   const a = Math.min(1, intensity)
-  g.addColorStop(0, `rgba(${r},${gr},${b},${a * 0.5})`)
-  g.addColorStop(0.55, `rgba(${r},${gr},${b},${a * 0.14})`)
+  // ELLIPTICAL SOFT WASH — transparent at EVERY edge (a rect fill showed
+  // hard sides = the 'square aura' around figures). The bright core sits
+  // toward the light; the falloff is a plain radial, elongated on the
+  // light axis.
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(Math.atan2(uy, ux))
+  ctx.scale(1.8, 1)
+  const rad = Math.min(halfW, 64)
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rad)
+  g.addColorStop(0, `rgba(${r},${gr},${b},${a * 0.34})`)
+  g.addColorStop(0.55, `rgba(${r},${gr},${b},${a * 0.11})`)
   g.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = g
-  ctx.fillRect(ex - halfW, ey - top, halfW * 2, top + 12)
+  ctx.beginPath()
+  ctx.arc(0, 0, rad, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
 }
 
 /** inverse-square-ish influence of a point light at a body (0..1) */
