@@ -24,12 +24,13 @@ import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
+import { silhouette } from '../anim/humanoid'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import { KeyLight, ShadowFigure, drawCastShadow } from '../render/lighting'
-import { emitterFill } from '../render/look'
+import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow } from '../render/lighting'
+import { emitterFills, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -462,6 +463,9 @@ interface AbilityState {
 export class Player {
   x = 400
   y = 0
+  /** render interpolation: sim position one step ago (see Game.frame) */
+  px = NaN
+  py = NaN
   vx = 0
   vy = 0
   face: 1 | -1 = 1
@@ -800,6 +804,8 @@ export class Player {
     this.motion.reset()
     this.x = x
     this.y = 0
+    this.px = NaN // render-interp history dies with the old run
+    this.py = NaN
     this.vx = 0
     this.vy = 0
     this.physicsMetrics.momentumX=0;this.physicsMetrics.momentumY=0;this.physicsMetrics.energy=0
@@ -4825,9 +4831,16 @@ export class Player {
       }
       for (const c of this.snapContacts) contacts.push(c)
     }
-    drawCastShadow(ctx, this.shFig, light, {
-      alpha: 0.92 * alphaScale, width: 7.6, passes: 3, scale: SCALE,
-      height: this.y, contacts,
+    // PROJECTED SILHOUETTE SHADOW — the pose's actual shape (limbs, saya,
+    // all of it) cast along the light rays onto the deck
+    drawProjectedShadow(ctx, light, (c, col) => {
+      c.save()
+      c.translate(this.x, this.hipY)
+      c.scale(this.face * SCALE, SCALE)
+      silhouette(c, this.geom, col, { flipX: this.face, unit: SCALE })
+      c.restore()
+    }, {
+      alpha: 1.0 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i,
     })
   }
 
@@ -5058,6 +5071,25 @@ export class Player {
     const currentClip=this.animator.getClip()
     const handPhase=currentClip && currentClip.dur>0
       ? (currentClip.loop ? (this.animator.getTime()/currentClip.dur)%1 : Math.min(1,this.animator.getTime()/currentClip.dur)) : 0
+    // SHUTTER SMEAR — universal velocity ghosts (look.smearPlan): the held
+    // frame smeared back along -v, punch-sheet style (discrete layers,
+    // never interpolated poses). Dashes move via dashDisplacement (vx stays
+    // 0), so the smear reads the EFFECTIVE per-frame speed.
+    const smDx = this.dashDisplacement ? Math.abs((this.dashDisplacement as { x: number }).x) * 60 : 0
+    const smS = smearPlan(Math.max(smDx, Math.abs(this.vx)))
+    if (smS.n > 0) {
+      const dirS = (smDx >= Math.abs(this.vx) ? (this.dashDisplacement as { x: number }).x : this.vx) >= 0 ? 1 : -1
+      for (let i = smS.n; i >= 1; i--) {
+        ctx.save()
+        // world-space trail offset, un-flipped/un-scaled for the local ctx
+        ctx.translate(-dirS * smS.dist * i * this.face / SCALE, 0)
+        drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
+          time, ghost: '#0b101c', ghostAlpha: smS.a * (1 - (i - 1) * 0.3), alpha: 1,
+          flipX: this.face, unit: SCALE,
+        })
+        ctx.restore()
+      }
+    }
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
@@ -5067,7 +5099,8 @@ export class Player {
       // by the renderer each frame).
       rimColor:'#a5d2f2',rimAlpha:0.85+this.strobeK*0.15,
       // LIGHT TRANSPORT — colored fill from practicals near the ronin
-      sideFill: emitterFill(this.x, this.y),
+      sideFills: emitterFills(this.x, this.y),
+      flipX: this.face, unit: SCALE,
       alpha,
       // Null-black face/body stays black through hurt and impact frames.
       flash: 0, // null-black body; impacts remain in weapon/scene FX

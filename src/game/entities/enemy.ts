@@ -9,8 +9,8 @@
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
-import { KeyLight, ShadowFigure, drawCastShadow, drawStrobeRim } from '../render/lighting'
-import { emitterFill } from '../render/look'
+import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow, drawStrobeRim } from '../render/lighting'
+import { emitterFills, smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
 import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
@@ -131,6 +131,9 @@ export class Enemy {
   cfg: EnemyConfig
   x: number
   y = 0
+  /** render interpolation: sim position one step ago (see Game.frame) */
+  px = NaN
+  py = NaN
   vx = 0
   vy = 0
   face: 1 | -1 = 1
@@ -1079,9 +1082,15 @@ export class Enemy {
       for (const c of this.snapContacts) contacts.push(c)
     }
     const flying = this.kind === 'drone' ? this.y : this.y
-    drawCastShadow(ctx, this.shFig, light, {
-      alpha: (this.kind === 'drone' ? 0.5 : 0.68) * alphaScale, width: 6, passes: 2, scale: s,
-      height: flying, contacts,
+    // PROJECTED SILHOUETTE SHADOW — body shape along the rays, not smears
+    drawProjectedShadow(ctx, light, (c, col) => {
+      c.save()
+      c.translate(this.x, this.hipY)
+      c.scale(this.face * s, s)
+      drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
+      c.restore()
+    }, {
+      alpha: (this.kind === 'drone' ? 0.55 : 0.8) * alphaScale, height: flying, rootX: this.x,
     })
   }
 
@@ -1090,13 +1099,28 @@ export class Enemy {
     const s = this.scale
     const cfg = this.cfg
     ctx.save()
+    // SHUTTER SMEAR — universal velocity ghosts (look.smearPlan)
+    const smS = smearPlan(this.vx)
+    if (smS.n > 0) {
+      const dirS = this.vx > 0 ? 1 : -1
+      for (let i = smS.n; i >= 1; i--) {
+        ctx.save()
+        ctx.translate(this.x - dirS * smS.dist * i, this.hipY)
+        ctx.scale(this.face * s, s)
+        drawStick(ctx, this.geom, cfg.style, {
+          time, ghost: '#0b101c', ghostAlpha: smS.a * (1 - (i - 1) * 0.3), simple: true,
+        })
+        ctx.restore()
+      }
+    }
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * s, s)
     drawStick(ctx, this.geom, cfg.style, {
       time,
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',
-      sideFill: emitterFill(this.x, this.y),
+      sideFills: emitterFills(this.x, this.y),
+      flipX: this.face, unit: s,
     })
     this.drawWeapon(ctx, time)
     // LIGHTNING RIM: the bolt's channel lights the body it struck. A true

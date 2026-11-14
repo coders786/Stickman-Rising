@@ -7,6 +7,7 @@
 
 import { Pose } from './pose'
 import { clamp01, rgba } from '../core/utils'
+import { rimPlan } from '../render/look'
 
 export interface Vec2 {
   x: number
@@ -281,16 +282,22 @@ export interface DrawOpts {
   time?: number
   flash?: number
   flashColor?: string
-  /** ghost/afterimage mode: single flat color, no detail */
-  ghost?: string
+  /** ghost/afterimage mode: single flat color/gradient, no detail */
+  ghost?: string | CanvasGradient
   ghostAlpha?: number
   /** skip outline+details (perf for far enemies) */
   simple?: boolean
   /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
    * the swinging/charging edge illuminates the body that carries it */
   edgeLight?: { color: string; a: number }
-  /** colored fill from a nearby practical light (look.emitterFill) */
+  /** colored fills from nearby practicals (look.emitterFills) — one tap
+   *  per source so light lands on the side facing EACH emitter */
+  sideFills?: { color: string; a: number; dx: number }[]
+  /** legacy single-fill alias */
   sideFill?: { color: string; a: number; dx: number }
+  /** face sign + context scale of the caller's transform (see rig3d) */
+  flipX?: number
+  unit?: number
 }
 
 function limb(ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, cx: number, cy: number): void {
@@ -336,6 +343,8 @@ function fillFoot(
  * Draws the stickman. The ctx is expected to be pre-translated to the hip
  * position, flipped horizontally for facing, and scaled — geom is local space.
  */
+const washCaches = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
+
 export function drawStick(
   ctx: CanvasRenderingContext2D,
   g: SkelGeom,
@@ -353,20 +362,63 @@ export function drawStick(
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
-  // LIGHT TRANSPORT (universal look) — colored fill from nearby practicals:
-  // a flat pass offset toward the emitter, body covers the middle. Reuses
-  // the ghost machinery; recursion terminates (ghost skips this block).
-  if (!ghost && (opts.sideFill?.a ?? 0) > 0.01) {
-    const sf = opts.sideFill!
-    ctx.save()
-    ctx.translate(sf.dx * 1.1, 0.3)
-    drawStick(ctx, g, style, {
-      time: t,
-      ghost: sf.color,
-      ghostAlpha: Math.min(1, sf.a) * 0.5,
-      simple: true,
-    })
-    ctx.restore()
+  // LIGHT TRANSPORT (universal look) — the body TAKES the key and the
+  // practicals as directional gradient washes (real-time 2D lighting), and
+  // thin rim taps carve the light-facing edge. Tap offsets are un-flipped
+  // and un-scaled (fx/u) so the light lands on the correct side even when
+  // the caller's context is mirrored for facing.
+  if (!ghost) {
+    const fx = opts.flipX ?? 1, u = opts.unit ?? 1
+    const tap = (dx: number, dy: number) => ctx.translate(dx * fx / u, dy / u)
+    const hexA = (hex: string, a: number): string => {
+      const m = /^#([0-9a-f]{6})$/i.exec(hex)
+      const n = parseInt(m ? m[1] : '8899aa', 16)
+      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`
+    }
+    // cached gradient per (ctx, color, direction); live intensity rides
+    // ghostAlpha — identical products, zero per-frame allocations
+    const washCache = washCaches.get(ctx) ?? (() => { const m = new Map<string, CanvasGradient>(); washCaches.set(ctx, m); return m })()
+    const wash = (dirWorld: number, col: string, peak: number) => {
+      if (peak <= 0.012) return
+      const d = Math.sign(dirWorld || 1) < 0 ? -1 : 1
+      const key = col + (d < 0 ? '|L' : '|R')
+      let gr = washCache.get(key)
+      if (!gr) {
+        gr = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
+        gr.addColorStop(0, hexA(col, 0))
+        gr.addColorStop(0.58, hexA(col, 0.36))
+        gr.addColorStop(1, hexA(col, 1))
+        washCache.set(key, gr)
+      }
+      ctx.save()
+      drawStick(ctx, g, style, { time: t, ghost: gr, ghostAlpha: peak, simple: true })
+      ctx.restore()
+    }
+    const rim = rimPlan()
+    // key form wash + one wash per practical (light on the side facing it)
+    wash(rim.keyDX, rim.keyColor, rim.keyA * 0.34)
+    for (const sf of [...(opts.sideFills ?? []), ...(opts.sideFill ? [opts.sideFill] : [])]) {
+      wash(sf.dx, sf.color, Math.min(0.85, sf.a) * 0.85)
+    }
+    // edge accents (thin)
+    if (rim.wrapA > 0.015) {
+      ctx.save()
+      tap(rim.wrapDX, rim.wrapDY)
+      drawStick(ctx, g, style, {
+        time: t, ghost: rim.keyColor,
+        ghostAlpha: Math.min(0.9, rim.wrapA * 0.7), simple: true,
+      })
+      ctx.restore()
+    }
+    if (rim.keyA > 0.015) {
+      ctx.save()
+      tap(rim.keyDX * 1.25, rim.keyDY * 1.25)
+      drawStick(ctx, g, style, {
+        time: t, ghost: rim.keyColor,
+        ghostAlpha: Math.min(0.9, rim.keyA * 0.5), simple: true,
+      })
+      ctx.restore()
+    }
   }
 
   if (ghost) {

@@ -1,5 +1,7 @@
 import {StormEngine} from './storm'
 import {FOG} from '../render/look'
+import {clamp01} from '../core/utils'
+import { keyLightFromStorm, STREET_LIGHT } from '../render/lighting'
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -61,7 +63,7 @@ export interface BackgroundRenderer {
   drawWetMask(ctx:CanvasRenderingContext2D):void
   /** typed light rig on the deck: directional pool, moon glitter lane,
    *  spot pools, steam */
-  drawLightRig(ctx:CanvasRenderingContext2D,moonWorldX:number):void
+  drawLightRig(ctx:CanvasRenderingContext2D,moonWorldX:number,moonWorldY:number):void
 }
 
 /* ============================ seeded RNG ================================= */
@@ -160,7 +162,15 @@ const MIST_SP = 26;            // ground-mist scroll speed, world px/s
 
 /* ======================== animated-record shapes ========================= */
 
-interface TwinkRec { x: number; y: number; ph: number; sp: number }
+interface TwinkRec {
+  x: number; y: number; ph: number; sp: number
+  /** magnitude 0..1 — bright stars breathe + flare, faint stars stay calm */
+  mag: number
+  /** spectral tint bucket: 0 amber · 1 neutral · 2 blue-white */
+  spec: number
+  /** flare rhythm (sparse scintillation spikes) */
+  sp2: number; ph2: number
+}
 interface BeaconRec { x: number; yA: number; ph: number; sp: number }
 interface SignRec { x: number; yA: number; w: number; h: number; ci: number; ph: number; state: number; timer: number; next: number }
 interface LiftRec { x: number; yA0: number; yA1: number; sp: number; ph: number; ci: number }
@@ -221,6 +231,15 @@ function buildMoon(): HTMLCanvasElement {
   g.strokeStyle = 'rgba(226,240,244,0.5)';
   g.lineWidth = 1.4;
   g.beginPath(); g.arc(110, 110, 46.2, Math.PI * 0.62, Math.PI * 1.72); g.stroke();
+  // EARTHSHINE — the "old moon in the new moon's arms": sunlight bounced
+  // off Earth faintly lifts the dark limb. Cool, tiny, and real.
+  g.save();
+  g.beginPath(); g.arc(110, 110, 46.5, 0, TAU); g.clip();
+  const es = g.createRadialGradient(132, 130, 8, 128, 128, 60);
+  es.addColorStop(0, 'rgba(122,144,178,0.14)');
+  es.addColorStop(1, 'rgba(122,144,178,0)');
+  g.fillStyle = es; g.fillRect(60, 60, 110, 110);
+  g.restore();
   return c;
 }
 
@@ -278,6 +297,132 @@ function buildMoonRing(): HTMLCanvasElement {
   outer.addColorStop(0, 'rgba(160,190,224,0.085)');
   outer.addColorStop(1, 'rgba(160,190,224,0)');
   g.fillStyle = outer; g.fillRect(0, 0, 440, 440);
+  return c;
+}
+
+/** CREPUSCULAR WEDGE FAN — moonlight escaping through the cloud gaps and
+ *  scattering off the rain (Mie). Rays visually converge at the source, so
+ *  this is a radial fan from the moon's position; the LIVE cloud deck
+ *  modulates its alpha, so shafts breathe and die as banks drift (the
+ *  clouds are the occluder — physically honest, one blit at runtime). */
+function buildShaftFan(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(1024, 1024);
+  const C = 512;
+  g.globalCompositeOperation = 'lighter';
+  const R0 = 120, R1 = 505;
+  // deterministic wedge layout: angle, half-width (rad), energy
+  const wedges: Array<[number, number, number]> = [];
+  let ang = -Math.PI * 0.5 - 1.15;           // fan biased downward from the moon
+  let seed = 7.31;
+  const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  for (let i = 0; i < 17; i++) {
+    const hw = 0.022 + rand() * 0.052;
+    const gap = 0.035 + rand() * 0.16;
+    const energy = 0.35 + rand() * 0.65;
+    wedges.push([ang + hw, hw, energy]);
+    ang += hw * 2 + gap;
+    if (ang > Math.PI * 0.5 + 1.25) break;
+  }
+  for (const [a, hw, e] of wedges) {
+    const x0 = C + Math.cos(a) * R0, y0 = C + Math.sin(a) * R0;
+    const x1 = C + Math.cos(a) * R1, y1 = C + Math.sin(a) * R1;
+    const nx = -Math.sin(a), ny = Math.cos(a);
+    const w0 = Math.tan(hw) * R0, w1 = Math.tan(hw) * R1;
+    const gr = g.createLinearGradient(x0, y0, x1, y1);
+    gr.addColorStop(0, `rgba(184,207,232,${0.32 * e})`);
+    gr.addColorStop(0.35, `rgba(172,198,228,${0.2 * e})`);
+    gr.addColorStop(1, 'rgba(160,190,224,0)');
+    g.fillStyle = gr;
+    g.beginPath();
+    g.moveTo(x0 + nx * w0, y0 + ny * w0);
+    g.lineTo(x1 + nx * w1, y1 + ny * w1);
+    g.lineTo(x1 - nx * w1, y1 - ny * w1);
+    g.lineTo(x0 - nx * w0, y0 - ny * w0);
+    g.closePath();
+    g.fill();
+  }
+  return c;
+}
+
+/** MOON LIGHT PILLAR — horizontal plate ice crystals stacking like mirrors
+ *  throw a vertical beam through bright sources. Rare, thin-high-cloud only,
+ *  ALWAYS subtle (hard alpha ceiling: the no-disco law). */
+function buildMoonPillar(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(110, 660);
+  const beam = g.createLinearGradient(0, 0, 0, 660);
+  beam.addColorStop(0, 'rgba(216,232,250,0)');
+  beam.addColorStop(0.42, 'rgba(216,232,250,0.5)');
+  beam.addColorStop(0.58, 'rgba(222,236,250,0.5)');
+  beam.addColorStop(1, 'rgba(216,232,250,0)');
+  const width = g.createLinearGradient(0, 0, 110, 0);
+  width.addColorStop(0, 'rgba(0,0,0,0)');
+  width.addColorStop(0.5, 'rgba(0,0,0,1)');
+  width.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = beam; g.fillRect(0, 0, 110, 660);
+  g.globalCompositeOperation = 'destination-in';
+  g.fillStyle = width; g.fillRect(0, 0, 110, 660);
+  return c;
+}
+
+/** ZODIACAL / AIRGLOW BAND — the faint warm-grey sky light that real night
+ *  photos always carry near the moon (dust-scattered sunlight). One soft
+ *  diagonal band, additive, barely there. */
+function buildZodi(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(640, 300);
+  g.translate(320, 150); g.rotate(-0.21); g.translate(-320, -150);
+  const band = g.createLinearGradient(0, 150 - 90, 0, 150 + 90);
+  band.addColorStop(0, 'rgba(212,196,178,0)');
+  band.addColorStop(0.5, 'rgba(212,196,178,0.09)');
+  band.addColorStop(1, 'rgba(212,196,178,0)');
+  g.fillStyle = band; g.fillRect(-40, 60, 720, 180);
+  const fade = g.createLinearGradient(0, 0, 640, 0);
+  fade.addColorStop(0, 'rgba(0,0,0,0.15)');
+  fade.addColorStop(0.35, 'rgba(0,0,0,1)');
+  fade.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalCompositeOperation = 'destination-in';
+  g.fillStyle = fade; g.fillRect(0, 0, 640, 300);
+  return c;
+}
+
+/** MACRO-RAIN BOKEH — a defocused highlight disc: soft core with a
+ *  slightly brighter rim (the soap-bubble edge of real bokeh). */
+function buildBokehDisc(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(64, 64);
+  const gr = g.createRadialGradient(32, 32, 4, 32, 32, 31);
+  gr.addColorStop(0, 'rgba(207,224,255,0.5)');
+  gr.addColorStop(0.62, 'rgba(207,224,255,0.32)');
+  gr.addColorStop(0.86, 'rgba(214,230,255,0.42)');
+  gr.addColorStop(1, 'rgba(207,224,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+/** LENS DIRT — sparse sensor/front-element smudges that flare when a bright
+ *  source hits the lens. Near-invisible at rest; drawn ONLY at flash energy
+ *  (the selective-bloom law — never permanent full-screen glow). */
+function buildLensDirt(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(320, 180);
+  let seed = 41.7;
+  const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  for (let i = 0; i < 46; i++) {
+    const x = rand() * 320, y = rand() * 180, r = 1 + rand() * 6;
+    const a = 0.05 + rand() * 0.16;
+    const d = g.createRadialGradient(x, y, 0, x, y, r);
+    d.addColorStop(0, `rgba(220,232,248,${a.toFixed(3)})`);
+    d.addColorStop(1, 'rgba(220,232,248,0)');
+    g.fillStyle = d; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 5; i++) {
+    const x = rand() * 320, y = rand() * 180;
+    const w = 14 + rand() * 40, h = 5 + rand() * 10;
+    const a = 0.03 + rand() * 0.05;
+    const sm = g.createRadialGradient(0, 0, 0, 0, 0, w);
+    sm.addColorStop(0, `rgba(210,224,244,${a.toFixed(3)})`);
+    sm.addColorStop(1, 'rgba(210,224,244,0)');
+    g.save(); g.translate(x, y); g.rotate((rand() - 0.5) * 0.8); g.scale(1, h / w);
+    g.fillStyle = sm;
+    g.beginPath(); g.arc(0, 0, w, 0, Math.PI * 2); g.fill(); g.restore();
+  }
   return c;
 }
 
@@ -542,6 +687,8 @@ export class CyberBackground {
   /* pre-rendered art (built once, resolution independent) */
   private built = false;
   private skyStrip!: HTMLCanvasElement;
+  /** light-pollution glow plate (perf, no-lightning case) */
+  private pollPlate: HTMLCanvasElement | null = null;
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
   private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
@@ -557,6 +704,14 @@ export class CyberBackground {
   private doorPool!: HTMLCanvasElement;   // warm pool the door spills
   private moonGlitter!: HTMLCanvasElement; // specular lane of the moon key
   private moonRing!: HTMLCanvasElement;    // 22° ice-crystal halo ring
+  private shaftFan!: HTMLCanvasElement;    // crepuscular wedge fan (gap rays)
+  private moonPillar!: HTMLCanvasElement;  // plate-crystal light pillar
+  private zodiSpr!: HTMLCanvasElement;     // zodiacal / airglow band
+  private bokehDisc!: HTMLCanvasElement;   // macro-rain defocus disc
+  private lensDirt!: HTMLCanvasElement;    // flash-gated lens smudges
+  /** near-lens defocused droplets (screen-space weather, parallax ~2.4) */
+  private bokeh: { x: number; y: number; r: number; ph: number; sp: number }[] = [];
+  private lastWX = NaN;
   /** live fresnel-lane glints that dance along the moon's specular lane */
   private glints: { x: number; y: number; w: number; ph: number; sp: number; c: number }[] = [];
   private deckPool!: HTMLCanvasElement;   // directional key's diffuse wash
@@ -647,6 +802,7 @@ export class CyberBackground {
 
   drawSky(ctx: CanvasRenderingContext2D, cam: BgCam): void {
     this.ensureBuilt();
+    // light-pollution glow plate (perf): vertical gradient, no-lightning case
     const cx = Number.isFinite(cam.x) ? cam.x : 0;
     const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
     const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
@@ -677,17 +833,38 @@ export class CyberBackground {
 
     /* 1.5 — CITY LIGHT-POLLUTION GLOW: the megapolis below breathes color
      * up into the cloud deck — cool electric blue at altitude, warm sodium
-     * and magenta neon right at the skyline. Additive; towers occlude it. */
+     * and magenta neon right at the skyline. Additive; towers occlude it.
+     * PERF: the gradient is vertical-only, so the no-lightning case comes
+     * from a baked 8×216 strip stretched full width (identical pixels — a
+     * horizontal stretch interpolates identical columns); the rare
+     * lightning-modulated case keeps the live gradient. */
     {
       const I0 = this.lightningI();
-      const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
-      pg.addColorStop(0, 'rgba(40,70,140,0)');
-      pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
-      pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
-      pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = pg;
-      ctx.fillRect(0, hy - 210, w, 216);
+      if (I0 <= 0) {
+        if (!this.pollPlate) {
+          const pc = document.createElement('canvas');
+          pc.width = 8; pc.height = 216;
+          const pg2 = pc.getContext('2d')!;
+          const lg = pg2.createLinearGradient(0, 0, 0, 216);
+          lg.addColorStop(0, 'rgba(40,70,140,0)');
+          lg.addColorStop(0.55, 'rgba(46,78,152,0.075)');
+          lg.addColorStop(0.84, 'rgba(122,64,150,0.1)');
+          lg.addColorStop(1, 'rgba(255,116,84,0.115)');
+          pg2.fillStyle = lg;
+          pg2.fillRect(0, 0, 8, 216);
+          this.pollPlate = pc;
+        }
+        ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
+      } else {
+        const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
+        pg.addColorStop(0, 'rgba(40,70,140,0)');
+        pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
+        pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
+        pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
+        ctx.fillStyle = pg;
+        ctx.fillRect(0, hy - 210, w, 216);
+      }
       ctx.globalCompositeOperation = 'source-over';
     }
 
@@ -695,10 +872,18 @@ export class CyberBackground {
     const starBase = hy - 70 > h * 0.25 ? hy - 70 : h * 0.25;
     const ms = mod(cx * 0.02 * cz, TILE);
     this.blitRow(ctx, this.starTile, ms, starBase - STAR_H);
-    ctx.fillStyle = TWINK_COL;
+    // STAR SCINTILLATION (atmospheric turbulence): each star flickers on
+    // its OWN persistent rhythm — bright stars breathe gently and rare
+    // flare spikes fire (pow curve keeps simultaneous twinkles sparse),
+    // faint stars stay calm; per-star spectral tint (amber → blue-white).
+    const TWINK_TINTS = ['#ffd9b0', '#dfe7f2', '#cfe0ff'];
+    let curSpec = -1;
     for (let i = 0; i < this.twinks.length; i++) {
       const tr = this.twinks[i];
-      ctx.globalAlpha = 0.2 + 0.55 * (0.5 + 0.5 * Math.sin(t * tr.sp + tr.ph));
+      if (tr.spec !== curSpec) { curSpec = tr.spec; ctx.fillStyle = TWINK_TINTS[curSpec]; }
+      const breathe = 0.86 + 0.14 * Math.sin(t * tr.sp + tr.ph);
+      const flare = tr.mag > 0.55 ? 0.12 * Math.pow(Math.max(0, Math.sin(t * tr.sp2 + tr.ph2)), 6) * tr.mag : 0;
+      ctx.globalAlpha = clamp01((0.22 + 0.5 * tr.mag) * breathe + flare);
       const sy = starBase - STAR_H + tr.y;
       for (let x = mod(tr.x - ms, TILE) - TILE; x < w + 3; x += TILE) {
         if (x > -3) ctx.fillRect(x, sy, 2, 2);
@@ -738,8 +923,8 @@ export class CyberBackground {
      * deck modulates disc + halo + the key light below. Halo tamed to
      * ~45% of the old bloom radius. */
     {
-      const moonX = w * 0.68 - cx * 0.03 * cz - 84;
-      const moonY = h * 0.15 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
+      const moonX = w * 0.87 - cx * 0.03 * cz - 84;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
       const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
       const cloudY2 = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
       // eclipse coverage: O(16) blob falloff around the disc's tile x
@@ -768,6 +953,15 @@ export class CyberBackground {
       // 22° ice-crystal halo ring — the physical optics detail
       ctx.globalAlpha = haloA * 0.9;
       ctx.drawImage(this.moonRing, moonX + 84 - 280, moonY + 84 - 280, 560, 560);
+      // ZODIACAL / AIRGLOW — the warm dust band real night photos carry
+      ctx.globalAlpha = 0.75 * (1 - 0.5 * cov);
+      ctx.drawImage(this.zodiSpr, moonX + 84 - 330, moonY + 84 - 220, 660, 310);
+      // PLATE-CRYSTAL LIGHT PILLAR — thin high clouds only, hard ceiling
+      const pillA = haloA * clamp01(1 - 1.55 * cov) * 0.055;
+      if (pillA > 0.004) {
+        ctx.globalAlpha = pillA;
+        ctx.drawImage(this.moonPillar, moonX + 84 - 55, moonY + 84 - 330, 110, 660);
+      }
       ctx.globalCompositeOperation = 'source-over';
       // the cloud cage over the disc thickens with coverage
       ctx.globalAlpha = 0.34 + 0.3 * cov;
@@ -997,29 +1191,129 @@ export class CyberBackground {
   /* ---------------------- screen-space weather pass ---------------------- */
 
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void{
+    this.ensureBuilt();
     this.storm.setView(cam);
     this.storm.drawRain(ctx);
+    const t = this.t, w = this.vw, h = this.vh;
+    // MACRO-RAIN BOKEH — defocused droplets drifting near the lens: the
+    // single strongest "real photo" cue (research #20). High parallax,
+    // slow fall, sparse; soap-bubble rim discs over the rain.
+    const lx = Number.isFinite(this.lastWX) ? this.lastWX : cam.x;
+    const dxW = lx - cam.x;
+    this.lastWX = cam.x;
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < this.bokeh.length; i++) {
+      const b = this.bokeh[i];
+      b.x += dxW * 2.4; b.y += b.sp;
+      if (b.y > h + 40) {
+        b.y = -40;
+        b.x = ((b.ph * 713) % (w + 160)) - 80;
+      }
+      if (b.x > w + 80) b.x -= w + 160; else if (b.x < -80) b.x += w + 160;
+      ctx.globalAlpha = (0.05 + 0.0045 * b.r) * (0.82 + 0.18 * Math.sin(t * 0.7 + b.ph));
+      ctx.drawImage(this.bokehDisc, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+    }
+    // LENS DIRT FLARE — the front element's smudges flare only while the
+    // storm flashes (selective glow law — never permanent bloom)
+    const li = this.lightningI();
+    if (li > 0.02) {
+      ctx.globalAlpha = li * 0.12;
+      ctx.drawImage(this.lensDirt, 0, 0, w, h);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
   }
 
   /** TYPED LIGHT RIG on the deck (UE archetypes): directional key's diffuse
    *  pool (the lit surface shadows read against), the moon's specular
    *  glitter lane (the ray-traced wet look), two sweeping spot pools, and
    *  vent steam. moonWorldX = where the moon's reflection lane lands. */
-  drawLightRig(ctx: CanvasRenderingContext2D, moonWorldX: number): void {
+  drawLightRig(ctx: CanvasRenderingContext2D, moonWorldX: number, moonWorldY: number): void {
     this.ensureBuilt();
     const t = this.t, cov = this.moonCover, li = this.lightningI();
-    // DIRECTIONAL — diffuse pool on the deck (under everything else).
-    // Target-art calibration (image-2.png): shadows only read DRAMATICALLY
-    // against a BRIGHT moonlit deck — this pool is the key's diffuse term.
-    ctx.globalAlpha = (0.58 + 0.22 * li) * (1 - 0.5 * cov);
-    ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
+    // CREPUSCULAR GAP RAYS — moonlight escaping the cloud deck scatters off
+    // the rain (Mie). The drifting clouds ARE the occluder: coverage gates
+    // the shafts, so they breathe/die as banks cross the disc. Drawn here —
+    // after the skyline (atmospheric volume crosses in front of buildings),
+    // before the pools (the deck's own diffuse term covers their landing).
+    const shaftA = clamp01((0.55 - cov) * 1.8) * (0.8 + 0.2 * Math.sin(t * 0.23)) * 0.14 * (1 - Math.min(1, li * 1.3));
+    if (shaftA > 0.004) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = shaftA;
+      ctx.drawImage(this.shaftFan, moonWorldX - 700, moonWorldY - 700, 1400, 1400);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+    // DIRECTIONAL — diffuse pool on the deck. LIVE, not baked-in-place:
+    // brightness follows the key's real intensity (a total eclipse KILLS the
+    // pool instead of leaving it half-lit) and a directional lean tracks the
+    // azimuth — when lightning swings the key, the bright side swings too.
+    const key = keyLightFromStorm(li, this.lightningAz());
+    const poolA = (0.34 + 0.62 * clamp01(key.i)) * (1 - 0.92 * cov);
+    if (poolA > 0.012) {
+      ctx.globalAlpha = poolA;
+      ctx.drawImage(this.deckPool, ARENA_X0, -10, ARENA_W, 150);
+      const lightOnRight = key.dirX < 0;   // shadows lean left ⇒ light sits right
+      const bx = lightOnRight ? ARENA_X0 + ARENA_W : ARENA_X0;
+      const ex2 = lightOnRight ? ARENA_X0 : ARENA_X0 + ARENA_W;
+      const lean = ctx.createLinearGradient(bx, 0, ex2, 0);
+      lean.addColorStop(0, 'rgba(190,214,240,0.1)');
+      lean.addColorStop(0.55, 'rgba(190,214,240,0.03)');
+      lean.addColorStop(1, 'rgba(190,214,240,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = clamp01(key.i) * (1 - 0.92 * cov);
+      ctx.fillStyle = lean;
+      ctx.fillRect(ARENA_X0, -10, ARENA_W, 150);
+      ctx.globalCompositeOperation = 'source-over';
+    }
     ctx.globalAlpha = 1;
     // LIGHT TRANSPORT — the door practical's warm bounce: scattered light
     // spreads wider and dimmer than the direct pool
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.13 * (1 - 0.4 * cov);
     ctx.drawImage(this.doorPool, DOOR_X - 430, -46, 860, 130);
+    // DEFOCUSED PRACTICAL BOKEH — droplets on the lens catching the warm
+    // door source (staged near the practical, slow breathing)
+    const doorBokehA = 0.075 * (1 - 0.5 * cov);
+    if (doorBokehA > 0.006) {
+      ctx.globalAlpha = doorBokehA * (0.8 + 0.2 * Math.sin(t * 0.9));
+      ctx.drawImage(this.bokehDisc, DOOR_X - 210, -120, 46, 46);
+      ctx.globalAlpha = doorBokehA * (0.7 + 0.2 * Math.sin(t * 1.13 + 2));
+      ctx.drawImage(this.bokehDisc, DOOR_X + 120, -78, 30, 30);
+      ctx.globalAlpha = doorBokehA * (0.75 + 0.2 * Math.sin(t * 0.77 + 4));
+      ctx.drawImage(this.bokehDisc, DOOR_X - 60, -172, 22, 22);
+    }
     ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    // BROKEN STREETLIGHT (left practical) — the SECOND field light. Its pool,
+    // glow and flicker are LIVE (the pool dies with the bulb), its shadows
+    // fall RIGHT (opposite the moon + door) and every figure picks up a cool
+    // fill on its left side. Multi-light, shadows on BOTH sides.
+    const flick = 0.9 + 0.08 * Math.sin(t * 13.7) + 0.04 * Math.sin(t * 31.3);
+    const dropout = Math.sin(t * 0.41 + 2.2) > 0.995 ? 0.3 : 1;
+    const lampI = 0.9 * flick * dropout;
+    if (lampI > 0.02) {
+      ctx.globalCompositeOperation = 'lighter';
+      const poolR = 470;
+      const lg = ctx.createRadialGradient(STREET_LIGHT.x, 10, 20, STREET_LIGHT.x, 10, poolR);
+      lg.addColorStop(0, `rgba(150,200,240,${(0.21 * lampI).toFixed(3)})`);
+      lg.addColorStop(0.5, `rgba(130,185,235,${(0.09 * lampI).toFixed(3)})`);
+      lg.addColorStop(1, 'rgba(120,175,230,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(STREET_LIGHT.x - poolR, -10, poolR * 2, 150);
+      const bg2 = ctx.createRadialGradient(STREET_LIGHT.x, -252, 2, STREET_LIGHT.x, -252, 92);
+      bg2.addColorStop(0, `rgba(214,238,255,${(0.5 * lampI).toFixed(3)})`);
+      bg2.addColorStop(0.25, `rgba(160,210,250,${(0.17 * lampI).toFixed(3)})`);
+      bg2.addColorStop(1, 'rgba(150,200,245,0)');
+      ctx.fillStyle = bg2;
+      ctx.fillRect(STREET_LIGHT.x - 92, -344, 184, 184);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // pole shaft + housing (solid, pools light it from within)
+    ctx.fillStyle = '#0a0e15';
+    ctx.fillRect(STREET_LIGHT.x - 4.5, -258, 9, 260);
+    ctx.fillRect(STREET_LIGHT.x - 16, -274, 32, 17);
+    ctx.fillRect(STREET_LIGHT.x + 4, -266, 30, 5);
     ctx.globalAlpha = 1;
     // steam wisps (behind the specular layers)
     for (let i = 0; i < 3; i++) {
@@ -1082,8 +1376,8 @@ export class CyberBackground {
     const t = this.t;
     const w = this.vw, h = this.vh;
     const hy = h * 0.5 + (0 - cy) * cz;
-    const moonX = w * 0.68 - cx * 0.03 * cz - 110;
-    const moonY = h * 0.185 - (cy - NOMINAL_Y) * 0.08 * cz - 110;
+    const moonX = w * 0.87 - cx * 0.03 * cz - 110;
+    const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 110;
     ctx.drawImage(this.moonSpr, moonX, moonY);
     ctx.drawImage(this.moonHalo, moonX + 110 - 256, moonY + 110 - 256);
     // extra wide bright pool so the smear has source mass for long shafts
@@ -1122,6 +1416,11 @@ export class CyberBackground {
     this.moonSpr = buildMoon();
     this.moonHalo = buildMoonHalo();
     this.moonRing = buildMoonRing();
+    this.shaftFan = buildShaftFan();
+    this.moonPillar = buildMoonPillar();
+    this.zodiSpr = buildZodi();
+    this.bokehDisc = buildBokehDisc();
+    this.lensDirt = buildLensDirt();
     this.cloudShadowSpr = buildCloudShadowTile();
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
@@ -1167,7 +1466,23 @@ export class CyberBackground {
       g.fillRect(x, y, big ? 2 : 1, big ? 2 : 1);
     }
     for (let i = 0; i < 16; i++) {
-      this.twinks.push({ x: rng() * TILE, y: 170 + rng() * 260, ph: rng() * TAU, sp: 1.4 + rng() * 2.4 });
+      const mag = rng();
+      this.twinks.push({
+        x: rng() * TILE, y: 170 + rng() * 260,
+        ph: rng() * TAU, sp: 1.4 + rng() * 2.4,
+        mag, spec: rng() < 0.24 ? 0 : rng() < 0.6 ? 1 : 2,
+        sp2: 2.2 + rng() * 4.8, ph2: rng() * TAU,
+      });
+    }
+    // scintillation draw groups: sort by spectral bucket so each tint costs
+    // ONE fillStyle switch (never per-star state changes)
+    this.twinks.sort((a, b) => a.spec - b.spec);
+    // MACRO-RAIN BOKEH droplets — sparse, deterministic seeds
+    for (let i = 0; i < 11; i++) {
+      this.bokeh.push({
+        x: rng() * 1440 - 80, y: rng() * 620 - 60,
+        r: 4 + rng() * 5.5, ph: rng() * TAU, sp: 0.16 + rng() * 0.5,
+      });
     }
     return c;
   }
@@ -1239,7 +1554,17 @@ export class CyberBackground {
     g.fillStyle = FOG.farLift;
     g.fillRect(0, 0, TILE, FAR_H);
     g.globalCompositeOperation = 'source-over';
-    return c;
+    // AERIAL FOCUS — the far plate sits past the focal plane: bake a one-
+    // time soft blur (runtime cost ZERO — same drawImage) with wrap-aware
+    // edges so the tile seam stays invisible; the fog carries the rest of
+    // the depth read (bokeh DOF law).
+    const blurred = makeCanvas(TILE, FAR_H);
+    blurred.g.filter = 'blur(2px)';
+    blurred.g.drawImage(c, -TILE, 0);
+    blurred.g.drawImage(c, 0, 0);
+    blurred.g.drawImage(c, TILE, 0);
+    blurred.g.filter = 'none';
+    return blurred.c;
   }
 
   private buildMid(): HTMLCanvasElement {
@@ -1334,7 +1659,15 @@ export class CyberBackground {
     g.fillStyle = 'rgba(36,56,80,0.09)';
     g.fillRect(0, 0, TILE, MID_H);
     g.globalCompositeOperation = 'source-over';
-    return c;
+    // AERIAL FOCUS (mid): lighter than the far plate — the action plane
+    // stays crisp, only the depth layers soften (wrap-aware bake blur).
+    const blurred = makeCanvas(TILE, MID_H);
+    blurred.g.filter = 'blur(1.1px)';
+    blurred.g.drawImage(c, -TILE, 0);
+    blurred.g.drawImage(c, 0, 0);
+    blurred.g.drawImage(c, TILE, 0);
+    blurred.g.filter = 'none';
+    return blurred.c;
   }
 
   private buildNear(): HTMLCanvasElement {

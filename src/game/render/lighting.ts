@@ -13,6 +13,12 @@ export interface KeyLight {
   i: number
   /** shadow tint (near-black; storms cool it further) */
   color: string
+  /** RAY-TRACED MODE: when a light ORIGIN is given, shadows are true
+   * point-light projections (each joint's ray cast from the source through
+   * the joint onto the ground plane) instead of the directional skew —
+   * shadows then sweep radially as the caster moves past the practical. */
+  ox?: number
+  oy?: number
 }
 
 export interface ShadowFigure {
@@ -80,19 +86,126 @@ export function pointAt(l: Light2D, x: number, y: number): number {
   return l.intensity / (1 + (dx * dx + dy * dy) / (r * r))
 }
 
-  /** secondary shadow key from a point source: shadows fall AWAY from it */
+  /** secondary shadow key from a point source: shadows fall AWAY from it.
+   * RAY-TRACED: carries the true light origin, so projectGroundPoint casts
+   * real radial rays from the lamp through every joint onto the deck. */
 export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
   const dx = x - l.x
   const dirX = dx >= 0 ? 0.85 : -0.85
-  // warm-dark umber: the blocked door light leaves a warm-shaped smudge,
-  // visually distinct from the moon key's violet (research: shadow = the
-  // remaining ambient, never pure black)
-  return {dirX, elev: .52, hard: .42, i: pointAt(l, x, y), color: '#2a1410'}
+  // shadow tint follows the blocked light's temperature: a warm practical
+  // leaves a warm-dark umber smudge, a cool one a cool-dark slate — each
+  // shadow reads distinctly against its own pool (shadow = the remaining
+  // ambient, never pure black)
+  const r = parseInt(l.color.slice(1, 3), 16), bl = parseInt(l.color.slice(5, 7), 16)
+  const tint = bl > r ? '#0e1722' : '#2a1410'
+  return {dirX, elev: .52, hard: .5, i: pointAt(l, x, y), color: tint,
+    ox: l.x, oy: l.y}
+}
+
+/** RAY-TRACED PROP SHADOW: a box prop (stairwell head, vent stack) blocking
+ *  the key. Its four silhouette corners are projected along the light rays
+ *  onto the deck and unioned into one smeared quad — the wall-shadows
+ *  technique (Tigsource research) on the play field. */
+/** PROJECTED SILHOUETTE SHADOW — the body's ACTUAL shape cast along the
+ *  light rays onto the ground plane (real-time game shadows, not capsule
+ *  smears): an affine shear+squash maps the figure onto the deck, a
+ *  tip-fade gradient dissolves the far end along the lean, and a blurred
+ *  second pass supplies the penumbra. The entity passes its own body
+ *  drawer so the shadow matches the pose (limbs, weapon and all). */
+const shadowGradCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
+
+export function drawProjectedShadow(
+  ctx: CanvasRenderingContext2D, light: KeyLight,
+  drawBody: (c: CanvasRenderingContext2D, col: string | CanvasGradient) => void,
+  opts: { alpha?: number; height?: number; rootX?: number; lightBoost?: number } = {},
+): void {
+  const height = finite(opts.height ?? 0, 0)
+  let alpha = shadowOpacity(height, opts.alpha ?? 0.55)
+  if (alpha < 0.006) return
+  alpha *= 0.86 + 0.14 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
+  const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
+  const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.3, 1.45))
+  // SIDE-VIEW GAME SHADOW (Hades/Dead Cells convention): a true ground-plane
+  // projection is edge-on from a side camera and reads as a flat streak —
+  // instead the figure is squashed downward at the feet and leans away from
+  // the light, so the shadow reads as the BODY's shape lying on the deck.
+  const lean = clamp(cot * 0.55, 0.35, 1.15)
+  const shear = -lean * clamp(finite(light.dirX, 0), -1, 1)
+  const rootX = finite(opts.rootX ?? 0, 0)
+  // tip-fade: solid at the feet (y=0), dissolving toward the head tip.
+  // Purely vertical ⇒ x is irrelevant; cache one gradient per tint color.
+  let tintMap = shadowGradCache.get(ctx)
+  if (!tintMap) { tintMap = new Map(); shadowGradCache.set(ctx, tintMap) }
+  let grad = tintMap.get(tint)
+  if (!grad) {
+    grad = ctx.createLinearGradient(0, 0, 0, -185)
+    grad.addColorStop(0, rgba(tint, 1))
+    grad.addColorStop(0.55, rgba(tint, 0.74))
+    grad.addColorStop(1, rgba(tint, 0.26))
+    tintMap.set(tint, grad)
+  }
+  const project = () => { ctx.transform(1, 0, shear, -0.22, 0, 0) }
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  // sharp core
+  ctx.save()
+  ctx.globalAlpha = alpha * 0.82
+  project()
+  drawBody(ctx, grad)
+  ctx.restore()
+  // penumbra: one offset double-tap for the moon (the long, read-the-shape
+  // cast); practicals keep the single pass — their pools blur them anyway
+  if (light.ox === undefined) {
+    ctx.save()
+    ctx.globalAlpha = alpha * 0.34
+    ctx.translate(shear * 3.2, -0.2)
+    project()
+    drawBody(ctx, grad)
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
+export function drawPropShadow(
+  ctx: CanvasRenderingContext2D, light: KeyLight,
+  cx: number, halfW: number, topY: number,
+  alpha = 0.32,
+): void {
+  const a = projectGroundPoint(cx - halfW, topY, light)
+  const b = projectGroundPoint(cx + halfW, topY, light)
+  const c0 = projectGroundPoint(cx + halfW, 1.5, light)
+  const d0 = projectGroundPoint(cx - halfW, 1.5, light)
+  if (!a || !b) return
+  const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
+  ctx.save()
+  ctx.globalCompositeOperation = 'source-over'
+  const rootX = (c0?.x ?? cx) + ((d0?.x ?? cx) - (c0?.x ?? cx)) * 0.5
+  const tipX = (a.x + b.x) * 0.5
+  const shade = ctx.createLinearGradient(rootX, 0, tipX * 1.35 - rootX * 0.35, 0)
+  shade.addColorStop(0, rgba(tint, 1))
+  shade.addColorStop(0.6, rgba(tint, 0.66))
+  shade.addColorStop(1, rgba(tint, 0.12))
+  ctx.fillStyle = shade
+  ctx.globalAlpha = clamp01(alpha) * clamp01(0.35 + 0.75 * light.i)
+  ctx.beginPath()
+  ctx.moveTo((d0 ?? a).x - 3, (d0 ?? a).y)
+  ctx.lineTo((c0 ?? b).x + 3, (c0 ?? b).y)
+  ctx.lineTo(b.x + 3, b.y)
+  ctx.lineTo(a.x - 3, a.y)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
 }
 
 /** the stairwell practical — scene point light (warm), world coords */
 export const DOOR_LIGHT: Light2D = {
   kind: 'point', x: 1755, y: -120, range: 640, intensity: .95, color: '#ff9a4d',
+}
+/** the broken streetlight (left field) — cool practical. Its presence is
+ *  what makes shadows fall on BOTH sides of every figure: moon + door throw
+ *  left, the lamp throws right. Flicker lives in the background's pool draw. */
+export const STREET_LIGHT: Light2D = {
+  kind: 'point', x: 830, y: -252, range: 620, intensity: .9, color: '#b8e4ff',
 }
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
@@ -109,6 +222,22 @@ export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
 export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y:number}|null {
   if(!Number.isFinite(x)||!Number.isFinite(y))return null
   const height=Math.max(0,-y)
+  // RAY-TRACED POINT LIGHT: extend the source→joint ray until it pierces
+  // the ground plane (y = 1.5). Each joint lands at its own angle — the
+  // shadow sweeps and stretches radially around a practical, exactly as a
+  // real near-light shadow does (near the lamp: short and splayed; far:
+  // long and near-parallel).
+  const oy=finite(light.oy ?? NaN,NaN)
+  if(Number.isFinite(oy)){
+    const ox=finite(light.ox ?? 0,0)
+    const dy=y-oy
+    if(Math.abs(dy)<2)return null
+    const t=(1.5-oy)/dy
+    if(!(t>1.02))return null            // joint at/below the plane: no cast
+    const sx=ox+t*(x-ox)
+    const lim=clamp(180+height*2.2,180,420)   // depth clamp, bias by height
+    return {x:clamp(sx,x-lim,x+lim),y:1.5+Math.min(12,height*.06)}
+  }
   const cot=1/Math.tan(clamp(finite(light.elev,1),.3,1.45))
   const offset=clamp(height*cot*clamp(finite(light.dirX,0),-1,1),-320,320)
   return {x:x+offset,y:1.5+Math.min(12,height*.06)}
@@ -124,6 +253,10 @@ function shadowPath(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight
   const hard=clamp01(finite(light.hard,.14))
   const rAt=(y:number)=>radius*(1+(1-hard)*1.2*clamp01(Math.max(0,-y)/70))
   const ryR=.32
+  // area-light penumbra growth for point keys: a stretched shadow segment
+  // is farther from its contact patch, so its edge blooms wider (real
+  // soft-shadow law: penumbra ∝ receiver distance from occluder)
+  const pointMode=Number.isFinite(light.oy)
   const ellipse=(x:number,y:number,xr:number,yr?:number)=>{ctx.moveTo(x+xr,y);ctx.ellipse(x,y,xr,yr??Math.max(.5,xr*ryR),0,0,Math.PI*2)}
   ctx.beginPath()
   for(const chain of fig.chains){
@@ -131,7 +264,11 @@ function shadowPath(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight
     for(let i=0;i+1<chain.length;i+=2){
       const q=projectGroundPoint(chain[i],chain[i+1],light)
       if(!q){prev=null;continue}
-      const rQ=rAt(chain[i+1])
+      let rQ=rAt(chain[i+1])
+      if(pointMode){
+        const stretch=clamp01(Math.abs(q.x-chain[i])/150)
+        rQ*=1+stretch*.6
+      }
       ellipse(q.x,q.y,rQ)
       if(prev){const dx=q.x-prev.x,dy=q.y-prev.y,l=Math.hypot(dx,dy)||1
         const kx=-dy/l,ky=dx/l*ryR

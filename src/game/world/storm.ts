@@ -21,6 +21,8 @@ export class StormEngine{
  private height=720
  private view:StormView={x:1300,y:-150,zoom:1}
  private quality:StormQuality
+ /** per-scene rain visibility dial (1 = storm scene, <1 = light rain moods) */
+ rainScale=1
  private x=new Float32Array(CAP)
  private y=new Float32Array(CAP)
  private velocity=new Float32Array(CAP)
@@ -47,6 +49,7 @@ export class StormEngine{
  }
  private random(){this.seed^=this.seed<<13;this.seed^=this.seed>>>17;this.seed^=this.seed<<5;return(this.seed>>>0)/4294967296}
  setQuality(q:StormQuality){this.quality=q}
+ setRainScale(v:number){this.rainScale=Number.isFinite(v)?Math.max(0,Math.min(1,v)):1}
  resize(w:number,h:number){if(Number.isFinite(w)&&w>0)this.width=w;if(Number.isFinite(h)&&h>0)this.height=h}
  setView(v:StormView){
   if(Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.zoom)&&v.zoom>0)this.view={...v}
@@ -144,7 +147,7 @@ export class StormEngine{
   // larger but MORE transparent so it never clutters the playable foreground.
   const hA=[.11,.15,.17],hC=['#22323f','#2c4152','#3a5062'],hW=[1.1,1.7,3.0]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(hA[band]+this.intensity*.1)*(1+band*.35)
+   ctx.globalAlpha=(hA[band]+this.intensity*.1)*(1+band*.35)*this.rainScale
    ctx.strokeStyle=hC[band];ctx.lineWidth=hW[band]
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
@@ -156,7 +159,7 @@ export class StormEngine{
   ctx.globalCompositeOperation='lighter'
   const cA=[.24,.32,.3],cC=['#5c7d96','#7fa6c2','#a8c8dd'],cW=[.7,1.0,1.6]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(cA[band])*(1+this.intensity*.8)
+   ctx.globalAlpha=(cA[band])*(1+this.intensity*.8)*this.rainScale
    ctx.strokeStyle=cC[band];ctx.lineWidth=cW[band]
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
