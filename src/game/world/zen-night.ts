@@ -345,7 +345,7 @@ export class ZenNightBackground{
   // banks re-blit LIT (silver lining) — the brightness tracks the gap over
   // the moon, so opening sky visibly floods light into the scene.
   ctx.globalCompositeOperation='lighter'
-  for(const cd of cloudDraws){const a=cd.near*cd.near*(.06+.17*transmission)*(.4+.6*cd.z)
+  for(const cd of cloudDraws){const a=cd.near*cd.near*(.08+.22*transmission)*(.4+.6*cd.z)
    if(a>.004){ctx.globalAlpha=a;ctx.drawImage(this.cloudLit!,cd.x,cd.y,cd.cw,cd.ch)}}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
   // Slow attack/release prevents light popping as soft cloud edges cross.
@@ -379,7 +379,7 @@ export class ZenNightBackground{
   // two mist banks hugging the valley/deck line, CREEPING (≤2px/s) with a
   // slow density breath — painted atmosphere, never sliding smoke.
   for(let band=0;band<2;band++){
-   ctx.globalAlpha=(band?.06:.085)*this.moonVisibility
+   ctx.globalAlpha=(band?.08:.11)*this.moonVisibility
    const y=hy-150+band*92
    const off=((t*(band?1.0:-1.4)-cam.x*(band?.11:.06))%1024+1024)%1024
    const scale=band?1.1:1.35
@@ -388,7 +388,7 @@ export class ZenNightBackground{
   // DIRECTIONAL INSCATTERING — the mist brightens toward the moon azimuth
   // (Mie forward-scatter): a soft additive glow sits over the banks near the
   // moon's side of the sky, fading across the frame.
-  {const scatter=clamp01(this.moonVisibility)*.035
+  {const scatter=clamp01(this.moonVisibility)*.05
    if(scatter>.004){ctx.globalCompositeOperation='lighter'
     const sg=ctx.createRadialGradient(mx,hy-95,20,mx,hy-95,w*.62)
     sg.addColorStop(0,`rgba(150,192,212,${scatter})`);sg.addColorStop(.5,`rgba(120,164,190,${scatter*.4})`);sg.addColorStop(1,'rgba(100,146,176,0)')

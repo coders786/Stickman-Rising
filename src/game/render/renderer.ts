@@ -232,7 +232,7 @@ export class Renderer {
         const bx = w * (0.5 + 0.45 * bg.lightningAz())
         lights.push({ kind: 'point', x: bx, y: -h * 0.2, range: Math.hypot(w, h) * 1.2, intensity: 0.55 * li2, color: [190, 214, 255] })
       }
-      this.rig.render(w, h, [148, 155, 172], lights)
+      this.rig.render(w, h, [162, 170, 185], lights)
       this.rig.composite(ctx, w, h, 0.05)
 
       // N·L SURFACE WASH — the source ON the bodies: every figure's lit edge
@@ -252,9 +252,9 @@ export class Renderer {
         figs.push({ x: e.x, y: e.y })
       }
       for (const f of figs) {
-        surfaceWash(ctx, f.x, f.y, moonWX, moonWY, 0.58 * vis + 0.5 * li2, moonL, 44, 58, 148)
-        surfaceWash(ctx, f.x, f.y, DOOR_LIGHT.x, DOOR_LIGHT.y, 0.36 * pointInfluence(DOOR_LIGHT.x, DOOR_LIGHT.y, f.x, f.y, DOOR_LIGHT.range), warm, 42, 54, 140)
-        surfaceWash(ctx, f.x, f.y, STREET_LIGHT.x, STREET_LIGHT.y, 0.3 * pointInfluence(STREET_LIGHT.x, STREET_LIGHT.y, f.x, f.y, STREET_LIGHT.range), cool, 42, 54, 140)
+        surfaceWash(ctx, f.x, f.y, moonWX, moonWY, 0.20 * vis + 0.34 * li2, moonL, 44, 58, 148)
+        surfaceWash(ctx, f.x, f.y, DOOR_LIGHT.x, DOOR_LIGHT.y, 0.17 * pointInfluence(DOOR_LIGHT.x, DOOR_LIGHT.y, f.x, f.y, DOOR_LIGHT.range), warm, 42, 54, 140)
+        surfaceWash(ctx, f.x, f.y, STREET_LIGHT.x, STREET_LIGHT.y, 0.14 * pointInfluence(STREET_LIGHT.x, STREET_LIGHT.y, f.x, f.y, STREET_LIGHT.range), cool, 42, 54, 140)
       }
       ctx.restore()
     }

@@ -101,6 +101,18 @@ export class LightRig {
         g.fillRect(L.x - L.range, L.y - L.range, L.range * 2, L.range * 2)
       }
     }
+    // THE SKY IS THE SOURCE'S DOMAIN: the painted sky art (moon disc, halo,
+    // lit cloud flanks, stars) is already lit — multiplying it produced the
+    // gray-banded moon and the flat sky. Fade the map's influence IN below
+    // the horizon band: the transport modulates the WORLD (deck, props,
+    // figures), never the source's own sky.
+    g.globalCompositeOperation = 'destination-in'
+    const fade = g.createLinearGradient(0, 0, 0, h)
+    fade.addColorStop(0, 'rgba(0,0,0,0)')
+    fade.addColorStop(0.4, 'rgba(0,0,0,0)')
+    fade.addColorStop(0.62, 'rgba(0,0,0,1)')
+    g.fillStyle = fade
+    g.fillRect(0, 0, w, h)
     g.globalCompositeOperation = 'source-over'
   }
 
