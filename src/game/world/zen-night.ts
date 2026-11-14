@@ -339,7 +339,7 @@ export class ZenNightBackground{
   // banks re-blit LIT (silver lining) — the brightness tracks the gap over
   // the moon, so opening sky visibly floods light into the scene.
   ctx.globalCompositeOperation='lighter'
-  for(const cd of cloudDraws){const a=cd.near*cd.near*(.10+.30*transmission)*(.4+.6*cd.z)
+  for(const cd of cloudDraws){const a=cd.near*cd.near*(.06+.17*transmission)*(.4+.6*cd.z)
    if(a>.004){ctx.globalAlpha=a;ctx.drawImage(this.cloudLit!,cd.x,cd.y,cd.cw,cd.ch)}}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
   // Slow attack/release prevents light popping as soft cloud edges cross.
@@ -352,10 +352,10 @@ export class ZenNightBackground{
   // radiates down-left from the moon toward the deck.
   ctx.globalCompositeOperation='screen'
   const breathe=1+.04*Math.sin(t*.31)
-  ctx.globalAlpha=clamp01(this.moonVisibility*.62)*breathe
+  ctx.globalAlpha=clamp01(this.moonVisibility*.48)*breathe
   ctx.drawImage(this.shaft!,mx-360,my-16,720,720)
   // GAP BEAM — spill surge: a wide gap over the moon doubles the fan
-  if(this.moonVisibility>.5){ctx.globalAlpha=clamp01((this.moonVisibility-.5)*1.7)*breathe;ctx.drawImage(this.shaft!,mx-360,my-16,720,720)}
+  if(this.moonVisibility>.5){ctx.globalAlpha=clamp01((this.moonVisibility-.5)*.85)*breathe;ctx.drawImage(this.shaft!,mx-360,my-16,720,720)}
   ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over'
   // THE STORM ABOVE THE GARDEN — forked bolt + sky glow, drawn over the
   // cloud deck but occluded by the foreground garden silhouette below
@@ -373,7 +373,7 @@ export class ZenNightBackground{
   // two mist banks hugging the valley/deck line, CREEPING (≤2px/s) with a
   // slow density breath — painted atmosphere, never sliding smoke.
   for(let band=0;band<2;band++){
-   ctx.globalAlpha=(band?.09:.13)*this.moonVisibility
+   ctx.globalAlpha=(band?.06:.085)*this.moonVisibility
    const y=hy-150+band*92
    const off=((t*(band?1.0:-1.4)-cam.x*(band?.11:.06))%1024+1024)%1024
    const scale=band?1.1:1.35
@@ -382,14 +382,14 @@ export class ZenNightBackground{
   // DIRECTIONAL INSCATTERING — the mist brightens toward the moon azimuth
   // (Mie forward-scatter): a soft additive glow sits over the banks near the
   // moon's side of the sky, fading across the frame.
-  {const scatter=clamp01(this.moonVisibility)*.06
+  {const scatter=clamp01(this.moonVisibility)*.035
    if(scatter>.004){ctx.globalCompositeOperation='lighter'
     const sg=ctx.createRadialGradient(mx,hy-95,20,mx,hy-95,w*.62)
     sg.addColorStop(0,`rgba(150,192,212,${scatter})`);sg.addColorStop(.5,`rgba(120,164,190,${scatter*.4})`);sg.addColorStop(1,'rgba(100,146,176,0)')
     ctx.fillStyle=sg;ctx.fillRect(0,Math.max(0,hy-320),w,340)
     ctx.globalCompositeOperation='source-over'}}
-  // quiet combat pocket: lifts the value immediately behind silhouettes
-  const pocket=ctx.createRadialGradient(w*.5,hy-75,20,w*.5,hy-75,285);pocket.addColorStop(0,'rgba(112,137,139,.115)');pocket.addColorStop(.55,'rgba(70,93,99,.045)');pocket.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=pocket;ctx.fillRect(0,Math.max(0,hy-390),w,390)
+  // (the old centered 'combat pocket' glow is gone — it was the veil.
+  //  The light rig now lifts what the sources actually touch.)
   ctx.restore()}
 
  drawArena(ctx:CanvasRenderingContext2D){this.ensure();const t=this.t
@@ -421,7 +421,8 @@ export class ZenNightBackground{
   const poolA=(0.34+0.62*clamp01(key.i))*(1-0.92*cov)
   if(poolA>0.012){
    ctx.globalAlpha=poolA*.92
-   ctx.drawImage(this.deckPool!,ARENA_X0,-16,ARENA_W,180)
+   // (the full-width deck pool is gone — the light map gives the deck its
+   //  moon field with real falloff now)
    const lightOnRight=key.dirX<0
    const bx=lightOnRight?ARENA_X1:ARENA_X0,ex=lightOnRight?ARENA_X0:ARENA_X1
    const lean=ctx.createLinearGradient(bx,0,ex,0)

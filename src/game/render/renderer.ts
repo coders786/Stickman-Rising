@@ -14,6 +14,7 @@ import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, shadowKeyFromPoint, drawPropShadow } from './lighting'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
+import { LightRig, surfaceWash, pointInfluence, type LightInput, type RGB } from './lights'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
  * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
@@ -50,6 +51,8 @@ export class Renderer {
    * in strips with a high-frequency horizontal wave (wet concrete, not glass) */
   private reflPlate: HTMLCanvasElement | null = null
   private reflPW = 0
+  /** 2D light transport: the live lights LAND on the scene (see lights.ts) */
+  private rig = new LightRig()
   private reflPH = 0
   /* CINEMATIC BLOOM — two-bounce downsample/upsample pyramid. The finished
    * frame is copied to a quarter-res plate, blurred again to eighth-res,
@@ -200,6 +203,62 @@ export class Renderer {
 
     ctx.restore()
 
+    // 2. LIGHT TRANSPORT (2D deferred pass, UE-style lights on the web):
+    // the albedo above is modulated by the LIVE lights — the moon's
+    // directional field from its real position, the practicals' inverse-
+    // square pools, the god-ray landing pools, ambient sky fill. Light
+    // LANDS on surfaces with falloff; nothing floats over the frame.
+    {
+      const li2 = clamp01(bg.lightningI())
+      const vis = 1 - clamp01(bg.moonCover)
+      const sx = (wx: number) => w / 2 + (wx - cam.x - cam.offX) * cam.zoom
+      const sy = (wy: number) => h / 2 + (wy - cam.y - cam.offY) * cam.zoom
+      const moonL: RGB = [186, 214, 236]
+      const warm: RGB = [255, 154, 77]
+      const cool: RGB = [150, 205, 240]
+      const lights: LightInput[] = [
+        // MOON — directional field from the disc's live screen position
+        { kind: 'dir', x: bg.moonX, y: bg.moonY, range: 0, intensity: 0.30 * vis + 0.62 * li2, color: moonL },
+        // PRACTICALS — inverse-square pools, only touching what is near
+        { kind: 'point', x: sx(DOOR_LIGHT.x), y: sy(DOOR_LIGHT.y), range: DOOR_LIGHT.range * cam.zoom * 0.75, intensity: 0.34, color: warm },
+        { kind: 'point', x: sx(STREET_LIGHT.x), y: sy(STREET_LIGHT.y), range: STREET_LIGHT.range * cam.zoom * 0.75, intensity: 0.30, color: cool },
+        // GOD-RAY LANDING POOLS — the shaft fan lands ON the deck as light
+        // spots, breathing with the cloud gaps (dynamic, physics-driven)
+        { kind: 'point', x: bg.moonX - w * 0.1, y: h * 0.62, range: w * 0.2, intensity: 0.14 * vis, color: moonL },
+        { kind: 'point', x: bg.moonX + w * 0.08, y: h * 0.63, range: w * 0.17, intensity: 0.11 * vis, color: moonL },
+      ]
+      // STORM STROBES light the whole world from the bolt's azimuth
+      if (li2 > 0.02) {
+        const bx = w * (0.5 + 0.45 * bg.lightningAz())
+        lights.push({ kind: 'point', x: bx, y: -h * 0.2, range: Math.hypot(w, h) * 1.2, intensity: 0.55 * li2, color: [190, 214, 255] })
+      }
+      this.rig.render(w, h, [148, 155, 172], lights)
+      this.rig.composite(ctx, w, h, 0.05)
+
+      // N·L SURFACE WASH — the source ON the bodies: every figure's lit edge
+      // faces the moon's live position (dimming under cloud), warm bounce
+      // arrives from the practicals by distance. The player is lit BECAUSE
+      // the sources are lit — not because a wash is hardcoded.
+      ctx.save()
+      ctx.translate(w / 2, h / 2)
+      ctx.scale(cam.zoom, cam.zoom)
+      ctx.translate(-(cam.x + cam.offX), -(cam.y + cam.offY))
+      const moonWX = cam.x + cam.offX + (bg.moonX - w / 2) / cam.zoom
+      const moonWY = cam.y + cam.offY + (bg.moonY - h / 2) / cam.zoom
+      const figs: { x: number; y: number }[] = [{ x: player.x, y: player.y }]
+      for (const e of enemies) {
+        if (e.dead || e.spawning) continue
+        if (Math.abs(e.x - cam.x) > w / cam.zoom) continue
+        figs.push({ x: e.x, y: e.y })
+      }
+      for (const f of figs) {
+        surfaceWash(ctx, f.x, f.y, moonWX, moonWY, 0.58 * vis + 0.5 * li2, moonL, 44, 58, 148)
+        surfaceWash(ctx, f.x, f.y, DOOR_LIGHT.x, DOOR_LIGHT.y, 0.36 * pointInfluence(DOOR_LIGHT.x, DOOR_LIGHT.y, f.x, f.y, DOOR_LIGHT.range), warm, 42, 54, 140)
+        surfaceWash(ctx, f.x, f.y, STREET_LIGHT.x, STREET_LIGHT.y, 0.3 * pointInfluence(STREET_LIGHT.x, STREET_LIGHT.y, f.x, f.y, STREET_LIGHT.range), cool, 42, 54, 140)
+      }
+      ctx.restore()
+    }
+
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
 
@@ -306,8 +365,8 @@ export class Renderer {
     // darks (add+screen = old add α), so no new veil.
     const pulse = 1 + 0.55 * relight
     const q = this.quality
-    const addShare = q === 'ultra' ? 0.3 : q === 'high' ? 0.23 : 0.15
-    const scrShare = q === 'ultra' ? 0.16 : q === 'high' ? 0.13 : 0.09
+    const addShare = q === 'ultra' ? 0.22 : q === 'high' ? 0.17 : 0.12
+    const scrShare = q === 'ultra' ? 0.12 : q === 'high' ? 0.1 : 0.075
     ctx.globalCompositeOperation = 'lighter'
     ctx.globalAlpha = addShare * pulse
     ctx.drawImage(this.bloomA!, 0, 0, w, h)
@@ -318,7 +377,7 @@ export class Renderer {
     // ⅛ blur plate warm in place (opaque plate ⇒ exact multiply; next frame
     // clears it) and add it back wide and soft. Moon, door, neon and bolt
     // cores all bleed warm like film stock.
-    const halA = (q === 'ultra' ? 0.13 : q === 'high' ? 0.11 : 0.07) * (1 + 0.45 * relight)
+    const halA = (q === 'ultra' ? 0.095 : q === 'high' ? 0.08 : 0.055) * (1 + 0.45 * relight)
     b.globalCompositeOperation = 'multiply'
     b.fillStyle = HALATION_TINT
     b.fillRect(0, 0, sw, sh)
