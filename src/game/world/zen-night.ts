@@ -459,6 +459,7 @@ export class ZenNightBackground{
     const jitter=Math.sin(t*1.9+i*2.3)*18*(0.25+u)
     const cx2=moonWorldX+jitter
     ctx.globalAlpha=glintA*(0.20+0.62*u)*(0.74+0.26*Math.sin(t*1.7+i*1.1))
+    ctx.fillStyle='rgba(214,232,244,1)'
     ctx.fillRect(cx2-wpath/2,y,wpath,1.6+u*2.2)
    }
   }
@@ -474,6 +475,7 @@ export class ZenNightBackground{
    for(let k=0;k<7;k++){
     const yy=-18+k*40,u=k/6,wob=Math.sin(t*1.4+k*1.9)*7
     ctx.globalAlpha=base*(1-u)*(.72+.28*Math.sin(t*2.1+k*2.6))
+    ctx.fillStyle='rgba(255,178,118,1)'
     ctx.fillRect(sx+wob-sw*(.35+.65*u)*.5,yy,sw*(.35+.65*u),24)}}
   streak(DOOR_X-30,78,.30)
   streak(LANTERN_X,56,.24)

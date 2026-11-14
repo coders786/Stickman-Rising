@@ -1297,16 +1297,40 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
   }
 
   // ---- wide soft halo + mid core ribbon (tapered: wide at the swing
-  // head, needle-pointing at the tail — the anime trail dissolve) ----
+  // head, needle-pointing at the tail — the anime trail dissolve).
+  // NO HARD QUAD EDGES (the "square lighting" bug): each layer is ONE path
+  // filled with a feathered gradient across the blade axis — the ribbon
+  // dissolves toward its tail side instead of ending in a translucent slab. ----
+  let mdx = 0
+  let mdy = 0
+  for (let i = 0; i < n; i++) {
+    seg(i, segA)
+    mdx += segA[2] - segA[0]
+    mdy += segA[3] - segA[1]
+  }
+  const ml = Math.hypot(mdx, mdy) || 1
+  seg(Math.max(0, n - 2), segA)
+  seg(n - 1, segB)
+  const gLen = Math.hypot(segB[2] - segB[0], segB[3] - segB[1]) || 20
   for (let layer = 0; layer < 2; layer++) {
     const wide = layer === 0
     const color = wide ? t.color2 : t.color
-    const baseAlpha = wide ? 0.3 : 0.55
+    const baseAlpha = wide ? 0.24 : 0.5
+    // feather runs from the tail-side inset edge (alpha 0) to the blade
+    // line (full alpha) — gradient axis = mean blade direction
+    const grad = ctx.createLinearGradient(
+      segB[2] - (mdx / ml) * gLen, segB[3] - (mdy / ml) * gLen,
+      segB[2], segB[3],
+    )
+    grad.addColorStop(0, rgba(color, 0))
+    grad.addColorStop(0.3, rgba(color, baseAlpha * fade * 0.75))
+    grad.addColorStop(1, rgba(color, baseAlpha * fade * (wide ? 0.6 : 1)))
+    ctx.fillStyle = grad
+    ctx.beginPath()
     for (let i = 0; i < n - 1; i++) {
       seg(i, segA)
       seg(i + 1, segB)
       const headBias = i / Math.max(1, n - 1)
-      const alpha = baseAlpha * fade * (0.35 + 0.65 * headBias)
       // width taper along the trail: 0.3 at the oldest point → 1.0 at head
       const taperA = 0.3 + 0.7 * headBias
       const taperB = 0.3 + 0.7 * ((i + 1) / Math.max(1, n - 1))
@@ -1314,16 +1338,14 @@ function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void 
       const ay = segA[1] + (segA[3] - segA[1]) * (1 - taperA) * 0.5
       const bx = segB[0] + (segB[2] - segB[0]) * (1 - taperB) * 0.5
       const by = segB[1] + (segB[3] - segB[1]) * (1 - taperB) * 0.5
-      ctx.fillStyle = rgba(color, alpha)
       // quad between consecutive blade segments
-      ctx.beginPath()
       ctx.moveTo(ax, ay)
       ctx.lineTo(segA[2], segA[3])
       ctx.lineTo(segB[2], segB[3])
       ctx.lineTo(bx, by)
       ctx.closePath()
-      ctx.fill()
     }
+    ctx.fill()
   }
 
   // ---- hot inner core: thin near-white strip hugging the blade path ----
