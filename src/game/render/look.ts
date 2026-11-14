@@ -54,22 +54,25 @@ export interface RimPlan {
 /** rim geometry DERIVED FROM THE KEY — if the key moves, the rim follows.
  *  Light falls from upper-right (moon): the rim only appears on edges that
  *  face it; the opposite lower edges pick up faint sign bounce. */
+/** Allocation-free: one mutable plan object reused every read (callers read
+ *  the fields immediately; the frame has a single key). */
+const rimPlanObj: RimPlan = {
+  keyDX: 0, keyDY: -0.72, keyColor: '#a5d2f2', keyA: 0.9,
+  wrapDX: 0, wrapDY: -1.35, wrapA: 0.16,
+  bounceCyanDX: 0, bounceCyanDY: 0.5,
+  bounceMagentaDX: 0, bounceMagentaDY: 0.78, bounceA: 0.24,
+}
 export function rimPlan(): RimPlan {
   const towardLight = -keyDirX // shadows fall dirX ⇒ light sits opposite
-  return {
-    keyDX: towardLight * 1.18,
-    keyDY: -0.72,
-    keyColor: '#a5d2f2',
-    keyA: 0.62 + 0.38 * keyI + 0.12 * keyHard,
-    wrapDX: towardLight * 2.1,
-    wrapDY: -1.35,
-    wrapA: 0.1 + 0.08 * keyI,
-    bounceCyanDX: -towardLight * 1.02,
-    bounceCyanDY: 0.5,
-    bounceMagentaDX: -towardLight * 1.28,
-    bounceMagentaDY: 0.78,
-    bounceA: 0.24 + 0.1 * keyI,
-  }
+  const r = rimPlanObj
+  r.keyDX = towardLight * 1.18
+  r.keyA = 0.62 + 0.38 * keyI + 0.12 * keyHard
+  r.wrapDX = towardLight * 2.1
+  r.wrapA = 0.1 + 0.08 * keyI
+  r.bounceCyanDX = -towardLight * 1.02
+  r.bounceMagentaDX = -towardLight * 1.28
+  r.bounceA = 0.24 + 0.1 * keyI
+  return r
 }
 
 /* ================= SCENE EMITTERS (light transport) =================
@@ -97,22 +100,37 @@ const NO_FILL: SideFill = { color: '', a: 0, dx: 1 }
 /** colored bounce fill from the nearest practical light (UE inverse-square
  *  falloff): the character's shadow side catches the warm door, the neon
  *  side catches signage. Returns zero fill when nothing reaches. */
+/** UNIVERSAL SHUTTER SMEAR (the lens law): fast movers smear along -v —
+ *  the punch-sheet fan language of the reference sheet. Discrete held-frame
+ *  layers only (ABCD law): the held pose is ghosted, never interpolated. */
+export function smearPlan(speed: number): { n: number; dist: number; a: number } {
+  const s = Math.abs(Number.isFinite(speed) ? speed : 0);
+  if (s < 300) return { n: 0, dist: 0, a: 0 };
+  const k = Math.min(1, (s - 300) / 520);
+  return { n: k > 0.5 ? 3 : 2, dist: 8 + k * 22, a: 0.13 + k * 0.14 };
+}
+
 export function emitterFill(x: number, y: number): SideFill {
-  let best = 0
-  let col = ''
-  let ex = x + 1
+  const fs = emitterFills(x, y)
+  return fs.length ? fs[0] : NO_FILL
+}
+/** TOP-2 practicals at a point (dominant first). Real multi-light: standing
+ *  between two sources lights BOTH sides of the silhouette — one tap per
+ *  source, each falling on the side that faces it. */
+export function emitterFills(x: number, y: number): SideFill[] {
+  const scored: { v: number; col: string; ex: number }[] = []
   for (const l of emitters) {
     const ddx = x - l.x, ddy = y - l.y
     const r = Math.max(1, l.range)
     const v = l.intensity / (1 + (ddx * ddx + ddy * ddy) / (r * r))
-    if (v > best) {
-      best = v
-      col = l.color
-      ex = l.x
-    }
+    if (v >= 0.05) scored.push({ v, col: l.color, ex: l.x })
   }
-  if (best < 0.05 || !col) return NO_FILL
-  return { color: col, a: Math.min(0.4, best * 0.48), dx: ex >= x ? 1 : -1 }
+  scored.sort((a, b) => b.v - a.v)
+  return scored.slice(0, 2).map((s) => ({
+    color: s.col,
+    a: Math.min(0.4, s.v * 0.48),
+    dx: s.ex >= x ? 1 : -1,
+  }))
 }
 
 /** REFLECTION POLICY — wet concrete, not polished glass: broken-up, low

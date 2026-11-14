@@ -5,7 +5,7 @@ import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolut
 
 import { Camera } from './core/camera'
 import { Input } from './core/input'
-import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, RunStats, WorldRef } from './core/types'
+import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, LevelId, RunStats, WorldRef } from './core/types'
 import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
@@ -130,6 +130,15 @@ export class Game {
   private canvas: HTMLCanvasElement | null = null
   private ctx: CanvasRenderingContext2D | null = null
   private raf = 0
+  // --- render interpolation ("fix your timestep"): the sim advances in
+  // fixed 1/60 steps (the tested configuration) into an accumulator; the
+  // render samples motion BETWEEN the last two sim states so every display
+  // frame advances smoothly at any refresh rate. Physics and sprite frames
+  // are untouched — only the drawn position/time are sampled continuously.
+  private simAccum = 0
+  private prevStepTime = 0
+  private renderTime = 0
+  private interpInstalled = false
   private lastFrame = 0
   private cssW = 1280
   private cssH = 720
@@ -146,7 +155,12 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
+  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground('high',this.storm)
+  /** which level the current bg was built for — applySettings rebuilds on
+   *  mismatch, so the saved/default stage actually loads at startup (the
+   *  old levelChanged check compared settings-to-settings and silently
+   *  kept CyberBackground for a zen-night save) */
+  private bgLevel:LevelId = DEFAULT_SETTINGS.level
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
@@ -183,6 +197,11 @@ export class Game {
    *      not per substep — rain never integrates at 450Hz
    *   3. render resolution (DPR) auto-scales to the measured frame rate */
   private dprTarget = 1
+  /** perf readout: JS frame cost vs the leftover inter-frame gap (a raster/
+   * compositor/present ESTIMATE) — the bottleneck, shown instead of hidden. */
+  private jsMs = 0
+  private rastMs = 0
+  private lastGapAt = 0
   /** session resolution ceiling — pinned DOWN the moment a raise proves
    * unstable. Without this, the governor's raise-on-calm path gambles
    * repeatedly: calm 60fps → raise DPR → next wave spawns → frame-cost
@@ -245,7 +264,7 @@ export class Game {
 
   mount(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
-    this.ctx = canvas.getContext('2d', { alpha: false })
+    this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })
     if (!this.ctx) throw new Error('Your browser could not initialize the game canvas.')
     this.input.attach()
     this.resize()
@@ -334,8 +353,12 @@ export class Game {
     this.cssH = Math.max(240, h)
     const cap = this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
     this.dpr = Math.min(this.dprTarget, cap)
-    this.canvas.width = Math.floor(this.cssW * this.dpr)
-    this.canvas.height = Math.floor(this.cssH * this.dpr)
+    const bw = Math.floor(this.cssW * this.dpr)
+    const bh = Math.floor(this.cssH * this.dpr)
+    // canvas.width assignment = a GPU buffer realloc + a frame-pacing reset —
+    // never do it for a no-op (the dpr governor was thrashing this).
+    if (this.canvas.width !== bw) this.canvas.width = bw
+    if (this.canvas.height !== bh) this.canvas.height = bh
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
     this.cam.setViewport(this.cssW, this.cssH)
@@ -347,22 +370,22 @@ export class Game {
    * hysteresis. If DPR 1 still can't hold ~40fps, fall a quality tier
    * (rain/mote/fog/mist/reflection density all scale with tier). */
   private govern(dt: number): void {
-    if (!this.autoQuality || this.phase !== 'playing' || this.settings.quality==='ultra') return
+    if (!this.autoQuality || this.phase !== 'playing') return
     this.govT += dt
     this.govCool = Math.max(0, this.govCool - dt)
     if (this.govT < 0.8) return
     this.govT = 0
     if (this.govCool > 0) return
     const cap = Math.min(
-      this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
+      this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
       this.dprCeil,
     )
-    if (this.fpsAvg < 44 && this.dprTarget > 1) {
-      this.dprTarget = Math.max(1, this.dprTarget - 0.25)
+    if (this.fpsAvg < 44 && this.dprTarget > 0.8) {
+      this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
-      this.govCool = 0.8
+      this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
       this.resize()
-    } else if (this.fpsAvg < 36 && this.dprTarget <= 1) {
+    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.81 && this.settings.quality !== 'ultra') {
       // resolution floor reached and still drowning → drop a quality tier
       const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
       const i = order.indexOf(this.settings.quality)
@@ -393,7 +416,6 @@ export class Game {
    * proved the level unstable on this display: pin the session ceiling at
    * the pre-raise DPR so the governor stops gambling on it. */
   private detectCliff(dtRaw: number): void {
-    if(this.settings.quality==='ultra')return
     if (this.phase === 'paused' || document.visibilityState !== 'visible') {
       this.overRun = 0
       return
@@ -415,7 +437,7 @@ export class Game {
 
   applySettings(s: GameSettings): void {
     const qualityChanged = s.quality !== this.settings.quality
-    const levelChanged = s.level !== this.settings.level
+    const levelChanged = s.level !== this.bgLevel
     this.settings = { ...s }
     this.fx.setQuality(s.quality)
     this.fx.setGore(s.gore)
@@ -427,6 +449,8 @@ export class Game {
     if (qualityChanged || levelChanged) {
       this.storm.setQuality(s.quality)
       this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      ;(this.bg as {setQuality?: (q: GameSettings['quality']) => void}).setQuality?.(s.quality)
+      this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
       this.resize()
@@ -470,6 +494,8 @@ export class Game {
     this.stats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
     this.runTime = 0
     this.time = 0
+    this.prevStepTime = 0
+    this.simAccum = 0
     this.timeScale = 1
     this.slowmoT = 0
     this.hitstopT = 0
@@ -537,7 +563,15 @@ export class Game {
   /* ------------------------------------------------------------------ */
 
   private loop = (now: number): void => {
-    try { this.frame(now) } catch (error) {
+    try {
+      const t0 = performance.now()
+      this.frame(now)
+      const js = performance.now() - t0
+      this.jsMs += (js - this.jsMs) * 0.12
+      const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
+      this.lastGapAt = now
+      if (gap > 0) this.rastMs += (Math.max(0, gap - js) - this.rastMs) * 0.1
+    } catch (error) {
       console.error('Game loop stopped after an unexpected error', error)
       cancelAnimationFrame(this.raf)
       this.input.setEnabled(false)
@@ -551,11 +585,14 @@ export class Game {
     this.raf = requestAnimationFrame(this.loop)
     let dtRaw = (now - this.lastFrame) / 1000
     this.lastFrame = now
-    if (dtRaw > 0.05) dtRaw = 0.05
+    // NO FPS FLOOR: the old 0.05 clamp made every slow frame read as exactly
+    // 20fps (a fake plateau). Only guard true stalls; report TRUE frame rate.
+    if (dtRaw > 0.25) dtRaw = 0.25
     if (dtRaw <= 0) dtRaw = 0.0001
-    this.fps = damp(this.fps, 1 / dtRaw, 3, dtRaw)
-    this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 1.2, dtRaw)
+    this.fps = damp(this.fps, 1 / dtRaw, 10, dtRaw)
+    this.fpsAvg = damp(this.fpsAvg, 1 / dtRaw, 2.2, dtRaw)
     this.wall = now / 1000
+    this.renderTime = this.time // frozen/paused frames render the sim time
     this.govern(dtRaw)
     this.detectCliff(dtRaw)
     // Weather has its own real visual clock, independent of combat hitstop.
@@ -587,13 +624,17 @@ export class Game {
       // --- cinematics run on real time ---
       this.updateCinematics(dtRaw)
 
-      // --- capped substeps for stable physics (NO death spiral: cost of a
-      // frame is bounded no matter how slow the machine runs) ---
-      let remaining = simDt
+      // --- fixed-timestep substeps + accumulator (render interpolation):
+      // the sim always advances in exact 1/60 steps (the tested, tuned
+      // configuration at EVERY frame rate) and the leftover time carries
+      // over. NO death spiral: at most 3 steps + one clamped catch-up tick
+      // per frame, so the cost of a frame stays bounded on slow machines.
+      this.simAccum += simDt
       let substeps = 0
-      while (remaining > 1e-6 && substeps < 3) {
-        const stepDt = Math.min(remaining, 1 / 60)
-        this.step(stepDt)
+      let caughtUp = false
+      while (this.simAccum >= 1 / 60 && substeps < 3) {
+        this.recordPrev()
+        this.step(1 / 60)
         // EDGE LIFETIME = ONE SUBSTEP. pressed()/released() edges must be
         // visible to exactly ONE simulation step: clearing them only once
         // per RENDERED frame let a single jump press fire doJump in BOTH
@@ -603,43 +644,132 @@ export class Game {
         // rAF callbacks, so no press is ever missed; presses that land while
         // a state ignores them are still caught by the combo BUFFER, which
         // is pressTime-based and deliberately spans substeps and frames.
-        this.input.endFrame(stepDt)
-        remaining -= stepDt
+        this.input.endFrame(1 / 60)
+        this.simAccum -= 1 / 60
         substeps++
       }
-      if (remaining > 1e-6) {
+      if (this.simAccum >= 1 / 60) {
         // very slow frame: consume the backlog as one clamped catch-up tick
         // so the world keeps roughly real-time without multiplying cost
-        this.step(Math.min(remaining, 0.05))
+        this.recordPrev()
+        this.step(Math.min(this.simAccum, 0.05))
         this.input.endFrame(0.05)
+        this.simAccum = 0
+        caughtUp = true
+        // collapse the interpolation history onto the frontier: the jump is
+        // shown on this frame (the display froze anyway) and the NEXT frames
+        // interpolate strictly forward from here — never rewind.
+        this.recordPrev()
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
       this.fx.update(simDt)
       this.bg.update(simDt)
+      // --- sample the render between the last two sim states ---
+      // alpha sweeps 0..1 as the leftover accumulator fills toward the next
+      // step, so motion advances a little EVERY display frame instead of
+      // jumping at sim steps (the "90fps feel": smooth at 60/90/120/144Hz
+      // and through timing jitter). On a hitch catch-up frame the frontier
+      // state is shown directly (alpha=1) — no duplicate frame.
+      const alpha = caughtUp ? 1 : Math.min(1, Math.max(0, this.simAccum * 60))
+      this.renderTime = this.prevStepTime + alpha * (this.time - this.prevStepTime)
+      this.installRenderLerp(alpha)
       this.updateCamera(simDt)
     }
 
     // --- render ---
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    const world: RenderWorld = {
-      cam: this.cam,
-      fx: this.fx,
-      bg: this.bg,
-      enemies: this.enemies,
-      player: this.player,
-      projectiles: this.projectiles,
-      hud: this.hud,
-      hudState: this.buildHudState(),
-      time: this.time,
+    try {
+      ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      const world: RenderWorld = {
+        cam: this.cam,
+        fx: this.fx,
+        bg: this.bg,
+        enemies: this.enemies,
+        player: this.player,
+        projectiles: this.projectiles,
+        hud: this.hud,
+        hudState: this.buildHudState(),
+        time: this.renderTime,
+      }
+      this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
+      // pose editor tick (keys + preview + solve) while its freeze is active;
+      // MUST run before endFrame so raw editor key edges survive one frame
+      if (editFrozen) this.inspect.editorFrame(this, dtRaw)
+      // inspection overlay (solo/sheet/edit views + state readout)
+      this.inspect.draw(ctx, this, this.renderTime)
+      // PERF READOUT — the bottleneck, SHOWN live: JS frame cost vs the
+      // leftover inter-frame gap (raster/present estimate), the bound class,
+      // and the governor's active levers. "Something is bottlenecked but not
+      // shown" — now it is shown.
+      {
+        const bound = this.rastMs > this.jsMs * 1.5 ? 'GPU' : this.jsMs > this.rastMs * 1.5 ? 'CPU' : 'MIX'
+        const locked = this.fpsAvg > 25 && this.fpsAvg < 35 && this.jsMs < 12 ? ' · 30Hz-lock? (browser throttle: battery-saver / iframe / vsync-half)' : ''
+        ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+        ctx.font = '10px ui-monospace,monospace'
+        ctx.fillStyle = 'rgba(190,220,232,.55)'
+        ctx.textAlign = 'right'
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
+      }
+    } finally {
+      // ALWAYS hand the sim its true positions back (crash-safe)
+      this.uninstallRenderLerp()
     }
-    this.renderer.draw(ctx, world, this.cssW, this.cssH, dtRaw)
-    // pose editor tick (keys + preview + solve) while its freeze is active;
-    // MUST run before endFrame so raw editor key edges survive one frame
-    if (editFrozen) this.inspect.editorFrame(this, dtRaw)
-    // inspection overlay (solo/sheet/edit views + state readout)
-    this.inspect.draw(ctx, this, this.time)
 
     this.input.endFrame(dtRaw)
+  }
+
+  /** Snapshot sim positions before a step (render interpolation). */
+  private recordPrev(): void {
+    this.prevStepTime = this.time
+    const p = this.player
+    p.px = p.x
+    p.py = p.y
+    for (const e of this.enemies) {
+      e.px = e.x
+      e.py = e.y
+    }
+    this.projectiles.recordPrev()
+  }
+
+  /** Install interpolated render positions (swap trick: px/py hold the true
+   *  sim values until uninstallRenderLerp restores them). */
+  private installRenderLerp(alpha: number): void {
+    const p = this.player
+    {
+      const cx = p.x
+      const px = Number.isFinite(p.px) ? p.px : p.x
+      p.x = px + (p.x - px) * alpha
+      p.px = cx
+      const cy = p.y
+      const py = Number.isFinite(p.py) ? p.py : p.y
+      p.y = py + (p.y - py) * alpha
+      p.py = cy
+    }
+    for (const e of this.enemies) {
+      const cx = e.x
+      const px = Number.isFinite(e.px) ? e.px : e.x
+      e.x = px + (e.x - px) * alpha
+      e.px = cx
+      const cy = e.y
+      const py = Number.isFinite(e.py) ? e.py : e.y
+      e.y = py + (e.y - py) * alpha
+      e.py = cy
+    }
+    this.projectiles.lerpRender(alpha)
+    this.interpInstalled = true
+  }
+
+  /** Restore the true sim positions after the frame has been drawn. */
+  private uninstallRenderLerp(): void {
+    if (!this.interpInstalled) return
+    this.interpInstalled = false
+    const p = this.player
+    p.x = p.px
+    p.y = p.py
+    for (const e of this.enemies) {
+      e.x = e.px
+      e.y = e.py
+    }
+    this.projectiles.unlerpRender()
   }
 
   private step(dt: number): void {
