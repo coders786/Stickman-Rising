@@ -68,7 +68,13 @@ export class ZenNightBackground{
  private cloudZ=new Float32Array([.18,.34,.52,.72,.9])
  get onThunder(){return this.storm.onThunder}set onThunder(v:(()=>void)|null){this.storm.onThunder=v}
  constructor(storm=new StormEngine('medium')){this.storm=storm;this.storm.setRainScale(.48);const r=noise(0x51a9c3);for(let i=0;i<70;i++){this.px[i]=r()*2200;this.py[i]=r()*720;this.pz[i]=r();this.pp[i]=r()*TAU}}
- resize(w:number,h:number){this.w=Math.max(1,w);this.h=Math.max(1,h);this.storm.resize(w,h);this.built=false}
+ resize(w:number,h:number){
+  const nw=Math.max(1,w),nh=Math.max(1,h)
+  // DPR governor steps pass the SAME css size: never invalidate the bakes
+  // for a no-op resize (a re-bake stalls 100-500ms and resets the browser's
+  // frame pacing to half-rate = the 30fps lock).
+  if(nw===this.w&&nh===this.h&&this.built)return
+  this.w=nw;this.h=nh;this.storm.resize(nw,nh);this.built=false}
  update(dt:number){const d=Math.min(.1,Math.max(0,dt));this.t+=d;for(let i=0;i<this.cloudX.length;i++){this.cloudX[i]+=d*(1.1+this.cloudZ[i]*1.7);if(this.cloudX[i]>this.w+620)this.cloudX[i]=-720}}
  lightningI(){return this.storm.intensity}
  lightningAz(){return this.storm.azimuthValue}

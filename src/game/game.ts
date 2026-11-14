@@ -264,7 +264,7 @@ export class Game {
 
   mount(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
-    this.ctx = canvas.getContext('2d', { alpha: false })
+    this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })
     if (!this.ctx) throw new Error('Your browser could not initialize the game canvas.')
     this.input.attach()
     this.resize()
@@ -353,8 +353,12 @@ export class Game {
     this.cssH = Math.max(240, h)
     const cap = this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
     this.dpr = Math.min(this.dprTarget, cap)
-    this.canvas.width = Math.floor(this.cssW * this.dpr)
-    this.canvas.height = Math.floor(this.cssH * this.dpr)
+    const bw = Math.floor(this.cssW * this.dpr)
+    const bh = Math.floor(this.cssH * this.dpr)
+    // canvas.width assignment = a GPU buffer realloc + a frame-pacing reset —
+    // never do it for a no-op (the dpr governor was thrashing this).
+    if (this.canvas.width !== bw) this.canvas.width = bw
+    if (this.canvas.height !== bh) this.canvas.height = bh
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
     this.cam.setViewport(this.cssW, this.cssH)
@@ -376,12 +380,12 @@ export class Game {
       this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
       this.dprCeil,
     )
-    if (this.fpsAvg < 44 && this.dprTarget > 0.6) {
-      this.dprTarget = Math.max(0.6, this.dprTarget - 0.25)
+    if (this.fpsAvg < 44 && this.dprTarget > 0.8) {
+      this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
-      this.govCool = 0.8
+      this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
       this.resize()
-    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.61 && this.settings.quality !== 'ultra') {
+    } else if (this.fpsAvg < 36 && this.dprTarget <= 0.81 && this.settings.quality !== 'ultra') {
       // resolution floor reached and still drowning → drop a quality tier
       const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
       const i = order.indexOf(this.settings.quality)
@@ -698,11 +702,12 @@ export class Game {
       // shown" — now it is shown.
       {
         const bound = this.rastMs > this.jsMs * 1.5 ? 'GPU' : this.jsMs > this.rastMs * 1.5 ? 'CPU' : 'MIX'
+        const locked = this.fpsAvg > 25 && this.fpsAvg < 35 && this.jsMs < 12 ? ' · 30Hz-lock? (browser throttle: battery-saver / iframe / vsync-half)' : ''
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
         ctx.font = '10px ui-monospace,monospace'
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}`, this.cssW - 12, 62)
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · js ${this.jsMs.toFixed(1)}ms · gpu~${this.rastMs.toFixed(1)}ms · ${bound}-bound · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)
