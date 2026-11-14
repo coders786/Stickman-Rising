@@ -47,7 +47,7 @@ export class LightRig {
   private mw = 0
   private mh = 0
   /** half-res map: real falloff curves at a quarter of the fill cost */
-  private static readonly SCALE = 0.5
+  private static readonly SCALE = 0.4
 
   private ensure(w: number, h: number): CanvasRenderingContext2D | null {
     const mw = Math.max(2, Math.round(w * LightRig.SCALE))

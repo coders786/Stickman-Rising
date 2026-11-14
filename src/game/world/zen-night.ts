@@ -75,7 +75,7 @@ export class ZenNightBackground{
   // frame pacing to half-rate = the 30fps lock).
   if(nw===this.w&&nh===this.h&&this.built)return
   this.w=nw;this.h=nh;this.storm.resize(nw,nh);this.built=false}
- update(dt:number){const d=Math.min(.1,Math.max(0,dt));this.t+=d;for(let i=0;i<this.cloudX.length;i++){this.cloudX[i]+=d*(1.1+this.cloudZ[i]*1.7);if(this.cloudX[i]>this.w+620)this.cloudX[i]=-720}}
+ update(dt:number){const d=Math.min(.1,Math.max(0,dt));this.t+=d;for(let i=0;i<this.cloudX.length;i++){this.cloudX[i]+=d*(2.0+this.cloudZ[i]*3.0);if(this.cloudX[i]>this.w+620)this.cloudX[i]=-720}}
  lightningI(){return this.storm.intensity}
  lightningAz(){return this.storm.azimuthValue}
 
@@ -339,7 +339,7 @@ export class ZenNightBackground{
   // drift supply volume while remaining only five cached image blits/frame.
   let transmission=1
   const cloudDraws:{x:number,y:number,cw:number,ch:number,z:number,near:number}[]=[]
-  for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}ctx.globalAlpha=.22+.17*z;ctx.drawImage(this.cloud!,x,y,cw,ch)
+  for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k],cw=520+z*330,ch=143+z*82,x=this.cloudX[k]-cam.x*(.008+.025*z),y=my-105+(z-.5)*88+Math.sin(t*.045+k*1.7)*13;const dx=Math.abs((x+cw*.5)-mx),dy=Math.abs((y+ch*.48)-my);if(dx<cw*.39&&dy<ch*.31){const core=(1-dx/(cw*.39))*(1-dy/(ch*.31));transmission*=1-core*(.64+.28*z)}if(x+cw<-60||x>w+60)continue;ctx.globalAlpha=.22+.17*z;ctx.drawImage(this.cloud!,x,y,cw,ch)
    cloudDraws.push({x,y,cw,ch,z,near:clamp01(1-Math.abs((x+cw*.5)-mx)/(w*.55))})}
   // MOONLIGHT SPILL THROUGH THE CLOUDS: the moon-facing flanks of the near
   // banks re-blit LIT (silver lining) — the brightness tracks the gap over
@@ -375,13 +375,20 @@ export class ZenNightBackground{
     const flap=Math.sin(t*3.1+k*2.2)*.55
     ctx.strokeStyle='rgba(30,44,58,.34)';ctx.lineWidth=2.2;ctx.lineCap='round'
     ctx.beginPath();ctx.moveTo(bx-9,by-4*flap);ctx.quadraticCurveTo(bx-3,by+2,bx,by);ctx.quadraticCurveTo(bx+3,by+2,bx+9,by-4*flap);ctx.stroke()}}
+  // DYNAMIC SKYBOX — the sky is ALIVE: slow star drift + individual
+  // twinkle phases on top of the painted vault (user request: dynamic sky).
+  {for(let i=0;i<10;i++){
+    const sx=(i*173.3+t*.6)%this.w,sy=18+((i*97)%130)
+    const tw=.35+.3*Math.sin(t*(.7+(i%3)*.23)+i*2.1)
+    ctx.globalAlpha=tw*.5;ctx.fillStyle='rgba(214,232,244,1)';ctx.fillRect(sx,sy,1.6,1.6)}
+   ctx.globalAlpha=1}
   // FOG SYSTEM v2 (height fog + directional inscattering):
   // two mist banks hugging the valley/deck line, CREEPING (≤2px/s) with a
   // slow density breath — painted atmosphere, never sliding smoke.
-  for(let band=0;band<2;band++){
-   ctx.globalAlpha=(band?.08:.11)*this.moonVisibility
-   const y=hy-150+band*92
-   const off=((t*(band?1.0:-1.4)-cam.x*(band?.11:.06))%1024+1024)%1024
+  for(let band=0;band<3;band++){
+   ctx.globalAlpha=[.10,.075,.055][band]*this.moonVisibility
+   const y=hy-150+band*82
+   const off=((t*[-3.2,2.2,4.1][band]-cam.x*[.06,.11,.17][band])%1024+1024)%1024
    const scale=band?1.1:1.35
    for(let x=off-1024;x<w;x+=1024)ctx.drawImage(this.fog!,x,y,1024*scale,260*scale)}
   ctx.globalAlpha=1
@@ -407,6 +414,7 @@ export class ZenNightBackground{
   {ctx.save();ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.20
    for(let k=0,nC=this.quality==='low'?3:this.quality==='medium'?4:this.cloudX.length;k<nC;k++){const z=this.cloudZ[k]
     const x=((this.cloudX[k]*2.1+z*640+t*2.2)%(ARENA_W+2400))-1400
+    if(x>ARENA_X1+500||x+850<ARENA_X0-500)continue
     ctx.drawImage(this.cloud!,x,-40,520+z*330,300)}
    ctx.restore()}
   ctx.drawImage(this.staticGarden!,ARENA_X0,-410)

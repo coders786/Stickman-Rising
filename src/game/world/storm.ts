@@ -152,6 +152,7 @@ export class StormEngine{
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+    if(x<-60||x>w+60||y<-60||y>h+60)continue
     ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
    }
    ctx.stroke()
@@ -164,6 +165,7 @@ export class StormEngine{
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+    if(x<-60||x>w+60||y<-60||y>h+60)continue
     ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
    }
    ctx.stroke()

@@ -53,6 +53,9 @@ export class Renderer {
   private reflPW = 0
   /** 2D light transport: the live lights LAND on the scene (see lights.ts) */
   private rig = new LightRig()
+  /** frame pools — no per-frame allocations (VRAM/GC discipline) */
+  private lightPool: LightInput[] = []
+  private figPool: { x: number; y: number }[] = []
   private reflPH = 0
   /* CINEMATIC BLOOM — two-bounce downsample/upsample pyramid. The finished
    * frame is copied to a quarter-res plate, blurred again to eighth-res,
@@ -218,9 +221,11 @@ export class Renderer {
       const moonL: RGB = [186, 214, 236]
       const warm: RGB = [255, 154, 77]
       const cool: RGB = [150, 205, 240]
-      const lights: LightInput[] = [
+      const lights = this.lightPool
+      lights.length = 0
+      lights.push(
         // MOON — directional field from the disc's live screen position
-        { kind: 'dir', x: bg.moonX, y: bg.moonY, range: 0, intensity: 0.30 * vis + 0.62 * li2, color: moonL },
+        { kind: 'dir', x: bg.moonX, y: bg.moonY, range: 0, intensity: 0.36 * vis + 0.62 * li2, color: moonL },
         // PRACTICALS — inverse-square pools, only touching what is near
         { kind: 'point', x: sx(DOOR_LIGHT.x), y: sy(DOOR_LIGHT.y), range: DOOR_LIGHT.range * cam.zoom * 0.75, intensity: 0.34, color: warm },
         { kind: 'point', x: sx(STREET_LIGHT.x), y: sy(STREET_LIGHT.y), range: STREET_LIGHT.range * cam.zoom * 0.75, intensity: 0.30, color: cool },
@@ -228,13 +233,13 @@ export class Renderer {
         // spots, breathing with the cloud gaps (dynamic, physics-driven)
         { kind: 'point', x: bg.moonX - w * 0.1, y: h * 0.62, range: w * 0.2, intensity: 0.14 * vis, color: moonL },
         { kind: 'point', x: bg.moonX + w * 0.08, y: h * 0.63, range: w * 0.17, intensity: 0.11 * vis, color: moonL },
-      ]
+      )
       // STORM STROBES light the whole world from the bolt's azimuth
       if (li2 > 0.02) {
         const bx = w * (0.5 + 0.45 * bg.lightningAz())
         lights.push({ kind: 'point', x: bx, y: -h * 0.2, range: Math.hypot(w, h) * 1.2, intensity: 0.55 * li2, color: [190, 214, 255] })
       }
-      this.rig.render(w, h, [162, 170, 185], lights)
+      this.rig.render(w, h, [118, 126, 144], lights)
       this.rig.composite(ctx, w, h, this.quality === 'low' ? 0 : 0.05)
 
       // N·L SURFACE WASH — the source ON the bodies: every figure's lit edge
@@ -247,7 +252,9 @@ export class Renderer {
       ctx.translate(-(cam.x + cam.offX), -(cam.y + cam.offY))
       const moonWX = cam.x + cam.offX + (bg.moonX - w / 2) / cam.zoom
       const moonWY = cam.y + cam.offY + (bg.moonY - h / 2) / cam.zoom
-      const figs: { x: number; y: number }[] = [{ x: player.x, y: player.y }]
+      const figs = this.figPool
+      figs.length = 0
+      figs.push({ x: player.x, y: player.y })
       for (const e of enemies) {
         if (e.dead || e.spawning) continue
         if (Math.abs(e.x - cam.x) > w / cam.zoom) continue
