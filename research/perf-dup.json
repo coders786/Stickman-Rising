@@ -1,0 +1,11 @@
+{
+  "frames": 27,
+  "screensPerFrame": 25.5,
+  "drawOpsPerFrame": 231.6,
+  "byCompositeOp": {
+    "source-over": 14.41,
+    "lighter": 6.94,
+    "screen": 2.13,
+    "multiply": 2.02
+  }
+}

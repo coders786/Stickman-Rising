@@ -4796,34 +4796,9 @@ export class Player {
 
   drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
-    const g = this.geom
-    const f = this.face * SCALE
-    const hy = this.hipY
-    const W = (j: { x: number; y: number }, out: number[]) => {
-      out.push(this.x + f * j.x, hy + SCALE * j.y)
-    }
-    // chains: legs (hip→knee→ankle→toe), torso, arms (shoulder→elbow→hand)
-    const chains = this.shChains
-    chains[0].length = 0
-    W(g.hipPtL, chains[0]); W(g.kneeL, chains[0]); W(g.ankleL, chains[0]); W(g.toeL, chains[0])
-    chains[1].length = 0
-    W(g.hipPtR, chains[1]); W(g.kneeR, chains[1]); W(g.ankleR, chains[1]); W(g.toeR, chains[1])
-    chains[2].length = 0
-    W(g.hip, chains[2]); W(g.waist, chains[2]); W(g.chest, chains[2]); W(g.neckTop, chains[2])
-    chains[3].length = 0
-    W(g.shoulderL, chains[3]); W(g.elbL, chains[3]); W(g.handL, chains[3])
-    chains[4].length = 0
-    W(g.shoulderR, chains[4]); W(g.elbR, chains[4]); W(g.handR, chains[4])
-    // head + blade
-    this.shHead.x = this.x + f * g.headC.x
-    this.shHead.y = hy + SCALE * g.headC.y
-    this.shHead.r = PLAYER_SPEC.headR * 1.05 * SCALE
-    this.shBlade.x0 = this.x + f * g.grip.x; this.shBlade.y0 = hy + SCALE * g.grip.y
-    this.shBlade.x1 = this.x + f * g.tip.x; this.shBlade.y1 = hy + SCALE * g.tip.y
-    this.shFig.blade = this.swordDrawn ? this.shBlade : null
-    // contact AO: the legik planted anchors (exact ground-contact points)
-    // PLUS any plant-snap contacts from non-gait stances (dash/attacks/brake)
-    const contacts: number[] = []
+    // Planted-foot contact anchors for the ground-plane AO pads
+    const contacts = this.shChains[0]
+    contacts.length = 0
     if (this.grounded) {
       if (this.gaitW > 0.5) {
         if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
@@ -4831,8 +4806,8 @@ export class Player {
       }
       for (const c of this.snapContacts) contacts.push(c)
     }
-    // PROJECTED SILHOUETTE SHADOW — the pose's actual shape (limbs, saya,
-    // all of it) cast along the light rays onto the deck
+    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
+    // pose cast along the resultant local light vector onto the deck
     drawProjectedShadow(ctx, light, (c, col) => {
       c.save()
       c.translate(this.x, this.hipY)
@@ -4840,7 +4815,7 @@ export class Player {
       silhouette(c, this.geom, col, { flipX: this.face, unit: SCALE })
       c.restore()
     }, {
-      alpha: 1.0 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i,
+      alpha: 0.92 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i, contacts, scale: 1,
     })
   }
 

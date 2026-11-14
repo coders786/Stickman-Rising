@@ -2,6 +2,7 @@ import {StormEngine} from './storm'
 import {FOG} from '../render/look'
 import {clamp01} from '../core/utils'
 import { keyLightFromStorm, STREET_LIGHT } from '../render/lighting'
+import { SkyVaultCache, blitWorldFrustum } from './horizon-strata'
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -52,6 +53,14 @@ export interface BackgroundRenderer {
   moonCover:number
   resize(w:number,h:number):void
   update(dt:number):void
+  /** Change the draw budget WITHOUT discarding baked art. Every scene must
+   *  implement this: reconstructing the scene to change a quality tier cost
+   *  a 1.6s re-bake stall, which the perf governor then read as a new cliff. */
+  setQuality(q:Quality):void
+  /** True when the scene paints its own moon shafts, so the renderer's
+   *  generic occlusion→smear god-ray pass must NOT run a second system on
+   *  top of it. */
+  readonly ownsMoonShafts?:boolean
   lightningI():number
   lightningAz():number
   drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
@@ -687,8 +696,9 @@ export class CyberBackground {
   /* pre-rendered art (built once, resolution independent) */
   private built = false;
   private skyStrip!: HTMLCanvasElement;
-  /** light-pollution glow plate (perf, no-lightning case) */
+  /** light-pollution glow plate (perf, baked at viewport width for 1:1 blit) */
   private pollPlate: HTMLCanvasElement | null = null;
+  private pollW = 0;
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
   private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
@@ -750,6 +760,8 @@ export class CyberBackground {
   private midTileBlur!: HTMLCanvasElement;
 
   private q: Quality;
+  private skyVault = new SkyVaultCache();
+  private lastCam: BgCam = { x: 1300, y: NOMINAL_Y, zoom: 1 };
 
   get onThunder(){return this.storm.onThunder}
   set onThunder(cb:(()=>void)|null){this.storm.onThunder=cb}
@@ -757,11 +769,23 @@ export class CyberBackground {
     this.q=quality;this.storm=storm;this.fogCount=quality==='low'?2:3;
   }
 
+  /** Tier change is a DRAW BUDGET change, never a re-bake. Every tile is
+   *  built from a fixed seed in resolution-independent layer space, so the
+   *  art is identical at every tier — only how much of it we draw differs.
+   *  Rebuilding here cost ~1.6s of re-bake on the next frames, which the
+   *  cliff detector then read as a fresh performance cliff. */
+  setQuality(q:Quality):void{
+    this.q=q;this.fogCount=q==='low'?2:3;
+  }
+
   /** CSS-pixel size of the game canvas viewport. */
   resize(w: number, h: number): void {
     this.storm.resize(w,h);
-    this.vw = w > 0 ? w : 1;
-    this.vh = h > 0 ? h : 1;
+    const nw = w > 0 ? w : 1;
+    const nh = h > 0 ? h : 1;
+    if (nw !== this.vw || nh !== this.vh) this.skyVault.invalidate();
+    this.vw = nw;
+    this.vh = nh;
     // All art is pre-rendered in a fixed layer space from a fixed seed, so a
     // resize only changes the viewport dims — the layout stays identical and
     // no tile ever needs re-rendering.
@@ -800,14 +824,35 @@ export class CyberBackground {
 
   /* ------------------------ screen-space sky pass ------------------------ */
 
-  drawSky(ctx: CanvasRenderingContext2D, cam: BgCam): void {
+  drawSky(outerCtx: CanvasRenderingContext2D, cam: BgCam): void {
     this.ensureBuilt();
+    this.lastCam = cam;
     // light-pollution glow plate (perf): vertical gradient, no-lightning case
     const cx = Number.isFinite(cam.x) ? cam.x : 0;
     const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
     const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
     const w = this.vw, h = this.vh, t = this.t;
 
+    // Update moon position and eclipse coverage analytically every frame
+    {
+      const moonX = w * 0.87 - cx * 0.03 * cz - 84;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
+      const clOff2 = mod(-t * 5 - cx * 0.02 * cz, TILE);
+      let cov = 0;
+      const mxT = mod(moonX + 84 - clOff2, TILE);
+      for (const b of CLOUD_BLOBS) {
+        let dx = Math.abs(b.x - mxT);
+        if (dx > TILE / 2) dx = TILE - dx;
+        const wgt = Math.max(0, 1 - dx / (b.r * 1.12));
+        cov += wgt * wgt * 0.62;
+      }
+      if (cov > 1) cov = 1;
+      this.moonX = moonX + 84;
+      this.moonY = moonY + 84;
+      this.moonCover = cov;
+    }
+
+    this.skyVault.draw(outerCtx, w, h, cx, cy, cz, t, this.lightningI(), Boolean(this.storm.boltActive), this.q, (ctx) => {
     ctx.save();
 
     /* 1 — sky gradient anchored to the world ground line */
@@ -818,11 +863,12 @@ export class CyberBackground {
     const fogBand = (i: number) => {
       if (i >= this.fogCount) return;
       const F = FOG_BANDS[i];
-      const fy = hy + F.oy - (cy - NOMINAL_Y) * 0.15 * cz;
-      ctx.globalAlpha = F.a * (0.85 + 0.15 * Math.sin(t * 0.05 + F.ph)) * (1 + 1.2 * this.lightningI());
+      const fy = hy + F.oy * 0.55 - (cy - NOMINAL_Y) * 0.15 * cz;
+      ctx.globalAlpha = F.a * 0.78 * (0.85 + 0.15 * Math.sin(t * 0.05 + F.ph)) * (1 + 1.2 * this.lightningI());
       const off = mod(t * F.sp - cx * F.f * cz, FOG_W);
+      const fh = Math.round(FOG_H * 0.44);
       for (let x = off - FOG_W; x < w; x += FOG_W) {
-        ctx.drawImage(this.fogSpr, x, fy - FOG_H * 0.5);
+        ctx.drawImage(this.fogSpr, x, fy - fh * 0.5, FOG_W, fh);
       }
       ctx.globalAlpha = 1;
     };
@@ -840,31 +886,25 @@ export class CyberBackground {
      * lightning-modulated case keeps the live gradient. */
     {
       const I0 = this.lightningI();
-      ctx.globalCompositeOperation = 'lighter';
-      if (I0 <= 0) {
-        if (!this.pollPlate) {
-          const pc = document.createElement('canvas');
-          pc.width = 8; pc.height = 216;
-          const pg2 = pc.getContext('2d')!;
-          const lg = pg2.createLinearGradient(0, 0, 0, 216);
-          lg.addColorStop(0, 'rgba(40,70,140,0)');
-          lg.addColorStop(0.55, 'rgba(46,78,152,0.075)');
-          lg.addColorStop(0.84, 'rgba(122,64,150,0.1)');
-          lg.addColorStop(1, 'rgba(255,116,84,0.115)');
-          pg2.fillStyle = lg;
-          pg2.fillRect(0, 0, 8, 216);
-          this.pollPlate = pc;
-        }
-        ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
-      } else {
-        const pg = ctx.createLinearGradient(0, hy - 210, 0, hy + 6);
-        pg.addColorStop(0, 'rgba(40,70,140,0)');
-        pg.addColorStop(0.55, `rgba(46,78,152,${(0.075 + I0 * 0.06).toFixed(3)})`);
-        pg.addColorStop(0.84, `rgba(122,64,150,${(0.1 + I0 * 0.05).toFixed(3)})`);
-        pg.addColorStop(1, `rgba(255,116,84,${(0.115 + I0 * 0.05).toFixed(3)})`);
-        ctx.fillStyle = pg;
-        ctx.fillRect(0, hy - 210, w, 216);
+      const pw = Math.max(2, Math.floor(w));
+      if (!this.pollPlate || this.pollW !== pw) {
+        const pc = document.createElement('canvas');
+        pc.width = pw; pc.height = 216;
+        const pg2 = pc.getContext('2d')!;
+        const lg = pg2.createLinearGradient(0, 0, 0, 216);
+        lg.addColorStop(0, 'rgba(40,70,140,0)');
+        lg.addColorStop(0.55, 'rgba(46,78,152,0.075)');
+        lg.addColorStop(0.84, 'rgba(122,64,150,0.1)');
+        lg.addColorStop(1, 'rgba(255,116,84,0.115)');
+        pg2.fillStyle = lg;
+        pg2.fillRect(0, 0, pw, 216);
+        this.pollPlate = pc;
+        this.pollW = pw;
       }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = I0 > 0 ? 1 + I0 * 0.55 : 1;
+      ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
 
@@ -1112,6 +1152,7 @@ export class CyberBackground {
     fogBand(2);
     ctx.globalAlpha = 1;
     ctx.restore();
+    });
   }
 
   /* ----------------------- world-space arena pass ------------------------ */
@@ -1119,7 +1160,10 @@ export class CyberBackground {
   drawArena(ctx: CanvasRenderingContext2D): void {
     this.ensureBuilt();
     const t = this.t;
-    ctx.drawImage(this.arenaTile, ARENA_X0, 0);            // lip + facade (y 0..260)
+    const cam = this.lastCam;
+    const halfW = this.vw / Math.max(0.4, cam.zoom || 1) * 0.52;
+    const viewL = cam.x - halfW, viewR = cam.x + halfW;
+    blitWorldFrustum(ctx, this.arenaTile, ARENA_X0, 0, viewL, viewR); // lip + facade (y 0..260)
     // STAIRWELL PRACTICAL — warm head-house + breathing pool (additive)
     ctx.drawImage(this.doorSpr, DOOR_X - 100, -172);
     ctx.globalCompositeOperation = 'lighter';
@@ -1148,21 +1192,15 @@ export class CyberBackground {
       ctx.globalAlpha = a * 0.22;
       ctx.fillRect(s.x - 3, s.y - 1.8, 6, 3.6);
     }
-    // ground mist hugging the arena lip — two counter-scrolling soft bands,
-    // density riding the wind gust, lit up when lightning scatters through
+    // low-stature lip haze (interactive deck mist is drawn by ShallowFogField)
     if (this.q !== 'low') {
       const I = this.lightningI();
       const s1 = mod(t * MIST_SP, MIST_W);
-      const s2 = mod(1024 - t * MIST_SP * 0.55, MIST_W);
-      let a1 = (0.22 + 0.12 * this.gust) * (1 + 1.6 * I);
-      if (a1 > 0.52) a1 = 0.52;
+      let a1 = (0.14 + 0.08 * this.gust) * (1 + 1.4 * I);
+      if (a1 > 0.36) a1 = 0.36;
       ctx.globalAlpha = a1;
       for (let x = ARENA_X0 - MIST_W + s1; x < ARENA_X1; x += MIST_W) {
-        ctx.drawImage(this.mistSpr, x, -34, MIST_W, 62);
-      }
-      ctx.globalAlpha = a1 * 0.7;
-      for (let x = ARENA_X0 - MIST_W + s2; x < ARENA_X1; x += MIST_W) {
-        ctx.drawImage(this.mistSpr, x, -6, MIST_W, 44);
+        ctx.drawImage(this.mistSpr, x, -18, MIST_W, 34);
       }
     }
     // drifting CLOUD SHADOWS on the wet deck — pre-baked dark plates with

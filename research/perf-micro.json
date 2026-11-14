@@ -1,0 +1,38 @@
+{
+  "micro": {
+    "grade: 8x256 -> full, lighter, smoothing ON": 6.25,
+    "grade: 8x256 -> full, lighter, smoothing OFF": 2.16,
+    "grade: full-res -> full, lighter": 1.08,
+    "vignette: full-res -> full, source-over": 0.36,
+    "lightmap: full-res -> full, multiply": 1.17,
+    "fullscreen radial gradient + screen": 6.97,
+    "self drawImage (bloom bright-pass x2)": 0.84
+  },
+  "cond": {
+    "drawSky": {
+      "activeFrames": 160,
+      "idleFrames": 0,
+      "msWhenActive": 17.75
+    },
+    "drawStrikeStreaks": {
+      "activeFrames": 6,
+      "idleFrames": 74,
+      "msWhenActive": 1.6
+    },
+    "drawMoonShafts": {
+      "activeFrames": 80,
+      "idleFrames": 0,
+      "msWhenActive": 47.81
+    },
+    "drawBloom": {
+      "activeFrames": 80,
+      "idleFrames": 0,
+      "msWhenActive": 24.1
+    },
+    "drawGrade": {
+      "activeFrames": 80,
+      "idleFrames": 0,
+      "msWhenActive": 6.97
+    }
+  }
+}

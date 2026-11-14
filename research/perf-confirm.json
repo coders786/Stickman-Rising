@@ -1,0 +1,41 @@
+{
+  "headlessPacing": {
+    "emptyPageFps": 60.2,
+    "oneFullscreenFillFps": 41.2,
+    "twentySixBlitsFps": 8.4,
+    "oneMultiplyFps": 38.3,
+    "selfCopyFps": 38.4
+  },
+  "fillRate": [
+    {
+      "dpr": 1,
+      "backing": [
+        1280,
+        720
+      ],
+      "mpx": 0.92,
+      "msPerFrame": 163.4,
+      "fps": 6.1
+    },
+    {
+      "dpr": 0.75,
+      "backing": [
+        960,
+        540
+      ],
+      "mpx": 0.52,
+      "msPerFrame": 85.6,
+      "fps": 11.7
+    },
+    {
+      "dpr": 0.5,
+      "backing": [
+        640,
+        360
+      ],
+      "mpx": 0.23,
+      "msPerFrame": 55.7,
+      "fps": 18
+    }
+  ]
+}

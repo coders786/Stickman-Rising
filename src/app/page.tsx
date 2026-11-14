@@ -132,7 +132,11 @@ export default function Home() {
       }
     })
     try {
-      game.applySettings(loadSettings())
+      try {
+        game.applySettings(loadSettings())
+      } catch (settingsErr) {
+        console.warn('Applying saved settings failed, falling back to defaults:', settingsErr)
+      }
       const progress = loadSave()
       game.setUnlocked(progress.unlocked, progress.totalKills)
       game.mount(canvas)
@@ -161,7 +165,11 @@ export default function Home() {
   useEffect(() => {
     const game = gameRef.current
     if (!game || !hydrated) return
-    game.applySettings(settings)
+    try {
+      game.applySettings(settings)
+    } catch (settingsErr) {
+      console.warn('Applying settings failed:', settingsErr)
+    }
     setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify(settings)))
   }, [settings, hydrated])
 

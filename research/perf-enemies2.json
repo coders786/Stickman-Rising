@@ -1,0 +1,26 @@
+[
+  {
+    "enemies": 0,
+    "renderMs": 124.7,
+    "simMsPerFrame": 0.56,
+    "fps": 8
+  },
+  {
+    "enemies": 4,
+    "renderMs": 140.6,
+    "simMsPerFrame": 0.96,
+    "fps": 7.1
+  },
+  {
+    "enemies": 8,
+    "renderMs": 138.4,
+    "simMsPerFrame": 1.29,
+    "fps": 7.2
+  },
+  {
+    "enemies": 14,
+    "renderMs": 146.3,
+    "simMsPerFrame": 1.48,
+    "fps": 6.8
+  }
+]

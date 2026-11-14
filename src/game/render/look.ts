@@ -149,6 +149,11 @@ export const REFLECTION = {
   strips: 8,
   /** reflection zone depth below the foot line (world px) */
   depth: 150,
+  /** REFLECTION ATLAS PERIOD (seconds). The mirrored pose is re-drawn only
+   *  when a limb tip can move a perceptible amount: at 20 Hz the worst-case
+   *  tip delta is <1.5 px, and the strip composite keeps running at 60 Hz so
+   *  the water chop never loses a frame. */
+  atlasHz: 1 / 20,
 }
 
 /** SPLASH POLICY — geometry tied to the rain's wind vector; spawn variety
