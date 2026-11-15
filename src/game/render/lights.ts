@@ -45,6 +45,26 @@ export interface LightInput {
   color: RGB
 }
 
+/** Coherence signature for the cached light solve. EVERY shading input
+ *  must appear — positions, ranges, intensities AND RGB (plan F09: a red→
+ *  blue color change with identical geometry/intensity previously kept an
+ *  identical cached map). Quantization is part of the documented contract:
+ *  positions/ranges to 2 px, intensity to 1%, colors to whole 0–255 steps. */
+export function lightSignature(
+  w: number,
+  h: number,
+  ambient: RGB,
+  lights: readonly LightInput[],
+): string {
+  let sig = `${w | 0}x${h | 0}:${ambient[0]},${ambient[1]},${ambient[2]}`
+  for (let i = 0; i < lights.length; i++) {
+    const L = lights[i]
+    sig += `|${L.kind}:${(L.x >> 1)},${(L.y >> 1)},${(L.range >> 1)},${(L.intensity * 100) | 0}` +
+      `:c${L.color[0] | 0},${L.color[1] | 0},${L.color[2] | 0}`
+  }
+  return sig
+}
+
 export class LightRig {
   private map: HTMLCanvasElement | null = null
   private mapCtx: CanvasRenderingContext2D | null = null
@@ -87,12 +107,8 @@ export class LightRig {
     const g = this.ensure(w, h)
     if (!g || !this.map) return
 
-    // Quantize light positions to 2px and intensities to 1% for coherence test
-    let sig = `${w | 0}x${h | 0}:${ambient[0]},${ambient[1]},${ambient[2]}`
-    for (let i = 0; i < lights.length; i++) {
-      const L = lights[i]
-      sig += `|${L.kind}:${(L.x >> 1)},${(L.y >> 1)},${(L.range >> 1)},${(L.intensity * 100) | 0}`
-    }
+    // Coherence test over EVERY shading input (see lightSignature).
+    const sig = lightSignature(w, h, ambient, lights)
     if (sig === this.lastSig) return
     this.lastSig = sig
     this.nativeDirty = true

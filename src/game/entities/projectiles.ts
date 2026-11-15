@@ -38,6 +38,13 @@ export class Projectile {
     this.kind = p.kind
     this.x = p.x
     this.y = p.y
+    // BIRTH RESET (plan M04): a recycled projectile must not keep its
+    // previous life's render-interpolation history — alpha-lerp would drag
+    // the newborn across the screen toward a ghost position. NaN is the
+    // documented "fresh birth" value: lerpRender falls back to the actual
+    // position (the fresh-birth negative control).
+    this.px = NaN
+    this.py = NaN
     this.vx = p.vx
     this.vy = p.vy
     this.dmg = p.dmg
@@ -76,8 +83,15 @@ export class Projectile {
       }
     }
 
+    // Step start (plan M05): collision below sweeps THIS segment, not just
+    // the endpoint — a 1 440 px/s reflected bullet crosses a body inside one
+    // 50 ms tick and endpoint testing credits zero hits.
+    const x0 = this.x
+    const y0 = this.y
     this.x += this.vx * dt
     this.y += this.vy * dt
+    const x1 = this.x
+    const y1 = this.y
 
     // trails / element particles
     this.trailT -= dt
@@ -115,13 +129,17 @@ export class Projectile {
       return true
     }
 
-    // hit player (enemy projectile)
+    // hit player (enemy projectile) — SWEPT (plan M05)
     if (!this.friendly) {
-      const px = PLAYER_POS.x
-      const py = PLAYER_POS.y - 45
       const rr = this.kind === 'missile' ? 20 : 14
-      if (Math.hypot(px - this.x, py - this.y) < rr + 16) {
-        const res = w.enemyStrikePlayer(this.dmg, Math.sign(this.vx) || 1, this.kind === 'missile', this.x)
+      const body = playerBody()
+      const u = sweptCircleHit(x0, y0, x1, y1, body.x0, body.y0, body.x1, body.y1, rr + 16)
+      if (u >= 0) {
+        const hx = x0 + (x1 - x0) * u
+        const hy = y0 + (y1 - y0) * u
+        this.x = hx
+        this.y = hy
+        const res = w.enemyStrikePlayer(this.dmg, Math.sign(this.vx) || 1, this.kind === 'missile', hx)
         if (res) {
           // parried → reflected back at the shooter
           this.friendly = true
@@ -130,24 +148,45 @@ export class Projectile {
           this.dmg *= 2
           this.life = this.age + 2
           w.audio.play('reflect')
-          w.fx.impact(this.x, this.y, Math.atan2(this.vy, this.vx), true, '#ffffff', '#35f2ff')
+          w.fx.impact(hx, hy, Math.atan2(this.vy, this.vx), true, '#ffffff', '#35f2ff')
           w.cam.zoomPulse(0.08)
+          // Remaining travel after the contact runs under the REFLECTED
+          // velocity — never a second full dt on top of the swept step.
+          const rem = (1 - u) * dt
+          this.x += this.vx * rem
+          this.y += this.vy * rem
           return true
         }
         if (this.kind === 'missile') this.explode(w)
         return false
       }
     } else {
-      // friendly reflected projectile hits enemies
+      // friendly reflected projectile hits enemies — SWEPT, earliest contact
+      let bestU = 2
+      let bestE: (typeof w.enemies)[number] | null = null
       for (const e of w.enemies) {
         if (e.dead || e.spawning) continue
-        if (Math.hypot(e.x - this.x, e.y - 34 * e.scale - this.y) < 30 * e.scale) {
-          w.hitEnemy(e.id, { bx: this.x, by: this.y, tx: this.x + 8, ty: this.y }, {
-            id: 'reflect', dmg: this.dmg, heavy: true, stagger: 0.4, kb: 300, kbY: 0,
-            launch: 0, juggle: 0, hitstop: 0.06, shake: 0.2, aoe: 0, breakGuard: true, kind: 'ability',
-          })
-          return false
+        const R = 30 * e.scale
+        const cx1 = e.x
+        const cy1 = e.y - 34 * e.scale
+        const cx0 = Number.isFinite(e.px) ? e.px : cx1
+        const cy0 = Number.isFinite(e.py) ? e.py - 34 * e.scale : cy1
+        const u = sweptCircleHit(x0, y0, x1, y1, cx0, cy0, cx1, cy1, R)
+        if (u >= 0 && u < bestU) {
+          bestU = u
+          bestE = e
         }
+      }
+      if (bestE) {
+        const hx = x0 + (x1 - x0) * bestU
+        const hy = y0 + (y1 - y0) * bestU
+        this.x = hx
+        this.y = hy
+        w.hitEnemy(bestE.id, { bx: hx, by: hy, tx: hx + 8, ty: hy }, {
+          id: 'reflect', dmg: this.dmg, heavy: true, stagger: 0.4, kb: 300, kbY: 0,
+          launch: 0, juggle: 0, hitstop: 0.06, shake: 0.2, aoe: 0, breakGuard: true, kind: 'ability',
+        })
+        return false
       }
     }
 
@@ -249,6 +288,50 @@ export class Projectile {
 
 /** injected by Game (avoids circular import) */
 export const PLAYER_POS = { x: 400, y: 0 }
+
+/** Player body sweep endpoints for swept projectile collision (plan M05).
+ * Game.step records them around player.update: (x0,y0) is the pre-update
+ * root, (x1,y1) the post-update root. When a harness never sets them they
+ * stay NaN and collision falls back to a static body at PLAYER_POS. */
+export const PLAYER_BODY = { x0: NaN, y0: NaN, x1: NaN, y1: NaN }
+
+/** Earliest contact u∈[0,1] of a swept point p0→p1 against a disc moving
+ * c0→c1 with radius R, via relative motion q0=u-independent, v=(p1-p0)-(c1-c0):
+ * solve |q0 + u·v|² = R². Returns −1 when no contact occurs inside the step.
+ * Already-overlapping starts return 0 (contact at the step boundary). */
+function sweptCircleHit(
+  p0x: number, p0y: number, p1x: number, p1y: number,
+  c0x: number, c0y: number, c1x: number, c1y: number,
+  R: number,
+): number {
+  const q0x = p0x - c0x
+  const q0y = p0y - c0y
+  const vx = (p1x - p0x) - (c1x - c0x)
+  const vy = (p1y - p0y) - (c1y - c0y)
+  const a = vx * vx + vy * vy
+  const rr = R * R
+  const c = q0x * q0x + q0y * q0y - rr
+  if (c <= 0) return 0 // started inside (or exactly on) the body
+  if (a < 1e-12) return -1 // no relative motion and not overlapping
+  const b = 2 * (q0x * vx + q0y * vy)
+  const disc = b * b - 4 * a * c
+  if (disc < 0) return -1
+  const u = (-b - Math.sqrt(disc)) / (2 * a)
+  return u >= 0 && u <= 1 ? u : -1
+}
+
+/** Player body disc (center at root −45, radius rr+16 handled by caller). */
+function playerBody(): { x0: number; y0: number; x1: number; y1: number } {
+  if (Number.isFinite(PLAYER_BODY.x0) && Number.isFinite(PLAYER_BODY.x1)) {
+    return {
+      x0: PLAYER_BODY.x0, y0: PLAYER_BODY.y0 - 45,
+      x1: PLAYER_BODY.x1, y1: PLAYER_BODY.y1 - 45,
+    }
+  }
+  const cx = PLAYER_POS.x
+  const cy = PLAYER_POS.y - 45
+  return { x0: cx, y0: cy, x1: cx, y1: cy }
+}
 
 export class ProjectilePool {
   private list: Projectile[] = []

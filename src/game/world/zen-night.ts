@@ -157,10 +157,33 @@ export class ZenNightBackground {
   /* clouds in SCENE coordinates — the same field feeds art and lighting */
   private cloudNx = new Float32Array(5)
   private moonVis = 0.92
-  /* 2-slot temporal bracketing for the media transport */
+  /* Genuine 2-slot temporal bracket for the media transport (plan F03):
+   * values A/B are stored WITH their time endpoints t0/t1 and the current
+   * bracket is interpolated — the old min(A,B) was a biased sample-and-
+   * hold filter, not bracketing. Advanced in update() on the visual clock. */
   private bracketA = 1
   private bracketB = 1
-  private bracketT = -9
+  private bracketT0 = -9
+  private bracketT1 = -9
+
+  /* Wind displacement continuity (plan F05): the closed form windAt(t,s)
+   * is only an exact integral while strength s is constant. storm.wind
+   * varies continuously, so the accumulated displacement is integrated
+   * piecewise (constant strength over each update segment) and carried
+   * through strength changes without jumps: D += s_prev·(F(t)−F(t_prev)),
+   * with F = windAt(t, 1) the unit-strength primitive. */
+  private windInit = false
+  private windLastT = 0
+  private windLastS = 0
+  private windLastF = 0
+  private windDispX = 0
+  private windUnit = new Float32Array(4)
+
+  /* Dedicated deterministic stream for visual event spawns (petal→pond
+   * ripples). Rendering/visual events must never consume the global RNG
+   * shared with gameplay and audio (plan M08), and their spawn rate must
+   * not depend on how often draw happens (plan F14). */
+  private rippleRng = noise(0x51a9c4)
 
   /* petals (screen-space pool) */
   private px = new Float32Array(72)
@@ -248,13 +271,75 @@ export class ZenNightBackground {
     this.t += d
     // ONE gust carrier drives clouds, mist, canopy sway and the water waves
     windAt(this.t, this.storm.wind, this.wind)
-    this.windIntegralX = this.wind[2]
+    // F05: displacement integrates the piecewise-constant strength law so
+    // a changing storm.wind never teleports the accumulated offset. F is
+    // the UNIT-strength primitive windAt(t,1) (its 0.85 carrier included),
+    // so with constant strength this telescopes to exactly s·F(t) =
+    // windAt(t,s) — the old closed form — and across a strength change it
+    // stays continuous instead of jumping by Δs·F(t).
+    {
+      const s = this.storm.wind
+      const F = windAt(this.t, 1, this.windUnit)[2]
+      if (!this.windInit) {
+        this.windInit = true
+        this.windLastT = this.t
+        this.windLastS = s
+        this.windLastF = F
+        this.windDispX = s * F
+      } else if (this.t !== this.windLastT) {
+        this.windDispX += this.windLastS * (F - this.windLastF)
+        this.windLastT = this.t
+        this.windLastS = s
+        this.windLastF = F
+      }
+      this.windIntegralX = this.windDispX
+    }
+    // F03/F04: media-transport bracket + moon visibility filter advance on
+    // the VISUAL clock here — drawSky used to mutate them per DRAW, so the
+    // rate·60 smoothing factor made moon state a function of frame count
+    // (6 vs 14 draws of the same 0.1 s gave different results).
+    if (this.t - this.bracketT1 >= 1 / 24) {
+      this.bracketA = this.bracketB
+      this.bracketT0 = this.bracketT1
+      this.bracketB = this.sampleTransmission(this.t)
+      this.bracketT1 = this.t
+    }
+    const span = this.bracketT1 - this.bracketT0
+    const u = span > 1e-9 ? clamp01((this.t - this.bracketT0) / span) : 1
+    const raw = mixN(this.bracketA, this.bracketB, u)
+    const target = 0.06 + 0.94 * raw
+    const rate = target < this.moonVis ? 0.018 : 0.006
+    // a = 1 − exp(−dt/τ) with τ = 1/(rate·60): frame-rate independent and
+    // exactly semigroup (10×0.01 s ≡ 1×0.1 s), unlike the old per-draw
+    // min(1, rate·60) step. Repeated draws of one frame change nothing.
+    this.moonVis += (target - this.moonVis) * (1 - Math.exp(-d * rate * 60))
+    this.moonCover = 1 - this.moonVis
     const drift = d * 0.0022
     for (let k = 0; k < 5; k++) {
       this.cloudNx[k] += drift * (0.5 + CLOUD_Z[k])
       if (this.cloudNx[k] > 1.36) this.cloudNx[k] -= 1.62
     }
     for (let i = 0; i < 4; i++) if (this.ripples[i * 3 + 1] < 9) this.ripples[i * 3 + 1] += d
+    // F14: petal→pond ripple EVENTS generate here (visual clock, dedicated
+    // RNG), not inside drawWeather — a paused/repeated draw can no longer
+    // spawn impulses, and spawn rate no longer scales with frame rate.
+    // Petal screen-Y is an analytic function of t (same formula as draw).
+    if (this.w > 0 && this.h > 0) {
+      const h = this.h
+      const p = 1 - Math.exp(-0.24 * d) // ≈ old 0.004/draw at 60 fps
+      if (p > 0) {
+        for (let i = 0; i < 4; i++) {
+          const z = this.pz[i]
+          const y = (this.py[i] + this.t * (7 + 13 * z)) % (h + 80) - 40
+          if (y > h * 0.72 && y <= h * 0.84 && this.rippleRng() < p) {
+            const slot = this.rippleHead
+            this.rippleHead = (this.rippleHead + 1) % 4
+            this.ripples[slot * 3] = POND_X + (this.rippleRng() - 0.5) * 120
+            this.ripples[slot * 3 + 1] = 0
+          }
+        }
+      }
+    }
     for (let i = 0; i < 2; i++) this.birdT[i] += d * 0.021
   }
 
@@ -1433,25 +1518,24 @@ export class ZenNightBackground {
     const mx = w * 0.74 - cam.x * 0.02
     const my = h * 0.165 - (cam.y + 170) * 0.03
 
-    // ---- 2-slot temporal bracketing of the media transport --------------
-    if (t - this.bracketT >= 1 / 24) {
-      this.bracketA = this.bracketB
-      this.bracketB = this.sampleTransmission(t)
-      this.bracketT = t
-    }
-    const raw = Math.min(this.bracketA, this.bracketB)
-    const target = 0.06 + 0.94 * raw
-    const rate = target < this.moonVis ? 0.018 : 0.006
-    this.moonVis += (target - this.moonVis) * Math.min(1, rate * 60)
+    // Moon screen anchor: a pure function of the camera (kept here; the
+    // visibility FILTER itself advanced in update() on the visual clock —
+    // see F03/F04 above).
     this.moonX = mx
     this.moonY = my
-    this.moonCover = 1 - this.moonVis
 
     const moonR = Math.max(96, Math.min(300, Math.min(w, h) * 0.2))
     const moonSize = moonR * 2
 
-    // ---- BHST coherence-gated sky-vault cache (24 Hz + parallax gated) ---
-    this.skyVault.draw(ctx, w, h, cam.x, cam.y, cam.zoom, t, this.storm.intensity, this.storm.boltActive, this.quality, (g) => {
+    // ---- CONTINUOUS SKY (plan F02 / CSS): baked invariant plates are
+    // blitted LIVE every display frame. The old SkyVaultCache composite
+    // hold (dt ≥ 0.22 s ≈ 4.3 Hz) froze cloud drift, shaft breathing, star
+    // twinkle and storm motion inside the cache. Invariant artwork stays
+    // cached at BAKE time (staticFar/staticMid/cloud/lunar/shaft sprites);
+    // only their per-frame transforms run here.
+    {
+      const g = ctx
+      g.save()
       g.drawImage(this.staticFar!, 0, 0, w, h)
       // ---- CLOUD BANKS BEHIND THE DISC (scene coords, shared gust) ------
       // Distant aerosol sits BEHIND the moon, so a bank can never paint a
@@ -1547,9 +1631,10 @@ export class ZenNightBackground {
         g.drawImage(this.mistSprite!, x, my + h * 0.3, 1024, 240)
       }
       g.globalAlpha = 1
-    })
+      g.restore()
+    }
 
-    // ---- TWO FLYING BIRDS over the vault (screen space, live) -----------
+    // ---- TWO FLYING BIRDS over the sky (screen space, live) -------------
     this.drawBirds(ctx)
   }
 
@@ -1914,13 +1999,8 @@ export class ZenNightBackground {
       const x = (((this.px[i] + t * (9 + 17 * z) + Math.sin(t * 0.7 + this.pp[i]) * 22 - gust * (2 + 4 * z)) % (w + 120)) + w + 120) % (w + 120) - 60
       const y = (this.py[i] + t * (7 + 13 * z)) % (h + 80) - 40
       if (y > h * 0.84) continue
-      // landing petals feed the water ripples when they fall over the pond
-      if (y > h * 0.72 && i < 4 && Math.random() < 0.004) {
-        const slot = this.rippleHead
-        this.rippleHead = (this.rippleHead + 1) % 4
-        this.ripples[slot * 3] = POND_X + (Math.random() - 0.5) * 120
-        this.ripples[slot * 3 + 1] = 0
-      }
+      // (petal→pond ripple EVENTS generate in update() on the visual clock
+      //  with a dedicated RNG — draw is a pure consumer, plan F14/M08)
       ctx.save()
       ctx.globalAlpha = 0.42 + 0.5 * z
       ctx.translate(x, y)

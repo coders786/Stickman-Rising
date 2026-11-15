@@ -251,9 +251,13 @@ export class FX {
         size: 2, color: '#fff', type: 'dot', grav: 0, drag: 0,
         rot: 0, vrot: 0, pts: null,
       }
-      this.particles.push(p)
     }
+    // POOL LAW (M02): acquire registers in the LIVE set exactly once. An
+    // expired particle was spliced OUT of `particles` into `pFree`; taking
+    // it back without re-push left it active yet in neither list — invisible
+    // and orphaned (the acquire/expire/reacquire probe witness).
     p.active = true
+    this.particles.push(p)
     return p
   }
 
@@ -517,9 +521,10 @@ export class FX {
     let r = this.rFree.pop()
     if (!r) {
       r = { active: false, x: 0, y: 0, r0: 0, r1: 0, age: 0, life: 1, color: '#fff', width: 3, squash: 1 }
-      this.rings.push(r)
     }
+    // POOL LAW (M02): recycled rings rejoin the live set (see nextParticle).
     r.active = true
+    this.rings.push(r)
     return r
   }
 
@@ -685,9 +690,10 @@ export class FX {
         color, color2, width,
         emitting: true,
       }
-      this.trails.push(t)
     }
+    // POOL LAW (M02): recycled trails rejoin the live set (see nextParticle).
     t.active = true
+    this.trails.push(t)
     t.head = 0
     t.count = 0
     t.age = 0

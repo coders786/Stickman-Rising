@@ -5,6 +5,7 @@ import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolut
 
 import { Camera } from './core/camera'
 import { Input } from './core/input'
+import { advanceSimClock } from './core/sim-clock'
 import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, LevelId, RunStats, WorldRef } from './core/types'
 import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
@@ -15,7 +16,7 @@ import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
 import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
 import { Player } from './entities/player'
-import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
+import { PLAYER_BODY, PLAYER_POS, ProjectilePool } from './entities/projectiles'
 import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
 import { SWORDS, SwordId, SWORD_ORDER, swordTier, upgradedSword } from './combat/swords'
 import { crossedExecutionCuts, executionRoot, executionTimeline } from './combat/execution'
@@ -24,6 +25,7 @@ import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
+import { shallowFog } from './render/bhst'
 import { Inspect, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
@@ -136,6 +138,9 @@ export class Game {
   // frame advances smoothly at any refresh rate. Physics and sprite frames
   // are untouched — only the drawn position/time are sampled continuously.
   private simAccum = 0
+  /** seconds of gameplay time explicitly dropped under overload (M03
+   *  telemetry — requested vs simulated time is never silently mixed) */
+  overloadDropped = 0
   private prevStepTime = 0
   private renderTime = 0
   private interpInstalled = false
@@ -190,9 +195,11 @@ export class Game {
 
   /* ---- PERFORMANCE GOVERNOR (the "hangs when enemies appear" fix) ----
    * Frame cost must NOT grow when the frame rate falls. Three defenses:
-   *   1. substeps are CAPPED (3 × 1/60) — a slow frame simulates at most
-   *      50ms of world, never 5× full-cost steps (the old death spiral:
-   *      raster slows → more substeps → slower → more substeps → freeze)
+   *   1. substeps are CAPPED (4 × 1/60 fixed, see core/sim-clock.ts) — a
+   *      slow frame simulates at most ~67ms of world in FIXED steps, and
+   *      excess backlog is dropped explicitly (overloadDropped), never
+   *      run as a variable tick (the old death spiral: raster slows →
+   *      more substeps → slower → more substeps → freeze)
    *   2. visual systems (weather, particles, camera) tick ONCE per frame,
    *      not per substep — rain never integrates at 450Hz
    *   3. render resolution (DPR) auto-scales to the measured frame rate */
@@ -277,6 +284,14 @@ export class Game {
   }
 
   private setPhase(p: GamePhase): void {
+    if (p !== this.phase) {
+      // PHASE-BOUNDARY EDGE RESET (intentional, documented): edges or combo
+      // buffers accepted in one phase must never leak into the next run
+      // (e.g. a 'pause' press during game-over firing on the first step of
+      // a new run). Hold states are untouched; this is a deliberate
+      // gesture cancel at a state boundary, not a lost command.
+      this.input.clearEdges()
+    }
     this.phase = p
     this.emit({ type: 'phase', phase: p })
   }
@@ -580,6 +595,7 @@ export class Game {
     this.time = 0
     this.prevStepTime = 0
     this.simAccum = 0
+    this.overloadDropped = 0
     this.timeScale = 1
     this.slowmoT = 0
     this.hitstopT = 0
@@ -693,7 +709,13 @@ export class Game {
     if (!ctx) return
 
     if (this.phase === 'paused' || editFrozen) {
-      // frozen frame, HUD still drawn (edit = pose-editor authoring freeze)
+      // frozen frame, HUD still drawn (edit = pose-editor authoring freeze).
+      // FROZEN FRAMES DISCARD GAMEPLAY EDGES: no simulation step will ever
+      // consume them, so keeping them would fire stale presses on resume.
+      // (Pause additionally disables/resets input; this covers edit-freeze
+      // and any phase where input stays enabled.) Raw editor edges keep
+      // their per-render lifetime via endRenderFrame below.
+      this.input.endFrame(0)
     } else {
       // --- timing: hitstop & slow-mo ---
       let simDt = dtRaw
@@ -713,17 +735,22 @@ export class Game {
       // --- cinematics run on real time ---
       this.updateCinematics(dtRaw)
 
-      // --- fixed-timestep substeps + accumulator (render interpolation):
-      // the sim always advances in exact 1/60 steps (the tested, tuned
-      // configuration at EVERY frame rate) and the leftover time carries
-      // over. NO death spiral: at most 3 steps + one clamped catch-up tick
-      // per frame, so the cost of a frame stays bounded on slow machines.
-      this.simAccum += simDt
-      let substeps = 0
-      let caughtUp = false
-      while (this.simAccum >= 1 / 60 && substeps < 3) {
+      // --- FIXED-TIMESTEP SCHEDULER (plan M03) ---
+      // The sim advances only in exact 1/60 steps (the tested, tuned
+      // configuration at EVERY frame rate). Backlog above the bounded cap
+      // is DROPPED EXPLICITLY and counted in `overloadDropped` — never
+      // disguised as a variable-size catch-up tick (a 50 ms "step" is a
+      // different simulation than 1/60). Work per render is bounded at
+      // maxSteps fixed updates, so a slow machine cannot enter the death
+      // spiral (raster slows → more substeps → slower → freeze).
+      const adv = advanceSimClock(this.simAccum, simDt)
+      this.simAccum = adv.acc
+      this.overloadDropped += adv.dropped
+      const substeps = adv.steps
+      const caughtUp = adv.dropped > 0
+      for (let i = 0; i < substeps; i++) {
         this.recordPrev()
-        this.step(1 / 60)
+        this.step(adv.stepDt)
         // EDGE LIFETIME = ONE SUBSTEP. pressed()/released() edges must be
         // visible to exactly ONE simulation step: clearing them only once
         // per RENDERED frame let a single jump press fire doJump in BOTH
@@ -733,26 +760,23 @@ export class Game {
         // rAF callbacks, so no press is ever missed; presses that land while
         // a state ignores them are still caught by the combo BUFFER, which
         // is pressTime-based and deliberately spans substeps and frames.
-        this.input.endFrame(1 / 60)
-        this.simAccum -= 1 / 60
-        substeps++
+        // A render that runs ZERO substeps must NOT clear edges (M01): the
+        // press survives to the next legal simulation opportunity.
+        this.input.endFrame(adv.stepDt)
       }
-      if (this.simAccum >= 1 / 60) {
-        // very slow frame: consume the backlog as one clamped catch-up tick
-        // so the world keeps roughly real-time without multiplying cost
-        this.recordPrev()
-        this.step(Math.min(this.simAccum, 0.05))
-        this.input.endFrame(0.05)
-        this.simAccum = 0
-        caughtUp = true
-        // collapse the interpolation history onto the frontier: the jump is
-        // shown on this frame (the display froze anyway) and the NEXT frames
-        // interpolate strictly forward from here — never rewind.
+      if (caughtUp) {
+        // collapse the interpolation history onto the frontier: the last
+        // fixed step is shown on this frame (the display was hitched anyway)
+        // and the NEXT frames interpolate strictly forward from here —
+        // never rewind.
         this.recordPrev()
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
       this.fx.update(simDt)
       this.bg.update(simDt)
+      // wake fog is a VISUAL simulation: stepped exactly once per frame on
+      // the visual clock, never inside Renderer.draw (plan F14/M08).
+      this.updateWakeFog(simDt)
       // --- sample the render between the last two sim states ---
       // alpha sweeps 0..1 as the leftover accumulator fills toward the next
       // step, so motion advances a little EVERY display frame instead of
@@ -804,14 +828,19 @@ export class Game {
         ctx.font = '10px ui-monospace,monospace'
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · frame ${this.frameMs.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · wait ${this.waitMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
+        const drop = this.overloadDropped > 0.001 ? ` · dropped ${this.overloadDropped.toFixed(2)}s sim` : ''
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · frame ${this.frameMs.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · wait ${this.waitMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr} · ${this.settings.quality}${drop}${locked}`, this.cssW - 12, 62)
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)
       this.uninstallRenderLerp()
     }
 
-    this.input.endFrame(dtRaw)
+    // RENDER tick: clear ONLY raw editor-key edges. Gameplay edges are
+    // owned by simulation steps (consumed there) — clearing them here on a
+    // zero-step render was the M01 input-loss bug (an 8 ms frame with no
+    // substep deleted a parry press before any step could see it).
+    this.input.endRenderFrame()
   }
 
   /** Snapshot sim positions before a step (render interpolation). */
@@ -892,6 +921,12 @@ export class Game {
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         if (this.enemies[i].dead) this.enemies.splice(i, 1)
       }
+      // Player body sweep endpoints for swept projectile collision (M05):
+      // pre-step root (PLAYER_POS, set above) → post-movement root.
+      PLAYER_BODY.x0 = PLAYER_POS.x
+      PLAYER_BODY.y0 = PLAYER_POS.y
+      PLAYER_BODY.x1 = this.player.x
+      PLAYER_BODY.y1 = this.player.y
       this.projectiles.update(dt, this.worldRef)
 
       if (this.phase === 'playing') {
@@ -908,6 +943,21 @@ export class Game {
       // idle hero breathing on the rooftop (framed below the title logo)
       this.player.update(dt, this.worldRef)
       this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
+    }
+  }
+
+  /** Advance the shared shallow wake-fog field ONCE per rendered frame on
+   *  the visual clock (was: stepped inside Renderer.draw, so paused or
+   *  repeated draws mutated visual state — plan F14/M08). Actor injection
+   *  mirrors the previous draw-time culling exactly (viewHalfW formula). */
+  private updateWakeFog(dt: number): void {
+    shallowFog.step(dt, this.bg.storm.wind)
+    shallowFog.injectActor(this.player.x, this.player.y, this.player.vx, this.player.vy, 1.2)
+    const viewHalfW = this.cssW / (2 * this.cam.zoom) + 240
+    for (const e of this.enemies) {
+      if (e.dead || e.spawning) continue
+      if (Math.abs(e.x - this.cam.x) > viewHalfW) continue
+      shallowFog.injectActor(e.x, e.y, e.vx, e.vy, 0.85)
     }
   }
 

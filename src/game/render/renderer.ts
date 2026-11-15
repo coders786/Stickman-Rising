@@ -16,6 +16,7 @@ import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, composeShadowKey
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 import { LightRig, surfaceWash, pointInfluence, type LightInput, type RGB } from './lights'
 import { shallowFog } from './bhst'
+import { reflectionRefreshKey } from './reflection-key'
 
 /** SELECTIVE BLOOM bright-pass — threshold at the ¼-res downsample so ONLY
  * emissives (moon, neon, windows, glints, sparks, streaks) bloom. Contrast
@@ -52,11 +53,17 @@ export class Renderer {
    * in strips with a high-frequency horizontal wave (wet concrete, not glass) */
   private reflPlate: HTMLCanvasElement | null = null
   private reflPW = 0
-  /* 20 Hz reflection atlas: key = (span, quality); time = last refresh */
-  private reflKey = -1
+  /* reflection atlas: full refresh identity (span, tier, camera origin,
+   * realloc, player pose/root, actor membership) + atlas-period fallback;
+   * time = last refresh. See render/reflection-key.ts (plan F07). */
+  private reflKey = ''
   private reflTime = -9
   private reflSX0 = 0
   private reflSpan = 0
+  /** world x of plate column 0 at draw time — the blit anchor on a hit */
+  private reflViewLeft = 0
+  /** retained actor descriptors for the key (no per-frame allocation) */
+  private reflSigPool: { id: number; x: number; y: number; face?: 1 | -1; state?: string }[] = []
   /** 2D light transport: the live lights LAND on the scene (see lights.ts) */
   private rig = new LightRig()
   /** frame pools — no per-frame allocations (VRAM/GC discipline) */
@@ -100,6 +107,13 @@ export class Renderer {
   private grainW = 0
   private grainH = 0
   private grainFlip = 0
+  /* Dedicated LCG for grain (plan M08): draw-time randomness must never
+   * consume the global RNG stream shared with gameplay and audio. */
+  private grainSeed = 0x9e3779b9
+  private grainRand(): number {
+    this.grainSeed = (Math.imul(this.grainSeed, 1664525) + 1013904223) >>> 0
+    return this.grainSeed / 4294967296
+  }
   private quality: GameSettings['quality'] = 'high'
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
@@ -171,16 +185,10 @@ export class Renderer {
     }
 
     // KINETIC SHALLOW-STRATA WAKE FOG (BHST):
-    // Step the 64-cell Eulerian wake field, inject player + enemy motion so
-    // dashes, sprints and landings part/swirl the ground mist, and draw the
-    // low-stature ankle-hugging vapor ribbon across the visible frustum.
-    shallowFog.step(dt, bg.storm.wind)
-    shallowFog.injectActor(player.x, player.y, player.vx, player.vy, 1.2)
-    for (const e of enemies) {
-      if (e.dead || e.spawning) continue
-      if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      shallowFog.injectActor(e.x, e.y, e.vx, e.vy, 0.85)
-    }
+    // The 64-cell field is STEPPED and INJECTED by Game.updateWakeFog on
+    // the visual clock (once per frame) — draw is a pure consumer now
+    // (plan F14/M08: paused or repeated draws must not mutate world state).
+    // Here we only draw the low-stature ankle-hugging vapor ribbon.
     const viewLeft = cam.x + cam.offX - viewHalfW
     const viewRight = cam.x + cam.offX + viewHalfW
     shallowFog.drawWorld(
@@ -625,7 +633,7 @@ export class Renderer {
         if (!g) continue
         const img = g.createImageData(pw, ph)
         for (let i = 0; i < img.data.length; i += 4) {
-          const v = 118 + (Math.random() * 2 - 1) * 74
+          const v = 118 + (this.grainRand() * 2 - 1) * 74
           img.data[i] = v
           img.data[i + 1] = v
           img.data[i + 2] = v
@@ -638,7 +646,7 @@ export class Renderer {
       this.grainH = h
     }
     if (!this.grainPlates.length) return
-    const plate = this.grainPlates[(Math.random() * this.grainPlates.length) | 0]
+    const plate = this.grainPlates[(this.grainRand() * this.grainPlates.length) | 0]
     ctx.save()
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(plate, 0, 0, w, h)
@@ -656,7 +664,11 @@ export class Renderer {
     const li = bg.lightningI()
     const depth = REFLECTION.depth
     const pw = Math.max(64, Math.ceil(viewHalfW * 2)), ph = depth + 8
-    if (!this.reflPlate || this.reflPW !== pw || this.reflPH !== ph) {
+    // REALLOCATION IS DIRTY (plan F07): captured BEFORE reflPW/reflPH are
+    // assigned — the old dirty test compared them after the assignment, so
+    // a fresh EMPTY plate never qualified and stayed black until the timer.
+    const realloc = !this.reflPlate || this.reflPW !== pw || this.reflPH !== ph
+    if (realloc) {
       const c = document.createElement('canvas')
       c.width = pw
       c.height = ph
@@ -686,19 +698,35 @@ export class Renderer {
     const spanW = sx1 - sx0
     if (spanW <= 0) return
 
-    // 20 Hz REFLECTION ATLAS (temporal bracketing).
-    // The mirror only has to be RE-DRAWN when a reflected pose moves a
-    // measurable amount; at 20 Hz the pose delta per refresh is <1.5 px for
-    // every state the game can produce (highest limb tip speed 2 600 px/s).
-    // The other 40 frames of a 60 Hz run cost ONE strip composite each.
-    // The atlas is keyed on (span, quality) so a camera pan that changes the
-    // actor span still refreshes immediately, and a strobe lift forces a
-    // refresh so the mirror snaps with the bolt instead of lagging it.
-    const key = spanW * 8 + (this.quality === 'ultra' ? 4 : this.quality === 'high' ? 2 : this.quality === 'medium' ? 1 : 0)
+    // REFRESH IDENTITY (plan F07): span + tier + camera origin + realloc +
+    // player root/facing/state + live enemy membership/roots. The old
+    // (span, quality) key aliased same-width camera pans and moved or
+    // spawned actors; its "<1.5 px at 20 Hz" claim was arithmetically
+    // wrong (2 600 px/s × 50 ms = 130 world px) — the atlas PERIOD remains
+    // only as a fallback bound for pose-internal limb motion, which this
+    // key cannot see. Error-gated refresh (MCRI, plan M4) supersedes it.
+    const sig = this.reflSigPool
+    sig.length = 0
+    sig.push({ id: -1, x: player.x, y: player.y, face: player.face, state: player.state })
+    if (this.quality !== 'low') {
+      for (const e of enemies) {
+        if (e.dead || e.spawning) continue
+        if (Math.abs(e.x - cam.x) > viewHalfW) continue
+        sig.push({ id: e.id, x: e.x, y: e.y, face: e.face, state: e.state })
+      }
+    }
+    const key = reflectionRefreshKey({
+      spanW,
+      tier: this.quality === 'ultra' ? 4 : this.quality === 'high' ? 2 : this.quality === 'medium' ? 1 : 0,
+      viewLeft,
+      realloc,
+      player: sig[0],
+      enemies: sig,
+      enemyFrom: 1,
+    })
     const needRefresh =
+      realloc ||
       this.reflKey !== key ||
-      this.reflPW !== pw ||
-      this.reflPH !== ph ||
       time - this.reflTime >= REFLECTION.atlasHz ||
       li > 0.05
     if (needRefresh) {
@@ -742,12 +770,11 @@ export class Renderer {
       this.reflTime = time
       this.reflSX0 = sx0
       this.reflSpan = spanW
-    } else {
-      // atlas hit: reuse the previous plate offsets (the plate is the same
-      // canvas; only the wave strips below move)
-      minX = viewLeft + this.reflSX0
-      maxX = minX + this.reflSpan
+      this.reflViewLeft = viewLeft
     }
+    // On a hit the plate keeps the WORLD ANCHOR it was drawn for — blitting
+    // it at the current viewLeft instead would slide the reflection off its
+    // actors during a pan (same-width pans never changed the old key).
     const sxA = this.reflSX0
     const spanA = this.reflSpan
 
@@ -757,7 +784,7 @@ export class Renderer {
     ctx.globalAlpha = a
     const n = this.quality === 'low' ? 6 : this.quality === 'medium' ? 8 : 10
     const sh = ph / n
-    const dstX = viewLeft + sxA
+    const dstX = this.reflViewLeft + sxA
     for (let i = 0; i < n; i++) {
       const wave = Math.sin(time * REFLECTION.waveFreq + i * 1.7) * REFLECTION.waveAmp
         + Math.sin(time * REFLECTION.waveFreq2 + i * 4.1) * REFLECTION.waveAmp2

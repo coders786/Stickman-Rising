@@ -568,6 +568,11 @@ export class DamageSurface {
   cols = 1
   rows = 1
   private seen = new Uint8Array(1)
+  /** union-membership stamps (F15): prev+cur counted UNIQUELY, once */
+  private uSeen = new Uint8Array(1)
+  private uStamp = 0
+  /** scratch: unique prev∪cur indices in ascending (row-major) order */
+  private unionList: number[] = []
   private cur: number[] = []
   private prev: number[] = []
   private stamp = 1
@@ -577,8 +582,11 @@ export class DamageSurface {
     this.cols = Math.max(1, Math.ceil(cssW / this.cell))
     this.rows = Math.max(1, Math.ceil(cssH / this.cell))
     this.seen = new Uint8Array(this.cols * this.rows)
+    this.uSeen = new Uint8Array(this.cols * this.rows)
+    this.uStamp = 0
     this.cur.length = 0
     this.prev.length = 0
+    this.unionList.length = 0
     this.stamp = 1
     this.full = true
   }
@@ -594,28 +602,65 @@ export class DamageSurface {
       this.stamp = 1
     }
     const total = this.cols * this.rows
-    if (this.full || this.prev.length + this.cur.length > total * 0.58) {
+    // UNIQUE prev∪CUR COVERAGE (plan F15): the old test summed both list
+    // lengths, so the same cells touched across two frames counted twice —
+    // identical 32% coverage summed to 64% and falsely selected a full
+    // clear (the duplicate-area probe witness).
+    this.uStamp = (this.uStamp + 1) & 255
+    if (!this.uStamp) {
+      this.uSeen.fill(0)
+      this.uStamp = 1
+    }
+    const us = this.uStamp
+    const ul = this.unionList
+    ul.length = 0
+    for (const list of [this.prev, this.cur]) {
+      for (let i = 0; i < list.length; i++) {
+        const idx = list[i]
+        if (this.uSeen[idx] !== us) {
+          this.uSeen[idx] = us
+          ul.push(idx)
+        }
+      }
+    }
+    if (this.full || ul.length > total * 0.58) {
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.clearRect(0, 0, ctx.canvas.width || cssW * dpr, ctx.canvas.height || cssH * dpr)
       ctx.restore()
       this.full = false
     } else {
+      // Clear each unique cell ONCE, merged into horizontal runs: row-major
+      // ascending order means consecutive indices in one row are adjacent
+      // cells, so N contiguous cells become ONE clearRect with identical
+      // fractional-DPR floor/ceil coverage.
       const s = this.cell
       const cols = this.cols
+      ul.sort((a, b) => a - b)
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      for (const list of [this.prev, this.cur]) {
-        for (let i = 0; i < list.length; i++) {
-          const idx = list[i]
-          const c = idx % cols
-          const r = (idx / cols) | 0
-          const x0 = Math.floor(c * s * dpr)
-          const y0 = Math.floor(r * s * dpr)
-          const x1 = Math.ceil((c + 1) * s * dpr)
-          const y1 = Math.ceil((r + 1) * s * dpr)
-          ctx.clearRect(x0, y0, x1 - x0, y1 - y0)
+      let i = 0
+      while (i < ul.length) {
+        // row-major ascending indices: consecutive indices inside one row
+        // ARE consecutive columns — track the last INDEX, then derive its
+        // column (tracking a column counter against the index broke every
+        // row after the first).
+        const startIdx = ul[i]
+        const r = (startIdx / cols) | 0
+        let lastIdx = startIdx
+        let j = i + 1
+        while (j < ul.length && ((ul[j] / cols) | 0) === r && ul[j] === lastIdx + 1) {
+          lastIdx = ul[j]
+          j++
         }
+        const c0 = startIdx % cols
+        const c1 = lastIdx % cols
+        const x0 = Math.floor(c0 * s * dpr)
+        const y0 = Math.floor(r * s * dpr)
+        const x1 = Math.ceil((c1 + 1) * s * dpr)
+        const y1 = Math.ceil((r + 1) * s * dpr)
+        ctx.clearRect(x0, y0, x1 - x0, y1 - y0)
+        i = j
       }
       ctx.restore()
     }
