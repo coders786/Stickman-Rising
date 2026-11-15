@@ -38,7 +38,7 @@
 
 import { StormEngine } from './storm'
 import type { BackgroundRenderer, BgCam, Quality } from './background'
-import { windAt, buildLunarSurface } from './horizon-strata'
+import { windAt, buildLunarSurface, SkyVaultCache } from './horizon-strata'
 import { Field1D, Burst1D, getParticleLevel } from '../fx/particles1d'
 
 /* ------------------------------- constants ------------------------------- */
@@ -47,13 +47,13 @@ const TAU = Math.PI * 2
 const ARENA_X0 = -150
 const ARENA_X1 = 2750
 const ARENA_W = ARENA_X1 - ARENA_X0
-const DECK_H = 360
+const DECK_H = 380
 /** The whole static environment (deck back edge, inn, rack, cherry,
  * horizon strips, mist) is drawn ENV_BACK world units BEHIND the play
- * line, so the fighter stands in the MIDDLE of the deck — house and
+ * line, so the fighter stands in the MIDDLE of the road — house and
  * trees at the back like mountain.html — instead of glued to the door.
  * Pure draw-time translate: every bake stays exactly as it was. */
-const ENV_BACK = 90
+const ENV_BACK = 110
 
 /** mountain.html framing: horizon .740, vanishing .565/.340 (kept as
  *  ratios — the game camera reproduces them: ground line ≈ .71–.74 h). */
@@ -437,6 +437,9 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   moonCover = 0
   /** static environment sits this many world units behind the play line */
   readonly envOffset = ENV_BACK
+  /** coherence-gated sky vault (bhst): static layers re-render only when
+   *  parallax/time advances — intermediate frames are one 1:1 blit */
+  private skyVault = new SkyVaultCache()
 
   /* clocks + state (update()-owned) */
   private t = 0
@@ -1200,7 +1203,65 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.smokeBox = { x: INN_X + INN_W * 0.3, y: -(U * 0.03 + 30), w: U * 0.3, h: U * 0.3 }
     }
 
+    /* --- structure reflections: the wet deck mirrors the inn/rack/cherry
+     * (mountain.html's reflection atlas) — baked once into the plate, so
+     * the road reads as rain-polished wood at zero per-frame cost. The
+     * sway islands are painted once here for the mirror; drawArena keeps
+     * repainting them live every frame anyway. --- */
+    {
+      const dg = this.deckPlate.getContext('2d')
+      if (dg) {
+        // rest-pose paint of the two scratch islands
+        const rw = this.rack.width
+        const rh = this.rack.height
+        const rg = this.rack.getContext('2d')
+        if (rg && rw > 1) {
+          rg.setTransform(1, 0, 0, 1, 0, 0)
+          rg.clearRect(0, 0, rw, rh)
+          rg.save()
+          rg.translate(rw * 0.5, rh)
+          this.paintRack(rg)
+          rg.restore()
+        }
+        const cw = this.cherry.width
+        const ch = this.cherry.height
+        const cg = this.cherry.getContext('2d')
+        if (cg && cw > 1) {
+          cg.setTransform(1, 0, 0, 1, 0, 0)
+          cg.clearRect(0, 0, cw, ch)
+          cg.save()
+          cg.translate(cw * 0.5, ch)
+          this.paintCherryWood(cg)
+          cg.restore()
+        }
+        // mirror about the structures' contact line, foreshortened the way
+        // a shallow wet floor compresses a reflected silhouette
+        dg.save()
+        dg.globalAlpha = 0.30
+        dg.translate(0, 3)
+        dg.scale(1, -0.52)
+        if (this.cabin && this.cabin.width > 1) {
+          dg.drawImage(this.cabin, INN_X - ARENA_X0 - this.cabin.width * 0.5, -this.cabinAnchor.y)
+        }
+        if (rw > 1) {
+          dg.drawImage(this.rack, RACK_X - ARENA_X0 - rw * 0.5, this.rackAnchor.y - rh)
+        }
+        if (cw > 1) {
+          dg.drawImage(this.cherry, CHERRY_X - ARENA_X0 - cw * 0.5, this.cherryAnchor.y - ch)
+          dg.drawImage(
+            this.canopy,
+            CHERRY_X - ARENA_X0 - 0.16 * U,
+            this.cherryAnchor.y - U * 0.3,
+            0.32 * U,
+            0.28 * U,
+          )
+        }
+        dg.restore()
+      }
+    }
+
     this.applyQualityToFields()
+    this.skyVault.invalidate()
   }
 
   private cabinAnchor = { x: INN_X, y: 0 }
@@ -1233,11 +1294,29 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     // plinth + steps
     g.fillStyle = '#293843'
     g.fillRect(-w * 0.52, -0.01, w * 1.14, 0.019)
+    // plinth joint notches (mountain.html drawHouse — weathered stone)
+    const pr = mulberry32(9137)
+    g.strokeStyle = '#071018'
+    g.lineWidth = 0.0018
+    for (let i = 0; i < 9; i++) {
+      const nx = -w * 0.5 + i * w * 0.125
+      g.beginPath()
+      g.moveTo(nx, -0.01 + pr() * 0.001)
+      g.lineTo(nx + 0.006, 0.001 + pr() * 0.006)
+      g.stroke()
+    }
     for (let i = 3; i >= 0; i--) {
       const sw = w * (0.18 + i * 0.028)
       const y = 0.003 + i * 0.0035
       g.fillStyle = i % 2 ? '#52616a' : '#34434d'
       g.fillRect(-sw * 0.5, y, sw, 0.004)
+      // lit tread edge (mountain.html front steps)
+      g.strokeStyle = 'rgba(165,196,211,.34)'
+      g.lineWidth = 0.0008
+      g.beginPath()
+      g.moveTo(-sw * 0.5 + 0.004, y + 0.0005)
+      g.lineTo(sw * 0.5 - 0.004, y + 0.0005)
+      g.stroke()
     }
     // walls
     grad = g.createLinearGradient(-w * 0.5, -h, w * 0.6, 0)
@@ -1265,6 +1344,21 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     g.moveTo(-w * 0.5, -h * 0.86)
     g.lineTo(w * 0.5, -h * 0.86)
     g.stroke()
+    g.beginPath()
+    g.moveTo(-w * 0.5, -h * 0.2)
+    g.lineTo(w * 0.5, -h * 0.2)
+    g.stroke()
+    // wall grain rows (mountain.html — weathered horizontal siding)
+    const gr = mulberry32(17000)
+    g.strokeStyle = 'rgba(8,19,29,.58)'
+    g.lineWidth = 0.0010
+    for (let row = 0; row < 11; row++) {
+      const gy = -h * 0.19 + row * h * 0.019
+      g.beginPath()
+      g.moveTo(-w * 0.49, gy)
+      g.lineTo(w * 0.49, gy + (gr() - 0.5) * 0.001)
+      g.stroke()
+    }
     // windows
     for (const [x, y, ww, hh] of [[-w * 0.32, -h * 0.7, w * 0.16, h * 0.39], [w * 0.2, -h * 0.7, w * 0.17, h * 0.39]] as number[][]) {
       g.fillStyle = '#0a0e14'
@@ -1278,6 +1372,23 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       g.fillStyle = '#14232b'
       for (let k = 1; k < 4; k++) g.fillRect(x + (ww * k) / 4 - 0.0008, y, 0.0016, hh)
       g.fillRect(x, y + hh * 0.48, ww, 0.0017)
+      // slatted shutters + sill (mountain.html houseWindows)
+      g.fillStyle = '#17232c'
+      g.fillRect(x - ww * 0.29, y - 0.002, ww * 0.24, hh + 0.004)
+      g.fillRect(x + ww + 0.003, y - 0.002, ww * 0.24, hh + 0.004)
+      g.strokeStyle = 'rgba(130,156,164,.35)'
+      g.lineWidth = 0.0008
+      for (let k = 1; k < 6; k++) {
+        const ly = y + hh * (k / 6)
+        g.beginPath()
+        g.moveTo(x - ww * 0.27, ly)
+        g.lineTo(x - 0.003, ly)
+        g.moveTo(x + ww + 0.005, ly)
+        g.lineTo(x + ww * 1.23, ly)
+        g.stroke()
+      }
+      g.fillStyle = '#6d6048'
+      g.fillRect(x - 0.005, y + hh, ww + 0.010, 0.0025)
     }
     // roof
     grad = g.createLinearGradient(-w * 0.55, -h - r, w * 0.56, -h + 0.02)
@@ -1315,6 +1426,17 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       g.moveTo(left, y - 0.0004)
       g.quadraticCurveTo(0, y - 0.004, right, y - 0.0004)
       g.stroke()
+      // offset tile channels between the rows
+      const n = 4 + row * 2
+      for (let k = 0; k < n; k++) {
+        const xx = left + ((right - left) * (k + 0.5)) / n
+        g.strokeStyle = k % 3 ? 'rgba(5,15,24,.55)' : 'rgba(172,204,217,.29)'
+        g.lineWidth = 0.0009
+        g.beginPath()
+        g.moveTo(xx, y - 0.009)
+        g.quadraticCurveTo(xx + 0.002, y - 0.004, xx + 0.004, y)
+        g.stroke()
+      }
     }
     g.restore()
     g.strokeStyle = '#101d29'
@@ -1332,19 +1454,89 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     g.lineTo(w * 0.18, -h - r * 0.91)
     g.lineTo(w * 0.7, -h + 0.01)
     g.stroke()
+    // gable timber + barred loft vent (mountain.html — closes the
+    // mountain-through-roof gap with structure instead of bare trim)
+    g.strokeStyle = '#172a36'
+    g.lineWidth = 0.0033
+    g.beginPath()
+    g.moveTo(w * 0.035, -h - r * 0.87)
+    g.lineTo(w * 0.035, -h + 0.003)
+    g.moveTo(-w * 0.40, -h)
+    g.lineTo(w * 0.035, -h - r * 0.70)
+    g.lineTo(w * 0.43, -h)
+    g.stroke()
+    g.fillStyle = '#142632'
+    g.fillRect(-w * 0.047, -h - r * 0.38, w * 0.17, r * 0.16)
+    g.fillStyle = '#b6aa7a'
+    for (let k = 0; k < 5; k++) g.fillRect(-w * 0.034 + k * w * 0.032, -h - r * 0.36, w * 0.013, r * 0.12)
     // snow on the ridge
     snowCap(g, [
       [-w * 0.65, -h + 0.007], [-w * 0.51, -h - 0.01], [-w * 0.13, -h - r * 0.97],
       [w * 0.035, -h - r * 1.057], [w * 0.18, -h - r * 0.925], [w * 0.67, -h + 0.004],
     ], 0.0034)
-    // chimney
+    // irregular cool snow on the upper eaves (without burying the tiles)
+    g.fillStyle = 'rgba(178,205,216,.40)'
+    for (let k = 0; k < 6; k++) {
+      const ex = -w * 0.41 + k * w * 0.163
+      g.beginPath()
+      g.ellipse(ex, -h + 0.012, w * 0.030, 0.0016, 0, 0, TAU)
+      g.fill()
+    }
+    // ridge caps + deep brackets under the eaves
+    g.strokeStyle = '#86a4b4'
+    g.lineWidth = 0.0038
+    g.beginPath()
+    g.moveTo(-w * 0.13, -h - r * 0.97)
+    g.lineTo(w * 0.035, -h - r * 1.05)
+    g.lineTo(w * 0.18, -h - r * 0.92)
+    g.stroke()
+    g.strokeStyle = '#0b1721'
+    g.lineWidth = 0.003
+    for (let k = 0; k < 6; k++) {
+      const bx = -w * 0.44 + k * w * 0.174
+      g.beginPath()
+      g.moveTo(bx, -h + 0.008)
+      g.lineTo(bx + 0.008, -h + 0.019)
+      g.lineTo(bx + 0.016, -h + 0.008)
+      g.stroke()
+    }
+    // chimney: brick courses, flue bands and a snow cap on top
     const top = -h - r * 0.85 - 0.03
-    g.fillStyle = '#29353e'
-    poly(g, [
+    const chimPath: [number, number][] = [
       [w * 0.236, -h - r * 0.38], [w * 0.366, -h - r * 0.4], [w * 0.35, -h - r * 0.53],
       [w * 0.336, top + 0.01], [w * 0.27, top + 0.01], [w * 0.252, -h - r * 0.54],
-    ])
+    ]
+    grad = g.createLinearGradient(w * 0.24, 0, w * 0.36, 0)
+    grad.addColorStop(0, '#29353e')
+    grad.addColorStop(0.62, '#54616a')
+    grad.addColorStop(1, '#75838a')
+    g.fillStyle = grad
+    poly(g, chimPath)
     g.fill()
+    g.save()
+    poly(g, chimPath)
+    g.clip()
+    g.lineWidth = 0.0011
+    g.strokeStyle = '#1c2933'
+    for (let row = 0; row < 8; row++) {
+      const by = top + 0.014 + row * 0.007
+      g.beginPath()
+      g.moveTo(w * 0.24, by)
+      g.lineTo(w * 0.37, by)
+      g.stroke()
+      for (let j = 0; j < 3; j++) {
+        const bx = w * (0.245 + j * 0.045 + (row % 2) * 0.022)
+        g.beginPath()
+        g.moveTo(bx, by)
+        g.lineTo(bx, by + 0.007)
+        g.stroke()
+      }
+    }
+    g.restore()
+    g.strokeStyle = '#13232e'
+    g.lineWidth = 0.002
+    poly(g, chimPath)
+    g.stroke()
     g.fillStyle = '#1b2a35'
     poly(g, [[w * 0.23, -h - r * 0.4], [w * 0.37, -h - r * 0.42], [w * 0.37, -h - r * 0.47], [w * 0.25, -h - r * 0.5]])
     g.fill()
@@ -1352,6 +1544,10 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     g.beginPath()
     g.ellipse(w * 0.302, top + 0.011, w * 0.045, 0.003, 0, 0, TAU)
     g.fill()
+    snowCap(g, [
+      [w * 0.240, top - 0.001], [w * 0.263, top - 0.011],
+      [w * 0.345, top - 0.011], [w * 0.365, top - 0.001],
+    ], 0.0028)
     // hanging lantern by the door
     g.strokeStyle = '#121e28'
     g.lineWidth = 0.0022
@@ -1364,6 +1560,24 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     g.beginPath()
     g.ellipse(w * 0.61, -h * 0.51, w * 0.023, h * 0.075, 0, 0, TAU)
     g.fill()
+    // hanging sign board (baked detail, not regenerated per frame)
+    g.fillStyle = '#1c2528'
+    g.fillRect(w * 0.58, -h * 0.60, w * 0.06, h * 0.025)
+    g.fillRect(w * 0.58, -h * 0.44, w * 0.06, h * 0.020)
+    // rain gutter down the left eave
+    g.fillStyle = '#6b5b3e'
+    g.fillRect(-w * 0.57, -h * 0.71, w * 0.05, h * 0.39)
+    g.strokeStyle = '#242b29'
+    g.lineWidth = 0.0012
+    for (let k = 0; k < 3; k++) {
+      const gy = -h * 0.65 + k * h * 0.09
+      g.beginPath()
+      g.moveTo(-w * 0.561, gy)
+      g.lineTo(-w * 0.533, gy + 0.004)
+      g.moveTo(-w * 0.552, gy - 0.004)
+      g.lineTo(-w * 0.548, gy + 0.008)
+      g.stroke()
+    }
     // door (dark; the hearth glow plate paints the warm interior live)
     g.fillStyle = '#080e15'
     g.fillRect(-w * 0.1, -h * 0.78, w * 0.2, h * 0.78)
@@ -1511,96 +1725,114 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     this.moonWorldY = camY + (my - h * 0.5) / zoom
 
     ctx.save()
-    /* 1 — static sky plate (gradient + nebula + comet + far stars) */
-    ctx.drawImage(this.sky, 0, 0, w, h)
+    /* STATIC SKY VAULT — bhst coherence cache: sky plate, star twinkle,
+     * moon, cloud banks, the four ranges, shelf and mist re-render only
+     * when parallax/time actually advances (≥1.4px or 0.22s); every other
+     * frame is a single 1:1 blit. camX/camY are fed at the ranges' parallax
+     * scale (0.42 / 0.0924 vs the cache's 0.075 / 0.035) so invalidation
+     * tracks the fastest layer. The meteor and the storm stay LIVE below —
+     * fast motion must never be cached. */
+    const stormI = this.lightningI()
+    this.skyVault.draw(
+      ctx, w, h,
+      camX * 5.6,
+      camY * 2.64,
+      zoom, t, stormI, stormI > 0.25, this.q,
+      (g) => {
+        /* 1 — static sky plate (gradient + nebula + comet + far stars) */
+        g.drawImage(this.sky, 0, 0, w, h)
 
-    /* 2 — live star twinkle + meteor (1D fields; positions closed-form) */
-    if (getParticleLevel() > 0) {
-      const nStars = this.stars.activeCount()
-      for (let i = 0; i < nStars; i++) {
-        const sx = ((this.stars.a[i] * w + t * 0.6 - camX * 0.03) % (w + 8) + (w + 8)) % (w + 8)
-        const sy = 4 + this.stars.b[i] * h * 0.66
-        const tw = 0.32 + 0.3 * Math.sin(t * (0.7 + (i % 3) * 0.23) + i * 2.1)
-        const sz = 1 + (i % 5 === 0 ? 1.4 : 0.5)
-        ctx.globalAlpha = tw * 0.62
-        const d = sz * 4
-        ctx.drawImage(this.starSprite, sx - d * 0.5, sy - d * 0.5, d, d)
-      }
-      ctx.globalAlpha = 1
-      if (this.meteor.active) {
-        const m = this.meteor
-        const len = Math.hypot(m.vx, m.vy) || 1
-        const tail = Math.sin((m.life / m.maxLife) * Math.PI) * 0.08 * Math.min(w, h)
-        const ex = m.x + m.vx * m.life - (m.vx / len) * tail
-        const ey = m.y + m.vy * m.life - (m.vy / len) * tail
-        const grad = ctx.createLinearGradient(m.x + m.vx * m.life, m.y + m.vy * m.life, ex, ey)
-        grad.addColorStop(0, `rgba(255,250,255,${m.alpha})`)
-        grad.addColorStop(1, 'rgba(135,215,255,0)')
-        ctx.strokeStyle = grad
-        ctx.lineWidth = 1.6
-        ctx.beginPath()
-        ctx.moveTo(m.x + m.vx * m.life, m.y + m.vy * m.life)
-        ctx.lineTo(ex, ey)
-        ctx.stroke()
-      }
+        /* 2 — star twinkle (1D field; positions closed-form) */
+        if (getParticleLevel() > 0) {
+          const nStars = this.stars.activeCount()
+          for (let i = 0; i < nStars; i++) {
+            const sx = ((this.stars.a[i] * w + t * 0.6 - camX * 0.03) % (w + 8) + (w + 8)) % (w + 8)
+            const sy = 4 + this.stars.b[i] * h * 0.66
+            const tw = 0.32 + 0.3 * Math.sin(t * (0.7 + (i % 3) * 0.23) + i * 2.1)
+            const sz = 1 + (i % 5 === 0 ? 1.4 : 0.5)
+            g.globalAlpha = tw * 0.62
+            const d = sz * 4
+            g.drawImage(this.starSprite, sx - d * 0.5, sy - d * 0.5, d, d)
+          }
+          g.globalAlpha = 1
+        }
+
+        /* 4 — the moon (baked halo + lunar disc, one blit) */
+        const moonSize = this.moonHalo.width
+        g.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
+
+        /* 5 — cloud families (deterministic cells, wind drift, cam parallax) */
+        this.drawClouds(g, camX, camY, t, mx, my)
+
+        /* 6 — four mountain range strips (pre-generated over the full
+         *     camera domain — this frame only translates them). Cropped
+         *     source-rect blits: the strips bake ~2400px of camera domain
+         *     but only the visible window is rasterized. */
+        const blitCropped = (img: HTMLCanvasElement, dx: number, dy: number): void => {
+          const sx0 = Math.max(0, Math.ceil(-dx))
+          const sx1 = Math.min(img.width, Math.floor(w - dx))
+          if (sx1 <= sx0) return
+          g.drawImage(img, sx0, 0, sx1 - sx0, img.height, dx + sx0, dy, sx1 - sx0, img.height)
+        }
+        for (let k = 0; k < 4; k++) {
+          const strip = this.strips[k]
+          if (!strip) continue
+          const pk = MOUNTAIN_DEPTHS[k]
+          const pad = Math.max(64, Math.ceil(w * 0.05))
+          const dx = -pad + CAM_MIN * pk - camX * pk
+          const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22 - envShift
+          blitCropped(strip, dx, dy)
+        }
+
+        /* 7 — mid shelf band (pre-generated, light parallax) */
+        {
+          const pad = Math.max(64, Math.ceil(w * 0.05))
+          const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
+          const bandTop = h * 0.64
+          const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2 - envShift
+          blitCropped(this.midStrip, dx, dy)
+        }
+
+        /* 9 — drifting mist banks (analytic positions) */
+        {
+          const wind = this.windNow[2]
+          g.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
+          for (let i = 0; i < 7; i++) {
+            const seed = hashWorld(i, 5522)
+            const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
+            const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
+            const yy = h * (0.692 + seed * 0.052) - envShift
+            const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
+            const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
+            if (x + rx < -40 || x - rx > w + 40) continue
+            g.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
+          }
+          g.globalAlpha = 1
+        }
+      },
+    )
+
+    /* live meteor (a second-long streak must never freeze in the vault) */
+    if (getParticleLevel() > 0 && this.meteor.active) {
+      const m = this.meteor
+      const len = Math.hypot(m.vx, m.vy) || 1
+      const tail = Math.sin((m.life / m.maxLife) * Math.PI) * 0.08 * Math.min(w, h)
+      const ex = m.x + m.vx * m.life - (m.vx / len) * tail
+      const ey = m.y + m.vy * m.life - (m.vy / len) * tail
+      const grad = ctx.createLinearGradient(m.x + m.vx * m.life, m.y + m.vy * m.life, ex, ey)
+      grad.addColorStop(0, `rgba(255,250,255,${m.alpha})`)
+      grad.addColorStop(1, 'rgba(135,215,255,0)')
+      ctx.strokeStyle = grad
+      ctx.lineWidth = 1.6
+      ctx.beginPath()
+      ctx.moveTo(m.x + m.vx * m.life, m.y + m.vy * m.life)
+      ctx.lineTo(ex, ey)
+      ctx.stroke()
     }
 
-    /* 4 — the moon (baked halo + lunar disc, one blit) */
-    const moonSize = this.moonHalo.width
-    ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
-
-    /* 5 — cloud families (deterministic cells, wind drift, cam parallax) */
-    this.drawClouds(ctx, camX, camY, t, mx, my)
-
-    /* 6 — four mountain range strips (pre-generated over the full camera
-     *     domain — this frame only translates them) */
-    /* Cropped blits: strips bake the FULL camera domain (up to ~2400px
-     * wide) but only ~viewport pixels are visible — source-rect blits
-     * keep the raster cost at the visible window (software-canvas FPS). */
-    const blitCropped = (img: HTMLCanvasElement, dx: number, dy: number): void => {
-      const sx0 = Math.max(0, Math.ceil(-dx))
-      const sx1 = Math.min(img.width, Math.floor(w - dx))
-      if (sx1 <= sx0) return
-      ctx.drawImage(img, sx0, 0, sx1 - sx0, img.height, dx + sx0, dy, sx1 - sx0, img.height)
-    }
-    for (let k = 0; k < 4; k++) {
-      const strip = this.strips[k]
-      if (!strip) continue
-      const pk = MOUNTAIN_DEPTHS[k]
-      const pad = Math.max(64, Math.ceil(w * 0.05))
-      const dx = -pad + CAM_MIN * pk - camX * pk
-      const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22 - envShift
-      blitCropped(strip, dx, dy)
-    }
-
-    /* 7 — mid shelf band (pre-generated, light parallax) */
-    {
-      const pad = Math.max(64, Math.ceil(w * 0.05))
-      const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
-      const bandTop = h * 0.64
-      const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2 - envShift
-      blitCropped(this.midStrip, dx, dy)
-    }
-
-    /* 8 — the storm (rain clouds/bolts over the ranges) */
+    /* 8 — the storm (rain clouds/bolts — live over the vault) */
     this.storm.drawSky(ctx)
 
-    /* 9 — drifting mist banks (analytic positions) */
-    {
-      const wind = this.windNow[2]
-      ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
-      for (let i = 0; i < 7; i++) {
-        const seed = hashWorld(i, 5522)
-        const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
-        const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
-        const yy = h * (0.692 + seed * 0.052) - envShift
-        const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
-        const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
-        if (x + rx < -40 || x - rx > w + 40) continue
-        ctx.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
-      }
-      ctx.globalAlpha = 1
-    }
     ctx.restore()
   }
 
