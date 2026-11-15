@@ -38,7 +38,7 @@
 
 import { StormEngine } from './storm'
 import type { BackgroundRenderer, BgCam, Quality } from './background'
-import { windAt, buildLunarSurface, SkyVaultCache } from './horizon-strata'
+import { windAt, buildLunarSurface } from './horizon-strata'
 import { Field1D, Burst1D, getParticleLevel } from '../fx/particles1d'
 
 /* ------------------------------- constants ------------------------------- */
@@ -437,9 +437,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   moonCover = 0
   /** static environment sits this many world units behind the play line */
   readonly envOffset = ENV_BACK
-  /** coherence-gated sky vault (bhst): static layers re-render only when
-   *  parallax/time advances — intermediate frames are one 1:1 blit */
-  private skyVault = new SkyVaultCache()
 
   /* clocks + state (update()-owned) */
   private t = 0
@@ -1170,25 +1167,54 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.cherryAnchor = { x: CHERRY_X, y: 8 }
       void g
       void cg
-      // canopy: blossom rosettes on a small sprite
+      // canopy: mountain.html's blossom CROWN —8 clustered rosette banks
+      // arranged around the branch tips (dy −.155..−.222), not one low
+      // disk: the blossoms crown the top of the tree and the trunk stays
+      // visible below them
       const { c: can, g: cog } = makeCanvas(Math.ceil(0.32 * U), Math.ceil(0.28 * U))
       const br = mulberry32(7731)
       const palette = ['#24182a', '#382740', '#a36884', '#c283a0', '#eab4ca', '#f9d4e4', '#ffeff6', '#fff']
-      for (let i = 0; i < 240; i++) {
-        const ang = br() * TAU
-        const d = Math.sqrt(br())
-        const dx = Math.cos(ang) * d * 0.15
-        const dy = Math.sin(ang) * d * 0.13
-        const bias = dx * 5.2 - dy * 3.2 + (br() - 0.5) * 0.5
-        cog.fillStyle = bias < -0.22 ? palette[0] : bias < 0.25 ? palette[2] : bias < 0.65 ? palette[4] : palette[6]
-        const size = (0.0055 + br() * 0.0075) * U
+      const clusters: [number, number, number, number, number][] = [
+        [-0.072, -0.158, 0.036, 0.025, 28],
+        [-0.048, -0.195, 0.042, 0.028, 36],
+        [-0.015, -0.220, 0.045, 0.028, 42],
+        [0.020, -0.222, 0.044, 0.028, 40],
+        [0.052, -0.198, 0.040, 0.026, 34],
+        [0.070, -0.165, 0.032, 0.022, 24],
+        [-0.028, -0.155, 0.034, 0.020, 22],
+        [0.028, -0.158, 0.034, 0.022, 22],
+      ]
+      // dark blossoms paint first so the lit layers sit on top
+      type Blossom = { x: number; y: number; size: number; rot: number; color: string; layer: number }
+      const blossoms: Blossom[] = []
+      for (const [cx, cy, rx, ry, count] of clusters) {
+        for (let i = 0; i < count; i++) {
+          const ang = br() * TAU
+          const d = Math.sqrt(br())
+          const dx = cx + Math.cos(ang) * d * rx
+          const dy = cy + Math.sin(ang) * d * ry
+          const bias = dx * 5.2 - dy * 3.2 + (br() - 0.5) * 0.5
+          const band = bias < -0.22 ? 0 : bias < 0.25 ? 2 : bias < 0.65 ? 4 : 6
+          blossoms.push({
+            x: 0.16 * U + dx * U * 1.15,
+            y: 0.26 * U + dy * U,
+            size: (0.0055 + br() * 0.0075) * U,
+            rot: br() * TAU,
+            color: palette[band + (br() < 0.5 ? 0 : 1)],
+            layer: bias < 0 ? 0 : bias < 0.45 ? 1 : 2,
+          })
+        }
+      }
+      blossoms.sort((a, b) => a.layer - b.layer)
+      for (const b of blossoms) {
+        cog.fillStyle = b.color
         cog.save()
-        cog.translate(0.16 * U + dx * U, 0.26 * U + dy * U)
-        cog.rotate(br() * TAU)
+        cog.translate(b.x, b.y)
+        cog.rotate(b.rot)
         for (let k = 0; k < 5; k++) {
           cog.rotate(TAU / 5)
           cog.beginPath()
-          cog.ellipse(0, -size * 0.55, size * 0.38, size * 0.58, 0, 0, TAU)
+          cog.ellipse(0, -b.size * 0.55, b.size * 0.38, b.size * 0.58, 0, 0, TAU)
           cog.fill()
         }
         cog.restore()
@@ -1251,7 +1277,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
           dg.drawImage(
             this.canopy,
             CHERRY_X - ARENA_X0 - 0.16 * U,
-            this.cherryAnchor.y - U * 0.3,
+            this.cherryAnchor.y - U * 0.26,
             0.32 * U,
             0.28 * U,
           )
@@ -1261,7 +1287,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     }
 
     this.applyQualityToFields()
-    this.skyVault.invalidate()
   }
 
   private cabinAnchor = { x: INN_X, y: 0 }
@@ -1725,113 +1750,108 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     this.moonWorldY = camY + (my - h * 0.5) / zoom
 
     ctx.save()
-    /* STATIC SKY VAULT — bhst coherence cache: sky plate, star twinkle,
-     * moon, cloud banks, the four ranges, shelf and mist re-render only
-     * when parallax/time actually advances (≥1.4px or 0.22s); every other
-     * frame is a single 1:1 blit. camX/camY are fed at the ranges' parallax
-     * scale (0.42 / 0.0924 vs the cache's 0.075 / 0.035) so invalidation
-     * tracks the fastest layer. The meteor and the storm stay LIVE below —
-     * fast motion must never be cached. */
-    const stormI = this.lightningI()
-    this.skyVault.draw(
-      ctx, w, h,
-      camX * 5.6,
-      camY * 2.64,
-      zoom, t, stormI, stormI > 0.25, this.q,
-      (g) => {
-        /* 1 — static sky plate (gradient + nebula + comet + far stars) */
-        g.drawImage(this.sky, 0, 0, w, h)
+    /* PARALLAX COMPOSITE — every layer is a pre-generated plate baked in
+     * ensure(); each frame only evaluates closed-form positions and blits
+     * (source-rect crops for the full-camera-domain strips). No re-render,
+     * no cache invalidation, no quantized update clock: parallax is
+     * sub-pixel smooth at ANY frame rate and the raster cost is a fixed
+     * set of blits. (The earlier coherence-gated vault re-rendered whole
+     * frames on a 0.22s clock — choppy at high fps and MORE expensive on
+     * its dirty frames — so it was deleted.) */
+    /* 1 — static sky plate (gradient + nebula + comet + far stars) */
+    ctx.drawImage(this.sky, 0, 0, w, h)
 
-        /* 2 — star twinkle (1D field; positions closed-form) */
-        if (getParticleLevel() > 0) {
-          const nStars = this.stars.activeCount()
-          for (let i = 0; i < nStars; i++) {
-            const sx = ((this.stars.a[i] * w + t * 0.6 - camX * 0.03) % (w + 8) + (w + 8)) % (w + 8)
-            const sy = 4 + this.stars.b[i] * h * 0.66
-            const tw = 0.32 + 0.3 * Math.sin(t * (0.7 + (i % 3) * 0.23) + i * 2.1)
-            const sz = 1 + (i % 5 === 0 ? 1.4 : 0.5)
-            g.globalAlpha = tw * 0.62
-            const d = sz * 4
-            g.drawImage(this.starSprite, sx - d * 0.5, sy - d * 0.5, d, d)
-          }
-          g.globalAlpha = 1
-        }
-
-        /* 4 — the moon (baked halo + lunar disc, one blit) */
-        const moonSize = this.moonHalo.width
-        g.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
-
-        /* 5 — cloud families (deterministic cells, wind drift, cam parallax) */
-        this.drawClouds(g, camX, camY, t, mx, my)
-
-        /* 6 — four mountain range strips (pre-generated over the full
-         *     camera domain — this frame only translates them). Cropped
-         *     source-rect blits: the strips bake ~2400px of camera domain
-         *     but only the visible window is rasterized. */
-        const blitCropped = (img: HTMLCanvasElement, dx: number, dy: number): void => {
-          const sx0 = Math.max(0, Math.ceil(-dx))
-          const sx1 = Math.min(img.width, Math.floor(w - dx))
-          if (sx1 <= sx0) return
-          g.drawImage(img, sx0, 0, sx1 - sx0, img.height, dx + sx0, dy, sx1 - sx0, img.height)
-        }
-        for (let k = 0; k < 4; k++) {
-          const strip = this.strips[k]
-          if (!strip) continue
-          const pk = MOUNTAIN_DEPTHS[k]
-          const pad = Math.max(64, Math.ceil(w * 0.05))
-          const dx = -pad + CAM_MIN * pk - camX * pk
-          const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22 - envShift
-          blitCropped(strip, dx, dy)
-        }
-
-        /* 7 — mid shelf band (pre-generated, light parallax) */
-        {
-          const pad = Math.max(64, Math.ceil(w * 0.05))
-          const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
-          const bandTop = h * 0.64
-          const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2 - envShift
-          blitCropped(this.midStrip, dx, dy)
-        }
-
-        /* 9 — drifting mist banks (analytic positions) */
-        {
-          const wind = this.windNow[2]
-          g.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
-          for (let i = 0; i < 7; i++) {
-            const seed = hashWorld(i, 5522)
-            const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
-            const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
-            const yy = h * (0.692 + seed * 0.052) - envShift
-            const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
-            const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
-            if (x + rx < -40 || x - rx > w + 40) continue
-            g.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
-          }
-          g.globalAlpha = 1
-        }
-      },
-    )
-
-    /* live meteor (a second-long streak must never freeze in the vault) */
-    if (getParticleLevel() > 0 && this.meteor.active) {
-      const m = this.meteor
-      const len = Math.hypot(m.vx, m.vy) || 1
-      const tail = Math.sin((m.life / m.maxLife) * Math.PI) * 0.08 * Math.min(w, h)
-      const ex = m.x + m.vx * m.life - (m.vx / len) * tail
-      const ey = m.y + m.vy * m.life - (m.vy / len) * tail
-      const grad = ctx.createLinearGradient(m.x + m.vx * m.life, m.y + m.vy * m.life, ex, ey)
-      grad.addColorStop(0, `rgba(255,250,255,${m.alpha})`)
-      grad.addColorStop(1, 'rgba(135,215,255,0)')
-      ctx.strokeStyle = grad
-      ctx.lineWidth = 1.6
-      ctx.beginPath()
-      ctx.moveTo(m.x + m.vx * m.life, m.y + m.vy * m.life)
-      ctx.lineTo(ex, ey)
-      ctx.stroke()
+    /* 2 — star twinkle + meteor (1D fields; positions closed-form) */
+    if (getParticleLevel() > 0) {
+      const nStars = this.stars.activeCount()
+      for (let i = 0; i < nStars; i++) {
+        const sx = ((this.stars.a[i] * w + t * 0.6 - camX * 0.03) % (w + 8) + (w + 8)) % (w + 8)
+        const sy = 4 + this.stars.b[i] * h * 0.66
+        const tw = 0.32 + 0.3 * Math.sin(t * (0.7 + (i % 3) * 0.23) + i * 2.1)
+        const sz = 1 + (i % 5 === 0 ? 1.4 : 0.5)
+        ctx.globalAlpha = tw * 0.62
+        const d = sz * 4
+        ctx.drawImage(this.starSprite, sx - d * 0.5, sy - d * 0.5, d, d)
+      }
+      ctx.globalAlpha = 1
+      if (this.meteor.active) {
+        const m = this.meteor
+        const len = Math.hypot(m.vx, m.vy) || 1
+        const tail = Math.sin((m.life / m.maxLife) * Math.PI) * 0.08 * Math.min(w, h)
+        const ex = m.x + m.vx * m.life - (m.vx / len) * tail
+        const ey = m.y + m.vy * m.life - (m.vy / len) * tail
+        const grad = ctx.createLinearGradient(m.x + m.vx * m.life, m.y + m.vy * m.life, ex, ey)
+        grad.addColorStop(0, `rgba(255,250,255,${m.alpha})`)
+        grad.addColorStop(1, 'rgba(135,215,255,0)')
+        ctx.strokeStyle = grad
+        ctx.lineWidth = 1.6
+        ctx.beginPath()
+        ctx.moveTo(m.x + m.vx * m.life, m.y + m.vy * m.life)
+        ctx.lineTo(ex, ey)
+        ctx.stroke()
+      }
     }
 
-    /* 8 — the storm (rain clouds/bolts — live over the vault) */
+    /* 3 — the moon (baked halo + lunar disc, one blit) */
+    const moonSize = this.moonHalo.width
+    ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
+
+    /* 4 — cloud families (deterministic cells, wind drift, cam parallax) */
+    this.drawClouds(ctx, camX, camY, t, mx, my)
+
+    /* 5 — four mountain range strips (pre-generated over the full camera
+     *     domain — this frame only translates them). Cropped source-rect
+     *     blits: the strips bake ~2400px of camera domain but only the
+     *     visible window is rasterized. */
+    const blitCropped = (img: HTMLCanvasElement, dx: number, dy: number): void => {
+      const sx0 = Math.max(0, Math.ceil(-dx))
+      const sx1 = Math.min(img.width, Math.floor(w - dx))
+      if (sx1 <= sx0) return
+      ctx.drawImage(img, sx0, 0, sx1 - sx0, img.height, dx + sx0, dy, sx1 - sx0, img.height)
+    }
+    for (let k = 0; k < 4; k++) {
+      const strip = this.strips[k]
+      if (!strip) continue
+      const pk = MOUNTAIN_DEPTHS[k]
+      const pad = Math.max(64, Math.ceil(w * 0.05))
+      const dx = -pad + CAM_MIN * pk - camX * pk
+      const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22 - envShift
+      blitCropped(strip, dx, dy)
+    }
+
+    /* 6 — mid shelf band: the strip's CONTENT bottom is anchored to the
+     *     deck edge (was anchored to the strip's canvas bottom, which
+     *     floated the band 0.26h too high — it cut across the range
+     *     faces and capped the sakura canopy). */
+    {
+      const pad = Math.max(64, Math.ceil(w * 0.05))
+      const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
+      const bandTop = h * 0.64
+      const dy = hy - envShift - (HY_R * h - bandTop) - (camY + 150) * MID_DEPTH * 0.2
+      blitCropped(this.midStrip, dx, dy)
+    }
+
+    /* 7 — the storm (rain clouds/bolts over the ranges) */
     this.storm.drawSky(ctx)
+
+    /* 8 — drifting mist banks: anchored to the horizon (hy), not the raw
+     *     screen — previously they stayed put while the camera swung and
+     *     floated up into the sky above the trees. */
+    {
+      const wind = this.windNow[2]
+      ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
+      for (let i = 0; i < 7; i++) {
+        const seed = hashWorld(i, 5522)
+        const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
+        const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
+        const yy = hy - envShift + h * 0.052 * (seed - 1)
+        const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
+        const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
+        if (x + rx < -40 || x - rx > w + 40) continue
+        ctx.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
+      }
+      ctx.globalAlpha = 1
+    }
 
     ctx.restore()
   }
@@ -1991,10 +2011,13 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         ctx.drawImage(this.cherry, this.cherryAnchor.x - cw * 0.5, this.cherryAnchor.y - ch)
         const U = Math.min(this.h * 0.98, this.w * 0.82)
         const sway = this.chSway * U
-        ctx.drawImage(this.canopy, this.cherryAnchor.x - 0.16 * U + sway, this.cherryAnchor.y - U * 0.3, 0.32 * U, 0.28 * U)
+        // canopy at mountain.html's height: the sprite origin sits at the
+        // tree's ground point (−0.26U), so the clustered blossoms crown
+        // the branch tips and the trunk reads below them
+        ctx.drawImage(this.canopy, this.cherryAnchor.x - 0.16 * U + sway * 0.8, this.cherryAnchor.y - U * 0.26, 0.32 * U, 0.28 * U)
         for (let i = 0; i < 3; i++) {
           const d = U * 0.03 * (0.88 + 0.12 * Math.sin(t * 1.4 + i * 1.7))
-          const ox = [0.052, -0.012, -0.058][i]
+          const ox = [-0.052, 0.012, 0.058][i]
           const oy = [0.172, 0.212, 0.18][i]
           ctx.drawImage(this.orbSprite, this.cherryAnchor.x + ox * U + sway - d * 0.5, this.cherryAnchor.y - oy * U - d * 0.5, d, d)
         }
