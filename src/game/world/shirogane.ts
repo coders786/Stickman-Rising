@@ -478,7 +478,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   /* baked art (rebuild on resize; never built inside update) */
   private built = false
   private sky!: HTMLCanvasElement
-  private aurora!: HTMLCanvasElement
   private moonSpr!: HTMLCanvasElement
   private moonHalo!: HTMLCanvasElement
   private cloudSprites: HTMLCanvasElement[] = []
@@ -488,7 +487,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private mistSprite!: HTMLCanvasElement
   private glowWarm!: HTMLCanvasElement
   private glowCool!: HTMLCanvasElement
-  private vignette!: HTMLCanvasElement
   private glitter!: HTMLCanvasElement
   private strips: (HTMLCanvasElement | null)[] = [null, null, null, null]
   private midStrip!: HTMLCanvasElement
@@ -503,14 +501,14 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private smokeSprite!: HTMLCanvasElement
   private smokeBox: { x: number; y: number; w: number; h: number } | null = null
   private lunar: HTMLCanvasElement | null = null
-  private lanternXs: number[] = []
+  private lanternXs: { x: number; s: number }[] = []
   /** plate headroom above the ground line (props tower into the sky band) */
   private plateHead = 240
 
   /* 1D particle fields (all analytic — zero update cost) */
-  private stars = new Field1D({ count: 120, seed: 1337 })
+  private stars = new Field1D({ count: 48, seed: 1337 })
   private snow = new Field1D({ count: 176, seed: 202611 })
-  private fgMotes = new Field1D({ count: 38, seed: 2026 })
+  private fgMotes = new Field1D({ count: 24, seed: 2026 })
   private cherryPetals = new Field1D({ count: 18, seed: 31415 })
   private embers = new Field1D({ count: 10, seed: 4040 })
   private smokePuffs = new Field1D({ count: 15, seed: 777 })
@@ -541,9 +539,11 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   setQuality(q: Quality): void {
     // draw budget only — never a re-bake (see background.ts contract)
     this.q = q
-    this.snow.density = q === 'low' ? 0.5 : q === 'ultra' ? 1 : 0.8
-    this.stars.density = q === 'low' ? 0.5 : 1
-    this.fgMotes.density = q === 'low' ? 0.45 : 1
+    // per-tier densities tuned against the software-canvas preview: the
+    // governor drops to low quickly, and low must actually get cheaper
+    this.snow.density = q === 'low' ? 0.35 : q === 'medium' ? 0.55 : q === 'ultra' ? 1 : 0.8
+    this.stars.density = q === 'low' ? 0.4 : q === 'medium' ? 0.7 : 0.9
+    this.fgMotes.density = q === 'low' ? 0.3 : q === 'medium' ? 0.6 : 0.9
     this.storm.setQuality?.(q)
   }
 
@@ -565,7 +565,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     this.rackCtx = null
     this.cherryCtx = null
     discard(this.sky)
-    discard(this.aurora)
     discard(this.moonSpr)
     discard(this.moonHalo)
     discard(this.starSprite)
@@ -574,7 +573,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     discard(this.mistSprite)
     discard(this.glowWarm)
     discard(this.glowCool)
-    discard(this.vignette)
     discard(this.glitter)
     discard(this.midStrip)
     discard(this.deckPlate)
@@ -785,36 +783,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.sky = c
     }
 
-    /* --- aurora ribbon (baked band, breathing at draw) --- */
-    {
-      const bw = Math.min(760, w * 0.6)
-      const bh = 190
-      const { c, g } = makeCanvas(bw, bh)
-      const band = (yc: number, amp: number, colA: string, colB: string, phase: number): void => {
-        for (let i = 0; i < 60; i++) {
-          const x = (i / 59) * bw
-          const y = yc + Math.sin((i / 59) * 5.2 + phase) * amp + Math.cos((i / 59) * 9.5 - phase) * amp * 0.4
-          const grad = g.createLinearGradient(x, y - 46, x, y + 30)
-          grad.addColorStop(0, colA)
-          grad.addColorStop(1, colB)
-          g.fillStyle = grad
-          g.fillRect(x - bw / 58, y - 46, bw / 29, 76)
-        }
-      }
-      g.globalCompositeOperation = 'lighter'
-      band(bh * 0.4, 14, 'rgba(24,243,184,0.16)', 'rgba(24,243,184,0)', 0.6)
-      band(bh * 0.62, 12, 'rgba(122,71,235,0.13)', 'rgba(122,71,235,0)', 2.1)
-      g.globalCompositeOperation = 'destination-in'
-      const fade = g.createLinearGradient(0, 0, bw, 0)
-      fade.addColorStop(0, 'rgba(0,0,0,0)')
-      fade.addColorStop(0.2, 'rgba(0,0,0,1)')
-      fade.addColorStop(0.75, 'rgba(0,0,0,1)')
-      fade.addColorStop(1, 'rgba(0,0,0,0)')
-      g.fillStyle = fade
-      g.fillRect(0, 0, bw, bh)
-      this.aurora = c
-    }
-
     /* --- sprites --- */
     {
       let { c, g } = makeCanvas(32, 32)
@@ -904,17 +872,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
           }
           this.cloudSprites.push(cc)
         }
-      /* vignette */
-      {
-        const { c: vc, g: vg } = makeCanvas(w, h)
-        const vr = vg.createRadialGradient(w * 0.54, h * 0.48, Math.min(w, h) * 0.36, w * 0.54, h * 0.48, Math.max(w, h) * 0.75)
-        vr.addColorStop(0, 'rgba(0,1,6,0)')
-        vr.addColorStop(0.55, 'rgba(0,1,6,.46)')
-        vr.addColorStop(1, 'rgba(0,1,5,.82)')
-        vg.fillStyle = vr
-        vg.fillRect(0, 0, w, h)
-        this.vignette = vc
-      }
+      /* (the renderer owns the frame vignette — a second scene-level
+       * vignette was double-darkening the corners for free cost) */
     }
 
     /* --- mountain range strips: ONE bake each over the full camera domain
@@ -947,7 +906,10 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         g.clip()
         const snow = pts.map(([x, y]) => [
           x,
-          (0.559 + k * 0.046 - relief * 0.04 + relief * 0.024 * (smoothNoise((u0 + x / w) * 39, 439 + k * 19) - 0.5)) * h - top,
+          // snowline sits ABOVE the crest base so only real peaks keep
+          // caps — at the old height each range drew a flat-bottomed
+          // white band and the four stacked into zebra stripes
+          (0.514 + k * 0.046 - relief * 0.04 + relief * 0.03 * (smoothNoise((u0 + x / w) * 39, 439 + k * 19) - 0.5)) * h - top,
         ])
         g.fillStyle = ['#86939f', '#808f9b', '#718390', '#5e7380'][k]
         poly(g, [[pts[0][0], 0], ...snow, [pts[pts.length - 1][0], 0]])
@@ -994,10 +956,13 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     /* --- deck plate: mountain wood + one-point perspective fan --- */
     {
       const { c, g } = makeCanvas(ARENA_W, DECK_H)
+      // MOONLIT deck (target-art law: bright ground, deep shadow) — the
+      // light-transport multiply darkens this ~2×, so the albedo must
+      // start mid-tone or contact shadows vanish into black
       const grad = g.createLinearGradient(0, 0, 0, DECK_H)
-      grad.addColorStop(0, '#39434b')
-      grad.addColorStop(0.35, '#262f37')
-      grad.addColorStop(1, '#0d1217')
+      grad.addColorStop(0, '#5d7183')
+      grad.addColorStop(0.35, '#3d4c5a')
+      grad.addColorStop(1, '#1a242e')
       g.fillStyle = grad
       g.fillRect(0, 0, ARENA_W, DECK_H)
       const rr = mulberry32(0x33b8)
@@ -1049,7 +1014,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       // contact AO band under the lip — seats figures standing at y=0
       // against the bright horizon instead of letting them float on it
       const ao = g.createLinearGradient(0, 14, 0, 96)
-      ao.addColorStop(0, 'rgba(3,6,10,.40)')
+      ao.addColorStop(0, 'rgba(3,6,10,.32)')
       ao.addColorStop(1, 'rgba(3,6,10,0)')
       g.fillStyle = ao
       g.fillRect(0, 14, ARENA_W, 82)
@@ -1083,7 +1048,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.stats.propCount = plan.props.length
       this.stats.chunkCount = plan.chunks
       this.plateHead = Math.ceil(U * 0.42)
-      const laneY = [0, 14, 42, 78, 124]
+      const laneY = [0, 14, 42, 70, 106]
       const laneZ = [0, 0.04, 0.12, 0.2, 0.275]
       const build = (front: boolean): HTMLCanvasElement => {
         const { c, g } = makeCanvas(ARENA_W, DECK_H + this.plateHead)
@@ -1095,8 +1060,18 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         for (const p of sorted) {
           const z = laneZ[p.lane]
           const persp = 1 / (1 - z)
-          const s = U * 0.62 * persp * p.scale
+          // near lanes run slightly larger so their tops reach toward the
+          // fighter plane instead of sitting isolated at the frame bottom
+          const s = U * 0.62 * persp * p.scale * (front ? 1.15 : 1)
           const y = laneY[p.lane] + 6
+          // wet-floor reflection: flipped, squashed copy — props read as
+          // standing ON the deck instead of hovering over it
+          g.save()
+          g.globalAlpha = 0.13
+          g.translate(p.x, y + 5)
+          g.scale(s, -s * 0.34)
+          paintProp(g, p.type)
+          g.restore()
           // ground-contact shade
           g.save()
           g.translate(p.x, y + 2)
@@ -1112,7 +1087,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
             radial(g, p.x, y - s * 0.136, s * 0.112, [
               [0, 'rgba(255,205,131,.24)'], [0.3, 'rgba(246,173,92,.09)'], [1, 'rgba(220,137,55,0)'],
             ])
-            if (this.lanternXs.length < 24) this.lanternXs.push(p.x)
+            if (this.lanternXs.length < 24) this.lanternXs.push({ x: p.x, s })
           }
         }
         return c
@@ -1525,14 +1500,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     /* 1 — static sky plate (gradient + nebula + comet + far stars) */
     ctx.drawImage(this.sky, 0, 0, w, h)
 
-    /* 2 — aurora ribbon (baked, breathing) */
-    ctx.globalCompositeOperation = 'screen'
-    ctx.globalAlpha = 0.30 + 0.12 * Math.sin(t * 0.45)
-    ctx.drawImage(this.aurora, w * 0.08 - camX * 0.006, h * 0.1 - camY * 0.02, w * 0.62, h * 0.26)
-    ctx.globalAlpha = 1
-    ctx.globalCompositeOperation = 'source-over'
-
-    /* 3 — live star twinkle + meteor (1D fields; positions closed-form) */
+    /* 2 — live star twinkle + meteor (1D fields; positions closed-form) */
     if (getParticleLevel() > 0) {
       const nStars = this.stars.activeCount()
       for (let i = 0; i < nStars; i++) {
@@ -1572,6 +1540,15 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* 6 — four mountain range strips (pre-generated over the full camera
      *     domain — this frame only translates them) */
+    /* Cropped blits: strips bake the FULL camera domain (up to ~2400px
+     * wide) but only ~viewport pixels are visible — source-rect blits
+     * keep the raster cost at the visible window (software-canvas FPS). */
+    const blitCropped = (img: HTMLCanvasElement, dx: number, dy: number): void => {
+      const sx0 = Math.max(0, Math.ceil(-dx))
+      const sx1 = Math.min(img.width, Math.floor(w - dx))
+      if (sx1 <= sx0) return
+      ctx.drawImage(img, sx0, 0, sx1 - sx0, img.height, dx + sx0, dy, sx1 - sx0, img.height)
+    }
     for (let k = 0; k < 4; k++) {
       const strip = this.strips[k]
       if (!strip) continue
@@ -1579,7 +1556,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       const pad = Math.max(64, Math.ceil(w * 0.05))
       const dx = -pad + CAM_MIN * pk - camX * pk
       const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22
-      ctx.drawImage(strip, dx, dy)
+      blitCropped(strip, dx, dy)
     }
 
     /* 7 — mid shelf band (pre-generated, light parallax) */
@@ -1588,7 +1565,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
       const bandTop = h * 0.64
       const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2
-      ctx.drawImage(this.midStrip, dx, dy)
+      blitCropped(this.midStrip, dx, dy)
     }
 
     /* 8 — the storm (rain clouds/bolts over the ranges) */
@@ -1598,9 +1575,9 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     {
       const wind = this.windNow[2]
       ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 7; i++) {
         const seed = hashWorld(i, 5522)
-        const bx = (i / 12 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
+        const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
         const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
         const yy = h * (0.692 + seed * 0.052)
         const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
@@ -1641,7 +1618,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         const dw = rx * w * 3.1
         const dh = ry * h * 3
         ctx.drawImage(this.cloudSprites[f * 4 + ((i % 4) + 4) % 4], x - dw * 0.5, y - dh * 0.5, dw, dh)
-        if (near) {
+        if (near && this.q !== 'low') {
           ctx.globalAlpha = 0.06 + 0.10 * (1 - this.moonCover)
           ctx.globalCompositeOperation = 'lighter'
           ctx.drawImage(this.cloudSprites[f * 4 + ((i % 4) + 4) % 4], x - dw * 0.5, y - dh * 0.5, dw, dh)
@@ -2009,13 +1986,13 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         const sx = px * w
         const sy = py * h
         if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) continue
-        const orb = i < 9
+        const orb = i < 6
         const d = orb
           ? (4 + this.fgMotes.d[i] * 4.5) * 4.4 * (0.82 + 0.18 * Math.sin(t * 1.4 + this.fgMotes.e[i] * TAU))
           : (2.8 + this.fgMotes.d[i] * 3.8) * 2
         ctx.globalAlpha = 0.5
         if (orb) ctx.drawImage(this.orbSprite, sx - d * 0.5, sy - d * 0.5, d, d)
-        else if (i >= 24) ctx.drawImage(this.bokehSprite, sx - d * 0.5, sy - d * 0.5, d, d)
+        else if (i >= 15) ctx.drawImage(this.bokehSprite, sx - d * 0.5, sy - d * 0.5, d, d)
         else {
           ctx.fillStyle = 'rgba(255,212,230,.74)'
           ctx.beginPath()
@@ -2025,9 +2002,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       }
       ctx.globalAlpha = 1
     }
-
-    /* vignette — the scene's framing plate */
-    ctx.drawImage(this.vignette, 0, 0, w, h)
   }
 
   /* ------------------------- masks + light rig ---------------------------- */
@@ -2090,8 +2064,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const poolA = (0.3 + 0.5 * Math.min(1, 0.6 + li)) * (1 - 0.85 * cov)
     if (poolA > 0.02) {
       const grad = ctx.createLinearGradient(0, 0, 0, 240)
-      grad.addColorStop(0, `rgba(140,168,210,${(0.18 * poolA).toFixed(3)})`)
-      grad.addColorStop(0.5, `rgba(118,148,192,${(0.10 * poolA).toFixed(3)})`)
+      grad.addColorStop(0, `rgba(140,168,210,${(0.24 * poolA).toFixed(3)})`)
+      grad.addColorStop(0.5, `rgba(118,148,192,${(0.13 * poolA).toFixed(3)})`)
       grad.addColorStop(1, 'rgba(100,130,178,0)')
       ctx.globalCompositeOperation = 'lighter'
       ctx.fillStyle = grad
@@ -2115,12 +2089,15 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     ctx.globalAlpha = 0.09
     ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 360, -50, 720, 190)
 
-    /* lantern practicals (bounded: in-view only, drawn from the static list) */
-    ctx.globalAlpha = 0.26
+    /* lantern practicals (bounded: in-view only, sized to the lantern —
+     * a fixed 110px halo around a 60px lantern read as a floating orb) */
+    ctx.globalAlpha = 0.20
     for (let i = 0; i < this.lanternXs.length; i++) {
-      const lx = this.lanternXs[i]
+      const { x: lx, s } = this.lanternXs[i]
       if (lx < viewL - 80 || lx > viewR + 80) continue
-      ctx.drawImage(this.glowWarm, lx - 55, -80, 110, 110)
+      const d = Math.max(56, Math.min(120, s * 0.42))
+      const gy = -s * 0.136
+      ctx.drawImage(this.glowWarm, lx - d * 0.5, gy - d * 0.5, d, d)
     }
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
