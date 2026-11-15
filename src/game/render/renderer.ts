@@ -234,6 +234,11 @@ export class Renderer {
     // projectiles
     projectiles.draw(ctx, time)
 
+    // FOREGROUND PROPS — the near-lane plate occludes fighters, so the
+    // actor reads as standing BETWEEN the backdrop and the dressing
+    // instead of pasted on top of the whole scene.
+    bg.drawFront?.(ctx)
+
     // additive FX (trails, HDR motion lines, particles, rings, ghosts)
     fx.drawAdditive(ctx, time)
 
@@ -412,6 +417,20 @@ export class Renderer {
         a.globalCompositeOperation = 'copy'
         a.drawImage(ctx.canvas, 0, 0, cw, ch, 0, 0, sw, sh)
         a.globalCompositeOperation = 'source-over'
+        // SELECTIVE: square the low-res frame (A×A) before it blooms —
+        // mid-tones fall away quadratically and only genuine highlights
+        // (moon, practicals, emissives) survive into the additive pass.
+        // Without this the pass adds ~24% of the WHOLE frame back over
+        // itself — a flat veil that washes out bright scenes.
+        const bSq = this.bloomB!.getContext('2d')
+        if (bSq) {
+          bSq.globalCompositeOperation = 'copy'
+          bSq.drawImage(a.canvas, 0, 0)
+          bSq.globalCompositeOperation = 'source-over'
+          a.globalCompositeOperation = 'multiply'
+          a.drawImage(this.bloomB!, 0, 0)
+          a.globalCompositeOperation = 'source-over'
+        }
         // Pre-upsample once into the 1:1 native plate so the per-frame
         // composite hits the unscaled 1:1 SIMD 'lighter' fast path
         // (~1.2ms vs ~5.9ms for a scaled blit).

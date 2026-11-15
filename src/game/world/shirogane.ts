@@ -494,6 +494,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private midStrip!: HTMLCanvasElement
   private deckPlate!: HTMLCanvasElement
   private propsPlate!: HTMLCanvasElement
+  private propsFront!: HTMLCanvasElement
   private wetPlate!: HTMLCanvasElement
   private cabin!: HTMLCanvasElement
   private rack!: HTMLCanvasElement
@@ -578,6 +579,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     discard(this.midStrip)
     discard(this.deckPlate)
     discard(this.propsPlate)
+    discard(this.propsFront)
     discard(this.wetPlate)
     discard(this.cabin)
     discard(this.rack)
@@ -850,16 +852,19 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       ;({ c, g } = makeCanvas(128, 128))
       radial(g, 64, 64, 63, [[0, 'rgba(255,250,255,.95)'], [0.4, 'rgba(230,240,255,.5)'], [1, 'rgba(210,228,255,0)']])
       this.glitter = c
-      /* moon: halo rings + procedural lunar disc (bhst bake) */
-      const moonR = Math.max(64, Math.min(170, Math.min(w, h) * 0.148))
-      const haloR = moonR * 2.25
+      /* moon: halo rings + procedural lunar disc (bhst bake).
+       * Sized/dimmed for the game frame: the source's disc was a
+       * landscape focal point, but here it sits behind the HUD and feeds
+       * the shaft/bloom passes — at 0.148·min it blew the whole sky out. */
+      const moonR = Math.max(56, Math.min(132, Math.min(w, h) * 0.105))
+      const haloR = moonR * 2.1
       const size = Math.ceil(haloR * 2 + 12)
       ;({ c, g } = makeCanvas(size, size))
       const cx = size * 0.5
       const halo = g.createRadialGradient(cx, cx, moonR * 0.98, cx, cx, haloR)
       for (const [at, col] of [
-        [0, 'rgba(235,246,255,.36)'], [0.1, 'rgba(174,214,241,.21)'], [0.31, 'rgba(98,162,215,.1)'],
-        [0.5, 'rgba(126,198,177,.065)'], [0.61, 'rgba(218,190,134,.055)'], [0.72, 'rgba(209,131,165,.035)'], [1, 'rgba(60,95,120,0)'],
+        [0, 'rgba(235,246,255,.26)'], [0.1, 'rgba(174,214,241,.15)'], [0.31, 'rgba(98,162,215,.07)'],
+        [0.5, 'rgba(126,198,177,.046)'], [0.61, 'rgba(218,190,134,.039)'], [0.72, 'rgba(209,131,165,.025)'], [1, 'rgba(60,95,120,0)'],
       ] as [number, string][]) halo.addColorStop(at, col)
       g.fillStyle = halo
       g.beginPath()
@@ -930,7 +935,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
           const u = u0 + px / w
           pts.push([px, ridgeHeight(u, k, relief) * h - top])
         }
-        const gray = [79, 62, 46, 31][k]
+        const gray = [62, 50, 39, 27][k]
         const grad = g.createLinearGradient(0, 0, 0, bandH)
         grad.addColorStop(0, `rgb(${gray},${gray + 8},${gray + 14})`)
         grad.addColorStop(1, `rgb(${(gray * 0.6) | 0},${(gray * 0.6 + 8) | 0},${(gray * 0.6 + 15) | 0})`)
@@ -944,7 +949,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
           x,
           (0.559 + k * 0.046 - relief * 0.04 + relief * 0.024 * (smoothNoise((u0 + x / w) * 39, 439 + k * 19) - 0.5)) * h - top,
         ])
-        g.fillStyle = ['#9ba9b2', '#95a4af', '#8597a4', '#718693'][k]
+        g.fillStyle = ['#86939f', '#808f9b', '#718390', '#5e7380'][k]
         poly(g, [[pts[0][0], 0], ...snow, [pts[pts.length - 1][0], 0]])
         g.fill()
         g.strokeStyle = `rgba(8,15,23,${0.18 + k * 0.02})`
@@ -1041,8 +1046,15 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       lip.addColorStop(1, '#0d1417')
       g.fillStyle = lip
       g.fillRect(0, 0, ARENA_W, 26)
+      // contact AO band under the lip — seats figures standing at y=0
+      // against the bright horizon instead of letting them float on it
+      const ao = g.createLinearGradient(0, 14, 0, 96)
+      ao.addColorStop(0, 'rgba(3,6,10,.40)')
+      ao.addColorStop(1, 'rgba(3,6,10,0)')
+      g.fillStyle = ao
+      g.fillRect(0, 14, ARENA_W, 82)
       // snow dusting along the back edge (the scene is a winter night)
-      g.strokeStyle = 'rgba(190,206,214,.4)'
+      g.strokeStyle = 'rgba(176,192,202,.26)'
       g.lineWidth = 2.2
       g.beginPath()
       for (let x = 0; x <= ARENA_W; x += 40) g.lineTo(x, 6 + Math.sin(x * 0.05) * 2)
@@ -1059,9 +1071,13 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.deckPlate = c
     }
 
-    /* --- horizon props plate: the ENTIRE bounded horizon, once ---
-     * Headroom: props rise above the ground line, so the plate carries
-     * `plateHead` px of sky band and is blitted at world y = -plateHead. */
+    /* --- horizon props plates: the ENTIRE bounded horizon, baked once ---
+     * Two plates: the BACK plate (lanes 0–2) draws with the arena, before
+     * entities; the FRONT plate (lanes 3–4) draws AFTER entities via
+     * drawFront(), so near dressing occludes fighters — the actor reads as
+     * standing between the backdrop and the foreground. Headroom: props
+     * rise above the ground line, so each plate carries `plateHead` px of
+     * sky band and is blitted at world y = -plateHead. */
     {
       const plan = planHorizon()
       this.stats.propCount = plan.props.length
@@ -1069,35 +1085,41 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.plateHead = Math.ceil(U * 0.42)
       const laneY = [0, 14, 42, 78, 124]
       const laneZ = [0, 0.04, 0.12, 0.2, 0.275]
-      const { c, g } = makeCanvas(ARENA_W, DECK_H + this.plateHead)
-      g.translate(-ARENA_X0, this.plateHead)
-      // draw far lanes first (lane 0 nearest the horizon = smallest y)
-      const sorted = plan.props.slice().sort((a, b) => a.lane - b.lane)
-      this.lanternXs = []
-      for (const p of sorted) {
-        const z = laneZ[p.lane]
-        const persp = 1 / (1 - z)
-        const s = U * 0.62 * persp * p.scale
-        const y = laneY[p.lane] + 6
-        // ground-contact shade
-        g.save()
-        g.translate(p.x, y + 2)
-        g.scale(1, 0.16)
-        radial(g, 0, 0, s * 0.08, [[0, 'rgba(2,7,13,.54)'], [1, 'rgba(2,7,13,0)']])
-        g.restore()
-        g.save()
-        g.translate(p.x, y)
-        g.scale(s, s)
-        paintProp(g, p.type)
-        g.restore()
-        if (p.type === 'lantern') {
-          radial(g, p.x, y - s * 0.136, s * 0.112, [
-            [0, 'rgba(255,205,131,.24)'], [0.3, 'rgba(246,173,92,.09)'], [1, 'rgba(220,137,55,0)'],
-          ])
-          if (this.lanternXs.length < 24) this.lanternXs.push(p.x)
+      const build = (front: boolean): HTMLCanvasElement => {
+        const { c, g } = makeCanvas(ARENA_W, DECK_H + this.plateHead)
+        g.translate(-ARENA_X0, this.plateHead)
+        // draw far lanes first within the plate (smallest y on top order)
+        const sorted = plan.props
+          .filter((p) => (front ? p.lane >= 3 : p.lane <= 2))
+          .sort((a, b) => a.lane - b.lane)
+        for (const p of sorted) {
+          const z = laneZ[p.lane]
+          const persp = 1 / (1 - z)
+          const s = U * 0.62 * persp * p.scale
+          const y = laneY[p.lane] + 6
+          // ground-contact shade
+          g.save()
+          g.translate(p.x, y + 2)
+          g.scale(1, 0.16)
+          radial(g, 0, 0, s * 0.08, [[0, 'rgba(2,7,13,.54)'], [1, 'rgba(2,7,13,0)']])
+          g.restore()
+          g.save()
+          g.translate(p.x, y)
+          g.scale(s, s)
+          paintProp(g, p.type)
+          g.restore()
+          if (p.type === 'lantern') {
+            radial(g, p.x, y - s * 0.136, s * 0.112, [
+              [0, 'rgba(255,205,131,.24)'], [0.3, 'rgba(246,173,92,.09)'], [1, 'rgba(220,137,55,0)'],
+            ])
+            if (this.lanternXs.length < 24) this.lanternXs.push(p.x)
+          }
         }
+        return c
       }
-      this.propsPlate = c
+      this.lanternXs = []
+      this.propsPlate = build(false)
+      this.propsFront = build(true)
     }
 
     /* --- wet plate (reflection band + door column) --- */
@@ -1505,7 +1527,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* 2 — aurora ribbon (baked, breathing) */
     ctx.globalCompositeOperation = 'screen'
-    ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 0.45)
+    ctx.globalAlpha = 0.30 + 0.12 * Math.sin(t * 0.45)
     ctx.drawImage(this.aurora, w * 0.08 - camX * 0.006, h * 0.1 - camY * 0.02, w * 0.62, h * 0.26)
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
@@ -1575,7 +1597,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     /* 9 — drifting mist banks (analytic positions) */
     {
       const wind = this.windNow[2]
-      ctx.globalAlpha = 0.16 + 0.06 * Math.sin(t * 0.11)
+      ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
       for (let i = 0; i < 12; i++) {
         const seed = hashWorld(i, 5522)
         const bx = (i / 12 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
@@ -1620,7 +1642,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         const dh = ry * h * 3
         ctx.drawImage(this.cloudSprites[f * 4 + ((i % 4) + 4) % 4], x - dw * 0.5, y - dh * 0.5, dw, dh)
         if (near) {
-          ctx.globalAlpha = 0.1 + 0.16 * (1 - this.moonCover)
+          ctx.globalAlpha = 0.06 + 0.10 * (1 - this.moonCover)
           ctx.globalCompositeOperation = 'lighter'
           ctx.drawImage(this.cloudSprites[f * 4 + ((i % 4) + 4) % 4], x - dw * 0.5, y - dh * 0.5, dw, dh)
           ctx.globalCompositeOperation = 'source-over'
@@ -1658,13 +1680,14 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const hy2 = -Math.min(this.h * 0.16, 130)
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = 0.5 + 0.14 * flick
-    ctx.drawImage(this.glowWarm, hx - 130, hy2 - 110, 260, 220)
-    ctx.globalAlpha = 0.3 * flick
-    ctx.drawImage(this.glowWarm, hx - 60, -70, 120, 120)
+    ctx.globalAlpha = 0.30 + 0.10 * flick
+    ctx.drawImage(this.glowWarm, hx - 110, hy2 - 95, 220, 190)
+    ctx.globalAlpha = 0.16 * flick
+    ctx.drawImage(this.glowWarm, hx - 50, -60, 100, 100)
     ctx.restore()
-    // door slab
-    ctx.fillStyle = `rgba(255,${(200 * flick) | 0},120,${0.75 + 0.2 * flick})`
+    // door slab (warm amber — stacked additive glows used to saturate it
+    // to a white rectangle)
+    ctx.fillStyle = `rgba(255,${(172 * flick) | 0},88,${0.55 + 0.18 * flick})`
     ctx.fillRect(hx - 22, -78, 44, 78)
     ctx.fillStyle = '#080e15'
     ctx.fillRect(hx - 26, -84, 52, 8)
@@ -1775,6 +1798,18 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* birds (world coords, painted on the sky side of the arena pass) */
     for (const b of this.birds) this.paintBird(ctx, b, t)
+  }
+
+  /** FOREGROUND pass (called by the renderer AFTER entities): the near-lane
+   *  plate (lanes 3–4) occludes fighters — depth without per-prop sorting,
+   *  still fully pre-generated. */
+  drawFront(ctx: CanvasRenderingContext2D): void {
+    this.ensure()
+    const cam = this.lastCam
+    const zoom = cam.zoom > 0 ? cam.zoom : 1
+    const viewL = cam.x - (this.w / zoom) * 0.6
+    const viewR = cam.x + (this.w / zoom) * 0.6
+    this.blit(ctx, this.propsFront, ARENA_X0, -this.plateHead, viewL, viewR)
   }
 
   private rackCtx: CanvasRenderingContext2D | null = null
@@ -2011,8 +2046,12 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     ctx.save()
     ctx.fillStyle = '#000'
     ctx.fillRect(0, 0, w, h)
+    // dim mask source: the shaft smear multiplies this 5–9× additively,
+    // so the full-strength halo used to veil the entire sky
     const moonSize = this.moonHalo.width
+    ctx.globalAlpha = 0.45
     ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
+    ctx.globalAlpha = 1
     // silhouettes: the strips are already near-black (rgb 31..79) over the
     // black fill — they occlude the moon halo without an extra pass
     for (let k = 0; k < 4; k++) {
@@ -2051,8 +2090,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const poolA = (0.3 + 0.5 * Math.min(1, 0.6 + li)) * (1 - 0.85 * cov)
     if (poolA > 0.02) {
       const grad = ctx.createLinearGradient(0, 0, 0, 240)
-      grad.addColorStop(0, `rgba(140,168,210,${(0.3 * poolA).toFixed(3)})`)
-      grad.addColorStop(0.5, `rgba(118,148,192,${(0.16 * poolA).toFixed(3)})`)
+      grad.addColorStop(0, `rgba(140,168,210,${(0.18 * poolA).toFixed(3)})`)
+      grad.addColorStop(0.5, `rgba(118,148,192,${(0.10 * poolA).toFixed(3)})`)
       grad.addColorStop(1, 'rgba(100,130,178,0)')
       ctx.globalCompositeOperation = 'lighter'
       ctx.fillStyle = grad
@@ -2060,27 +2099,28 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       ctx.globalCompositeOperation = 'source-over'
     }
 
-    /* moon glitter lane (two baked blits, micro-wobble) */
+    /* moon glitter lane (two baked blits, micro-wobble) — kept subtle:
+     * at full strength it read as white blobs sitting on the deck */
     ctx.globalCompositeOperation = 'lighter'
-    const glA = (0.4 + 0.2 * li) * (1 - 0.7 * cov)
+    const glA = (0.20 + 0.10 * li) * (1 - 0.7 * cov)
     const w1 = Math.sin(t * 2.1) * 3
     ctx.globalAlpha = glA
-    ctx.drawImage(this.glitter, moonWorldX - 150 + w1, 6, 300, 150)
+    ctx.drawImage(this.glitter, moonWorldX - 120 + w1, 10, 240, 110)
     ctx.globalAlpha = glA * 0.5
-    ctx.drawImage(this.glitter, moonWorldX - 150 - w1, 14, 300, 130)
+    ctx.drawImage(this.glitter, moonWorldX - 120 - w1, 16, 240, 96)
 
     /* door practical: warm pool + wide bounce (breathing with flicker) */
-    ctx.globalAlpha = 0.4 + 0.12 * this.flicker
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 240, -140, 480, 300)
-    ctx.globalAlpha = 0.16
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 420, -60, 840, 220)
+    ctx.globalAlpha = 0.24 + 0.08 * this.flicker
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 200, -120, 400, 260)
+    ctx.globalAlpha = 0.09
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 360, -50, 720, 190)
 
     /* lantern practicals (bounded: in-view only, drawn from the static list) */
-    ctx.globalAlpha = 0.5
+    ctx.globalAlpha = 0.26
     for (let i = 0; i < this.lanternXs.length; i++) {
       const lx = this.lanternXs[i]
       if (lx < viewL - 80 || lx > viewR + 80) continue
-      ctx.drawImage(this.glowWarm, lx - 70, -96, 140, 140)
+      ctx.drawImage(this.glowWarm, lx - 55, -80, 110, 110)
     }
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'

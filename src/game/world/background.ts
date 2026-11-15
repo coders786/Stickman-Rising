@@ -65,6 +65,10 @@ export interface BackgroundRenderer {
   lightningAz():number
   drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
   drawArena(ctx:CanvasRenderingContext2D):void
+  /** OPTIONAL foreground pass — world-space, drawn AFTER the entities so
+   *  near-lane dressing occludes fighters (the "between things" depth
+   *  layer). Backgrounds without a front layer simply omit it. */
+  drawFront?(ctx:CanvasRenderingContext2D):void
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** moon-shaft occlusion source for the renderer's god-ray pass */
   drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam):void
