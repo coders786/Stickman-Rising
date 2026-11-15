@@ -501,7 +501,7 @@ export default function Home() {
               <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">LEVEL</div>
                 <div className="flex gap-2">
-                  {([['zen-night','MOONLIT ZEN'],['rooftop','NEON ROOFTOP']] as const).map(([id,label]) => (
+                  {([['zen-night','SHIROGANE HORIZON'],['rooftop','NEON ROOFTOP']] as const).map(([id,label]) => (
                     <Button key={id} variant="outline" className={`flex-1 font-black tracking-widest ${settings.level === id ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, level: id })) }}>{label}</Button>
                   ))}
                 </div>

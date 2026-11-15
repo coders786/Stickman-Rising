@@ -11,7 +11,8 @@ import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground, type BackgroundRenderer } from './world/background'
-import { ZenNightBackground } from './world/zen-night'
+import { ShiroganeHorizonBackground } from './world/shirogane'
+import { cycleParticleLevel, getParticleLevel } from './fx/particles1d'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
 import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
@@ -160,7 +161,7 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground('high',this.storm)
+  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ShiroganeHorizonBackground(this.storm) : new CyberBackground('high',this.storm)
   /** which level the current bg was built for — applySettings rebuilds on
    *  mismatch, so the saved/default stage actually loads at startup (the
    *  old levelChanged check compared settings-to-settings and silently
@@ -543,7 +544,7 @@ export class Game {
     // — the self-inflicted "hangs when enemies appear" loop.
     if (levelChanged) {
       this.storm.setQuality?.(s.quality)
-      this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      this.bg = s.level==='zen-night' ? new ShiroganeHorizonBackground(this.storm) : new CyberBackground(s.quality,this.storm)
       syncBgQuality(this.bg, s.quality)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
@@ -707,6 +708,10 @@ export class Game {
 
     const ctx = this.ctx
     if (!ctx) return
+
+    // particle toggle (B): OFF → LOW → FULL — raw physical edge, consumed
+    // once per render (cleared by endRenderFrame at the bottom of frame())
+    if (this.input.rawPressed('KeyB')) cycleParticleLevel()
 
     if (this.phase === 'paused' || editFrozen) {
       // frozen frame, HUD still drawn (edit = pose-editor authoring freeze).
@@ -1541,6 +1546,7 @@ export class Game {
       abilityReady: p.energy >= p.sword.ability.cost,
       fps: this.fps,
       showFps: this.settings.showFps,
+      particleLevel: getParticleLevel(),
       runTime: this.runTime,
       attract: this.phase === 'attract',
     }

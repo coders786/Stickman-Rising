@@ -1,5 +1,5 @@
 /**
- * Horizon-Strata bridge for world backgrounds (`ZenNightBackground` & `CyberBackground`).
+ * Horizon-Strata bridge for world backgrounds (`ShiroganeHorizonBackground` & `CyberBackground`).
  * Re-exports BHST viewport coherence cache, world-frustum sub-rect blitter,
  * and Moonlit Sakura Sanctuary optics/shadow/damage-lattice engine primitives.
  */

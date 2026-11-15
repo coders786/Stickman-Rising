@@ -49,6 +49,8 @@ export interface HudState {
   abilityReady: boolean
   fps: number
   showFps: boolean
+  /** particle system level (0 OFF / 1 LOW / 2 FULL) — B toggles in-game */
+  particleLevel: number
   runTime: number
   attract: boolean
 }
@@ -121,7 +123,8 @@ export class HUD {
       ctx.font = `12px ${MONO}`
       ctx.fillStyle = 'rgba(180,200,210,0.8)'
       ctx.textAlign = 'right'
-      ctx.fillText(`${Math.round(s.fps)} FPS`, w - 14, h - 14)
+      const fxLabel = (['OFF', 'LOW', 'FULL'] as const)[s.particleLevel] ?? 'FULL'
+      ctx.fillText(`${Math.round(s.fps)} FPS · FX ${fxLabel} [B]`, w - 14, h - 14)
       ctx.restore()
     }
   }

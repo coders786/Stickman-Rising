@@ -12,6 +12,7 @@ import { makeFighterGeom, solveFighter3D, drawFighter3D } from '../anim/rig3d'
 import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
 import { LightningSystem, RayOpts, RayWorld } from './lightning'
+import { getParticleLevel } from './particles1d'
 
 /* ------------------------------------------------------------------ */
 
@@ -158,6 +159,48 @@ const TRAIL_N = 26
 const echoGeom = makeFighterGeom()
 const aiPose = makePose()
 
+/* ------------------------------------------------------------------ *
+ * FLASH GLOW SPRITE CACHE (graphics + GC optimization).
+ * Impact flashes used to build a fresh radial gradient per flash per
+ * frame (native object + stop parsing). The gradient's shape never
+ * changes — only its overall opacity — so each color is baked ONCE
+ * into a 64px sprite at k=1 stops and reused via globalAlpha=k. The
+ * cache is bounded (FIFO, 32 entries) and evicted canvases are shrunk
+ * so the backing store is actually released.
+ * ------------------------------------------------------------------ */
+const FLASH_GLOW_MAX = 32
+const flashGlowCache = new Map<string, HTMLCanvasElement>()
+
+function flashGlowSprite(color: string): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null
+  const hit = flashGlowCache.get(color)
+  if (hit) return hit
+  if (flashGlowCache.size >= FLASH_GLOW_MAX) {
+    const oldest = flashGlowCache.keys().next().value
+    if (oldest !== undefined) {
+      const old = flashGlowCache.get(oldest)
+      if (old) {
+        old.width = 1
+        old.height = 1
+      }
+      flashGlowCache.delete(oldest)
+    }
+  }
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 64
+  const g = c.getContext('2d')
+  if (!g) return null
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, rgba('#ffffff', 0.95))
+  grad.addColorStop(0.35, rgba(color, 0.55))
+  grad.addColorStop(1, rgba(color, 0))
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  flashGlowCache.set(color, c)
+  return c
+}
+
 export class FX {
   private particles: Particle[] = []
   private pFree: Particle[] = []
@@ -243,6 +286,9 @@ export class FX {
   /* ---------------- particles ---------------- */
 
   private nextParticle(): Particle | null {
+    // particle toggle (user-facing): OFF rejects every spawn at the gate,
+    // so the pools never even grow while particles are disabled
+    if (getParticleLevel() === 0) return null
     let p = this.pFree.pop()
     if (!p) {
       if (this.particles.length >= MAX_PARTICLES) return null
@@ -288,6 +334,8 @@ export class FX {
 
   /** radial burst */
   burst(x: number, y: number, count: number, color: string, speed = 260, life = 0.5, type: PType = 'dot'): void {
+    // LOW keeps impact feedback (dot) but drops the dense ambient types
+    if (getParticleLevel() === 1 && (type === 'smoke' || type === 'shard' || type === 'ember')) return
     const n = this.scaleCount(count)
     for (let i = 0; i < n; i++) {
       const p = this.nextParticle()
@@ -309,6 +357,7 @@ export class FX {
 
   /** rising embers / element motes */
   embers(x: number, y: number, count: number, color: string, spread = 40): void {
+    if (getParticleLevel() < 2) return // ambient motes: FULL only
     const n = this.scaleCount(count)
     for (let i = 0; i < n; i++) {
       const p = this.nextParticle()
@@ -329,6 +378,7 @@ export class FX {
 
   /** smoke / dust puff */
   dust(x: number, y: number, count: number, color = '#3a4756', up = -60): void {
+    if (getParticleLevel() < 2) return // dense puff: FULL only
     const n = this.scaleCount(count)
     for (let i = 0; i < n; i++) {
       const p = this.nextParticle()
@@ -939,6 +989,7 @@ export class FX {
     }
     // Solid, spinning stone chips, drawn in the ground layer rather than
     // as glowing sparks. They bounce and settle on the same floor plane.
+    if (getParticleLevel() > 0)
     for(const p of this.particles){
       if(!p.active||p.type!=='rock')continue
       ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot)
@@ -1062,14 +1113,13 @@ export class FX {
       ctx.moveTo(tx, ty)
       ctx.lineTo(l.x, l.y)
       ctx.stroke()
-      // white-hot core (the HDR read: saturated band + near-white center)
-      const g2 = ctx.createLinearGradient(tx, ty, l.x, l.y)
-      g2.addColorStop(0, rgba('#ffffff', 0))
-      g2.addColorStop(1, rgba('#ffffff', 0.75 * k))
-      ctx.strokeStyle = g2
+      // white-hot core (the HDR read: saturated band + near-white center).
+      // Solid stroke with the line's own fade — a 2-stop gradient here was
+      // pure per-frame allocation for a single color.
+      ctx.strokeStyle = rgba('#ffffff', 0.5 * k)
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      ctx.moveTo(tx, ty)
+      ctx.moveTo(tx + (l.x - tx) * 0.4, ty + (l.y - ty) * 0.4)
       ctx.lineTo(l.x, l.y)
       ctx.stroke()
       // leading glint — the launch-point spark
@@ -1080,19 +1130,28 @@ export class FX {
     }
 
     // point impact flashes — radial bloom + lens cross (camera-bloom
-    // language, under the sparks so sparks ride on top of the bloom)
+    // language, under the sparks so sparks ride on top of the bloom).
+    // The bloom is a cached sprite blit (k=1 stops baked, alpha = k) —
+    // no per-flash gradient allocation.
     for (const f of this.flashes) {
       if (!f.active) continue
       const k = 1 - f.age / f.life
       const r = (f.heavy ? 46 : 26) * (0.5 + 0.5 * k)
-      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r)
-      g.addColorStop(0, rgba('#ffffff', 0.95 * k))
-      g.addColorStop(0.35, rgba(f.color, 0.55 * k))
-      g.addColorStop(1, rgba(f.color, 0))
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.arc(f.x, f.y, r, 0, TAU)
-      ctx.fill()
+      const spr = flashGlowSprite(f.color)
+      if (spr) {
+        ctx.globalAlpha = k
+        ctx.drawImage(spr, f.x - r, f.y - r, r * 2, r * 2)
+        ctx.globalAlpha = 1
+      } else {
+        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r)
+        g.addColorStop(0, rgba('#ffffff', 0.95 * k))
+        g.addColorStop(0.35, rgba(f.color, 0.55 * k))
+        g.addColorStop(1, rgba(f.color, 0))
+        ctx.fillStyle = g
+        ctx.beginPath()
+        ctx.arc(f.x, f.y, r, 0, TAU)
+        ctx.fill()
+      }
       // lens cross — shrinking horizontal/vertical streaks through the core
       const s = (f.heavy ? 30 : 18) * k * k
       ctx.strokeStyle = rgba('#ffffff', 0.5 * k)
@@ -1105,7 +1164,10 @@ export class FX {
       ctx.stroke()
     }
 
-    // particles
+    // particles + rings — gated by the particle toggle (OFF skips both;
+    // they die in update() and the pools recycle as usual)
+    const pLevel = getParticleLevel()
+    if (pLevel > 0)
     for (const p of this.particles) {
       if (!p.active) continue
       const k = 1 - p.age / p.life
@@ -1184,6 +1246,7 @@ export class FX {
     }
 
     // rings
+    if (pLevel > 0)
     for (const r of this.rings) {
       if (!r.active) continue
       const k = 1 - r.age / r.life

@@ -452,8 +452,8 @@ export class Renderer {
    *  2) radial smear outward from the moon (zoom blur, 5–9 cheap blits)
    *  3) additive composite, eclipse + lightning coupled, slow breathing.
    *  Skipped when the active background already paints its own shaft fan
-   *  (`bg.ownsMoonShafts`, e.g. ZenNightBackground) so two independent
-   *  shaft systems never stack on the same sky. */
+   *  (`bg.ownsMoonShafts`) so two independent shaft systems never stack on
+   *  the same sky. Shirogane supplies drawShaftMask for THIS pass instead. */
   private shaftA: HTMLCanvasElement | null = null
   private shaftB: HTMLCanvasElement | null = null
   private shaftW = 0
