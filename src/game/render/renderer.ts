@@ -173,9 +173,11 @@ export class Renderer {
     // single resultant ground-plane light vector at each caster's world X/Y.
     if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300 || Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
       // static casters live on the environment's back line (envOffset
-      // behind the play line) — their shadows root there too
+      // behind the play line) — their shadows root there too. The shadow
+      // math grounds at y≈1.5 (the play line), so shift by −envOffset to
+      // land the root on the door/lantern base at the back line.
       ctx.save()
-      ctx.translate(0, bg.envOffset ?? 0)
+      ctx.translate(0, -(bg.envOffset ?? 0))
       if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300) {
         drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.26)
       }

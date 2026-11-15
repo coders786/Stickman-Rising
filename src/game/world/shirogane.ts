@@ -1887,7 +1887,11 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     // Everything static lives ENV_BACK behind the play line: the fighter
     // (drawn by the entity pass at world y=0) stands mid-deck with the
-    // inn/trees at the back edge, as in mountain.html.
+    // inn/trees at the back edge, as in mountain.html. save/restore is
+    // REQUIRED: without it this translate leaked into the rest of the
+    // world pass and dragged the entities, fog, FX and front plate along,
+    // gluing the fighter to the back edge instead of mid-road.
+    ctx.save()
     ctx.translate(0, -ENV_BACK)
 
     /* deck plate (world-space, pre-generated) */
@@ -2026,6 +2030,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* birds (world coords, painted on the sky side of the arena pass) */
     for (const b of this.birds) this.paintBird(ctx, b, t)
+
+    ctx.restore()
   }
 
   /** FOREGROUND pass (called by the renderer AFTER entities): the near-lane
@@ -2037,8 +2043,12 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
     const viewR = cam.x + (this.w / zoom) * 0.6
+    // scoped: the near-lane shift must not leak into the additive FX and
+    // impact frames that draw after this pass
+    ctx.save()
     ctx.translate(0, -ENV_BACK)
     this.blit(ctx, this.propsFront, ARENA_X0, -this.plateHead, viewL, viewR)
+    ctx.restore()
   }
 
   private rackCtx: CanvasRenderingContext2D | null = null
