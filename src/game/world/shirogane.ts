@@ -47,7 +47,13 @@ const TAU = Math.PI * 2
 const ARENA_X0 = -150
 const ARENA_X1 = 2750
 const ARENA_W = ARENA_X1 - ARENA_X0
-const DECK_H = 300
+const DECK_H = 360
+/** The whole static environment (deck back edge, inn, rack, cherry,
+ * horizon strips, mist) is drawn ENV_BACK world units BEHIND the play
+ * line, so the fighter stands in the MIDDLE of the deck — house and
+ * trees at the back like mountain.html — instead of glued to the door.
+ * Pure draw-time translate: every bake stays exactly as it was. */
+const ENV_BACK = 90
 
 /** mountain.html framing: horizon .740, vanishing .565/.340 (kept as
  *  ratios — the game camera reproduces them: ground line ≈ .71–.74 h). */
@@ -429,6 +435,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   moonX = 0
   moonY = 0
   moonCover = 0
+  /** static environment sits this many world units behind the play line */
+  readonly envOffset = ENV_BACK
 
   /* clocks + state (update()-owned) */
   private t = 0
@@ -501,7 +509,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private smokeSprite!: HTMLCanvasElement
   private smokeBox: { x: number; y: number; w: number; h: number } | null = null
   private lunar: HTMLCanvasElement | null = null
-  private lanternXs: { x: number; s: number }[] = []
+  private lanternXs: { x: number; s: number; y: number }[] = []
   /** plate headroom above the ground line (props tower into the sky band) */
   private plateHead = 240
 
@@ -999,7 +1007,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       }
       g.strokeStyle = 'rgba(5,9,13,.34)'
       g.lineWidth = 1.1
-      for (const yy of [DECK_H - 34, 196, 152, 118, 92, 72, 57, 46, 38, 31, 26]) {
+      for (const yy of [DECK_H - 34, 252, 196, 152, 118, 92, 72, 57, 46, 38, 31, 26]) {
         g.beginPath()
         g.moveTo(0, yy)
         g.lineTo(ARENA_W, yy)
@@ -1048,8 +1056,11 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.stats.propCount = plan.props.length
       this.stats.chunkCount = plan.chunks
       this.plateHead = Math.ceil(U * 0.42)
-      const laneY = [0, 14, 42, 70, 106]
-      const laneZ = [0, 0.04, 0.12, 0.2, 0.275]
+      // Lanes straddle the play line: back lanes sit between the inn and
+      // the fighter, front lanes downstage of him — he is IN the dressing
+      // rather than parked at the deck's end (rendered = baked − ENV_BACK)
+      const laneY = [0, 35, 70, 145, 220]
+      const laneZ = [-0.06, 0, 0.07, 0.16, 0.26]
       const build = (front: boolean): HTMLCanvasElement => {
         const { c, g } = makeCanvas(ARENA_W, DECK_H + this.plateHead)
         g.translate(-ARENA_X0, this.plateHead)
@@ -1087,7 +1098,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
             radial(g, p.x, y - s * 0.136, s * 0.112, [
               [0, 'rgba(255,205,131,.24)'], [0.3, 'rgba(246,173,92,.09)'], [1, 'rgba(220,137,55,0)'],
             ])
-            if (this.lanternXs.length < 24) this.lanternXs.push({ x: p.x, s })
+            if (this.lanternXs.length < 24) this.lanternXs.push({ x: p.x, s, y })
           }
         }
         return c
@@ -1487,6 +1498,9 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* horizon line: screen y of world y=0 (keeps HY ≈ .71–.74 framing) */
     const hy = h * 0.5 - camY * zoom
+    /* the ground composition (ranges, shelf, mist) rides the same
+     * ENV_BACK shift as the arena pass so the scene stays rigid */
+    const envShift = ENV_BACK * zoom
 
     /* moon screen anchor (render telemetry for the light rig) */
     const mx = w * 0.78 - camX * 0.015
@@ -1555,7 +1569,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       const pk = MOUNTAIN_DEPTHS[k]
       const pad = Math.max(64, Math.ceil(w * 0.05))
       const dx = -pad + CAM_MIN * pk - camX * pk
-      const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22
+      const dy = hy - 0.39 * h - (camY + 150) * pk * 0.22 - envShift
       blitCropped(strip, dx, dy)
     }
 
@@ -1564,7 +1578,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       const pad = Math.max(64, Math.ceil(w * 0.05))
       const dx = -pad + CAM_MIN * MID_DEPTH - camX * MID_DEPTH
       const bandTop = h * 0.64
-      const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2
+      const dy = hy - (h - bandTop) - (camY + 150) * MID_DEPTH * 0.2 - envShift
       blitCropped(this.midStrip, dx, dy)
     }
 
@@ -1579,7 +1593,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         const seed = hashWorld(i, 5522)
         const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
         const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
-        const yy = h * (0.692 + seed * 0.052)
+        const yy = h * (0.692 + seed * 0.052) - envShift
         const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
         const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
         if (x + rx < -40 || x - rx > w + 40) continue
@@ -1638,6 +1652,11 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
     const viewR = cam.x + (this.w / zoom) * 0.6
+
+    // Everything static lives ENV_BACK behind the play line: the fighter
+    // (drawn by the entity pass at world y=0) stands mid-deck with the
+    // inn/trees at the back edge, as in mountain.html.
+    ctx.translate(0, -ENV_BACK)
 
     /* deck plate (world-space, pre-generated) */
     this.blit(ctx, this.deckPlate, ARENA_X0, 0, viewL, viewR)
@@ -1786,6 +1805,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
     const viewR = cam.x + (this.w / zoom) * 0.6
+    ctx.translate(0, -ENV_BACK)
     this.blit(ctx, this.propsFront, ARENA_X0, -this.plateHead, viewL, viewR)
   }
 
@@ -2045,7 +2065,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
     const viewR = cam.x + (this.w / zoom) * 0.6
-    this.blit(ctx, this.wetPlate, ARENA_X0, 8, viewL, viewR)
+    this.blit(ctx, this.wetPlate, ARENA_X0, 8 - ENV_BACK, viewL, viewR)
   }
 
   /** typed light rig: diffuse key pool, moon glitter, door + lantern practicals */
@@ -2085,18 +2105,18 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* door practical: warm pool + wide bounce (breathing with flicker) */
     ctx.globalAlpha = 0.24 + 0.08 * this.flicker
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 200, -120, 400, 260)
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 200, -120 - ENV_BACK, 400, 260)
     ctx.globalAlpha = 0.09
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 360, -50, 720, 190)
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 360, -50 - ENV_BACK, 720, 190)
 
     /* lantern practicals (bounded: in-view only, sized to the lantern —
      * a fixed 110px halo around a 60px lantern read as a floating orb) */
     ctx.globalAlpha = 0.20
     for (let i = 0; i < this.lanternXs.length; i++) {
-      const { x: lx, s } = this.lanternXs[i]
+      const { x: lx, s, y: ly } = this.lanternXs[i]
       if (lx < viewL - 80 || lx > viewR + 80) continue
       const d = Math.max(56, Math.min(120, s * 0.42))
-      const gy = -s * 0.136
+      const gy = ly - ENV_BACK - s * 0.136
       ctx.drawImage(this.glowWarm, lx - d * 0.5, gy - d * 0.5, d, d)
     }
     ctx.globalAlpha = 1

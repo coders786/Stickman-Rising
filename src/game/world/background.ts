@@ -69,6 +69,11 @@ export interface BackgroundRenderer {
    *  near-lane dressing occludes fighters (the "between things" depth
    *  layer). Backgrounds without a front layer simply omit it. */
   drawFront?(ctx:CanvasRenderingContext2D):void
+  /** OPTIONAL world-y offset of the static environment behind the play
+   *  line (Shirogane: the inn/deck back edge sits ENV_BACK units behind
+   *  y=0 so the fighter stands mid-deck). The renderer offsets the two
+   *  static prop shadows with it; scenes without the shift omit it. */
+  envOffset?:number
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** moon-shaft occlusion source for the renderer's god-ray pass */
   drawShaftMask(ctx:CanvasRenderingContext2D,cam:BgCam):void

@@ -171,11 +171,18 @@ export class Renderer {
     // UNIFIED RESULTANT SHADOW VECTOR — instead of casting 3–4 separate
     // full-body shadows per entity (moon + door + streetlamp), solve the
     // single resultant ground-plane light vector at each caster's world X/Y.
-    if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300) {
-      drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.26)
-    }
-    if (Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
-      drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.20)
+    if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300 || Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
+      // static casters live on the environment's back line (envOffset
+      // behind the play line) — their shadows root there too
+      ctx.save()
+      ctx.translate(0, bg.envOffset ?? 0)
+      if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300) {
+        drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.26)
+      }
+      if (Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
+        drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.20)
+      }
+      ctx.restore()
     }
     player.drawShadow(ctx, composeShadowKey(light, player.x, player.y))
     for (const e of enemies) {
