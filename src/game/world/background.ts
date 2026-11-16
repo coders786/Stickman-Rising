@@ -64,7 +64,17 @@ export interface BackgroundRenderer {
   lightningI():number
   lightningAz():number
   drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
+  /** OPTIONAL horizon mist pass — drawn in screen space between the deck
+   *  composite and the structures (Shirogane: the banks straddle the
+   *  contact line so the sky clip must not cut them). */
+  drawHorizonMist?(ctx:CanvasRenderingContext2D,cam:BgCam):void
   drawArena(ctx:CanvasRenderingContext2D):void
+  /** MOUNTAIN-GL hooks (optional): the ported reference engine renders
+   *  the deck's light/shadow/water offscreen when these are present. */
+  glDeck?:boolean
+  bakeEpoch?:number
+  getPlates?():{deck:HTMLCanvasElement;refl:HTMLCanvasElement;wet:HTMLCanvasElement;reflH:number}|null
+  sceneOccluders?(occ:Float32Array,occZ:Float32Array):number
   /** OPTIONAL foreground pass — world-space, drawn AFTER the entities so
    *  near-lane dressing occludes fighters (the "between things" depth
    *  layer). Backgrounds without a front layer simply omit it. */

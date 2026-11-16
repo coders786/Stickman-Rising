@@ -40,6 +40,7 @@ import { StormEngine } from './storm'
 import type { BackgroundRenderer, BgCam, Quality } from './background'
 import { windAt, buildLunarSurface } from './horizon-strata'
 import { Field1D, Burst1D, getParticleLevel } from '../fx/particles1d'
+import { GRAPHICS_RULES } from '../render/rules'
 
 /* ------------------------------- constants ------------------------------- */
 
@@ -53,11 +54,12 @@ const DECK_H = 380
  * line, so the fighter stands in the MIDDLE of the road — house and
  * trees at the back like mountain.html — instead of glued to the door.
  * Pure draw-time translate: every bake stays exactly as it was. */
-const ENV_BACK = 110
+/* MANDATORY: the universal graphics rules own these — no local copies */
+const ENV_BACK = GRAPHICS_RULES.depths.envBack
 
 /** mountain.html framing: horizon .740, vanishing .565/.340 (kept as
  *  ratios — the game camera reproduces them: ground line ≈ .71–.74 h). */
-const HY_R = 0.74
+const HY_R = GRAPHICS_RULES.composition.HY
 const RACK_H = 0.236 // pole height, fraction of viewport h (source geo)
 
 /** stage dressing anchors (world px) */
@@ -73,8 +75,8 @@ const CHERRY_SCALE = 1.4
 const CAM_MIN = -420
 const CAM_MAX = 3080
 
-const MOUNTAIN_DEPTHS = [0.1, 0.18, 0.29, 0.42] as const
-const MID_DEPTH = 0.06
+const MOUNTAIN_DEPTHS = GRAPHICS_RULES.depths.ranges
+const MID_DEPTH = GRAPHICS_RULES.depths.mid
 const CHUNK_W = 560
 const N_CHUNKS = Math.ceil(ARENA_W / CHUNK_W) + 1
 /** hard caps — the horizon can never grow past these, ever */
@@ -438,6 +440,10 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   moonX = 0
   moonY = 0
   moonCover = 0
+  /** MountainGL owns the deck/water pass when active (set by the renderer) */
+  glDeck = false
+  /** increments on every re-bake so the renderer re-uploads GL textures */
+  bakeEpoch = 0
   /** static environment sits this many world units behind the play line */
   readonly envOffset = ENV_BACK
 
@@ -1317,7 +1323,56 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     }
 
     this.applyQualityToFields()
+    this.bakeEpoch++
   }
+
+  /** baked plates for the MountainGL compositor (deck / reflection / wet) */
+  getPlates(): { deck: HTMLCanvasElement; refl: HTMLCanvasElement; wet: HTMLCanvasElement; reflH: number } | null {
+    if (!this.built || !this.reflectPlate) return null
+    return { deck: this.deckPlate, refl: this.reflectPlate, wet: this.wetPlate, reflH: this.reflectPlate.height }
+  }
+
+  /** static scene occluders for the shadow engine — packed as
+   *  [cx, cy, hw, hh] boxes standing on the contact line (line frame),
+   *  with heights in occZ. The format is mountain.html's (rules.shadow). */
+  sceneOccluders(occ: Float32Array, occZ: Float32Array): number {
+    let n = 0
+    const put = (cx: number, hw: number, hh: number, z: number): void => {
+      if (n >= 40) return
+      occ[n * 4] = cx
+      occ[n * 4 + 1] = 0
+      occ[n * 4 + 2] = hw
+      occ[n * 4 + 3] = hh
+      occZ[n] = z
+      n++
+    }
+    // the big casters
+    put(2100, 130, 60, 182) // inn
+    put(2470, 88, 50, 250) // sakura
+    put(1700, 40, 30, 266) // lantern rack
+    put(1755, 66, 24, 118) // doorway opening (DOOR_LIGHT.x)
+    // the inn's yard props (the deterministic plan)
+    const box: Record<string, [number, number, number]> = {
+      firewood: [34, 18, 42],
+      bucket: [16, 14, 30],
+      lantern: [22, 16, 78],
+      boulder: [36, 26, 30],
+      bench: [56, 20, 36],
+      barrel: [26, 24, 52],
+      crates: [34, 30, 46],
+      bamboo: [20, 16, 88],
+      pine: [30, 26, 70],
+      cairn: [22, 20, 40],
+    }
+    if (!this.occPlan) this.occPlan = planHorizon()
+    for (const p of this.occPlan.props) {
+      const b = box[p.type]
+      if (!b) continue
+      put(p.x, b[0] * p.scale, b[1] * p.scale, b[2] * p.scale)
+    }
+    return n
+  }
+  private occPlan: HorizonPlan | null = null
 
   private cabinAnchor = { x: INN_X, y: 0 }
   private rackAnchor = { x: RACK_X, y: 0 }
@@ -1781,6 +1836,12 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     this.moonWorldY = camY + (my - h * 0.5) / zoom
 
     ctx.save()
+    /* SKY CLIP — the sky pass stops at the contact line; below it the
+     * deck owns the pixels (MountainGL compositor or the 2D plate), so
+     * the sky must never paint over the deck or the structures' ground. */
+    ctx.beginPath()
+    ctx.rect(0, 0, w, Math.max(0, hy - envShift))
+    ctx.clip()
     /* PARALLAX COMPOSITE — every layer is a pre-generated plate baked in
      * ensure(); each frame only evaluates closed-form positions and blits
      * (source-rect crops for the full-camera-domain strips). No re-render,
@@ -1862,28 +1923,38 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       blitCropped(this.midStrip, dx, dy)
     }
 
-    /* 7 — the storm (rain clouds/bolts over the ranges) */
+    ctx.restore()
+
+    /* 7 — the storm (rain clouds/bolts): LIVE and unclipped — the rain
+     *     must fall across the deck as well as the sky */
     this.storm.drawSky(ctx)
+  }
 
-    /* 8 — drifting mist banks: anchored to the horizon (hy), not the raw
-     *     screen — previously they stayed put while the camera swung and
-     *     floated up into the sky above the trees. */
-    {
-      const wind = this.windNow[2]
-      ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
-      for (let i = 0; i < 7; i++) {
-        const seed = hashWorld(i, 5522)
-        const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
-        const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
-        const yy = hy - envShift + h * 0.052 * (seed - 1)
-        const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
-        const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
-        if (x + rx < -40 || x - rx > w + 40) continue
-        ctx.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
-      }
-      ctx.globalAlpha = 1
+  /** horizon mist — screen space, drawn between the deck composite and the
+   *  structures: the banks straddle the contact line (over the wet floor's
+   *  lip, like the reference) so they must not be clipped by the sky pass */
+  drawHorizonMist(ctx: CanvasRenderingContext2D, cam: BgCam): void {
+    this.ensure()
+    const w = this.w
+    const h = this.h
+    const t = this.t
+    const zoom = Number.isFinite(cam.zoom) && cam.zoom > 0 ? cam.zoom : 1
+    const camY = Number.isFinite(cam.y) ? cam.y : -150
+    const hy = h * 0.5 - camY * zoom
+    const envShift = ENV_BACK * zoom
+    const wind = this.windNow[2]
+    ctx.save()
+    ctx.globalAlpha = 0.10 + 0.035 * Math.sin(t * 0.11)
+    for (let i = 0; i < 7; i++) {
+      const seed = hashWorld(i, 5522)
+      const bx = (i / 7 + t * (0.003 + seed * 0.005) + wind * 0.0004) % 1.3
+      const x = (((bx + 0.15) % 1.3) + 1.3) % 1.3 - 0.15
+      const yy = hy - envShift + h * 0.052 * (seed - 1)
+      const rx = (0.11 + hashWorld(i, 77) * 0.14) * w
+      const ry = (0.03 + hashWorld(i, 99) * 0.038) * h
+      if (x + rx < -40 || x - rx > w + 40) continue
+      ctx.drawImage(this.mistSprite, (x * w) - rx, yy - ry, rx * 2, ry * 2)
     }
-
     ctx.restore()
   }
 
@@ -1945,26 +2016,30 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     ctx.save()
     ctx.translate(0, -ENV_BACK)
 
-    /* deck plate (world-space, pre-generated) */
-    this.blit(ctx, this.deckPlate, ARENA_X0, 0, viewL, viewR)
+    /* deck plate + puddle waves — owned by MountainGL when active (the
+     * ported reference engine renders the deck's light/shadow/water); the
+     * canvas path remains the fallback when WebGL2 is unavailable */
+    if (!this.glDeck) {
+      this.blit(ctx, this.deckPlate, ARENA_X0, 0, viewL, viewR)
 
-    /* PUDDLE + WAVES: the baked structure mirror, sheared per row by two
-     * crossing sine trains — the wet floor reads as moving water (the
-     * reference's rippling door/canopy reflections), not static glass */
-    if (this.reflectPlate) {
-      const rp = this.reflectPlate
-      const rh = rp.height
-      const step = 6
-      for (let y = 0; y < rh; y += step) {
-        const sh = Math.min(step, rh - y)
-        const dx =
-          Math.sin(y * 0.085 + t * 1.9) * (1.1 + y * 0.045) +
-          Math.sin(y * 0.037 - t * 1.25) * (0.7 + y * 0.028)
-        const dxr = Math.round(dx * 10) / 10
-        ctx.drawImage(rp, 0, y, ARENA_W, sh, ARENA_X0 + dxr, y, ARENA_W, sh)
-        // sliver guards so the shear never opens a gap at the plate ends
-        if (dxr > 0.5) ctx.drawImage(rp, 0, y, dxr, sh, ARENA_X0, y, dxr, sh)
-        else if (dxr < -0.5) ctx.drawImage(rp, ARENA_W + dxr, y, -dxr, sh, ARENA_X1 + dxr, y, -dxr, sh)
+      /* PUDDLE + WAVES: the baked structure mirror, sheared per row by two
+       * crossing sine trains — the wet floor reads as moving water (the
+       * reference's rippling door/canopy reflections), not static glass */
+      if (this.reflectPlate) {
+        const rp = this.reflectPlate
+        const rh = rp.height
+        const step = 6
+        for (let y = 0; y < rh; y += step) {
+          const sh = Math.min(step, rh - y)
+          const dx =
+            Math.sin(y * 0.085 + t * 1.9) * (1.1 + y * 0.045) +
+            Math.sin(y * 0.037 - t * 1.25) * (0.7 + y * 0.028)
+          const dxr = Math.round(dx * 10) / 10
+          ctx.drawImage(rp, 0, y, ARENA_W, sh, ARENA_X0 + dxr, y, ARENA_W, sh)
+          // sliver guards so the shear never opens a gap at the plate ends
+          if (dxr > 0.5) ctx.drawImage(rp, 0, y, dxr, sh, ARENA_X0, y, dxr, sh)
+          else if (dxr < -0.5) ctx.drawImage(rp, ARENA_W + dxr, y, -dxr, sh, ARENA_X1 + dxr, y, -dxr, sh)
+        }
       }
     }
 
@@ -2380,6 +2455,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   /** wet-deck roughness plate over the reflection band */
   drawWetMask(ctx: CanvasRenderingContext2D): void {
     this.ensure()
+    if (this.glDeck) return // MountainGL owns the wet/water pass
     const cam = this.lastCam
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
@@ -2397,6 +2473,16 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
     const viewR = cam.x + (this.w / zoom) * 0.6
+
+    ctx.save()
+    /* GL DECK MODE — the deck-bound pools live in MountainGL (the ported
+     * light transport); the 2D rig keeps only what lands ABOVE the contact
+     * line (the doorway's wall glow, the lamp halos) so nothing doubles */
+    if (this.glDeck) {
+      ctx.beginPath()
+      ctx.rect(-1e6, -1e6, 2e6, 1e6 - ENV_BACK)
+      ctx.clip()
+    }
 
     /* diffuse cool key pool on the deck (ONE live gradient — brightness
      * follows the key: eclipse/lightning modulate, never baked-in) */
@@ -2441,6 +2527,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     }
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
+    ctx.restore()
   }
 
   /* ------------------------------- helpers -------------------------------- */

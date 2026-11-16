@@ -13,6 +13,7 @@ import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, SCENE_CASTERS, composeShadowKey, drawPropShadow } from './lighting'
+import { MountainGL, type GLFrame } from './mountain-gl'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 import { LightRig, surfaceWash, pointInfluence, type LightInput, type RGB } from './lights'
 import { shallowFog } from './bhst'
@@ -115,13 +116,36 @@ export class Renderer {
     return this.grainSeed / 4294967296
   }
   private quality: GameSettings['quality'] = 'high'
+  /* MOUNTAIN-GL — the ported reference deck engine (offscreen WebGL2).
+   * Created lazily on the first browser frame; null in headless/tests or
+   * when WebGL2 is unavailable, in which case the canvas deck path runs. */
+  private gl: MountainGL | null = null
+  private glFailed = false
+  private glEpoch = -1
+  private glReflH = 176
+  private glOcc = new Float32Array(40 * 4)
+  private glOccZ = new Float32Array(40)
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
     const { cam, fx, bg, player, enemies, projectiles, hud, hudState } = world
     const time = world.time
 
-    // 1. sky (screen space, own parallax)
-    bg.drawSky(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
+    // 0. MOUNTAIN-GL — the ported reference engine (deck light transport +
+    //    SAT-style occluder shadows + WATER waves) renders offscreen; the
+    //    2D pass blits it below the contact line. Falls back to the canvas
+    //    deck when WebGL2 is unavailable or the scene exposes no plates.
+    const dpr = ctx.getTransform().a || 1
+    const gl = this.ensureGL(bg, w, h, dpr)
+
+    // 1. sky (screen space, own parallax) — clipped at the contact line
+    const skyCam = { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom }
+    bg.drawSky(ctx, skyCam)
+    if (gl) {
+      this.renderGL(gl, bg, world, w, h, dpr)
+      ctx.drawImage(gl.image, 0, 0, w, h)
+    }
+    // horizon mist after the deck (it straddles the contact line)
+    bg.drawHorizonMist?.(ctx, skyCam)
 
     // 2. world pass
     ctx.save()
@@ -188,9 +212,12 @@ export class Renderer {
       if (Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
         drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.20)
       }
-      // the big scene casters (inn / sakura / rack) — long raking shadows
-      for (const [sx, shw, stop, sa] of SCENE_CASTERS) {
-        if (Math.abs(sx - cam.x) < viewHalfW + 520) drawPropShadow(ctx, light, sx, shw, stop, sa)
+      // the big scene casters (inn / sakura / rack) — long raking shadows.
+      // Skipped when MountainGL is active: its shadow pass casts these.
+      if (!gl) {
+        for (const [sx, shw, stop, sa] of SCENE_CASTERS) {
+          if (Math.abs(sx - cam.x) < viewHalfW + 520) drawPropShadow(ctx, light, sx, shw, stop, sa)
+        }
       }
       ctx.restore()
     }
@@ -695,6 +722,72 @@ export class Renderer {
    *  The PLAYER keeps its full-detail redraw; ENEMIES use the cheap single-
    *  pass ghost (full detail × N enemies × 2 passes was a quiet frame-rate
    *  killer once waves scaled — the mirror only needs a silhouette). */
+  /** lazily create + feed the MountainGL deck compositor (the ported
+   *  reference engine). Returns null → the canvas deck path runs. */
+  private ensureGL(bg: RenderWorld['bg'], w: number, h: number, dpr: number): MountainGL | null {
+    if (this.glFailed) return null
+    if (!this.gl) {
+      if (typeof document === 'undefined') {
+        this.glFailed = true
+        return null
+      }
+      this.gl = MountainGL.create(w, h, dpr)
+      if (!this.gl) {
+        this.glFailed = true
+        return null
+      }
+      this.glEpoch = -1
+    }
+    this.gl.resize(w, h, dpr)
+    const plates = bg.getPlates?.() ?? null
+    if (plates && bg.bakeEpoch !== this.glEpoch) {
+      this.gl.upload(plates.deck, plates.refl, plates.wet)
+      this.glReflH = plates.reflH
+      this.glEpoch = bg.bakeEpoch ?? 0
+    }
+    bg.glDeck = !!plates && this.glEpoch >= 0
+    return bg.glDeck ? this.gl : null
+  }
+
+  /** assemble + run one deck-composite frame (the reference's systems:
+   *  SH_LIGHT_QUAD transport, SH_DIRECTIONAL occluder shadows, WATER waves) */
+  private renderGL(gl: MountainGL, bg: RenderWorld['bg'], world: RenderWorld, w: number, h: number, dpr: number): void {
+    const { cam } = world
+    const occN = bg.sceneOccluders?.(this.glOcc, this.glOccZ) ?? 0
+    const key = keyLightFromStorm(bg.lightningI(), bg.lightningAz())
+    key.i *= 1 - 0.42 * bg.moonCover
+    const frame: GLFrame = {
+      cssW: w,
+      cssH: h,
+      dpr,
+      camX: cam.x + cam.offX,
+      camY: cam.y + cam.offY,
+      zoom: cam.zoom,
+      rot: cam.rot,
+      time: world.time,
+      lineY: -(bg.envOffset ?? 0),
+      reflH: this.glReflH,
+      lights: {
+        // door: #ff9a4d · street: #b8e4ff · key: #dfe9ff (rules.palette)
+        door: { x: DOOR_LIGHT.x, y: 0, range: DOOR_LIGHT.range, i: DOOR_LIGHT.intensity, r: 1, g: 0.604, b: 0.302 },
+        street: { x: STREET_LIGHT.x, y: 0, range: STREET_LIGHT.range, i: STREET_LIGHT.intensity, r: 0.722, g: 0.894, b: 1 },
+        // toward the light: horizontal lean opposite the shadow's dirX,
+        // height from the elevation (the cot(elev) reach emerges in-shader)
+        keyDirX: -key.dirX * Math.cos(key.elev),
+        keyDirY: 0,
+        keyDirZ: Math.sin(key.elev),
+        keyI: key.i,
+        keyR: 0.875,
+        keyG: 0.914,
+        keyB: 1,
+      },
+      occ: this.glOcc,
+      occZ: this.glOccZ,
+      occN,
+    }
+    gl.render(frame)
+  }
+
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world
     const li = bg.lightningI()
