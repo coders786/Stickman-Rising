@@ -29,7 +29,6 @@ import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch 
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import { KeyLight } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -4778,10 +4777,8 @@ export class Player {
   /* render                                                               */
   /* ------------------------------------------------------------------ */
 
-  /* strobe rim state — set by the renderer each frame from the key light.
-   * (The projected-skeleton cast shadow that lived beside it is removed —
-   * mountain.html's lightfield casts every shadow now.) */
-  strobeLight: KeyLight | null = null
+  /* strobe rim strength — the lighting engine that drove it is gone in the
+   * 120 fps strip; the field stays so rim tint code can reference it. */
   strobeK = 0
   /** contact-AO anchors from the plant-snap pass (non-gait stances:
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */

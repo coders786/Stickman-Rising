@@ -17,7 +17,8 @@ export type Facing = 1 | -1
 export type GamePhase = 'attract' | 'playing' | 'paused' | 'gameover'
 
 export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra'
-export type LevelId = 'rooftop' | 'zen-night'
+/** NEON ROOFTOP is the only stage left — the moonlit zen scene is gone. */
+export type LevelId = 'rooftop'
 
 export interface RunStats {
   score: number
@@ -42,8 +43,10 @@ export interface GameSettings {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  quality: 'high',
-  level: 'zen-night',
+  // 'low' is the 120 fps default: the storm's rain budget and the fx
+  // particle level key off it, and every graphics engine is gone anyway.
+  quality: 'low',
+  level: 'rooftop',
   shake: true,
   shakeIntensity: 1,
   sfxVolume: 0.8,

@@ -11,7 +11,6 @@ import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground, type BackgroundRenderer } from './world/background'
-import { ShiroganeHorizonBackground } from './world/shirogane'
 import { cycleParticleLevel, getParticleLevel } from './fx/particles1d'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
@@ -26,7 +25,6 @@ import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
-import { shallowFog } from './render/bhst'
 import { Inspect, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
@@ -161,11 +159,11 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ShiroganeHorizonBackground(this.storm) : new CyberBackground('high',this.storm)
+  // NEON ROOFTOP is the only stage left — the moonlit zen scene and every
+  // shader/engine behind it are gone in the 120 fps strip.
+  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
   /** which level the current bg was built for — applySettings rebuilds on
-   *  mismatch, so the saved/default stage actually loads at startup (the
-   *  old levelChanged check compared settings-to-settings and silently
-   *  kept CyberBackground for a zen-night save) */
+   *  mismatch, so the saved/default stage actually loads at startup */
   private bgLevel:LevelId = DEFAULT_SETTINGS.level
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
   private thunderCb = (): void => {
@@ -544,7 +542,7 @@ export class Game {
     // — the self-inflicted "hangs when enemies appear" loop.
     if (levelChanged) {
       this.storm.setQuality?.(s.quality)
-      this.bg = s.level==='zen-night' ? new ShiroganeHorizonBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      this.bg = new CyberBackground(s.quality,this.storm)
       syncBgQuality(this.bg, s.quality)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
@@ -779,9 +777,6 @@ export class Game {
       // --- visual systems tick ONCE per frame (never per substep) ---
       this.fx.update(simDt)
       this.bg.update(simDt)
-      // wake fog is a VISUAL simulation: stepped exactly once per frame on
-      // the visual clock, never inside Renderer.draw (plan F14/M08).
-      this.updateWakeFog(simDt)
       // --- sample the render between the last two sim states ---
       // alpha sweeps 0..1 as the leftover accumulator fills toward the next
       // step, so motion advances a little EVERY display frame instead of
@@ -948,21 +943,6 @@ export class Game {
       // idle hero breathing on the rooftop (framed below the title logo)
       this.player.update(dt, this.worldRef)
       this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
-    }
-  }
-
-  /** Advance the shared shallow wake-fog field ONCE per rendered frame on
-   *  the visual clock (was: stepped inside Renderer.draw, so paused or
-   *  repeated draws mutated visual state — plan F14/M08). Actor injection
-   *  mirrors the previous draw-time culling exactly (viewHalfW formula). */
-  private updateWakeFog(dt: number): void {
-    shallowFog.step(dt, this.bg.storm.wind)
-    shallowFog.injectActor(this.player.x, this.player.y, this.player.vx, this.player.vy, 1.2)
-    const viewHalfW = this.cssW / (2 * this.cam.zoom) + 240
-    for (const e of this.enemies) {
-      if (e.dead || e.spawning) continue
-      if (Math.abs(e.x - this.cam.x) > viewHalfW) continue
-      shallowFog.injectActor(e.x, e.y, e.vx, e.vy, 0.85)
     }
   }
 

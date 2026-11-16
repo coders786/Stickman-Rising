@@ -21,11 +21,13 @@ export function parseSave(raw: string | null): SaveData {
   }
 }
 export function parseSettings(raw: string | null, coarse = false): GameSettings {
-  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : 'high' }
+  // coarse devices still floor at 'medium'; everyone else gets the shipped
+  // default (the 120 fps strip made it 'low')
+  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : DEFAULT_SETTINGS.quality }
   const unit = (fallback: number) => z.number().min(0).max(1).catch(fallback)
   const schema = z.object({
     quality: z.enum(['low', 'medium', 'high', 'ultra']).catch(defaults.quality),
-    level: z.enum(['rooftop', 'zen-night']).catch(defaults.level),
+    level: z.enum(['rooftop']).catch(defaults.level),
     shake: z.boolean().catch(defaults.shake),
     shakeIntensity: z.number().min(0.2).max(1.5).catch(defaults.shakeIntensity),
     sfxVolume: unit(defaults.sfxVolume),

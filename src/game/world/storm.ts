@@ -35,11 +35,8 @@ export class StormEngine{
  private bolt=new Float32Array(42)
  /** fork branches spawned with each strike: 3 forks × 2 points × [x,y] + dir */
  private forks=new Float32Array(3*2*2)
- /** pre-baked radial sky-flash sprite (avoids a full-screen radial-gradient
-  *  shader evaluation on every frame of the 1.1s post-strike decay) */
- private glowSpr:HTMLCanvasElement|null=null
  onThunder:(()=>void)|null=null
- constructor(quality:StormQuality='high'){
+ constructor(quality:StormQuality='low'){
   this.quality=quality
   for(let i=0;i<CAP;i++){
    const band=i%3
@@ -110,48 +107,6 @@ export class StormEngine{
    // Camera climbs: fill newly exposed sky without waiting for old rain.
    if(this.y[i]>this.view.y+this.height/(2*z)+200&&top<-400)this.y[i]=top+this.random()*300
   }
- }
- drawSky(ctx:CanvasRenderingContext2D){
-  const k=this.intensity;if(k<.015)return
-  const w=this.width,h=this.height,bx=w*(.5+this.azimuth*.4),r=w*.6,cy=h*.18
-  ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=k
-  if(!this.glowSpr&&typeof document!=='undefined'){
-   const c=document.createElement('canvas');c.width=256;c.height=256
-   const g=c.getContext('2d')
-   if(g){
-    const q=g.createRadialGradient(128,128,0,128,128,128)
-    q.addColorStop(0,'rgba(180,212,255,.5)');q.addColorStop(.35,'rgba(140,180,245,.18)');q.addColorStop(1,'rgba(110,150,220,0)')
-    g.fillStyle=q;g.fillRect(0,0,256,256)
-    this.glowSpr=c
-   }
-  }
-  if(this.glowSpr){
-   ctx.drawImage(this.glowSpr,bx-r,cy-r,r*2,r*2)
-  }else{
-   const glow=ctx.createRadialGradient(bx,cy,0,bx,cy,r)
-   glow.addColorStop(0,'rgba(180,212,255,.5)');glow.addColorStop(.35,'rgba(140,180,245,.18)');glow.addColorStop(1,'rgba(110,150,220,0)')
-   ctx.fillStyle=glow;ctx.fillRect(0,0,w,h)
-  }
-  // No pre-baked bolt offscreen above the skyline: normalized viewport path.
-  if(this.strikeAge<.23){
-   const px=(i:number)=>bx+this.bolt[i*2]*w
-   const py=(i:number)=>-10+this.bolt[i*2+1]*h*.7
-   const trace=()=>{ctx.beginPath();for(let i=0;i<21;i++){if(i===0)ctx.moveTo(px(i),py(i));else ctx.lineTo(px(i),py(i))}}
-   ctx.lineJoin='round';ctx.lineCap='round'
-   // atmospheric glow around the channel first (wide, translucent)
-   trace();ctx.strokeStyle='rgba(125,180,255,.12)';ctx.lineWidth=38;ctx.stroke()
-   trace();ctx.strokeStyle='rgba(125,180,255,.35)';ctx.lineWidth=16;ctx.stroke()
-   // fork branches — thinner, dimmer, peeling off the main channel
-   for(let f=0;f<3;f++){
-    ctx.beginPath()
-    ctx.moveTo(bx+this.forks[f*4]*w,-10+this.forks[f*4+1]*h*.7)
-    ctx.lineTo(bx+this.forks[f*4+2]*w,-10+this.forks[f*4+3]*h*.7)
-    ctx.strokeStyle='rgba(125,180,255,.22)';ctx.lineWidth=8;ctx.stroke()
-    ctx.strokeStyle='rgba(200,232,255,.6)';ctx.lineWidth=2;ctx.stroke()
-   }
-   trace();ctx.strokeStyle='#c8e8ff';ctx.lineWidth=4;ctx.stroke();ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.stroke()
-  }
-  ctx.restore()
  }
  drawRain(ctx:CanvasRenderingContext2D){
   const {x:cx,y:cy,zoom:z}=this.view,w=this.width,h=this.height,ground=h*.5-cy*z
