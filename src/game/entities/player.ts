@@ -29,7 +29,7 @@ import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch 
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow } from '../render/lighting'
+import { KeyLight } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -4778,46 +4778,14 @@ export class Player {
   /* render                                                               */
   /* ------------------------------------------------------------------ */
 
-  /* ---- LIGHTING ENGINE: projected-skeleton cast shadow ----
-   * Every solved joint (and the blade) projects along the key light onto
-   * the ground plane — the shadow deforms with the pose, stretches when
-   * the storm strobes, detaches + fades when airborne, and carries tight
-   * contact-AO cores under the legik-planted feet. */
-  private shChains: number[][] = [[], [], [], [], []]
-  private shHead = { x: 0, y: 0, r: 0 }
-  private shBlade = { x0: 0, y0: 0, x1: 0, y1: 0 }
-  private shFig: ShadowFigure = { chains: this.shChains, head: this.shHead, blade: this.shBlade }
-  /* strobe rim state — set by the renderer each frame from the key light */
+  /* strobe rim state — set by the renderer each frame from the key light.
+   * (The projected-skeleton cast shadow that lived beside it is removed —
+   * mountain.html's lightfield casts every shadow now.) */
   strobeLight: KeyLight | null = null
   strobeK = 0
   /** contact-AO anchors from the plant-snap pass (non-gait stances:
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
-
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
-    if (this.state === 'dead' && this.deadT > 2.6) return
-    // Planted-foot contact anchors for the ground-plane AO pads
-    const contacts = this.shChains[0]
-    contacts.length = 0
-    if (this.grounded) {
-      if (this.gaitW > 0.5) {
-        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
-        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-      }
-      for (const c of this.snapContacts) contacts.push(c)
-    }
-    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
-    // pose cast along the resultant local light vector onto the deck
-    drawProjectedShadow(ctx, light, (c, col) => {
-      c.save()
-      c.translate(this.x, this.hipY)
-      c.scale(this.face * SCALE, SCALE)
-      silhouette(c, this.geom, col, { flipX: this.face, unit: SCALE })
-      c.restore()
-    }, {
-      alpha: 0.92 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i, contacts, scale: 1,
-    })
-  }
 
   private updateScarf(dt: number, time: number): void {
     const collarX = (this.geom.chest.x + this.geom.neckTop.x) * 0.5

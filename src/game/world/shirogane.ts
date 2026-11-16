@@ -1354,11 +1354,12 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       occZ[n] = z
       n++
     }
-    // the big casters
+    // the big casters (the doorway is NOT a caster: MountainGL punches it
+    // out of the inn's box as a hole, exactly as the reference's
+    // paintHouseMask destination-outs its door opening)
     put(2100, 130, 60, 182) // inn
     put(2470, 88, 50, 250) // sakura
     put(1700, 40, 30, 266) // lantern rack
-    put(1755, 66, 24, 118) // doorway opening (DOOR_LIGHT.x)
     // the inn's yard props (the deterministic plan)
     const box: Record<string, [number, number, number]> = {
       firewood: [34, 18, 42],
@@ -2473,11 +2474,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   }
 
   /** typed light rig: diffuse key pool, moon glitter, door + lantern practicals */
-  drawLightRig(ctx: CanvasRenderingContext2D, moonWorldX: number, _moonWorldY: number): void {
+  drawLightRig(ctx: CanvasRenderingContext2D, _moonWorldX: number, _moonWorldY: number): void {
     this.ensure()
-    const t = this.t
-    const cov = this.moonCover
-    const li = this.lightningI()
     const cam = this.lastCam
     const zoom = cam.zoom > 0 ? cam.zoom : 1
     const viewL = cam.x - (this.w / zoom) * 0.6
@@ -2509,29 +2507,10 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       ctx.globalCompositeOperation = 'source-over'
     }
 
-    /* diffuse cool key pool on the deck (ONE live gradient — brightness
-     * follows the key: eclipse/lightning modulate, never baked-in) */
-    const poolA = (0.3 + 0.5 * Math.min(1, 0.6 + li)) * (1 - 0.85 * cov)
-    if (poolA > 0.02) {
-      const grad = ctx.createLinearGradient(0, 0, 0, 240)
-      grad.addColorStop(0, `rgba(140,168,210,${(0.15 * poolA).toFixed(3)})`)
-      grad.addColorStop(0.5, `rgba(118,148,192,${(0.07 * poolA).toFixed(3)})`)
-      grad.addColorStop(1, 'rgba(100,130,178,0)')
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = grad
-      ctx.fillRect(Math.max(ARENA_X0, viewL - 40), 0, Math.min(ARENA_W, viewR - viewL + 80), 240)
-      ctx.globalCompositeOperation = 'source-over'
-    }
-
-    /* moon glitter lane (two baked blits, micro-wobble) — kept subtle:
-     * at full strength it read as white blobs sitting on the deck */
-    ctx.globalCompositeOperation = 'lighter'
-    const glA = (0.20 + 0.10 * li) * (1 - 0.7 * cov)
-    const w1 = Math.sin(t * 2.1) * 3
-    ctx.globalAlpha = glA
-    ctx.drawImage(this.glitter, moonWorldX - 120 + w1, 10, 240, 110)
-    ctx.globalAlpha = glA * 0.5
-    ctx.drawImage(this.glitter, moonWorldX - 120 - w1, 16, 240, 96)
+    /* The deck's light pools (the key pool, the moon-glitter lane) are
+     * removed with the 2D shadow engine — mountain.html's own system lights
+     * the deck now: the practicals/moon specular inside the lightfield's
+     * deck program. Only what lands above the contact line stays here. */
 
     /* door practical: warm pool + wide bounce (breathing with flicker) —
      * the reference's doorway floods the deck with amber light */

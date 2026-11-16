@@ -1,56 +1,71 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createCanvas } from '@napi-rs/canvas'
-import { keyLightFromStorm,projectGroundPoint,drawCastShadow,type ShadowFigure } from '../src/game/render/lighting'
-const ctx=()=>createCanvas(640,120).getContext('2d')
-test('shadow pass 1: projection is finite, bounded, and continuous through bolt azimuth',()=>{
-  for(const bad of [NaN,Infinity,-Infinity]){
-    const light=keyLightFromStorm(bad,bad)
-    assert.ok(Object.values(light).every(v=>typeof v==='string'||Number.isFinite(v)))
-    assert.equal(projectGroundPoint(bad,0,light),null)
+import * as lighting from '../src/game/render/lighting'
+import { keyLightFromStorm } from '../src/game/render/lighting'
+import { SHADOW_GLSL, SHADOW_BASE_FS, SHADOW_REDUCE_FS, SHADOW_GUARD_FS } from '../src/game/render/mountain-gl/html-gl'
+import { readFileSync } from 'node:fs'
+
+/** The 2D shadow engine was removed — mountain.html's own system (the
+ * world-mask interval pyramid + the twelve-ray disk inside the lightfield)
+ * casts every shadow now. These tests guard both halves of that swap. */
+
+test('the 2D shadow engine is gone from the light module', () => {
+  const removed = [
+    'drawPropShadow',
+    'drawCastShadow',
+    'drawProjectedShadow',
+    'composeShadowKey',
+    'projectGroundPoint',
+    'shadowKeyFromPoint',
+  ]
+  for (const name of removed) {
+    assert.equal(name in lighting, false, `${name} must not be exported`)
   }
-  let previous=0
-  for(let i=0;i<=200;i++){
-    const q=projectGroundPoint(200,-100,keyLightFromStorm(1,-1+i/100))!
-    assert.ok(Number.isFinite(q.x)&&Number.isFinite(q.y))
-    if(i>0)assert.ok(Math.abs(q.x-previous)<3)
-    previous=q.x
-  }
-})
-test('shadow pass 1: malformed chains never emit invalid canvas geometry',()=>{
-  const c=ctx(),light=keyLightFromStorm(1,1)
-  const fig:ShadowFigure={chains:[[0,0,NaN,-100,40,-40,Infinity,0],[4]],head:{x:NaN,y:0,r:Infinity}}
-  assert.doesNotThrow(()=>drawCastShadow(c as unknown as CanvasRenderingContext2D,fig,light))
-  assert.equal(c.globalAlpha,1);assert.equal(c.globalCompositeOperation,'source-over')
+  // the light key itself stays — the strobe rim and the scene key consume it
+  assert.equal(typeof lighting.keyLightFromStorm, 'function')
+  assert.equal(typeof lighting.drawStrobeRim, 'function')
+  assert.ok(lighting.DOOR_LIGHT && lighting.STREET_LIGHT)
 })
 
-test('shadow pass 2: duplicate/overlapping bones do not stack opacity',()=>{
-  const a=ctx(),b=ctx(),light=keyLightFromStorm(0,0),chain=[180,-40,260,-10]
-  drawCastShadow(a as unknown as CanvasRenderingContext2D,{chains:[chain],head:null},light,{alpha:.4})
-  drawCastShadow(b as unknown as CanvasRenderingContext2D,{chains:[chain,chain,chain],head:null},light,{alpha:.4})
-  assert.deepEqual(a.getImageData(0,0,640,120).data,b.getImageData(0,0,640,120).data)
-})
-test('shadow pass 2: airborne contact AO is suppressed and height is not applied twice',async()=>{
-  const {shadowOpacity}=await import('../src/game/render/lighting')
-  assert.ok(shadowOpacity(-200)<shadowOpacity(0)*.4)
-  const a=ctx(),b=ctx(),light=keyLightFromStorm(1,1),fig={chains:[[180,-200,220,-140]],head:{x:220,y:-260,r:8}}
-  drawCastShadow(a as unknown as CanvasRenderingContext2D,fig,light,{height:-200,contacts:[200,200]})
-  drawCastShadow(b as unknown as CanvasRenderingContext2D,fig,light,{height:-200,contacts:[]})
-  assert.deepEqual(a.getImageData(0,0,640,120).data,b.getImageData(0,0,640,120).data)
+test('nothing draws the removed engine any more', () => {
+  const renderer = readFileSync(new URL('../src/game/render/renderer.ts', import.meta.url), 'utf8')
+  assert.ok(!renderer.includes('drawPropShadow('), 'renderer must not call drawPropShadow')
+  assert.ok(!renderer.includes('drawCastShadow('), 'renderer must not call drawCastShadow')
+  assert.ok(!renderer.includes('.drawShadow('), 'renderer must not call the entities’ drawShadow')
+  const player = readFileSync(new URL('../src/game/entities/player.ts', import.meta.url), 'utf8')
+  assert.ok(!player.includes('drawProjectedShadow('), 'player must not project its own shadow')
+  const enemy = readFileSync(new URL('../src/game/entities/enemy.ts', import.meta.url), 'utf8')
+  assert.ok(!enemy.includes('drawProjectedShadow('), 'enemy must not project its own shadow')
 })
 
-test('shadow pass 3: render budgets are bounded and context state is restored',()=>{
-  const c=ctx();c.globalAlpha=.37;c.globalCompositeOperation='screen'
-  for(const passes of [1,2,3,1000,Infinity,NaN]){
-    drawCastShadow(c as unknown as CanvasRenderingContext2D,{chains:[[180,-100,230,0]],head:null},
-      keyLightFromStorm(1,-1),{passes,contacts:[230,230,NaN]})
-    assert.ok(Math.abs(c.globalAlpha-.37)<.01);assert.equal(c.globalCompositeOperation,'screen')
-  }
+test('the html transport ships the twelve-ray disk + the certificates', () => {
+  assert.ok(SHADOW_GLSL.includes('SHADOW_DISK[12]'), 'the reference’s twelve-ray penumbra disk')
+  assert.ok(SHADOW_GLSL.includes('planeCertificate'), 'the constant-range certificates')
+  assert.ok(SHADOW_GLSL.includes('maskTransmission'), 'the world-mask transmission')
+  assert.ok(SHADOW_GLSL.includes('shadowRotation'), 'the per-cell disk rotation')
+  assert.ok(SHADOW_GLSL.includes('float worldShadow(vec2 ground)'), 'the receiver entry point')
 })
-test('shadow pass 3: extra soft passes do not create an opaque stacked center',()=>{
-  const a=ctx(),b=ctx(),fig={chains:[[180,-40,280,-40]],head:null},light=keyLightFromStorm(0,0)
-  drawCastShadow(a as unknown as CanvasRenderingContext2D,fig,light,{alpha:.45,passes:1})
-  drawCastShadow(b as unknown as CanvasRenderingContext2D,fig,light,{alpha:.45,passes:3})
-  const ap=a.getImageData(210,3,1,1).data[3],bp=b.getImageData(210,3,1,1).data[3]
-  assert.ok(Math.abs(ap-bp)<5,`${ap} versus ${bp}`)
+
+test('the interval pyramid passes that feed the certificates are present', () => {
+  for (const [name, src] of [['base', SHADOW_BASE_FS], ['reduce', SHADOW_REDUCE_FS], ['guard', SHADOW_GUARD_FS]] as const) {
+    assert.ok(src.includes('uniform sampler2D u_src'), `${name} reads its source level`)
+    assert.ok(src.includes('outColor='), `${name} writes its target`)
+  }
+  assert.ok(SHADOW_BASE_FS.includes('*4'), 'the base pass reduces 4×4')
+  assert.ok(SHADOW_REDUCE_FS.includes('*2'), 'the reduce pass halves the grid')
+  assert.ok(SHADOW_GUARD_FS.includes('u_guardOrigin'), 'the guard pass pads the window')
+})
+
+test('the light key stays finite and continuous through the bolt azimuth', () => {
+  for (const bad of [NaN, Infinity, -Infinity]) {
+    const light = keyLightFromStorm(bad, bad)
+    assert.ok(Object.values(light).every((v) => typeof v === 'string' || Number.isFinite(v)))
+  }
+  let previous = 0
+  for (let i = 0; i <= 200; i++) {
+    const q = keyLightFromStorm(1, -1 + i / 100)
+    assert.ok(Number.isFinite(q.dirX) && Number.isFinite(q.elev) && Number.isFinite(q.i))
+    if (i > 0) assert.ok(Math.abs(q.dirX - previous) < 0.05, 'dirX sweeps continuously')
+    previous = q.dirX
+  }
 })

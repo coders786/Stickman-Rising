@@ -19,6 +19,12 @@ export class Camera {
 
   private tx = 1300
   private ty = -150
+  /** the camera height without the jump transient (see focus) */
+  private yBase = Number.NaN
+  /** the raw altitude target of the current frame (see focus) */
+  private yTarget = Number.NaN
+  /** seconds the altitude target has stayed away from the baseline */
+  private yFarT = 0
   private tzoom = 1
   private baseZoom = 1
   private zoomBoost = 0
@@ -49,7 +55,13 @@ export class Camera {
   /** Camera wants to focus this point (world coords) with look-ahead velocity. */
   focus(x: number, y: number, vx: number, vy: number): void {
     this.tx = x + vx * 0.13
-    this.ty = y + vy * 0.06 - 62
+    // The raw altitude target; update() folds it into the baseline below.
+    this.yTarget = y + vy * 0.06 - 62
+    if (!Number.isFinite(this.yBase)) {
+      this.yBase = this.yTarget
+      this.yFarT = 0
+      this.ty = this.yBase
+    }
   }
 
   setZoom(z: number): void {
@@ -68,9 +80,33 @@ export class Camera {
   snapTo(x: number, y: number): void {
     this.x = this.tx = x
     this.y = this.ty = y
+    this.yBase = this.yTarget = y
+    this.yFarT = 0
   }
 
   update(dt: number): void {
+    // Fold the raw altitude target into the slow BASELINE. A jump (or launch)
+    // transient moves the target fast and far, then returns — the horizon
+    // must not follow it: the mountains/sky are keyed to the horizon line, so
+    // sliding it makes the far ridges float free of the scene (it reads as
+    // space). The baseline only accepts a displacement that PERSISTS far
+    // longer than any airborne round-trip (a real ground-level change).
+    if (Number.isFinite(this.yTarget)) {
+      if (!Number.isFinite(this.yBase)) {
+        this.yBase = this.yTarget
+        this.yFarT = 0
+      } else if (Math.abs(this.yTarget - this.yBase) < 70) {
+        this.yBase = this.yTarget
+        this.yFarT = 0
+      } else {
+        this.yFarT += dt
+        if (this.yFarT > 2.4) {
+          this.yBase = this.yTarget
+          this.yFarT = 0
+        }
+      }
+      this.ty = this.yBase
+    }
     // clamp target inside arena so we never show void beyond the roof
     const halfW = this.viewW / (2 * this.zoom)
     const halfH = this.viewH / (2 * this.zoom)

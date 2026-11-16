@@ -9,7 +9,7 @@
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
-import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow, drawStrobeRim } from '../render/lighting'
+import { KeyLight, drawStrobeRim } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
@@ -1027,42 +1027,14 @@ export class Enemy {
     this.litT = Math.max(this.litT, t)
   }
 
-  /* ---- LIGHTING ENGINE: projected-skeleton cast shadow ---- */
-  private shChains: number[][] = [[], [], [], [], []]
-  private shHead = { x: 0, y: 0, r: 0 }
-  private shBlade = { x0: 0, y0: 0, x1: 0, y1: 0 }
-  private shFig: ShadowFigure = { chains: this.shChains, head: this.shHead, blade: this.shBlade }
-  /* strobe rim state — set by the renderer each frame from the key light */
+  /* strobe rim state — set by the renderer each frame from the key light.
+   * (The projected-skeleton cast shadow that lived beside it is removed —
+   * mountain.html's lightfield casts every shadow now.) */
   strobeLight: KeyLight | null = null
   strobeK = 0
   private rimChains: number[][] = [[], [], [], [], []]
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
-
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
-    const s = this.scale
-    const contacts = this.shChains[0]
-    contacts.length = 0
-    if (this.y > -0.5) {
-      if (this.gaitW > 0.5) {
-        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
-        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-      }
-      for (const c of this.snapContacts) contacts.push(c)
-    }
-    const flying = this.kind === 'drone' ? this.y : this.y
-    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
-    // pose along the resultant local light vector
-    drawProjectedShadow(ctx, light, (c, col) => {
-      c.save()
-      c.translate(this.x, this.hipY)
-      c.scale(this.face * s, s)
-      drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
-      c.restore()
-    }, {
-      alpha: (this.kind === 'drone' ? 0.52 : 0.76) * alphaScale, height: flying, rootX: this.x, contacts, scale: s,
-    })
-  }
 
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     if (this.dead || this.spawning) return

@@ -1,8 +1,12 @@
-/** Ground-shadow rewrite, pass 4: sky-colored shadows + PCSS contact-hardening.
- * World joint Y ALREADY includes jump height. Never add it again to the skull.
+/** STICKMAN RISING — the light key + the strobe rim.
+ *
+ * The 2D shadow engine that lived here (drawPropShadow / drawCastShadow /
+ * drawProjectedShadow / composeShadowKey / projectGroundPoint) is removed:
+ * mountain.html's own system casts every shadow now — the world-mask
+ * interval pyramid inside the MountainGL lightfield (mountain-gl/html-gl.ts).
  */
-import { clamp,clamp01,lerp,rgba } from '../core/utils'
-import { GRAPHICS_RULES } from './rules'
+import { clamp, clamp01, lerp, rgba } from '../core/utils'
+
 export interface KeyLight {
   /** horizontal direction shadows lean along (unit-ish, +X = right) */
   dirX: number
@@ -15,54 +19,21 @@ export interface KeyLight {
   /** shadow tint (near-black; storms cool it further) */
   color: string
   /** RAY-TRACED MODE: when a light ORIGIN is given, shadows are true
-   * point-light projections (each joint's ray cast from the source through
-   * the joint onto the ground plane) instead of the directional skew —
-   * shadows then sweep radially as the caster moves past the practical. */
+   * point-light projections instead of the directional skew. */
   ox?: number
   oy?: number
 }
 
-export interface ShadowFigure {
-  /** stroke chains in WORLD space: flat [x0,y0, x1,y1, ...] per chain
-   * (y negative = above the ground line) */
-  chains: number[][]
-  /** head joint for the skull ellipse (world) */
-  head: { x: number; y: number; r: number } | null
-  /** optional weapon chain already included in chains; kept separate here
-   * so it can carry a wider streak */
-  blade?: { x0: number; y0: number; x1: number; y1: number } | null
+const finite = (n: number, fallback: number): number => (Number.isFinite(n) ? n : fallback)
+const mixHex = (a: string, b: string, t: number): string => {
+  const pa = parseInt(a.slice(1, 16), 16), pb = parseInt(b.slice(1, 16), 16), u = clamp01(finite(t, 0))
+  const r = Math.round(((pa >> 16) & 255) * (1 - u) + ((pb >> 16) & 255) * u)
+  const g = Math.round(((pa >> 8) & 255) * (1 - u) + ((pb >> 8) & 255) * u)
+  const bl = Math.round((pa & 255) * (1 - u) + (pb & 255) * u)
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)
 }
 
-export interface CastShadowOpts {
-  /** base opacity multiplier */
-  alpha?: number
-  /** base stroke width (world px) — roughly limb width */
-  width?: number
-  /** penumbra passes (2 cheap / 3 player) */
-  passes?: number
-  /** body scale (widths scale) */
-  scale?: number
-  /** Physics root altitude, for falloff only; joints already include world Y. */
-  height?: number
-  /** planted-foot contact points for the AO cores (world x) */
-  contacts?: number[]
-  /** light intensity boost (strobes) — defaults from light */
-  lightBoost?: number
-}
-
-
-const finite=(n:number,fallback:number)=>Number.isFinite(n)?n:fallback
-const mixHex=(a:string,b:string,t:number)=>{
-  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16),u=clamp01(finite(t,0))
-  const r=Math.round(((pa>>16)&255)*(1-u)+((pb>>16)&255)*u)
-  const g=Math.round(((pa>>8)&255)*(1-u)+((pb>>8)&255)*u)
-  const bl=Math.round((pa&255)*(1-u)+(pb&255)*u)
-  return '#'+((1<<24)|(r<<16)|(g<<8)|bl).toString(16).slice(1)
-}
-
-/* ===================== typed light rig (UE archetypes) =====================
- * Directional = the moon key (KeyLight above). Point/spot/rect sources carry
- * UE-style attenuation and cast their own shadows + wet-deck reflections. */
+/* ===================== typed light rig (UE archetypes) ===================== */
 export type LightKind = 'directional' | 'point' | 'spot' | 'rect'
 export interface Light2D {
   kind: LightKind
@@ -80,328 +51,43 @@ export interface Light2D {
   h?: number
 }
 
-/** UE-style inverse-square-ish falloff, clamped at the attenuation radius */
-export function pointAt(l: Light2D, x: number, y: number): number {
-  const dx = x - l.x, dy = y - l.y
-  const r = Math.max(1, l.range)
-  return l.intensity / (1 + (dx * dx + dy * dy) / (r * r))
-}
-
-  /** secondary shadow key from a point source: shadows fall AWAY from it.
-   * RAY-TRACED: carries the true light origin, so projectGroundPoint casts
-   * real radial rays from the lamp through every joint onto the deck. */
-export function shadowKeyFromPoint(l: Light2D, x: number, y: number): KeyLight {
-  const dx = x - l.x
-  const dirX = dx >= 0 ? 0.85 : -0.85
-  // shadow tint follows the blocked light's temperature: a warm practical
-  // leaves a warm-dark umber smudge, a cool one a cool-dark slate — each
-  // shadow reads distinctly against its own pool (shadow = the remaining
-  // ambient, never pure black)
-  const r = parseInt(l.color.slice(1, 3), 16), bl = parseInt(l.color.slice(5, 7), 16)
-  const tint = bl > r ? '#0e1722' : '#2a1410'
-  return {dirX, elev: .52, hard: .5, i: pointAt(l, x, y), color: tint,
-    ox: l.x, oy: l.y}
-}
-
-/**
- * UNIFIED RESULTANT SHADOW VECTOR (`composeShadowKey`)
- * ----------------------------------------------------
- * Replaces casting 3–4 separate full-body shadows per entity (moon + door +
- * streetlamp) with a single resultant ground-plane light vector solved at the
- * caster's world coordinate `(x, y)`.
- *
- * When a fighter approaches a practical emitter (shoji door or stone lantern),
- * the local shadow vector smoothly bends away from the emitter, elevates as
- * the source nears overhead, softens when cross-lit from opposing directions,
- * and shifts shadow temperature between cool indigo, warm umber, and slate.
- */
-export function composeShadowKey(moonKey: KeyLight, x: number, y: number): KeyLight {
-  const wMoon = Math.max(0.15, finite(moonKey.i, 0.62))
-  const wDoor = pointAt(DOOR_LIGHT, x, y) * 0.72
-  const wStreet = pointAt(STREET_LIGHT, x, y) * 0.68
-
-  if (wDoor < 0.04 && wStreet < 0.04) return moonKey
-
-  const dirDoor = clamp((x - DOOR_LIGHT.x) / 260, -0.92, 0.92)
-  const dirStreet = clamp((x - STREET_LIGHT.x) / 260, -0.92, 0.92)
-  const wSum = wMoon + wDoor + wStreet
-  const dirX = (moonKey.dirX * wMoon + dirDoor * wDoor + dirStreet * wStreet) / wSum
-  const elev = (moonKey.elev * wMoon + 0.66 * wDoor + 0.68 * wStreet) / wSum
-  // Opposing lights fill each other's shadow and reduce directional hardness
-  const agreement = Math.abs(dirX) / Math.max(0.2, (Math.abs(moonKey.dirX) * wMoon + Math.abs(dirDoor) * wDoor + Math.abs(dirStreet) * wStreet) / wSum)
-  const hard = clamp01(moonKey.hard * agreement)
-  const i = clamp01(Math.max(moonKey.i, (wMoon + (wDoor + wStreet) * 0.65)))
-
-  let color = moonKey.color
-  if (wDoor > 0.05) color = mixHex(color, '#261410', clamp01(wDoor / (wMoon + wDoor)))
-  if (wStreet > 0.05) color = mixHex(color, '#0e1722', clamp01(wStreet / (wMoon + wStreet)))
-
-  return { dirX, elev, hard, i, color }
-}
-
-/**
- * ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW (`drawProjectedShadow`)
- * -----------------------------------------------------------------
- * Low-stature semi-3D ground projection:
- *   1. Uses shallow perspective foreshortening (`squash = -0.125` instead of
- *      `-0.22` — 43% less vertical stature) and a restrained horizontal lean
- *      so shadows hug the deck boards rather than standing like a second figure.
- *   2. Anchors the vertical squash to the ground contact plane (`y = 0`) so
- *      airborne jumps detach and compress along the floor instead of pushing
- *      the shadow downward into the foreground.
- *   3. Renders in a single unified pass with planted-foot Contact-AO anchors,
- *      cutting per-entity shadow draw calls from 4 full-body passes to 1.
- */
-const shadowGradCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
-
-export function drawProjectedShadow(
-  ctx: CanvasRenderingContext2D, light: KeyLight,
-  drawBody: (c: CanvasRenderingContext2D, col: string | CanvasGradient) => void,
-  opts: { alpha?: number; height?: number; rootX?: number; lightBoost?: number; contacts?: number[]; scale?: number } = {},
-): void {
-  const height = finite(opts.height ?? 0, 0)
-  const air = Math.max(0, -height)
-  let alpha = shadowOpacity(height, opts.alpha ?? 0.52)
-  if (alpha < 0.008) return
-  alpha *= 0.84 + 0.16 * clamp01(finite(opts.lightBoost ?? light.i ?? 0.55, 0.55))
-  const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
-  const cot = 1 / Math.tan(clamp(finite(light.elev, 0.52), 0.35, 1.45))
-
-  // Low-stature ground-plane foreshortening: compact lean + shallow -0.125 squash
-  const lean = clamp(cot * 0.42, 0.22, 0.78)
-  const shear = -lean * clamp(finite(light.dirX, 0), -1, 1)
-  const squash = -0.125 * clamp(1 - air / 320, 0.55, 1)
-  // Keep airborne shadow anchored to the deck plane (y = 2) rather than
-  // drifting down-screen by `-squash * height`
-  const deckAnchorY = 2 + height * squash
-
-  let tintMap = shadowGradCache.get(ctx)
-  if (!tintMap) { tintMap = new Map(); shadowGradCache.set(ctx, tintMap) }
-  let grad = tintMap.get(tint)
-  if (!grad) {
-    grad = ctx.createLinearGradient(0, 0, 0, -175)
-    grad.addColorStop(0, rgba(tint, 0.95))
-    grad.addColorStop(0.48, rgba(tint, 0.62))
-    grad.addColorStop(1, rgba(tint, 0.08))
-    tintMap.set(tint, grad)
-  }
-
-  ctx.save()
-  ctx.globalCompositeOperation = 'source-over'
-
-  // 1. Single-pass foreshortened ground silhouette
-  ctx.save()
-  ctx.globalAlpha = alpha * 0.78
-  ctx.transform(1, 0, shear, squash, -shear * height * 0.35, deckAnchorY)
-  drawBody(ctx, grad)
-  ctx.restore()
-
-  // 2. Crisp planted-foot Contact-AO pads (grounds the figure on the deck)
-  if (height >= -1.5 && opts.contacts && opts.contacts.length > 0) {
-    const sc = clamp(finite(opts.scale ?? 1, 1), 0.4, 3)
-    ctx.fillStyle = rgba(tint, alpha * 0.52)
-    ctx.beginPath()
-    for (let i = 0; i < opts.contacts.length; i++) {
-      const cx = opts.contacts[i]
-      if (!Number.isFinite(cx)) continue
-      ctx.moveTo(cx + 8 * sc, 2)
-      ctx.ellipse(cx, 2, 8 * sc, 1.8 * sc, 0, 0, Math.PI * 2)
-    }
-    ctx.fill()
-  }
-
-  ctx.restore()
-}
-
-export function drawPropShadow(
-  ctx: CanvasRenderingContext2D, light: KeyLight,
-  cx: number, halfW: number, topY: number,
-  alpha = 0.32,
-): void {
-  const a = projectGroundPoint(cx - halfW, topY, light)
-  const b = projectGroundPoint(cx + halfW, topY, light)
-  const c0 = projectGroundPoint(cx + halfW, 1.5, light)
-  const d0 = projectGroundPoint(cx - halfW, 1.5, light)
-  if (!a || !b) return
-  // DEPTH RAKE (props only): the moon sits behind the scene, so a
-  // height-h caster throws its shadow h·depthTilt downstage — the broad
-  // bands the reference's SAT pass produces. Entity skeletons keep the
-  // plain projection (their pose-accurate path is tuned and tested).
-  const rake = -topY * GRAPHICS_RULES.shadow.depthTilt
-  a.y += rake
-  b.y += rake
-  const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
-  ctx.save()
-  ctx.globalCompositeOperation = 'source-over'
-  const rootX = (c0?.x ?? cx) + ((d0?.x ?? cx) - (c0?.x ?? cx)) * 0.5
-  const tipX = (a.x + b.x) * 0.5
-  const shade = ctx.createLinearGradient(rootX, 0, tipX * 1.35 - rootX * 0.35, 0)
-  shade.addColorStop(0, rgba(tint, 1))
-  shade.addColorStop(0.6, rgba(tint, 0.66))
-  shade.addColorStop(1, rgba(tint, 0.12))
-  ctx.fillStyle = shade
-  ctx.globalAlpha = clamp01(alpha) * clamp01(0.35 + 0.75 * light.i)
-  ctx.beginPath()
-  ctx.moveTo((d0 ?? a).x - 3, (d0 ?? a).y)
-  ctx.lineTo((c0 ?? b).x + 3, (c0 ?? b).y)
-  ctx.lineTo(b.x + 3, b.y)
-  ctx.lineTo(a.x - 3, a.y)
-  ctx.closePath()
-  ctx.fill()
-  ctx.restore()
-}
-
-/** the stairwell practical — scene point light (warm), world coords */
+/** the shoji door — warm practical (its deck pool lives in the lightfield). */
 export const DOOR_LIGHT: Light2D = {
-  kind: 'point', x: 1755, y: -120, range: 640, intensity: .95, color: '#ff9a4d',
+  // the baked house's lit doorway (hearthAnchor = INN_X + 14); 1755 was the
+  // legacy city scene's stairwell practical, 345 px left of the art
+  kind: 'point', x: 2114, y: -120, range: 640, intensity: .95, color: '#ff9a4d',
 }
-/** the broken streetlight (left field) — cool practical. Its presence is
- *  what makes shadows fall on BOTH sides of every figure: moon + door throw
- *  left, the lamp throws right. Flicker lives in the background's pool draw. */
+/** the broken streetlight (left field) — cool practical. */
 export const STREET_LIGHT: Light2D = {
   kind: 'point', x: 830, y: -252, range: 620, intensity: .9, color: '#b8e4ff',
 }
-/** the scene's big static casters — inn, sakura and lantern rack rake
- *  long shadows across the deck with the key (the source's SAT engine
- *  does this for its hero-plane occluders; these are ours). Rows:
- *  [worldX, halfW, topY, alpha] in the environment's back-line frame. */
-export const SCENE_CASTERS: [number, number, number, number][] = [
-  [2100, 130, -182, 0.26], // the inn — wall + roof mass
-  [2470, 88, -250, 0.22],  // the sakura — scaled crown
-  [1700, 40, -266, 0.18],  // the lantern rack — pole + branches
-]
-export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
-  const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
+
+export function keyLightFromStorm(intensity: number, azimuth: number): KeyLight {
+  const k = clamp01(finite(intensity, 0)), az = clamp(finite(azimuth, 0), -1, 1)
   // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt —
   // shadows snap tight and near-black (ambient drowned). Moon mode (k→0):
   // KEY LIGHT = moon upper-right — LOW elevation so shadows rake LONG
-  // down-left across the deck (~1.8 body-lengths at elev .50), soft-edged.
+  // down-left across the deck, soft-edged.
   // SKY-COLORED SHADOWS law: shadow = the remaining skylight — a DARK
-  // violet-blue that pops against the bright moonlit deck (target-art
-  // contrast: bright ground, deep shadow), never dead black.
-  return {dirX:lerp(-.85,-.92*az,k),elev:lerp(.50,.40,k),hard:lerp(.12,1,k),
-    i:lerp(.62,1,k),color:mixHex('#231d48','#0d0c22',k)}
-}
-export function projectGroundPoint(x:number,y:number,light:KeyLight):{x:number;y:number}|null {
-  if(!Number.isFinite(x)||!Number.isFinite(y))return null
-  const height=Math.max(0,-y)
-  // RAY-TRACED POINT LIGHT: extend the source→joint ray until it pierces
-  // the ground plane (y = 1.5). Each joint lands at its own angle — the
-  // shadow sweeps and stretches radially around a practical, exactly as a
-  // real near-light shadow does (near the lamp: short and splayed; far:
-  // long and near-parallel).
-  const oy=finite(light.oy ?? NaN,NaN)
-  if(Number.isFinite(oy)){
-    const ox=finite(light.ox ?? 0,0)
-    const dy=y-oy
-    if(Math.abs(dy)<2)return null
-    const t=(1.5-oy)/dy
-    if(!(t>1.02))return null            // joint at/below the plane: no cast
-    const sx=ox+t*(x-ox)
-    const lim=clamp(180+height*2.2,180,420)   // depth clamp, bias by height
-    return {x:clamp(sx,x-lim,x+lim),y:1.5+Math.min(12,height*.06)}
+  // violet-blue that pops against the bright moonlit deck, never dead black.
+  return {
+    dirX: lerp(-.85, -.92 * az, k), elev: lerp(.50, .40, k), hard: lerp(.12, 1, k),
+    i: lerp(.62, 1, k), color: mixHex('#231d48', '#0d0c22', k),
   }
-  const cot=1/Math.tan(clamp(finite(light.elev,1),.3,1.45))
-  const offset=clamp(height*cot*clamp(finite(light.dirX,0),-1,1),-320,320)
-  return {x:x+offset,y:1.5+Math.min(12,height*.06)}
 }
-/** Build every body primitive into ONE fill path: crossings/duplicates do
- * not multiply opacity. World coordinates already contain the airborne Y. */
-function shadowPath(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight,radius:number):void {
-  // PCSS CONTACT-HARDENING (research: penumbra width ∝ distance from the
-  // contact patch): each joint's penumbra radius scales with ITS height above
-  // the deck — feet razor-tight, head/tip blooming wide; soft keys widen
-  // more than strobes. Each segment fills a TRAPEZOID quad whose width grows
-  // from the contact end toward the raised end = the slembcke penumbra wedge.
-  const hard=clamp01(finite(light.hard,.14))
-  const rAt=(y:number)=>radius*(1+(1-hard)*1.2*clamp01(Math.max(0,-y)/70))
-  const ryR=.32
-  // area-light penumbra growth for point keys: a stretched shadow segment
-  // is farther from its contact patch, so its edge blooms wider (real
-  // soft-shadow law: penumbra ∝ receiver distance from occluder)
-  const pointMode=Number.isFinite(light.oy)
-  const ellipse=(x:number,y:number,xr:number,yr?:number)=>{ctx.moveTo(x+xr,y);ctx.ellipse(x,y,xr,yr??Math.max(.5,xr*ryR),0,0,Math.PI*2)}
-  ctx.beginPath()
-  for(const chain of fig.chains){
-    let prev:{x:number;y:number}|null=null,prevR=radius
-    for(let i=0;i+1<chain.length;i+=2){
-      const q=projectGroundPoint(chain[i],chain[i+1],light)
-      if(!q){prev=null;continue}
-      let rQ=rAt(chain[i+1])
-      if(pointMode){
-        const stretch=clamp01(Math.abs(q.x-chain[i])/150)
-        rQ*=1+stretch*.6
-      }
-      ellipse(q.x,q.y,rQ)
-      if(prev){const dx=q.x-prev.x,dy=q.y-prev.y,l=Math.hypot(dx,dy)||1
-        const kx=-dy/l,ky=dx/l*ryR
-        const n0x=kx*prevR,n0y=ky*prevR,n1x=kx*rQ,n1y=ky*rQ
-        // Same winding as ellipses, so overlapping shapes form a solid union.
-        ctx.moveTo(prev.x-n0x,prev.y-n0y);ctx.lineTo(q.x-n1x,q.y-n1y)
-        ctx.lineTo(q.x+n1x,q.y+n1y);ctx.lineTo(prev.x+n0x,prev.y+n0y);ctx.closePath()}
-      prev=q;prevR=rQ
+
+export function drawStrobeRim(ctx: CanvasRenderingContext2D, light: KeyLight, k: number, chains: number[][], head: { x: number; y: number; r: number }, face: number, lineW: number, color = '#cfe4ff'): void {
+  const amount = clamp01(finite(k, 0)); if (amount < .04) return
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = rgba(color, amount * .2)
+  ctx.lineWidth = .65; ctx.beginPath()
+  const off = -clamp(finite(light.dirX, 0), -1, 1) * finite(face, 1) * (clamp(finite(lineW, 5), .1, 20) * .5 + .5)
+  for (const chain of chains) {
+    let started = false
+    for (let i = 0; i + 1 < chain.length; i += 2) {
+      if (!Number.isFinite(chain[i]) || !Number.isFinite(chain[i + 1])) { started = false; continue }
+      if (!started) ctx.moveTo(chain[i] + off, chain[i + 1]); else ctx.lineTo(chain[i] + off, chain[i + 1])
+      started = true
     }
   }
-  if(fig.head){const q=projectGroundPoint(fig.head.x,fig.head.y,light)
-    if(q){const r=clamp(finite(fig.head.r,6),1,30);const rr=rAt(fig.head.y)
-      ellipse(q.x,q.y,r*.9+rr*.25,Math.max(1,r*.26))}}
-  if(fig.blade){const b=fig.blade,a=projectGroundPoint(b.x0,b.y0,light),z=projectGroundPoint(b.x1,b.y1,light)
-    if(a&&z){const r0=Math.max(.7,rAt(b.y0)*.22),r1=Math.max(.7,rAt(b.y1)*.22)
-      ctx.moveTo(a.x,a.y-r0);ctx.lineTo(z.x,z.y-r1);ctx.lineTo(z.x,z.y+r1);ctx.lineTo(a.x,a.y+r0);ctx.closePath()}}
-}
-export function shadowOpacity(height:number,alpha=.55):number {
-  // Height changes softness/opacity, NOT a second displacement of the head.
-  return clamp01(finite(alpha,.55))/(1+Math.max(0,-finite(height,0))/115)
-}
-export function drawCastShadow(ctx:CanvasRenderingContext2D,fig:ShadowFigure,light:KeyLight,opts:CastShadowOpts={}):void {
-  const height=finite(opts.height??0,0),alpha=shadowOpacity(height,opts.alpha??.55)
-  if(alpha<.005)return
-  const scale=clamp(finite(opts.scale??1,1),.1,5)
-  const radius=clamp(finite(opts.width??6,6),.5,24)*scale*.5
-  ctx.save();ctx.globalCompositeOperation='source-over'
-  const passes=Math.round(clamp(finite(opts.passes??2,2),1,3))
-  const soft=1-clamp01(finite(light.hard,.14)),alt=Math.max(0,-height)
-  const weights=[.62,.26,.12],sum=weights.slice(0,passes).reduce((a,b)=>a+b,0)
-  const target=alpha*(.88+.12*clamp01(finite(opts.lightBoost??light.i,.55)))
-  const tint=/^#[0-9a-f]{6}$/i.test(light.color)?light.color:'#020409'
-  // LONG-SHADOW TIP FADE: opacity dies toward the far tip the way a real
-  // penumbra dissolves with distance from the contact patch. One gradient
-  // per caster per frame (never per stroke) — passes share it via globalAlpha.
-  const rootX=fig.chains.length&&fig.chains[0].length?fig.chains[0][0]:(fig.head?fig.head.x:0)
-  let maxH=20
-  for(const ch of fig.chains)for(let i=1;i<ch.length;i+=2)if(1.5-ch[i]>maxH)maxH=1.5-ch[i]
-  if(fig.head&&1.5-fig.head.y>maxH)maxH=1.5-fig.head.y
-  if(fig.blade){if(1.5-fig.blade.y0>maxH)maxH=1.5-fig.blade.y0;if(1.5-fig.blade.y1>maxH)maxH=1.5-fig.blade.y1}
-  const tipOff=Math.min(320,maxH*Math.abs(Math.cos(finite(light.elev,.58)))/Math.max(.24,Math.sin(finite(light.elev,.58))))*finite(light.dirX,-.85)
-  const shade=ctx.createLinearGradient(rootX,0,rootX+tipOff*1.3,0)
-  shade.addColorStop(0,rgba(tint,1))
-  shade.addColorStop(.55,rgba(tint,.78))
-  shade.addColorStop(1,rgba(tint,.32))
-  ctx.fillStyle=shade
-  // Outside-in soft passes. Normalize accumulated center opacity so adding
-  // quality passes cannot darken the entire character shadow three times.
-  for(let pass=passes-1;pass>=0;pass--){
-    const opacity=1-Math.pow(1-target,weights[pass]/sum)
-    ctx.globalAlpha=opacity
-    shadowPath(ctx,fig,light,radius*(1+pass*(soft*.42+Math.min(.65,alt/400))))
-    ctx.fill()
-  }
-  ctx.globalAlpha=1
-  // AO belongs only to actual foot contact; stale airborne anchors are ignored.
-  if(height>=-1.5){
-    ctx.fillStyle=rgba('#0c0a20',alpha*.45)
-    const unique=new Set((opts.contacts??[]).filter(Number.isFinite).map(x=>Math.round(x*4)/4))
-    ctx.beginPath();for(const x of unique){ctx.moveTo(x+6*scale,2);ctx.ellipse(x,2,6*scale,1.6*scale,0,0,Math.PI*2)}ctx.fill()
-  }
-  ctx.restore()
-}
-export function drawStrobeRim(ctx:CanvasRenderingContext2D,light:KeyLight,k:number,chains:number[][],head:{x:number;y:number;r:number},face:number,lineW:number,color='#cfe4ff'):void {
-  const amount=clamp01(finite(k,0));if(amount<.04)return
-  ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=rgba(color,amount*.2)
-  ctx.lineWidth=.65;ctx.beginPath()
-  const off=-clamp(finite(light.dirX,0),-1,1)*finite(face,1)*(clamp(finite(lineW,5),.1,20)*.5+.5)
-  for(const chain of chains){let started=false;for(let i=0;i+1<chain.length;i+=2){
-    if(!Number.isFinite(chain[i])||!Number.isFinite(chain[i+1])){started=false;continue}
-    if(!started)ctx.moveTo(chain[i]+off,chain[i+1]);else ctx.lineTo(chain[i]+off,chain[i+1]);started=true}}
-  ctx.stroke();ctx.restore();void head
+  ctx.stroke(); ctx.restore(); void head
 }

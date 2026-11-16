@@ -184,7 +184,10 @@ void main(){
  float hy=HY-u_camShift.y*0.72,moonDim=exp(-cloudField(u_moonScr+u_camShift*0.04)*0.95);
  float persp=1.0+(scr.y-hy)/(HY-VPY),parX=u_camShift.x*(0.72+(persp-1.0)*1.48);
  float wx=VPX+(scr.x+parX-VPX)/persp+u_panX,wz=1.0-1.0/persp;float doorX=u_doorCenter+u_panX;
- if(wz>0.365){vec3 edge=mix(vec3(0.14,0.18,0.22),vec3(0.015,0.02,0.03),smoothstep(0.365,0.371,wz));outColor=vec4(tone(edge*(0.72+0.38*fbm3(vec2(wx*22.0,wz*48.0)))),1.0);return;}
+ // The deck's far edge sits where the screen ends — derived from the live
+ // horizon (our contact line, not the reference's fixed 0.365).
+ float wzEdge=1.0-1.0/(1.0+(0.985-hy)/(HY-VPY));
+ if(wz>wzEdge){vec3 edge=mix(vec3(0.14,0.18,0.22),vec3(0.015,0.02,0.03),smoothstep(wzEdge-0.006,wzEdge,wz));outColor=vec4(tone(edge*(0.72+0.38*fbm3(vec2(wx*22.0,wz*48.0)))),1.0);return;}
  float plank=wx*29.0,id=floor(plank),pu=fract(plank),seed=hash12(vec2(id,7.3));
  float sw=mix(0.034,0.018,clamp(wz*2.5,0.0,1.0));
  float seamAA=max(fwidth(plank)*0.5,0.0001);
@@ -435,7 +438,8 @@ export class HtmlLightfield {
   /** The five-level interval pyramid the certificates read. */
   private initPyramid(): void {
     const g = this.gl;
-    this.atlasW = 2048;
+    // The reference packs two planes side by side: WORLD_ATLAS_W = 2·2048.
+    this.atlasW = 4096;
     this.maskTexture = this.texture(this.atlasW, WORLD_ATLAS_H, g.RGBA8, g.RGBA, g.UNSIGNED_BYTE);
     this.levels = [];
     let height = 0;
@@ -462,7 +466,7 @@ export class HtmlLightfield {
    * opening, the cherry, the rack, the props) painted in the reference's
    * convention: red = solid, green = soft foliage.
    */
-  setWorldPlanes(planes: { rect: [number, number, number, number]; world: [number, number, number, number] }[], anchor: number): void {
+  setWorldPlanes(planes: { rect: [number, number, number, number]; world: [number, number, number, number]; z?: number }[], anchor: number): void {
     this.worldAnchor = anchor;
     this.planeWorlds = planes.map((p) => [...p.world]);
     for (let i = 0; i < 5; i++) {
@@ -476,7 +480,9 @@ export class HtmlLightfield {
       this.maskMap[i * 4 + 1] = 1 / w[3];
       this.maskMap[i * 4 + 2] = -(w[0] - anchor) / w[2];
       this.maskMap[i * 4 + 3] = (w[1] + w[3]) / w[3];
-      this.planeInfo[i * 4] = 0;
+      // planeInfo.x is the plane's own deck depth: receivers' ground.y is
+      // measured relative to it (the reference's per-plane z).
+      this.planeInfo[i * 4] = p.z ?? 0;
       this.planeInfo[i * 4 + 1] = w[1] + w[3];
       this.planeInfo[i * 4 + 2] = w[0] - anchor;
       this.planeInfo[i * 4 + 3] = w[0] + w[2] - anchor;

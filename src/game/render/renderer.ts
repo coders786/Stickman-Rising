@@ -12,7 +12,7 @@ import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
-import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, SCENE_CASTERS, composeShadowKey, drawPropShadow } from './lighting'
+import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT } from './lighting'
 import { MountainGL, type GLFrame } from './mountain-gl'
 import { GRAPHICS_RULES } from './rules'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
@@ -126,6 +126,29 @@ export class Renderer {
   private glReflH = 176
   private glOcc = new Float32Array(40 * 4)
   private glOccZ = new Float32Array(40)
+  private glActors = new Float32Array(24 * 3)
+  private glActorN = 0
+
+  /** the live actors for the lightfield's world mask: x, hw, height. */
+  private packActors(world: RenderWorld, viewHalfW: number): Float32Array {
+    const { cam, player, enemies } = world
+    let n = 0
+    const put = (x: number, hw: number, h: number): void => {
+      if (n >= 24) return
+      if (Math.abs(x - cam.x) > viewHalfW + 200) return
+      this.glActors[n * 3] = x
+      this.glActors[n * 3 + 1] = hw
+      this.glActors[n * 3 + 2] = h
+      n++
+    }
+    put(player.x, 30, 100)
+    for (const e of enemies) {
+      if (e.dead || e.spawning) continue
+      put(e.x, 30, 96)
+    }
+    this.glActorN = n
+    return this.glActors
+  }
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
     const { cam, fx, bg, player, enemies, projectiles, hud, hudState } = world
@@ -193,40 +216,10 @@ export class Renderer {
     light.i *= 1 - 0.42 * bg.moonCover
     light.hard *= 1 - 0.32 * bg.moonCover
     // UNIFIED RESULTANT SHADOW VECTOR — instead of casting 3–4 separate
-    // full-body shadows per entity (moon + door + streetlamp), solve the
-    // single resultant ground-plane light vector at each caster's world X/Y.
-    if (
-      Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300 ||
-      Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300 ||
-      SCENE_CASTERS.some(([sx]) => Math.abs(sx - cam.x) < viewHalfW + 520)
-    ) {
-      // static casters live on the environment's back line (envOffset
-      // behind the play line) — their shadows root there too. The shadow
-      // math grounds at y≈1.5 (the play line), so shift by −envOffset to
-      // land the root on the door/lantern base at the back line.
-      ctx.save()
-      ctx.translate(0, -(bg.envOffset ?? 0))
-      if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300) {
-        drawPropShadow(ctx, light, DOOR_LIGHT.x, 66, -118, 0.26)
-      }
-      if (Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
-        drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.20)
-      }
-      // the big scene casters (inn / sakura / rack) — long raking shadows.
-      // Skipped when MountainGL is active: its shadow pass casts these.
-      if (!gl) {
-        for (const [sx, shw, stop, sa] of SCENE_CASTERS) {
-          if (Math.abs(sx - cam.x) < viewHalfW + 520) drawPropShadow(ctx, light, sx, shw, stop, sa)
-        }
-      }
-      ctx.restore()
-    }
-    player.drawShadow(ctx, composeShadowKey(light, player.x, player.y))
-    for (const e of enemies) {
-      if (e.dead || e.spawning) continue
-      if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      e.drawShadow(ctx, composeShadowKey(light, e.x, e.y))
-    }
+    // The 2D shadow engine (drawPropShadow / drawCastShadow / composeShadowKey)
+    // is removed — mountain.html's own system casts every shadow now: the
+    // world-mask interval pyramid inside the MountainGL lightfield (see
+    // mountain-gl/html-gl.ts). Nothing is drawn here.
 
     // KINETIC SHALLOW-STRATA WAKE FOG (BHST):
     // The 64-cell field is STEPPED and INJECTED by Game.updateWakeFog on
@@ -754,6 +747,7 @@ export class Renderer {
    *  Returns false → skip the blit and drop to the canvas deck path. */
   private renderGL(gl: MountainGL, bg: RenderWorld['bg'], world: RenderWorld, w: number, h: number, dpr: number): boolean {
     const { cam } = world
+    const viewHalfW = w / (2 * (cam.zoom || 1))
     const occN = bg.sceneOccluders?.(this.glOcc, this.glOccZ) ?? 0
     const key = keyLightFromStorm(bg.lightningI(), bg.lightningAz())
     key.i *= 1 - 0.42 * bg.moonCover
@@ -786,6 +780,8 @@ export class Renderer {
       occ: this.glOcc,
       occZ: this.glOccZ,
       occN,
+      actors: this.packActors(world, viewHalfW),
+      actorN: this.glActorN,
     }
     gl.render(frame)
     if (!this.glValidated) {
