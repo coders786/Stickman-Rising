@@ -253,6 +253,15 @@ export const DOOR_LIGHT: Light2D = {
 export const STREET_LIGHT: Light2D = {
   kind: 'point', x: 830, y: -252, range: 620, intensity: .9, color: '#b8e4ff',
 }
+/** the scene's big static casters — inn, sakura and lantern rack rake
+ *  long shadows across the deck with the key (the source's SAT engine
+ *  does this for its hero-plane occluders; these are ours). Rows:
+ *  [worldX, halfW, topY, alpha] in the environment's back-line frame. */
+export const SCENE_CASTERS: [number, number, number, number][] = [
+  [2100, 130, -182, 0.26], // the inn — wall + roof mass
+  [2470, 88, -250, 0.22],  // the sakura — scaled crown
+  [1700, 40, -266, 0.18],  // the lantern rack — pole + branches
+]
 export function keyLightFromStorm(intensity:number,azimuth:number):KeyLight {
   const k=clamp01(finite(intensity,0)),az=clamp(finite(azimuth,0),-1,1)
   // Bolt-strobe mode (k→1): hard, bright, near-white, raking toward the bolt —

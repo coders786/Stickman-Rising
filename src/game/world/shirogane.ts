@@ -65,6 +65,9 @@ const RACK_X = 1700
 const INN_X = 2100
 const CHERRY_X = 2470
 const INN_W = 240 // ≈ .38 · U at 720p reference
+/** cherry tree scale — the reference's sakura is a dominant vertical
+ *  (crown ≈ half the inn's width, reaching the roofline) */
+const CHERRY_SCALE = 1.4
 
 /** camera parallax domain for one-shot bakes (slack beyond the arena) */
 const CAM_MIN = -420
@@ -499,6 +502,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private strips: (HTMLCanvasElement | null)[] = [null, null, null, null]
   private midStrip!: HTMLCanvasElement
   private deckPlate!: HTMLCanvasElement
+  private reflectPlate!: HTMLCanvasElement
   private propsPlate!: HTMLCanvasElement
   private propsFront!: HTMLCanvasElement
   private wetPlate!: HTMLCanvasElement
@@ -531,8 +535,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   constructor(storm = new StormEngine('medium')) {
     this.storm = storm
     this.eventRng = mulberry32(0x51a9c5)
-    this.moonX = this.w * 0.78
-    this.moonY = this.h * 0.17
+    this.moonX = this.w * 0.66
+    this.moonY = this.h * 0.215
     // five birds, like the source (3 perched on rack/cherry, 2 moon-flying)
     const mk = (mode: 'perched' | 'moon', perch: number, timer: number, x: number, y: number, scale: number, facing: number, seed: number): void => {
       this.birds.push({ mode, perch, timer, x, y, sx: x, sy: y, cx: x, cy: y - 80, tx: x + 120, ty: y - 60, ft: 0, duration: 6, wing: 0, glide: 0, scale, facing, seed, vx: 0, vy: 0, draw: false })
@@ -587,6 +591,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     discard(this.propsPlate)
     discard(this.propsFront)
     discard(this.wetPlate)
+    discard(this.reflectPlate)
     discard(this.cabin)
     discard(this.rack)
     discard(this.cherry)
@@ -690,8 +695,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   /** cheap deterministic cloud-density estimate at the scene moon anchor */
   private estimateMoonCover(t: number): number {
     const aspect = this.w / Math.max(1, this.h)
-    const mx = 0.78
-    const my = 0.17
+    const mx = 0.66
+    const my = 0.215
     const wind = this.windNow[2]
     let cov = 0
     for (let f = 0; f < 4; f++) {
@@ -760,6 +765,30 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
             [0.5, `rgba(${col[0]},${col[1]},${col[2]},${(na * 0.14).toFixed(3)})`],
             [1, 'rgba(0,0,0,0)'],
           ])
+        }
+      }
+      // aurora curtains (baked): soft teal bands sweeping the upper sky —
+      // the reference's signature glow, kept low-alpha so it reads as
+      // atmosphere rather than a veil
+      const curtains: [number, number, number, number][] = [
+        [0.155, 0.04, 0.56, 0.085],
+        [0.23, 0.12, 0.70, 0.062],
+        [0.315, 0.0, 0.44, 0.048],
+      ]
+      for (const [ay, ax0, ax1, aa] of curtains) {
+        for (let i = 0; i < 16; i++) {
+          const f = i / 15
+          const bx = sx(ax0 + (ax1 - ax0) * f)
+          const by = sy(ay + Math.sin(f * 4.6 + ay * 31) * 0.022)
+          g.save()
+          g.translate(bx, by)
+          g.scale(1, 0.20)
+          radial(g, 0, 0, 0.075 * U, [
+            [0, `rgba(70,224,196,${aa})`],
+            [0.5, `rgba(52,186,178,${(aa * 0.42).toFixed(3)})`],
+            [1, 'rgba(40,150,160,0)'],
+          ])
+          g.restore()
         }
       }
       const x0 = sx(0.394), y0 = sy(0.208), x1 = sx(0.455), y1 = sy(0.23)
@@ -832,7 +861,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
        * Sized/dimmed for the game frame: the source's disc was a
        * landscape focal point, but here it sits behind the HUD and feeds
        * the shaft/bloom passes — at 0.148·min it blew the whole sky out. */
-      const moonR = Math.max(56, Math.min(132, Math.min(w, h) * 0.105))
+      const moonR = Math.max(56, Math.min(140, Math.min(w, h) * 0.125))
       const haloR = moonR * 2.1
       const size = Math.ceil(haloR * 2 + 12)
       ;({ c, g } = makeCanvas(size, size))
@@ -1126,14 +1155,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         g.fillRect(x, y, 30 + rr() * 120, 1 + rr() * 1.6)
       }
       g.globalCompositeOperation = 'source-over'
-      // warm door reflection column
-      const dgx = INN_X - ARENA_X0 + 24
-      const dgr = g.createLinearGradient(0, 6, 0, 150)
-      dgr.addColorStop(0, 'rgba(255,150,80,.2)')
-      dgr.addColorStop(0.55, 'rgba(255,130,60,.08)')
-      dgr.addColorStop(1, 'rgba(255,120,50,0)')
-      g.fillStyle = dgr
-      g.fillRect(dgx - 44, 6, 88, 150)
       this.wetPlate = c
     }
 
@@ -1229,61 +1250,70 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       this.smokeBox = { x: INN_X + INN_W * 0.3, y: -(U * 0.03 + 30), w: U * 0.3, h: U * 0.3 }
     }
 
-    /* --- structure reflections: the wet deck mirrors the inn/rack/cherry
-     * (mountain.html's reflection atlas) — baked once into the plate, so
-     * the road reads as rain-polished wood at zero per-frame cost. The
+    /* --- puddle reflections: the wet deck mirrors the inn/rack/cherry
+     * (mountain.html's reflection atlas) — baked once into their OWN
+     * plate so drawArena can shear it per row into crossing waves every
+     * frame (the reference's rippling water), at zero bake cost. The
      * sway islands are painted once here for the mirror; drawArena keeps
      * repainting them live every frame anyway. --- */
     {
-      const dg = this.deckPlate.getContext('2d')
-      if (dg) {
-        // rest-pose paint of the two scratch islands
-        const rw = this.rack.width
-        const rh = this.rack.height
-        const rg = this.rack.getContext('2d')
-        if (rg && rw > 1) {
-          rg.setTransform(1, 0, 0, 1, 0, 0)
-          rg.clearRect(0, 0, rw, rh)
-          rg.save()
-          rg.translate(rw * 0.5, rh)
-          this.paintRack(rg)
-          rg.restore()
-        }
-        const cw = this.cherry.width
-        const ch = this.cherry.height
-        const cg = this.cherry.getContext('2d')
-        if (cg && cw > 1) {
-          cg.setTransform(1, 0, 0, 1, 0, 0)
-          cg.clearRect(0, 0, cw, ch)
-          cg.save()
-          cg.translate(cw * 0.5, ch)
-          this.paintCherryWood(cg)
-          cg.restore()
-        }
-        // mirror about the structures' contact line, foreshortened the way
-        // a shallow wet floor compresses a reflected silhouette
-        dg.save()
-        dg.globalAlpha = 0.30
-        dg.translate(0, 3)
-        dg.scale(1, -0.52)
-        if (this.cabin && this.cabin.width > 1) {
-          dg.drawImage(this.cabin, INN_X - ARENA_X0 - this.cabin.width * 0.5, -this.cabinAnchor.y)
-        }
-        if (rw > 1) {
-          dg.drawImage(this.rack, RACK_X - ARENA_X0 - rw * 0.5, this.rackAnchor.y - rh)
-        }
-        if (cw > 1) {
-          dg.drawImage(this.cherry, CHERRY_X - ARENA_X0 - cw * 0.5, this.cherryAnchor.y - ch)
-          dg.drawImage(
-            this.canopy,
-            CHERRY_X - ARENA_X0 - 0.16 * U,
-            this.cherryAnchor.y - U * 0.26,
-            0.32 * U,
-            0.28 * U,
-          )
-        }
-        dg.restore()
+      const reflH = Math.ceil(U * 0.30)
+      const { c: rc, g: dg } = makeCanvas(ARENA_W, reflH)
+      // rest-pose paint of the two scratch islands
+      const rw = this.rack.width
+      const rh = this.rack.height
+      const rg = this.rack.getContext('2d')
+      if (rg && rw > 1) {
+        rg.setTransform(1, 0, 0, 1, 0, 0)
+        rg.clearRect(0, 0, rw, rh)
+        rg.save()
+        rg.translate(rw * 0.5, rh)
+        this.paintRack(rg)
+        rg.restore()
       }
+      const cw = this.cherry.width
+      const ch = this.cherry.height
+      const cg = this.cherry.getContext('2d')
+      if (cg && cw > 1) {
+        cg.setTransform(1, 0, 0, 1, 0, 0)
+        cg.clearRect(0, 0, cw, ch)
+        cg.save()
+        cg.translate(cw * 0.5, ch)
+        this.paintCherryWood(cg)
+        cg.restore()
+      }
+      // mirror about the structures' contact line, foreshortened the way
+      // a shallow wet floor compresses a reflected silhouette
+      dg.save()
+      dg.globalAlpha = 0.30
+      dg.translate(0, 3)
+      dg.scale(1, -0.52)
+      if (this.cabin && this.cabin.width > 1) {
+        dg.drawImage(this.cabin, INN_X - ARENA_X0 - this.cabin.width * 0.5, -this.cabinAnchor.y)
+      }
+      if (rw > 1) {
+        dg.drawImage(this.rack, RACK_X - ARENA_X0 - rw * 0.5, this.rackAnchor.y - rh)
+      }
+      if (cw > 1) {
+        dg.drawImage(this.cherry, CHERRY_X - ARENA_X0 - cw * 0.5, this.cherryAnchor.y - ch)
+        dg.drawImage(
+          this.canopy,
+          CHERRY_X - ARENA_X0 - 0.16 * U * CHERRY_SCALE,
+          this.cherryAnchor.y - U * 0.26 * CHERRY_SCALE,
+          0.32 * U * CHERRY_SCALE,
+          0.28 * U * CHERRY_SCALE,
+        )
+      }
+      dg.restore()
+      // warm door reflection column (waves with the puddle)
+      const dgx = INN_X - ARENA_X0 + 24
+      const dgr = dg.createLinearGradient(0, 6, 0, 156)
+      dgr.addColorStop(0, 'rgba(255,150,80,.32)')
+      dgr.addColorStop(0.55, 'rgba(255,130,60,.13)')
+      dgr.addColorStop(1, 'rgba(255,120,50,0)')
+      dg.fillStyle = dgr
+      dg.fillRect(dgx - 46, 6, 92, 150)
+      this.reflectPlate = rc
     }
 
     this.applyQualityToFields()
@@ -1741,9 +1771,10 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
      * ENV_BACK shift as the arena pass so the scene stays rigid */
     const envShift = ENV_BACK * zoom
 
-    /* moon screen anchor (render telemetry for the light rig) */
-    const mx = w * 0.78 - camX * 0.015
-    const my = h * 0.165 - (camY + 150) * 0.04
+    /* moon screen anchor (render telemetry for the light rig) — seated in
+     * the baked nebula/aurora glow like the reference composition */
+    const mx = w * 0.66 - camX * 0.015
+    const my = h * 0.215 - (camY + 150) * 0.04
     this.moonX = mx
     this.moonY = my
     this.moonWorldX = camX + (mx - w * 0.5) / zoom
@@ -1917,6 +1948,26 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     /* deck plate (world-space, pre-generated) */
     this.blit(ctx, this.deckPlate, ARENA_X0, 0, viewL, viewR)
 
+    /* PUDDLE + WAVES: the baked structure mirror, sheared per row by two
+     * crossing sine trains — the wet floor reads as moving water (the
+     * reference's rippling door/canopy reflections), not static glass */
+    if (this.reflectPlate) {
+      const rp = this.reflectPlate
+      const rh = rp.height
+      const step = 6
+      for (let y = 0; y < rh; y += step) {
+        const sh = Math.min(step, rh - y)
+        const dx =
+          Math.sin(y * 0.085 + t * 1.9) * (1.1 + y * 0.045) +
+          Math.sin(y * 0.037 - t * 1.25) * (0.7 + y * 0.028)
+        const dxr = Math.round(dx * 10) / 10
+        ctx.drawImage(rp, 0, y, ARENA_W, sh, ARENA_X0 + dxr, y, ARENA_W, sh)
+        // sliver guards so the shear never opens a gap at the plate ends
+        if (dxr > 0.5) ctx.drawImage(rp, 0, y, dxr, sh, ARENA_X0, y, dxr, sh)
+        else if (dxr < -0.5) ctx.drawImage(rp, ARENA_W + dxr, y, -dxr, sh, ARENA_X1 + dxr, y, -dxr, sh)
+      }
+    }
+
     /* horizon props (the whole pre-generated plate, one blit; the plate's
      * headroom band sits above the ground line) */
     this.blit(ctx, this.propsPlate, ARENA_X0, -this.plateHead, viewL, viewR)
@@ -2009,7 +2060,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         this.paintCherryWood(cg)
         cg.restore()
         ctx.drawImage(this.cherry, this.cherryAnchor.x - cw * 0.5, this.cherryAnchor.y - ch)
-        const U = Math.min(this.h * 0.98, this.w * 0.82)
+        const U = Math.min(this.h * 0.98, this.w * 0.82) * CHERRY_SCALE
         const sway = this.chSway * U
         // canopy at mountain.html's height: the sprite origin sits at the
         // tree's ground point (−0.26U), so the clustered blossoms crown
@@ -2129,6 +2180,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   private paintCherryWood(g: CanvasRenderingContext2D): void {
     const U = Math.min(this.h * 0.98, this.w * 0.82)
     const s = this.chSway * U
+    g.save()
+    g.scale(CHERRY_SCALE, CHERRY_SCALE)
     g.fillStyle = '#05080b'
     g.beginPath()
     g.moveTo(-0.075 * U, 4)
@@ -2162,6 +2215,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       g.quadraticCurveTo(b[2] * U + s * 0.7, b[3] * U, b[4] * U + s, b[5] * U)
       g.stroke()
     }
+    g.restore()
   }
 
   private paintBird(ctx: CanvasRenderingContext2D, b: { x: number; y: number; mode: string; facing: number; scale: number; wing: number; glide: number; vx: number; vy: number; seed: number; draw: boolean }, t: number): void {
@@ -2300,8 +2354,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const camX = Number.isFinite(cam.x) ? cam.x : 1300
     const camY = Number.isFinite(cam.y) ? cam.y : -150
     const hy = h * 0.5 - camY * zoom
-    const mx = w * 0.78 - camX * 0.015
-    const my = h * 0.165 - (camY + 150) * 0.04
+    const mx = w * 0.66 - camX * 0.015
+    const my = h * 0.215 - (camY + 150) * 0.04
     ctx.save()
     ctx.fillStyle = '#000'
     ctx.fillRect(0, 0, w, h)
@@ -2349,8 +2403,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const poolA = (0.3 + 0.5 * Math.min(1, 0.6 + li)) * (1 - 0.85 * cov)
     if (poolA > 0.02) {
       const grad = ctx.createLinearGradient(0, 0, 0, 240)
-      grad.addColorStop(0, `rgba(140,168,210,${(0.24 * poolA).toFixed(3)})`)
-      grad.addColorStop(0.5, `rgba(118,148,192,${(0.13 * poolA).toFixed(3)})`)
+      grad.addColorStop(0, `rgba(140,168,210,${(0.30 * poolA).toFixed(3)})`)
+      grad.addColorStop(0.5, `rgba(118,148,192,${(0.16 * poolA).toFixed(3)})`)
       grad.addColorStop(1, 'rgba(100,130,178,0)')
       ctx.globalCompositeOperation = 'lighter'
       ctx.fillStyle = grad
@@ -2368,11 +2422,12 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     ctx.globalAlpha = glA * 0.5
     ctx.drawImage(this.glitter, moonWorldX - 120 - w1, 16, 240, 96)
 
-    /* door practical: warm pool + wide bounce (breathing with flicker) */
-    ctx.globalAlpha = 0.24 + 0.08 * this.flicker
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 200, -120 - ENV_BACK, 400, 260)
-    ctx.globalAlpha = 0.09
-    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 360, -50 - ENV_BACK, 720, 190)
+    /* door practical: warm pool + wide bounce (breathing with flicker) —
+     * the reference's doorway floods the deck with amber light */
+    ctx.globalAlpha = 0.38 + 0.10 * this.flicker
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 250, -150 - ENV_BACK, 500, 320)
+    ctx.globalAlpha = 0.15
+    ctx.drawImage(this.glowWarm, this.hearthAnchor.x - 430, -70 - ENV_BACK, 860, 240)
 
     /* lantern practicals (bounded: in-view only, sized to the lantern —
      * a fixed 110px halo around a 60px lantern read as a floating orb) */

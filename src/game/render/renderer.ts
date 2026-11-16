@@ -12,7 +12,7 @@ import type { BackgroundRenderer } from '../world/background'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
-import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, composeShadowKey, drawPropShadow } from './lighting'
+import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, SCENE_CASTERS, composeShadowKey, drawPropShadow } from './lighting'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 import { LightRig, surfaceWash, pointInfluence, type LightInput, type RGB } from './lights'
 import { shallowFog } from './bhst'
@@ -171,7 +171,11 @@ export class Renderer {
     // UNIFIED RESULTANT SHADOW VECTOR — instead of casting 3–4 separate
     // full-body shadows per entity (moon + door + streetlamp), solve the
     // single resultant ground-plane light vector at each caster's world X/Y.
-    if (Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300 || Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
+    if (
+      Math.abs(DOOR_LIGHT.x - cam.x) < viewHalfW + 300 ||
+      Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300 ||
+      SCENE_CASTERS.some(([sx]) => Math.abs(sx - cam.x) < viewHalfW + 520)
+    ) {
       // static casters live on the environment's back line (envOffset
       // behind the play line) — their shadows root there too. The shadow
       // math grounds at y≈1.5 (the play line), so shift by −envOffset to
@@ -183,6 +187,10 @@ export class Renderer {
       }
       if (Math.abs(STREET_LIGHT.x - cam.x) < viewHalfW + 300) {
         drawPropShadow(ctx, light, STREET_LIGHT.x, 5, -262, 0.20)
+      }
+      // the big scene casters (inn / sakura / rack) — long raking shadows
+      for (const [sx, shw, stop, sa] of SCENE_CASTERS) {
+        if (Math.abs(sx - cam.x) < viewHalfW + 520) drawPropShadow(ctx, light, sx, shw, stop, sa)
       }
       ctx.restore()
     }
