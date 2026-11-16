@@ -63,6 +63,10 @@ export const GRAPHICS_RULES = {
     dirZScale: 0.55,
     /** penumbra feather in world units */
     feather: 6,
+    /** the moon sits BEHIND the scene, so every caster's shadow rakes
+     *  downstage: the shadow's depth extent = height · this. Without it
+     *  projected shadows collapse to a thin smear at the contact line. */
+    depthTilt: 0.32,
   },
 
   /** the bake law: what may evaluate per frame (everything else is baked) */

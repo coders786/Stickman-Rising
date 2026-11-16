@@ -541,8 +541,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   constructor(storm = new StormEngine('medium')) {
     this.storm = storm
     this.eventRng = mulberry32(0x51a9c5)
-    this.moonX = this.w * 0.66
-    this.moonY = this.h * 0.215
+    this.moonX = this.w * 0.58
+    this.moonY = this.h * 0.245
     // five birds, like the source (3 perched on rack/cherry, 2 moon-flying)
     const mk = (mode: 'perched' | 'moon', perch: number, timer: number, x: number, y: number, scale: number, facing: number, seed: number): void => {
       this.birds.push({ mode, perch, timer, x, y, sx: x, sy: y, cx: x, cy: y - 80, tx: x + 120, ty: y - 60, ft: 0, duration: 6, wing: 0, glide: 0, scale, facing, seed, vx: 0, vy: 0, draw: false })
@@ -701,8 +701,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
   /** cheap deterministic cloud-density estimate at the scene moon anchor */
   private estimateMoonCover(t: number): number {
     const aspect = this.w / Math.max(1, this.h)
-    const mx = 0.66
-    const my = 0.215
+    const mx = 0.58
+    const my = 0.245
     const wind = this.windNow[2]
     let cov = 0
     for (let f = 0; f < 4; f++) {
@@ -777,9 +777,9 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       // the reference's signature glow, kept low-alpha so it reads as
       // atmosphere rather than a veil
       const curtains: [number, number, number, number][] = [
-        [0.155, 0.04, 0.56, 0.085],
-        [0.23, 0.12, 0.70, 0.062],
-        [0.315, 0.0, 0.44, 0.048],
+        [0.155, 0.04, 0.56, 0.115],
+        [0.23, 0.12, 0.70, 0.088],
+        [0.315, 0.0, 0.44, 0.068],
       ]
       for (const [ay, ax0, ax1, aa] of curtains) {
         for (let i = 0; i < 16; i++) {
@@ -867,7 +867,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
        * Sized/dimmed for the game frame: the source's disc was a
        * landscape focal point, but here it sits behind the HUD and feeds
        * the shaft/bloom passes — at 0.148·min it blew the whole sky out. */
-      const moonR = Math.max(56, Math.min(140, Math.min(w, h) * 0.125))
+      const moonR = Math.max(56, Math.min(150, Math.min(w, h) * 0.140))
       const haloR = moonR * 2.1
       const size = Math.ceil(haloR * 2 + 12)
       ;({ c, g } = makeCanvas(size, size))
@@ -1291,7 +1291,7 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       // mirror about the structures' contact line, foreshortened the way
       // a shallow wet floor compresses a reflected silhouette
       dg.save()
-      dg.globalAlpha = 0.30
+      dg.globalAlpha = 0.44
       dg.translate(0, 3)
       dg.scale(1, -0.52)
       if (this.cabin && this.cabin.width > 1) {
@@ -1311,14 +1311,22 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
         )
       }
       dg.restore()
-      // warm door reflection column (waves with the puddle)
+      // warm door reflection column (waves with the puddle) — the
+      // reference's bright amber streak on the wet floor
       const dgx = INN_X - ARENA_X0 + 24
-      const dgr = dg.createLinearGradient(0, 6, 0, 156)
-      dgr.addColorStop(0, 'rgba(255,150,80,.32)')
-      dgr.addColorStop(0.55, 'rgba(255,130,60,.13)')
+      const dgr = dg.createLinearGradient(0, 4, 0, 160)
+      dgr.addColorStop(0, 'rgba(255,178,110,.62)')
+      dgr.addColorStop(0.4, 'rgba(255,150,80,.34)')
+      dgr.addColorStop(0.75, 'rgba(255,130,60,.14)')
       dgr.addColorStop(1, 'rgba(255,120,50,0)')
       dg.fillStyle = dgr
-      dg.fillRect(dgx - 46, 6, 92, 150)
+      dg.fillRect(dgx - 52, 4, 104, 156)
+      // hot core of the doorway's reflection
+      const dgc = dg.createLinearGradient(0, 4, 0, 90)
+      dgc.addColorStop(0, 'rgba(255,214,150,.75)')
+      dgc.addColorStop(1, 'rgba(255,180,110,0)')
+      dg.fillStyle = dgc
+      dg.fillRect(dgx - 20, 4, 40, 86)
       this.reflectPlate = rc
     }
 
@@ -1828,8 +1836,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
 
     /* moon screen anchor (render telemetry for the light rig) — seated in
      * the baked nebula/aurora glow like the reference composition */
-    const mx = w * 0.66 - camX * 0.015
-    const my = h * 0.215 - (camY + 150) * 0.04
+    const mx = w * 0.58 - camX * 0.015
+    const my = h * 0.245 - (camY + 150) * 0.04
     this.moonX = mx
     this.moonY = my
     this.moonWorldX = camX + (mx - w * 0.5) / zoom
@@ -1884,9 +1892,15 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       }
     }
 
-    /* 3 — the moon (baked halo + lunar disc, one blit) */
+    /* 3 — the moon (baked halo + lunar disc) + a screen-space glow pass
+     * so the disc reads as luminous as the reference's */
     const moonSize = this.moonHalo.width
     ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = 0.42
+    ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
 
     /* 4 — cloud families (deterministic cells, wind drift, cam parallax) */
     this.drawClouds(ctx, camX, camY, t, mx, my)
@@ -2429,8 +2443,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const camX = Number.isFinite(cam.x) ? cam.x : 1300
     const camY = Number.isFinite(cam.y) ? cam.y : -150
     const hy = h * 0.5 - camY * zoom
-    const mx = w * 0.66 - camX * 0.015
-    const my = h * 0.215 - (camY + 150) * 0.04
+    const mx = w * 0.58 - camX * 0.015
+    const my = h * 0.245 - (camY + 150) * 0.04
     ctx.save()
     ctx.fillStyle = '#000'
     ctx.fillRect(0, 0, w, h)
@@ -2482,6 +2496,22 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
       ctx.beginPath()
       ctx.rect(-1e6, -1e6, 2e6, 1e6 - ENV_BACK)
       ctx.clip()
+    }
+
+    /* DOOR FLOOD — the reference's signature: a broad warm pool spilling
+     * from the doorway across the wet deck (breathes with the flicker) */
+    {
+      const fx = this.hearthAnchor.x
+      const fy = -ENV_BACK
+      const g = ctx.createRadialGradient(fx, fy + 18, 16, fx, fy + 18, 430)
+      g.addColorStop(0, `rgba(255,170,96,${(0.52 + 0.12 * this.flicker).toFixed(3)})`)
+      g.addColorStop(0.35, `rgba(255,146,74,${(0.26 + 0.07 * this.flicker).toFixed(3)})`)
+      g.addColorStop(0.7, 'rgba(255,130,60,.09)')
+      g.addColorStop(1, 'rgba(255,120,50,0)')
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.fillStyle = g
+      ctx.fillRect(fx - 440, fy, 880, 320)
+      ctx.globalCompositeOperation = 'source-over'
     }
 
     /* diffuse cool key pool on the deck (ONE live gradient — brightness

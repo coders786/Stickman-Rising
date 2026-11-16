@@ -147,9 +147,9 @@ void main() {
   for (int i = 0; i < uOccN; i++) {
     if (keyOccluded(vec2(w.x, wy), uOcc[i], uOccZ[i]) > 0.5) { shadow = 0.18; break; }
   }
-  light *= mix(0.2, 1.0, shadow);
+  light *= mix(0.16, 1.0, shadow);
 
-  col += light * 0.5;
+  col += light * 0.62;
   outColor = vec4(col, 1.0);
 }
 `

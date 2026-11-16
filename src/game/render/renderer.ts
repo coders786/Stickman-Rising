@@ -14,6 +14,7 @@ import { GameSettings } from '../core/types'
 import { clamp01, rgba } from '../core/utils'
 import { KeyLight, keyLightFromStorm, DOOR_LIGHT, STREET_LIGHT, SCENE_CASTERS, composeShadowKey, drawPropShadow } from './lighting'
 import { MountainGL, type GLFrame } from './mountain-gl'
+import { GRAPHICS_RULES } from './rules'
 import { setSceneKey, setSceneEmitters, REFLECTION } from './look'
 import { LightRig, surfaceWash, pointInfluence, type LightInput, type RGB } from './lights'
 import { shallowFog } from './bhst'
@@ -141,8 +142,7 @@ export class Renderer {
     const skyCam = { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom }
     bg.drawSky(ctx, skyCam)
     if (gl) {
-      this.renderGL(gl, bg, world, w, h, dpr)
-      ctx.drawImage(gl.image, 0, 0, w, h)
+      if (this.renderGL(gl, bg, world, w, h, dpr)) ctx.drawImage(gl.image, 0, 0, w, h)
     }
     // horizon mist after the deck (it straddles the contact line)
     bg.drawHorizonMist?.(ctx, skyCam)
@@ -750,8 +750,9 @@ export class Renderer {
   }
 
   /** assemble + run one deck-composite frame (the reference's systems:
-   *  SH_LIGHT_QUAD transport, SH_DIRECTIONAL occluder shadows, WATER waves) */
-  private renderGL(gl: MountainGL, bg: RenderWorld['bg'], world: RenderWorld, w: number, h: number, dpr: number): void {
+   *  SH_LIGHT_QUAD transport, SH_DIRECTIONAL occluder shadows, WATER waves).
+   *  Returns false → skip the blit and drop to the canvas deck path. */
+  private renderGL(gl: MountainGL, bg: RenderWorld['bg'], world: RenderWorld, w: number, h: number, dpr: number): boolean {
     const { cam } = world
     const occN = bg.sceneOccluders?.(this.glOcc, this.glOccZ) ?? 0
     const key = keyLightFromStorm(bg.lightningI(), bg.lightningAz())
@@ -772,9 +773,10 @@ export class Renderer {
         door: { x: DOOR_LIGHT.x, y: 0, range: DOOR_LIGHT.range, i: DOOR_LIGHT.intensity, r: 1, g: 0.604, b: 0.302 },
         street: { x: STREET_LIGHT.x, y: 0, range: STREET_LIGHT.range, i: STREET_LIGHT.intensity, r: 0.722, g: 0.894, b: 1 },
         // toward the light: horizontal lean opposite the shadow's dirX,
-        // height from the elevation (the cot(elev) reach emerges in-shader)
+        // depth tilt (the moon sits behind the scene → shadows rake
+        // downstage), height from the elevation
         keyDirX: -key.dirX * Math.cos(key.elev),
-        keyDirY: 0,
+        keyDirY: -GRAPHICS_RULES.shadow.depthTilt,
         keyDirZ: Math.sin(key.elev),
         keyI: key.i,
         keyR: 0.875,
@@ -786,7 +788,20 @@ export class Renderer {
       occN,
     }
     gl.render(frame)
+    if (!this.glValidated) {
+      this.glValidated = true
+      if (!gl.validate(h, dpr)) {
+        // the pass produced nothing — never leave a hole where the deck
+        // should be: drop to the (strengthened) canvas path for good
+        this.glFailed = true
+        this.gl = null
+        bg.glDeck = false
+        return false
+      }
+    }
+    return true
   }
+  private glValidated = false
 
   private drawReflections(ctx: CanvasRenderingContext2D, world: RenderWorld, viewHalfW: number): void {
     const { bg, cam, player, enemies, time } = world

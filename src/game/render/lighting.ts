@@ -2,6 +2,7 @@
  * World joint Y ALREADY includes jump height. Never add it again to the skull.
  */
 import { clamp,clamp01,lerp,rgba } from '../core/utils'
+import { GRAPHICS_RULES } from './rules'
 export interface KeyLight {
   /** horizontal direction shadows lean along (unit-ish, +X = right) */
   dirX: number
@@ -222,6 +223,13 @@ export function drawPropShadow(
   const c0 = projectGroundPoint(cx + halfW, 1.5, light)
   const d0 = projectGroundPoint(cx - halfW, 1.5, light)
   if (!a || !b) return
+  // DEPTH RAKE (props only): the moon sits behind the scene, so a
+  // height-h caster throws its shadow h·depthTilt downstage — the broad
+  // bands the reference's SAT pass produces. Entity skeletons keep the
+  // plain projection (their pose-accurate path is tuned and tested).
+  const rake = -topY * GRAPHICS_RULES.shadow.depthTilt
+  a.y += rake
+  b.y += rake
   const tint = /^#[0-9a-f]{6}$/i.test(light.color) ? light.color : '#020409'
   ctx.save()
   ctx.globalCompositeOperation = 'source-over'

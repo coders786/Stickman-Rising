@@ -208,6 +208,17 @@ export class MountainGL {
     gl.bindVertexArray(null)
   }
 
+  /** one-shot sanity readback: false if the deck pass produced nothing
+   *  (the caller then falls back to the canvas deck path) */
+  validate(cssH: number, dpr: number): boolean {
+    const { gl, canvas } = this
+    const x = Math.floor(canvas.width / 2)
+    const y = Math.min(canvas.height - 2, Math.floor(canvas.height - 5 * dpr))
+    const px = new Uint8Array(4)
+    gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    return px[3] > 8 && px[0] + px[1] + px[2] > 10
+  }
+
   /** the offscreen canvas for the 2D pass to blit */
   get image(): HTMLCanvasElement { return this.canvas }
 
