@@ -98,7 +98,9 @@ float keyOccluded(vec2 p, vec4 box, float top) {
 
 /* SH_LIGHT_QUAD falloff — intensity·(1−d/range)^2 (rules.light) */
 float falloff(vec2 p, vec4 L) {
-  float d = length(p - L.xy) / max(L.z, 1.0);
+  // the practicals read LOCAL on the deck: the effective radius is a bit
+  // over half the entity-light range (the reference's pools stay tight)
+  float d = length(p - L.xy) / max(L.z * 0.62, 1.0);
   float f = 1.0 - clamp(d, 0.0, 1.0);
   return L.w * f * f;
 }
@@ -138,7 +140,7 @@ void main() {
   light += uDoorCol * falloff(vec2(w.x, wy), uDoor);
   light += uStreetCol * falloff(vec2(w.x, wy), uStreet);
   float depth = 1.0 - clamp(wy / 240.0, 0.0, 1.0);
-  light += uKeyCol * (uKeyI * depth * depth * 1.2);
+  light += uKeyCol * (uKeyI * depth * depth * 0.75);
 
   /* --- SH_DIRECTIONAL shadows: the key's contribution is occluded ---
    * (the ambient plate stays; the shadow reads as missing light — the
@@ -147,9 +149,12 @@ void main() {
   for (int i = 0; i < uOccN; i++) {
     if (keyOccluded(vec2(w.x, wy), uOcc[i], uOccZ[i]) > 0.5) { shadow = 0.18; break; }
   }
-  light *= mix(0.16, 1.0, shadow);
+  light *= mix(0.14, 1.0, shadow);
 
-  col += light * 0.62;
+  // the shadowed band also loses a little skylight (the reference's SAT
+  // darkens the ambient under occluders, not only the light it hides)
+  col *= mix(0.84, 1.0, shadow);
+  col += light * 0.5;
   outColor = vec4(col, 1.0);
 }
 `

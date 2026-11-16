@@ -867,8 +867,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
        * Sized/dimmed for the game frame: the source's disc was a
        * landscape focal point, but here it sits behind the HUD and feeds
        * the shaft/bloom passes — at 0.148·min it blew the whole sky out. */
-      const moonR = Math.max(56, Math.min(150, Math.min(w, h) * 0.140))
-      const haloR = moonR * 2.1
+      const moonR = Math.max(52, Math.min(120, Math.min(w, h) * 0.112))
+      const haloR = moonR * 1.62
       const size = Math.ceil(haloR * 2 + 12)
       ;({ c, g } = makeCanvas(size, size))
       const cx = size * 0.5
@@ -1896,11 +1896,6 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
      * so the disc reads as luminous as the reference's */
     const moonSize = this.moonHalo.width
     ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = 0.42
-    ctx.drawImage(this.moonHalo, mx - moonSize * 0.5, my - moonSize * 0.5)
-    ctx.globalAlpha = 1
-    ctx.globalCompositeOperation = 'source-over'
 
     /* 4 — cloud families (deterministic cells, wind drift, cam parallax) */
     this.drawClouds(ctx, camX, camY, t, mx, my)
@@ -2503,14 +2498,14 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     {
       const fx = this.hearthAnchor.x
       const fy = -ENV_BACK
-      const g = ctx.createRadialGradient(fx, fy + 18, 16, fx, fy + 18, 430)
-      g.addColorStop(0, `rgba(255,170,96,${(0.52 + 0.12 * this.flicker).toFixed(3)})`)
-      g.addColorStop(0.35, `rgba(255,146,74,${(0.26 + 0.07 * this.flicker).toFixed(3)})`)
-      g.addColorStop(0.7, 'rgba(255,130,60,.09)')
+      const g = ctx.createRadialGradient(fx, fy + 14, 14, fx, fy + 14, 300)
+      g.addColorStop(0, `rgba(255,168,96,${(0.40 + 0.10 * this.flicker).toFixed(3)})`)
+      g.addColorStop(0.4, `rgba(255,142,72,${(0.17 + 0.05 * this.flicker).toFixed(3)})`)
+      g.addColorStop(0.75, 'rgba(255,130,60,.05)')
       g.addColorStop(1, 'rgba(255,120,50,0)')
       ctx.globalCompositeOperation = 'lighter'
       ctx.fillStyle = g
-      ctx.fillRect(fx - 440, fy, 880, 320)
+      ctx.fillRect(fx - 310, fy, 620, 250)
       ctx.globalCompositeOperation = 'source-over'
     }
 
@@ -2519,8 +2514,8 @@ export class ShiroganeHorizonBackground implements BackgroundRenderer {
     const poolA = (0.3 + 0.5 * Math.min(1, 0.6 + li)) * (1 - 0.85 * cov)
     if (poolA > 0.02) {
       const grad = ctx.createLinearGradient(0, 0, 0, 240)
-      grad.addColorStop(0, `rgba(140,168,210,${(0.30 * poolA).toFixed(3)})`)
-      grad.addColorStop(0.5, `rgba(118,148,192,${(0.16 * poolA).toFixed(3)})`)
+      grad.addColorStop(0, `rgba(140,168,210,${(0.15 * poolA).toFixed(3)})`)
+      grad.addColorStop(0.5, `rgba(118,148,192,${(0.07 * poolA).toFixed(3)})`)
       grad.addColorStop(1, 'rgba(100,130,178,0)')
       ctx.globalCompositeOperation = 'lighter'
       ctx.fillStyle = grad
