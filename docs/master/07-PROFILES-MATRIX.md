@@ -8,6 +8,12 @@ the constraints are `03` (psychology), `04` (fidelity), `12` (mobile reality).
 
 ---
 
+## LEDGER NOTE — the live tier table
+What each tier turns ON is no longer described here in prose: it is
+`src/game/render/graphics.ts` `GRAPHICS`, asserted by `tests/shadows.test.ts`, and
+explained in `23-LIGHT-AND-SHADOW.md` §2. This document keeps the *profile*
+matrix (what a run is); 23 owns the *fidelity* matrix (what a device draws).
+
 ## 1. The five axes, and why five
 
 S1 requires "≥5 environment profile axes varying per run". Five is the smallest

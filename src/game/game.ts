@@ -28,6 +28,7 @@ import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
 import { QualityLadder, type Tier } from './render/quality'
+import { featuresFor } from './render/graphics'
 import { FrameLog } from './render/frameLog'
 import type { EnvironmentProfile } from './world/profile'
 import { Inspect, InspectMode } from './debug/inspect'
@@ -412,7 +413,9 @@ export class Game {
     const h = parent?.clientHeight ?? window.innerHeight
     this.cssW = Math.max(320, w)
     this.cssH = Math.max(240, h)
-    const cap = this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    // The DPR cap is the tier table's number, not an inline ternary: one source
+    // of truth for "how many pixels does this tier cost" (render/graphics.ts).
+    const cap = featuresFor(this.settings.quality as Tier).dprCap
     this.dpr = Math.min(this.dprTarget, cap)
     const bw = Math.floor(this.cssW * this.dpr)
     const bh = Math.floor(this.cssH * this.dpr)
@@ -438,7 +441,7 @@ export class Game {
     this.govT = 0
     if (this.govCool > 0) return
     const cap = Math.min(
-      this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
+      featuresFor(this.settings.quality as Tier).dprCap,
       this.dprCeil,
     )
     // What is this display actually offering? Only trust a sub-60 offer
@@ -902,7 +905,7 @@ export class Game {
         const bake = plates && plates.moonSource !== 'none'
           ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
           : ''
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}${wxTxt}`, this.cssW - 12, 62)
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}${wxTxt} · ${this.renderer.graphicsSummary()}`, this.cssW - 12, 62)
         // THE RUN IDENTITY, shown for the first seconds of a run and then
         // faded out. The whole point of the profile work is that tonight is a
         // different night — but a debug line that never leaves is clutter, and

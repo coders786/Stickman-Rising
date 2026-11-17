@@ -33,6 +33,8 @@ import type { Player } from '../entities/player'
 import { MOOD_PALETTES, type MoodPalette } from './mood'
 import { rgbaConst } from '../render/color'
 import { SurfaceGen } from '../render/ledger'
+import { shadowDirection, shadowReach } from './light'
+import { silhouetteMatrix } from '../render/shadows'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
 
@@ -136,6 +138,20 @@ function scratch(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderi
 
 /** ONE template = one sprite. Common 3D bake (shadow face, moon rim, contact
  *  AO, emissive halo, label) + ~8 lines of kind-specific silhouette. */
+/** The SILHOUETTE of a prop — the same art with every pixel turned black, alpha
+ *  preserved. Cheap to derive at bake time (`source-in` over the finished
+ *  sprite), and it is what lets a prop cast its actual outline instead of a
+ *  generic blob. Stored beside the sprite; released with the same generation. */
+function silhouetteOf(src: HTMLCanvasElement): HTMLCanvasElement {
+  const { c, g } = propGen.next(src.width, src.height, 'silhouette')
+  g.drawImage(src, 0, 0)
+  g.globalCompositeOperation = 'source-in'
+  g.fillStyle = '#000'
+  g.fillRect(0, 0, c.width, c.height)
+  g.globalCompositeOperation = 'source-over'
+  return c
+}
+
 function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
   // One generation of scratch per bake: the previous sprite's composites are
   // released before this one starts (they are pure intermediate results).
@@ -379,6 +395,8 @@ function segHitsBox(s: BladeSeg, x0: number, x1: number, y0: number, y1: number)
 export class PropField {
   readonly props: StageProp[] = []
   private sprites: Partial<Record<PropKind, HTMLCanvasElement>> = {}
+  /** Baked outlines, one per sprite: the prop's TRUE shadow (ultra tier). */
+  private masks: Partial<Record<PropKind, HTMLCanvasElement>> = {}
   private built = false
   private moodIdx = 0
   private clock = 0
@@ -420,6 +438,7 @@ export class PropField {
     this.moodIdx = i
     this.built = false
     this.sprites = {}
+    this.masks = {}
   }
 
   /** Deterministic hash → [0,1). Same seed always dresses the lane the same
@@ -664,6 +683,50 @@ export class PropField {
     }
   }
 
+  /** PROP SHADOWS — the prop's actual outline, laid flat on the deck and leaned
+   *  away from the moon. One matrix blit + one soft pass per visible prop, ultra
+   *  only (render/graphics.ts `shadows: 'cast+props'`).
+   *
+   *  Why this matters more than it looks: the deck is the largest surface in the
+   *  frame, and a deck with nothing ON it reads as a backdrop. Real projected
+   *  outlines crossing the roof tie the props, the moon and the fighters into one
+   *  lit space — the same information a shadow map gives a 3D scene, bought for
+   *  two blits per prop. */
+  drawShadows(
+    ctx: CanvasRenderingContext2D,
+    moonX: number,
+    elevation: number,
+    zoom: number,
+    frameW: number,
+    viewL: number,
+    viewR: number,
+  ): void {
+    if (!this.built) return
+    const inv = 1 / Math.max(1, frameW)
+    for (const p of this.props) {
+      if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
+      const mask = this.masks[p.kind]
+      if (!mask) continue
+      const dir = shadowDirection(p.x, moonX)
+      // Distance in FRAMES, same normalisation the fighter shadows use.
+      const reach = shadowReach(elevation, Math.abs(p.x - moonX) * zoom * inv)
+      const m = silhouetteMatrix(dir, reach)
+      ctx.save()
+      ctx.translate(p.x, 0)
+      // The body plate sits on the deck; the mask is drawn upward from there and
+      // the matrix lays it down.
+      ctx.transform(m.a, m.b, m.c, m.d, 0, 0)
+      ctx.globalAlpha = 0.30
+      // 9-arg form: the BODY of the sprite only (the sprite canvas also carries
+      // the baked reflection strip below the base — that must not be projected).
+      ctx.drawImage(mask, 0, 0, PW, PH, -PW / 2, -PH, PW, PH)
+      // Penumbra pass: 8 % larger, half the alpha. Two blits read as a soft edge.
+      ctx.globalAlpha = 0.13
+      ctx.drawImage(mask, 0, 0, PW, PH, -PW * 0.54, -PH * 1.04, PW * 1.08, PH * 1.08)
+      ctx.restore()
+    }
+  }
+
   /** One drawImage per visible prop. Lazy, headless-safe sprite build. */
   draw(ctx: CanvasRenderingContext2D, viewL: number, viewR: number): void {
     if (!this.built) {
@@ -672,7 +735,11 @@ export class PropField {
         // A new palette is a new generation of sprites: the old six are freed,
         // not left resident under keys nobody will ever read again.
         propGen.begin();
-        for (const k of KINDS) this.sprites[k] = makeSprite(k, MOOD_PALETTES[this.moodIdx])
+        for (const k of KINDS) {
+          const spr = makeSprite(k, MOOD_PALETTES[this.moodIdx])
+          this.sprites[k] = spr
+          this.masks[k] = silhouetteOf(spr)
+        }
       }
     }
     for (const p of this.props) {

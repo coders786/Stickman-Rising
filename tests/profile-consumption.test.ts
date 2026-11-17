@@ -112,6 +112,26 @@ test('the O-08 sweep is wired into the draw path, not just written', () => {
   assert.match(bg, /moonScreenX\(\): number/, 'the moon position is not exposed to the renderer')
 })
 
+test('the graphics levels are wired, not just tabulated', () => {
+  const renderer = read('src/game/render/renderer.ts')
+  assert.match(renderer, /featuresFor\(q as Tier\)/, 'the renderer does not read the tier table')
+  assert.match(renderer, /drawCastShadow\(ctx, \{ x, y, height, width, dir, reach/, 'the projected body shadow is never drawn')
+  assert.match(renderer, /drawContactAO\(ctx, x, y, width/, 'the contact shadow is never drawn')
+  assert.match(renderer, /props\.drawShadows\(ctx, moonW/, 'prop silhouette shadows are never drawn')
+  assert.match(renderer, /bg\.drawMotes\?\.\(ctx, time\)/, 'the dust pass is never called')
+  const bg = read('src/game/world/background.ts')
+  assert.match(bg, /this\.shaftWarm = buildShaft/, 'the volumetric shafts are never baked')
+  assert.match(bg, /if \(F\.shafts\)/, 'the shafts are never drawn')
+  assert.match(bg, /practicalShadow\(x: number\)/, 'the second light cannot cast a shadow')
+  const props = read('src/game/world/props.ts')
+  assert.match(props, /silhouetteOf\(spr\)/, 'prop silhouettes are never baked')
+  assert.match(props, /ctx\.transform\(m\.a, m\.b, m\.c, m\.d, 0, 0\)/, 'prop shadows are never projected')
+  const game = read('src/game/game.ts')
+  assert.match(game, /featuresFor\(this\.settings\.quality as Tier\)\.dprCap/, 'the DPR cap does not come from the table')
+  const page = read('src/app/page.tsx')
+  assert.match(page, /classifyDevice\(/, 'the client never classifies its own device')
+})
+
 test('the labels are human and distinct enough to read', () => {
   const labels = new Set<string>()
   for (const seed of SEEDS) labels.add(labelFor(makeProfile(seed)))

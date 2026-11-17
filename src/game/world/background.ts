@@ -10,6 +10,7 @@ import { SurfaceGen, gameLedger } from '../render/ledger'
 import { WeatherFront, tintAlpha, tintColour } from './weather'
 import { rgbaConst } from '../render/color'
 import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
+import { featuresFor, type Tier } from '../render/graphics'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -85,6 +86,10 @@ export interface BackgroundRenderer {
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** V3 reactive layer (optional so lightweight test doubles stay valid) */
   practicalLight?(x: number): { warm: number; cool: number }
+  /** The nearer practical's shadow direction/strength/ink (the second light). */
+  practicalShadow?(x: number): { dir: number; strength: number; ink: string } | null
+  /** Dust motes in the shafts; one path, one fill (ultra). */
+  drawMotes?(ctx: CanvasRenderingContext2D, t: number): void
   drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number, face?: number): void
   drawReflections?(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void
   /** The run identity (world/profile.ts). Optional so the test doubles and the
@@ -182,6 +187,46 @@ function buildGlowDisc(rgb: string): HTMLCanvasElement {
   gr.addColorStop(1, `rgba(${rgb},0)`);
   g.fillStyle = gr;
   g.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+/** VOLUMETRIC SHAFT — a cone of light hanging in the air under a practical.
+ *
+ *  A lamp that only brightens the surface under it reads as a decal. A lamp with
+ *  a faint cone reads as a source *in air*: dust, drizzle, smoke. This is the
+ *  cheapest honest volumetric cue there is — one baked canvas, one additive blit,
+ *  no per-pixel work — and it is the single most "expensive looking" thing in the
+ *  whole scene per unit of cost.
+ *
+ *  Drawn as a trapezoid from the source downward, brightest at the mouth, with a
+ *  soft vertical fade so the cone has no visible end. */
+function buildShaft(rgb: string, topW: number, botW: number, h: number): HTMLCanvasElement {
+  const w = Math.max(topW, botW) + 24;
+  const { c, g } = makeCanvas(w, h);
+  const cx = w / 2;
+  const gr = g.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, `rgba(${rgb},0.55)`);
+  gr.addColorStop(0.35, `rgba(${rgb},0.22)`);
+  gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr;
+  g.beginPath();
+  g.moveTo(cx - topW / 2, 0);
+  g.lineTo(cx + topW / 2, 0);
+  g.lineTo(cx + botW / 2, h);
+  g.lineTo(cx - botW / 2, h);
+  g.closePath();
+  g.fill();
+  // Horizontal falloff: the cone's own edges must not be straight lines, or the
+  // shaft reads as a paper triangle. A radial mask over the cone softens them.
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createLinearGradient(0, 0, w, 0);
+  m.addColorStop(0, 'rgba(0,0,0,0)');
+  m.addColorStop(0.28, 'rgba(0,0,0,0.85)');
+  m.addColorStop(0.5, 'rgba(0,0,0,1)');
+  m.addColorStop(0.72, 'rgba(0,0,0,0.85)');
+  m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m;
+  g.fillRect(0, 0, w, h);
   return c;
 }
 
@@ -1216,6 +1261,8 @@ export class CyberBackground {
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
   private doorPool!: HTMLCanvasElement;   // warm pool the door spills
+  private shaftWarm!: HTMLCanvasElement;  // volumetric cone under the door
+  private shaftCool!: HTMLCanvasElement;  // ... and under the streetlight
   private glyphSpr: HTMLCanvasElement[] = [];   // sign glyphs (baked into mid tile)
   /** moon state for the render pass (updated by drawSky): screen-space disc
    *  center + eclipse coverage 0..1 (how much cloud mass sits over it) */
@@ -1692,12 +1739,78 @@ export class CyberBackground {
     return { warm: fall(x - DOOR_X), cool: fall(x - LAMP_X) }
   }
 
+  /** THE SECOND LIGHT'S DIRECTION — where a figure's practical shadow falls.
+   *
+   *  The moon is the key, the practicals are the fill, and a fill that never casts
+   *  anything is the reason a lit scene can still look pasted-on. This returns the
+   *  nearer practical's direction (the shadow falls AWAY from it), its strength at
+   *  this x, and the ink its shadow should be: warm for the stairwell, cool for the
+   *  failing streetlight. `null` when the figure is out of both lights' reach —
+   *  then there is no second shadow, which is the honest answer. */
+  practicalShadow(x: number): { dir: number; strength: number; ink: string } | null {
+    const dw = Math.abs(x - DOOR_X)
+    const dc = Math.abs(x - LAMP_X)
+    const reachPx = 320
+    const nearer = dw <= dc ? 'warm' : 'cool'
+    const d = Math.min(dw, dc)
+    if (d >= reachPx) return null
+    const strength = 1 - d / reachPx
+    const K = this.profile ? this.profile.light : null
+    const gain = nearer === 'warm' ? (K ? K.warm : 1) : (K ? K.cool : 1)
+    // A failing tube still lights: it just does not hold a steady shadow.
+    const flick = K && nearer === 'cool'
+      ? 1 - K.flicker * 0.4 * (0.5 + 0.5 * Math.sin(this.t * 13.3))
+      : 1
+    return {
+      dir: x >= (nearer === 'warm' ? DOOR_X : LAMP_X) ? 1 : -1,
+      strength: Math.min(1, strength * gain * flick),
+      // Never pure black: a practical's shadow is a COLOURED absence, because the
+      // light it blocks is coloured. Warm light blocked is a brown shadow; cool
+      // light blocked is a blue one.
+      ink: nearer === 'warm' ? '16,8,4' : '4,7,14',
+    }
+  }
+
+  /** AMBIENT MOTES — a handful of dust specks drifting through the practicals'
+   *  cones. One path and one fill for the whole field (ultra only): it is the
+   *  detail that says the air is real, and it is the cheapest possible way to
+   *  sell a volumetric light. Positions are derived from the clock and the
+   *  profile seed, never stored. */
+  drawMotes(ctx: CanvasRenderingContext2D, t: number): void {
+    const K = this.profile
+    if (!K) return
+    const n = 22
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = 0.16
+    ctx.fillStyle = `rgb(${this.mood.highlight})`
+    ctx.beginPath()
+    for (let i = 0; i < n; i++) {
+      // Two incommensurate rates per axis so no mote ever repeats its path.
+      const ph = (i * 0.6180339887) % 1
+      const src = i % 2 === 0 ? DOOR_X : LAMP_X
+      const fall = 40 + ((i * 37) % 260)                       // px below the source
+      const sway = Math.sin(t * (0.24 + ph * 0.5) + i * 1.7) * (16 + ph * 34)
+      const rise = ((t * (6 + ph * 10) + i * 47) % 420)         // drifts down the cone
+      const x = src + sway * (0.4 + fall / 300)
+      const y = -fall - rise * 0.55
+      const r = 0.7 + ph * 1.3
+      ctx.moveTo(x + r, y)
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+    }
+    ctx.fill()
+    ctx.restore()
+  }
+
   /** PLAYER-KEYED LIGHT — a rim crescent + a wet deck pool, painted from two
    *  baked sprites with an alpha driven by proximity to the nearest practical.
    *  This is the only lighting in the game that reacts to the player, and it
    *  costs at most 2 additive blits per frame. */
   drawPlayerLight(ctx: CanvasRenderingContext2D, px: number, py: number, face = 1): void {
     this.ensureBuilt();
+    // The rim is a FIDELITY feature, not a grounding one: low tier draws the
+    // fighter without it and nothing false is said (render/graphics.ts).
+    if (!featuresFor(this.q as Tier).rim) return;
     const L = this.practicalLight(px);
     const a = Math.max(L.warm, L.cool);
     const K = this.profile ? this.profile.light : null;
@@ -1736,15 +1849,20 @@ export class CyberBackground {
    *  projectiles and FX — it reacts without a render target, shader, filter or
    *  readback. 4 drawImage calls, ~15 KB, zero allocations. */
   drawReflections(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void {
-    if (quality === 'low' || typeof document === 'undefined') return;
+    if (typeof document === 'undefined') return;
     this.ensureBuilt();
+    const F = featuresFor((quality as Tier) ?? this.q);
+    // The tier table decides whether there is a mirror at all, and how fine it
+    // is (render/graphics.ts). `reflection: 0` means the pass does not exist.
+    if (F.reflection <= 0) return;
+    const slices = Math.max(1, F.reflectionSlices);
     const w = this.vw, h = this.vh;
     const zoom = Math.max(0.35, Number.isFinite(cam.zoom) ? cam.zoom : 1);
     const deckY = h * 0.5 + zoom * (0 - (Number.isFinite(cam.y) ? cam.y : NOMINAL_Y));
     const bandH = Math.min(h * 0.6, Math.max(10, 104 * zoom));
     if (deckY < -4 || deckY > h + 4) return;
-    const bw = Math.max(24, Math.ceil(w / 8));
-    const bh = Math.max(6, Math.ceil(bandH / 8));
+    const bw = Math.max(24, Math.ceil(w / F.reflection));
+    const bh = Math.max(6, Math.ceil(bandH / F.reflection));
     if (!this.reflBuf || this.reflW !== bw || this.reflH !== bh) {
       this.reflBuf = gameLedger.acquire('refl:main', bw, bh, 'refl', true) as unknown as HTMLCanvasElement;
       this.reflW = bw;
@@ -1756,24 +1874,27 @@ export class CyberBackground {
     if (srcH < 6) return;
     g.clearRect(0, 0, bw, bh);
     g.drawImage(ctx.canvas, 0, deckY - srcH, w, srcH, 0, 0, bw, bh);
-    // flip + fade in three slices (the cheapest possible vertical falloff)
+    // flip + fade in N slices (the cheapest possible vertical falloff)
     const t = this.t;
-    const sh = bandH / 3;
+    const sh = bandH / slices;
     // the band answers the weather too: lightning lifts the mirror (it is the
     // brightest thing in the sky, so the wet deck must answer it)
     const boost = 1 + 1.6 * this.lightningI();
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < slices; i++) {
       const y0 = deckY + i * sh;
       if (y0 > h) break;
-      ctx.globalAlpha = Math.min(0.42, (0.17 - i * 0.055) * boost);
+      // Each slice is weaker than the one above it: the mirror fades with depth,
+      // which is what makes it read as a wet surface and not a duplicate image.
+      const fallof = 0.19 - (i / slices) * 0.14;
+      ctx.globalAlpha = Math.min(0.42, Math.max(0.03, fallof) * boost);
       const dx = Math.sin(t * 2.1 + i * 1.7) * 2.2 * zoom;
       ctx.save();
       ctx.translate(dx, y0);
       ctx.scale(1, -1);
       g.globalAlpha = 1;
-      ctx.drawImage(this.reflBuf, 0, bh * (1 - (i + 1) / 3), bw, bh / 3, 0, -sh, w, sh);
+      ctx.drawImage(this.reflBuf, 0, bh * (1 - (i + 1) / slices), bw, bh / slices, 0, -sh, w, sh);
       ctx.restore();
     }
     ctx.restore();
@@ -1782,7 +1903,7 @@ export class CyberBackground {
     // MOON GLITTER — the moon touching the wet roof, two additive blits. The
     // mirror above shows the city; this shows the SKY, and together they are
     // the whole reflection story for two drawImage calls and no readback.
-    if (this.night) {
+    if (this.night && F.glitter) {
       // Wetness answers the weather: a hazed night has a dry, matte roof; a
       // squall makes the deck a mirror. One multiply, no extra blit.
       const wet = Math.min(
@@ -1817,6 +1938,21 @@ export class CyberBackground {
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.3 + 0.05 * Math.sin(t * 0.11) + 0.06 * this.lightningI();
     ctx.drawImage(this.doorPool, DOOR_X - 260, -68);
+
+    /* VOLUMETRIC SHAFTS — two additive cones, high and ultra only. The warm one
+     * stands under the stairwell door and breathes with it; the cool one hangs
+     * under the failing streetlight and inherits its flicker (a tube that fails
+     * fails in its shaft first, because that is where you can SEE the air). */
+    const F = featuresFor(this.q as Tier);
+    if (F.shafts) {
+      const K = this.profile ? this.profile.light : null;
+      const warmGain = (K ? K.warm : 1) * (0.82 + 0.18 * Math.sin(t * 0.9));
+      const coolGain = (K ? K.cool : 1) * (K ? 1 - K.flicker * 0.45 * (0.5 + 0.5 * Math.sin(t * 17.1)) : 1);
+      ctx.globalAlpha = Math.min(0.5, 0.30 * warmGain);
+      ctx.drawImage(this.shaftWarm, DOOR_X - 131, -352);
+      ctx.globalAlpha = Math.min(0.42, 0.24 * coolGain);
+      ctx.drawImage(this.shaftCool, LAMP_X - 105, -330);
+    }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   }
@@ -1908,6 +2044,10 @@ export class CyberBackground {
     this.rimWarm = buildRim(this.mood, true);
     this.rimCool = buildRim(this.mood, false);
     this.deckPool = buildDeckPool();
+    // Shafts are baked from the palette, so the cone is the same colour as the
+    // pool it belongs to — a warm door does not cast a green shaft.
+    this.shaftWarm = buildShaft(this.mood.highlight, 54, 210, 420);
+    this.shaftCool = buildShaft(this.mood.pop2, 40, 170, 460);
     // Rebuild-safe: a run reseed re-enters ensureBuilt, so reset the array
     // instead of appending a second set of discs forever.
     this.glowSigns.length = 0;

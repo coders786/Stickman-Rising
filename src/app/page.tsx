@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Game } from '@/game/game'
 import { SWORDS, SWORD_ORDER, SwordId, swordTier, upgradedSword } from '@/game/combat/swords'
-import { DEFAULT_SETTINGS, GameSettings, RunStats } from '@/game/core/types'
+import { DEFAULT_SETTINGS, GameSettings, RunStats, type QualityLevel } from '@/game/core/types'
+import { classifyDevice } from '@/game/render/graphics'
 import { Input as GameInput, Action } from '@/game/core/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -57,10 +58,31 @@ const SCREEN_LABEL: Record<Screen, string> = {
   gameover: 'Run over: score summary',
 }
 
+/** What each tier actually turns on, in the player's language. These are the
+ *  render/graphics.ts table's contents, not marketing: if a line here is false,
+ *  the table is wrong. */
+const QUALITY_BLURB: Record<QualityLevel, string> = {
+  low: 'CONTACT SHADOWS · NO REFLECTIONS · 1× RESOLUTION — the 120 fps floor',
+  medium: 'SOFT CONTACT · WET REFLECTION · PENUMBRA · RIM LIGHT',
+  high: 'CAST SHADOWS · TWO LIGHTS PER FIGHTER · VOLUMETRIC SHAFTS · FINER MIRROR',
+  ultra: 'PROP SILHOUETTE SHADOWS · DUST IN THE LIGHT · FULL-PIXEL MIRROR · 2× DPR',
+}
+
 function loadSave(): SaveData { return parseSave(readStorage(SAVE_KEY)) }
+/** The player's first impression is the tier their DEVICE starts at, not a
+ *  hard-coded 'low'. `classifyDevice` reads behavioural facts (fine pointer, no
+ *  touch, shaded megapixels) because renderer strings are blocked often enough to
+ *  be a coin flip (14 §2). */
+function detectStartTier(): QualityLevel | undefined {
+  if (typeof window === 'undefined') return undefined
+  const fine = window.matchMedia?.('(pointer: fine)').matches ?? false
+  const touch = (navigator.maxTouchPoints ?? 0) > 0
+  const cls = classifyDevice({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio || 1, finePointer: fine, touch })
+  return cls.start
+}
 function loadSettings(): GameSettings {
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false)
-  return parseSettings(readStorage(SETTINGS_KEY), coarse)
+  return parseSettings(readStorage(SETTINGS_KEY), coarse, detectStartTier())
 }
 
 /* ================================================================== */
@@ -86,6 +108,9 @@ export default function Home() {
    * hydration mismatch badge) */
   const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
   const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
+  /* The device's class, measured once on mount: which tiers exist for it at all,
+     and what the settings screen tells the player about the machine it is on. */
+  const [deviceClass, setDeviceClass] = useState(() => classifyDevice({ width: 1280, height: 720, dpr: 1, finePointer: false, touch: true }))
   const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
   const [loadout, setLoadout] = useState<SwordId[]>(['katana'])
   const [scores, setScores] = useState<ScoreRow[]>([])
@@ -119,6 +144,15 @@ export default function Home() {
       setSelectedSword(latest)
       setLoadout([latest])
       setSettings(loadSettings())
+      setDeviceClass(
+        classifyDevice({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          dpr: window.devicePixelRatio || 1,
+          finePointer: window.matchMedia?.('(pointer: fine)').matches ?? false,
+          touch: (navigator.maxTouchPoints ?? 0) > 0,
+        }),
+      )
       setHydrated(true)
       setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
       // A tablet that gains a mouse (or a phone that rotates into a keyboard
@@ -591,16 +625,27 @@ export default function Home() {
               <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
                 <div className="flex gap-2">
-                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => (
-                    <Button
-                      key={q}
-                      variant="outline"
-                      className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`}
-                      onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
-                    >{q.toUpperCase()}</Button>
-                  ))}
+                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => {
+                    // A tier this device is not offered is DISABLED, not hidden:
+                    // the player should be able to see that ultra exists and that
+                    // it is a desktop tier, rather than wonder where it went.
+                    const beyond = (['low', 'medium', 'high', 'ultra'] as const).indexOf(q) > (['low', 'medium', 'high', 'ultra'] as const).indexOf(deviceClass.ceiling)
+                    return (
+                      <Button
+                        key={q}
+                        variant="outline"
+                        disabled={beyond}
+                        title={beyond ? 'Desktop only' : QUALITY_BLURB[q]}
+                        className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'} ${beyond ? 'opacity-30' : ''}`}
+                        onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
+                      >{q.toUpperCase()}</Button>
+                    )
+                  })}
                 </div>
-                {settings.quality === 'ultra' && <div className="mt-2 text-[10px] tracking-widest text-slate-400">CINEMATIC 2.5D · VOLUMETRIC MOON FOG · WET REFLECTIONS · DEPTH SHADOWS</div>}
+                <div className="mt-2 text-[10px] tracking-widest text-slate-400">{QUALITY_BLURB[settings.quality]}</div>
+                <div className="mt-1 text-[10px] tracking-widest text-slate-600">
+                  ULTRA IS A DESKTOP TIER · DEVICE DETECTED: {deviceClass.desktop ? 'DESKTOP' : 'TOUCH'} · {deviceClass.megapixels.toFixed(1)} MP
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div>

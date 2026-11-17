@@ -6,6 +6,8 @@
  */
 
 import { shadowDirection, shadowReach } from '../world/light'
+import { featuresFor, type GraphicsFeatures, type Tier } from './graphics'
+import { FIGURE_H, drawCastShadow, drawContactAO, usesCastShadow, usesPropShadows } from './shadows'
 import { Camera } from '../core/camera'
 import { FX } from '../fx/fx'
 import { Enemy } from '../entities/enemy'
@@ -31,35 +33,64 @@ export interface RenderWorld {
 
 export class Renderer {
   private quality: GameSettings['quality'] = 'high'
+  /** The tier's feature set, resolved once per change (render/graphics.ts). */
+  private features: GraphicsFeatures = featuresFor('high')
 
   setQuality(q: GameSettings['quality']): void {
     this.quality = q
+    this.features = featuresFor(q as Tier)
   }
 
-  /** One soft contact ellipse per figure — the whole "grounding" system.
-   *  Fades with height so a jump detaches it. Two fills per figure, no
-   *  gradients, no plates.
+  /** What the frame is actually spending, for the debug readout. */
+  graphicsSummary(): string {
+    const f = this.features
+    return `${f.shadows}${f.penumbra ? `+${f.penumbra}` : ''}${f.shafts ? ' shafts' : ''}${f.dust ? ' motes' : ''} refl ${f.reflection || 'off'} dpr ${f.dprCap}`
+  }
+
+  /** GROUNDING, REBUILT (render/shadows.ts).
    *
-   *  DIRECTIONAL, AND THE DIRECTION IS THE MOON'S (bounty O-10). The shadows
-   *  used to be pushed lower-LEFT by a constant, which was correct only while
-   *  the moon happened to be on the right. The moon is a profile axis now and it
-   *  can sit anywhere in the sky, so the shadow is projected AWAY from it: a
-   *  figure left of the moon casts further left, a figure right of it casts
-   *  right. `moonW` is the moon's world x (Infinity = no sky, keep the old look).
-   *  Cost: one comparison and a multiply per figure. */
-  private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, dir = -1, reach = 1): void {
-    const a = 0.34 * Math.max(0, 1 - Math.abs(y) / 150)
-    if (a < 0.02) return
-    ctx.globalAlpha = a * 0.55
-    ctx.fillStyle = '#04070b'
-    ctx.beginPath()
-    ctx.ellipse(x + dir * w * 0.55 * reach, y + 3, w * (1.1 + 0.4 * reach), w * 0.2, dir * -0.06, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = a
-    ctx.beginPath()
-    ctx.ellipse(x + dir * w * 0.12 * reach, y + 2, w * 0.82, w * 0.2, 0, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = 1
+   *  A figure is grounded by up to three things now, in paint order:
+   *   1. contact AO — the soft dark where the body meets the deck. On EVERY tier:
+   *      a fighter that floats is a bug on any device.
+   *   2. the projected body — a long, tapered, soft-edged shadow thrown away from
+   *      the moon, its length read from the composition. High tier and up.
+   *   3. the SECOND shadow — the nearer practical's, in that practical's colour,
+   *      falling away from it. Two lights, two shadows: this is the cue that makes
+   *      the door and the streetlight read as sources rather than as decals.
+   *
+   *  Every pass count comes from the tier table, so the cost of a frame is the
+   *  cost the table promised (tests/shadows.test.ts asserts it). */
+  private shade(
+    ctx: CanvasRenderingContext2D,
+    bg: BackgroundRenderer,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    dir: number,
+    reach: number,
+  ): void {
+    const F = this.features
+    drawContactAO(ctx, x, y, width, 0.44, Math.min(1, F.penumbra))
+    if (!usesCastShadow(F.shadows)) return
+    drawCastShadow(ctx, { x, y, height, width, dir, reach, alpha: 0.46, penumbra: F.penumbra })
+    if (!F.practicalShadow) return
+    const ps = bg.practicalShadow?.(x)
+    if (!ps || ps.strength <= 0.04) return
+    drawCastShadow(ctx, {
+      x,
+      y,
+      height: height * 0.94,
+      width: width * 0.92,
+      dir: ps.dir,
+      // A practical is close to the body it lights, so its shadow is SHORT. That
+      // contrast — a long cold moon shadow and a short warm one — is what the eye
+      // reads as two lights.
+      reach: 0.22 + 0.4 * ps.strength,
+      alpha: 0.34 * ps.strength,
+      penumbra: Math.min(2, F.penumbra),
+      ink: ps.ink,
+    })
   }
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
@@ -98,16 +129,25 @@ export class Renderer {
     // arena floor + stage props
     bg.drawArena(ctx)
 
+    const viewL = cam.x + cam.offX - viewHalfW
+    const viewR = cam.x + cam.offX + viewHalfW
+
+    // PROP SHADOWS FIRST — the outline of every prop laid flat on the deck, away
+    // from the moon. Under the props, under the fighters, ultra only.
+    if (usesPropShadows(this.features.shadows) && hasKey && key) {
+      props.drawShadows(ctx, moonW, key.elevation, cam.zoom, w, viewL, viewR)
+    }
+
     // DESTRUCTIBLE PROPS — one baked sprite each (body + flipped reflection
     // in the same canvas), frustum-culled, drawn behind the fighters.
-    props.draw(ctx, cam.x + cam.offX - viewHalfW, cam.x + cam.offX + viewHalfW)
+    props.draw(ctx, viewL, viewR)
 
-    // grounding first, so every figure stands ON its contact shadow
-    this.ground(ctx, player.x, player.y, 30, dirAt(player.x), reachAt(player.x))
+    // grounding first, so every figure stands ON its shadow
+    this.shade(ctx, bg, player.x, player.y, 32, FIGURE_H, dirAt(player.x), reachAt(player.x))
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      this.ground(ctx, e.x, e.y, 28, dirAt(e.x), reachAt(e.x))
+      this.shade(ctx, bg, e.x, e.y, 30, FIGURE_H * 0.95, dirAt(e.x), reachAt(e.x))
     }
 
     // ground decals + debris
@@ -133,6 +173,10 @@ export class Renderer {
     // whichever practical they are standing in (≤2 additive blits)
     bg.drawPlayerLight?.(ctx, player.x, player.y, player.face)
 
+    // DUST IN THE SHAFTS — air you can see (ultra). Drawn after the players so the
+    // motes sit in front of the light rather than behind the fighter.
+    if (this.features.dust) bg.drawMotes?.(ctx, time)
+
     // projectiles
     projectiles.draw(ctx, time)
 
@@ -152,7 +196,9 @@ export class Renderer {
     // contains the player/enemies/FX because its source IS the frame.
     // NOTE: the world camera (offset applied), not the parallax sky cam — the
     // deck line is a world y, so using the sky cam would misalign the band.
-    bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality)
+    if (this.features.reflection > 0) {
+      bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality)
+    }
 
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })

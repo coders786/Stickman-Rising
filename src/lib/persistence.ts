@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { SWORD_ORDER } from '@/game/combat/swords'
-import { DEFAULT_SETTINGS, type GameSettings } from '@/game/core/types'
+import { DEFAULT_SETTINGS, type GameSettings, type QualityLevel } from '@/game/core/types'
 
 export const SAVE_KEY = 'sr_save_v1'
 export const SETTINGS_KEY = 'sr_settings_v1'
@@ -20,10 +20,15 @@ export function parseSave(raw: string | null): SaveData {
     return { totalKills: 0, best: 0, unlocked: ['katana'] }
   }
 }
-export function parseSettings(raw: string | null, coarse = false): GameSettings {
-  // coarse devices still floor at 'medium'; everyone else gets the shipped
-  // default (the 120 fps strip made it 'low')
-  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : DEFAULT_SETTINGS.quality }
+export function parseSettings(raw: string | null, coarse = false, detected?: QualityLevel): GameSettings {
+  // THE FIRST IMPRESSION. A brand-new player previously started at a hard-coded
+  // 'low', which is why a desktop with a discrete GPU could launch the game into
+  // its cheapest tier and conclude the graphics were bad. The default is now the
+  // device's own starting tier (render/graphics.ts `classifyDevice`), clamped by
+  // its ceiling; `coarse` (touch) still floors at 'medium' because a phone should
+  // never be handed a cast-shadow pass it will immediately shed.
+  const start: QualityLevel = detected ?? (coarse ? 'medium' : DEFAULT_SETTINGS.quality)
+  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: start }
   const unit = (fallback: number) => z.number().min(0).max(1).catch(fallback)
   const schema = z.object({
     quality: z.enum(['low', 'medium', 'high', 'ultra']).catch(defaults.quality),

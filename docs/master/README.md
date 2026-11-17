@@ -16,7 +16,7 @@ no-dead-knobs registry), `render/ledger.ts`, `render/quality.ts` (p95 ladder),
 `anim/natural.ts` (M4.5 core, plus the tail-pinned chain), `scripts/bench-render.mjs`,
 `scripts/lint-boundaries.mjs`, and `npm run gate`.
 
-Tests: **335/340** (5 known fails, all filed). Every profile axis now has a named
+Tests: **348/353** (5 known fails, all filed). Every profile axis now has a named
 renderer consumer and `tests/profile-consumption.test.ts` fails if one loses it
 (O-08 closed). Run identity is visible in-play and on the results card (O-09), and
 the contact shadow is projected away from the moon (O-10). See
@@ -41,6 +41,7 @@ the contact shadow is projected away from the moon (O-10). See
 | 09 | `09-RISK-REGISTER.md` | 13 | **DELIVERED** — 30 risks scored with signals and mitigations; 5 that can kill the project; accepted risks stated |
 | 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P8 with numeric accept/reject; P4 demoted to desktop-only by D7 |
 | 11 | `11-VALIDATION.md` | 15, 21–24 | **DELIVERED** — 3 measurement environments, metric catalogue, frame-percentile method, gate ladder G0–G8, anti-self-deception rules, E3 rubric |
+| 23 | `23-LIGHT-AND-SHADOW.md` | 3–5 | **DELIVERED** — the lighting/shadow rewrite: projected body shadows, the second light, prop silhouettes, volumetric shafts, and the graphics-level table (low/medium/high/ultra) with a device classifier |
 | 12 | `12-MOBILE-PERFORMANCE.md` | 8b | **DELIVERED** — the mobile reality check: no GPU timer on phones, resolution-first shedding, iOS canvas caps + ledger, and **D7** (single canvas default) |
 | 13 | `13-SHADER-SPEC.md` | 6b | **DELIVERED** — 8 programs with real math, the **noise atlas** decision, precision map, straight-alpha/Y-flip contract, bake budget of ≤6 ms per plate |
 | 14 | `14-DEVICE-TIERS.md` | 10 | **DELIVERED** — tier detection by **measurement** (renderer strings are blocked/falsified), 120 ms boot probe, C0–C3 classes |
