@@ -95,11 +95,10 @@ const ARENA_W = ARENA_X1 - ARENA_X0;
 const LIP_H = 14;               // lighter metal lip band, world y 0..14
 const FACADE_H = 246;           // facade band, world y 14..260
 const STAR_H = 640;
+const DEEP_H = 420;           // deepest skyline band (new)
 const FAR_H = 480;
 const MID_H = 560;
 const NEAR_H = 480;
-const FOG_W = 1024;
-const FOG_H = 200;
 
 function mod(a: number, n: number): number {
   return ((a % n) + n) % n;
@@ -130,8 +129,24 @@ function rrPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 
 interface LayerDef { f: number; vf: number; lift: number; below: string }
 
-/** far mega-city — parallax 0.05 */
-const LAY_FAR: LayerDef = { f: 0.05, vf: 0.9675, lift: -10, below: '#0a1016' };
+/**
+ * PARALLAX LADDER — geometric depth engine.
+ *
+ * Every band doubles its horizontal parallax factor over the previous one
+ * (≈×2.1 per step), so depth reads as an even progression instead of three
+ * arbitrary speeds with a hole between them:
+ *
+ *   stars  0.015 → deep 0.032 → far 0.065 → mid 0.14 → near 0.30
+ *
+ * Vertical factors fall in the same order (0.98 → 0.805): distant bands
+ * barely move with the camera's height, foreground bands track it almost
+ * 1:1 — the classic horizon-anchored parallax stack. All four bands draw
+ * through one `drawCityBand()` path (fill + slice-blit + lightning pop).
+ */
+/** deepest silhouette ridge, just above the far mega-city */
+const LAY_DEEP: LayerDef = { f: 0.032, vf: 0.978, lift: -4, below: '#0b1219' };
+/** far mega-city — parallax 0.065 */
+const LAY_FAR: LayerDef = { f: 0.065, vf: 0.9675, lift: -10, below: '#0a1016' };
 /** mid city with neon signs — parallax 0.14 */
 const LAY_MID: LayerDef = { f: 0.14, vf: 0.901, lift: -26, below: '#070d12' };
 /** near-mid foreground towers — parallax 0.30 */
@@ -141,7 +156,6 @@ const LAY_NEAR: LayerDef = { f: 0.3, vf: 0.805, lift: -46, below: '#04080c' };
 /* ============================ fixed palettes ============================= */
 
 const SKY_BELOW = '#070d12';
-const TWINK_COL = '#cfe0e8';
 const BEACON_CORE = '#ff5040';
 const SIGN_PANEL = '#04070a';
 const SIGN_INK: ReadonlyArray<string> = ['#ff2d95', '#29e6d2', '#ffb02e', '#8d5bff', '#3fa9ff'];
@@ -151,8 +165,6 @@ const SIGN_BORDER: ReadonlyArray<string> = [
   'rgba(141,91,255,0.55)', 'rgba(63,169,255,0.55)',
 ];
 const LIFT_COL: ReadonlyArray<string> = ['#ffd9a0', '#9df0e2'];
-const MIST_W = 3072;           // ground-mist tiling period in world px (fogSpr × 3)
-const MIST_SP = 26;            // ground-mist scroll speed, world px/s
 
 /* ======================== animated-record shapes ========================= */
 
@@ -418,9 +430,11 @@ export class CyberBackground {
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
   private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
+  private deepTile!: HTMLCanvasElement;
   private farTile!: HTMLCanvasElement;
   private midTile!: HTMLCanvasElement;
   private nearTile!: HTMLCanvasElement;
+  private deepTileBlur!: HTMLCanvasElement;
   private arenaTile!: HTMLCanvasElement;
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
@@ -545,7 +559,7 @@ export class CyberBackground {
 
     /* 2 — stars + moon (celestial parallax) */
     const starBase = hy - 70 > h * 0.25 ? hy - 70 : h * 0.25;
-    const ms = mod(cx * 0.02 * cz, TILE);
+    const ms = mod(cx * 0.015 * cz, TILE);
     this.blitRow(ctx, this.starTile, ms, starBase - STAR_H);
     /* 2.5 — DRIFTING CLOUD DECKS: three parallax sheets (high slow thin /
      * main bank / low fast wisps). While lightning scatters through them the
@@ -580,57 +594,23 @@ export class CyberBackground {
       ctx.globalAlpha = 1;
     }
 
-    /* 3 — far mega-city (parallax 0.05) + blinking antenna beacons.
-     * Far layer draws from its pre-blurred DOF variant (rainy-night bokeh);
-     * during a strike the sharp tile re-blits additively → silhouette pop. */
+    /* 3 — DEEP + FAR skylines through the shared parallax engine.
+     * Both draw from their pre-blurred DOF variants; during a strike the
+     * sharp tile re-blits additively → silhouette pop. */
     const I = this.lightningI();
-    const byF = h * 0.5 + (LAY_FAR.lift - cy * LAY_FAR.vf) * cz;
-    const mF = mod(cx * LAY_FAR.f * cz, TILE);
-    ctx.fillStyle = LAY_FAR.below;
-    this.fillBelow(ctx, byF);
-    this.blitRow(ctx, this.farTileBlur, mF, byF - FAR_H);
-    if (I > 0.02) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.3 * I;
-      this.blitRow(ctx, this.farTile, mF, byF - FAR_H);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
-    /* 4 — mid city (parallax 0.14, softly defocused). The neon signs are
-     * baked into the tile now — no per-frame rounded-rect paths, strokes
-     * or flicker state machines. */
-    const byM = h * 0.5 + (LAY_MID.lift - cy * LAY_MID.vf) * cz;
-    const mM = mod(cx * LAY_MID.f * cz, TILE);
-    ctx.fillStyle = LAY_MID.below;
-    this.fillBelow(ctx, byM);
-    this.blitRow(ctx, this.midTileBlur, mM, byM - MID_H);
-    if (I > 0.02) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.14 * I;
-      this.blitRow(ctx, this.midTile, mM, byM - MID_H);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
+    this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, I, this.deepTileBlur, this.deepTile, DEEP_H, 0.34);
+    this.drawCityBand(ctx, LAY_FAR, h, cx, cy, cz, I, this.farTileBlur, this.farTile, FAR_H, 0.3);
+
+    /* 4 — mid city: baked neon signs, one shared band draw */
+    this.drawCityBand(ctx, LAY_MID, h, cx, cy, cz, I, this.midTileBlur, this.midTile, MID_H, 0.14);
 
     /* 4.5 — humid horizon haze: one blit around the ground line */
     ctx.globalAlpha = 0.65;
     ctx.drawImage(this.hazeSpr!, 0, hy - 96, w, 150);
     ctx.globalAlpha = 1;
 
-    /* 5 — near-mid towers (parallax 0.30). Elevator dots baked; the
-     * sweeping searchlights are gone. */
-    const byN = h * 0.5 + (LAY_NEAR.lift - cy * LAY_NEAR.vf) * cz;
-    const mN = mod(cx * LAY_NEAR.f * cz, TILE);
-    ctx.fillStyle = LAY_NEAR.below;
-    this.fillBelow(ctx, byN);
-    this.blitRow(ctx, this.nearTile, mN, byN - NEAR_H);
-    if (I > 0.02) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.12 * I;
-      this.blitRow(ctx, this.nearTile, mN, byN - NEAR_H);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-    }
+    /* 5 — near towers (no DOF blur — the action plane stays crisp) */
+    this.drawCityBand(ctx, LAY_NEAR, h, cx, cy, cz, I, this.nearTile, this.nearTile, NEAR_H, 0.12);
     ctx.restore();
     });
   }
@@ -696,14 +676,48 @@ export class CyberBackground {
     for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
     this.cloudDark = buildCloudTile(false);
     this.starTile = this.buildStarTile();
+    this.deepTile = this.buildDeep();
     this.farTile = this.buildFar();
     this.midTile = this.buildMid();
     this.nearTile = this.buildNear();
     this.arenaTile = this.buildArena();
-    /* storm art: bolt variants, flash gradient, horizon haze, DOF tiles */
+    /* storm art: horizon haze + per-layer DOF variants (baked once) */
     this.hazeSpr = buildHazeStrip();
+    this.deepTileBlur = blurTile(this.deepTile, 8);
     this.farTileBlur = blurTile(this.farTile, 6);
     this.midTileBlur = blurTile(this.midTile, 3);
+  }
+
+  /**
+   * One parallax band: ground fill under the band + the frustum-sliced
+   * tile blit + the lightning silhouette pop. All four city layers share
+   * this single code path — the whole parallax engine is one method.
+   */
+  private drawCityBand(
+    ctx: CanvasRenderingContext2D,
+    lay: LayerDef,
+    h: number,
+    cx: number,
+    cy: number,
+    cz: number,
+    I: number,
+    soft: HTMLCanvasElement,
+    sharp: HTMLCanvasElement,
+    bandH: number,
+    popAlpha: number,
+  ): void {
+    const by = h * 0.5 + (lay.lift - cy * lay.vf) * cz;
+    const m = mod(cx * lay.f * cz, TILE);
+    ctx.fillStyle = lay.below;
+    this.fillBelow(ctx, by);
+    this.blitRow(ctx, soft, m, by - bandH);
+    if (I > 0.02) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = popAlpha * I;
+      this.blitRow(ctx, sharp, m, by - bandH);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
   }
 
   /* ------------------------- layer tile builders ------------------------- */
@@ -711,6 +725,23 @@ export class CyberBackground {
   private buildStarTile(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, STAR_H);
     const rng = mulberry32(0x51a2c9);
+    // FAINT NEBULA BLOOMS — two soft color clouds so the upper sky reads
+    // as depth instead of a flat ramp (wrap-aware: drawn at ±TILE too)
+    const nebs: ReadonlyArray<readonly [string, number, number, number]> = [
+      ['rgba(70,96,168,0.055)', 0.3, 0.2, 300],
+      ['rgba(140,84,146,0.04)', 0.64, 0.3, 260],
+      ['rgba(60,120,150,0.04)', 0.86, 0.16, 240],
+    ];
+    for (const [col, px, py, rad] of nebs) {
+      const nx = px * TILE, ny = STAR_H * py;
+      for (const ox of [-TILE, 0, TILE]) {
+        const rg = g.createRadialGradient(nx + ox, ny, 0, nx + ox, ny, rad);
+        rg.addColorStop(0, col);
+        rg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = rg;
+        g.fillRect(nx + ox - rad, ny - rad, rad * 2, rad * 2);
+      }
+    }
     for (let i = 0; i < 180; i++) {
       const x = rng() * TILE;
       const y = rng() * STAR_H;
@@ -724,6 +755,132 @@ export class CyberBackground {
       g.fillRect(x, y, big ? 2 : 1, big ? 2 : 1);
     }
     return c;
+  }
+
+  /**
+   * DEEPEST SKYLINE (new parallax band) — the megastructure ridge behind
+   * the far city: huge simple slabs, needle spires, one landmark tower
+   * with a lit crown, distant billboard glows. Everything dissolves into
+   * the heaviest aerial fog of the stack; window grids are reduced to
+   * specks because at this distance individual cells no longer read.
+   */
+  private buildDeep(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(TILE, DEEP_H);
+    const rng = mulberry32(0x33d1e7);
+    const shades = ['#16222f', '#182534', '#1a2838', '#152030'];
+    const glow: ReadonlyArray<string> = [
+      'rgba(255,45,149,0.20)', 'rgba(41,230,210,0.20)', 'rgba(255,176,46,0.18)',
+      'rgba(141,91,255,0.20)', 'rgba(63,169,255,0.18)',
+    ];
+    let landmark = false;
+    let x = 0;
+    while (x < TILE - 60) {
+      let bw = 110 + rng() * 190;
+      if (x + bw > TILE) bw = TILE - x;
+      let bh = 170 + rng() * 210;
+      if (rng() < 0.22) bh += 60 + rng() * 120;
+      if (bh > DEEP_H - 10) bh = DEEP_H - 10;
+      const shade = shades[(rng() * shades.length) | 0];
+      g.fillStyle = shade;
+      g.fillRect(x, DEEP_H - bh, bw, bh);
+      g.fillStyle = 'rgba(150,185,220,0.06)';            // moon catch, top only
+      g.fillRect(x, DEEP_H - bh, bw, 1);
+      const kind = rng();
+      if (kind < 0.28) {                                  // stepped crown
+        const sw1 = bw * (0.55 + rng() * 0.2);
+        const sh1 = 14 + rng() * 26;
+        g.fillStyle = shade;
+        g.fillRect(x + (bw - sw1) * 0.5, DEEP_H - bh - sh1, sw1, sh1);
+        const sw2 = sw1 * (0.4 + rng() * 0.25);
+        const sh2 = 10 + rng() * 22;
+        g.fillRect(x + (bw - sw2) * 0.5, DEEP_H - bh - sh1 - sh2, sw2, sh2);
+        g.fillStyle = 'rgba(150,185,220,0.05)';
+        g.fillRect(x + (bw - sw2) * 0.5, DEEP_H - bh - sh1 - sh2, sw2, 1);
+      } else if (kind < 0.45) {                           // needle spire
+        const ax = x + bw * (0.3 + rng() * 0.4);
+        const aH = 40 + rng() * 90;
+        g.fillStyle = '#131d29';
+        g.fillRect(ax, DEEP_H - bh - aH, 2, aH);
+        g.fillStyle = 'rgba(255,90,70,0.45)';             // obstruction light
+        g.fillRect(ax - 0.5, DEEP_H - bh - aH - 2, 3, 2);
+      } else if (kind < 0.58) {                           // slanted roof
+        g.beginPath();
+        g.moveTo(x, DEEP_H - bh);
+        g.lineTo(x + bw, DEEP_H - bh - (18 + rng() * 36));
+        g.lineTo(x + bw, DEEP_H - bh);
+        g.closePath();
+        g.fillStyle = shade;
+        g.fill();
+        g.strokeStyle = 'rgba(150,185,220,0.08)';
+        g.lineWidth = 1;
+        g.stroke();
+      }
+      // LANDMARK MEGA-TOWER — one per tile: glowing crown + twin antennas
+      if (!landmark && bh > 300 && bw > 150 && x > 280 && x < TILE - 420) {
+        landmark = true;
+        const cy0 = DEEP_H - bh + 8;
+        const cg = g.createLinearGradient(0, cy0, 0, cy0 + 30);
+        cg.addColorStop(0, 'rgba(120,220,255,0.5)');
+        cg.addColorStop(1, 'rgba(120,220,255,0)');
+        g.fillStyle = cg;
+        g.fillRect(x + 4, cy0, bw - 8, 30);
+        g.fillStyle = 'rgba(190,240,255,0.75)';
+        g.fillRect(x + 6, cy0 + 5, bw - 12, 2);
+        g.fillStyle = '#131d29';
+        g.fillRect(x + bw * 0.3, cy0 - 34, 2, 34);
+        g.fillRect(x + bw * 0.66, cy0 - 46, 2, 46);
+        g.fillStyle = 'rgba(255,90,70,0.6)';
+        g.fillRect(x + bw * 0.3, cy0 - 36, 2, 2);
+        g.fillRect(x + bw * 0.66, cy0 - 48, 2, 2);
+      }
+      if (rng() < 0.75) {                                 // sparse light specks
+        const stepX = 14 + rng() * 10, stepY = 16 + rng() * 10;
+        for (let wx = x + 6; wx < x + bw - 6; wx += stepX) {
+          for (let wy = DEEP_H - bh + 8; wy < DEEP_H - 8; wy += stepY) {
+            if (rng() < 0.07) {
+              const a = 0.25 + rng() * 0.4;
+              g.fillStyle = rng() < 0.85
+                ? `rgba(255,196,130,${a.toFixed(3)})`
+                : `rgba(140,235,225,${a.toFixed(3)})`;
+              g.fillRect(wx, wy, 2, 2);
+            }
+          }
+        }
+      }
+      if (rng() < 0.16 && bw > 130 && bh > 200) {          // distant billboard glow
+        const bx0 = x + 8 + rng() * Math.max(4, bw - 76);
+        const by0 = DEEP_H - bh + 30 + rng() * 80;
+        const bwid = 40 + rng() * 26, bhei = 18 + rng() * 14;
+        g.globalCompositeOperation = 'lighter';
+        g.fillStyle = glow[(rng() * glow.length) | 0];
+        g.fillRect(bx0, by0, bwid, bhei);
+        g.globalCompositeOperation = 'source-over';
+      }
+      x += bw + (rng() < 0.3 ? 10 + rng() * 30 : 0);
+    }
+    const gr = g.createLinearGradient(0, DEEP_H - 110, 0, DEEP_H);   // base haze
+    gr.addColorStop(0, 'rgba(11,18,25,0)');
+    gr.addColorStop(1, 'rgba(11,18,25,0.6)');
+    g.fillStyle = gr;
+    g.fillRect(0, DEEP_H - 110, TILE, 110);
+    // heaviest aerial perspective of the stack — the ridge melts into night
+    g.globalCompositeOperation = 'source-atop';
+    const tg = g.createLinearGradient(0, 0, 0, FOG.topFadeH + 40);
+    tg.addColorStop(0, 'rgba(30,48,76,0.62)');
+    tg.addColorStop(1, 'rgba(30,48,76,0)');
+    g.fillStyle = tg;
+    g.fillRect(0, 0, TILE, FOG.topFadeH + 40);
+    g.fillStyle = 'rgba(46,70,104,0.34)';
+    g.fillRect(0, 0, TILE, DEEP_H);
+    g.globalCompositeOperation = 'source-over';
+    // wrap-aware soft bake (the DOF variant in ensureBuilt goes further)
+    const blurred = makeCanvas(TILE, DEEP_H);
+    blurred.g.filter = 'blur(3px)';
+    blurred.g.drawImage(c, -TILE, 0);
+    blurred.g.drawImage(c, 0, 0);
+    blurred.g.drawImage(c, TILE, 0);
+    blurred.g.filter = 'none';
+    return blurred.c;
   }
 
   private buildFar(): HTMLCanvasElement {
@@ -743,7 +900,8 @@ export class CyberBackground {
       g.fillRect(x, FAR_H - bh, bw, bh);
       g.fillStyle = 'rgba(142,176,212,0.055)';              // moon catch: top only
       g.fillRect(x, FAR_H - bh, bw, 1);
-      if (rng() < 0.25) {                                  // crowning setback
+      const roof = rng();
+      if (roof < 0.25) {                                  // crowning setback
         const sw = bw * (0.35 + rng() * 0.3);
         let sh = 22 + rng() * 70;
         if (bh + sh > FAR_H - 6) sh = FAR_H - 6 - bh;
@@ -751,6 +909,26 @@ export class CyberBackground {
           g.fillRect(x + (bw - sw) * rng(), FAR_H - bh - sh, sw, sh);
           g.fillStyle = 'rgba(60,80,92,0.12)';
           g.fillRect(x + (bw - sw) * rng(), FAR_H - bh - sh, sw, 1);
+        }
+      } else if (roof < 0.38) {                           // slanted shed roof
+        g.beginPath();
+        g.moveTo(x, FAR_H - bh);
+        g.lineTo(x + bw, FAR_H - bh - (12 + rng() * 26));
+        g.lineTo(x + bw, FAR_H - bh);
+        g.closePath();
+        g.fillStyle = shade;
+        g.fill();
+        g.strokeStyle = 'rgba(60,80,92,0.14)';
+        g.lineWidth = 1;
+        g.stroke();
+      } else if (roof < 0.47 && bw > 90) {                // twin cooling stacks
+        for (let si = 0; si < 2; si++) {
+          const sx = x + bw * (0.3 + si * 0.32 + rng() * 0.08);
+          const sh2 = 10 + rng() * 16;
+          g.fillStyle = '#101923';
+          g.fillRect(sx, FAR_H - bh - sh2, 5, sh2);
+          g.fillStyle = 'rgba(70,94,110,0.16)';
+          g.fillRect(sx, FAR_H - bh - sh2, 5, 1);
         }
       }
       if (bh > 330 && rng() < 0.6 && beaconCount < 9) {  // antenna + baked beacon
@@ -770,18 +948,37 @@ export class CyberBackground {
           beaconCount++;
         }
       }
+      // LIT FLOOR: sometimes a whole office floor burns at night (band row),
+      // sometimes one stairwell shaft runs the full height — both read as
+      // occupancy instead of random noise
+      const litFloorY = rng() < 0.34 ? FAR_H - bh + 12 + rng() * Math.max(12, bh - 34) : -999;
+      const shaftX = rng() < 0.18 ? x + 8 + rng() * Math.max(2, bw - 18) : -999;
+      const floorHue = rng();
       const stepX = 6.5 + rng() * 2.5, stepY = 8 + rng() * 3.5;
       for (let wx = x + 4; wx < x + bw - 4; wx += stepX) { // window grid INSIDE the facade
         for (let wy = FAR_H - bh + 5; wy < FAR_H - 6; wy += stepY) {
           g.fillStyle = 'rgba(9,14,21,0.55)';               // unlit cell = the grid reads
           g.fillRect(wx, wy, 2, 2);
-          if (rng() < 0.15) {
-            const warm = rng() < 0.82;
-            const a = 0.5 + rng() * 0.45;
-            g.fillStyle = warm ? `rgba(255,180,107,${a.toFixed(3)})` : `rgba(125,232,220,${a.toFixed(3)})`;
+          const onFloor = wy > litFloorY - stepY * 0.55 && wy < litFloorY + stepY * 0.55;
+          const onShaft = Math.abs(wx - shaftX) < stepX * 0.6;
+          if (onFloor || onShaft || rng() < 0.15) {
+            const warm = onFloor ? floorHue < 0.7 : rng() < 0.82;
+            const cool = !onFloor && rng() < 0.1;
+            const a = onFloor ? 0.55 + rng() * 0.4 : 0.5 + rng() * 0.45;
+            g.fillStyle = cool
+              ? `rgba(141,150,255,${(a * 0.8).toFixed(3)})`
+              : warm ? `rgba(255,180,107,${a.toFixed(3)})` : `rgba(125,232,220,${a.toFixed(3)})`;
             g.fillRect(wx, wy, 2, rng() < 0.3 ? 3 : 2);
           }
         }
+      }
+      // DISTANT BILLBOARD — a soft colored glow plate on a tall face
+      if (rng() < 0.12 && bw > 100 && bh > 240) {
+        const cols = ['rgba(255,45,149,0.16)', 'rgba(41,230,210,0.16)', 'rgba(255,176,46,0.14)', 'rgba(63,169,255,0.15)'];
+        g.globalCompositeOperation = 'lighter';
+        g.fillStyle = cols[(rng() * cols.length) | 0];
+        g.fillRect(x + 8 + rng() * Math.max(4, bw - 60), FAR_H - bh + 30 + rng() * 70, 34 + rng() * 18, 14 + rng() * 10);
+        g.globalCompositeOperation = 'source-over';
       }
       x += bw + (rng() < 0.22 ? 5 + rng() * 18 : 0);
     }
@@ -838,13 +1035,66 @@ export class CyberBackground {
       g.fillRect(x, MID_H - bh, bw, bh * 0.6);
       g.fillStyle = 'rgba(60,82,90,0.18)';                 // parapet catch-light
       g.fillRect(x, MID_H - bh, bw, 2);
-      if (rng() < 0.32 && bw > 110) {                      // rooftop tank
-        const tw = 16 + rng() * 12, th = 18 + rng() * 15;
+      const roofKind = rng();
+      if (roofKind < 0.3 && bw > 110) {                    // water tower on legs
+        const tw = 18 + rng() * 14, th = 20 + rng() * 16;
         const tx = x + 10 + rng() * (bw - tw - 20);
+        const ty = MID_H - bh - th;
         g.fillStyle = shade;
-        g.fillRect(tx, MID_H - bh - th, tw, th);
-        g.fillStyle = 'rgba(70,94,102,0.15)';
-        g.fillRect(tx, MID_H - bh - th, 1.5, th);
+        g.fillRect(tx, ty, tw, th);
+        g.beginPath();                                     // conical roof
+        g.moveTo(tx - 2, ty);
+        g.lineTo(tx + tw / 2, ty - 7 - rng() * 5);
+        g.lineTo(tx + tw + 2, ty);
+        g.closePath();
+        g.fill();
+        g.fillStyle = 'rgba(70,94,102,0.15)';              // tank sheen
+        g.fillRect(tx, ty, 1.5, th);
+        g.strokeStyle = 'rgba(34,46,54,0.95)';             // three legs
+        g.lineWidth = 1.5;
+        for (let li = 0; li < 3; li++) {
+          const lx = tx + 2 + (li * (tw - 4)) / 2;
+          g.beginPath();
+          g.moveTo(lx, ty + th);
+          g.lineTo(lx + (li - 1) * 3, ty + th + 9);
+          g.stroke();
+        }
+      } else if (roofKind < 0.44 && bw > 100) {            // AC condenser + vent pipe
+        const aw = 16 + rng() * 14, ah = 8 + rng() * 6;
+        const ax2 = x + 10 + rng() * Math.max(4, bw - aw - 20);
+        const ay = MID_H - bh - ah;
+        g.fillStyle = '#0a1218';
+        g.fillRect(ax2, ay, aw, ah);
+        g.fillStyle = 'rgba(90,116,128,0.22)';             // grille lines
+        for (let gi = 1; gi < 3; gi++) g.fillRect(ax2 + 2, ay + gi * (ah / 3), aw - 4, 1);
+        g.fillStyle = 'rgba(70,94,102,0.3)';
+        g.fillRect(ax2, ay, aw, 1);
+        g.strokeStyle = 'rgba(40,54,62,0.9)';              // vent pipe
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(ax2 + aw - 3, ay);
+        g.lineTo(ax2 + aw - 3, ay - 12 - rng() * 10);
+        g.stroke();
+      } else if (roofKind < 0.52 && bw > 90) {             // satellite dish
+        const dx = x + 14 + rng() * Math.max(4, bw - 40);
+        const dy = MID_H - bh - 4;
+        const dr = 7 + rng() * 6;
+        g.strokeStyle = 'rgba(80,104,116,0.5)';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(dx, dy, dr, Math.PI * 1.05, Math.PI * 1.95);
+        g.stroke();
+        g.fillStyle = 'rgba(80,104,116,0.35)';
+        g.fillRect(dx - 1, dy, 2, 6);
+      } else if (roofKind < 0.6 && bw > 90) {              // stair bulkhead
+        const sw2 = 20 + rng() * 16, sh2 = 12 + rng() * 8;
+        const sx2 = x + 8 + rng() * Math.max(4, bw - sw2 - 16);
+        g.fillStyle = shade;
+        g.fillRect(sx2, MID_H - bh - sh2, sw2, sh2);
+        g.fillStyle = 'rgba(60,82,90,0.2)';
+        g.fillRect(sx2, MID_H - bh - sh2, sw2, 1);
+        g.fillStyle = 'rgba(20,30,38,0.9)';                // door
+        g.fillRect(sx2 + sw2 * 0.55, MID_H - bh - sh2 + 3, 6, sh2 - 3);
       }
       if (rng() < 0.45) {                                  // antenna mast
         const ax = x + bw * (0.15 + rng() * 0.7);
@@ -859,16 +1109,67 @@ export class CyberBackground {
           }
         }
       }
-      // (vertical neon edge tubes REMOVED — glowing edge-strokes made the
-      // towers read as floating rectangles; signage lives on faces only)
+      // ROOFTOP BILLBOARD on posts — the cyberpunk skyline's signature.
+      // Baked: panel gradient + one neon glyph, no live state.
+      if (rng() < 0.14 && bw > 150 && bh > 240) {
+        const ci = (rng() * SIGN_INK.length) | 0;
+        const bwi = Math.min(96, bw - 40), bhei = 34 + rng() * 16;
+        const bx0 = x + 20 + rng() * Math.max(4, bw - bwi - 40);
+        const by0 = MID_H - bh - bhei - 14;
+        g.strokeStyle = 'rgba(30,42,50,0.95)';             // two posts
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(bx0 + 8, by0 + bhei);
+        g.lineTo(bx0 + 8, by0 + bhei + 14);
+        g.moveTo(bx0 + bwi - 8, by0 + bhei);
+        g.lineTo(bx0 + bwi - 8, by0 + bhei + 14);
+        g.stroke();
+        g.globalAlpha = 0.9;
+        g.fillStyle = SIGN_PANEL;
+        rrPath(g, bx0, by0, bwi, bhei, 3);
+        g.fill();
+        g.globalAlpha = 0.55;
+        g.strokeStyle = SIGN_BORDER[ci];
+        g.stroke();
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = 0.34;
+        g.drawImage(this.glyphSpr[ci], bx0 + 6, by0 + 5, bwi - 12, bhei - 10);
+        g.globalCompositeOperation = 'source-over';
+        g.globalAlpha = 0.8;
+        g.drawImage(this.glyphSpr[ci], bx0 + 10, by0 + 8, bwi - 20, bhei - 16);
+        g.globalAlpha = 1;
+      }
+      // FACE NEON STRIP — a thin lit line inset from the facade edge
+      // (on the FACE, never on the silhouette edge: edge tubes made the
+      // towers read as floating rectangles)
+      if (rng() < 0.22 && bh > 150) {
+        const ni = (rng() * SIGN_INK.length) | 0;
+        const nx = rng() < 0.5 ? x + 7 : x + bw - 9;
+        const ny0 = MID_H - bh + 16 + rng() * 30;
+        const nh = Math.min(bh - 40, 60 + rng() * 140);
+        g.globalCompositeOperation = 'lighter';
+        g.globalAlpha = 0.5;
+        g.fillStyle = SIGN_INK[ni];
+        g.fillRect(nx, ny0, 2, nh);
+        g.globalAlpha = 0.18;
+        g.fillRect(nx - 2, ny0, 6, nh);
+        g.globalCompositeOperation = 'source-over';
+        g.globalAlpha = 1;
+      }
       if (rng() >= 0.22) {                                 // windows (some towers unlit)
+        // LIT FLOOR bands + occasional server-floor hue, over the random grid
+        const litFloorY = rng() < 0.3 ? MID_H - bh + 16 + rng() * Math.max(14, bh - 50) : -999;
+        const serverFloor = rng() < 0.16;
         const stepX = 11 + rng() * 4, stepY = 14 + rng() * 4;
         for (let wx = x + 6; wx < x + bw - 8; wx += stepX) {
           for (let wy = MID_H - bh + 8; wy < MID_H - 12; wy += stepY) {
-            if (rng() < 0.2) {
-              const warm = rng() < 0.8;
-              const a = 0.5 + rng() * 0.42;
-              g.fillStyle = warm ? `rgba(255,184,119,${a.toFixed(3)})` : `rgba(141,240,226,${a.toFixed(3)})`;
+            const onFloor = wy > litFloorY - stepY * 0.55 && wy < litFloorY + stepY * 0.55;
+            if (onFloor || rng() < 0.2) {
+              const warm = serverFloor ? false : rng() < 0.8;
+              const a = onFloor ? 0.6 + rng() * 0.35 : 0.5 + rng() * 0.42;
+              g.fillStyle = serverFloor
+                ? `rgba(120,150,255,${(a * 0.75).toFixed(3)})`
+                : warm ? `rgba(255,184,119,${a.toFixed(3)})` : `rgba(141,240,226,${a.toFixed(3)})`;
               g.fillRect(wx, wy, 3, 4);
             }
           }
@@ -959,13 +1260,104 @@ export class CyberBackground {
         g.fillStyle = 'rgba(60,84,94,0.1)';
         g.fillRect(rx, NEAR_H - bh - rh, rw, 1);
       }
-      if (rng() < 0.7) {                                   // sparse dim windows
+      const clutter = rng();                               // near-lane roof dressing
+      if (clutter < 0.16 && bw > 170) {                    // water tower silhouette
+        const tw = 26 + rng() * 16, th = 26 + rng() * 18;
+        const tx = x + 14 + rng() * (bw - tw - 28);
+        const ty = NEAR_H - bh - th - 10;
+        g.fillStyle = '#04080b';
+        g.fillRect(tx, ty, tw, th);
+        g.beginPath();                                     // conical roof
+        g.moveTo(tx - 3, ty);
+        g.lineTo(tx + tw / 2, ty - 9 - rng() * 6);
+        g.lineTo(tx + tw + 3, ty);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = 'rgba(24,34,40,0.95)';             // splayed legs
+        g.lineWidth = 2;
+        for (let li = 0; li < 3; li++) {
+          const lx = tx + 3 + (li * (tw - 6)) / 2;
+          g.beginPath();
+          g.moveTo(lx, ty + th);
+          g.lineTo(lx + (li - 1) * 5, NEAR_H - bh);
+          g.stroke();
+        }
+        g.fillStyle = 'rgba(70,94,102,0.12)';              // tank sheen
+        g.fillRect(tx, ty, 2, th);
+      } else if (clutter < 0.27 && bw > 150) {             // billboard, seen from behind
+        const bwi = Math.min(120, bw - 50), bhei = 40 + rng() * 22;
+        const bx0 = x + 24 + rng() * Math.max(4, bw - bwi - 48);
+        const by0 = NEAR_H - bh - bhei - 16;
+        g.strokeStyle = 'rgba(20,30,36,0.95)';             // two posts
+        g.lineWidth = 4;
+        g.beginPath();
+        g.moveTo(bx0 + 10, by0 + bhei);
+        g.lineTo(bx0 + 10, by0 + bhei + 16);
+        g.moveTo(bx0 + bwi - 10, by0 + bhei);
+        g.lineTo(bx0 + bwi - 10, by0 + bhei + 16);
+        g.stroke();
+        g.fillStyle = '#060b0f';                           // back panel
+        g.fillRect(bx0, by0, bwi, bhei);
+        g.strokeStyle = 'rgba(50,66,74,0.5)';              // frame + cross brace
+        g.lineWidth = 2;
+        g.strokeRect(bx0 + 1, by0 + 1, bwi - 2, bhei - 2);
+        g.beginPath();
+        g.moveTo(bx0 + 4, by0 + 4);
+        g.lineTo(bx0 + bwi - 4, by0 + bhei - 4);
+        g.moveTo(bx0 + bwi - 4, by0 + 4);
+        g.lineTo(bx0 + 4, by0 + bhei - 4);
+        g.stroke();
+      } else if (clutter < 0.38 && bw > 130) {             // AC box with fan circle
+        const aw = 20 + rng() * 16, ah = 12 + rng() * 8;
+        const ax2 = x + 10 + rng() * Math.max(4, bw - aw - 20);
+        const ay = NEAR_H - bh - ah;
+        g.fillStyle = '#04080b';
+        g.fillRect(ax2, ay, aw, ah);
+        g.strokeStyle = 'rgba(80,104,116,0.4)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.arc(ax2 + aw * 0.5, ay + ah * 0.5, Math.min(aw, ah) * 0.32, 0, Math.PI * 2);
+        g.stroke();
+        g.fillStyle = 'rgba(60,84,94,0.16)';
+        g.fillRect(ax2, ay, aw, 1);
+      }
+      if (rng() < 0.16) {                                  // red obstruction light
+        const rx2 = x + 8 + rng() * Math.max(4, bw - 16);
+        g.fillStyle = 'rgba(255,80,60,0.18)';
+        g.fillRect(rx2 - 2, NEAR_H - bh - 4, 6, 6);
+        g.fillStyle = 'rgba(255,80,60,0.6)';
+        g.fillRect(rx2, NEAR_H - bh - 2, 2, 2);
+      }
+      if (rng() < 0.3 && bh > 200) {                       // facade utility pipes
+        const px = x + 10 + rng() * Math.max(4, bw - 20);
+        g.strokeStyle = 'rgba(46,60,68,0.7)';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(px, NEAR_H - bh + 8);
+        g.lineTo(px, NEAR_H - 6);
+        g.stroke();
+        g.strokeStyle = 'rgba(90,114,124,0.25)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(px - 1.5, NEAR_H - bh + 8);
+        g.lineTo(px - 1.5, NEAR_H - 6);
+        g.stroke();
+      }
+      if (rng() < 0.7) {                                   // windows + lit floor bands
+        const litFloorY = rng() < 0.3
+          ? NEAR_H - bh + 20 + rng() * Math.max(16, bh - 60)
+          : -999;
+        const stepYN = 23 + rng() * 9;
         for (let wx = x + 10; wx < x + bw - 10; wx += 17 + rng() * 8) {
-          for (let wy = NEAR_H - bh + 12; wy < NEAR_H - 20; wy += 23 + rng() * 9) {
+          for (let wy = NEAR_H - bh + 12; wy < NEAR_H - 20; wy += stepYN) {
             g.fillStyle = 'rgba(10,16,22,0.5)';             // unlit cell (facade grid)
             g.fillRect(wx, wy, 2, 2);
-            if (rng() < 0.08) {
-              g.fillStyle = 'rgba(84,112,122,0.42)';
+            const onFloor = wy > litFloorY - stepYN * 0.55 && wy < litFloorY + stepYN * 0.55;
+            if (onFloor || rng() < 0.08) {
+              const a = onFloor ? 0.5 + rng() * 0.3 : 0.42;
+              g.fillStyle = onFloor && rng() < 0.7
+                ? `rgba(230,190,140,${a.toFixed(3)})`
+                : `rgba(84,112,122,${a.toFixed(3)})`;
               g.fillRect(wx, wy, 2, 2);
             }
           }
