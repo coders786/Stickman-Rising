@@ -243,3 +243,34 @@ angles, re-derive with FK).
 and allocates `rgba(...)` template strings per stroke inside the draw path, which
 violates REQ-704. Doubling the frame rate doubles both costs, so T6.13 is a
 prerequisite for 120, not an optimisation.
+
+---
+
+## D11 · Natural motion is code, not assets — and it ships before the sky
+
+**Audit (2026-11-15):** the repo already has keyframed clips with Hermite in-betweens,
+joint limits, foot-planting IK, polar hand space with a two-link elbow solve, and
+context-driven pose offsets. It has **no** spring or Verlet secondary motion, **no**
+motor-control velocity shaping, and a *looping* idle. Three precise gaps, not a
+rewrite.
+
+**Decision.** Add a motion layer built on published human-movement laws plus physics
+lag, with zero art:
+* **minimum-jerk** (Flash & Hogan 1985) quintic shaping for reaches and turns —
+  mean/peak velocity 0.533 is the machine-checkable signature;
+* **two-thirds power law** (Lacquaniti 1983) for weapon arcs — speed falls where the
+  path bends, precomputed per clip at zero per-frame cost;
+* **spring chains** for saya/sash/cuffs/tassel/topknot (21 points, ~0.05 ms);
+* **aperiodic micro-life** so a stationary player never repeats a 4-second loop;
+* **contact response** spawned at the interpolated sub-frame position.
+
+**Cost:** ≤0.10 ms CPU, **0 MB, 0 blits, 0 GPU**, 0 allocations. For comparison the
+atmosphere costs 3.5–24 MB and 2–6 blits.
+
+**Why it can run before the sky:** the file sets are disjoint (`anim/**` vs
+`gpu/**`+`world/**`), and the perceived-fidelity-per-byte ratio is two orders of
+magnitude better. It becomes **M4.5**, parallel with M2/M3, gated on M0.5 (tests) and
+on `19` §2 (render interpolation) for the chain render path.
+
+**Explicitly not doing:** a death ragdoll (touches the combat-tested death path) and
+any imported sprite/mocap asset (REQ-706).

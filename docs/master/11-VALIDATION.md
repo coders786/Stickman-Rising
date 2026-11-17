@@ -69,6 +69,10 @@ GPU in the sandbox — discovery M1), E3 is the user.
 | `D-JERK` | max \|Δ³θ\| per joint vs clip median | pose history ring buffer | ≤2× (FID-39) |
 | `D-RIG` | rig draw ms + stroke calls | `performance.now()` around the figure draw | ≤1.2 ms / ≤4 strokes at 120 (FID-41) |
 | `D-LATENCY` | input timestamp → first visible frame | stamp on input, read at draw | ≤16.7 ms added (FID-38) |
+| `M-VELPROF` | mean/peak tangential speed of a strike | joint history ring buffer | 0.50–0.58 (FID-42) |
+| `M-POWER` | slope of log(angular speed) vs log(curvature) | same buffer | 0.60–0.75 (FID-43) |
+| `M-SECONDARY` | settle time, overshoot, ζ, penetration | chain solver instrumentation | ≤0.6 s / ≤15 % / ζ≥0.2 / 0 (FID-44) |
+| `M-MICRO` / `M-DEAD` | idle joint RMS; frames with zero delta | pose diff | 0.4–2.5 px / 0 (FID-45) |
 
 ---
 

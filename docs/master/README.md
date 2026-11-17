@@ -32,6 +32,7 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 17 | `17-FRAME-COST-MODEL.md` | 8c | **DELIVERED** — `T_frame` equation, overdraw budget ≤4×, dpr arithmetic (dpr3 = 2.96 Mpx vs 1.5 = 0.74), derived governor thresholds, falsification table |
 | 18 | `18-MOTION-SMOOTHNESS.md` | 6c | **DELIVERED** — the real answer on 120 fps: iOS flag-clamped, Android main thread capped (worker clock is the only path), cadence beats rate (σ ⇒ QoE R²=0.99), 5 levers, FID-32…36 |
 | 19 | `19-ANIMATION-CADENCE.md` | 6d | **DELIVERED** — how movements/animations actually reach 120: sample time-driven, interpolate state-driven (D10), latency ledger, angle-space pose interpolation, rig batching (20 strokes/frame measured), input coalescing, FID-37…41 |
+| 20 | `20-NATURAL-MOTION.md` | 6e | **DELIVERED** — higher graphics with **zero assets**: minimum-jerk (0.533 signature), 2/3 power law arcs, spring chains (21 pts, ζ bounds), aperiodic micro-life, sub-frame contacts, **0 MB / 0 blits** → new milestone M4.5 |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,
@@ -54,6 +55,7 @@ Existing research that this package builds on (kept, not duplicated):
 | **D8** | **Resolution before features** | Fixed shed ladder; tier-that-deletes-art comes last; p95/p99 + jank ratio, never average FPS |
 | **D9** | **Cadence beats rate** | Locked cadence at the platform's granted rate; no 120 promise, no fake 120 (identical on sample-and-hold); worker-clock 120 is M7 |
 | **D10** | **Sample time, interpolate state** | Clips/eases/camera/parallax sampled at render time (free 120); physics interpolated (+1 frame, ≤16.7 ms total latency budget); never lerp joint positions |
+| **D11** | **Natural motion is code** | Minimum-jerk + 2/3 power law + spring chains + aperiodic life; 0 MB, 0 blits, 0 assets; ships as **M4.5** in parallel with the sky work |
 
 ## Execution order (authoritative version: `08-ROADMAP-TASKS.md`)
 1. **M0.5** — fix the 8 combat/anim test failures → **244/244** (triage in `DECISIONS.md` D4).
@@ -67,6 +69,9 @@ Existing research that this package builds on (kept, not duplicated):
 5. **M4** — one light model, baked rakes + shear-at-draw, player-reactive rim,
    moon variants. **M5** — weather state machine + LUT cross-fade. **M6** —
    mobile tier ladder, `?bench=1` percentile harness, device report.
+6. **M4.5 (parallel, `20`)** — natural motion: minimum-jerk shaping, 2/3 power law
+   arcs, spring secondary chains, aperiodic micro-life, sub-frame contacts. Zero
+   assets, zero memory, highest fidelity-per-byte. Starts right after M0.5.
 
 ---
 

@@ -89,6 +89,17 @@ Grading: **[M]** measured today · **[E]** estimated · **[T]** target for this 
 | FID-40 | Foot slide ≤ **2 px** at any speed | pose clock and root share `alpha` |
 | FID-41 | Rig ≤ **1.2 ms** at 120 on C1; ≤**4** stroke calls per figure | `M-RIG` |
 
+## 6d. Natural motion (`20-NATURAL-MOTION.md`)
+
+| ID | Target | Law / source |
+|---|---|---|
+| FID-42 | `M-VELPROF`: mean/peak tangential speed ∈ **0.50–0.58** on strikes and reaches | minimum-jerk, Flash & Hogan 1985 |
+| FID-43 | `M-POWER`: log–log slope of angular speed vs curvature ∈ **0.60–0.75** on arcs | two-thirds power law, Lacquaniti 1983 |
+| FID-44 | `M-SECONDARY`: settle ≤**0.6 s**, overshoot ≤**15 %**, ζ ≥ 0.2, penetration **0** | spring chains |
+| FID-45 | `M-MICRO` idle RMS **0.4–2.5 px**; `M-DEAD` = 0 for non-held idle frames | aperiodic micro-life |
+| FID-46 | Contact FX within **1 px** of the interpolated foot position at any render rate | sub-frame spawn |
+| FID-47 | Whole motion layer: **0 allocations**, **0 MB** resident, **0** extra blits | Rule 10 |
+
 ## 7. How a "WoW" gate is actually passed
 
 A milestone fails if any of FID-1…FID-25 is violated **in data**, even if the

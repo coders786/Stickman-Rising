@@ -121,6 +121,27 @@ one light model to own every shadow.
 
 ---
 
+## M4.5 — Motion life (parallel, asset-free) · `20`
+**Why here:** touches only `anim/**` and the entity draw calls — **0 MB, 0 blits,
+0 GPU**, so it runs in parallel with M2/M3 and never competes for the canvas budget.
+Highest perceived fidelity per byte in the whole plan.
+
+| Task | What | Est | Gate |
+|---|---|---|---|
+| `U1` | Minimum-jerk quintic shaper for reaches/turns/lunges | 80 LOC | FID-42 |
+| `U2` | Arc-length + curvature-coupled arc clock (32-sample LUT per clip) | 110 LOC | FID-43 |
+| `U3` | Spring-chain solver (fixed dt, capsule collision, angle limits, ζ bounds) | 160 LOC | FID-44 |
+| `U4` | Attach 5 chains (saya, sash, cuffs, tassel, topknot) | 90 LOC | FID-44, 47 |
+| `U5` | Aperiodic micro-life (breath / weight shift / saccade / tension), seeded | 100 LOC | FID-45 |
+| `U6` | Wind + weather coupling from `EnvironmentProfile` | 50 LOC | 07 §8 |
+| `U7` | Sub-frame contact FX + landing compression | 80 LOC | FID-46 |
+| `U8` | Metrics + golden-pose regression | 90 LOC | G6 |
+
+**Ordering:** `U1`/`U5` may start immediately after M0.5. `U3`/`U4` need `19` §2's
+render interpolation. `U6` needs `07`'s profile data. Effort **4–6 days [J]**.
+
+---
+
 ## M6 — Mobile tiers, governor, validation
 | Task | What | Files | Est | Gate | Risk |
 |---|---|---|---|---|---|
