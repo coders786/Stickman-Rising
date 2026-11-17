@@ -19,11 +19,12 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 04 | `04-FIDELITY-TARGETS.md` | 3–4 | **DELIVERED** — 25 machine-checkable "WoW"/full-fidelity targets + 6 perf targets |
 | 05 | `05-ARCHITECTURE.md` | 6–7 | **DELIVERED** — two-mode design (GPU-as-generator / GPU-as-renderer), components, import boundary, 64-byte uniforms, 7 programs, LUT, fail-closed rules, directory plan |
 | 06 | `06-PIPELINE-BUDGETS.md` | 8 | **DELIVERED** — per-tier CPU/GPU/blit/memory budgets, fill-rate arithmetic, enforcement scripts |
-| 07 | `07-PROFILES-MATRIX.md` | 9–10 | next — 4+ environment profiles × 4 tiers feature matrix |
-| 08 | `08-ROADMAP-TASKS.md` | 11–12 | next — M0.5 test fixes → M1…M6, task IDs, dependency graph, file plan |
-| 09 | `09-RISK-REGISTER.md` | 13 | next — incl. GPU context loss, shader hitch, overdraw, two-canvas compositor |
-| 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P6 with numeric accept/reject, ordered by risk; #1 is the second-canvas compositor cost |
-| 11 | `11-VALIDATION.md` | 15, 21–24 | next — gates, benches, device matrix |
+| 07 | `07-PROFILES-MATRIX.md` | 9–10 | **DELIVERED** — 5 axes, 6 archetypes, per-run jitter, tier degradation rules (what a tier may *not* remove), per-archetype plate cost |
+| 08 | `08-ROADMAP-TASKS.md` | 11–12 | **DELIVERED** — M0.5 → M6 with task IDs, files, LOC, gates, risks, effort (~17–22 days) |
+| 09 | `09-RISK-REGISTER.md` | 13 | **DELIVERED** — 30 risks scored with signals and mitigations; 5 that can kill the project; accepted risks stated |
+| 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P8 with numeric accept/reject; P4 demoted to desktop-only by D7 |
+| 11 | `11-VALIDATION.md` | 15, 21–24 | **DELIVERED** — 3 measurement environments, metric catalogue, frame-percentile method, gate ladder G0–G8, anti-self-deception rules, E3 rubric |
+| 12 | `12-MOBILE-PERFORMANCE.md` | 8b | **DELIVERED** — the mobile reality check: no GPU timer on phones, resolution-first shedding, iOS canvas caps + ledger, and **D7** (single canvas default) |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,
@@ -40,14 +41,23 @@ Existing research that this package builds on (kept, not duplicated):
 | **D2** | **Performance-only mobile** | No touch controls; mobile = budgets/tiers/thermals. Game is not touch-playable — stated honestly |
 | **D3** | **New and distinct technology** | Canvas2D-only revoked → **hybrid: Canvas2D game + WebGL2 procedural atmosphere (WebGPU at ultra)**, hard no-readback boundary, Canvas2D sky kept as fallback (`02-TECH-SELECTION.md`) |
 | **D4** | **Fix the 8 failing tests** | Milestone **M0.5** before any GPU work; green 244/244 baseline required |
+| **D5** | **No screenshots** | Acceptance stays numeric/geometric; the user's eye is the final "WoW" gate (E3) |
+| **D6** | **Evidence discipline** | Every number tagged `[M]/[E]/[T]/[R]/[J]`; untagged numbers are deleted |
+| **D7** | **Single canvas by default** | The second canvas needs `alpha:true` on the game canvas → full-screen compositor blend; mobile is GPU-at-bake-time only. Mode B is a **desktop experiment** |
+| **D8** | **Resolution before features** | Fixed shed ladder; tier-that-deletes-art comes last; p95/p99 + jank ratio, never average FPS |
 
-## Execution order (what happens next)
-1. **M0.5** — fix the 8 combat/anim test failures (triage already in `DECISIONS.md` §D4).
-2. **M1** — profile system (`world/profile.ts`), quality manager, committed harness
-   (`scripts/bench-render.mjs`), FlashLedger, `src/gpu` skeleton that fails closed.
-3. **M2** — GPU sky behind a flag (gradient + stars), pixel-free verification.
-4. **M3** — cumulus → stratus → cirrus.
-5. **M4** — fog/shafts/grade. **M5** — WebGPU ultra. **M6** — governor + thermal.
+## Execution order (authoritative version: `08-ROADMAP-TASKS.md`)
+1. **M0.5** — fix the 8 combat/anim test failures → **244/244** (triage in `DECISIONS.md` D4).
+2. **M1** — pure logic first: profile schema + picker (`M-AXES` 10k seeds), canvas
+   ledger, quality ladder state machine, `scripts/bench-render.mjs`, boundary lint.
+   No pixels change in M1.
+3. **M2** — GPU **bake** pipeline: WebGL2 context, 16³ LUT, sky plate → readback →
+   canvas. P8 gate (ΔE ≤2). Zero uploads per frame.
+4. **M3** — cumulus (2 warp levels × 4 octaves) → stratus → cirrus, with coverage
+   probes; integer-offset drift (P2).
+5. **M4** — one light model, baked rakes + shear-at-draw, player-reactive rim,
+   moon variants. **M5** — weather state machine + LUT cross-fade. **M6** —
+   mobile tier ladder, `?bench=1` percentile harness, device report.
 
 ---
 

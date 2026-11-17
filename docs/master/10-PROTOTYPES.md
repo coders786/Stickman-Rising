@@ -52,7 +52,7 @@ https://scanmountgoat.github.io/Smush-Material-Research/post_processing/colorgra
 
 ---
 
-## P4 · Cost of the second canvas (the architecture's key risk)
+## P4 · Cost of the second canvas (**desktop-only gate since D7**)
 **Hypothesis:** one extra full-screen canvas layer (Mode B) costs **≤1.0 ms** of
 compositor time and ≤17 MB GPU at 1600×900 — acceptable at `high/ultra`, unacceptable
 if it lands on every phone.
@@ -94,6 +94,46 @@ copy into a 2D canvas.
 **Reject:** if readback is slow on mobile, generate plates on the **CPU** with the
 same recipes (slower boot, same art) — Mode A does not depend on the GPU.
 **Note:** the readback here is *bake-time*, which is the explicit exception to R1.
+
+---
+
+## P7 · Canvas-ledger stress (iOS silent-transparency class)
+**Hypothesis:** the ledger's caps keep us far from WebKit's total canvas memory
+limit, and zeroing released canvases actually reclaims them.
+
+**Method:** create/release 500 canvases of mixing sizes through the ledger only;
+after each 50 cycles, draw to a probe canvas and read one pixel. Run at the
+top cap (48 live / 56 MB). Safari-only check (manual, when a device exists): the
+failure mode is *silent transparency*, so the probe is the sensor.
+
+**Accept:** 0 probe failures, live count never above cap, bytes return to the
+baseline ±2 % after release, no unbounded growth over 500 cycles.
+**Reject:** any probe failure ⇒ cut mobile caps to ≤32 canvases / 40 MB and
+evict cloud plates to 3.
+**Illuminating source:** WebKit bug 195325 ("Total canvas memory use exceeds the
+maximum limit", 224/384 MB, canvases render transparent);
+konva#653 (released canvases are not reclaimed until `w=h=0`).
+**Cost:** 1 hour in node for the ledger, plus one manual Safari run.
+
+---
+
+## P8 · GPU-baked plate vs today's Canvas2D sky
+**Hypothesis:** a shader-generated sky plate is within perceptual tolerance of the
+current painted sky and cheap enough to bake at run start.
+
+**Method:** render the same profile twice — existing Canvas2D sky, and the
+WebGL2 sky shader at 1024×576 — read both back, compute ΔE (CIE76) over a 64×64
+grid and compare luminance histograms. Time the full path
+(compile → draw → `readPixels` → `ImageData` → canvas).
+
+**Accept:** mean ΔE ≤ 2, p95 ΔE ≤ 4, bake ≤ 40 ms, plate ≤ 1 MB, second-run
+bake ≤ 12 ms (compile cached).
+**Reject:** if ΔE > 4 the GPU plate is not the same art; keep the Canvas2D sky
+and use the GPU only for clouds (the architecture survives with a smaller
+feature — `08` M2 reject path).
+**Note:** this is the *only* place a per-frame `readPixels`-class operation is
+allowed, and it is at bake time. R1 still holds.
+**Cost:** 1 day.
 
 ---
 

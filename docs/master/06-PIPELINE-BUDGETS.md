@@ -4,6 +4,16 @@
 research + arithmetic · [T] target. Nothing here is a device measurement; the
 sandbox has no GPU timer (discovery M1).
 
+> **⚠ Revised by `12-MOBILE-PERFORMANCE.md` (same day).** Three assumptions below
+> did not survive research: (a) GPU ms cannot be read on a phone at all
+> (`EXT_disjoint_timer_query_webgl2` ≈0.5 % Android / 0.15 % iOS), so §2's GPU
+> rows are models enforced relatively, not measurements; (b) a second canvas
+> requires the game canvas to become translucent, which is a full-screen
+> compositor blend — so **Mode B is desktop-only** and mobile is single-canvas
+> (§8 of `12` supersedes §2's mobile rows); (c) iOS caps total canvas memory at
+> 224–384 MB and blanks canvases silently past it, so memory is a **ledger**,
+> not a single number. Read `12` before `06`.
+
 ---
 
 ## 1. Frame structure
@@ -107,7 +117,11 @@ target is raised for `high`/`ultra` (documented) or the sky canvas runs at 0.75 
 1. `scripts/bench-render.mjs` prints: blits by composite-op, canvas bytes resident,
    bake ms, mode, tier, and (if present) GL program compile ms.
 2. `scripts/bench-atmos.mjs` prints: draw calls, uniform bytes/frame, texture
-   bytes, and — where `EXT_disjoint_timer_query` exists — real GPU ms per pass.
+   bytes, uploads/frame, and — **only** where `EXT_disjoint_timer_query` happens
+   to exist (≈0.5 % of Android, 0.15 % of iOS; absent from Chrome stable) — real
+   GPU ms per pass. Otherwise it prints `gpu_ms: n/a` and the harness uses the
+   multiplicity calibration in `12` §2 instead. A budget that cannot be read on
+   the target device is a model, and is labelled as one.
 3. Budget assertions fail the script (`process.exitCode = 1`) when a tier exceeds
    its row in §2. A failed budget cannot be merged with a comment.
 4. Every doc claim cites the script output, not a hope.

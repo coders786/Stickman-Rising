@@ -13,12 +13,12 @@ Status legend: **READY** = buildable now · **BLOCKED** = needs a user decision
 
 | ID | Constraint |
 |---|---|
-| GC-1 | **Canvas2D only.** No WebGL, no shaders, no `ctx.filter`, no `getImageData` in the draw path. Procedural work happens **at bake time**. |
+| GC-1 | **Canvas2D game renderer** (amended by D3/D7). The gameplay renderer stays Canvas2D. GPU work is allowed **only** inside `src/gpu/**` and **only at bake time** on the default path. No `ctx.filter`; no `getImageData` / `texImage2D` / `readPixels` in the draw path — the single documented exception is one bake-time readback per plate (`12` §6). |
 | GC-2 | **Mobile-first budget:** every feature ships a `low`-tier path that preserves the environment's *identity* (it must still read as "rainy night"), and an `ultra` path that adds detail. |
 | GC-3 | **Level identity is data, not quality.** A rainy run stays rainy at every tier; only detail scales. |
 | GC-4 | **Zero per-frame allocations** in `draw*`/`update` hot paths; pre-baked plates or pooled state only. |
 | GC-5 | **No regression of gameplay readability:** play band (world y 0..150) never carries new decorations; figures keep silhouette separation. |
-| GC-6 | **Preserve 236/244 tests** and the combat/anim/physics determinism they protect. |
+| GC-6 | **Reach and preserve 244/244 tests.** Today the suite is 236/244; the 8 failures are triaged in `DECISIONS.md` D4 and fixed in **M0.5**, which must land before any render work. The combat/anim/physics determinism they protect outranks every visual goal (Rule 10). |
 | GC-7 | **WCAG 2.3.2:** ≤3 opposing luminance events/s; full-screen ΔL ≤10 % except area-limited combat flashes (research R7). |
 | GC-8 | Every claim of improvement must come from a **committed benchmark** (`scripts/bench-*`), never from prose. |
 
@@ -154,18 +154,33 @@ silhouette neighbourhood must be ≤ figure luminance / 3.
 | ID | Requirement | Status |
 |---|---|---|
 | REQ-701 | Frame blits ≤ **14** at `low`, ≤ **20** at `high`, ≤ **26** at `ultra` (provisional; see §7.1). | READY |
-| REQ-702 | Resident canvas memory ≤ **38 MB** at 1280×720 (from 30.3 MB today, budget for clouds + profiles). | READY |
-| REQ-703 | Warm re-bake ≤ **16 ms**; cold bake ≤ **30 ms**; no bake during gameplay except run start. | READY |
+| REQ-702 | Resident **canvas** memory ≤ **38 MB** at 1280×720 for `low`/`medium` (single canvas; ≈33.7 MB modelled in `12` §8, from 30.3 MB today). Desktop `high`/`ultra` may rise to **≤56 MB** but only with a `DECISIONS.md` entry naming the cause; the 38 MB figure was written for a Canvas2D-only world and does not survive a second canvas (≈47 MB). | READY (amended) |
+| REQ-703 | Warm re-bake ≤ **16 ms**; cold bake ≤ **30 ms**. No bake during gameplay except run start. A scheduled mid-run re-bake is allowed **only** if the top 150 px of the play band is clear of entities, the p95 window has ≥4 ms of slack, and it happens at most once per 10 s (currently 9.6 ms warm **[M]**). | READY (amended) |
 | REQ-704 | Zero per-frame allocations in draw/update. | READY |
 | REQ-705 | Tier changes shall be **art-preserving** and rate-limited (governor already: 4 s cooldown, 12 s raise guard). | EXISTING |
 | REQ-706 | Loading shall not regress: no new network assets (asset-free pipeline is a feature). | GC |
 | REQ-707 | A committed harness shall print: bake, reseed, resident MB, blits by composite-op, per-tier counts. | READY |
+| REQ-708 | **Canvas Ledger:** every canvas is acquired/released through one module; released canvases are resized to 0×0. Caps: ≤48 live canvases / ≤56 MB mobile, ≤64 / ≤96 MB desktop, ≤8.4 M px per canvas (`12` §4). | READY |
+| REQ-709 | **No gate may depend on a GPU timer.** `EXT_disjoint_timer_query_webgl2` reaches 0.56 % of Android and 0.15 % of iOS; budgets are enforced through frame-interval percentiles and the multiplicity calibration (`12` §2, `11` §2). | READY |
+| REQ-710 | **Resolution is shed before features.** The ladder order is fixed: `atmoScale` → octave LOD → 2nd cirrus → fog → `gameScale` → tier → pause. No step may touch entities, combat, camera, assets or hit detection (`12` §3). | READY |
+| REQ-711 | **Upload-free frame path:** 0 texture uploads, 0 readbacks, 0 `getImageData`, 0 `willReadFrequently` per frame; all uploads/readbacks occur at bake or run start. | READY |
+| REQ-712 | **Silent-corruption probe:** a 1×1 probe canvas is drawn and read at boot and after every profile change; a mismatch means the canvas budget was truncated (iOS renders canvases transparent silently) and forces `atmoScale` down one step plus a `LEDGER_SUSPECT` log. | READY |
 
 ### 7.1 Why these numbers are provisional
-They are derived from today's measured baseline (30.3 MB, 11 blits, 9.6 ms) plus
-the planned additions (clouds +3 blits/+4 MB, grade 0 blits, shadows +1–2 blits).
-They are **not** universal device limits — device budgets are Phase 8/21 outputs
-and cannot be measured in this environment (M1). Label them provisional in code.
+They are derived from today's measured baseline (30.3 MB resident, 37 canvases,
+11 blits, 9.6 ms warm re-bake **[M]**) plus the planned additions (clouds +2–6
+blits / +3.5–24 MB, grade 0 blits, shadows +1–2 blits).
+
+Two corrections landed after the first draft, both in `12-MOBILE-PERFORMANCE.md`:
+* **The GPU-ms budgets cannot be measured on a phone.** No mobile browser exposes
+  a GPU timer; those numbers are models `[E]` enforced relatively (`11` §2).
+* **iOS caps total canvas memory** (224 MB / 384 MB observed) and renders
+  canvases **transparent** rather than throwing when that cap is hit — so the
+  memory requirement is now a ledger with caps (REQ-708) and a probe (REQ-712),
+  not a single number.
+
+They are still **not** universal device limits: no phone has run this build. Labeled
+provisional in code and in every document.
 
 ---
 
@@ -206,16 +221,21 @@ and cannot be measured in this environment (M1). Label them provisional in code.
 | REQ-501..505 | `world/grade.ts` | REQ-101 | ΔE 6..18 | 0 blits runtime | grades distinct, no banding |
 | REQ-601..606 | `renderer`, `fx`, settings | REQ-501 | contrast probes | ≤1 blit | 3:1 kept |
 | REQ-701..707 | `game.govern`, harness | all | bench table | budgets | measured, not claimed |
+| REQ-708..712 | `render/canvasLedger.ts`, `render/quality.ts`, `debug/bench.ts` | REQ-707 | ledger assertions, percentile report | caps `12` §4 | 0 unzeroed canvases, 0 uploads/frame |
 | REQ-801..806 | repo structure | — | import-boundary lint | n/a | no monolith additions |
 
 ---
 
-## 11. Open requirement questions for the user
+## 11. Open requirement questions — status (2026-11-15)
 
-1. **S1** — profiles only, or 2–3 real stages? (changes the size of REQ-106 by ~10×)
-2. **S2** — performance-only mobile, or touch-playable mobile? (adds an input +
-   layout system not in this spec)
-3. **S3** — confirm Canvas2D-only (assumed throughout).
-4. Should the **8 failing tests** be fixed as part of this project (they are
-   pre-existing and unrelated to rendering, but they weaken the "no regression"
-   claim).
+| # | Question | Answer |
+|---|---|---|
+| 1 | **S1** — profiles only, or 2–3 real stages? | **Answered: profiles only.** REQ-106 stays **BLOCKED**; the distinctiveness load moves to the five profile axes (`07`). |
+| 2 | **S2** — performance-only or touch-playable mobile? | **Answered: performance-only.** REQ-606 stays **BLOCKED**; this spec never claims the game is touch-playable. |
+| 3 | **S3** — confirm Canvas2D-only? | **Reversed by D3/D7.** GPU is allowed in `src/gpu/**` at bake time; the game renderer is untouched. GC-1 rewritten. |
+| 4 | Fix the 8 failing tests? | **Answered: yes**, M0.5, before any render work (D4). |
+
+Remaining genuinely open (needs the user's eye, not a decision): whether
+`atmoScale` 0.5 on `low` is acceptably soft (FID-11 is scale-absolute today —
+`12` §11.2), and whether the six archetypes are distinct enough to read as
+"different nights" (`07` §2, gate G8).

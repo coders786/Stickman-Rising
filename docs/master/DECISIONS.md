@@ -125,3 +125,59 @@ bake timings, and geometry checks. No claim of "looks better" will be made from 
 * [M] measured · [E] estimated · [A] assumption · [R] research.
 * No fabricated player feedback. Any UX statement is either cited research,
   a design inference ([I]), or an explicit assumption flagged for user validation.
+
+---
+
+## D7 · Single canvas by default — the second canvas is a desktop experiment
+
+**Evidence gathered 2026-11-15 (four searches + one code inspection):**
+
+1. `src/game/game.ts:311` already requests `{ alpha: false, desynchronized: true }`.
+   An opaque canvas cannot show anything drawn *beneath* it, so the "sky canvas
+   stacked under the game canvas" sketch in `05` §3 requires flipping the game
+   canvas to `alpha: true`.
+2. That flip converts the present into a **full-screen per-pixel blend of a
+   translucent top layer** — the single worst compositor pattern in the
+   literature, at 0.3–1.5 ms per layer, plus ≈17 MB of layer memory at 1600×900.
+3. Blitting *out* of a WebGL canvas costs a readback + upload per use — "right for
+   a screenshot or a filter, not for a per-frame composite".
+4. iOS caps **total canvas memory** (224 MB / 384 MB observed) and silently
+   renders canvases transparent when exceeded, so every live canvas is a liability
+   on the platform that matters most for D2.
+5. No mobile browser exposes a GPU timer (Android 0.56 %, iOS 0.15 %), so a
+   per-frame GPU pass is also the one thing we could never budget honestly.
+
+**Decision.** The default and only mobile path is **B3 — "GPU as generator, zero
+per-frame GPU"**: shaders run at bake time, one `readPixels` per plate, and the
+frame loop stays exactly today's single-canvas Canvas2D path with `alpha:false`
++ `desynchronized:true`. **No second canvas on any device** unless prototype P4
+proves B1 pays for itself on desktop `high`/`ultra`.
+
+**This is not a retreat from D3.** The distinct new technology is the
+shader-authored plate pipeline (fBm / domain-warp / SDF on the GPU, graded by a
+16³ LUT, read back once) which does not exist in this repo and which Canvas2D
+cannot produce at our cost. It costs 0 ms per frame.
+
+**What changes:** `05` two-mode design (Mode B demoted), `06` §2 mobile rows,
+`10` P4 becomes a desktop gate, `01` GC-1/REQ-702/REQ-708…712, new doc `12`.
+
+**What is kept:** drift by integer-offset blits, weather by plate cross-fade,
+slow evolution by a scheduled re-bake guarded by REQ-703, moon occlusion by
+baked `moonCover` variants. The sky still differs every run and still evolves
+during a run.
+
+**Reversal clause:** if P4 measures ≤0.5 ms compositor delta at dpr 2 *and* the
+user prefers continuous morphing over the memory saving, D7 is revisited with
+that measurement attached — not before.
+
+---
+
+## D8 · Mobile-first budget discipline: resolution before features
+
+Netmarble/Android ADPF evidence: resolution scaling had "the most significant
+impact on GPU load and thermal output" while shadows/textures had "minimal
+impact on overall thermal performance"; frequency capping raised dropped frames
+by up to 146 % in interactive apps. Therefore the shed ladder is fixed
+(`12` §3, REQ-710) and tier changes that delete art come last. A steady 45 fps
+is preferred over an oscillating 40–56 fps, and average FPS is never the target
+metric — p95/p99 and jank ratio are (`11` §3).
