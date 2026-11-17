@@ -17,12 +17,12 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 02 | `02-TECH-SELECTION.md` | 5–6 | **DELIVERED** — 5 candidates compared; **hybrid Canvas2D game + WebGL2 atmosphere (WebGPU ultra)** selected, with boundaries + migration |
 | 03 | `03-PSYCHOLOGY-ART-DIRECTION.md` | 3–4 | **DELIVERED** — 11 evidence-graded laws (awe/vastness, Purkinje, fluency, Berlyne, peak shift, salience, Gestalt, colour, comfort, reward cadence, identity) → parameter table → probes |
 | 04 | `04-FIDELITY-TARGETS.md` | 3–4 | **DELIVERED** — 25 machine-checkable "WoW"/full-fidelity targets + 6 perf targets |
-| 05 | `05-ARCHITECTURE.md` | 6–7 | next — Environment Controller, Level Manager, Quality Manager, GPU/game boundary, diagrams, data flow |
-| 06 | `06-PIPELINE-BUDGETS.md` | 8 | next — frame order across two canvases, platform budgets (provisional) |
+| 05 | `05-ARCHITECTURE.md` | 6–7 | **DELIVERED** — two-mode design (GPU-as-generator / GPU-as-renderer), components, import boundary, 64-byte uniforms, 7 programs, LUT, fail-closed rules, directory plan |
+| 06 | `06-PIPELINE-BUDGETS.md` | 8 | **DELIVERED** — per-tier CPU/GPU/blit/memory budgets, fill-rate arithmetic, enforcement scripts |
 | 07 | `07-PROFILES-MATRIX.md` | 9–10 | next — 4+ environment profiles × 4 tiers feature matrix |
 | 08 | `08-ROADMAP-TASKS.md` | 11–12 | next — M0.5 test fixes → M1…M6, task IDs, dependency graph, file plan |
 | 09 | `09-RISK-REGISTER.md` | 13 | next — incl. GPU context loss, shader hitch, overdraw, two-canvas compositor |
-| 10 | `10-PROTOTYPES.md` | 14 | next — P1–P5 hypotheses (half-res atmosphere, drift shimmer, LUT vs analytic, compositor cost, WebGPU UBO) |
+| 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P6 with numeric accept/reject, ordered by risk; #1 is the second-canvas compositor cost |
 | 11 | `11-VALIDATION.md` | 15, 21–24 | next — gates, benches, device matrix |
 
 Existing research that this package builds on (kept, not duplicated):
