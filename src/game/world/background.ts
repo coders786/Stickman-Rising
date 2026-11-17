@@ -159,6 +159,9 @@ function buildGlowDisc(rgb: string): HTMLCanvasElement {
  *  surrounding surface. Baked into the tile, so the facade looks lit by its
  *  own windows/signs at zero runtime cost. */
 function bakeSpill(g: CanvasRenderingContext2D, disc: HTMLCanvasElement, cx: number, cy: number, r: number, a: number): void {
+  // Guard: drawImage throws a hard TypeError on undefined. A bake order slip
+  // must never take the whole render loop down — skip the spill instead.
+  if (!disc) return;
   g.globalCompositeOperation = 'lighter';
   g.globalAlpha = a;
   g.drawImage(disc, cx - r, cy - r, r * 2, r * 2);
@@ -216,6 +219,7 @@ function bakeFlipReflection(
   g: CanvasRenderingContext2D, spr: HTMLCanvasElement,
   dx: number, dy: number, dw: number, dh: number, alpha: number,
 ): void {
+  if (!spr) return;
   const { c, g: m } = makeCanvas(Math.max(1, Math.round(dw)), Math.max(1, Math.round(dh)));
   m.save();
   m.translate(0, dh);
@@ -1325,6 +1329,17 @@ export class CyberBackground {
     this.skyStrip = buildSkyStrip();
     this.moonSpr = buildMoon();
     this.moonHalo = buildMoonHalo();
+    // Emissive discs FIRST: buildDoorStructure/buildLampProp paint baked
+    // spill with these, so they must exist before any plate that lights.
+    this.glowWarm = buildGlowDisc(this.mood.highlight);
+    this.glowCool = buildGlowDisc(this.mood.pop2);
+    this.heroDisc = buildGlowDisc(this.mood.pop);
+    // Rebuild-safe: a run reseed re-enters ensureBuilt, so reset the array
+    // instead of appending a second set of discs forever.
+    this.glowSigns.length = 0;
+    for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255',this.mood.pop,this.mood.pop2]) {
+      this.glowSigns.push(buildGlowDisc(rgb));
+    }
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
     // Rebuild-safe: a run reseed re-enters ensureBuilt, so clear the
@@ -1334,13 +1349,6 @@ export class CyberBackground {
     this.cloudDark = buildCloudTile(false);
     this.fogPlane = buildFogPlane();
     this.auroraTile = buildAuroraTile(this.mood);
-    this.glowWarm = buildGlowDisc(this.mood.highlight);
-    this.glowCool = buildGlowDisc(this.mood.pop2);
-    this.heroDisc = buildGlowDisc(this.mood.pop);
-    this.glowSigns.length = 0;
-    for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255',this.mood.pop,this.mood.pop2]) {
-      this.glowSigns.push(buildGlowDisc(rgb));
-    }
     this.lampSpr = this.buildLampProp();
     this.starTile = this.buildStarTile();
     this.deepTile = this.buildDeep();
