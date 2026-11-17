@@ -3,6 +3,7 @@
  */
 
 import { clamp01, damp, fmt, rgba, TAU } from '../core/utils'
+import { gameLedger } from './ledger'
 import {DASH_STAMINA_COST,POWER_DASH_STAMINA_COST} from '../combat/stamina'
 
 export interface HudComboState {
@@ -415,8 +416,9 @@ export class HUD {
     const a = clamp01((26 - s.runTime) / 4) * 0.82
     if (a <= 0.01) return
     if (!this.propLegend) {
-      const c = document.createElement('canvas')
-      c.width = 660; c.height = 22
+      // Through the ledger: pinned, so the LRU sweep can never blank the legend
+      // mid-run (it is drawn every frame for the first 26 s and then never).
+      const c = gameLedger.acquire('hud:legend', 660, 22, 'hud', true) as unknown as HTMLCanvasElement
       const g = c.getContext('2d')
       if (!g) return
       // dark plate + accent hairline: a light figure on a dark ground
@@ -475,9 +477,9 @@ export class HUD {
     // gradient + full-screen fill cost ~10-15ms/frame on software raster,
     // exactly when the player is hurt and combat is hottest
     if (!this.lowHpPlate || this.lowHpW !== w || this.lowHpH !== h) {
-      const c = document.createElement('canvas')
-      c.width = Math.max(2, Math.floor(w))
-      c.height = Math.max(2, Math.floor(h))
+      // A stable key: the ledger RESIZES a surface in place when the frame size
+      // changes, which is exactly the reallocation this plate wants.
+      const c = gameLedger.acquire('hud:lowhp', Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)), 'hud', true) as unknown as HTMLCanvasElement
       const g = c.getContext('2d')
       if (g) {
         const rg = g.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)

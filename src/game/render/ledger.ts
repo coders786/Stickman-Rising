@@ -51,6 +51,12 @@ interface Entry {
   last: number
   /** Diagnostics only. */
   tag: string
+  /** A pinned surface is COUNTERPARTY TO THE CAPS: it is accounted in bytes but
+   *  never chosen as an LRU victim. Bakes held for the lifetime of a run (city
+   *  tiles, sprite atlases, HUD plates) are pinned because evicting one does not
+   *  free memory a frame later — it blanks a plate the renderer still blits. See
+   *  the eviction note in `enforce`. */
+  pinned: boolean
 }
 
 /** 4 bytes per pixel; the alpha channel is real and is allocated whether the
@@ -87,7 +93,7 @@ export class CanvasLedger {
    *  different size is reallocated in place (canvas resize clears it, which is
    *  what a caller wants anyway); otherwise a new one is created and the LRU
    *  entry is released if a cap is about to be crossed. */
-  acquire(key: string, w: number, h: number, tag = ''): Surface {
+  acquire(key: string, w: number, h: number, tag = '', pin = false): Surface {
     const wi = Math.max(1, Math.floor(w))
     const hi = Math.max(1, Math.floor(h))
     this.tick++
@@ -104,13 +110,14 @@ export class CanvasLedger {
       }
       hit.last = this.tick
       hit.tag = tag || hit.tag
+      if (pin) hit.pinned = true
       this.reused++
       return hit.surface
     }
     const bytes = bytesFor(wi, hi)
     this.enforce(wi * hi * 4, 1)
     const surface = this.factory(wi, hi)
-    this.map.set(key, { key, surface, w: wi, h: hi, bytes, last: this.tick, tag })
+    this.map.set(key, { key, surface, w: wi, h: hi, bytes, last: this.tick, tag, pinned: pin })
     this.createdBytes += bytes
     this.acquired++
     return surface
@@ -184,6 +191,7 @@ export class CanvasLedger {
     while (this.map.size > 0 && (overCount() || overBytes())) {
       let victim: Entry | null = null
       for (const e of this.map.values()) {
+        if (e.pinned) continue // see Entry.pinned
         if (e.bytes < this.caps.minTrackedBytes) continue
         if (!victim || e.last < victim.last) victim = e
       }
@@ -196,3 +204,38 @@ export class CanvasLedger {
 
 /** Process-wide ledger for the game. Tests construct their own. */
 export const gameLedger = new CanvasLedger()
+
+/** A GENERATION of pinned surfaces under one key prefix.
+ *
+ *  Bakes come in generations: every city tile is rebuilt when the run reseeds,
+ *  every sprite when the palette changes. Without a generation the ledger would
+ *  either accumulate the old surfaces (a leak per run) or evict a live one (a
+ *  blank plate). `begin()` releases the whole previous generation at once, and
+ *  the counter makes each surface's key unique inside the new one — so a bake
+ *  can keep saying `next(w, h)` without inventing names, and the accounting
+ *  stays exact.
+ *
+ *  No canvas is created here: this is a ledger client like any other. */
+export class SurfaceGen {
+  private n = 0
+  constructor(readonly prefix: string, private readonly ledger: CanvasLedger = gameLedger) {}
+
+  /** Drop the previous generation and start counting from zero again. */
+  begin(): void {
+    this.ledger.releasePrefix(this.prefix)
+    this.n = 0
+  }
+
+  /** The next pinned surface of this generation. */
+  next(w: number, h: number, tag = ''): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
+    const key = `${this.prefix}${this.n++}`
+    const c = this.ledger.acquire(key, w, h, tag || this.prefix, true) as unknown as HTMLCanvasElement
+    const g = c.getContext('2d')
+    if (!g) throw new Error('2D canvas context unavailable')
+    return { c, g }
+  }
+
+  get count(): number {
+    return this.n
+  }
+}

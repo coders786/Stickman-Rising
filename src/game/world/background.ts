@@ -6,7 +6,7 @@ import { makeProfile, type EnvironmentProfile } from './profile'
 import { NightLayer } from './night'
 import { Rigging } from './rigging'
 import { buildCloudBank, bankParams, type BankParams } from './clouds'
-import { gameLedger } from '../render/ledger'
+import { SurfaceGen, gameLedger } from '../render/ledger'
 import { WeatherFront, tintAlpha, tintColour } from './weather'
 import { rgbaConst } from '../render/color'
 import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
@@ -137,13 +137,14 @@ function mod(a: number, n: number): number {
   return ((a % n) + n) % n;
 }
 
+/** Every baked city/sky surface of the CURRENT build. `begin()` at the top of a
+ *  build releases the previous generation, so a reseed cannot leak a tile — and
+ *  because the surfaces are pinned, an LRU sweep cannot blank one either
+ *  (render/ledger.ts `Entry.pinned`). */
+const bgGen = new SurfaceGen('bake:')
+
 function makeCanvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  const g = c.getContext('2d');
-  if (!g) throw new Error('2D canvas context unavailable');
-  return { c, g };
+  return bgGen.next(w, h, 'bake');
 }
 
 /** Rounded-rect subpath (no dependency on ctx.roundRect). */
@@ -1487,7 +1488,7 @@ export class CyberBackground {
       const pw = Math.max(2, Math.floor(w));
       const mi = MOOD_PALETTES.indexOf(this.mood);
       if (!this.pollPlate || this.pollW !== pw || this.pollMood !== mi) {
-        const pc = document.createElement('canvas');
+        const pc = gameLedger.acquire('poll:plate', pw, 216, 'poll', true) as unknown as HTMLCanvasElement;
         pc.width = pw; pc.height = 216;
         const pg2 = pc.getContext('2d')!;
         const lg = pg2.createLinearGradient(0, 0, 0, 216);
@@ -1745,7 +1746,7 @@ export class CyberBackground {
     const bw = Math.max(24, Math.ceil(w / 8));
     const bh = Math.max(6, Math.ceil(bandH / 8));
     if (!this.reflBuf || this.reflW !== bw || this.reflH !== bh) {
-      this.reflBuf = makeCanvas(bw, bh).c;
+      this.reflBuf = gameLedger.acquire('refl:main', bw, bh, 'refl', true) as unknown as HTMLCanvasElement;
       this.reflW = bw;
       this.reflH = bh;
     }
@@ -1879,6 +1880,10 @@ export class CyberBackground {
   private ensureBuilt(): void {
     if (this.built) return;
     this.built = true;
+    // A NEW GENERATION of bakes. Every surface below is pinned to the ledger and
+    // released together when the run reseeds, so a session of runs holds one
+    // city, not one city per run (T1.6).
+    bgGen.begin();
     // The profile exists before any plate is painted: every bake below reads
     // its axes, so a null here would silently bake the previous night.
     if (!this.profile) {

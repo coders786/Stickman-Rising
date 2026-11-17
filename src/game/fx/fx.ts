@@ -13,6 +13,7 @@ import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
 import { LightningSystem, RayOpts, RayWorld } from './lightning'
 import { getParticleLevel } from './particles1d'
+import { gameLedger } from '../render/ledger'
 
 /* ------------------------------------------------------------------ */
 
@@ -178,17 +179,13 @@ function flashGlowSprite(color: string): HTMLCanvasElement | null {
   if (flashGlowCache.size >= FLASH_GLOW_MAX) {
     const oldest = flashGlowCache.keys().next().value
     if (oldest !== undefined) {
-      const old = flashGlowCache.get(oldest)
-      if (old) {
-        old.width = 1
-        old.height = 1
-      }
+      // The ledger owns the store: releasing it zeroes the canvas and drops it
+      // from the resident-bytes total in one call (no manual shrink).
+      gameLedger.release(`fx:flash:${oldest}`)
       flashGlowCache.delete(oldest)
     }
   }
-  const c = document.createElement('canvas')
-  c.width = 64
-  c.height = 64
+  const c = gameLedger.acquire(`fx:flash:${color}`, 64, 64, 'fx', true) as unknown as HTMLCanvasElement
   const g = c.getContext('2d')
   if (!g) return null
   const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)

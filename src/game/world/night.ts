@@ -26,6 +26,7 @@ import type { EnvironmentProfile } from './profile'
 import type { MoodPalette } from './mood'
 import { bakeMoonPlate, bakeStarPlate, type Plate } from '../../gpu/sky'
 import { rgbaConst } from '../render/color'
+import { SurfaceGen } from '../render/ledger'
 
 const TAU = Math.PI * 2
 const canDraw = (): boolean => typeof document !== 'undefined'
@@ -39,12 +40,13 @@ export interface NightStats {
   sprites: number
 }
 
+/** This run's plated sprites. One generation: `dispose()` releases all of them
+ *  at once, which is exactly what a reseed does (render/ledger.ts). */
+const nightGen = new SurfaceGen('night:')
+
 function blank(w: number, h: number): HTMLCanvasElement | null {
   if (!canDraw()) return null
-  const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
-  return c
+  return nightGen.next(w, h, 'night').c
 }
 
 /** Radial sprite of the specular streaks the moon makes on a wet, gritty deck:
@@ -223,9 +225,9 @@ export class NightLayer {
   /** Zero the backing stores. Called on reseed and on teardown — this is the
    *  ledger's rule expressed for objects the ledger does not own. */
   dispose(): void {
-    for (const c of [this.moon?.canvas, this.star?.canvas, this.glitter, this.rimR, this.rimL]) {
-      if (c) { c.width = 0; c.height = 0 }
-    }
+    // The ledger owns the backing stores: releasing the generation zeroes them
+    // and frees the accounting in one call.
+    nightGen.begin()
     this.moon = null
     this.star = null
     this.glitter = null

@@ -32,6 +32,7 @@ import type { AttackRuntimeInfo } from '../combat/attacks'
 import type { Player } from '../entities/player'
 import { MOOD_PALETTES, type MoodPalette } from './mood'
 import { rgbaConst } from '../render/color'
+import { SurfaceGen } from '../render/ledger'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
 
@@ -115,12 +116,20 @@ function rng32(seed: number): () => number {
   }
 }
 
+/** The sprites are permanent for the session (one per kind per palette), so they
+ *  are PINNED: accounted in the ledger's bytes, never chosen by the LRU sweep. */
+const propGen = new SurfaceGen('prop:')
+/** Composites that exist for the duration of one bake — the flipped reflection
+ *  strip, the shadow plate. These are `acquire`d unpinned and released the
+ *  moment the sprite that needed them is finished. */
+const scratchGen = new SurfaceGen('propscratch:')
+
 function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
-  const c = document.createElement('canvas')
-  c.width = w; c.height = h
-  const g = c.getContext('2d')
-  if (!g) throw new Error('2D canvas context unavailable')
-  return { c, g }
+  return propGen.next(w, h, 'prop')
+}
+
+function scratch(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
+  return scratchGen.next(w, h, 'scratch')
 }
 
 /* ------------------------- code-generated sprites ------------------------ */
@@ -128,6 +137,9 @@ function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderin
 /** ONE template = one sprite. Common 3D bake (shadow face, moon rim, contact
  *  AO, emissive halo, label) + ~8 lines of kind-specific silhouette. */
 function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
+  // One generation of scratch per bake: the previous sprite's composites are
+  // released before this one starts (they are pure intermediate results).
+  scratchGen.begin();
   const d = PROP_DEFS[kind]
   const { c, g } = canvas(PW, PH + PR)
   const mid = PW * 0.5
@@ -313,9 +325,9 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
   /* ---- CHEAP REFLECTION: flipped copy + baked vertical alpha fade ----
    * Built once per template into its own strip, then pasted below the body
    * in the SAME canvas. Runtime = one drawImage. */
-  const body = canvas(PW, PH)
+  const body = scratch(PW, PH)
   body.g.drawImage(c, 0, 0, PW, PH, 0, 0, PW, PH)
-  const refl = canvas(PW, PR)
+  const refl = scratch(PW, PR)
   refl.g.save()
   refl.g.translate(0, PR)
   refl.g.scale(1, -1)
@@ -657,6 +669,9 @@ export class PropField {
     if (!this.built) {
       this.built = true
       if (typeof document !== 'undefined') {
+        // A new palette is a new generation of sprites: the old six are freed,
+        // not left resident under keys nobody will ever read again.
+        propGen.begin();
         for (const k of KINDS) this.sprites[k] = makeSprite(k, MOOD_PALETTES[this.moodIdx])
       }
     }
