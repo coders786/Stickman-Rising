@@ -274,3 +274,19 @@ on `19` §2 (render interpolation) for the chain render path.
 
 **Explicitly not doing:** a death ragdoll (touches the combat-tested death path) and
 any imported sprite/mocap asset (REQ-706).
+
+---
+
+## D12 · The optimisation verdicts are decisions, not opinions
+
+`21-OPTIMISATION-CATALOG.md` records, for every technique the literature recommends,
+an **ADOPT / COND / REJECT** verdict with the reason. The rejects are binding:
+dirty rectangles for the scrolling world, multi-canvas layering, CSS-layer parallax,
+a WebGL rewrite of the game renderer, instancing/atlases/sprite sheets, worker-rendered
+OffscreenCanvas, WASM, service-worker precaching, GPU timers, and average-FPS targets
+are **not to be re-proposed** without a measurement that changes the premise.
+
+The reason this is a decision rather than a note: each rejected technique is
+individually well-documented advice that would cost days and buy nothing *here*, and
+the failure mode of a research-led project is implementing good advice for a different
+problem. A rejection with a reason is worth more than an adoption without one.

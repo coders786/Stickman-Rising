@@ -33,6 +33,7 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 18 | `18-MOTION-SMOOTHNESS.md` | 6c | **DELIVERED** — the real answer on 120 fps: iOS flag-clamped, Android main thread capped (worker clock is the only path), cadence beats rate (σ ⇒ QoE R²=0.99), 5 levers, FID-32…36 |
 | 19 | `19-ANIMATION-CADENCE.md` | 6d | **DELIVERED** — how movements/animations actually reach 120: sample time-driven, interpolate state-driven (D10), latency ledger, angle-space pose interpolation, rig batching (20 strokes/frame measured), input coalescing, FID-37…41 |
 | 20 | `20-NATURAL-MOTION.md` | 6e | **DELIVERED** — higher graphics with **zero assets**: minimum-jerk (0.533 signature), 2/3 power law arcs, spring chains (21 pts, ζ bounds), aperiodic micro-life, sub-frame contacts, **0 MB / 0 blits** → new milestone M4.5 |
+| 21 | `21-OPTIMISATION-CATALOG.md` | 8d | **DELIVERED** — every browser-game optimisation technique for 2.5D with an ADOPT/COND/**REJECT** verdict, a slow-frame decision tree, and a top-15 ranked for this game |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,
