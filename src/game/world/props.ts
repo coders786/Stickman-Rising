@@ -2,9 +2,11 @@
  * PROCEDURAL, DESTRUCTIBLE, PURPOSEFUL STAGE PROPS
  * ----------------------------------------------------------------------------
  * Design laws (from the PCG / gamedesign research pass):
- *   · modular templates + seeded placement scoring — min-gap spread, keep the
- *     two stage practicals (stairwell door, broken streetlight) clear, and a
- *     shuffled 2-of-each deck so every run's side-scrolling lane is different.
+ *   · DRESSING, NOT A WIN MENU — the lane starts (near) empty and props arrive
+ *     on a timer, one at a time, into bare stretches of deck ahead of the
+ *     player. Weighted scarcity + a hard concurrent cap + no duplicate kinds
+ *     means a prop is a found object, never a stocked solution menu; the two
+ *     stage practicals (stairwell door, broken streetlight) stay clear.
  *   · instantly readable environmental interactivity (barrel / med crate /
  *     valve / shock box / smoke canister / supply crate) — each prop is a
  *     CHOICE, not decoration.
@@ -77,6 +79,26 @@ export interface StageProp {
   dead: boolean
   respawn: number
   hitAt: number
+  /** field-clock time this prop appeared — drives the cheap 0.45s fade-in */
+  born: number
+}
+
+/* --------------------- dressing scheduler (see header) ------------------- *
+ * The lane is a place, not a shop: a slow trickle of single props into empty
+ * deck, capped at 2 (3 after ~50s), weighted so heal/blast are uncommon and
+ * score is rare, and never two of the same kind alive at once. */
+const SPAWN_FIRST = [2.5, 4.0] as const      // first prop after the run starts
+const SPAWN_GAP = [6.5, 11.0] as const       // one arrival per gap
+const RESPAWN_GAP = [18, 30] as const        // a broken slot re-opens later
+const CAP_EARLY = 2
+const CAP_LATE = 3
+const CAP_RAMP_AT = 50                       // seconds
+const GAP_PROP = 240                         // min world gap between props
+const GAP_PLAYER = 220                       // never spawn on top of the player
+const X_MIN = 140, X_MAX = 2700
+const DOOR_CLEAR = 170, LAMP_CLEAR = 110
+const WEIGHT: Record<PropKind, number> = {
+  fuel: 1.1, med: 1.0, steam: 1.0, shock: 0.9, smoke: 0.9, supply: 0.55,
 }
 
 type BladeSeg = { bx: number; by: number; tx: number; ty: number }
@@ -349,6 +371,8 @@ export class PropField {
   private clock = 0
   private seed = 0
   private nextId = 1
+  private spawnClock = 0      // field time of the next arrival
+  private spawnTick = 0       // hash counter — keeps arrivals deterministic
 
   /** Match the skyline's curated mood palette so the props and the city
    *  read as ONE designed frame. Re-bakes the six sprites once. */
@@ -360,37 +384,91 @@ export class PropField {
     this.sprites = {}
   }
 
-  /** Repopulate the lane. Called on every run start with a fresh seed, so
-   *  the side-scrolling area is genuinely different each run. Pure data —
-   *  safe in headless tests (no document access). */
+  /** Deterministic hash → [0,1). Same seed always dresses the lane the same
+   *  way, so a run is reproducible but never the last run's layout. */
+  private hash(n: number): number {
+    let x = (this.seed ^ Math.imul(n + 1, 0x9e3779b1)) >>> 0
+    x ^= x >>> 16
+    x = Math.imul(x, 0x7feb352d)
+    x ^= x >>> 15
+    return (x >>> 0) / 4294967296
+  }
+
+  /** Start a run with an EMPTY lane (a place, not a shop). The first prop is
+   *  scheduled for ~3s in, so the player reads the space before anything
+   *  offers them an answer. Pure data — headless-test safe. */
   reset(seed: number = (Math.random() * 0xffffffff) >>> 0): void {
     this.seed = seed >>> 0
-    const rng = rng32(this.seed)
     this.clock = 0
+    this.spawnTick = 0
     this.props.length = 0
-    // 2-of-each shuffled deck: 11 slots, every purpose guaranteed present
-    const deck: PropKind[] = []
-    for (const k of KINDS) deck.push(k, k)
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = (rng() * (i + 1)) | 0
-      const t = deck[i]; deck[i] = deck[j]; deck[j] = t
+    this.spawnClock = SPAWN_FIRST[0] + this.hash(0) * (SPAWN_FIRST[1] - SPAWN_FIRST[0])
+  }
+
+  private cap(): number {
+    return this.clock >= CAP_RAMP_AT ? CAP_LATE : CAP_EARLY
+  }
+
+  private aliveCount(): number {
+    let n = 0
+    for (const p of this.props) if (!p.dead) n++
+    return n
+  }
+
+  /** Weighted kind, never a duplicate of a kind already standing. */
+  private pickKind(): PropKind {
+    const h = this.hash(++this.spawnTick * 2 + 1)
+    let total = 0
+    for (const k of KINDS) {
+      let taken = false
+      for (const p of this.props) if (!p.dead && p.kind === k) { taken = true; break }
+      if (!taken) total += WEIGHT[k]
     }
-    const placed: number[] = []
-    for (let i = 0; i < 11; i++) {
-      let x = 0
-      for (let tries = 0; tries < 48; tries++) {
-        x = 110 + rng() * 2320
-        const clear = Math.abs(x - 1755) > 155 && Math.abs(x - 830) > 95 // avoid practicals
-        const spread = placed.every((p) => Math.abs(p - x) > 195)         // min-gap score
-        if (clear && spread) break
+    let r = h * total
+    for (const k of KINDS) {
+      let taken = false
+      for (const p of this.props) if (!p.dead && p.kind === k) { taken = true; break }
+      if (taken) continue
+      r -= WEIGHT[k]
+      if (r <= 0) return k
+    }
+    return 'med'
+  }
+
+  /** Gap-seeking placement: sample bare stretches of deck, prefer ahead of the
+   *  player, always respect prop/practical/player clearance. Fills emptiness. */
+  private pickX(px: number): number {
+    let best = -1
+    let bestScore = -1
+    for (let i = 0; i < 20; i++) {
+      const h = this.hash(++this.spawnTick * 7 + 3)
+      const ahead = h < 0.72
+      const span = 340 + this.hash(++this.spawnTick * 3) * 760
+      let x = ahead ? px + span : px - span
+      if (x < X_MIN) x = X_MIN + this.hash(++this.spawnTick * 5) * 160
+      if (x > X_MAX) x = X_MAX - this.hash(++this.spawnTick * 5) * 160
+      if (Math.abs(x - px) < GAP_PLAYER) continue
+      if (Math.abs(x - 1755) < DOOR_CLEAR || Math.abs(x - 830) < LAMP_CLEAR) continue
+      let nearest = 4000
+      for (const p of this.props) {
+        const d = Math.abs(p.x - x)
+        if (d < nearest) nearest = d
       }
-      placed.push(x)
-      this.props.push({
-        id: this.nextId++, kind: deck[i], x, hp: PROP_DEFS[deck[i]].hp,
-        dead: false, respawn: 0, hitAt: -10,
-      })
+      const gapScore = Math.min(nearest, GAP_PROP * 2.5)
+      const score = gapScore + (ahead ? 90 : 0) - Math.abs(x - px) * 0.02
+      if (score > bestScore) { bestScore = score; best = x }
     }
-    this.props.sort((a, b) => a.x - b.x)
+    if (best < 0) best = Math.max(X_MIN, Math.min(X_MAX, px + 640))
+    return best
+  }
+
+  /** One arrival: pick a purpose, find bare deck, fade it in. */
+  private spawn(px: number): void {
+    const kind = this.pickKind()
+    this.props.push({
+      id: this.nextId++, kind, x: this.pickX(px), hp: PROP_DEFS[kind].hp,
+      dead: false, respawn: 0, hitAt: -10, born: this.clock,
+    })
   }
 
   /** Ambient lifecycle + dash-through contact. No canvas work here. */
@@ -400,15 +478,28 @@ export class PropField {
     if (typeof document === 'undefined') return
     this.clock += dt
     const dashing = player.state === 'dash' && Math.abs(player.vx) > 520
+    // timed trickle — one arrival at a time, only into an under-stocked lane
+    if (this.clock >= this.spawnClock && this.aliveCount() < this.cap()) {
+      this.spawn(player.x)
+      const h = this.hash(++this.spawnTick * 11 + 9)
+      this.spawnClock = this.clock + SPAWN_GAP[0] + h * (SPAWN_GAP[1] - SPAWN_GAP[0])
+    }
     for (const p of this.props) {
       if (p.dead) {
         p.respawn -= dt
         if (p.respawn <= 0) {
-          // procedural churn: a respawned slot can come back as a NEW purpose
-          p.kind = KINDS[((p.id * 7 + ((this.seed >>> 3) + Math.floor(this.clock)) * 13) % KINDS.length + KINDS.length) % KINDS.length]
-          p.hp = PROP_DEFS[p.kind].hp
-          p.dead = false
-          p.hitAt = -10
+          // the slot re-opens as a NEW weighted purpose at a NEW stretch of
+          // deck — the lane keeps breathing instead of being restocked
+          if (this.aliveCount() < this.cap()) {
+            p.kind = this.pickKind()
+            p.x = this.pickX(player.x)
+            p.hp = PROP_DEFS[p.kind].hp
+            p.dead = false
+            p.hitAt = -10
+            p.born = this.clock
+          } else {
+            p.respawn = 3
+          }
         }
         continue
       }
@@ -443,7 +534,7 @@ export class PropField {
     }
     if (p.hp > 0) return
     p.dead = true
-    p.respawn = 15 + (p.id % 5) * 2.5
+    p.respawn = RESPAWN_GAP[0] + (p.id % 5) * ((RESPAWN_GAP[1] - RESPAWN_GAP[0]) / 5)
     if (!w || !hooks) return
 
     const d = PROP_DEFS[p.kind]
@@ -541,11 +632,14 @@ export class PropField {
       if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
       const spr = this.sprites[p.kind]
       if (!spr) continue
+      // 0.45s fade-in: one clamp + one multiply, no extra state or canvases
+      const fade = Math.min(1, (this.clock - p.born) / 0.45)
       // body: opaque. mirror: the same canvas's flipped strip, drawn
       // additively so only its lit pixels show on the wet deck.
+      if (fade < 1) ctx.globalAlpha = fade
       ctx.drawImage(spr, 0, 0, PW, PH, p.x - PW * 0.5, -PH, PW, PH)
       ctx.globalCompositeOperation = 'lighter'
-      ctx.globalAlpha = 0.72
+      ctx.globalAlpha = 0.72 * fade
       ctx.drawImage(spr, 0, PH, PW, PR, p.x - PW * 0.5, 0, PW, PR)
       ctx.globalAlpha = 1
       ctx.globalCompositeOperation = 'source-over'

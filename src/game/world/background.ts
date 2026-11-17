@@ -6,6 +6,10 @@ import { MOOD_PALETTES, moodForSeed, type MoodPalette } from './mood'
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
 const LAMP_X = 830
+/** stylized moon plate: bake size and on-screen draw size */
+const MOON_D = 210
+const MOON_HALF = MOON_D * 0.5
+const MOON_HALO_D = 402
 /* ============================================================================
  * STICKMAN RISING — src/game/world/background.ts
  * Self-contained parallax cyberpunk-city backdrop (rooftop-at-night stage).
@@ -71,6 +75,10 @@ export interface BackgroundRenderer {
    *  near-lane dressing occludes fighters. */
   drawFront?(ctx:CanvasRenderingContext2D):void
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
+  /** V3 reactive layer (optional so lightweight test doubles stay valid) */
+  practicalLight?(x: number): { warm: number; cool: number }
+  drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number): void
+  drawReflections?(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void
 }
 
 /* ============================ seeded RNG ================================= */
@@ -732,73 +740,226 @@ function buildSkyStrip(): HTMLCanvasElement {
   return c;
 }
 
-/** dim moon disc + inner corona (the wide halo lives in buildMoonHalo) */
-function buildMoon(): HTMLCanvasElement {
-  const { c, g } = makeCanvas(220, 220);
-  // tight inner corona only — the big atmospheric rings are the additive
-  // halo sprite (4-ring bake), so eclipse can dim disc + halo independently
-  let gr = g.createRadialGradient(110, 110, 24, 110, 110, 62);
-  gr.addColorStop(0, 'rgba(168,196,208,0.20)');
-  gr.addColorStop(0.5, 'rgba(140,172,192,0.08)');
-  gr.addColorStop(1, 'rgba(110,140,175,0)');
-  g.fillStyle = gr;
-  g.fillRect(0, 0, 220, 220);
-  // moon body with an off-center key so the limb reads as a sphere
-  gr = g.createRadialGradient(100, 100, 8, 110, 110, 47);
-  gr.addColorStop(0, '#e8eef0');
-  gr.addColorStop(0.55, '#c2ced2');
-  gr.addColorStop(0.85, '#93a4a9');
-  gr.addColorStop(1, '#7c8d92');
-  g.fillStyle = gr;
-  g.beginPath(); g.arc(110, 110, 47, 0, TAU); g.fill();
-  // maria + craters (soft, low-contrast)
-  g.fillStyle = 'rgba(66,84,88,0.16)';
-  g.beginPath(); g.arc(94, 96, 10, 0, TAU); g.fill();
-  g.beginPath(); g.arc(122, 128, 7, 0, TAU); g.fill();
-  g.beginPath(); g.arc(130, 92, 5, 0, TAU); g.fill();
-  g.beginPath(); g.arc(103, 124, 4, 0, TAU); g.fill();
-  g.fillStyle = 'rgba(232,242,245,0.28)';                    // crater rims
-  g.beginPath(); g.arc(94, 94, 10, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
-  // bright limb — the thin lit edge that sells the sphere
-  g.strokeStyle = 'rgba(226,240,244,0.5)';
-  g.lineWidth = 1.4;
-  g.beginPath(); g.arc(110, 110, 46.2, Math.PI * 0.62, Math.PI * 1.72); g.stroke();
-  // EARTHSHINE — the "old moon in the new moon's arms": sunlight bounced
-  // off Earth faintly lifts the dark limb. Cool, tiny, and real.
+/** PLAYER RIM — a crescent of light for the reactive layer: the moon key on
+ *  the upper-right edge, coloured by whichever practical is nearest. Baked
+ *  once per palette, blitted additively at the player (≤2 blits/frame). */
+function buildRim(pal: MoodPalette, warm: boolean): HTMLCanvasElement {
+  const W = 96, H = 190;
+  const { c, g } = makeCanvas(W, H);
+  const col = warm ? pal.highlight : pal.pop2;
+  g.globalCompositeOperation = 'lighter';
+  // soft body glow behind the figure
+  const body = g.createRadialGradient(W * 0.5, H * 0.52, 6, W * 0.5, H * 0.52, W * 0.55);
+  body.addColorStop(0, `rgba(${col},0.16)`);
+  body.addColorStop(0.6, `rgba(${col},0.05)`);
+  body.addColorStop(1, `rgba(${col},0)`);
+  g.fillStyle = body;
+  g.fillRect(0, 0, W, H);
+  // the crescent itself: an offset ring segment, thick at the shoulder line
   g.save();
-  g.beginPath(); g.arc(110, 110, 46.5, 0, TAU); g.clip();
-  const es = g.createRadialGradient(132, 130, 8, 128, 128, 60);
-  es.addColorStop(0, 'rgba(122,144,178,0.14)');
-  es.addColorStop(1, 'rgba(122,144,178,0)');
-  g.fillStyle = es; g.fillRect(60, 60, 110, 110);
+  g.beginPath();
+  g.ellipse(W * 0.5, H * 0.55, W * 0.30, H * 0.36, 0, 0, TAU);
+  g.clip();
+  const rim = g.createLinearGradient(W * 0.2, 0, W, 0);
+  rim.addColorStop(0, `rgba(${col},0)`);
+  rim.addColorStop(0.62, `rgba(${col},0.16)`);
+  rim.addColorStop(1, `rgba(${col},0.52)`);
+  g.fillStyle = rim;
+  g.fillRect(0, 0, W, H);
   g.restore();
   return c;
 }
 
-/** 4-RING MOON HALO — pre-baked additive scattering sprite (research law:
- *  glow = additive gradient sprites, never per-frame gradients, never global
- *  bloom). Four concentric falloffs with distinct color temps — tight warm
- *  corona → wide cool atmosphere — composited 'lighter' inside the bake so
- *  the energy stacks like real scattering. One additive blit at runtime. */
-function buildMoonHalo(): HTMLCanvasElement {
+/** DECK POOL — the wet concrete lifting under the player as they pass a
+ *  practical: one baked soft ellipse, one blit, alpha = proximity. */
+function buildDeckPool(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(240, 64);
+  g.globalCompositeOperation = 'lighter';
+  const gr = g.createRadialGradient(120, 30, 4, 120, 30, 116);
+  gr.addColorStop(0, 'rgba(196,222,248,0.20)');
+  gr.addColorStop(0.45, 'rgba(178,206,238,0.09)');
+  gr.addColorStop(1, 'rgba(160,190,226,0)');
+  g.save();
+  g.scale(1, 0.26);
+  g.fillStyle = gr;
+  g.beginPath(); g.arc(120, 30 / 0.26, 116, 0, TAU); g.fill();
+  g.restore();
+  return c;
+}
+
+/** STYLIZED MOON — a real sphere, not a sticker. 512² plate baked once per
+ *  palette, drawn as ONE blit. Physics/stylization kept:
+ *   · gibbous terminator with earthshine on the dark limb
+ *   · 6 maria + 16 craters (shadowed bowl, lit rim from the upper-right key,
+ *     raised floor on the big ones) — the Saturn/early-3D look, not flat dots
+ *   · limb darkening + a palette-tinted rim pair (warm key / cool bounce), so
+ *     the moon belongs to the run's colour identity
+ *   · chromatic fringe on the limb — 2 offset arcs, the "photographed through
+ *     glass" tell that reads as premium
+ *   · 3 thin cloud wisps crossing the lower limb for depth against the sky */
+function buildMoon(pal: MoodPalette): HTMLCanvasElement {
+  const S = 512, C = 256, R = 152;
+  const { c, g } = makeCanvas(S, S);
+  const rng = mulberry32(0x4d00d1);
+  g.globalCompositeOperation = 'source-over';
+
+  /* inner corona — the tight scattering right at the limb */
+  let gr = g.createRadialGradient(C, C, R * 0.92, C, C, R * 1.42);
+  gr.addColorStop(0, 'rgba(176,204,220,0.20)');
+  gr.addColorStop(0.45, 'rgba(140,176,204,0.075)');
+  gr.addColorStop(1, 'rgba(108,142,178,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, S, S);
+
+  /* body — key from upper right, so the sphere turns */
+  gr = g.createRadialGradient(C - R * 0.38, C - R * 0.42, R * 0.06, C, C, R);
+  gr.addColorStop(0, '#f4f8f6');
+  gr.addColorStop(0.34, '#dde7e5');
+  gr.addColorStop(0.62, '#b9c7c9');
+  gr.addColorStop(0.84, '#8a9aa0');
+  gr.addColorStop(1, `rgba(${pal.shadow},0.92)`);
+  g.fillStyle = gr;
+  g.beginPath(); g.arc(C, C, R, 0, TAU); g.fill();
+
+  g.save();
+  g.beginPath(); g.arc(C, C, R, 0, TAU); g.clip();
+
+  /* MARIA — soft basalt seas, cooled toward the run palette */
+  const maria: ReadonlyArray<[number, number, number]> = [
+    [-46, -30, 44], [18, -52, 30], [58, 22, 38], [-18, 46, 33], [36, -8, 22], [-70, 34, 20],
+  ];
+  for (const [mx, my, mr] of maria) {
+    const m = g.createRadialGradient(C + mx, C + my, mr * 0.1, C + mx, C + my, mr);
+    m.addColorStop(0, 'rgba(58,76,86,0.30)');
+    m.addColorStop(0.6, 'rgba(64,84,94,0.16)');
+    m.addColorStop(1, 'rgba(70,90,100,0)');
+    g.fillStyle = m;
+    g.beginPath(); g.arc(C + mx, C + my, mr, 0, TAU); g.fill();
+    g.fillStyle = `rgba(${pal.pop2},0.045)`;      // palette bounce in the seas
+    g.beginPath(); g.arc(C + mx, C + my, mr * 0.8, 0, TAU); g.fill();
+  }
+
+  /* CRATERS — bowl shadow + lit rim (upper right) + raised floor */
+  for (let i = 0; i < 16; i++) {
+    const a = rng() * TAU, rr = Math.sqrt(rng()) * R * 0.84;
+    const x = C + Math.cos(a) * rr, y = C + Math.sin(a) * rr;
+    const rad = 3.5 + rng() * 13;
+    if (Math.hypot(x - C, y - C) + rad > R * 0.95) continue;
+    const bowl = g.createRadialGradient(x - rad * 0.3, y - rad * 0.3, rad * 0.1, x, y, rad);
+    bowl.addColorStop(0, 'rgba(48,62,70,0.30)');
+    bowl.addColorStop(1, 'rgba(40,54,62,0.06)');
+    g.fillStyle = bowl;
+    g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(246,252,250,0.34)';        // sunlit rim
+    g.lineWidth = Math.max(1, rad * 0.16);
+    g.beginPath(); g.arc(x, y, rad * 0.92, -2.5, -0.25); g.stroke();
+    g.strokeStyle = 'rgba(30,42,50,0.22)';           // shadowed rim
+    g.beginPath(); g.arc(x, y, rad * 0.92, 0.55, 2.35); g.stroke();
+    if (rad > 9) {                                    // central peak
+      g.fillStyle = 'rgba(238,246,244,0.20)';
+      g.beginPath(); g.arc(x - rad * 0.12, y - rad * 0.12, rad * 0.22, 0, TAU); g.fill();
+    }
+  }
+
+  /* TERMINATOR — the gibbous dark limb, lower left, with earthshine */
+  let term = g.createRadialGradient(C + R * 0.55, C + R * 0.62, R * 0.15, C + R * 0.5, C + R * 0.55, R * 1.45);
+  term.addColorStop(0, 'rgba(10,16,26,0.66)');
+  term.addColorStop(0.55, 'rgba(10,16,26,0.30)');
+  term.addColorStop(1, 'rgba(10,16,26,0)');
+  g.fillStyle = term;
+  g.fillRect(0, 0, S, S);
+  const es = g.createRadialGradient(C + R * 0.55, C + R * 0.62, R * 0.1, C + R * 0.45, C + R * 0.5, R * 1.1);
+  es.addColorStop(0, `rgba(${pal.pop2},0.16)`);        // earthshine = cool bounce
+  es.addColorStop(1, `rgba(${pal.pop2},0)`);
+  g.fillStyle = es;
+  g.fillRect(0, 0, S, S);
+
+  /* CLOUD WISPS crossing the lower limb — depth against the sky */
+  for (let i = 0; i < 3; i++) {
+    const y = C + R * (0.42 + i * 0.2);
+    const w = g.createLinearGradient(0, y - 16, 0, y + 16);
+    w.addColorStop(0, 'rgba(10,16,26,0)');
+    w.addColorStop(0.5, `rgba(10,16,26,${0.30 - i * 0.06})`);
+    w.addColorStop(1, 'rgba(10,16,26,0)');
+    g.fillStyle = w;
+    g.fillRect(C - R, y - 16, R * 2, 32);
+  }
+  g.restore();
+
+  /* LIMB DARKENING — the edge falls off, which is what makes it a sphere */
+  gr = g.createRadialGradient(C, C, R * 0.72, C, C, R);
+  gr.addColorStop(0, 'rgba(0,0,0,0)');
+  gr.addColorStop(1, 'rgba(6,12,20,0.42)');
+  g.fillStyle = gr;
+  g.beginPath(); g.arc(C, C, R, 0, TAU); g.fill();
+
+  /* PALETTE RIMS — warm key upper right, cool bounce lower left */
+  g.lineWidth = 2.6;
+  g.strokeStyle = `rgba(${pal.highlight},0.55)`;
+  g.beginPath(); g.arc(C, C, R * 0.985, -2.45, -0.15); g.stroke();
+  g.lineWidth = 1.8;
+  g.strokeStyle = `rgba(${pal.pop2},0.38)`;
+  g.beginPath(); g.arc(C, C, R * 0.975, 0.6, 2.3); g.stroke();
+
+  /* CHROMATIC FRINGE — two offset arcs, the glass tell */
+  g.lineWidth = 1.1;
+  g.strokeStyle = `rgba(${pal.pop},0.20)`;
+  g.beginPath(); g.arc(C - 1.2, C, R + 1.4, -2.3, -0.2); g.stroke();
+  g.strokeStyle = `rgba(${pal.pop2},0.18)`;
+  g.beginPath(); g.arc(C + 1.2, C, R + 1.6, 0.7, 2.2); g.stroke();
+
+  return c;
+}
+
+/** MOON CORONA — 4 scattering rings + 6 crepuscular rays + one lens streak.
+ *  Palette-tinted, fully baked, ONE additive blit at runtime. */
+function buildMoonHalo(pal: MoodPalette): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 512);
   const C = 256;
   const rings: ReadonlyArray<[number, string, number, number]> = [
-    // [radius, rgba color, peak alpha, inner stop]
-    [78, '196,218,232', 0.34, 30],
-    [168, '152,184,216', 0.135, 60],
-    [262, '116,154,198', 0.055, 110],
-    [392, '86,124,170', 0.026, 170],
+    [88, '206,226,238', 0.30, 34],
+    [176, `180,206,226`, 0.13, 66],
+    [272, `140,178,214`, 0.055, 118],
+    [404, `100,140,186`, 0.024, 176],
   ];
   g.globalCompositeOperation = 'lighter';
   for (const [r, col, a, inner] of rings) {
     const gr = g.createRadialGradient(C, C, inner, C, C, r);
     gr.addColorStop(0, `rgba(${col},${a})`);
-    gr.addColorStop(0.55, `rgba(${col},${(a * 0.42).toFixed(4)})`);
+    gr.addColorStop(0.55, `rgba(${col},${(a * 0.4).toFixed(4)})`);
     gr.addColorStop(1, `rgba(${col},0)`);
     g.fillStyle = gr;
     g.fillRect(0, 0, 512, 512);
   }
+  /* crepuscular rays — moonlight leaking through the cloud gaps */
+  g.save();
+  g.translate(C, C);
+  for (let i = 0; i < 6; i++) {
+    const ang = -0.9 + i * 0.33;
+    g.save();
+    g.rotate(ang);
+    const ray = g.createLinearGradient(0, 0, 250, 0);
+    ray.addColorStop(0, `rgba(${pal.pop2},0.10)`);
+    ray.addColorStop(0.5, `rgba(190,214,232,0.045)`);
+    ray.addColorStop(1, 'rgba(160,196,226,0)');
+    g.fillStyle = ray;
+    g.beginPath();
+    g.moveTo(0, -10); g.lineTo(252, -34); g.lineTo(252, 34); g.lineTo(0, 10);
+    g.closePath(); g.fill();
+    g.restore();
+  }
+  g.restore();
+  /* horizontal lens streak — anamorphic tell, very low alpha */
+  const ls = g.createLinearGradient(0, 0, 512, 0);
+  ls.addColorStop(0, 'rgba(150,190,230,0)');
+  ls.addColorStop(0.35, 'rgba(178,212,246,0.10)');
+  ls.addColorStop(0.5, 'rgba(206,230,255,0.17)');
+  ls.addColorStop(0.65, 'rgba(178,212,246,0.10)');
+  ls.addColorStop(1, 'rgba(150,190,230,0)');
+  g.fillStyle = ls;
+  g.fillRect(0, C - 3, 512, 6);
+  g.fillStyle = `rgba(${pal.highlight},0.05)`;
+  g.fillRect(0, C - 9, 512, 18);
   return c;
 }
 
@@ -872,15 +1033,17 @@ function buildCloudTile(lit: boolean): HTMLCanvasElement {
 /** cheap bokeh depth-of-field: downsample, then smooth-upsample back to the
  *  original tile size (one-time build, zero per-frame cost). */
 function blurTile(src: HTMLCanvasElement, down: number): HTMLCanvasElement {
+  // MEMORY: return the DOWNSCALED plate only (1/down each axis). The old
+  // version upscaled it back into a second full-size canvas, which kept
+  // ~12 MB of duplicate tiles resident for a look we get for free by letting
+  // the draw call scale the blit — smaller source, fewer bytes, same blur.
   const sw = Math.max(2, Math.round(src.width / down));
   const sh = Math.max(2, Math.round(src.height / down));
   const small = makeCanvas(sw, sh);
+  small.g.imageSmoothingEnabled = true;
+  small.g.imageSmoothingQuality = 'high';
   small.g.drawImage(src, 0, 0, sw, sh);
-  const { c, g } = makeCanvas(src.width, src.height);
-  g.imageSmoothingEnabled = true;
-  g.imageSmoothingQuality = 'high';
-  g.drawImage(small.c, 0, 0, src.width, src.height);
-  return c;
+  return small.c;
 }
 
 /** humid horizon haze band (transparent → soft → transparent, vertical) */
@@ -1008,6 +1171,13 @@ export class CyberBackground {
   private mood: MoodPalette = MOOD_PALETTES[0];
   private heroDisc!: HTMLCanvasElement;
   private vignette: HTMLCanvasElement | null = null;
+  /* V3 reactive layer — baked sprites + a tiny reflection buffer */
+  private rimWarm!: HTMLCanvasElement;
+  private rimCool!: HTMLCanvasElement;
+  private deckPool!: HTMLCanvasElement;
+  private reflBuf: HTMLCanvasElement | null = null;
+  private reflW = 0;
+  private reflH = 0;
   private vigW = 0;
   private vigH = 0;
   private pollMood = -1;
@@ -1082,10 +1252,10 @@ export class CyberBackground {
     {
       // slow orbital drift (~5 min period) — the skybox is alive without
       // any per-frame cost: this runs inside the cached vault rebuild
-      const moonX = w * 0.87 - cx * 0.03 * cz - 84 + Math.sin(t * 0.021) * 46;
-      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84 + Math.cos(t * 0.014) * 16;
-      this.moonX = moonX + 84;
-      this.moonY = moonY + 84;
+      const moonX = w * 0.87 - cx * 0.03 * cz - MOON_HALF + Math.sin(t * 0.021) * 46;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - MOON_HALF + Math.cos(t * 0.014) * 16;
+      this.moonX = moonX + MOON_HALF;
+      this.moonY = moonY + MOON_HALF;
       this.moonCover = 0;
     }
 
@@ -1187,15 +1357,15 @@ export class CyberBackground {
     /* 2.8 — THE MOON: two baked blits (disc + halo). No eclipse scan, no
      * ring/zodiac/pillar optics — stripped with the rest of the engines. */
     {
-      const moonX = w * 0.87 - cx * 0.03 * cz - 84;
-      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
-      this.moonX = moonX + 84;
-      this.moonY = moonY + 84;
+      const moonX = w * 0.87 - cx * 0.03 * cz - MOON_HALF;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - MOON_HALF;
+      this.moonX = moonX + MOON_HALF;
+      this.moonY = moonY + MOON_HALF;
       ctx.globalAlpha = 1;
-      ctx.drawImage(this.moonSpr, moonX, moonY, 168, 168);
+      ctx.drawImage(this.moonSpr, moonX, moonY, MOON_D, MOON_D);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.8;
-      ctx.drawImage(this.moonHalo, moonX + 84 - 141, moonY + 84 - 141, 282, 282);
+      ctx.globalAlpha = 0.82;
+      ctx.drawImage(this.moonHalo, moonX + MOON_HALF - MOON_HALO_D * 0.5, moonY + MOON_HALF - MOON_HALO_D * 0.5, MOON_HALO_D, MOON_HALO_D);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
@@ -1262,6 +1432,92 @@ export class CyberBackground {
     });
   }
 
+
+  /* ---------------------- V3 reactive light layer ------------------------ */
+
+  /** Proximity of a world x to the stage's two practicals (1 = at the source,
+   *  0 = beyond its reach). Three |x| comparisons — the whole "which light is
+   *  the player standing in" query. */
+  practicalLight(x: number): { warm: number; cool: number } {
+    const fall = (d: number): number => {
+      const a = Math.abs(d)
+      return a >= 300 ? 0 : 1 - a / 300
+    }
+    return { warm: fall(x - DOOR_X), cool: fall(x - LAMP_X) }
+  }
+
+  /** PLAYER-KEYED LIGHT — a rim crescent + a wet deck pool, painted from two
+   *  baked sprites with an alpha driven by proximity to the nearest practical.
+   *  This is the only lighting in the game that reacts to the player, and it
+   *  costs at most 2 additive blits per frame. */
+  drawPlayerLight(ctx: CanvasRenderingContext2D, px: number, py: number): void {
+    this.ensureBuilt();
+    const L = this.practicalLight(px);
+    const a = Math.max(L.warm, L.cool);
+    if (a <= 0.02) return;
+    const rim = L.warm >= L.cool ? this.rimWarm : this.rimCool;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.55 * a;
+    ctx.drawImage(rim, px - 48, py - 190, 96, 190);
+    ctx.globalAlpha = 0.42 * a;
+    ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /** SCREEN-SPACE REFLECTION — the "very low cpu post processing" pass.
+   *  The live canvas band ABOVE the deck line is copied into a 1/8-scale
+   *  buffer (that downscale IS the blur), then blitted back flipped, in three
+   *  fading slices with a per-slice ripple offset. Because the source is the
+   *  frame itself, the reflection automatically contains the player, enemies,
+   *  projectiles and FX — it reacts without a render target, shader, filter or
+   *  readback. 4 drawImage calls, ~15 KB, zero allocations. */
+  drawReflections(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void {
+    if (quality === 'low' || typeof document === 'undefined') return;
+    this.ensureBuilt();
+    const w = this.vw, h = this.vh;
+    const zoom = Math.max(0.35, Number.isFinite(cam.zoom) ? cam.zoom : 1);
+    const deckY = h * 0.5 + zoom * (0 - (Number.isFinite(cam.y) ? cam.y : NOMINAL_Y));
+    const bandH = Math.min(h * 0.6, Math.max(10, 104 * zoom));
+    if (deckY < -4 || deckY > h + 4) return;
+    const bw = Math.max(24, Math.ceil(w / 8));
+    const bh = Math.max(6, Math.ceil(bandH / 8));
+    if (!this.reflBuf || this.reflW !== bw || this.reflH !== bh) {
+      this.reflBuf = makeCanvas(bw, bh).c;
+      this.reflW = bw;
+      this.reflH = bh;
+    }
+    const g = this.reflBuf.getContext('2d');
+    if (!g) return;
+    const srcH = Math.min(bandH * 1.5, Math.max(0, deckY));
+    if (srcH < 6) return;
+    g.clearRect(0, 0, bw, bh);
+    g.drawImage(ctx.canvas, 0, deckY - srcH, w, srcH, 0, 0, bw, bh);
+    // flip + fade in three slices (the cheapest possible vertical falloff)
+    const t = this.t;
+    const sh = bandH / 3;
+    // the band answers the weather too: lightning lifts the mirror (it is the
+    // brightest thing in the sky, so the wet deck must answer it)
+    const boost = 1 + 1.6 * this.lightningI();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++) {
+      const y0 = deckY + i * sh;
+      if (y0 > h) break;
+      ctx.globalAlpha = Math.min(0.42, (0.17 - i * 0.055) * boost);
+      const dx = Math.sin(t * 2.1 + i * 1.7) * 2.2 * zoom;
+      ctx.save();
+      ctx.translate(dx, y0);
+      ctx.scale(1, -1);
+      g.globalAlpha = 1;
+      ctx.drawImage(this.reflBuf, 0, bh * (1 - (i + 1) / 3), bw, bh / 3, 0, -sh, w, sh);
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   /* ----------------------- world-space arena pass ------------------------ */
 
   drawArena(ctx: CanvasRenderingContext2D): void {
@@ -1323,17 +1579,25 @@ export class CyberBackground {
     for (let x = -m; x < this.vw; x += TILE) ctx.drawImage(img, x, y);
   }
 
+  /** Same row blit for a reduced-resolution plate: drawn to full layer size. */
+  private blitRowScaled(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, m: number, y: number, h: number): void {
+    for (let x = -m; x < this.vw; x += TILE) ctx.drawImage(img, x, y, TILE, h);
+  }
+
   private ensureBuilt(): void {
     if (this.built) return;
     this.built = true;
     this.skyStrip = buildSkyStrip();
-    this.moonSpr = buildMoon();
-    this.moonHalo = buildMoonHalo();
+    this.moonSpr = buildMoon(this.mood);
+    this.moonHalo = buildMoonHalo(this.mood);
     // Emissive discs FIRST: buildDoorStructure/buildLampProp paint baked
     // spill with these, so they must exist before any plate that lights.
     this.glowWarm = buildGlowDisc(this.mood.highlight);
     this.glowCool = buildGlowDisc(this.mood.pop2);
     this.heroDisc = buildGlowDisc(this.mood.pop);
+    this.rimWarm = buildRim(this.mood, true);
+    this.rimCool = buildRim(this.mood, false);
+    this.deckPool = buildDeckPool();
     // Rebuild-safe: a run reseed re-enters ensureBuilt, so reset the array
     // instead of appending a second set of discs forever.
     this.glowSigns.length = 0;
@@ -1385,7 +1649,8 @@ export class CyberBackground {
     const m = mod(cx * lay.f * cz, TILE);
     ctx.fillStyle = lay.below;
     this.fillBelow(ctx, by);
-    this.blitRow(ctx, soft, m, by - bandH);
+    // soft plate is stored at reduced resolution → scale it up here (GPU)
+    this.blitRowScaled(ctx, soft, m, by - bandH, bandH);
     if (I > 0.02) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = popAlpha * I;
@@ -2675,6 +2940,164 @@ export class CyberBackground {
       g.fillStyle = i % 2 ? 'rgba(178,210,238,0.16)' : 'rgba(255,178,112,0.16)';
       g.fillRect(hx - 8 - rng() * 12, hy, 16 + rng() * 26, 1);
     }
+    /* ================= V3 — SHADOW / LIGHT / REFLECTION LAYER =============
+     * Everything below is BAKED into this tile: it costs nothing at runtime
+     * and never allocates. Three families:
+     *   1. light  — moon shafts across the deck, extra wall practicals, a
+     *               specular moon column (the deck catching the key light)
+     *   2. shadow — second-generation cast shadows: every piece of hardware
+     *               throws a moon-direction rake, plus contact AO
+     *   3. mirror — each practical ALSO gets its own flipped reflection plate,
+     *               so the wet deck is lit by the whole set, not two props
+     * ==================================================================== */
+
+    /* 1a — MOON SHAFTS: the key light leaks between the towers as 3 soft
+     * additive bands raking lower-left. Baked, so they are free forever. */
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 3; i++) {
+      const sx = 260 + i * 940 + rng() * 220;
+      const sw = 120 + rng() * 90;
+      g.save();
+      g.translate(sx, 70);
+      g.rotate(-0.62);
+      const sg3 = g.createLinearGradient(0, 0, sw, 0);
+      sg3.addColorStop(0, 'rgba(166,198,232,0)');
+      sg3.addColorStop(0.45, `rgba(176,206,238,${(0.05 + rng() * 0.025).toFixed(3)})`);
+      sg3.addColorStop(1, 'rgba(166,198,232,0)');
+      g.fillStyle = sg3;
+      g.fillRect(0, -190, sw, 420);
+      g.restore();
+    }
+    g.restore();
+
+    /* 1b — SPECULAR MOON COLUMN on the deck (the wet concrete catching the
+     * moon as one long broken column) + its contact pool. */
+    {
+      const mx0 = 2180;
+      const col = g.createLinearGradient(0, LIP_H, 0, 142);
+      col.addColorStop(0, 'rgba(196,222,248,0.17)');
+      col.addColorStop(0.4, 'rgba(186,214,242,0.085)');
+      col.addColorStop(1, 'rgba(178,208,238,0)');
+      g.fillStyle = col;
+      g.fillRect(mx0 - 52, LIP_H, 104, 128);
+      for (let i = 0; i < 16; i++) {                        // broken highlights
+        const hx = mx0 - 46 + rng() * 92;
+        const hy = LIP_H + 4 + i * 8;
+        g.fillStyle = `rgba(214,236,255,${(0.06 + rng() * 0.10).toFixed(3)})`;
+        g.fillRect(hx, hy, 6 + rng() * 26, 0.9);
+      }
+      g.fillStyle = 'rgba(190,220,250,0.06)';
+      g.beginPath(); g.ellipse(mx0, 30, 90, 14, 0, 0, TAU); g.fill();
+    }
+
+    /* 2 — SECOND-GENERATION CAST SHADOWS. One rake, reused by every piece of
+     * hardware: the moon sits upper-right, so shadows fall lower-LEFT with a
+     * long diagonal. Drawn before the hardware so the object sits on top. */
+    const rake = (cx: number, baseY: number, w: number, len: number, a: number): void => {
+      g.fillStyle = `rgba(0,0,0,${a})`;
+      g.beginPath();
+      g.moveTo(cx - w * 0.5, baseY);
+      g.lineTo(cx + w * 0.5, baseY);
+      g.lineTo(cx - w * 0.5 - len, baseY - len * 0.34);
+      g.lineTo(cx - w * 0.5 - len * 1.12, baseY - len * 0.34);
+      g.closePath();
+      g.fill();
+    };
+
+    /* 3 — DECK HARDWARE (dressing, all BELOW the play band y<0): condenser
+     * units, a cable spool, junction boxes. Each one: rake shadow → contact
+     * AO → body → moon rim → its own wet reflection strip. */
+    const hardware: ReadonlyArray<[number, number]> = [[520, 0], [1310, 1], [1990, 0], [2560, 1]];
+    for (let i = 0; i < hardware.length; i++) {
+      const hx = hardware[i][0] + 300;
+      if (Math.abs(hx - doorX) < 150 || Math.abs(hx - lampX) < 130) continue;
+      const bw = 46 + rng() * 18;
+      const bh = 26 + rng() * 10;
+      const baseY = 148;
+      rake(hx, baseY, bw, 42, 0.30);
+      bakePropShadow(g, hx, baseY, bw * 0.6, 0.42);
+      // body
+      const bodyG = g.createLinearGradient(0, baseY - bh, 0, baseY);
+      bodyG.addColorStop(0, '#2a343c');
+      bodyG.addColorStop(0.5, '#1b242b');
+      bodyG.addColorStop(1, '#0e151a');
+      g.fillStyle = bodyG;
+      g.fillRect(hx - bw * 0.5, baseY - bh, bw, bh);
+      // moon rim (upper right edge) + cool top plate
+      g.fillStyle = 'rgba(168,198,226,0.30)';
+      g.fillRect(hx - bw * 0.5, baseY - bh, bw, 1.4);
+      g.fillStyle = 'rgba(168,198,226,0.20)';
+      g.fillRect(hx + bw * 0.5 - 1.4, baseY - bh, 1.4, bh);
+      // fan grille
+      g.strokeStyle = 'rgba(120,146,166,0.28)';
+      g.lineWidth = 1;
+      for (let k = 1; k < 4; k++) {
+        g.beginPath();
+        g.arc(hx + bw * 0.1, baseY - bh * 0.5, bh * (0.13 + k * 0.07), 0, TAU);
+        g.stroke();
+      }
+      // vent slats + a small status LED lit by the palette
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      for (let k = 0; k < 3; k++) g.fillRect(hx - bw * 0.42, baseY - bh + 5 + k * 3, bw * 0.22, 1.2);
+      g.fillStyle = `rgba(${this.mood.pop2},0.75)`;
+      g.fillRect(hx + bw * 0.34, baseY - bh + 4, 2.2, 2.2);
+      g.fillStyle = 'rgba(0,0,0,0.5)';
+      g.fillRect(hx - bw * 0.5, baseY, bw, 2);
+      // its own mirror on the wet deck
+      const refl = g.createLinearGradient(0, baseY, 0, baseY + 26);
+      refl.addColorStop(0, 'rgba(150,180,210,0.13)');
+      refl.addColorStop(1, 'rgba(150,180,210,0)');
+      g.fillStyle = refl;
+      g.fillRect(hx - bw * 0.5, baseY, bw, 26);
+    }
+
+    /* 4 — WALL PRACTICALS on the fall wall: two neon strips + 3 lit windows.
+     * Each gets a baked spill disc, so the wall is LIT, not painted. */
+    for (let i = 0; i < 2; i++) {
+      const nx = 700 + i * 1180 + rng() * 160;
+      const col = i === 0 ? this.mood.pop : this.mood.pop2;
+      const nh = 26 + rng() * 18;
+      g.fillStyle = `rgba(${col},0.55)`;
+      g.fillRect(nx, 206, 2.6, nh);
+      g.fillStyle = `rgba(${col},0.14)`;
+      g.fillRect(nx - 2.4, 206, 7.4, nh);
+      bakeSpill(g, i === 0 ? this.heroDisc : this.glowCool, nx, 206 + nh * 0.5, 58, 0.16);
+      // mirrored strip in the deck below (cheap stand-in for the wall's light)
+      const mr = g.createLinearGradient(0, 120, 0, 150);
+      mr.addColorStop(0, `rgba(${col},0.10)`);
+      mr.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = mr;
+      g.fillRect(nx - 9, 120, 18, 30);
+    }
+    for (let i = 0; i < 3; i++) {
+      const wx = 380 + i * 840 + rng() * 200;
+      const wy = 178 + rng() * 44;
+      const ww = 7 + rng() * 12;
+      g.fillStyle = `rgba(${this.mood.highlight},${(0.16 + rng() * 0.16).toFixed(3)})`;
+      g.fillRect(wx, wy, ww, ww * 0.7);
+      g.fillStyle = 'rgba(0,0,0,0.55)';
+      g.fillRect(wx + ww * 0.46, wy, 0.9, ww * 0.7);
+      bakeSpill(g, this.glowWarm, wx + ww * 0.5, wy + ww * 0.35, 26, 0.10);
+    }
+
+    /* 5 — PIPES + VENT CONTACT AO: the existing wall runs get a bite line and
+     * the deck vents get a rake, so nothing floats on the concrete. */
+    for (const px3 of [640, 1560, 2280]) {
+      g.fillStyle = 'rgba(0,0,0,0.28)';
+      g.fillRect(px3 + 2.4, 176, 1.4, 68);
+    }
+    for (const vx2 of [420, 1180, 2050, 2510]) {
+      g.fillStyle = 'rgba(0,0,0,0.22)';
+      g.beginPath();
+      g.moveTo(vx2, 149);
+      g.lineTo(vx2 + 44, 149);
+      g.lineTo(vx2 + 33, 141);
+      g.lineTo(vx2 - 11, 141);
+      g.closePath();
+      g.fill();
+    }
+
     // film grade LAST so the shade, highlights, grain and split-tone unify
     // the reflections, the props and the concrete into one coherent frame
     bakeFilmGrade(g, W, H, this.mood, 0.42, rng);

@@ -41,10 +41,16 @@ export class Renderer {
   private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
     const a = 0.34 * Math.max(0, 1 - Math.abs(y) / 150)
     if (a < 0.02) return
-    ctx.globalAlpha = a
+    // DIRECTIONAL: the moon keys from the upper right, so the contact shadow
+    // is pushed lower-LEFT and stretched along that axis. Two fills, no state.
+    ctx.globalAlpha = a * 0.55
     ctx.fillStyle = '#04070b'
     ctx.beginPath()
-    ctx.ellipse(x, y + 3, w, w * 0.24, 0, 0, Math.PI * 2)
+    ctx.ellipse(x - w * 0.55, y + 3, w * 1.5, w * 0.2, -0.06, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = a
+    ctx.beginPath()
+    ctx.ellipse(x - w * 0.12, y + 2, w * 0.82, w * 0.2, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.globalAlpha = 1
   }
@@ -100,6 +106,10 @@ export class Renderer {
     // player
     player.draw(ctx, time)
 
+    // V3 REACTIVE LIGHT — the player's key/rim light + wet deck pool, keyed to
+    // whichever practical they are standing in (≤2 additive blits)
+    bg.drawPlayerLight?.(ctx, player.x, player.y)
+
     // projectiles
     projectiles.draw(ctx, time)
 
@@ -113,6 +123,13 @@ export class Renderer {
     fx.drawImpactFrames(ctx)
 
     ctx.restore()
+
+    // 2.5 REFLECTION POST-PASS — one 1/8-scale downscale of the frame above
+    // the deck line, blitted back flipped + rippled. Screen space, 4 blits,
+    // contains the player/enemies/FX because its source IS the frame.
+    // NOTE: the world camera (offset applied), not the parallax sky cam — the
+    // deck line is a world y, so using the sky cam would misalign the band.
+    bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality)
 
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
