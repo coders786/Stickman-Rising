@@ -9,6 +9,7 @@ import { buildCloudBank, bankParams, type BankParams } from './clouds'
 import { gameLedger } from '../render/ledger'
 import { WeatherFront, tintAlpha, tintColour } from './weather'
 import { rgbaConst } from '../render/color'
+import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -95,6 +96,8 @@ export interface BackgroundRenderer {
   warm?(): number
   /** Screen x of the moon — the stage's only light direction (contact shadows). */
   moonScreenX?(): number
+  /** The key light model (world/light.ts). */
+  lightState?(): { azimuth: number; elevation: number; warmth: number }
   /** Live weather, for the debug readout (world/weather.ts). */
   weatherState?(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null
 }
@@ -1255,6 +1258,8 @@ export class CyberBackground {
   /** The tint fill, resolved only when its quantised alpha changes. */
   private wxTint: string | null = null
   private wxTintKey = ''
+  /** THE KEY LIGHT — one model, every consumer (world/light.ts). */
+  private light: KeyLight = { azimuth: 0, elevation: 0.78, warmth: 0.45 }
   /** Last few run seeds, so a new run cannot be a near-copy of the last one
    *  (profile.ts §LAW 3). Bounded: three is enough for the metric to work. */
   private seedHistory: number[] = [];
@@ -1312,6 +1317,9 @@ export class CyberBackground {
     this.rig = new Rigging(this.profile, this.q);
     // Weather is a profile axis cluster: rarity, density and cadence of storms.
     this.storm.applyProfile?.(this.profile.weather);
+    // The key light is derived from the profile ONCE per run, and every lit
+    // thing in the frame (moon, shadows, rims, cable rim, glitter) reads it.
+    this.light = keyLightFor(this.profile);
     this.wxRainBase = Math.max(0.35, Math.min(1, this.profile.weather.rain));
     // THE FRONT — the run's weather is a climate, not a constant: inside a run
     // the sky is allowed to change its mind, slowly (world/weather.ts).
@@ -1380,6 +1388,9 @@ export class CyberBackground {
     }
   }
 
+  /** The key light, for anything that draws a lit edge (render/renderer.ts). */
+  lightState(): { azimuth: number; elevation: number; warmth: number; } { return this.light; }
+
   /** For the debug overlay / bench: what the sky is doing right now. */
   weatherState(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null {
     const wx = this.wx
@@ -1426,10 +1437,12 @@ export class CyberBackground {
     {
       // slow orbital drift (~5 min period) — the skybox is alive without
       // any per-frame cost: this runs inside the cached vault rebuild
-      const moonX = w * 0.87 - cx * 0.03 * cz - MOON_HALF + Math.sin(t * 0.021) * 46;
+      // The key's azimuth comes from the profile (world/light.ts), so the moon
+      // is a different direction every run and everything keyed to it follows.
+      this.moonX = moonCentreX(this.light, w, cx * 0.03 * cz, t);
+      const moonX = this.moonX - MOON_HALF;
       const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - MOON_HALF + Math.cos(t * 0.014) * 16;
-      this.moonX = moonX + MOON_HALF;
-      this.rig?.setRimSide(this.moonX < (this.vw * 0.5) ? -1 : 1);
+      this.rig?.setRimSide(rimDirection(this.moonX, this.vw));
       this.moonY = moonY + MOON_HALF;
       this.moonCover = 0;
     }
@@ -1574,13 +1587,14 @@ export class CyberBackground {
       const D = MOON_D * sizeMul;
       const half = D * 0.5;
       const drift = M ? M.drift : 1;
-      const moonX = w * 0.87 - cx * 0.03 * cz - half + Math.sin(t * 0.021 * drift) * 46;
+      const centre = moonCentreX(this.light, w, cx * 0.03 * cz, t, drift);
+      const moonX = centre - half;
       const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - half + Math.cos(t * 0.014 * drift) * 16;
-      this.moonX = moonX + half;
+      this.moonX = centre;
       this.moonY = moonY + half;
       // same rule as the contact shadows: the rims follow the moon, they do not
       // assume it is on the right because it usually is
-      this.rig?.setRimSide(this.moonX < (this.vw * 0.5) ? -1 : 1);
+      this.rig?.setRimSide(rimDirection(this.moonX, this.vw));
       ctx.globalAlpha = 1;
       ctx.drawImage(this.moonSpr, moonX, moonY, D, D);
       ctx.globalCompositeOperation = 'lighter';
@@ -1707,7 +1721,9 @@ export class CyberBackground {
     // is never absent. It answers the practical the player stands in (near) and
     // the phase (a crescent rims harder than a full disc, which flattens it).
     if (this.night) {
-      this.night.drawKeyRim(ctx, px, py, face, a, this.t);
+      // Which side of the figure catches the key: the moon's, always. `face`
+      // only decides the crescent's edge when the key is directly behind.
+      this.night.drawKeyRim(ctx, px, py, face, a, this.t, rimDirection(this.moonX, this.vw));
     }
   }
 
@@ -1768,7 +1784,10 @@ export class CyberBackground {
     if (this.night) {
       // Wetness answers the weather: a hazed night has a dry, matte roof; a
       // squall makes the deck a mirror. One multiply, no extra blit.
-      const wet = Math.min(1.6, (0.55 + 0.45 * Math.min(1, this.storm.intensity * 4)) * this.wxWet);
+      const wet = Math.min(
+        1.75,
+        (0.55 + 0.45 * Math.min(1, this.storm.intensity * 4)) * this.wxWet * reflectionGain(this.light),
+      );
       this.night.drawGlitter(ctx, this.moonX, deckY, w, h, wet, this.t);
     }
   }

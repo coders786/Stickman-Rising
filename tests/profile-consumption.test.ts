@@ -100,6 +100,14 @@ test('the O-08 sweep is wired into the draw path, not just written', () => {
   assert.match(bg, /this\.storm\.setRainScale\(this\.wxRainBase \* s\.rain\)/, 'the front does not reach the rain')
   assert.match(bg, /this\.rig\?\.windState\.setGust\(s\.gust\)/, 'the front does not reach the wind')
   assert.match(bg, /if \(this\.wxTint && this\.q !== 'low'\)/, 'the weather tint is not drawn (or is not tier-gated)')
+  // ONE KEY LIGHT: the model is built, and every lit consumer reads it.
+  assert.match(bg, /this\.light = keyLightFor\(this\.profile\)/, 'the key light model is never built')
+  assert.match(bg, /this\.moonX = moonCentreX\(this\.light/, 'the moon is not placed by the key light')
+  assert.match(bg, /this\.rig\?\.setRimSide\(rimDirection\(this\.moonX, this\.vw\)\)/, 'the cable rim does not follow the key')
+  assert.match(bg, /reflectionGain\(this\.light\)/, 'the reflection does not answer the key')
+  const renderer = read('src/game/render/renderer.ts')
+  assert.match(renderer, /shadowReach\(key\.elevation, frames\)/, 'contact shadows do not use the key light')
+  assert.match(renderer, /shadowDirection\(x, moonW\)/, 'contact shadow direction is not from the key')
   // The moon's screen x is exposed for the contact shadows.
   assert.match(bg, /moonScreenX\(\): number/, 'the moon position is not exposed to the renderer')
 })

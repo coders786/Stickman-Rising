@@ -5,6 +5,7 @@
  * Canvas2D blits so the frame budget belongs to the simulation.
  */
 
+import { shadowDirection, shadowReach } from '../world/light'
 import { Camera } from '../core/camera'
 import { FX } from '../fx/fx'
 import { Enemy } from '../entities/enemy'
@@ -46,16 +47,9 @@ export class Renderer {
    *  figure left of the moon casts further left, a figure right of it casts
    *  right. `moonW` is the moon's world x (Infinity = no sky, keep the old look).
    *  Cost: one comparison and a multiply per figure. */
-  private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, moonW = Infinity): void {
+  private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, dir = -1, reach = 1): void {
     const a = 0.34 * Math.max(0, 1 - Math.abs(y) / 150)
     if (a < 0.02) return
-    // -1 pushes the shadow to the figure's left, +1 to the right.
-    const dir = Number.isFinite(moonW) ? (x < moonW ? -1 : 1) : -1
-    // The further from the light, the longer and softer the shadow: a figure at
-    // the moon's foot casts almost straight down.
-    const reach = Number.isFinite(moonW)
-      ? Math.min(1.25, 0.35 + Math.abs(x - moonW) / 2200)
-      : 1
     ctx.globalAlpha = a * 0.55
     ctx.fillStyle = '#04070b'
     ctx.beginPath()
@@ -88,7 +82,18 @@ export class Renderer {
     // The moon's world x, for the contact shadows. Screen space -> world space
     // through the same camera the ctx is carrying, so the two cannot drift.
     const moonSX = bg.moonScreenX?.()
-    const moonW = Number.isFinite(moonSX) ? cam.x + cam.offX + ((moonSX as number) - w / 2) / cam.zoom : Infinity
+    const hasKey = Number.isFinite(moonSX)
+    const moonW = hasKey ? cam.x + cam.offX + ((moonSX as number) - w / 2) / cam.zoom : Infinity
+    const key = bg.lightState?.()
+    // Distance to the key measured in FRAMES, not pixels: the same body casts the
+    // same shadow relative to the picture on a 320 px phone and a 2560 px
+    // monitor. `shadowReach` owns the shape of the response.
+    const reachAt = (x: number): number => {
+      if (!hasKey || !key) return 1
+      const frames = Math.abs(x - moonW) * cam.zoom / Math.max(1, w)
+      return shadowReach(key.elevation, frames)
+    }
+    const dirAt = (x: number): -1 | 1 => (hasKey ? shadowDirection(x, moonW) : -1)
 
     // arena floor + stage props
     bg.drawArena(ctx)
@@ -98,11 +103,11 @@ export class Renderer {
     props.draw(ctx, cam.x + cam.offX - viewHalfW, cam.x + cam.offX + viewHalfW)
 
     // grounding first, so every figure stands ON its contact shadow
-    this.ground(ctx, player.x, player.y, 30, moonW)
+    this.ground(ctx, player.x, player.y, 30, dirAt(player.x), reachAt(player.x))
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      this.ground(ctx, e.x, e.y, 28, moonW)
+      this.ground(ctx, e.x, e.y, 28, dirAt(e.x), reachAt(e.x))
     }
 
     // ground decals + debris

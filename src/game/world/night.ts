@@ -203,8 +203,13 @@ export class NightLayer {
    *  proximity to a practical (the warm/cool light the player stands in); the
    *  rim stays the MOON's colour and merely brightens, because a light that
    *  changes hue as you walk reads as a bug. */
-  drawKeyRim(ctx: CanvasRenderingContext2D, px: number, py: number, face: number, near: number, t: number): void {
-    const spr = this.profile.moon.phase < 0.5 ? this.rimR : (face >= 0 ? this.rimR : this.rimL)
+  drawKeyRim(ctx: CanvasRenderingContext2D, px: number, py: number, face: number, near: number, t: number, keySide = 1): void {
+    // A crescent presents one lit edge no matter where you stand, so it takes
+    // the key's side. A gibbous has TWO lit edges and the figure's own facing
+    // picks which one faces the camera — but still biased by where the key is.
+    const spr = this.profile.moon.phase < 0.5
+      ? (keySide >= 0 ? this.rimR : this.rimL)
+      : (face * keySide >= 0 ? this.rimR : this.rimL)
     if (!spr) return
     const key = this.profile.light.key
     const breathe = 0.9 + 0.1 * Math.sin(t * 0.9)

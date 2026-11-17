@@ -38,8 +38,8 @@ export const PROFILE_CONSUMERS: readonly AxisConsumer[] = [
   // ---- moon (baked plate, GPU or CPU) ----
   { axis: 'moon.phase', file: 'src/gpu/sky.ts', how: 'uPhase pushes the terminator; also gates the glitter gain' },
   { axis: 'moon.size', file: 'src/game/world/background.ts', how: 'draws the plate at MOON_D × size and scales the halo with it' },
-  { axis: 'moon.tilt', file: 'src/gpu/sky.ts', how: 'uTilt rotates the key direction, so the crescent leans' },
-  { axis: 'moon.tint', file: 'src/gpu/sky.ts', how: 'uTint mixes the palette warm/pop into the regolith' },
+  { axis: 'moon.tilt', file: 'src/game/world/light.ts', how: 'the key light azimuth: it moves the moon in frame, and shadows/rims/glitter follow it (uTilt still leans the crescent)' },
+  { axis: 'moon.tint', file: 'src/gpu/sky.ts', how: 'uTint mixes the palette warm/pop into the regolith; light.ts reads it as the warmth of the key and of the reflection' },
   { axis: 'moon.corona', file: 'src/gpu/sky.ts', how: 'uCorona scales the inner and outer scattering' },
   { axis: 'moon.drift', file: 'src/game/world/background.ts', how: 'multiplies the slow orbital wander' },
   // ---- stars ----
