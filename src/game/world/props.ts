@@ -380,12 +380,20 @@ export class PropField {
   private densityCap = 0
   /** Multiplier on the arrival gap — jittery lanes breathe unevenly. */
   private timerJitter = 1
+  /** Weight multiplier on the two CRATE kinds (supply / med). A run whose
+   *  profile is crate-heavy stocks the roof with boxes; a run that is not
+   *  leaves the exotic kinds (fuel, steam, shock, smoke) to carry the scene. */
+  private crateBias = 1
 
   /** Adopt the run profile's prop axes. Called once per run; pure data, so it
    *  is safe in a headless test world. */
-  setRunDensity(density: number, timerJitter = 1): void {
+  setRunDensity(density: number, timerJitter = 1, crateBias = 0.5): void {
     this.densityCap = Math.max(1, Math.min(6, Math.round(density)))
     this.timerJitter = Math.max(0.5, Math.min(2, timerJitter))
+    // profile crateBias is 0.3..0.85; map it to a weight multiplier 0.7..1.45
+    // around the neutral 0.5 so the authored weighting is preserved at the
+    // midpoint and only the RATIO between boxes and the exotic kinds moves.
+    this.crateBias = Math.max(0.6, Math.min(1.6, 0.7 + (crateBias - 0.3) * 1.36))
     // Bring the first arrival forward/back so the density reads IMMEDIATELY:
     // a 5-prop run that waits the authored 3 s looks identical to a 2-prop run.
     const want = this.densityCap - 1
@@ -428,6 +436,11 @@ export class PropField {
     return this.clock >= CAP_RAMP_AT ? CAP_LATE : CAP_EARLY
   }
 
+  /** Per-kind weight, after the run's crate bias. */
+  private weightOf(k: PropKind): number {
+    return k === 'supply' || k === 'med' ? this.crateBias : 1
+  }
+
   private aliveCount(): number {
     let n = 0
     for (const p of this.props) if (!p.dead) n++
@@ -441,14 +454,14 @@ export class PropField {
     for (const k of KINDS) {
       let taken = false
       for (const p of this.props) if (!p.dead && p.kind === k) { taken = true; break }
-      if (!taken) total += WEIGHT[k]
+      if (!taken) total += WEIGHT[k] * this.weightOf(k)
     }
     let r = h * total
     for (const k of KINDS) {
       let taken = false
       for (const p of this.props) if (!p.dead && p.kind === k) { taken = true; break }
       if (taken) continue
-      r -= WEIGHT[k]
+      r -= WEIGHT[k] * this.weightOf(k)
       if (r <= 0) return k
     }
     return 'med'

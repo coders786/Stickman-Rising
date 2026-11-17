@@ -74,6 +74,11 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>('title')
   const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
   const [stats, setStats] = useState<RunStats | null>(null)
+  /* Which night this was: the profile label + seed of the sky the player just
+     fought under. Shown on the results card because the identity line in-game
+     only lives for 18 s — a player who wants to re-roll "that ribbed night"
+     needs to still be able to read it when the run is over. */
+  const [nightLabel, setNightLabel] = useState('')
   const [runSword, setRunSword] = useState<SwordId>('katana')
   const submissionKey = useRef<string | null>(null)
   /* persisted state starts from SSR-safe defaults; real values load in a
@@ -153,6 +158,8 @@ export default function Home() {
       } else if (e.type === 'gameover') {
         setRunSword(game.player.sword.id)
         setStats(e.stats)
+        const night = game.runIdentity?.()
+        setNightLabel(night ? `${night.label} · ${night.id}` : '')
         setScreen('gameover')
         setSubmitted(false)
         setSubmitError(null)
@@ -664,6 +671,13 @@ export default function Home() {
             <div className="mt-4 border border-amber-500/60 bg-amber-950/40 px-6 py-2 text-center">
               <div className="text-[10px] font-black tracking-[0.3em] text-amber-400">NEW BLADE UNLOCKED</div>
               <div className="text-sm font-black tracking-widest text-amber-200">{newUnlocks.map((id) => SWORDS[id].name).join(' / ')}</div>
+            </div>
+          )}
+
+          {nightLabel && (
+            <div className="mt-4 text-center">
+              <div className="text-[9px] font-black tracking-[0.4em] text-zinc-500">TONIGHT&apos;S RIG</div>
+              <div className="mt-0.5 font-mono text-[11px] tracking-[0.2em] text-cyan-300/80">{nightLabel}</div>
             </div>
           )}
 

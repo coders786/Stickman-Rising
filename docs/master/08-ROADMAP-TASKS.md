@@ -24,7 +24,7 @@ precede M2.
 | Task | What | Files | Gate | Risk |
 |---|---|---|---|---|
 | `T0.5.1` | Reproduce each of the 8 failures individually and classify: stale assertion vs real behaviour bug | `tests/*` (read-only) | failure list matches D4 | R-01 |
-| `T0.5.1a` | **DONE** — triaged. 3 fixed by code (loose-pack reach, l1/l2 whole-body + living joints, contact-window measurement per D13); 5 remain, each with a repro in `22-BUG-BOUNTY.md` §2 | — | 289/294 | R-01 |
+| `T0.5.1a` | **DONE** — triaged. 3 fixed by code (loose-pack reach, l1/l2 whole-body + living joints, contact-window measurement per D13); 5 remain, each with a repro in `22-BUG-BOUNTY.md` §2 | — | 308/313 (5 known fails) | R-01 |
 | `T0.5.2` | Fix **behaviour** for each real bug | `src/game/combat/attacks.ts`, `src/game/anim/clips.ts`, others as classified | `npm test` | R-26 |
 | `T0.5.3` | For any assertion that was genuinely wrong, record the reversal in `DECISIONS.md` **before** editing it | `DECISIONS.md`, `tests/*` | 244/244 | D4 |
 | `T0.5.4` | Add `npm run gate` = `tsc --noEmit && vitest run` | `package.json` | G0+G1 in one command | — |
@@ -194,6 +194,24 @@ render interpolation. `U6` needs `07`'s profile data. Effort **4–6 days [J]**.
    building weather first means building it twice.
 5. **Governor last** — it can only tune what exists, and it must be tuned against
    the real frame cost, not a guess.
+
+## Run 2 (the O-sweep) — what landed against these tasks
+
+Written after the fact, because a task list that only ever grows is a task list
+nobody trusts. This is what the sweep actually delivered, and against which row:
+
+| Task row | What landed | Still open |
+|---|---|---|
+| `T3.4`, `T3.5` | `world/clouds.ts`: one ragged cumulus bank baked from the seed, **absent below 0.4 coverage**, seam-wrapped, lifted by `clouds.altitude`, torn by `clouds.texture`; the whole bank is **1 ledger surface + 1 blit** | the GPU fBm variant (`T3.1`–`T3.3`) and the two-variant alpha cross-fade |
+| `T4.1` (partial) | `world/wind.ts`: ONE wind field sampled by the cloud drift, the cables and the pennants — the profile's speed is felt as weather, not as a filter | the `azimuth`/`elevation` light model; the moon still sits where the sky placed it |
+| `T4.3` (partial) | `renderer.ground()` projects the contact shadow **away from the moon**, stretched by distance; `CyberBackground.moonScreenX()` is the single source of that direction (O-10) | the nearest-practical spill |
+| `T4.5` | Rooftop rigging (`world/rigging.ts`): 1–3 cables × 19 points + up to 12 pennants, tier-budgeted, one stroke for all cables and one fill for all flags | prop shadows proper |
+| `T5.x` (partial) | `StormEngine.applyProfile({stormBias, rain, cadence})` — rarity, density and cadence of lightning are profile axes now | the ≥8 s weather state machine (`T5.1`) and the LUT cross-fade (`T5.2`) |
+| `T6.14` (partial) | `Rigging.stats()` reports cables/flags/points; `frameLog` snapshot cached at 2 Hz | the remaining metrics |
+
+Every axis is registered in `world/consumers.ts` and gated by
+`tests/profile-consumption.test.ts`; the art itself is covered by
+`tests/rigging.test.ts`, `tests/clouds.test.ts` and `tests/night-plates.test.ts`.
 
 ## Total
 

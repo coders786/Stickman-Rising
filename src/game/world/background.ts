@@ -4,6 +4,9 @@ import { SkyVaultCache, blitWorldFrustum } from '../render/bhst'
 import { MOOD_PALETTES, moodForSeed, type MoodPalette } from './mood'
 import { makeProfile, type EnvironmentProfile } from './profile'
 import { NightLayer } from './night'
+import { Rigging } from './rigging'
+import { buildCloudBank, bankParams, type BankParams } from './clouds'
+import { gameLedger } from '../render/ledger'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -88,6 +91,8 @@ export interface BackgroundRenderer {
   plateStats?(): ReturnType<NightLayer['stats']> | null
   /** Bake the run's plates now and report the cost in ms (see warm above). */
   warm?(): number
+  /** Screen x of the moon — the stage's only light direction (contact shadows). */
+  moonScreenX?(): number
 }
 
 /* ============================ seeded RNG ================================= */
@@ -422,10 +427,16 @@ function bakeArchetype(g: CanvasRenderingContext2D, b: BldSpec, kind: ArchKind):
 /** AURORA / HIGH-CLOUD SHEET — a sixth parallax plane baked from soft
  *  procedural ribbons. Drifts at its own factor with a slow alpha pulse;
  *  lives inside the cached sky vault so the frame cost is one blit. */
-function buildAuroraTile(pal: MoodPalette): HTMLCanvasElement {
+function buildAuroraTile(pal: MoodPalette, hue = 0.2): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 190);
   const rng = mulberry32(0xa0c17e);
-  const cols = [pal.pop2, pal.shadow, pal.pop, pal.highlight];
+  // AURORA HUE (profile axis): 0 = a cold ribbon (cool pop2 / shadow),
+  // 1 = a warm one (pop / highlight). The two middle colours are mixed by the
+  // axis so the ribbon is one continuous identity, not a random palette pick.
+  const cold = hue < 0.5;
+  const a0 = cold ? pal.pop2 : pal.pop;
+  const a1 = cold ? pal.pop : pal.highlight;
+  const cols = [a0, pal.shadow, a1, cold ? pal.pop : pal.pop2];
   g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 5; i++) {
     const col = cols[i % cols.length];
@@ -468,9 +479,29 @@ function buildAuroraTile(pal: MoodPalette): HTMLCanvasElement {
 function bakeFilmGrade(
   g: CanvasRenderingContext2D, w: number, h: number,
   pal: MoodPalette, strength: number, rng: () => number,
+  grade?: { temperature: number; contrast: number; saturation: number; grain: number },
 ): void {
   g.save();
   g.globalCompositeOperation = 'source-atop';
+  // FOUR PROFILE AXES, all bake-time:
+  //  · contrast scales the split-tone strength and the black point;
+  //  · temperature biases which side gets the warm stop (a warm run pushes
+  //    the highlight further into the frame, a cool run pulls it back);
+  //  · saturation is applied LAST as a desaturating pass below 1 (canvas has
+  //    no saturation boost that is not a lie, so above 1 we warm instead);
+  //  · grain scales both the count and the amplitude of the film noise.
+  const contrast = grade ? Math.max(0.7, Math.min(1.4, grade.contrast)) : 1;
+  const temp = grade ? Math.max(-1, Math.min(1, grade.temperature)) : 0;
+  const grainAmt = grade ? Math.max(0, Math.min(1, grade.grain)) : 0.6;
+  strength *= contrast;
+  if (temp !== 0) {
+    const warmSide = temp > 0 ? w : w * 0.3;
+    const warm = g.createLinearGradient(warmSide, 0, 0, h);
+    warm.addColorStop(0, `rgba(${pal.highlight},${(Math.abs(temp) * 0.05).toFixed(3)})`);
+    warm.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = warm;
+    g.fillRect(0, 0, w, h);
+  }
   const sg = g.createLinearGradient(0, h, w * 0.35, 0);
   sg.addColorStop(0, `rgba(${pal.shadow},${(0.14 * strength).toFixed(3)})`);
   sg.addColorStop(0.6, `rgba(${pal.shadow},${(0.04 * strength).toFixed(3)})`);
@@ -483,11 +514,19 @@ function bakeFilmGrade(
   g.fillStyle = hg;
   g.fillRect(0, 0, w, h);
   // film grain — the analog texture adults read as "shot on film"
-  const n = Math.min(9000, Math.round((w * h) / 900));
+  const n = Math.min(9000, Math.round(((w * h) / 900) * (0.4 + grainAmt * 1.1)));
   for (let i = 0; i < n; i++) {
-    const a = (0.012 + rng() * 0.022).toFixed(3);
+    const a = ((0.012 + rng() * 0.022) * (0.55 + grainAmt * 0.8)).toFixed(3);
     g.fillStyle = rng() < 0.5 ? `rgba(226,238,250,${a})` : `rgba(0,0,0,${a})`;
     g.fillRect(rng() * w, rng() * h, 1, 1);
+  }
+  // SATURATION below 1: a neutral veil in 'saturation' mode replaces the
+  // backdrop's saturation with grey's, which is exactly a desaturating pass.
+  if (grade && grade.saturation < 0.999) {
+    const k = Math.max(0, Math.min(1, 1 - grade.saturation));
+    g.globalCompositeOperation = 'saturation';
+    g.fillStyle = `rgba(128,128,128,${(k * 0.9).toFixed(3)})`;
+    g.fillRect(0, 0, w, h);
   }
   g.restore();
 }
@@ -495,12 +534,16 @@ function bakeFilmGrade(
 /** SCREEN VIGNETTE — one baked plate, one blit in the existing weather pass.
  *  Dark corners guide the eye to the centre (visual hierarchy) without any
  *  live radial gradient or full-screen post engine. */
-function buildVignettePlate(w: number, h: number): HTMLCanvasElement {
+function buildVignettePlate(w: number, h: number, strength = 1): HTMLCanvasElement {
   const { c, g } = makeCanvas(Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)));
   const rg = g.createRadialGradient(w * 0.5, h * 0.46, Math.min(w, h) * 0.2, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
   rg.addColorStop(0, 'rgba(0,0,0,0)');
-  rg.addColorStop(0.6, 'rgba(4,8,14,0.055)');
-  rg.addColorStop(1, 'rgba(2,4,9,0.5)');
+  // VIGNETTE (profile axis): 0.55..1.1 scales the corner falloff. The centre
+  // stop moves too, so a low-vignette run does not merely get a lighter edge —
+  // it gets a wider clear field, which changes where the eye rests.
+  const v = Math.max(0.3, Math.min(1.4, strength));
+  rg.addColorStop(0.6, `rgba(4,8,14,${(0.055 * v).toFixed(3)})`);
+  rg.addColorStop(1, `rgba(2,4,9,${Math.min(0.72, 0.5 * v).toFixed(3)})`);
   g.fillStyle = rg;
   g.fillRect(0, 0, w, h);
   const wg = g.createLinearGradient(0, h * 0.74, 0, h);
@@ -1012,16 +1055,22 @@ const CLOUD_BLOBS: { x: number; y: number; r: number }[] = [];
 /** seamless drifting cloud bank — two flavours built from one layout:
  *  DARK (source-over, the night silhouette) and LIT (additive, re-blitted
  *  while lightning scatters through the deck). Horizontally periodic. */
-function buildCloudTile(lit: boolean): HTMLCanvasElement {
+function buildCloudTile(lit: boolean, texture = 0.5): HTMLCanvasElement {
   const { c, g } = makeCanvas(TILE, 300);
   const rng = mulberry32(0x3c19d2);
-  for (let i = 0; i < 16; i++) {
+  // CLOUD TEXTURE (profile axis): at 0 the deck is a soft sheet of few, wide
+  // blobs; at 1 it is torn into many small ones with harder cores. Blob count
+  // and core alpha are the two handles — both are bake-time, so the frame cost
+  // is identical either way.
+  const count = Math.round(10 + texture * 18);
+  const coreA = 0.13 + texture * 0.2;
+  for (let i = 0; i < count; i++) {
     const cx = rng() * TILE;
     const cy = 60 + rng() * 170;
-    const rx = 130 + rng() * 220;
-    const ry = 26 + rng() * 58;
+    const rx = (130 + rng() * 220) * (1 - texture * 0.45);
+    const ry = (26 + rng() * 58) * (1 - texture * 0.35);
     if (!lit) CLOUD_BLOBS.push({ x: cx, y: cy, r: rx });
-    const a = lit ? 0.1 + rng() * 0.12 : 0.16 + rng() * 0.16;
+    const a = (lit ? 0.1 + rng() * 0.12 : coreA + rng() * 0.16) * (0.85 + texture * 0.4);
     const col = lit ? '168,198,236' : '16,24,40';
     for (let k = -1; k <= 1; k++) {
       const x = cx + k * TILE;
@@ -1184,6 +1233,12 @@ export class CyberBackground {
   private profile: EnvironmentProfile | null = null;
   /** Baked plates + the two reactive passes for the current profile. */
   private night: NightLayer | null = null;
+  /** Rooftop rigging: cables + pennants on the shared wind (world/rigging.ts). */
+  private rig: Rigging | null = null;
+  /** The cumulus bank (world/clouds.ts) — null on a clear run. */
+  private bank: HTMLCanvasElement | null = null;
+  /** Its derived parameters, resolved ONCE (the draw path must not allocate). */
+  private bankP: BankParams | null = null;
   /** Last few run seeds, so a new run cannot be a near-copy of the last one
    *  (profile.ts §LAW 3). Bounded: three is enough for the metric to work. */
   private seedHistory: number[] = [];
@@ -1214,6 +1269,8 @@ export class CyberBackground {
    *  art is identical at every tier — only how much of it we draw differs. */
   setQuality(q:Quality):void{
     this.q=q;
+    // Tiers are DRAW budgets: the rig keeps its physics and loses cables.
+    this.rig?.setTier(q);
   }
 
   /** RE-SEED THE SKYLINE — the whole point of procedural generation: every
@@ -1234,6 +1291,11 @@ export class CyberBackground {
     // at once is exactly the doubling the ledger exists to prevent.
     this.night?.dispose();
     this.night = new NightLayer(this.profile);
+    // The rigging is part of the settlement, not of the sky: it is rebuilt per
+    // run because the span, sag and pennant count are run identity.
+    this.rig = new Rigging(this.profile, this.q);
+    // Weather is a profile axis cluster: rarity, density and cadence of storms.
+    this.storm.applyProfile?.(this.profile.weather);
     this.pollMood = -1;           // force the horizon bloom to re-bake
     this.built=false;
     this.skyVault.invalidate();   // force one composite with the NEW skyline
@@ -1272,12 +1334,19 @@ export class CyberBackground {
     // no tile ever needs re-rendering.
   }
 
+  /** Screen x of the moon's centre — the only light direction the stage has.
+   *  The contact shadows and the rim both key from it (see renderer.ground). */
+  moonScreenX(): number { return this.moonX; }
+
   /** advance ambient animation; dt in seconds (clamped internally).
    *  The sign/puddle state machines are gone — everything animated in the
    *  city layer is baked now, so this only advances the shared clock. */
   update(dt: number): void {
     const d = dt > 0 ? (dt < 0.1 ? dt : 0.1) : 0;
     this.t += d;
+    // Rigging physics runs on the fixed sub-step inside SpringChain, so a slow
+    // frame bows the cables the same distance a fast one does.
+    this.rig?.update(d);
   }
 
   lightningI():number{return this.storm.intensity}
@@ -1397,6 +1466,19 @@ export class CyberBackground {
       this.blitRow(ctx, this.cloudDark, offB, cloudY);
       ctx.globalAlpha = 0.08 + 0.38 * cov;
       this.blitRow(ctx, this.cloudDark, offC, cloudY + 104);
+      ctx.globalAlpha = 1;
+    }
+
+    /* 2.55 — THE CUMULUS BANK: the only cloud surface with a silhouette.
+     * One blit when the profile says the night has one; skipped entirely on a
+     * clear run. Sits between the soft decks and the aurora, so the ribbons
+     * pass behind the mass the way high aurora does. */
+    if (this.bank) {
+      const B = this.bankP;
+      const bOff = mod(-t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) - cx * 0.026 * cz, TILE);
+      const bY = hy - 210 + (B ? B.lift : 0);
+      ctx.globalAlpha = B ? B.opacity : 0.6;
+      for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(this.bank, bx, bY);
       ctx.globalAlpha = 1;
     }
 
@@ -1639,6 +1721,9 @@ export class CyberBackground {
     // the stairwell and the broken streetlight, its ground pool, the moon
     // pool) — three props, zero live state
     blitWorldFrustum(ctx, this.arenaTile, ARENA_X0, 0, viewL, viewR);
+    // ROOFTOP RIGGING — cables and pennants, in world space, behind the
+    // figures and in front of the skyline. One stroke for every cable.
+    this.rig?.draw(ctx);
     // BROKEN STREETLIGHT — restored foreground practical, one baked blit.
     // The pole's rim light, glow spill and contact AO are all in the sprite;
     // its flipped reflection is baked into the arena tile below.
@@ -1670,7 +1755,7 @@ export class CyberBackground {
     // CINEMATIC VIGNETTE — ONE baked plate, ONE blit. Dark corners focus
     // attention on the action; no live gradient, no post-processing engine.
     if (!this.vignette || this.vigW !== this.vw || this.vigH !== this.vh) {
-      this.vignette = buildVignettePlate(this.vw, this.vh);
+      this.vignette = buildVignettePlate(this.vw, this.vh, this.profile ? this.profile.grade.vignette : 1);
       this.vigW = this.vw; this.vigH = this.vh;
     }
     ctx.drawImage(this.vignette, 0, 0);
@@ -1732,9 +1817,25 @@ export class CyberBackground {
     // arrays instead of appending a second set of sprites/discs forever.
     this.glyphSpr.length = 0;
     for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
-    this.cloudDark = buildCloudTile(false);
+    const profForBake = this.profile ?? makeProfile(this.runSeed);
+    this.cloudDark = buildCloudTile(false, profForBake.clouds.texture);
     this.fogPlane = buildFogPlane();
-    this.auroraTile = buildAuroraTile(this.mood);
+    this.auroraTile = buildAuroraTile(this.mood, profForBake.aurora.hue);
+    // THE BANK: a ragged cumulus silhouette on the skyline. Null on a clear
+    // run (coverage below 0.4) — one of the four cloud surfaces is allowed to
+    // be absent, and its absence is what makes a clear night read as clear.
+    // THROUGH THE LEDGER, not around it: one surface, 1.7 MB, counted.
+    if (typeof document !== 'undefined') {
+      const bankKey = `cloudbank:${profForBake.seed}`
+      const bankSurface = gameLedger.acquire(bankKey, TILE, 210, 'sky') as unknown as HTMLCanvasElement
+      const bankHost = buildCloudBank(profForBake, TILE, 210, bankSurface)
+      if (!bankHost) gameLedger.release(bankKey)
+      this.bank = bankHost
+      this.bankP = bankHost ? bankParams(profForBake) : null
+    } else {
+      this.bank = null
+      this.bankP = null
+    }
     this.lampSpr = this.buildLampProp();
     // STARS: density and warm/cool split come from the profile, so a clear run
     // and an overcast run are visibly different skies (not just different alpha).
@@ -3227,7 +3328,7 @@ export class CyberBackground {
 
     // film grade LAST so the shade, highlights, grain and split-tone unify
     // the reflections, the props and the concrete into one coherent frame
-    bakeFilmGrade(g, W, H, this.mood, 0.42, rng);
+    bakeFilmGrade(g, W, H, this.mood, 0.42, rng, this.profile?.grade);
     return c;
   }
 

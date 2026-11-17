@@ -122,6 +122,15 @@ export class SpringChain {
    *  frame (e.g. from the scabbard angle). */
   dirX = 0
   dirY = 1
+  /** When true the LAST point is held at (tailX, tailY) as well as the root:
+   *  this is what turns a hanging rope into a CABLE between two anchors, which
+   *  is the difference between a scabbard and the aerial rigging of a rooftop. */
+  tailPinned = false
+  tailX = 0
+  tailY = 0
+  /** Lateral wind acceleration (px/s²), positive = +x. Set per frame by the
+   *  owner; the chains read it, they never read the clock themselves. */
+  wind = 0
 
   constructor(cfg: Partial<ChainConfig> = {}, fixedDt = 1 / 120) {
     this.cfg = { ...DEFAULT_CHAIN, ...cfg }
@@ -163,10 +172,15 @@ export class SpringChain {
       this.acc -= this.fixed
       n++
     }
-    // Pin the root AFTER integrating, so the chain is dragged by its anchor
-    // rather than being accelerated toward it.
+    // Pin the anchors AFTER integrating, so the chain is dragged by its ends
+    // rather than being accelerated toward them.
     this.p[0] = this.rootX
     this.p[1] = this.rootY
+    if (this.tailPinned) {
+      const last = (this.points - 1) * 2
+      this.p[last] = this.tailX
+      this.p[last + 1] = this.tailY
+    }
     return n
   }
 
@@ -186,6 +200,10 @@ export class SpringChain {
       const f = follow
       let ax = -k * (this.p[idx] - rx) - c * this.v[idx]
       let ay = -k * (this.p[idx + 1] - ry) - c * this.v[idx + 1] + gravity
+      // Wind enters as a lateral acceleration on every interior point. A cable
+      // in a gust does not translate, it bows — which is exactly what an
+      // acceleration field produces and a position offset would not.
+      ax += this.wind
       ax *= f
       ay *= f
       this.v[idx] += ax * h
@@ -195,6 +213,11 @@ export class SpringChain {
     }
     this.p[0] = this.rootX
     this.p[1] = this.rootY
+    if (this.tailPinned) {
+      const last = (this.points - 1) * 2
+      this.p[last] = this.tailX
+      this.p[last + 1] = this.tailY
+    }
     // One inextensibility pass, root outward: a chain that stretches reads as
     // rubber, and one pass is enough because the springs are already stiff.
     for (let i = 1; i < n; i++) {
@@ -212,6 +235,21 @@ export class SpringChain {
       const vn = this.v[b] * dx + this.v[b + 1] * dy
       this.v[b] -= vn * dx
       this.v[b + 1] -= vn * dy
+    }
+    // With both ends held, a forward-only pass leaves the span slack on one
+    // side (the tail end absorbs all the error). One backward pass spreads it.
+    if (this.tailPinned) {
+      for (let i = n - 1; i > 1; i--) {
+        const b = i * 2, a = (i - 1) * 2
+        let dx = this.p[a] - this.p[b]
+        let dy = this.p[a + 1] - this.p[b + 1]
+        const d = Math.hypot(dx, dy)
+        if (d < 1e-6) { dx = 0; dy = 1 }
+        else { dx /= d; dy /= d }
+        const target = Math.min(link * 1.15, Math.max(link * 0.86, d))
+        this.p[a] = this.p[b] + dx * target
+        this.p[a + 1] = this.p[b + 1] + dy * target
+      }
     }
   }
 

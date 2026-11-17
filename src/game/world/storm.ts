@@ -49,6 +49,26 @@ export class StormEngine{
  }
  private random(){this.seed^=this.seed<<13;this.seed^=this.seed>>>17;this.seed^=this.seed<<5;return(this.seed>>>0)/4294967296}
  setQuality(q:StormQuality){this.quality=q}
+ /** THE RUN'S WEATHER (world/profile.ts `weather.*`).
+  *
+  * Three numbers, and each one changes something a player can notice:
+  *  · `stormBias` makes storms rare or frequent — a calm run is calm;
+  *  · `rain` scales the density of the drops when one does arrive;
+  *  · `cadence` divides the interval again, so a "stormy" run gets lightning
+  *    close together and a "settled" one gets a single distant flash.
+  *
+  * Applied as multipliers on the authored schedule rather than as a new
+  * schedule, because the existing timing is tuned: a bias of 1 must reproduce
+  * exactly today's weather. */
+ applyProfile(w:{stormBias:number;rain:number;cadence:number}):void{
+  if(!w)return
+  const clamp=(v:number,lo:number,hi:number)=>Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):1
+  this.rainScale=clamp(w.rain,.35,1)
+  this.stormBias=clamp(w.stormBias,.35,2)
+  this.strikeCadence=clamp(w.cadence,.5,2)
+ }
+ private stormBias=1
+ private strikeCadence=1
  setRainScale(v:number){this.rainScale=Number.isFinite(v)?Math.max(0,Math.min(1,v)):1}
  resize(w:number,h:number){if(Number.isFinite(w)&&w>0)this.width=w;if(Number.isFinite(h)&&h>0)this.height=h}
  setView(v:StormView){
@@ -75,7 +95,7 @@ export class StormEngine{
  private step(dt:number){
   this.t+=dt;this.strikeAge+=dt;this.nextStrike-=dt
   if(this.nextStrike<=0){
-   this.strikeAge=0;this.nextStrike=4+this.random()*3;this.strikes++;this.azimuth=this.random()*1.6-.8
+   this.strikeAge=0;this.nextStrike=(4+this.random()*3)/(this.stormBias*this.strikeCadence);this.strikes++;this.azimuth=this.random()*1.6-.8
    for(let i=0;i<21;i++){this.bolt[i*2]=(this.random()-.5)*.12;this.bolt[i*2+1]=i/20}
    // fork branches peel off the main channel at random heights
    for(let f=0;f<3;f++){

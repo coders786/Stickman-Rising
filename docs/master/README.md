@@ -5,14 +5,21 @@ architecture → roadmap → risk → prototype → implement → validate.
 
 Baseline commit for all numbers in this package: `5b874fc`.
 
-**Implementation status (this branch, after run 1):** the planning package is
-complete *and* its first executable slice is in the tree — `world/profile.ts`
+**Implementation status (this branch, after runs 1–2):** the planning package is
+complete *and* its executable slice is in the tree — `world/profile.ts`
 (12-axis run identity), `gpu/context.ts` + `gpu/sky.ts` (WebGL2 moon/star baker
 with a Canvas2D fallback), `world/night.ts` (glitter + moon key rim),
-`render/ledger.ts`, `render/quality.ts` (p95 ladder), `render/color.ts`
-(allocation-free colour), `render/frameLog.ts`, `anim/natural.ts` (M4.5 core),
-`scripts/bench-render.mjs`, `scripts/lint-boundaries.mjs`, and
-`npm run gate`. Tests: **289/294** (5 known fails, all filed). See
+`world/rigging.ts` + `world/wind.ts` (cables and pennants on the profile's wind),
+`world/clouds.ts` (the conditional cumulus bank), `world/consumers.ts` (the
+no-dead-knobs registry), `render/ledger.ts`, `render/quality.ts` (p95 ladder),
+`render/color.ts` (allocation-free colour), `render/frameLog.ts`,
+`anim/natural.ts` (M4.5 core, plus the tail-pinned chain), `scripts/bench-render.mjs`,
+`scripts/lint-boundaries.mjs`, and `npm run gate`.
+
+Tests: **308/313** (5 known fails, all filed). Every profile axis now has a named
+renderer consumer and `tests/profile-consumption.test.ts` fails if one loses it
+(O-08 closed). Run identity is visible in-play and on the results card (O-09), and
+the contact shadow is projected away from the moon (O-10). See
 `22-BUG-BOUNTY.md` §0–§4 for the verification stack and the re-test protocol.
 
 ---

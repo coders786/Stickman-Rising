@@ -153,6 +153,7 @@ uniform float uDensity;   // 0..1
 uniform float uWarmth;    // 0..1 fraction of warm stars
 uniform float uSeed;
 uniform float uFade;      // vertical fade toward the horizon
+uniform float uTwinkle;   // 0..1: how much the bright stars bloom
 ${NOISE}
 void main(){
   vec2 uv = gl_FragCoord.xy / uRes;
@@ -173,7 +174,10 @@ void main(){
       float dist = length((f - pos) * (layer == 0 ? 1.0 : 0.8));
       float mag = layer == 0 ? mix(0.12, 0.45, h2) : mix(0.55, 1.0, h2);
       float core = exp(-dist * dist * (layer == 0 ? 260.0 : 120.0));
-      float glow = exp(-dist * (layer == 0 ? 26.0 : 12.0)) * 0.22;
+      // Twinkle is baked, not animated: the plate is drawn once per run, so the
+      // honest encoding of "a scintillating sky" is a wider, softer bloom on the
+      // bright stars (a still photograph of a twinkling night looks like this).
+      float glow = exp(-dist * (layer == 0 ? 26.0 : 12.0)) * (0.12 + 0.34 * uTwinkle);
       vec3 tint = mix(vec3(0.80, 0.88, 1.0), vec3(1.0, 0.90, 0.76), step(1.0 - uWarmth, h2));
       col += tint * (core * mag + glow * mag * 0.5);
       alpha = max(alpha, core * mag);
@@ -216,6 +220,7 @@ export function starUniforms(p: EnvironmentProfile): Array<[string, number]> {
     ['uWarmth', p.stars.warmth],
     ['uSeed', (p.seed % 997) / 211],
     ['uFade', 0.85],
+    ['uTwinkle', p.stars.twinkle],
   ]
 }
 

@@ -37,20 +37,33 @@ export class Renderer {
 
   /** One soft contact ellipse per figure — the whole "grounding" system.
    *  Fades with height so a jump detaches it. Two fills per figure, no
-   *  gradients, no plates. */
-  private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
+   *  gradients, no plates.
+   *
+   *  DIRECTIONAL, AND THE DIRECTION IS THE MOON'S (bounty O-10). The shadows
+   *  used to be pushed lower-LEFT by a constant, which was correct only while
+   *  the moon happened to be on the right. The moon is a profile axis now and it
+   *  can sit anywhere in the sky, so the shadow is projected AWAY from it: a
+   *  figure left of the moon casts further left, a figure right of it casts
+   *  right. `moonW` is the moon's world x (Infinity = no sky, keep the old look).
+   *  Cost: one comparison and a multiply per figure. */
+  private ground(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, moonW = Infinity): void {
     const a = 0.34 * Math.max(0, 1 - Math.abs(y) / 150)
     if (a < 0.02) return
-    // DIRECTIONAL: the moon keys from the upper right, so the contact shadow
-    // is pushed lower-LEFT and stretched along that axis. Two fills, no state.
+    // -1 pushes the shadow to the figure's left, +1 to the right.
+    const dir = Number.isFinite(moonW) ? (x < moonW ? -1 : 1) : -1
+    // The further from the light, the longer and softer the shadow: a figure at
+    // the moon's foot casts almost straight down.
+    const reach = Number.isFinite(moonW)
+      ? Math.min(1.25, 0.35 + Math.abs(x - moonW) / 2200)
+      : 1
     ctx.globalAlpha = a * 0.55
     ctx.fillStyle = '#04070b'
     ctx.beginPath()
-    ctx.ellipse(x - w * 0.55, y + 3, w * 1.5, w * 0.2, -0.06, 0, Math.PI * 2)
+    ctx.ellipse(x + dir * w * 0.55 * reach, y + 3, w * (1.1 + 0.4 * reach), w * 0.2, dir * -0.06, 0, Math.PI * 2)
     ctx.fill()
     ctx.globalAlpha = a
     ctx.beginPath()
-    ctx.ellipse(x - w * 0.12, y + 2, w * 0.82, w * 0.2, 0, 0, Math.PI * 2)
+    ctx.ellipse(x + dir * w * 0.12 * reach, y + 2, w * 0.82, w * 0.2, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.globalAlpha = 1
   }
@@ -72,6 +85,11 @@ export class Renderer {
 
     const viewHalfW = w / (2 * cam.zoom) + 240
 
+    // The moon's world x, for the contact shadows. Screen space -> world space
+    // through the same camera the ctx is carrying, so the two cannot drift.
+    const moonSX = bg.moonScreenX?.()
+    const moonW = Number.isFinite(moonSX) ? cam.x + cam.offX + ((moonSX as number) - w / 2) / cam.zoom : Infinity
+
     // arena floor + stage props
     bg.drawArena(ctx)
 
@@ -80,11 +98,11 @@ export class Renderer {
     props.draw(ctx, cam.x + cam.offX - viewHalfW, cam.x + cam.offX + viewHalfW)
 
     // grounding first, so every figure stands ON its contact shadow
-    this.ground(ctx, player.x, player.y, 30)
+    this.ground(ctx, player.x, player.y, 30, moonW)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (Math.abs(e.x - cam.x) > viewHalfW) continue
-      this.ground(ctx, e.x, e.y, 28)
+      this.ground(ctx, e.x, e.y, 28, moonW)
     }
 
     // ground decals + debris

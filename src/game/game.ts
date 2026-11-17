@@ -594,6 +594,14 @@ export class Game {
   /* run control                                                          */
   /* ------------------------------------------------------------------ */
 
+  /** Tonights' sky, for the results screen: the run-identity line and the
+   *  seed both come from the baked profile, so the card cannot disagree with
+   *  what the player just looked at for two minutes. */
+  runIdentity(): { label: string; id: string } {
+    const prof = this.bg.getProfile?.()
+    return { label: prof?.label ?? 'CLEAR NIGHT', id: prof?.id ?? '0000' }
+  }
+
   startRun(swordId: SwordId): void {
     this.audio.resume()
     this.audio.startMusic()
@@ -617,7 +625,7 @@ export class Game {
     // The prop lane inherits the run's density axes: 2–5 auto-placed props on
     // a jittered timer, so the rooftop is dressed differently every run.
     const prof = this.bg.getProfile?.()
-    if (prof) this.props.setRunDensity(prof.props.density, prof.props.timerJitter)
+    if (prof) this.props.setRunDensity(prof.props.density, prof.props.timerJitter, prof.props.crateBias)
     this.props.setMood(moodIndexForSeed(runSeed))
     this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(runSeed)].name)
     this.enemies.length = 0

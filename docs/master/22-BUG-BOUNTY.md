@@ -6,7 +6,7 @@ A bug bounty is only a bounty if it pays in *reproductions*. Every entry below
 carries: how it was found, what the player actually experiences, the evidence,
 and whether this run fixed it. Nothing here is "looks better now".
 
-**No screenshots, no Playwright.** The verification stack is: `tsc`, 294 tests,
+**No screenshots, no Playwright.** The verification stack is: `tsc`, 313 tests,
 a production `next build`, `scripts/lint-boundaries.mjs`, `scripts/bench-render.mjs`,
 and code inspection. The user's eye remains the final gate on anything visual —
 which is why every claim below is stated as a mechanism you can check, not as a
@@ -101,9 +101,13 @@ STOPS growing (500 000 calls, 33 strings).
 
 ---
 
-## 2 · FILED, not fixed (with repro)
+## 2 · FILED, with repro
 
-| # | Sev | What | Repro | Why it is not fixed here |
+Rows marked ✅ were closed by the **O-sweep** (run 2) after this table was
+written; the repro column is kept because a closed bug with a repro is a
+regression test waiting to be written, and a closed bug without one is a rumour.
+
+| # | Sev | What | Repro | Status / why it was not fixed |
 |---|---|---|---|---|
 | O-01 | P2 | `sakugaHammer` cleaves 3/5 and misses bodies 1–2 (`0 0 36 36 36`) | `node --import tsx .qa/blade-cleave.ts sakugaHammer` | the move launches the player (`moveY −240`) over the near bodies; the fix is a move-design decision (reduce the launch or give the slam a ground-AoE pad), not a mechanical one |
 | O-02 | P2 | `sakugaHammer`'s cut count changes with tick rate (60 Hz = 2 bodies, ≥90 Hz = 3) | `tests/blade-cleave.test.ts` case 4 | the sweep window is narrower than one 60 Hz tick at the extremes; widening it was already tried and made distant bodies credit late (worse) |
@@ -112,9 +116,9 @@ STOPS growing (500 000 calls, 33 strings).
 | O-05 | P3 | One connecting unarmed strike credits a hit with more slack than its `pad` | `tests/unarmed-step.test.ts` | contact-volume tuning shared with O-01 |
 | O-06 | P2 | 7 canvas creation sites outside the ledger (`background.ts` ×2, `hud.ts` ×2, `props.ts`, `night.ts`, `fx.ts`) | `npm run lint:bounds` | `night.ts` is new and will move onto the ledger with T1.6; the rest is the M1 migration, now frozen by a baseline so the count cannot grow |
 | O-07 | P3 | 29 `Math.random()` sites in seeded modules (mostly `audio.ts` sound variation) | `npm run lint:bounds` | audio variation SHOULD be random; the rule needs a per-module exemption list rather than a global one |
-| O-08 | **P2** | 8 profile axes are computed and **not consumed** by any renderer: `aurora.hue`, `clouds.texture`, `stars.twinkle`, `props.crateBias`, `weather.stormBias`, `weather.rain`, `weather.cadence`, `grade.*` | `grep` per axis; `tests/night-plates.test.ts` covers only the shader-reachable ones | this is the honesty item: a config knob the picture never reads is a lie in a design doc. Either wire them (M5 weather/grade) or delete them from the schema — do not leave them pretending |
-| O-09 | P3 | The run identity is only visible in the developer frame readout | press nothing; open the game | a "tonight" card on the pause screen would surface the feature the whole plan exists for; design work, not a bug fix |
-| O-10 | P3 | `renderer.ground()` uses a hard-coded lower-left contact shadow regardless of the moon's side | rotate the profile until the moon is on the left | the moon's screen x is known (`bg.moonX`); pushing the contact shadow away from it is a 3-line change, but it changes every frame of every run and wants the user's eye first |
+| O-08 ✅ | **P2** | 8 profile axes were computed and **not consumed** by any renderer: `aurora.hue`, `clouds.texture`, `stars.twinkle`, `props.crateBias`, `weather.stormBias`, `weather.rain`, `weather.cadence`, `grade.*` | `tests/profile-consumption.test.ts` (now a gate) | **CLOSED.** All 34 axes have a named consumer in `world/consumers.ts`, and the gate fails if any axis loses one. New art landed with them: `world/clouds.ts` (conditional cumulus bank — clear nights have none), `world/rigging.ts` (cables + pennants on a shared `world/wind.ts`), film-grade/vignette/aurora-hue args on the bake, `StormEngine.applyProfile`, `uTwinkle`, `weightOf()`. The file-level grep check is a floor, not a proof — correctness lives in `tests/rigging|clouds|night-plates`. |
+| O-09 ✅ | P3 | The run identity was only visible in the developer frame readout | play 18 s, then die | **CLOSED.** `TONIGHT · <label> · <id>` is drawn top-right for the first 18 s of every run (fading 14→18 s), and the results card carries `TONIGHT'S RIG` with the same label + seed via `Game.runIdentity()`, so the night can still be read when the run is over and "that one" can be re-rolled. |
+| O-10 ✅ | P3 | `renderer.ground()` used a hard-coded lower-left contact shadow regardless of the moon's side | rotate the profile until the moon is on the left | **CLOSED.** `CyberBackground.moonScreenX()` is inverted into world space through the live camera and the shadow is projected *away* from the moon, stretched by distance from it (closer = shorter). Cost: one comparison and a multiply per figure. |
 
 ---
 
