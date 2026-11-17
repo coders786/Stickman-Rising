@@ -3,6 +3,8 @@
 
 | # | Doc | Status | What it decides |
 |---|---|---|---|
+| ★ | `docs/master/README.md` | **package** | Master overhaul package: discovery + requirements delivered, phases 3–11 next |
+|---|---|---|---|
 | 1 | `docs/PREBAKED-WORLD-PLAN.md` | **built** (`e4dbbfe`) | Baked plates, parallax ladder, seeded procedural skyline, purposeful props |
 | 2 | `docs/NEUROAESTHETIC-UPGRADE.md` | **built** (`3081d8c`) | 60/30/10 mood palettes, split-tone grade, isolation heroes, teen+adult dual register |
 | 3 | `docs/LIGHT-SHADOW-V3.md` | **built** (`49cfb88`) | Stylized moon, reactive key light, 1/8-scale reflection band, sparse prop dressing, −20 % memory |
@@ -11,6 +13,10 @@
 | 6 | `docs/LIGHTING-RESEARCH-V4.md` | **evidence** | Canvas2D readback risk, flipped-sprite mirrors, two-level puddle masks, log parallax, directional fog, WCAG flash limits — with the 6 experiments that gate V4 |
 
 Kept for reference: `docs/mobile-2.5d/LIGHT-SHADOW-MATCH-PLAN.md`, `docs/ANIMATION.md`.
+
+## Master overhaul package (start here for the graphics overhaul)
+`docs/master/00-DISCOVERY-REPORT.md` → `docs/master/01-REQUIREMENTS-SPEC.md` →
+then the numbered docs as they land (02 visual research … 11 validation).
 
 ## Reading order for a new contributor
 0. `LIGHTING-RESEARCH-V4.md` §2 R1 and §4 (the experiments) — the architecture is
