@@ -11,10 +11,16 @@ import { WeatherFront, tintAlpha, tintColour } from './weather'
 import { rgbaConst } from '../render/color'
 import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
 import { featuresFor, type Tier } from '../render/graphics'
+import {
+  PRACTICAL_DOOR_X, PRACTICAL_LAMP_X, LIGHT_INK, LIGHT_TINT,
+  liveGain, makeStageLights, newSample, sampleLight, type LightSample, type PointLight,
+} from './lightfield'
+import { animsForBuilding, drawBuildingAnims, type Band, type BuildingAnim } from './buildings'
+import { drawRoofProps, makeRoofProps, type RoofProp, type RoofPropSet } from './roofprops'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
-const LAMP_X = 830
+const LAMP_X = PRACTICAL_LAMP_X
 /** stylized moon plate: bake size and on-screen draw size */
 const MOON_D = 210
 const MOON_HALF = MOON_D * 0.5
@@ -91,6 +97,12 @@ export interface BackgroundRenderer {
   /** Dust motes in the shafts; one path, one fill (ultra). */
   drawMotes?(ctx: CanvasRenderingContext2D, t: number): void
   drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number, face?: number): void
+  /** The full figure-light pass (wash + rim + deck pool) from the light field. */
+  drawFigureLighting?(ctx: CanvasRenderingContext2D, px: number, py: number, h?: number, face?: number): void
+  /** One-blit wash for non-player figures standing in a practical. */
+  drawFigureWash?(ctx: CanvasRenderingContext2D, x: number, y: number, h?: number): void
+  /** The light field's sample at a world point (the renderer reads this). */
+  lightAt?(x: number, y?: number): LightSample
   drawReflections?(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void
   /** The run identity (world/profile.ts). Optional so the test doubles and the
    *  HUD-only renderers do not need a night. */
@@ -126,9 +138,14 @@ function mulberry32(seed: number): () => number {
 const TAU = Math.PI * 2;
 const TILE = 2048;              // horizontal wrap period of every city layer
 const NOMINAL_Y = -170;         // usual camera height
+/** The figure's authored height, for the body-wash scale. Kept here rather than
+ *  imported from render/shadows.ts so the world layer does not depend on the
+ *  render layer's shadow module just for a number. */
+const FIG_H = 118
+
 const ARENA_X0 = -150;          // arena floor spans world x -150 .. 2750
 const ARENA_X1 = 2750;
-const DOOR_X = 1755;             // warm stairwell practical, world x
+const DOOR_X = PRACTICAL_DOOR_X;  // warm stairwell practical, world x
 const ARENA_W = ARENA_X1 - ARENA_X0;
 const LIP_H = 14;               // lighter metal lip band, world y 0..14
 const FACADE_H = 246;           // facade band, world y 14..260
@@ -877,6 +894,25 @@ function buildRim(pal: MoodPalette, warm: boolean): HTMLCanvasElement {
 
 /** DECK POOL — the wet concrete lifting under the player as they pass a
  *  practical: one baked soft ellipse, one blit, alpha = proximity. */
+/** BODY WASH — the colour a lit surface picks up, as a soft vertical ellipse.
+ *  Additive, capped at ~0.17 alpha in use; the shape is taller than it is wide so
+ *  it follows a standing figure instead of haloing it. */
+function buildWash(rgb: string): HTMLCanvasElement {
+  const { c, g } = makeCanvas(68, 124);
+  const gr = g.createRadialGradient(34, 74, 2, 34, 74, 36);
+  gr.addColorStop(0, `rgba(${rgb},0.55)`)
+  gr.addColorStop(0.42, `rgba(${rgb},0.20)`)
+  gr.addColorStop(1, `rgba(${rgb},0)`)
+  g.fillStyle = gr
+  g.save()
+  g.scale(1, 1.6)
+  g.beginPath()
+  g.arc(34, 74 / 1.6, 36, 0, TAU)
+  g.fill()
+  g.restore()
+  return c
+}
+
 function buildDeckPool(): HTMLCanvasElement {
   const { c, g } = makeCanvas(240, 64);
   g.globalCompositeOperation = 'lighter';
@@ -1290,6 +1326,24 @@ export class CyberBackground {
   private night: NightLayer | null = null;
   /** Rooftop rigging: cables + pennants on the shared wind (world/rigging.ts). */
   private rig: Rigging | null = null;
+  /* THE LIGHT FIELD (world/lightfield.ts) — the two authored practicals plus
+   * whatever this run's rooftop props generate. Rebuilt on every run seed; every
+   * consumer that asks "how lit is this spot" reads this and nothing else. */
+  private lights: PointLight[] = []
+  /** Reused array for the pool pass — sorting 8 lights must not allocate. */
+  private poolScratch: PointLight[] = []
+  /** The level for the per-frame query. `sampleLight` writes into it. */
+  private sample: LightSample = newSample()
+  /** Rooftop props (world/roofprops.ts). Built once at the maximum budget; the
+   *  tier decides how many of them are DRAWN, so changing quality never
+   *  re-rolls the roof. */
+  private roof: RoofPropSet = { props: [], lights: [] }
+  /** City animation records, per band (world/buildings.ts). Emitted at bake. */
+  private bandAnims: Record<Band, BuildingAnim[]> = { deep: [], far: [], mid: [], near: [] }
+  /** Additive body-wash discs: what a lit surface picks up from a practical. */
+  private washWarm: HTMLCanvasElement | null = null
+  private washCool: HTMLCanvasElement | null = null
+  private washBulb: HTMLCanvasElement | null = null
   /** The cumulus bank (world/clouds.ts) — null on a clear run. */
   private bank: HTMLCanvasElement | null = null;
   /** Its derived parameters, resolved ONCE (the draw path must not allocate). */
@@ -1367,7 +1421,15 @@ export class CyberBackground {
     this.storm.applyProfile?.(this.profile.weather);
     // The key light is derived from the profile ONCE per run, and every lit
     // thing in the frame (moon, shadows, rims, cable rim, glitter) reads it.
-    this.light = keyLightFor(this.profile);
+    this.light = keyLightFor(this.profile)
+    /* THE LIGHT FIELD, REBUILT PER RUN. The two practicals are the stage; the
+     * rooftop props can add one more (a bulb on a stand), and because it is a
+     * real source in the field, the player's proximity lighting, the deck pool
+     * and the second cast shadow all follow it without knowing it exists.
+     * Built at the ULTRA budget: the tier decides how many props are DRAWN, so
+     * pressing a quality button never re-rolls the roof under the player. */
+    this.roof = makeRoofProps(this.runSeed, { count: 22, x0: ARENA_X0 + 80, x1: ARENA_X1 - 80, deckY: 0 })
+    this.lights = makeStageLights(this.profile, this.runSeed).concat(this.roof.lights);
     this.wxRainBase = Math.max(0.35, Math.min(1, this.profile.weather.rain));
     // THE FRONT — the run's weather is a climate, not a constant: inside a run
     // the sky is allowed to change its mind, slowly (world/weather.ts).
@@ -1695,7 +1757,9 @@ export class CyberBackground {
      * sharp tile re-blits additively → silhouette pop. */
     const I = this.lightningI();
     this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, I, this.deepTileBlur, this.deepTile, DEEP_H, 0.34);
+    this.drawBandAnims(ctx, 'deep', LAY_DEEP, h, cx, cy, cz, DEEP_H);
     this.drawCityBand(ctx, LAY_FAR, h, cx, cy, cz, I, this.farTileBlur, this.farTile, FAR_H, 0.3);
+    this.drawBandAnims(ctx, 'far', LAY_FAR, h, cx, cy, cz, FAR_H);
 
     /* 3.5 — PARALLAX FOG PLANE: a procedural haze sheet at its own factor
      * (0.098 — between far and mid) drifting slowly with time, so the mist
@@ -1717,6 +1781,7 @@ export class CyberBackground {
 
     /* 4 — mid city: baked neon signs, one shared band draw */
     this.drawCityBand(ctx, LAY_MID, h, cx, cy, cz, I, this.midTileBlur, this.midTile, MID_H, 0.14);
+    this.drawBandAnims(ctx, 'mid', LAY_MID, h, cx, cy, cz, MID_H);
 
     /* 4.5 — humid horizon haze: one blit around the ground line */
     ctx.globalAlpha = 0.65;
@@ -1725,6 +1790,7 @@ export class CyberBackground {
 
     /* 5 — near towers (no DOF blur — the action plane stays crisp) */
     this.drawCityBand(ctx, LAY_NEAR, h, cx, cy, cz, I, this.nearTile, this.nearTile, NEAR_H, 0.12);
+    this.drawBandAnims(ctx, 'near', LAY_NEAR, h, cx, cy, cz, NEAR_H);
     ctx.restore();
     });
   }
@@ -1736,12 +1802,22 @@ export class CyberBackground {
    *  0 = beyond its reach). Three |x| comparisons — the whole "which light is
    *  the player standing in" query. */
   practicalLight(x: number): { warm: number; cool: number } {
-    const fall = (d: number): number => {
-      const a = Math.abs(d)
-      return a >= 300 ? 0 : 1 - a / 300
-    }
-    return { warm: fall(x - DOOR_X), cool: fall(x - LAMP_X) }
+    // One query into the field (world/lightfield.ts). The old body was a linear
+    // `1 - d/300` with a corner at the cut-off — the ring you could see around
+    // the streetlight — and it ignored the height of the source entirely.
+    const s = sampleLight(this.lights, x, 0, this.t, this.sample)
+    return { warm: s.warm, cool: s.cool }
   }
+
+  /** THE FULL SAMPLE — every family plus the strongest source and its direction.
+   *  The renderer and the figure lighting read this; `practicalLight` is kept for
+   *  the callers that only want the two authored families. */
+  lightAt(x: number, y = 0): LightSample {
+    return sampleLight(this.lights, x, y, this.t, this.sample)
+  }
+
+  /** How many sources the field has right now (debug overlay + tests). */
+  lightCount(): number { return this.lights.length }
 
   /** THE SECOND LIGHT'S DIRECTION — where a figure's practical shadow falls.
    *
@@ -1752,26 +1828,17 @@ export class CyberBackground {
    *  failing streetlight. `null` when the figure is out of both lights' reach —
    *  then there is no second shadow, which is the honest answer. */
   practicalShadow(x: number): { dir: number; strength: number; ink: string } | null {
-    const dw = Math.abs(x - DOOR_X)
-    const dc = Math.abs(x - LAMP_X)
-    const reachPx = 320
-    const nearer = dw <= dc ? 'warm' : 'cool'
-    const d = Math.min(dw, dc)
-    if (d >= reachPx) return null
-    const strength = 1 - d / reachPx
-    const K = this.profile ? this.profile.light : null
-    const gain = nearer === 'warm' ? (K ? K.warm : 1) : (K ? K.cool : 1)
-    // A failing tube still lights: it just does not hold a steady shadow.
-    const flick = K && nearer === 'cool'
-      ? 1 - K.flicker * 0.4 * (0.5 + 0.5 * Math.sin(this.t * 13.3))
-      : 1
+    // Same field, same fall-off, same flicker as the rim and the pool: if the
+    // three disagreed, the light would be lying about itself.
+    const s = sampleLight(this.lights, x, 0, this.t, this.sample)
+    if (!s.best || s.bestW < 0.04) return null
     return {
-      dir: x >= (nearer === 'warm' ? DOOR_X : LAMP_X) ? 1 : -1,
-      strength: Math.min(1, strength * gain * flick),
-      // Never pure black: a practical's shadow is a COLOURED absence, because the
-      // light it blocks is coloured. Warm light blocked is a brown shadow; cool
-      // light blocked is a blue one.
-      ink: nearer === 'warm' ? '16,8,4' : '4,7,14',
+      dir: s.dir,
+      strength: Math.min(1, s.bestW),
+      // Never pure black: a practical's shadow is a COLOURED absence, because
+      // the light it blocks is coloured. Warm blocked is a brown shadow, cool
+      // blocked is a blue one, a bulb is a dirty amber one.
+      ink: LIGHT_INK[s.best.kind],
     }
   }
 
@@ -1811,29 +1878,56 @@ export class CyberBackground {
    *  This is the only lighting in the game that reacts to the player, and it
    *  costs at most 2 additive blits per frame. */
   drawPlayerLight(ctx: CanvasRenderingContext2D, px: number, py: number, face = 1): void {
+    this.drawFigureLighting(ctx, px, py, FIG_H, face)
+  }
+
+
+  /** LIGHT ON A BODY — the pass the whole rewrite exists for.
+   *
+   *  Standing in the stairwell's warm spill must change three things at once, or
+   *  the light is a decoration: the body picks up the colour (wash), its edge
+   *  toward the source lifts (rim), and the deck under it holds a pool. All three
+   *  come out of ONE sample of the field, so they cannot disagree — and because
+   *  the sample already carries the source's gain and flicker, nothing here
+   *  multiplies a gain twice (the old path did, which is why the door looked
+   *  blown out and the streetlight looked dead).
+   *
+   *  Cost on a lit figure: 3 blits (wash + rim + pool). On an unlit one: zero. */
+  drawFigureLighting(ctx: CanvasRenderingContext2D, px: number, py: number, h = FIG_H, face = 1): void {
     this.ensureBuilt();
     // The rim is a FIDELITY feature, not a grounding one: low tier draws the
     // fighter without it and nothing false is said (render/graphics.ts).
-    if (!featuresFor(this.q as Tier).rim) return;
-    const L = this.practicalLight(px);
-    const a = Math.max(L.warm, L.cool);
-    const K = this.profile ? this.profile.light : null;
-    // Practicals are profile-lightable: a run whose stairwell is dying is a
-    // different place to stand than one where it is blazing.
-    if (a > 0.02) {
-      const rim = L.warm >= L.cool ? this.rimWarm : this.rimCool;
-      const gain = (L.warm >= L.cool ? (K ? K.warm : 1) : (K ? K.cool : 1));
-      // A failing tube's flicker only ever DIMS the practical (never adds
-      // light): an additive flicker reads as a strobe, which is a medical
-      // consideration as well as a taste one.
-      const fl = K ? 1 - K.flicker * 0.35 * (0.5 + 0.5 * Math.sin(this.t * 13.3)) : 1;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.8, 0.55 * a * gain * fl);
-      ctx.drawImage(rim, px - 48, py - 190, 96, 190);
-      ctx.globalAlpha = Math.min(0.7, 0.42 * a * gain * fl);
-      ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
+    const F = featuresFor(this.q as Tier);
+    if (!F.rim) return
+    const s = sampleLight(this.lights, px, py, this.t, this.sample)
+    const a = Math.max(s.warm, s.cool, s.neon * 0.5)
+    if (a > 0.02 && s.best) {
+      const kind = s.best.kind
+      const warmSide = s.warm >= s.cool
+      const rim = warmSide ? this.rimWarm : this.rimCool
+      // Wash: the BODY takes the colour. One disc, squashed to the figure's
+      // height, additive at a low alpha — at 0.10–0.16 it reads as "lit by
+      // something warm", above ~0.25 it reads as a colour filter, so it is capped.
+      const wash = kind === 'cool' ? this.washCool : kind === 'bulb' ? this.washBulb : this.washWarm
+      if (wash) {
+        ctx.globalCompositeOperation = 'lighter'
+        ctx.globalAlpha = Math.min(0.18, 0.14 * a)
+        ctx.drawImage(wash, px - 34, py - h * 1.02, 68, h * 1.06)
+      }
+      ctx.globalCompositeOperation = 'lighter'
+      // The rim answers the STRONGEST source's side, not a fixed edge.
+      ctx.globalAlpha = Math.min(0.75, 0.55 * a)
+      ctx.save()
+      if (s.dir < 0) {
+        ctx.translate(px * 2, 0)
+        ctx.scale(-1, 1)
+      }
+      ctx.drawImage(rim, px - 48, py - h * 1.61, 96, h * 1.61)
+      ctx.restore()
+      ctx.globalAlpha = Math.min(0.42, 0.26 * a)
+      ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64)
+      ctx.globalAlpha = 1
+      ctx.globalCompositeOperation = 'source-over'
     }
     // MOON KEY RIM — the reactive light that is never absent, because the moon
     // is never absent. It answers the practical the player stands in (near) and
@@ -1843,6 +1937,75 @@ export class CyberBackground {
       // only decides the crescent's edge when the key is directly behind.
       this.night.drawKeyRim(ctx, px, py, face, a, this.t, rimDirection(this.moonX, this.vw));
     }
+  }
+
+  /** THE DECK POOLS — one additive ellipse under each visible practical.
+   *
+   *  Until now only the PLAYER cast a pool, so the door and the streetlight lit
+   *  the deck only where the player happened to stand. A light with no pool on
+   *  the ground it points at is a sprite with a glow, not a source: the pool is
+   *  the cue that says where the deck is wet and where it is dry.
+   *
+   *  Cost: one blit per source, hard-capped by the tier (`lightPools`), nearest
+   *  first so a phone never draws a pool it cannot see the bottom of. */
+  drawLightPools(ctx: CanvasRenderingContext2D): void {
+    this.ensureBuilt()
+    const F = featuresFor(this.q as Tier)
+    if (F.lightPools <= 0 || this.lights.length === 0) return
+    const cam = this.lastCam
+    const halfW = (this.vw / Math.max(0.4, cam.zoom || 1)) * 0.6
+    const camX = Number.isFinite(cam.x) ? cam.x : 0
+    // Collect the visible ones, then keep the nearest `lightPools`.
+    let n = 0
+    const near: PointLight[] = this.poolScratch
+    near.length = 0
+    for (let i = 0; i < this.lights.length; i++) {
+      const l = this.lights[i]
+      if (l.x < camX - halfW || l.x > camX + halfW) continue
+      near.push(l)
+      if (++n >= 8) break
+    }
+    if (near.length === 0) return
+    near.sort((a, b) => Math.abs(a.x - camX) - Math.abs(b.x - camX))
+    const use = Math.min(near.length, F.lightPools)
+    ctx.save()
+    ctx.globalCompositeOperation = 'lighter'
+    for (let i = 0; i < use; i++) {
+      const l = near[i]
+      // The pool's size follows the source's radius and its live gain (a failing
+      // tube's pool shrinks with it — that is what "failing" looks like).
+      const g = liveGain(l, this.t)
+      if (g <= 0.02) continue
+      const wide = Math.min(1.5, l.radius / 220)
+      /* A practical already has a pool BAKED into the arena tile, so its live
+       * pool is drawn at HALF strength: enough to answer the tube's flicker
+       * (which a bake cannot), not enough to double up into a white blob. The
+       * run's own bulb has no baked pool, so it gets the full one. */
+      const authored = l.id.startsWith('stage:')
+      ctx.globalAlpha = Math.min(0.62, 0.42 * g) * (authored ? 0.5 : 1)
+      ctx.drawImage(this.deckPool, l.x - 120 * wide, -14, 240 * wide, 64)
+    }
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.restore()
+  }
+
+  /** A CHEAP WASH FOR NON-PLAYER FIGURES — one blit, no rim, no pool. Enemies
+   *  standing in the door's spill must not be the only unlit thing in frame, or
+   *  the lighting reads as a spotlight that follows only the hero. */
+  drawFigureWash(ctx: CanvasRenderingContext2D, x: number, y: number, h = FIG_H): void {
+    const F = featuresFor(this.q as Tier)
+    if (F.lightPools < 2) return
+    const s = sampleLight(this.lights, x, y, this.t, this.sample)
+    const a = Math.max(s.warm, s.cool)
+    if (a <= 0.06 || !s.best) return
+    const wash = s.best.kind === 'cool' ? this.washCool : s.best.kind === 'bulb' ? this.washBulb : this.washWarm
+    if (!wash) return
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = Math.min(0.15, 0.12 * a)
+    ctx.drawImage(wash, x - 32, y - h * 1.0, 64, h * 1.04)
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
   }
 
   /** SCREEN-SPACE REFLECTION — the "very low cpu post processing" pass.
@@ -1932,7 +2095,17 @@ export class CyberBackground {
     blitWorldFrustum(ctx, this.arenaTile, ARENA_X0, 0, viewL, viewR);
     // ROOFTOP RIGGING — cables and pennants, in world space, behind the
     // figures and in front of the skyline. One stroke for every cable.
-    this.rig?.draw(ctx);
+    this.rig?.draw(ctx)
+    /* THE ROOF IS USED (world/roofprops.ts) — condensers, tanks, crates, vents
+     * that breathe, a dish, the run's own bulb. Behind the fighters and behind
+     * the two practicals' sprites, so nothing occludes the light source.
+     * The tier caps how many of the run's props are DRAWN; the set itself never
+     * changes, so switching quality does not re-roll the roof. */
+    const RF = featuresFor(this.q as Tier)
+    if (RF.roofProps > 0 && this.roof.props.length > 0) {
+      const props = this.roof.props.length > RF.roofProps ? this.roof.props.slice(0, RF.roofProps) : this.roof.props
+      drawRoofProps(ctx, props, t, viewL, viewR, true)
+    };
     // BROKEN STREETLIGHT — restored foreground practical, one baked blit.
     // The pole's rim light, glow spill and contact AO are all in the sprite;
     // its flipped reflection is baked into the arena tile below.
@@ -1959,6 +2132,11 @@ export class CyberBackground {
     }
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+
+    /* DECK POOLS — the practicals' footprints on the wet deck, plus the run's
+     * bulb if it has one. After the sprites and the shafts so the pool sits ON
+     * the deck rather than under the pole. */
+    this.drawLightPools(ctx)
   }
 
   /* ---------------------- screen-space weather pass ---------------------- */
@@ -2045,9 +2223,18 @@ export class CyberBackground {
     this.glowWarm = buildGlowDisc(this.mood.highlight);
     this.glowCool = buildGlowDisc(this.mood.pop2);
     this.heroDisc = buildGlowDisc(this.mood.pop);
+    // The live city records belong to the tiles being replaced: clear them
+    // before the builders emit into them, or a re-run would inherit the last
+    // run's windows at the last run's coordinates.
+    this.bandAnims = { deep: [], far: [], mid: [], near: [] }
     this.rimWarm = buildRim(this.mood, true);
     this.rimCool = buildRim(this.mood, false);
     this.deckPool = buildDeckPool();
+    // The wash is per-colour-family and baked from the field's own tints, so the
+    // colour a body picks up is the colour the light is (world/lightfield.ts).
+    this.washWarm = buildWash(`${LIGHT_TINT.warm[0]},${LIGHT_TINT.warm[1]},${LIGHT_TINT.warm[2]}`)
+    this.washCool = buildWash(`${LIGHT_TINT.cool[0]},${LIGHT_TINT.cool[1]},${LIGHT_TINT.cool[2]}`)
+    this.washBulb = buildWash(`${LIGHT_TINT.bulb[0]},${LIGHT_TINT.bulb[1]},${LIGHT_TINT.bulb[2]}`)
     // Shafts are baked from the palette, so the cone is the same colour as the
     // pool it belongs to — a warm door does not cast a green shaft.
     this.shaftWarm = buildShaft(this.mood.highlight, 54, 210, 420);
@@ -2116,6 +2303,37 @@ export class CyberBackground {
    * tile blit + the lightning silhouette pop. All four city layers share
    * this single code path — the whole parallax engine is one method.
    */
+  /* ------------------- city life (world/buildings.ts) -------------------- */
+
+  /** Cap on collected records per band. The draw pass culls and budgets them;
+   *  this only bounds the array so a 400-building tile cannot grow it. */
+  private static readonly ANIM_CAP = 48
+
+  /** Emit a building's animation records at bake time. Called from each band's
+   *  builder with the building's TILE-LOCAL rect: the bake knows where the
+   *  building is, and this is the only moment it is known. */
+  private collectAnims(band: Band, tx: number, ty: number, w: number, h: number): void {
+    const list = this.bandAnims[band]
+    if (list.length >= CyberBackground.ANIM_CAP) return
+    animsForBuilding(band, this.runSeed, { tx, ty, w, h }, list)
+  }
+
+  /** Draw one band's live records. The band's scroll and baseline are computed
+   *  EXACTLY as `drawCityBand` computes them, from the same `LayerDef` — if the
+   *  two ever disagreed, the live windows would slide off their baked ones. */
+  private drawBandAnims(
+    ctx: CanvasRenderingContext2D, band: Band, lay: LayerDef,
+    h: number, cx: number, cy: number, cz: number, bandH: number,
+  ): void {
+    const F = featuresFor(this.q as Tier)
+    if (F.buildingAnims <= 0) return
+    const list = this.bandAnims[band]
+    if (list.length === 0) return
+    const by = h * 0.5 + (lay.lift - cy * lay.vf) * cz
+    const m = mod(cx * lay.f * cz, TILE)
+    drawBuildingAnims(ctx, list, this.t, m, by - bandH, TILE, 0, this.vw, F.buildingAnims)
+  }
+
   private drawCityBand(
     ctx: CanvasRenderingContext2D,
     lay: LayerDef,
@@ -2211,6 +2429,9 @@ export class CyberBackground {
       g.fillRect(x, DEEP_H - bh, bw, bh);
       g.fillStyle = 'rgba(150,185,220,0.06)';            // moon catch, top only
       g.fillRect(x, DEEP_H - bh, bw, 1);
+      // City life: a window, a beacon or a vent for this building (bake time is
+      // the only time its rect is known — world/buildings.ts).
+      this.collectAnims('deep', x, DEEP_H - bh, bw, bh);
       const kind = rng();
       if (kind < 0.28) {                                  // stepped crown
         const sw1 = bw * (0.55 + rng() * 0.2);
@@ -2329,6 +2550,7 @@ export class CyberBackground {
       g.fillRect(x, FAR_H - bh, bw, bh);
       g.fillStyle = 'rgba(142,176,212,0.055)';              // moon catch: top only
       g.fillRect(x, FAR_H - bh, bw, 1);
+      this.collectAnims('far', x, FAR_H - bh, bw, bh);
       // BAKED VOLUME SHADING — key from the upper right: right face lifts,
       // left face falls away (extruded-box read, zero runtime cost)
       g.fillStyle = 'rgba(150,185,215,0.05)';
@@ -2502,6 +2724,7 @@ export class CyberBackground {
       g.fillStyle = aoB;
       g.fillRect(x, MID_H - 30, bw, 30);
       towers.push({ x, bw, bh });
+      this.collectAnims('mid', x, MID_H - bh, bw, bh);
       const roofKind = rng();
       if (roofKind < 0.3 && bw > 110) {                    // water tower on legs
         const tw = 18 + rng() * 14, th = 20 + rng() * 16;
@@ -2840,6 +3063,7 @@ export class CyberBackground {
       g.fillRect(x, NEAR_H - bh, bw, bh);
       g.fillStyle = 'rgba(160,195,228,0.11)';               // moon catch: top only
       g.fillRect(x, NEAR_H - bh, bw, 1);
+      this.collectAnims('near', x, NEAR_H - bh, bw, bh);
       // sky bounce: the upper faces catch faint light-pollution so the
       // slabs read as buildings, not voids
       const bg2 = g.createLinearGradient(0, NEAR_H - bh, 0, NEAR_H - bh + bh * 0.72);

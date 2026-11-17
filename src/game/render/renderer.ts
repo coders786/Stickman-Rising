@@ -169,6 +169,17 @@ export class Renderer {
     // player
     player.draw(ctx, time)
 
+    // ENEMIES PICK UP THE SAME LIGHT — one squash blit each, no rim, no pool.
+    // A doorway that lights the hero and not the thing he is fighting says the
+    // light is a HUD effect; this is the cheapest way to say it is a place.
+    if (bg.drawFigureWash) {
+      for (const e of enemies) {
+        if (e.dead || e.spawning) continue
+        if (Math.abs(e.x - cam.x) > viewHalfW) continue
+        bg.drawFigureWash(ctx, e.x, e.y, FIGURE_H * 0.95)
+      }
+    }
+
     // V3 REACTIVE LIGHT — the player's key/rim light + wet deck pool, keyed to
     // whichever practical they are standing in (≤2 additive blits)
     bg.drawPlayerLight?.(ctx, player.x, player.y, player.face)

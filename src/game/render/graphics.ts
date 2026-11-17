@@ -54,6 +54,15 @@ export interface GraphicsFeatures {
   practicalShadow: boolean
   /** Prop silhouettes get a moon-side rim edge. */
   propRim: boolean
+  /** Rooftop props drawn live on the deck (condensers, tanks, vents, the run's
+   *  own bulb). 0 = a bare deck, which is what a tier may choose to lose. */
+  roofProps: number
+  /** City ANIMATION records drawn per band — the windows that change, the signs
+   *  that buzz, the vents that breathe. The city itself is always baked; this is
+   *  how much of it is alive. */
+  buildingAnims: number
+  /** Additive deck pools under the practicals, beyond the player-keyed one. */
+  lightPools: number
 }
 
 /** THE TABLE. Reading it column by column is reading the budget. */
@@ -71,6 +80,9 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     rim: false,
     practicalShadow: false,
     propRim: false,
+    roofProps: 0,
+    buildingAnims: 0,
+    lightPools: 0,
   },
   medium: {
     shadows: 'contact',
@@ -85,6 +97,9 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     rim: true,
     practicalShadow: false,
     propRim: false,
+    roofProps: 6,
+    buildingAnims: 2,
+    lightPools: 1,
   },
   high: {
     shadows: 'cast',
@@ -99,6 +114,9 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     rim: true,
     practicalShadow: true,
     propRim: false,
+    roofProps: 12,
+    buildingAnims: 4,
+    lightPools: 2,
   },
   ultra: {
     shadows: 'cast+props',
@@ -113,6 +131,9 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     rim: true,
     practicalShadow: true,
     propRim: true,
+    roofProps: 22,
+    buildingAnims: 6,
+    lightPools: 4,
   },
 } as const
 

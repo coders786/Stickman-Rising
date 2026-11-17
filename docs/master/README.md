@@ -16,7 +16,7 @@ no-dead-knobs registry), `render/ledger.ts`, `render/quality.ts` (p95 ladder),
 `anim/natural.ts` (M4.5 core, plus the tail-pinned chain), `scripts/bench-render.mjs`,
 `scripts/lint-boundaries.mjs`, and `npm run gate`.
 
-Tests: **352/357** (5 known fails, all filed). Every profile axis now has a named
+Tests: **377/382** (5 known fails, all filed). Every profile axis now has a named
 renderer consumer and `tests/profile-consumption.test.ts` fails if one loses it
 (O-08 closed). Run identity is visible in-play and on the results card (O-09), and
 the contact shadow is projected away from the moon (O-10). See

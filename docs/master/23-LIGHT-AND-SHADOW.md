@@ -157,6 +157,102 @@ governor can still shed out of it within one 4 s window.
 
 ---
 
+## 2.5 · Run 4 — the light FIELD, living buildings, and a roof with stuff on it
+
+Three additions, all aimed at the same note: *"add more better lighting when near
+light sources like hut and the lantern — animations for each building and each
+run's procedural buildings, and props on the rooftop."*
+
+### 2.5.1 · A field, not a light bulb — `world/lightfield.ts`
+
+The two practicals used to be two hard-coded x positions and a `1 - d/300` used
+in exactly one place: the player's rim. You could stand in the stairwell light and
+the light did not touch you.
+
+Now the stage owns a **field**: point sources with a radius, a colour family, a
+gain and a flicker, and one query — `sampleLight(lights, x, y, t, out)`. Five
+consumers read it and can no longer disagree:
+
+| consumer | what it asks for |
+|---|---|
+| `drawLightPools` | where the deck is wet and lit (`1 blit` per visible source) |
+| `drawFigureLighting` | the body wash + rim + deck pool for the player (`3 blits`) |
+| `drawFigureWash` | the same, one blit, for enemies — a light that lights only the hero is a HUD effect |
+| `practicalShadow` | direction, strength and **ink** of the second cast shadow |
+| `drawMotes` | which cone the dust belongs in |
+
+**The fall-off is smoothstep², not a ramp.** `1 - d/r` has a corner at the
+cut-off; the eye reads that corner as a **ring around every light**, which is the
+single most "programmer art" artifact in 2-D lighting. It also puts too much
+energy far from the source, so two nearby lights wash into a blob. The new curve
+is 1 at the source, exactly 0 at the radius, flat at both ends — asserted by
+`tests/world-lights.test.ts` (slope at the source and at the cut-off must be
+under a quarter of the mid-slope).
+
+**Flicker only dims.** A failing tube's gain is a pure function of `t` and its
+phase (two incommensurate sines), so a replay fails identically, and it never
+brightens — an additive flicker that brightens is a strobe, which is a medical
+consideration as much as a taste one. Measured over 6 s at the streetlight: gain
+0.34 – 0.83, mean 0.63. It never goes dark.
+
+**A third light per run.** If the rooftop props roll no bulb (2 % per prop), the
+one nearest the last slot becomes one, so most runs get a real third source.
+
+### 2.5.2 · Buildings that are inhabited — `world/buildings.ts`
+
+The skyline is baked once per run and blitted — that is why it is cheap, and why
+it was a photograph. Nine animation kinds are emitted **at bake time** from the
+same building rectangles and drawn on top each frame as one to three fills:
+
+`flicker` (a window switching), `tv` (blue, quantised), `chase` (a sign's three
+cells), `buzz` (a failing neon tube), `beacon` (red obstruction light), `steam`
+(a vent breathing), `laundry` (a line swaying), `dish` (tracking something),
+`bulb` (a bare bulb on a wire).
+
+Records are chosen by hashing `(band, tile x, run seed)` — **not** by consuming
+the bake's RNG. The bake's art therefore does not move when an animation is added
+(a screenshot diff shows the animations, not a re-rolled skyline), and the same
+run always grows the same inhabitants. Density falls with distance
+(near 85 % → mid 60 % → far 34 % → deep 12 %): a skyline where every window
+animates is a disco, not a city.
+
+### 2.5.3 · A roof somebody uses — `world/roofprops.ts`
+
+Condensers, water tanks, crates, planters, vents, dishes, antennae, laundry lines,
+cable coils, and the bulb. Two hard rules, both tested:
+
+- **Never on a practical** (≥100 px clearance from both authored sources) and
+  **never within 70 px of each other** — clutter is spaced.
+- **Never blocks the fight**: every prop is ≤60 px tall against a 118 px fighter,
+  so a swing never disappears behind a water tank.
+
+They are *live*, not baked: a couple of dozen fills culled to the view, because
+the count changes with the tier and a bake cannot.
+
+### 2.5.4 · The three new dials
+
+| | low | medium | high | ultra |
+|---|---|---|---|---|
+| rooftop props (of 16) | 0 | 6 | 12 | **22** (all) |
+| city records / band | 0 | 2 | 4 | **6** |
+| live deck pools | 0 | 1 | 2 | **4** |
+
+Cost on ultra, worst case: 16 props × ~3 fills, 6 records × 4 bands, 4 pool blits,
+3 blits per lit figure. It is all arithmetic on a path that already existed —
+there is no new pass, no new canvas, no new bake.
+
+### 2.5.5 · Verified by rendering, not by assertion
+
+`npm run gate` proves the maths. It cannot prove the composition. So
+`.qa/verify-lighting.mts` renders the real `CyberBackground` through
+`@napi-rs/canvas` (a native canvas, not a stub) with the same transform
+`Renderer.draw` applies, at every tier, and writes PNGs to `/tmp` — with
+`MODE=nofig|nopool` to answer "which pass is that?" This is how the doubled pool
+at the stairwell was found and fixed: a bright white slab where the fight happens,
+because the field drew a pool over the bake's own.
+
+---
+
 ## 3 · What this does NOT claim
 
 - **Not "god level" as a guarantee.** "God level" is a taste judgement and the
