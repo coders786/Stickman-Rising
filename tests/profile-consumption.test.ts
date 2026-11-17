@@ -94,6 +94,12 @@ test('the O-08 sweep is wired into the draw path, not just written', () => {
   assert.match(bg, /this\.rig\?\.update\(d\)/, 'the rigging is never simulated')
   // Weather reaches the storm engine.
   assert.match(bg, /this\.storm\.applyProfile\?\.\(this\.profile\.weather\)/, 'weather.* is not applied to the storm engine')
+  // The weather front is owned and driven (T5.1), not merely imported.
+  assert.match(bg, /this\.wx = new WeatherFront\(this\.profile\.seed/, 'the weather front is never constructed')
+  assert.match(bg, /this\.wx\?\.update\(d, this\.storm\.intensity\)/, 'the weather front is never advanced')
+  assert.match(bg, /this\.storm\.setRainScale\(this\.wxRainBase \* s\.rain\)/, 'the front does not reach the rain')
+  assert.match(bg, /this\.rig\?\.windState\.setGust\(s\.gust\)/, 'the front does not reach the wind')
+  assert.match(bg, /if \(this\.wxTint && this\.q !== 'low'\)/, 'the weather tint is not drawn (or is not tier-gated)')
   // The moon's screen x is exposed for the contact shadows.
   assert.match(bg, /moonScreenX\(\): number/, 'the moon position is not exposed to the renderer')
 })

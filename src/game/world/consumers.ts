@@ -61,8 +61,8 @@ export const PROFILE_CONSUMERS: readonly AxisConsumer[] = [
   { axis: 'atmosphere.fogHeight', file: 'src/game/world/background.ts', how: 'vertical placement of that plane' },
   { axis: 'atmosphere.meteors', file: 'src/game/world/background.ts', how: 'divides the shooting-star slot length' },
   // ---- weather ----
-  { axis: 'weather.stormBias', file: 'src/game/world/storm.ts', how: 'multiplies the strike interval (rarer storms on a calm run)' },
-  { axis: 'weather.rain', file: 'src/game/world/storm.ts', how: 'setRainScale — rain density' },
+  { axis: 'weather.stormBias', file: 'src/game/world/storm.ts', how: 'multiplies the strike interval AND weights the weather front bands (world/weather.ts)' },
+  { axis: 'weather.rain', file: 'src/game/world/storm.ts', how: 'setRainScale — rain density, then the front multiplies it per band' },
   { axis: 'weather.cadence', file: 'src/game/world/storm.ts', how: 'divides the interval again: lightning cadence' },
   // ---- grade (baked into the arena plate) ----
   { axis: 'grade.temperature', file: 'src/game/world/background.ts', how: 'bias of the split-tone: warm run vs cool run' },

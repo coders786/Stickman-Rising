@@ -897,10 +897,12 @@ export class Game {
         const snap = this.snap
         const prof = this.bg.getProfile?.()
         const plates = this.bg.plateStats?.()
+        const wx = this.bg.weatherState?.()
+        const wxTxt = wx ? ` · ${wx.kind} ${Math.round(wx.s * 100)}% ${wx.changes}ch` : ''
         const bake = plates && plates.moonSource !== 'none'
           ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
           : ''
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}`, this.cssW - 12, 62)
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}${wxTxt}`, this.cssW - 12, 62)
         // THE RUN IDENTITY, shown for the first seconds of a run and then
         // faded out. The whole point of the profile work is that tonight is a
         // different night — but a debug line that never leaves is clutter, and

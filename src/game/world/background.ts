@@ -7,6 +7,8 @@ import { NightLayer } from './night'
 import { Rigging } from './rigging'
 import { buildCloudBank, bankParams, type BankParams } from './clouds'
 import { gameLedger } from '../render/ledger'
+import { WeatherFront, tintAlpha, tintColour } from './weather'
+import { rgbaConst } from '../render/color'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -93,6 +95,8 @@ export interface BackgroundRenderer {
   warm?(): number
   /** Screen x of the moon — the stage's only light direction (contact shadows). */
   moonScreenX?(): number
+  /** Live weather, for the debug readout (world/weather.ts). */
+  weatherState?(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null
 }
 
 /* ============================ seeded RNG ================================= */
@@ -1239,6 +1243,18 @@ export class CyberBackground {
   private bank: HTMLCanvasElement | null = null;
   /** Its derived parameters, resolved ONCE (the draw path must not allocate). */
   private bankP: BankParams | null = null;
+  /* ---------------- the weather front (world/weather.ts) ---------------- */
+  /** The run's own weather, and the front that moves within it. */
+  private wx: WeatherFront | null = null
+  /** The run's rain axis, clamped exactly as the storm clamps it. */
+  private wxRainBase = 1
+  /** Live multipliers, cached per update so the draw path is arithmetic only. */
+  private wxFog = 1
+  private wxWet = 1
+  private wxGust = 1
+  /** The tint fill, resolved only when its quantised alpha changes. */
+  private wxTint: string | null = null
+  private wxTintKey = ''
   /** Last few run seeds, so a new run cannot be a near-copy of the last one
    *  (profile.ts §LAW 3). Bounded: three is enough for the metric to work. */
   private seedHistory: number[] = [];
@@ -1296,6 +1312,13 @@ export class CyberBackground {
     this.rig = new Rigging(this.profile, this.q);
     // Weather is a profile axis cluster: rarity, density and cadence of storms.
     this.storm.applyProfile?.(this.profile.weather);
+    this.wxRainBase = Math.max(0.35, Math.min(1, this.profile.weather.rain));
+    // THE FRONT — the run's weather is a climate, not a constant: inside a run
+    // the sky is allowed to change its mind, slowly (world/weather.ts).
+    const bias = this.profile.weather.stormBias;
+    if (this.wx) this.wx.reset(this.profile.seed, bias, this.profile.weather.rain);
+    else this.wx = new WeatherFront(this.profile.seed, bias, this.profile.weather.rain);
+    this.applyWeather(0);
     this.pollMood = -1;           // force the horizon bloom to re-bake
     this.built=false;
     this.skyVault.invalidate();   // force one composite with the NEW skyline
@@ -1334,6 +1357,37 @@ export class CyberBackground {
     // no tile ever needs re-rendering.
   }
 
+  /** Push the front's current sample into the systems that read weather:
+   *  rain density, fog, wind, wetness of the deck, and the sky's tint. Pure
+   *  arithmetic — no allocation, no canvas work — so it can run every frame. */
+  private applyWeather(_dt: number): void {
+    const wx = this.wx
+    if (!wx) return
+    const s = wx.sample
+    this.storm.setRainScale(this.wxRainBase * s.rain)
+    this.wxFog = s.fog
+    this.wxWet = s.wet
+    this.wxGust = s.gust
+    this.rig?.windState.setGust(s.gust)
+    // The tint is a fill colour; `rgbaConst` caches by (rgb, alpha) and the
+    // alpha is quantised to 1/32 by the front, so this allocates only when the
+    // weather actually moves a step.
+    const a = tintAlpha(s.tint)
+    const key = `${a}|${s.tint >= 0 ? 'w' : 'c'}`
+    if (key !== this.wxTintKey) {
+      this.wxTintKey = key
+      this.wxTint = a > 0 ? rgbaConst(tintColour(s.tint), a) : null
+    }
+  }
+
+  /** For the debug overlay / bench: what the sky is doing right now. */
+  weatherState(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null {
+    const wx = this.wx
+    if (!wx) return null
+    const s = wx.sample
+    return { kind: s.kind, s: s.s, rain: s.rain, fog: s.fog, gust: s.gust, changes: wx.changes }
+  }
+
   /** Screen x of the moon's centre — the only light direction the stage has.
    *  The contact shadows and the rim both key from it (see renderer.ground). */
   moonScreenX(): number { return this.moonX; }
@@ -1344,6 +1398,10 @@ export class CyberBackground {
   update(dt: number): void {
     const d = dt > 0 ? (dt < 0.1 ? dt : 0.1) : 0;
     this.t += d;
+    // The front is driven by the real clock and by the storm's own flash: it
+    // will not turn the weather over while the sky is already strobing.
+    this.wx?.update(d, this.storm.intensity);
+    this.applyWeather(d);
     // Rigging physics runs on the fixed sub-step inside SpringChain, so a slow
     // frame bows the cables the same distance a fast one does.
     this.rig?.update(d);
@@ -1476,7 +1534,7 @@ export class CyberBackground {
      * pass behind the mass the way high aurora does. */
     if (this.bank) {
       const B = this.bankP;
-      const bOff = mod(-t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) - cx * 0.026 * cz, TILE);
+      const bOff = mod(-t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) * this.wxGust - cx * 0.026 * cz, TILE);
       const bY = hy - 210 + (B ? B.lift : 0);
       ctx.globalAlpha = B ? B.opacity : 0.6;
       for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(this.bank, bx, bY);
@@ -1582,7 +1640,7 @@ export class CyberBackground {
       // Fog is a profile axis and it is the cheapest depth cue in the sky: a
       // heavy-fog run separates the four parallax bands without new geometry.
       const A2 = this.profile ? this.profile.atmosphere : null;
-      const fogA = Math.min(1.2, A2 ? A2.fog : 1);
+      const fogA = Math.min(1.4, (A2 ? A2.fog : 1) * this.wxFog);
       const fogY = byF2 - 216 * (A2 ? A2.fogHeight : 1);
       ctx.globalAlpha = fogA;
       for (let fx = -fpM; fx < w; fx += 512) {
@@ -1708,7 +1766,9 @@ export class CyberBackground {
     // mirror above shows the city; this shows the SKY, and together they are
     // the whole reflection story for two drawImage calls and no readback.
     if (this.night) {
-      const wet = 0.55 + 0.45 * Math.min(1, this.storm.intensity * 4);
+      // Wetness answers the weather: a hazed night has a dry, matte roof; a
+      // squall makes the deck a mirror. One multiply, no extra blit.
+      const wet = Math.min(1.6, (0.55 + 0.45 * Math.min(1, this.storm.intensity * 4)) * this.wxWet);
       this.night.drawGlitter(ctx, this.moonX, deckY, w, h, wet, this.t);
     }
   }
@@ -1756,6 +1816,21 @@ export class CyberBackground {
       ctx.fillRect(0, 0, this.vw, this.vh);
       ctx.globalAlpha = 1;
     }
+    /* THE WEATHER'S COLOUR — one fill over the sky region only (the roof is
+     * lit by practicals and must not be gelled), fading with the front. The
+     * alpha is ≤0.12, quantised to 1/32 so the string is cached: this is the
+     * cheapest honest way to make a warm haze and a cold squall look like two
+     * different nights without re-baking a single plate. Low tier sheds the
+     * fill — the rain, fog and wind still respond there, because weather is not
+     * something a tier may remove (07 §"what a tier may not remove"). */
+    if (this.wxTint && this.q !== 'low') {
+      const deckY = this.vh * 0.5 + cam.zoom * (0 - cam.y);
+      if (deckY > 8) {
+        ctx.fillStyle = this.wxTint;
+        ctx.fillRect(0, 0, this.vw, Math.min(this.vh, deckY));
+      }
+    }
+
     // CINEMATIC VIGNETTE — ONE baked plate, ONE blit. Dark corners focus
     // attention on the action; no live gradient, no post-processing engine.
     if (!this.vignette || this.vigW !== this.vw || this.vigH !== this.vh) {

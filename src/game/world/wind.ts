@@ -31,6 +31,10 @@ export class Wind {
   readonly base: number
   private _accel = 0
   private _airspeed = 0
+  /** Weather-front multiplier on the whole field (world/weather.ts). 1 = the
+   *  run's own wind; a squall leans on it, a haze stills it. It scales the
+   *  ACCELERATION, not `base`, so the sign of a left-blowing night survives. */
+  private gust = 1
 
   constructor(profile: EnvironmentProfile) {
     this.profile = profile
@@ -46,11 +50,22 @@ export class Wind {
     if (dt > 0) this.t += dt
     const g1 = this.life.at(this.t, 0.16) - 0.5
     const g2 = this.life.at(this.t * 1.7 + 3.1, 0.23) - 0.5
-    this._accel = this.base * (0.55 + 1.4 * Math.abs(g1)) + this.base * g2 * 0.8
+    this._accel = (this.base * (0.55 + 1.4 * Math.abs(g1)) + this.base * g2 * 0.8) * this.gust
     // 0..1 dial: |base| runs to ~58 px/s² at the extremes of the axis.
     const mag = Math.abs(this._accel)
     this._airspeed = Math.max(0, Math.min(1, mag / 70))
   }
+
+  /** Weather-front gust multiplier (0.4 becalmed … 2 hostile). Recomputes the
+   *  field from the current phase so a change is felt on the very next step. */
+  setGust(mul: number): void {
+    const g = Number.isFinite(mul) ? Math.max(0.35, Math.min(2.2, mul)) : 1
+    if (g === this.gust) return
+    this.gust = g
+    this.update(0)
+  }
+
+  get gustMul(): number { return this.gust }
 
   /** Lateral acceleration for a spring chain (px/s²). */
   get accel(): number { return this._accel }
