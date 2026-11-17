@@ -7,6 +7,9 @@ under a hard CPU / memory / load-time budget.
 
 Companion docs: `docs/PREBAKED-WORLD-PLAN.md`, `docs/NEUROAESTHETIC-UPGRADE.md`.
 
+**Next:** `docs/LIGHT-SHADOW-V4-PLAN.md` (planning) — practicals as data, moon
+phases, puddle-masked + rotation-correct reflections, tier parity, committed bench.
+
 ---
 
 ## 1. The law we are obeying
