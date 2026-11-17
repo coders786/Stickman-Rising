@@ -1371,6 +1371,7 @@ export class CyberBackground {
       const moonX = w * 0.87 - cx * 0.03 * cz - MOON_HALF + Math.sin(t * 0.021) * 46;
       const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - MOON_HALF + Math.cos(t * 0.014) * 16;
       this.moonX = moonX + MOON_HALF;
+      this.rig?.setRimSide(this.moonX < (this.vw * 0.5) ? -1 : 1);
       this.moonY = moonY + MOON_HALF;
       this.moonCover = 0;
     }
@@ -1519,6 +1520,9 @@ export class CyberBackground {
       const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - half + Math.cos(t * 0.014 * drift) * 16;
       this.moonX = moonX + half;
       this.moonY = moonY + half;
+      // same rule as the contact shadows: the rims follow the moon, they do not
+      // assume it is on the right because it usually is
+      this.rig?.setRimSide(this.moonX < (this.vw * 0.5) ? -1 : 1);
       ctx.globalAlpha = 1;
       ctx.drawImage(this.moonSpr, moonX, moonY, D, D);
       ctx.globalCompositeOperation = 'lighter';

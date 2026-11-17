@@ -83,6 +83,10 @@ export class Rigging {
   private masts: { x: number; top: number }[] = []
   private readonly cableInk: string
   private readonly rimInk: string
+  /** Which way the moon is: +1 = screen right, -1 = left. The rim is drawn on
+   *  the side the light comes from, so a run whose moon sits left must rim left
+   *  — otherwise every cable is lit from the wrong edge all night. */
+  private rimSide = 1
   private readonly flagInk: string
 
   constructor(profile: EnvironmentProfile, tier: Quality = 'high') {
@@ -158,6 +162,11 @@ export class Rigging {
         void i
       }
     })
+  }
+
+  /** +1 when the moon is right of the frame centre, −1 when it is left. */
+  setRimSide(side: number): void {
+    this.rimSide = side < 0 ? -1 : 1
   }
 
   setTier(tier: Quality): void {
@@ -252,14 +261,15 @@ export class Rigging {
     ctx.lineWidth = 1.6
     ctx.stroke()
     if (this.loadout.rim) {
-      // The moon-side rim: the same geometry, offset one pixel toward the moon
-      // (always screen right in this stage), at a fraction of the weight. It is
-      // the difference between "a line" and "a cable catching the moon".
+      // The moon-side rim: the same geometry, offset one pixel toward whichever
+      // side of the frame the moon is on, at a fraction of the weight. It is the
+      // difference between "a line" and "a cable catching the moon".
+      const rs = this.rimSide
       ctx.beginPath()
       for (const c of this.cables) {
         const n = c.polyline(this.litStroke)
-        ctx.moveTo(this.litStroke[0] + 1, this.litStroke[1] - 1)
-        for (let i = 1; i < n; i++) ctx.lineTo(this.litStroke[i * 2] + 1, this.litStroke[i * 2 + 1] - 1)
+        ctx.moveTo(this.litStroke[0] + rs, this.litStroke[1] - 1)
+        for (let i = 1; i < n; i++) ctx.lineTo(this.litStroke[i * 2] + rs, this.litStroke[i * 2 + 1] - 1)
       }
       ctx.strokeStyle = this.rimInk
       ctx.lineWidth = 0.8
