@@ -134,6 +134,11 @@ one light model to own every shadow.
 | `T6.8` | Cadence metrics + `M-CLAMP` detection in `?bench=1` | `src/game/debug/bench.ts` | 70 LOC | separates "we're slow" from "the browser clamped" | `18` §6 |
 | `T6.9` | Opt-in 120 mode, capability-gated (median ≤9 ms, p95 ≤8.3, user setting) | `src/game/render/quality.ts` | 60 LOC | FID-35 | `18` §5 L4 |
 | `T6.10` | **Deferred to M7:** worker-owned `OffscreenCanvas` frame clock (the only 120 path on Chrome Android) | new | 250 LOC | — | `18` §1, Rule 10 |
+| `T6.11` | Render-time clock into `Animator.update` (`loopPhase`/`physicsTime` already exist) + `alpha` exposed to draws | `src/game/anim/animator.ts` (call sites only) | 90 LOC | FID-37, 244/244 still green | `19` §0.5 |
+| `T6.12` | Angle-space pose interpolation + FK re-derivation; cross-fade weights on render time | `src/game/anim/` | 120 LOC | FID-39, FID-40 | `19` §3.2 |
+| `T6.13` | Rig batching + zero-allocation style table: 20 strokes → ≤4, no per-frame `rgba()` strings, no per-limb alpha | `src/game/entities/player.ts`, `enemy.ts` | 140 LOC | FID-41, `M-ALLOC` = 0 | `19` §0.5, §6 |
+| `T6.14` | Metrics `M-DUP`, `M-JERK`, `M-RIG`, `M-LATENCY` in `?bench=1` | `src/game/debug/bench.ts` | 90 LOC | G6 | `19` §9 |
+| `T6.15` | Camera spring sampled at render time; audit "never smooth camera and player together" | `src/game/` | 60 LOC | FID-38 | `19` §4 |
 
 **Exit:** G6, a G7 report that says what it measured, and the user's eye on G8.
 **Effort:** 3 days + device time we do not have yet.

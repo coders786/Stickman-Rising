@@ -215,3 +215,31 @@ interpolation deliver for free.
 
 **Consequence:** FID-32…36 added; `18-MOTION-SMOOTHNESS.md` written; P9 added;
 M6 gains T6.5–T6.10.
+
+---
+
+## D10 · Sample time-driven animation, interpolate state-driven motion
+
+**Verified in code (2026-11-15):** animation is already a pure function of time
+(`sampleClip(clip, t, out)`, `animator.ts:64`) and the animator's clock is already
+externally drivable (`update(dt, loopPhase?, physicsTime?)`). So 120 fps limbs cost
+*nothing* — we pass a render clock. Physics cannot do that: simulating at the render
+rate would break the 244 fixed-step tests, and interpolating costs exactly one frame
+of latency (8.3 ms at 120, the canonical trade from *Fix Your Timestep*).
+
+**Decision.** Sim stays fixed at 60 Hz. Time-driven systems (clips, eases, camera,
+parallax, drift, particles, blend weights) are **sampled at the render timestamp**.
+State-driven systems (root motion, hitboxes, hazards) are **interpolated** with
+`alpha = accumulator / dt`. Extrapolation is permitted only for the player's own
+input echo, never for enemies or hazards (overshoot would lie about hit positions).
+
+**Latency budget:** total added latency ≤ **16.7 ms** beyond the raw input sample,
+enforced with `M-LATENCY`. Two specific bans: never smooth the camera *and* the
+player (double smoothing is what people call "smooth but laggy"), and never lerp joint
+*positions* (it shortens limbs and destroys the stickman silhouette — interpolate
+angles, re-derive with FK).
+
+**Also recorded:** the rig issues ~50 stroke calls per frame (20 for the player alone)
+and allocates `rgba(...)` template strings per stroke inside the draw path, which
+violates REQ-704. Doubling the frame rate doubles both costs, so T6.13 is a
+prerequisite for 120, not an optimisation.

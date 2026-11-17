@@ -79,6 +79,16 @@ Grading: **[M]** measured today · **[E]** estimated · **[T]** target for this 
 | FID-35 | Opt-in 120 mode holds p95 ≤8.3 ms for 60 s, else auto-drops to 60 | C2/C3 only |
 | FID-36 | Half-frame smear: ≤**1** extra blit, full-screen ΔL ≤10 %, never on the stickman silhouette, off under reduced motion | `medium`+ |
 
+## 6c. Animation cadence (`19-ANIMATION-CADENCE.md`)
+
+| ID | Target | Notes |
+|---|---|---|
+| FID-37 | `M-DUP` = **0** duplicated render states while anything moves — unless the clip authored `stepRate > 0` (deliberate "on twos") | pose sampled at render time |
+| FID-38 | Input→visible ≤ **16.7 ms** beyond the raw input sample | latency ledger |
+| FID-39 | `M-JERK`: no joint exceeds **2×** the clip's median \|Δ³θ\| | placeholder until measured |
+| FID-40 | Foot slide ≤ **2 px** at any speed | pose clock and root share `alpha` |
+| FID-41 | Rig ≤ **1.2 ms** at 120 on C1; ≤**4** stroke calls per figure | `M-RIG` |
+
 ## 7. How a "WoW" gate is actually passed
 
 A milestone fails if any of FID-1…FID-25 is violated **in data**, even if the

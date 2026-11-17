@@ -65,6 +65,10 @@ GPU in the sandbox — discovery M1), E3 is the user.
 | `D-CADENCE` | `M-EVEN`, `M-JUDDER`, `M-CADENCE` | fixed-bucket interval histogram | ≥95 % within ±2 ms (FID-32) |
 | `D-CLAMP` | is the platform clamping us at 60? | median 59.5–60.5 **and** frame time <12 ms | boolean, reported not failed |
 | `D-SUBPIXEL` | screen-position delta per frame on a slow layer | draw-call instrumentation | never 0 for >6 frames (FID-33) |
+| `D-DUP` | duplicated render states while moving | hash of joint angles per frame | 0 unless `stepRate > 0` (FID-37) |
+| `D-JERK` | max \|Δ³θ\| per joint vs clip median | pose history ring buffer | ≤2× (FID-39) |
+| `D-RIG` | rig draw ms + stroke calls | `performance.now()` around the figure draw | ≤1.2 ms / ≤4 strokes at 120 (FID-41) |
+| `D-LATENCY` | input timestamp → first visible frame | stamp on input, read at draw | ≤16.7 ms added (FID-38) |
 
 ---
 
