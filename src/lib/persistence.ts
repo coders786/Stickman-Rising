@@ -41,7 +41,23 @@ export function parseSettings(raw: string | null, coarse = false, detected?: Qua
     showFps: z.boolean().catch(defaults.showFps),
     gore: z.enum(['energy', 'blood']).catch(defaults.gore),
   })
-  try { return schema.parse(JSON.parse(raw ?? '{}')) } catch { return defaults }
+  try {
+    const parsed = JSON.parse(raw ?? '{}') as Record<string, unknown>
+    const out = schema.parse(parsed)
+    /* MIGRATION — a saved quality of 'low' may not be a CHOICE.
+     *
+     * Every player who has touched this build before today has `quality: 'low'`
+     * in localStorage, because that was the hard-coded default. Keeping it would
+     * pin exactly the people who complained about the graphics to the cheapest
+     * tier, and they would reasonably conclude nothing changed. So: a legacy
+     * record (no `qualityV`) with quality 'low' is treated as "never chosen" and
+     * re-detected once. Records written from now on carry `qualityV: 2`, and from
+     * then on 'low' means what it says. */
+    if (parsed.qualityV !== 2 && parsed.quality === 'low' && detected) {
+      out.quality = detected
+    }
+    return out
+  } catch { return defaults }
 }
 export function readStorage(key: string): string | null {
   try { return window.localStorage.getItem(key) } catch { return null }

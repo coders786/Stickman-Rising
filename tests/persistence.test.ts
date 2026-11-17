@@ -27,3 +27,22 @@ test('storage access safely fails outside the browser', () => {
   assert.equal(readStorage('key'), null)
   assert.equal(writeStorage('key', 'value'), false)
 })
+
+test('settings: a legacy "low" is not treated as a choice', () => {
+  // Before this build, 'low' was the hard-coded default, so every returning
+  // player has it saved. It must not pin them to the cheapest tier forever.
+  const legacy = JSON.stringify({ quality: 'low', shake: true })
+  const detected = parseSettings(legacy, false, 'high')
+  assert.equal(detected.quality, 'high', 'a legacy default was treated as a choice')
+
+  // A choice made AFTER migration is honoured, even when it is 'low'.
+  const chosen = JSON.stringify({ quality: 'low', qualityV: 2 })
+  assert.equal(parseSettings(chosen, false, 'high').quality, 'low')
+
+  // No detection available (SSR / headless): keep what was saved.
+  assert.equal(parseSettings(legacy, false, undefined).quality, 'low')
+
+  // A legacy record that is NOT the old default is a real choice.
+  const saved = JSON.stringify({ quality: 'ultra' })
+  assert.equal(parseSettings(saved, true, 'medium').quality, 'ultra')
+})

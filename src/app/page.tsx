@@ -261,7 +261,8 @@ export default function Home() {
     } catch (settingsErr) {
       console.warn('Applying settings failed:', settingsErr)
     }
-    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify(settings)))
+    // `qualityV` marks the record as post-migration: see parseSettings' note.
+    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify({ ...settings, qualityV: 2 })))
   }, [settings, hydrated])
 
   useEffect(() => {
