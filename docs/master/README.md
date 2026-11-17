@@ -11,18 +11,19 @@ Baseline commit for all numbers in this package: `5b874fc`.
 
 | # | Document | Phase | Status |
 |---|---|---|---|
-| 00 | `00-DISCOVERY-REPORT.md` | 1 | **DELIVERED** — audit, measured baseline, 8 constraints, 6 decisions |
-| 01 | `01-REQUIREMENTS-SPEC.md` | 2 | **DELIVERED** — REQ-101…REQ-806, traceability, 3 blocked scope decisions |
-| 02 | `02-VISUAL-RESEARCH.md` | 3 | next — atmosphere, hierarchy, cloud aesthetics, comfort, evidence grades |
-| 03 | `03-ART-DIRECTION.md` | 4 | next — references, target frames, hierarchy, consistency rules |
-| 04 | `04-TECH-COMPARISON.md` | 5 | next — technique matrix (adopt/adapt/defer/reject) in Canvas2D terms |
-| 05 | `05-ARCHITECTURE.md` | 6–7 | next — Environment Controller, Level Manager, Quality Manager, renderers, diagrams, data flow |
-| 06 | `06-PIPELINE-BUDGETS.md` | 8 | next — frame order, platform budgets (provisional, labelled) |
-| 07 | `07-PROFILES-MATRIX.md` | 9–10 | next — environment profiles × quality tiers feature matrix |
-| 08 | `08-ROADMAP-TASKS.md` | 11–12 | next — milestones 0–10, task IDs, dependency graph, file plan |
-| 09 | `09-RISK-REGISTER.md` | 13 | next — likelihood/severity/detection/prevention/fallback |
-| 10 | `10-PROTOTYPES.md` | 14 | next — hypotheses + measurements for the 6 uncertain techniques |
-| 11 | `11-VALIDATION.md` | 15, 21–24 | next — gates, benches, device matrix, living decision log |
+| 00 | `00-DISCOVERY-REPORT.md` | 1 | **DELIVERED** — audit, measured baseline, 8 constraints |
+| 01 | `01-REQUIREMENTS-SPEC.md` | 2 | **DELIVERED** — REQ-101…REQ-806, traceability, re-spec of unsatisfiable asks |
+| — | `DECISIONS.md` | — | **DELIVERED** — D1 profiles / D2 perf-mobile / D3 new technology / D4 fix tests |
+| 02 | `02-TECH-SELECTION.md` | 5–6 | **DELIVERED** — 5 candidates compared; **hybrid Canvas2D game + WebGL2 atmosphere (WebGPU ultra)** selected, with boundaries + migration |
+| 03 | `03-PSYCHOLOGY-ART-DIRECTION.md` | 3–4 | **DELIVERED** — 11 evidence-graded laws (awe/vastness, Purkinje, fluency, Berlyne, peak shift, salience, Gestalt, colour, comfort, reward cadence, identity) → parameter table → probes |
+| 04 | `04-FIDELITY-TARGETS.md` | 3–4 | **DELIVERED** — 25 machine-checkable "WoW"/full-fidelity targets + 6 perf targets |
+| 05 | `05-ARCHITECTURE.md` | 6–7 | next — Environment Controller, Level Manager, Quality Manager, GPU/game boundary, diagrams, data flow |
+| 06 | `06-PIPELINE-BUDGETS.md` | 8 | next — frame order across two canvases, platform budgets (provisional) |
+| 07 | `07-PROFILES-MATRIX.md` | 9–10 | next — 4+ environment profiles × 4 tiers feature matrix |
+| 08 | `08-ROADMAP-TASKS.md` | 11–12 | next — M0.5 test fixes → M1…M6, task IDs, dependency graph, file plan |
+| 09 | `09-RISK-REGISTER.md` | 13 | next — incl. GPU context loss, shader hitch, overdraw, two-canvas compositor |
+| 10 | `10-PROTOTYPES.md` | 14 | next — P1–P5 hypotheses (half-res atmosphere, drift shimmer, LUT vs analytic, compositor cost, WebGPU UBO) |
+| 11 | `11-VALIDATION.md` | 15, 21–24 | next — gates, benches, device matrix |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,
@@ -31,15 +32,22 @@ Existing research that this package builds on (kept, not duplicated):
 
 ---
 
-## The three decisions that gate everything
+## Decisions (answered — see `DECISIONS.md`)
 
-| ID | Question | Why it blocks |
+| ID | Answer | Headline consequence |
 |---|---|---|
-| **S1** | Per-run **environment profiles** on the one rooftop stage, or build **2–3 real stages**? | Decides whether REQ-106 is a data file or a 10× art/geometry project |
-| **S2** | Mobile = **performance-first** or **touch-playable**? | The game is keyboard-only; full mobile needs an input + layout system |
-| **S3** | Confirm **Canvas2D-only** (no WebGL layer for clouds)? | Whole architecture; default assumed **yes** |
+| **D1** | **Profiles only**, full-fidelity, psychology-heavy | One stage; distinctiveness via profile axes; "full fidelity" defined as 25 measurable targets (`04-FIDELITY-TARGETS.md`) |
+| **D2** | **Performance-only mobile** | No touch controls; mobile = budgets/tiers/thermals. Game is not touch-playable — stated honestly |
+| **D3** | **New and distinct technology** | Canvas2D-only revoked → **hybrid: Canvas2D game + WebGL2 procedural atmosphere (WebGPU at ultra)**, hard no-readback boundary, Canvas2D sky kept as fallback (`02-TECH-SELECTION.md`) |
+| **D4** | **Fix the 8 failing tests** | Milestone **M0.5** before any GPU work; green 244/244 baseline required |
 
-Answered decisions live in `DECISIONS.md` once S1–S3 are resolved.
+## Execution order (what happens next)
+1. **M0.5** — fix the 8 combat/anim test failures (triage already in `DECISIONS.md` §D4).
+2. **M1** — profile system (`world/profile.ts`), quality manager, committed harness
+   (`scripts/bench-render.mjs`), FlashLedger, `src/gpu` skeleton that fails closed.
+3. **M2** — GPU sky behind a flag (gradient + stars), pixel-free verification.
+4. **M3** — cumulus → stratus → cirrus.
+5. **M4** — fog/shafts/grade. **M5** — WebGPU ultra. **M6** — governor + thermal.
 
 ---
 

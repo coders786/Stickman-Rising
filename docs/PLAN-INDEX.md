@@ -3,7 +3,7 @@
 
 | # | Doc | Status | What it decides |
 |---|---|---|---|
-| ★ | `docs/master/README.md` | **package** | Master overhaul package: discovery + requirements delivered, phases 3–11 next |
+| ★ | `docs/master/README.md` | **package** | Master overhaul package: discovery, requirements, decisions, tech selection, psychology, fidelity targets delivered |
 |---|---|---|---|
 | 1 | `docs/PREBAKED-WORLD-PLAN.md` | **built** (`e4dbbfe`) | Baked plates, parallax ladder, seeded procedural skyline, purposeful props |
 | 2 | `docs/NEUROAESTHETIC-UPGRADE.md` | **built** (`3081d8c`) | 60/30/10 mood palettes, split-tone grade, isolation heroes, teen+adult dual register |
@@ -15,8 +15,9 @@
 Kept for reference: `docs/mobile-2.5d/LIGHT-SHADOW-MATCH-PLAN.md`, `docs/ANIMATION.md`.
 
 ## Master overhaul package (start here for the graphics overhaul)
-`docs/master/00-DISCOVERY-REPORT.md` → `docs/master/01-REQUIREMENTS-SPEC.md` →
-then the numbered docs as they land (02 visual research … 11 validation).
+`docs/master/DECISIONS.md` (D1–D4) → `00-DISCOVERY-REPORT.md` →
+`01-REQUIREMENTS-SPEC.md` → `02-TECH-SELECTION.md` → `03-PSYCHOLOGY-ART-DIRECTION.md`
+→ `04-FIDELITY-TARGETS.md` → then 05 architecture … 11 validation.
 
 ## Reading order for a new contributor
 0. `LIGHTING-RESEARCH-V4.md` §2 R1 and §4 (the experiments) — the architecture is
