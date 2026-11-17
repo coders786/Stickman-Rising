@@ -42,6 +42,8 @@ the contact shadow is projected away from the moon (O-10). See
 | 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P8 with numeric accept/reject; P4 demoted to desktop-only by D7 |
 | 11 | `11-VALIDATION.md` | 15, 21–24 | **DELIVERED** — 3 measurement environments, metric catalogue, frame-percentile method, gate ladder G0–G8, anti-self-deception rules, E3 rubric |
 | 23 | `23-LIGHT-AND-SHADOW.md` | 3–5 | **DELIVERED** — the lighting/shadow rewrite: projected body shadows, the second light, prop silhouettes, volumetric shafts, and the graphics-level table (low/medium/high/ultra) with a device classifier |
+| 23 | `23-LIGHT-AND-SHADOW.md` | 3–5 | **DELIVERED** — the lighting/shadow rewrite: projected body shadows, the second light, prop silhouettes, volumetric shafts, and the graphics-level table (low/medium/high/ultra) with a device classifier |
+| 24 | `24-ENGINE-DECISION.md` | 2–3 | **DECIDED (no)** — should the engine move to Phaser: measured LOC inventory, real bundle math (+82 % gzip), what the 357-test headless harness would cost, the four revisit triggers |
 | 12 | `12-MOBILE-PERFORMANCE.md` | 8b | **DELIVERED** — the mobile reality check: no GPU timer on phones, resolution-first shedding, iOS canvas caps + ledger, and **D7** (single canvas default) |
 | 13 | `13-SHADER-SPEC.md` | 6b | **DELIVERED** — 8 programs with real math, the **noise atlas** decision, precision map, straight-alpha/Y-flip contract, bake budget of ≤6 ms per plate |
 | 14 | `14-DEVICE-TIERS.md` | 10 | **DELIVERED** — tier detection by **measurement** (renderer strings are blocked/falsified), 120 ms boot probe, C0–C3 classes |
