@@ -28,6 +28,7 @@
 import type { WorldRef } from '../core/types'
 import type { AttackRuntimeInfo } from '../combat/attacks'
 import type { Player } from '../entities/player'
+import { MOOD_PALETTES, type MoodPalette } from './mood'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
 
@@ -103,7 +104,7 @@ function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderin
 
 /** ONE template = one sprite. Common 3D bake (shadow face, moon rim, contact
  *  AO, emissive halo, label) + ~8 lines of kind-specific silhouette. */
-function makeSprite(kind: PropKind): HTMLCanvasElement {
+function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
   const d = PROP_DEFS[kind]
   const { c, g } = canvas(PW, PH + PR)
   const mid = PW * 0.5
@@ -116,12 +117,25 @@ function makeSprite(kind: PropKind): HTMLCanvasElement {
   g.fillStyle = `rgba(${d.glow},0.5)`
   g.fillRect(mid - 26, PH - 12, 52, 1.4)
 
-  // emissive halo behind the object (a real lightmap, baked once)
-  const hg = g.createRadialGradient(mid, PH - 44, 2, mid, PH - 44, 46)
-  hg.addColorStop(0, `rgba(${d.glow},0.28)`)
-  hg.addColorStop(1, `rgba(${d.glow},0)`)
+  // ISOLATION HALO — one big saturated pool of colour behind the object:
+  // the single most attention-grabbing cue in the frame (peak shift).
+  const hg = g.createRadialGradient(mid, PH - 44, 2, mid, PH - 44, 52)
+  hg.addColorStop(0, `rgba(${d.glow},0.34)`)
+  hg.addColorStop(0.55, `rgba(${pal.pop},0.13)`)
+  hg.addColorStop(1, `rgba(${pal.pop},0)`)
   g.fillStyle = hg
-  g.fillRect(0, PH - 90, PW, 92)
+  g.fillRect(0, PH - 96, PW, 98)
+  // COMIC BURST — exaggerated rays (supernormal energy, teen register)
+  g.strokeStyle = `rgba(${pal.pop2},0.22)`
+  g.lineWidth = 2
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 + 0.2
+    const r0 = 30, r1 = 41 + (i % 2) * 7
+    g.beginPath()
+    g.moveTo(mid + Math.cos(a) * r0, PH - 44 + Math.sin(a) * r0)
+    g.lineTo(mid + Math.cos(a) * r1, PH - 44 + Math.sin(a) * r1)
+    g.stroke()
+  }
 
   g.save()
   g.translate(mid, PH - 10)
@@ -232,6 +246,23 @@ function makeSprite(kind: PropKind): HTMLCanvasElement {
   }
   g.restore()
 
+  // BOLD CONTOUR + STICKER TAG — light figure on dark ground (highest
+  // preference in colour-combination research) plus a rotated accent chip
+  // gives the prop a collectible/sticker quality without any asset art.
+  g.strokeStyle = `rgba(${pal.pop},0.5)`
+  g.lineWidth = 2
+  g.beginPath(); g.ellipse(mid, PH - 2, 33, 7, 0, 0, Math.PI * 2); g.stroke()
+  g.save()
+  g.translate(mid + 22, PH - 80)
+  g.rotate(0.22)
+  g.fillStyle = '#05090e'
+  g.fillRect(-9, -7, 18, 14)
+  g.fillStyle = `rgba(${pal.pop2},0.9)`
+  g.fillRect(-7, -5, 14, 10)
+  g.fillStyle = '#05090e'
+  g.beginPath(); g.arc(0, 0, 2.4, 0, Math.PI * 2); g.fill()
+  g.restore()
+
   // baked directional 3D key over the whole body: lit upper-right, shadowed
   // lower-left — the same moon as the city bands, so props sit IN the scene
   const key = g.createLinearGradient(PW, 0, 0, PH)
@@ -244,8 +275,11 @@ function makeSprite(kind: PropKind): HTMLCanvasElement {
   // PURPOSE PLATE — the player must know what breaking this prop DOES.
   // Baked text, one tiny plate, zero runtime text layout cost.
   g.textAlign = 'center'
-  g.fillStyle = 'rgba(4,9,14,0.82)'
-  g.fillRect(mid - 27, PH - 86, 54, 13)
+  g.fillStyle = 'rgba(2,5,9,0.94)'
+  g.fillRect(mid - 29, PH - 88, 58, 16)
+  g.strokeStyle = `rgba(${pal.pop},0.75)`
+  g.lineWidth = 1.2
+  g.strokeRect(mid - 29, PH - 88, 58, 16)
   g.fillStyle = `rgba(${d.glow},0.85)`
   g.fillRect(mid - 27, PH - 86, 54, 1)
   g.font = 'bold 9px ui-monospace,monospace'
@@ -311,9 +345,20 @@ export class PropField {
   readonly props: StageProp[] = []
   private sprites: Partial<Record<PropKind, HTMLCanvasElement>> = {}
   private built = false
+  private moodIdx = 0
   private clock = 0
   private seed = 0
   private nextId = 1
+
+  /** Match the skyline's curated mood palette so the props and the city
+   *  read as ONE designed frame. Re-bakes the six sprites once. */
+  setMood(index: number): void {
+    const i = ((index % MOOD_PALETTES.length) + MOOD_PALETTES.length) % MOOD_PALETTES.length
+    if (i === this.moodIdx && this.built) return
+    this.moodIdx = i
+    this.built = false
+    this.sprites = {}
+  }
 
   /** Repopulate the lane. Called on every run start with a fresh seed, so
    *  the side-scrolling area is genuinely different each run. Pure data —
@@ -489,7 +534,7 @@ export class PropField {
     if (!this.built) {
       this.built = true
       if (typeof document !== 'undefined') {
-        for (const k of KINDS) this.sprites[k] = makeSprite(k)
+        for (const k of KINDS) this.sprites[k] = makeSprite(k, MOOD_PALETTES[this.moodIdx])
       }
     }
     for (const p of this.props) {

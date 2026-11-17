@@ -86,6 +86,7 @@ export class HUD {
   /* low-HP red vignette: baked plate (see drawLowHpVignette) */
   private lowHpPlate: HTMLCanvasElement | null = null
   private propLegend: HTMLCanvasElement | null = null
+  private moodName = 'NEON NOIR'
   private lowHpW = 0
   private lowHpH = 0
 
@@ -399,6 +400,13 @@ export class HUD {
     ctx.restore()
   }
 
+  /** Re-bake the legend when the run's curated palette changes. */
+  setMoodLabel(name: string): void {
+    if (this.moodName === name) return
+    this.moodName = name
+    this.propLegend = null
+  }
+
   /** PROP PURPOSE LEGEND — a single baked plate (built once, blitted once
    *  per frame) so the six destructible props are self-explanatory. No live
    *  text layout on the 120 Hz path. */
@@ -411,6 +419,12 @@ export class HUD {
       c.width = 660; c.height = 22
       const g = c.getContext('2d')
       if (!g) return
+      // dark plate + accent hairline: a light figure on a dark ground
+      g.fillStyle = 'rgba(3,7,12,0.78)'
+      g.fillRect(0, 0, 660, 22)
+      g.fillStyle = 'rgba(120,226,255,0.4)'
+      g.fillRect(0, 0, 660, 1)
+      g.fillRect(0, 21, 660, 1)
       g.textBaseline = 'middle'
       g.font = `bold 10px ${MONO}`
       g.fillStyle = 'rgba(198,216,228,0.9)'
@@ -431,6 +445,18 @@ export class HUD {
         g.fillText(label, x + 17, 11)
         x += 21 + g.measureText(label).width + 12
       }
+      // MOOD BADGE — names the curated palette; makes each run read as a
+      // deliberately designed level rather than a random colour shuffle.
+      g.fillStyle = 'rgba(120,226,255,0.12)'
+      g.fillRect(556, 3, 100, 16)
+      g.strokeStyle = 'rgba(120,226,255,0.6)'
+      g.lineWidth = 1
+      g.strokeRect(556.5, 3.5, 99, 15)
+      g.fillStyle = '#bfefff'
+      g.font = `bold 9px ${MONO}`
+      g.textAlign = 'center'
+      g.fillText(this.moodName, 606, 11)
+      g.textAlign = 'left'
       this.propLegend = c
     }
     ctx.save()

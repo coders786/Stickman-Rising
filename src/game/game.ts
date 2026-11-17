@@ -12,6 +12,7 @@ import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground, type BackgroundRenderer } from './world/background'
 import { PropField, type PropHooks } from './world/props'
+import { MOOD_PALETTES, moodIndexForSeed } from './world/mood'
 import { cycleParticleLevel, getParticleLevel } from './fx/particles1d'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
@@ -272,6 +273,8 @@ export class Game {
     this.player.reset(1300)
     this.cam.snapTo(1300, -150)
     this.props.reset(0x51a2c9)
+    this.props.setMood(moodIndexForSeed(0x51a2c9))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(0x51a2c9)].name)
   }
 
   on(cb: (e: GameEvent) => void): () => void {
@@ -592,6 +595,8 @@ export class Game {
     const runSeed = (Math.random() * 0xffffffff) >>> 0
     this.bg.setRunSeed?.(runSeed)
     this.props.reset(runSeed)
+    this.props.setMood(moodIndexForSeed(runSeed))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(runSeed)].name)
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
@@ -638,7 +643,11 @@ export class Game {
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
-    this.props.reset()
+    const menuSeed = (Math.random() * 0xffffffff) >>> 0
+    this.props.reset(menuSeed)
+    this.props.setMood(moodIndexForSeed(menuSeed))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(menuSeed)].name)
+    this.bg.setRunSeed?.(menuSeed)
     this.waves.reset()
     this.player.reset(1300)
     this.combo.reset()

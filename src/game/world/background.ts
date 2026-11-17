@@ -1,6 +1,7 @@
 import {StormEngine} from './storm'
 import {FOG} from '../render/look'
 import { SkyVaultCache, blitWorldFrustum } from '../render/bhst'
+import { MOOD_PALETTES, moodForSeed, type MoodPalette } from './mood'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -400,10 +401,10 @@ function bakeArchetype(g: CanvasRenderingContext2D, b: BldSpec, kind: ArchKind):
 /** AURORA / HIGH-CLOUD SHEET — a sixth parallax plane baked from soft
  *  procedural ribbons. Drifts at its own factor with a slow alpha pulse;
  *  lives inside the cached sky vault so the frame cost is one blit. */
-function buildAuroraTile(): HTMLCanvasElement {
+function buildAuroraTile(pal: MoodPalette): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 190);
   const rng = mulberry32(0xa0c17e);
-  const cols = ['86,220,190', '92,150,236', '150,104,222'];
+  const cols = [pal.pop2, pal.shadow, pal.pop, pal.highlight];
   g.globalCompositeOperation = 'lighter';
   for (let i = 0; i < 5; i++) {
     const col = cols[i % cols.length];
@@ -426,6 +427,204 @@ function buildAuroraTile(): HTMLCanvasElement {
   }
   g.globalCompositeOperation = 'source-over';
   return c;
+}
+
+
+/* ============================================================================
+ * DUAL-REGISTER NEUROAESTHETIC BAKE TOOLKIT
+ * ----------------------------------------------------------------------------
+ * ADULT register = filmic restraint: baked split-toning (cool shadows / warm
+ * highlights), a raised black point, baked film grain and a screen vignette.
+ * TEEN register = isolated supernormal pops: peak-shift exaggeration of the
+ * most recognisable cues (rim light, neon bloom, crowns), ONE saturated hero
+ * per plane (isolation / von Restorff), rhythmic repetition, graffiti and
+ * holo panels. Both are BAKED ONCE — the frame path only blits canvases.
+ * ==========================================================================*/
+
+/** BAKED FILM GRADE — split toning + shadow lift + grain. `source-atop`
+ *  keeps sky gaps clean, so this is safe on transparent city tiles. Pure
+ *  bake-time work: no per-frame gradient, no shader, no LUT lookup. */
+function bakeFilmGrade(
+  g: CanvasRenderingContext2D, w: number, h: number,
+  pal: MoodPalette, strength: number, rng: () => number,
+): void {
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  const sg = g.createLinearGradient(0, h, w * 0.35, 0);
+  sg.addColorStop(0, `rgba(${pal.shadow},${(0.14 * strength).toFixed(3)})`);
+  sg.addColorStop(0.6, `rgba(${pal.shadow},${(0.04 * strength).toFixed(3)})`);
+  sg.addColorStop(1, `rgba(${pal.shadow},0)`);
+  g.fillStyle = sg;
+  g.fillRect(0, 0, w, h);
+  const hg = g.createLinearGradient(w, 0, 0, h);
+  hg.addColorStop(0, `rgba(${pal.highlight},${(0.11 * strength).toFixed(3)})`);
+  hg.addColorStop(0.55, `rgba(${pal.highlight},0)`);
+  g.fillStyle = hg;
+  g.fillRect(0, 0, w, h);
+  // film grain — the analog texture adults read as "shot on film"
+  const n = Math.min(9000, Math.round((w * h) / 900));
+  for (let i = 0; i < n; i++) {
+    const a = (0.012 + rng() * 0.022).toFixed(3);
+    g.fillStyle = rng() < 0.5 ? `rgba(226,238,250,${a})` : `rgba(0,0,0,${a})`;
+    g.fillRect(rng() * w, rng() * h, 1, 1);
+  }
+  g.restore();
+}
+
+/** SCREEN VIGNETTE — one baked plate, one blit in the existing weather pass.
+ *  Dark corners guide the eye to the centre (visual hierarchy) without any
+ *  live radial gradient or full-screen post engine. */
+function buildVignettePlate(w: number, h: number): HTMLCanvasElement {
+  const { c, g } = makeCanvas(Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)));
+  const rg = g.createRadialGradient(w * 0.5, h * 0.46, Math.min(w, h) * 0.2, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
+  rg.addColorStop(0, 'rgba(0,0,0,0)');
+  rg.addColorStop(0.6, 'rgba(4,8,14,0.055)');
+  rg.addColorStop(1, 'rgba(2,4,9,0.5)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, w, h);
+  const wg = g.createLinearGradient(0, h * 0.74, 0, h);
+  wg.addColorStop(0, 'rgba(255,150,80,0)');
+  wg.addColorStop(1, 'rgba(255,150,80,0.03)');
+  g.fillStyle = wg;
+  g.fillRect(0, h * 0.74, w, h * 0.26);
+  return c;
+}
+
+/** ISOLATION + PEAK SHIFT — one supernormal hero per plane. A single
+ *  saturated crown, an oversized halo and a light ribbon against a
+ *  desaturated field is the strongest attention magnet in the literature. */
+function bakeIsolationHero(
+  g: CanvasRenderingContext2D, x: number, bw: number, top: number, H: number,
+  pal: MoodPalette, disc: HTMLCanvasElement,
+): void {
+  const cx = x + bw * 0.5;
+  const cw = bw * (0.58 + 0.12);
+  bakeSpill(g, disc, cx, top - 4, bw * 1.05, 0.5);
+  bakeSpill(g, disc, cx, top - 4, bw * 0.5, 0.34);
+  g.fillStyle = `rgba(${pal.pop},0.75)`;
+  g.fillRect(cx - cw * 0.5, top - 4, cw, 3);
+  g.fillStyle = `rgba(${pal.pop},0.3)`;
+  g.fillRect(cx - cw * 0.5, top - 10, cw, 6);
+  const len = Math.min(H - top - 12, 150 + bw * 0.35);
+  const rg = g.createLinearGradient(0, top + 4, 0, top + len);
+  rg.addColorStop(0, `rgba(${pal.pop},0.55)`);
+  rg.addColorStop(1, `rgba(${pal.pop},0)`);
+  g.fillStyle = rg;
+  g.fillRect(cx - 2, top + 4, 4, len);
+  g.fillStyle = `rgba(${pal.pop2},0.8)`;
+  g.fillRect(cx - 1, top - 18, 2, 14);
+  g.fillRect(cx - 3, top - 20, 6, 2);
+  // symmetry + rhythm: two matching flanking pips
+  g.fillRect(cx - cw * 0.42, top - 1, 2, 2);
+  g.fillRect(cx + cw * 0.42, top - 1, 2, 2);
+}
+
+/** CHROMATIC EDGE FRINGE — peak-shifted outline energy: saturated 1px rims
+ *  on a few near silhouettes plus a rhythmic parapet strip (grouping /
+ *  repetition / balance). Baked, never a per-frame aberration pass. */
+function bakeChromaticEdges(
+  g: CanvasRenderingContext2D, towers: ReadonlyArray<{ x: number; w: number; h: number }>,
+  H: number, pal: MoodPalette, rng: () => number,
+): void {
+  for (const t of towers) {
+    if (rng() > 0.46) continue;
+    const top = H - t.h;
+    g.fillStyle = `rgba(${pal.pop},0.32)`;
+    g.fillRect(t.x - 1, top + 2, 1.4, t.h - 2);
+    g.fillStyle = `rgba(${pal.pop2},0.28)`;
+    g.fillRect(t.x + t.w - 1, top + 2, 1.4, t.h - 2);
+    g.fillStyle = `rgba(${pal.pop2},0.2)`;
+    for (let k = 0; k < t.w / 22; k++) g.fillRect(t.x + 8 + k * 22, top + 5, 10, 1);
+  }
+}
+
+/** GRAFFITI TAG — teen "street" appeal: a bold abstract mark with a
+ *  chromatic offset, spray dots and a dark outline so it reads as a light
+ *  figure on a dark ground (Schloss & Palmer's highest-preference pairing). */
+function bakeGraffiti(
+  g: CanvasRenderingContext2D, x: number, top: number, bw: number, bh: number,
+  pal: MoodPalette, rng: () => number,
+): void {
+  const gx = x + 14 + rng() * Math.max(4, bw - 108);
+  const gy = top + 34 + rng() * Math.max(10, bh * 0.38);
+  const s = 0.8 + rng() * 0.55;
+  g.save();
+  g.translate(gx, gy);
+  g.rotate(-0.16 + rng() * 0.32);
+  g.scale(s, s);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  const strokes: ReadonlyArray<readonly [number, number, number, number]> = [
+    [0, 26, 12, 2], [12, 2, 4, 26], [4, 26, 26, 12],
+    [30, 4, 30, 28], [30, 4, 46, 16], [30, 28, 46, 16],
+  ];
+  g.strokeStyle = 'rgba(2,5,9,0.85)';
+  g.lineWidth = 7;
+  for (const s0 of strokes) { g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s0[2], s0[3]); g.stroke(); }
+  g.strokeStyle = `rgba(${pal.pop},0.85)`;
+  g.lineWidth = 4;
+  for (const s0 of strokes) { g.beginPath(); g.moveTo(s0[0], s0[1]); g.lineTo(s0[2], s0[3]); g.stroke(); }
+  g.strokeStyle = `rgba(${pal.pop2},0.7)`;
+  g.lineWidth = 1.4;
+  for (const s0 of strokes) { g.beginPath(); g.moveTo(s0[0] + 3, s0[1] + 3); g.lineTo(s0[2] + 3, s0[3] + 3); g.stroke(); }
+  g.fillStyle = `rgba(${pal.pop2},0.55)`;
+  for (let i = 0; i < 12; i++) {
+    g.beginPath(); g.arc(rng() * 62 - 8, rng() * 40 - 6, 0.6 + rng() * 1.2, 0, TAU); g.fill();
+  }
+  g.restore();
+}
+
+/** HOLO AD PANEL — a peak-shifted neon billboard: colour-gradient glass,
+ *  scanlines, an abstract glyph and a baked glow spill. Isolated novelty. */
+function bakeHoloPanel(
+  g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number,
+  pal: MoodPalette, rng: () => number, disc: HTMLCanvasElement,
+): void {
+  g.save();
+  const bg = g.createLinearGradient(x, y, x + w, y + h);
+  bg.addColorStop(0, `rgba(${pal.pop2},0.2)`);
+  bg.addColorStop(1, `rgba(${pal.pop},0.14)`);
+  g.fillStyle = bg;
+  g.fillRect(x, y, w, h);
+  g.strokeStyle = `rgba(${pal.pop},0.6)`;
+  g.lineWidth = 1.5;
+  g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  g.strokeStyle = `rgba(${pal.pop2},0.8)`;
+  g.lineWidth = 2.6;
+  g.beginPath();
+  g.moveTo(x + 8, y + h - 8);
+  g.lineTo(x + w * 0.38, y + 7);
+  g.lineTo(x + w * 0.56, y + h - 10);
+  g.lineTo(x + w - 8, y + 9);
+  g.stroke();
+  g.fillStyle = 'rgba(3,7,12,0.3)';
+  for (let sy = y + 3; sy < y + h - 2; sy += 4) g.fillRect(x + 1, sy, w - 2, 1);
+  g.fillStyle = `rgba(${pal.pop2},0.8)`;
+  for (let i = 0; i < 4; i++) g.fillRect(x + 6 + rng() * (w - 14), y + 6 + rng() * (h - 12), 2, 2);
+  g.restore();
+  bakeSpill(g, disc, x + w * 0.5, y + h * 0.5, w * 0.85, 0.24);
+}
+
+/** MILKY-WAY DUST — a diagonal band of dense fine specks and faint haze.
+ *  Adds optimal complexity (structured novelty, not noise) to the skybox. */
+function bakeMilkyWay(g: CanvasRenderingContext2D, rng: () => number, pal: MoodPalette): void {
+  g.save();
+  g.translate(TILE * 0.52, STAR_H * 0.38);
+  g.rotate(-0.42);
+  const band = g.createLinearGradient(0, -110, 0, 110);
+  band.addColorStop(0, `rgba(${pal.pop2},0)`);
+  band.addColorStop(0.5, `rgba(${pal.pop2},0.035)`);
+  band.addColorStop(1, `rgba(${pal.pop2},0)`);
+  g.fillStyle = band;
+  g.fillRect(-TILE * 0.8, -110, TILE * 1.6, 220);
+  for (let i = 0; i < 420; i++) {
+    const px = rng() * TILE * 1.6 - TILE * 0.8;
+    const py = (rng() + rng() + rng() - 1.5) * 70;
+    const a = (0.08 + rng() * 0.3).toFixed(3);
+    g.fillStyle = rng() < 0.14 ? `rgba(${pal.pop},${a})` : `rgba(216,230,248,${a})`;
+    g.fillRect(px, py, rng() < 0.08 ? 2 : 1, 1);
+  }
+  g.restore();
 }
 
 
@@ -801,6 +1000,13 @@ export class CyberBackground {
 
   private q: Quality;
   private runSeed = 0;
+  /** dual-register colour identity for this run (60/30/10 harmony) */
+  private mood: MoodPalette = MOOD_PALETTES[0];
+  private heroDisc!: HTMLCanvasElement;
+  private vignette: HTMLCanvasElement | null = null;
+  private vigW = 0;
+  private vigH = 0;
+  private pollMood = -1;
   private skyVault = new SkyVaultCache();
   private lastCam: BgCam = { x: 1300, y: NOMINAL_Y, zoom: 1 };
 
@@ -808,6 +1014,7 @@ export class CyberBackground {
   set onThunder(cb:(()=>void)|null){this.storm.onThunder=cb}
   constructor(quality:Quality,storm=new StormEngine(quality)){
     this.q=quality;this.storm=storm;
+    this.mood = moodForSeed(0x51a2c9);
   }
 
   /** Tier change is a DRAW BUDGET change, never a re-bake. Every tile is
@@ -825,6 +1032,8 @@ export class CyberBackground {
     const s=seed>>>0;
     if(s===this.runSeed)return;
     this.runSeed=s;
+    this.mood = moodForSeed(s);   // coherent colour identity + per-run novelty
+    this.pollMood = -1;           // force the horizon bloom to re-bake
     this.built=false;
     this.skyVault.invalidate();   // force one composite with the NEW skyline
   }
@@ -888,10 +1097,18 @@ export class CyberBackground {
     // cached sky vault: zero cost on the 60/120Hz frame path.
     {
       const tintA = 0.5 + 0.5 * Math.sin(t * 0.07);
-      ctx.globalAlpha = 0.045 + tintA * 0.05;
-      ctx.fillStyle = tintA > 0.5 ? 'rgba(40,72,132,1)' : 'rgba(72,46,112,1)';
+      ctx.globalAlpha = 0.04 + tintA * 0.045;
+      ctx.fillStyle = `rgba(${this.mood.sky},1)`;
       ctx.fillRect(0, 0, w, skyH);
+      // baked-in split tone: warm highlights from the moon side, cool
+      // shadows below — the film look that reads as premium to adults
+      const split = ctx.createLinearGradient(w, 0, 0, skyH);
+      split.addColorStop(0, `rgba(${this.mood.highlight},0.035)`);
+      split.addColorStop(0.55, `rgba(${this.mood.shadow},0.02)`);
+      split.addColorStop(1, `rgba(${this.mood.shadow},0.06)`);
       ctx.globalAlpha = 1;
+      ctx.fillStyle = split;
+      ctx.fillRect(0, 0, w, skyH);
     }
     ctx.fillStyle = SKY_BELOW;
     this.fillBelow(ctx, hy);
@@ -906,19 +1123,21 @@ export class CyberBackground {
     {
       const I0 = this.lightningI();
       const pw = Math.max(2, Math.floor(w));
-      if (!this.pollPlate || this.pollW !== pw) {
+      const mi = MOOD_PALETTES.indexOf(this.mood);
+      if (!this.pollPlate || this.pollW !== pw || this.pollMood !== mi) {
         const pc = document.createElement('canvas');
         pc.width = pw; pc.height = 216;
         const pg2 = pc.getContext('2d')!;
         const lg = pg2.createLinearGradient(0, 0, 0, 216);
-        lg.addColorStop(0, 'rgba(40,70,140,0)');
-        lg.addColorStop(0.55, 'rgba(46,78,152,0.075)');
-        lg.addColorStop(0.84, 'rgba(122,64,150,0.1)');
-        lg.addColorStop(1, 'rgba(255,116,84,0.115)');
+        lg.addColorStop(0, `rgba(${this.mood.shadow},0)`);
+        lg.addColorStop(0.55, `rgba(${this.mood.shadow},0.09)`);
+        lg.addColorStop(0.84, `rgba(${this.mood.pop},0.075)`);
+        lg.addColorStop(1, `rgba(${this.mood.highlight},0.14)`);
         pg2.fillStyle = lg;
         pg2.fillRect(0, 0, pw, 216);
         this.pollPlate = pc;
         this.pollW = pw;
+        this.pollMood = mi;
       }
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = I0 > 0 ? 1 + I0 * 0.55 : 1;
@@ -1079,6 +1298,13 @@ export class CyberBackground {
       ctx.fillRect(0, 0, this.vw, this.vh);
       ctx.globalAlpha = 1;
     }
+    // CINEMATIC VIGNETTE — ONE baked plate, ONE blit. Dark corners focus
+    // attention on the action; no live gradient, no post-processing engine.
+    if (!this.vignette || this.vigW !== this.vw || this.vigH !== this.vh) {
+      this.vignette = buildVignettePlate(this.vw, this.vh);
+      this.vigW = this.vw; this.vigH = this.vh;
+    }
+    ctx.drawImage(this.vignette, 0, 0);
   }
 
   /* --------------------------- private helpers --------------------------- */
@@ -1101,13 +1327,18 @@ export class CyberBackground {
     this.moonHalo = buildMoonHalo();
     this.doorSpr = this.buildDoorStructure();
     this.doorPool = this.buildDoorPool();
+    // Rebuild-safe: a run reseed re-enters ensureBuilt, so clear the
+    // arrays instead of appending a second set of sprites/discs forever.
+    this.glyphSpr.length = 0;
     for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
     this.cloudDark = buildCloudTile(false);
     this.fogPlane = buildFogPlane();
-    this.auroraTile = buildAuroraTile();
-    this.glowWarm = buildGlowDisc('255,186,112');
-    this.glowCool = buildGlowDisc('126,214,244');
-    for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255']) {
+    this.auroraTile = buildAuroraTile(this.mood);
+    this.glowWarm = buildGlowDisc(this.mood.highlight);
+    this.glowCool = buildGlowDisc(this.mood.pop2);
+    this.heroDisc = buildGlowDisc(this.mood.pop);
+    this.glowSigns.length = 0;
+    for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255',this.mood.pop,this.mood.pop2]) {
       this.glowSigns.push(buildGlowDisc(rgb));
     }
     this.lampSpr = this.buildLampProp();
@@ -1178,6 +1409,8 @@ export class CyberBackground {
         g.fillRect(nx + ox - rad, ny - rad, rad * 2, rad * 2);
       }
     }
+    // MILKY-WAY DUST — structured complexity in the skybox
+    bakeMilkyWay(g, rng, this.mood);
     for (let i = 0; i < 180; i++) {
       const x = rng() * TILE;
       const y = rng() * STAR_H;
@@ -1262,6 +1495,8 @@ export class CyberBackground {
         g.fillRect(x + 4, cy0, bw - 8, 30);
         g.fillStyle = 'rgba(190,240,255,0.75)';
         g.fillRect(x + 6, cy0 + 5, bw - 12, 2);
+        // palette-tinted isolation: the ONE saturated cue on this ridge
+        bakeSpill(g, this.glowSigns[5], x + bw * 0.5, cy0 + 4, bw * 0.72, 0.26);
         g.fillStyle = '#131d29';
         g.fillRect(x + bw * 0.3, cy0 - 34, 2, 34);
         g.fillRect(x + bw * 0.66, cy0 - 46, 2, 46);
@@ -1308,6 +1543,7 @@ export class CyberBackground {
     g.fillRect(0, 0, TILE, FOG.topFadeH + 40);
     g.fillStyle = 'rgba(46,70,104,0.34)';
     g.fillRect(0, 0, TILE, DEEP_H);
+    bakeFilmGrade(g, TILE, DEEP_H, this.mood, 0.4, rng);
     g.globalCompositeOperation = 'source-over';
     // wrap-aware soft bake (the DOF variant in ensureBuilt goes further)
     const blurred = makeCanvas(TILE, DEEP_H);
@@ -1456,6 +1692,7 @@ export class CyberBackground {
     keyF.addColorStop(1, 'rgba(10,16,26,0.15)');
     g.fillStyle = keyF;
     g.fillRect(0, 0, TILE, FAR_H);
+    bakeFilmGrade(g, TILE, FAR_H, this.mood, 0.55, rng);
     g.globalCompositeOperation = 'source-over';
     // AERIAL FOCUS — the far plate sits past the focal plane: bake a one-
     // time soft blur (runtime cost ZERO — same drawImage) with wrap-aware
@@ -1642,6 +1879,13 @@ export class CyberBackground {
         x, bw, bh, H: MID_H, shade, rng, persona: (rng() * 4) | 0,
         warm: this.glowWarm, cool: this.glowCool,
       }, arch);
+      // HOLO AD PANEL — isolated saturated novelty on a calm field
+      if (rng() < 0.24 && bw > 140 && bh > 190) {
+        const hw = Math.min(92, bw - 44), hh = 26 + rng() * 16;
+        const hx = x + 12 + rng() * Math.max(4, bw - hw - 24);
+        const hy = MID_H - bh + 26 + rng() * Math.max(10, bh * 0.42);
+        bakeHoloPanel(g, hx, hy, hw, hh, this.mood, rng, this.heroDisc);
+      }
       if (rng() >= 0.22) {                                 // windows (some towers unlit)
         // LIT FLOOR bands + occasional server-floor hue, over the random grid
         const litFloorY = rng() < 0.3 ? MID_H - bh + 16 + rng() * Math.max(14, bh - 50) : -999;
@@ -1804,7 +2048,15 @@ export class CyberBackground {
     keyM.addColorStop(1, 'rgba(8,14,22,0.18)');
     g.fillStyle = keyM;
     g.fillRect(0, 0, TILE, MID_H);
+    bakeFilmGrade(g, TILE, MID_H, this.mood, 0.7, rng);
     g.globalCompositeOperation = 'source-over';
+    // ISOLATION HERO — ONE supernormal landmark per tile. A single vivid
+    // crown against desaturated towers is the eye's anchor (von Restorff).
+    if (towers.length > 0) {
+      let ht = towers[0];
+      for (const t2 of towers) if (t2.bh > ht.bh) ht = t2;
+      bakeIsolationHero(g, ht.x, ht.bw, MID_H - ht.bh, MID_H, this.mood, this.heroDisc);
+    }
     // AERIAL FOCUS (mid): lighter than the far plate — the action plane
     // stays crisp, only the depth layers soften (wrap-aware bake blur).
     const blurred = makeCanvas(TILE, MID_H);
@@ -1956,6 +2208,10 @@ export class CyberBackground {
         x, bw, bh, H: NEAR_H, shade, rng, persona: (rng() * 4) | 0,
         warm: this.glowWarm, cool: this.glowCool,
       }, arch);
+      // GRAFFITI TAG — teen street appeal on ~1/3 of near facades
+      if (rng() < 0.34 && bw > 150 && bh > 190) {
+        bakeGraffiti(g, x, NEAR_H - bh, bw, bh, this.mood, rng);
+      }
       if (rng() < 0.7) {                                   // windows + lit floor bands
         const litFloorY = rng() < 0.3
           ? NEAR_H - bh + 20 + rng() * Math.max(16, bh - 60)
@@ -1996,6 +2252,8 @@ export class CyberBackground {
       g.fillRect(bx0, y0, span, 18);
       g.fillStyle = 'rgba(150,192,224,0.16)';
       g.fillRect(bx0, y0, span, 1.4);
+      g.fillStyle = `rgba(${this.mood.pop},0.3)`;
+      g.fillRect(bx0, y0 + 17, span, 1);
       g.fillStyle = 'rgba(255,188,116,0.4)';
       for (let wx2 = bx0 + 4; wx2 < b.x - 3; wx2 += 11) {
         if (rng() < 0.75) g.fillRect(wx2, y0 + 5, 6, 8);
@@ -2064,7 +2322,17 @@ export class CyberBackground {
     keyN.addColorStop(1, 'rgba(6,10,16,0.22)');
     g.fillStyle = keyN;
     g.fillRect(0, 0, TILE, NEAR_H);
+    bakeFilmGrade(g, TILE, NEAR_H, this.mood, 0.85, rng);
     g.globalCompositeOperation = 'source-over';
+    // CHROMATIC EDGE FRINGE + rhythmic parapet strips (peak-shift outline
+    // energy, grouping/repetition) — applied after the grade so the pops
+    // stay saturated against the calm field.
+    bakeChromaticEdges(g, towers, NEAR_H, this.mood, rng);
+    {
+      let nHero = towers[0];
+      for (const t2 of towers) if (t2.h > nHero.h) nHero = t2;
+      bakeIsolationHero(g, nHero.x, nHero.w, NEAR_H - nHero.h, NEAR_H, this.mood, this.heroDisc);
+    }
     return c;
   }
 
@@ -2140,7 +2408,7 @@ export class CyberBackground {
     /* NEON SMEAR REFLECTIONS — the city's signs smear across the wet lip as
      * soft color pools (magenta / cyan / amber / violet). Pre-baked into the
      * tile; live shimmer rides on top via the puddle + glint records. */
-    const smearCols: ReadonlyArray<string> = ['255,45,149', '41,230,210', '255,176,46', '141,91,255'];
+    const smearCols: ReadonlyArray<string> = [this.mood.pop, this.mood.pop2, this.mood.highlight, '141,91,255'];
     for (let i = 0; i < 8; i++) {
       const col = smearCols[i % smearCols.length];
       const mx = 120 + rng() * (W - 260);
@@ -2284,6 +2552,32 @@ export class CyberBackground {
     g.fillStyle = sheen;
     g.fillRect(0, 16, W, 88);
 
+    /* DUAL-REGISTER PLAY PLANE — a thin rhythmic light rail (grouping +
+     * repetition, teen energy) and FOUR isolated saturated sticker decals
+     * on the fall wall; the rest of the deck stays calm, dark and filmic. */
+    g.fillStyle = `rgba(${this.mood.pop},0.14)`;
+    g.fillRect(0, 2, W, 1);
+    for (let sx = 0; sx < W; sx += 64) {
+      g.fillStyle = `rgba(${this.mood.pop2},0.15)`;
+      g.fillRect(sx + 6, 3, 24, 1);
+    }
+    for (let i = 0; i < 4; i++) {
+      const dx = 300 + i * 640 + rng() * 90;
+      const dy = 186 + rng() * 46;
+      const col = i % 2 ? this.mood.pop : this.mood.pop2;
+      g.save();
+      g.translate(dx, dy);
+      g.rotate(-0.12 + rng() * 0.24);
+      g.strokeStyle = `rgba(${col},0.35)`;
+      g.lineWidth = 2.4;
+      g.beginPath();
+      g.moveTo(0, 12); g.lineTo(12, 0); g.lineTo(24, 12); g.lineTo(12, 24); g.closePath();
+      g.stroke();
+      g.fillStyle = `rgba(${col},0.12)`;
+      g.fillRect(4, 10, 16, 4);
+      g.restore();
+      bakeSpill(g, this.heroDisc, dx + 12, dy + 12, 34, 0.1);
+    }
     /* STAGE PROPS (designed, baked) — deck hardware flush with the floor
      * and dressing on the fall wall, all clear of the play band. */
     for (const vx of [420, 1180, 2050, 2510]) {            // low floor vents
@@ -2373,6 +2667,9 @@ export class CyberBackground {
       g.fillStyle = i % 2 ? 'rgba(178,210,238,0.16)' : 'rgba(255,178,112,0.16)';
       g.fillRect(hx - 8 - rng() * 12, hy, 16 + rng() * 26, 1);
     }
+    // film grade LAST so the shade, highlights, grain and split-tone unify
+    // the reflections, the props and the concrete into one coherent frame
+    bakeFilmGrade(g, W, H, this.mood, 0.42, rng);
     return c;
   }
 
@@ -2411,6 +2708,8 @@ export class CyberBackground {
     g.fillRect(30, 10, 46, 1.6);
     g.fillStyle = 'rgba(190,224,250,0.7)';              // lamp glass
     g.fillRect(38, 26, 30, 3);
+    g.fillStyle = `rgba(${this.mood.pop2},0.55)`;
+    g.fillRect(30, 10, 46, 1.4);
     bakeSpill(g, this.glowCool, 53, 30, 62, 0.5);
     bakeSpill(g, this.glowCool, 53, 30, 26, 0.35);
     // warning band + base collar (baked contact AO)
@@ -2463,6 +2762,10 @@ export class CyberBackground {
     g.fillRect(8, 4, 184, 1.5);
     g.fillStyle = 'rgba(150,185,220,0.17)';
     g.fillRect(189, 4, 1.5, 182);
+    // palette accent rim — the practical shares the run's colour identity
+    g.fillStyle = `rgba(${this.mood.pop},0.28)`;
+    g.fillRect(8, 4, 184, 1);
+    bakeSpill(g, this.heroDisc, 100, 66, 74, 0.12);
     // THE WARM DOOR — hot core, warm falloff, dark frame
     gr = g.createLinearGradient(0, 62, 0, 186);
     gr.addColorStop(0, '#f5d9ab');

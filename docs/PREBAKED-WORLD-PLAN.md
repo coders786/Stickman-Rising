@@ -1,5 +1,8 @@
 # Pre-Baked World Upgrade — design & implementation plan
 
+> Follow-up pass: `docs/NEUROAESTHETIC-UPGRADE.md` — the 200 % dual-register
+> (teen + adult) psychology-driven visual upgrade built on top of this plan.
+
 Scope: the rooftop stage only. Hard constraints: **120 fps at any cost**,
 **flat Canvas2D** (no WebGL / shaders / post passes), and **all new art must be
 baked once** — the 60/120 Hz frame path may only blit pre-rendered canvases.
