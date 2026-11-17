@@ -6,6 +6,16 @@ Baseline it plans from: `49cfb88` (V3 pass, live).
 Companion docs:
 `docs/PREBAKED-WORLD-PLAN.md` · `docs/NEUROAESTHETIC-UPGRADE.md` · `docs/LIGHT-SHADOW-V3.md`
 
+> **RESEARCH ADDENDUM (read first): `docs/LIGHTING-RESEARCH-V4.md`.**
+> An evidence pass over Canvas2D, reflection, parallax, fog and accessibility
+> literature changed this plan in seven places. The important one: the V3
+> reflection pass samples the **framebuffer** every frame, and canvas→canvas
+> `drawImage` can be a synchronous GPU readback. So a **Phase 0** was added to
+> prove that cost before any V4 feature is built, with a no-readback
+> "silhouette mirror" fallback. Also revised: `L8` (two-level damp/pool mask),
+> `L11` (+ entity flipped mirrors), new `L15` (logarithmic parallax + tier
+> culling), new `L16` (WCAG flash budget), new `L17` (compositing ledger).
+
 ---
 
 # 0. Purpose
@@ -330,6 +340,46 @@ the teen register → tint alpha 0.18 max, and never touch the two hero mirrors.
 
 ---
 
+## L15 · Logarithmic parallax ladder + tier culling  · P1
+**Intent:** research (5-layer pipeline study) reports +38 % perceived depth and
+recommends logarithmic depth scaling and adaptive culling. Our seven factors
+(`.015 .032 .045 .065 .098 .14 .30`) are bunched at the far end.
+**Seam:** `LAY_*` definitions in `background.ts`; tier gating in `drawSky`.
+**Technique:** `f_i = f_max · (f_min/f_max)^(i/(n−1))` across the six planes below
+the hand-tuned near plane (`.30` stays pinned). At `low`, cull the two deepest
+planes instead of drawing them at 0.015/0.032.
+**Cost:** zero blits (same count), fewer at `low`. **Risk:** backdrop feel changes —
+ship behind a constant, compare both ladders in the same session.
+**Acceptance:** consecutive ratios log-uniform ±12 %; `low` draws ≤5 planes.
+
+## L16 · WCAG flash budget  · P0 (safety, not polish)
+**Intent:** V3 already stacks lightning tint + reflection boost (×1.6). Research is
+unambiguous: **≤3 opposing luminance events per second**, and the general flash
+threshold is a **10 %** relative-luminance change with the darker state under 0.80.
+**Seam:** `lightningI()` consumers, `fx.drawFlash`, `drawReflections` boost, a new
+`FlashLedger` in the game loop; settings toggle in `persistence.ts`.
+**Technique:** one small ledger object — timestamped `kind` + `delta` entries —
+that every luminance event must pass through. It (a) rate-limits to 3/s,
+(b) clamps full-screen deltas to ≤0.10, (c) is disabled-adjacent to a new
+**reduced-motion** setting that also kills ripple drift, glitter cycling and trauma.
+**Cost:** ≤8 pushes/s, zero draw cost. **Risk:** lightning feels softer — that is the
+point; scale the *area* of the flash, not its peak.
+**Acceptance:** harness replays a storm's worth of events and asserts ≤3/s and
+≤10 %; the reduced-motion path produces 0 events.
+
+## L17 · Compositing ledger  · P1
+**Intent:** answer "is this pass soup?" with a number, and test the research claim
+that additive composite ops can hurt batching in tight loops.
+**Seam:** `Renderer.draw` (dev-only counters), harness output.
+**Technique:** count blits per composite op per frame and total additive alpha
+mass; print in the bench, log a warning when additive share > 40 % of blits.
+**Cost:** dev-only increments (or a stub-ctx counter in tests, which is how the
+harness works already). **Risk:** none in prod if compiled behind a flag.
+**Acceptance:** V3 baseline recorded (11 blits: source-over vs lighter split), and
+every later phase reports its delta against it.
+
+---
+
 # 5. Quality ladder — the contract
 
 | Feature | low | medium | high | ultra |
@@ -349,8 +399,16 @@ V4's job is simply to **make the tiers mean something**.
 
 # 6. Phased roadmap
 
+## Phase 0 — Prove the reflection architecture (research gate)
+Run experiments **E1–E6** from `docs/LIGHTING-RESEARCH-V4.md` §4. No features.
+**Exit:** a written verdict on the framebuffer reflection (keep / reduce source /
+switch to silhouette mirror) plus measured `desynchronized` and additive-batching
+answers. **Nothing in Phase 1+ starts until this is recorded** — the whole point is
+to make the architecture decision on numbers, not affection.
+
 ## Phase 1 — Correctness & instrumenting (no new art)
-`L1` data table · `L5` rotation · `L6` arena mask · `L13` harness · `L12` accounting.
+`L1` data table · `L5` rotation · `L6` arena mask · `L13` harness · `L12` accounting ·
+`L17` compositing ledger.
 **Exit:** five assertions green, V3 numbers reproduced by a committed script,
 practical literals gone from `props.ts`.
 
@@ -360,12 +418,16 @@ practical literals gone from `props.ts`.
 monotonic, bake ≤ 16 ms.
 
 ## Phase 3 — Believable wetness
-`L8` puddle mask · `L9` glitter · `L10` cloud occlusion.
-**Exit:** mask coverage 45–65 %, `moonCover` alive, blits within budget.
+`L8` two-level damp/pool mask · `L9` glitter · `L10` cloud occlusion · `L15`
+logarithmic parallax retune + tier culling.
+**Exit:** pool coverage 18–30 % and damp 55–75 %, `moonCover` alive, parallax
+ratios log-uniform ±12 %, blits within budget.
 
 ## Phase 4 — Refinement & taste calls
-`L3` enemy rims · `L11` shadow atlas · `L14` tint.
-**Exit:** each behind its own constant so it can be flipped off in one line.
+`L3` enemy rims · `L11` shadow atlas + entity mirrors · `L14` tint · **`L16` flash
+budget** (WCAG 2.3.2: ≤3 opposing luminance events/s, ≤10 % full-screen delta).
+**Exit:** each behind its own constant so it can be flipped off in one line; the
+flash ledger asserts its limits in the harness.
 
 ---
 
