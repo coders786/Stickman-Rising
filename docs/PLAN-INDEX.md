@@ -3,7 +3,7 @@
 
 | # | Doc | Status | What it decides |
 |---|---|---|---|
-| ★ | `docs/master/README.md` | **package** | Master overhaul package: discovery, requirements, decisions, tech selection, psychology, fidelity targets, architecture, budgets, prototypes, profile matrix, roadmap, risks, validation, mobile reality, shader spec, device tiers, contracts, profile data, cost model — all delivered |
+| ★ | `docs/master/README.md` | **package** | Master overhaul package: discovery, requirements, decisions, tech selection, psychology, fidelity targets, architecture, budgets, prototypes, profile matrix, roadmap, risks, validation, mobile reality, shader spec, device tiers, contracts, profile data, cost model, motion/120 fps research — all delivered |
 |---|---|---|---|
 | 1 | `docs/PREBAKED-WORLD-PLAN.md` | **built** (`e4dbbfe`) | Baked plates, parallax ladder, seeded procedural skyline, purposeful props |
 | 2 | `docs/NEUROAESTHETIC-UPGRADE.md` | **built** (`3081d8c`) | 60/30/10 mood palettes, split-tone grade, isolation heroes, teen+adult dual register |

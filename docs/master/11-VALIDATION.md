@@ -62,6 +62,9 @@ GPU in the sandbox — discovery M1), E3 is the user.
 | `D-COMP` | compositor delta (Mode B1 only) | A/B: sky canvas shown vs `display:none`, 300-frame windows | ≤1.0 ms dpr1 / ≤1.5 dpr2 |
 | `D-THERM` | p95 drift over 10 min | histogram buckets per minute | ≤15 % growth before shed |
 | `D-CTX` | context-loss recovery | force via `WEBGL_lose_context` | recovers ≤2 frames, no visual error |
+| `D-CADENCE` | `M-EVEN`, `M-JUDDER`, `M-CADENCE` | fixed-bucket interval histogram | ≥95 % within ±2 ms (FID-32) |
+| `D-CLAMP` | is the platform clamping us at 60? | median 59.5–60.5 **and** frame time <12 ms | boolean, reported not failed |
+| `D-SUBPIXEL` | screen-position delta per frame on a slow layer | draw-call instrumentation | never 0 for >6 frames (FID-33) |
 
 ---
 

@@ -137,6 +137,24 @@ allowed, and it is at bake time. R1 still holds.
 
 ---
 
+## P9 · Drift speed vs shimmer vs smoothness
+**Hypothesis:** integer-offset cloud drift is invisible as stepping when authored
+wind is ≥12 px/s at 1080p, and stays below P2's shimmer threshold.
+
+**Method:** bake one cumulus plate; blit at 3 / 6 / 12 / 24 px/s with integer
+offsets; record the same 8 frames at 60 fps twice; count step events per second and
+flat-region temporal variance.
+
+**Accept:** 0 perceived steps at ≥12 px/s; variance ≤1.5× static baseline.
+**Reject:** switch the cloud path to sub-pixel blits with mip-smoothed plates
+(measure softness, do not assume it).
+**Why it matters:** `07`'s authored wind (1.1–9.0 px/s) and P2's integer-offset rule
+are in direct conflict — at 3 px/s the plate moves once every 333 ms, which reads as
+a stutter, not drift. One of the two has to give and this prototype decides which.
+**Cost:** half a day.
+
+---
+
 ## Prototype order and gates
 
 | Order | Prototype | Gates | Cost of failure |

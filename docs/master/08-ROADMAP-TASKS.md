@@ -128,6 +128,12 @@ one light model to own every shadow.
 | `T6.2` | In-page bench (`?bench=1`): fixed-bucket histogram, time-weighted p50/p95/p99, jank ratio, p1, multiplicity calibration | `src/game/debug/bench.ts` | 220 LOC | prints the `11` §2.2 block | R-02 |
 | `T6.3` | Device report on ≥2 phones + one desktop, 10-minute thermal run | none (report only) | — | `D-THERM` drift ≤15 % | R-08 |
 | `T6.4` | Final: benchmark table, fidelity table, honest coverage statement (`11` §9) | `docs/master/`, `BENCHMARKS.md` | — | G6, G8 | R-28 |
+| `T6.5` | Cadence lock: fixed 1/60 step + draw interpolation for camera/parallax/entities; even-vsync lock at 60-on-120 | `src/game/loop.ts` | 90 LOC | `M-EVEN` ≥95 %, `M-JUDDER` ≤8.3 | `18` §4 |
+| `T6.6` | Sub-pixel audit: one rounding policy applied at final draw, all layers on the same grid | renderer draw calls | 60 LOC churn | `M-SUBPIXEL` (FID-33) | `18` §5 L2 |
+| `T6.7` | Half-frame smear for FX/trails only (1 blit, α ≤0.25, reduced-motion off) | `src/game/fx/` | 80 LOC | FID-36, flash budget | `18` §5 L3 |
+| `T6.8` | Cadence metrics + `M-CLAMP` detection in `?bench=1` | `src/game/debug/bench.ts` | 70 LOC | separates "we're slow" from "the browser clamped" | `18` §6 |
+| `T6.9` | Opt-in 120 mode, capability-gated (median ≤9 ms, p95 ≤8.3, user setting) | `src/game/render/quality.ts` | 60 LOC | FID-35 | `18` §5 L4 |
+| `T6.10` | **Deferred to M7:** worker-owned `OffscreenCanvas` frame clock (the only 120 path on Chrome Android) | new | 250 LOC | — | `18` §1, Rule 10 |
 
 **Exit:** G6, a G7 report that says what it measured, and the user's eye on G8.
 **Effort:** 3 days + device time we do not have yet.

@@ -69,6 +69,16 @@ Grading: **[M]** measured today · **[E]** estimated · **[T]** target for this 
 | FID-30 | Warm re-bake | ≤16 ms | ← | ← | ← |
 | FID-31 | First-frame shader compile | **0 ms hitch** (prewarmed) | ← | ← | ← |
 
+## 6b. Motion & cadence (`18-MOTION-SMOOTHNESS.md`)
+
+| ID | Target | Applies to |
+|---|---|---|
+| FID-32 | `M-EVEN` ≥ **95 %** of frame intervals within ±2 ms of target; `M-JUDDER` (p99−p50) ≤ **8.3 ms** | every tier |
+| FID-33 | No layer may sit still for >6 frames while the world moves (kills 1-px stepping from integer drift at low speeds) | clouds, parallax |
+| FID-34 | Cadence is never in the 45–55 fps band — either at/above target or a clean rung below (60 → 30) | governor |
+| FID-35 | Opt-in 120 mode holds p95 ≤8.3 ms for 60 s, else auto-drops to 60 | C2/C3 only |
+| FID-36 | Half-frame smear: ≤**1** extra blit, full-screen ΔL ≤10 %, never on the stickman silhouette, off under reduced motion | `medium`+ |
+
 ## 7. How a "WoW" gate is actually passed
 
 A milestone fails if any of FID-1…FID-25 is violated **in data**, even if the

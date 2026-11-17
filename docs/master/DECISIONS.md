@@ -181,3 +181,37 @@ by up to 146 % in interactive apps. Therefore the shed ladder is fixed
 (`12` §3, REQ-710) and tier changes that delete art come last. A steady 45 fps
 is preferred over an oscillating 40–56 fps, and average FPS is never the target
 metric — p95/p99 and jank ratio are (`11` §3).
+
+---
+
+## D9 · Cadence beats frame rate; 120 is opt-in, never promised
+
+**Research (2026-11-15):**
+* iOS Safari ships "Prefer Page Rendering Updates near 60fps" **on by default** on
+  macOS/iOS/iPadOS, clamping `requestAnimationFrame` to ~60; 120 works on iOS 18+
+  only after the user unchecks a developer feature flag, and **PWAs are locked to
+  60 permanently** because they run on default flags (WebKit bug 173434).
+* Chrome on Android caps **main-thread** frames at 60 Hz on 120 Hz screens, lifting
+  only while a finger moves (`kThrottleMainFrameTo60Hz`); the documented escape is a
+  worker-owned `OffscreenCanvas` frame clock (Uno Platform PR #25181).
+* Perceived smoothness gains are statistically significant to ~75 fps and flatten
+  beyond; player performance saturates ~90 fps with little benefit past 120
+  (Claypool et al.). **Frame-time standard deviation predicts QoE with R² = 0.99**,
+  and average frame rate "is not an effective predictor".
+* On sample-and-hold displays "60fps@60Hz and 60fps@120Hz look identical" — so
+  duplicating frames to claim 120 is worthless (Blur Busters).
+
+**Decision.** Target **locked cadence at the highest rate the platform grants**,
+detected at runtime. No 120 promise, no fake 120. The four levers, in order:
+cadence lock + draw interpolation → sub-pixel discipline → half-frame smear on FX
+only → opt-in 120 where measurable. A worker-clock 120 path for Chrome Android is
+recorded as **M7** because it moves the game loop, input and the React boundary —
+exactly what Rule 10 protects.
+
+**Evidence that changed the plan:** our own scene is slow (play-band mean motion
+9 px/s ⇒ **0.15 px** of persistence blur at 60 fps), so 120 would buy us almost
+nothing in the sky. It buys latency and OLED judder reduction, which cadence and
+interpolation deliver for free.
+
+**Consequence:** FID-32…36 added; `18-MOTION-SMOOTHNESS.md` written; P9 added;
+M6 gains T6.5–T6.10.
