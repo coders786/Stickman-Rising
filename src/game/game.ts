@@ -264,6 +264,9 @@ export class Game {
   private lastRunSeed = 0
   /** Wall-clock cost of the run's plate bake (0 = not measured yet). */
   bakeMs = 0
+  /** Cached frame percentiles for the readout (see the draw path comment). */
+  private snap = new FrameLog(1).snapshot()
+  private snapAt = -1
   private autoQuality = true
 
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
@@ -874,16 +877,30 @@ export class Game {
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
         const drop = this.overloadDropped > 0.001 ? ` · dropped ${this.overloadDropped.toFixed(2)}s sim` : ''
-        const snap = this.frameLog.snapshot()
+        // CACHE THE SNAPSHOT. snapshot() sorts an array of up to 600 frame
+        // times; calling it in the draw path made the debug readout itself a
+        // measurable cost (and an allocation site) — the exact class of bug
+        // 21 §8 is about. Refreshed twice a second, which is faster than a
+        // human can read it.
+        if (this.wall - this.snapAt > 0.5) {
+          this.snapAt = this.wall
+          this.snap = this.frameLog.snapshot()
+        }
+        const snap = this.snap
         const prof = this.bg.getProfile?.()
         const plates = this.bg.plateStats?.()
         const bake = plates && plates.moonSource !== 'none'
           ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
           : ''
         ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}`, this.cssW - 12, 62)
-        if (prof) {
-          ctx.fillStyle = 'rgba(190,220,232,.38)'
-          ctx.fillText(`${prof.id} ${prof.label} · moon ${prof.moon.phase.toFixed(2)} · cloud ${prof.clouds.coverage.toFixed(2)}`, this.cssW - 12, 76)
+        // THE RUN IDENTITY, shown for the first seconds of a run and then
+        // faded out. The whole point of the profile work is that tonight is a
+        // different night — but a debug line that never leaves is clutter, and
+        // a player who has to open a console to see the feature never sees it.
+        if (prof && this.time < 18) {
+          const fade = this.time < 14 ? 1 : 1 - (this.time - 14) / 4
+          ctx.fillStyle = `rgba(190,220,232,${(0.42 * Math.max(0, fade)).toFixed(3)})`
+          ctx.fillText(`TONIGHT · ${prof.label} · ${prof.id}`, this.cssW - 12, 76)
         }
       }
     } finally {
