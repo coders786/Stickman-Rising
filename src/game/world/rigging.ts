@@ -78,6 +78,9 @@ export class Rigging {
   private litStroke: Float32Array
   /* Style strings are built ONCE, from the palette, in the constructor. A draw
    * path that formats `rgba()` per frame allocates per frame (19 §6). */
+  /** One mast per anchor x: a cable that ends in mid-air reads as a bug, and the
+   *  cheapest fix is the post it should have been tied to all along. */
+  private masts: { x: number; top: number }[] = []
   private readonly cableInk: string
   private readonly rimInk: string
   private readonly flagInk: string
@@ -96,6 +99,7 @@ export class Rigging {
       const n = Math.min(this.loadout.flagsPerCable, this.specs[i].flags)
       for (let f = 0; f < n; f++) this.flags.push(this.makeFlag())
     }
+    this.masts = buildMasts(this.specs)
     this.stroke = new Float32Array(SEGMENTS * 2)
     this.litStroke = new Float32Array(SEGMENTS * 2)
     this.cableInk = rgbaConst('4,8,12', 0.72)
@@ -164,6 +168,7 @@ export class Rigging {
     }
     this.loadout = next
     this.specs = buildSpecs(this.profile, next)
+    this.masts = buildMasts(this.specs)
     this.cables = this.specs.map((s) => this.makeCable(s))
     this.flags = []
     for (let i = 0; i < this.specs.length; i++) {
@@ -208,6 +213,35 @@ export class Rigging {
     if (this.cables.length === 0) return
     ctx.save()
     ctx.lineCap = 'round'
+    /* THE POSTS. Drawn as filled tapered quads (a stroke would read as a wire):
+     * a lattice mast is two legs, so each post is one quad per leg plus the
+     * cross-arm that the pennants hang from. All of them are ONE fill. */
+    if (this.masts.length) {
+      const LEAN = 0.012 // px of lean per px of height: a roof mast is never plumb
+      ctx.beginPath()
+      for (const m of this.masts) {
+        const h = -m.top
+        if (h < 40) continue
+        const lean = h * LEAN * ((m.x % 2 === 0) ? 1 : -1)
+        const topX = m.x + lean
+        const bw = 5.2, tw = 1.5
+        // left leg
+        ctx.moveTo(m.x - bw, 0)
+        ctx.lineTo(topX - tw, m.top)
+        ctx.lineTo(topX + tw, m.top)
+        ctx.lineTo(m.x + bw, 0)
+        ctx.closePath()
+        // cross-arm at 76 % height, 18 px wide: the cable's tie-off
+        const ay = m.top + h * 0.24
+        ctx.moveTo(topX - 9, ay)
+        ctx.lineTo(topX + 9, ay)
+        ctx.lineTo(topX + 9, ay + 1.6)
+        ctx.lineTo(topX - 9, ay + 1.6)
+        ctx.closePath()
+      }
+      ctx.fillStyle = this.cableInk
+      ctx.fill()
+    }
     ctx.beginPath()
     for (const c of this.cables) {
       const n = c.polyline(this.stroke)
@@ -264,6 +298,19 @@ export class Rigging {
   }
 }
 
+/** One post per distinct anchor x, tall enough to meet the highest cable that
+ *  ties off there. Deterministic: it is derived from the specs, nothing else. */
+export function buildMasts(specs: readonly CableSpec[]): { x: number; top: number }[] {
+  const byX = new Map<number, number>()
+  for (const s of specs) {
+    const ax = Math.round(s.ax)
+    const bx = Math.round(s.bx)
+    byX.set(ax, Math.min(byX.get(ax) ?? s.ay, s.ay))
+    byX.set(bx, Math.min(byX.get(bx) ?? s.by, s.by))
+  }
+  return [...byX.entries()].map(([x, top]) => ({ x, top: top - 4 }))
+}
+
 /** The anchor layout. Deterministic from the run seed, but the SPAN comes from
  *  the arena geometry so the cables always attach to something the player can
  *  see: a mast behind the stairwell and a pylon on the far side. */
@@ -276,7 +323,9 @@ export function buildSpecs(profile: EnvironmentProfile, loadout: RiggingLoadout)
   const jitter = (): number => (rnd() - 0.5) * 44
   const all: CableSpec[] = [
     { ax: 1010 + jitter(), ay: POLE_TOP + jitter() * 0.3, bx: 2140 + jitter(), by: POLE_TOP - 24, sag: 54 + rnd() * 30, flags: 4 },
-    { ax: 2140 + jitter(), ay: POLE_TOP - 50, bx: 2790 + jitter(), by: POLE_TOP + 6, sag: 34 + rnd() * 22, flags: 3 },
+    // The far post must stand ON the deck (arena spans x −150..2750): a mast at
+    // x 2790 would be bolted to thin air past the roof edge.
+    { ax: 2140 + jitter(), ay: POLE_TOP - 50, bx: 2726 + jitter() * 0.4, by: POLE_TOP + 6, sag: 34 + rnd() * 22, flags: 3 },
     { ax: 520 + jitter(), ay: POLE_TOP + 40, bx: 1010 + jitter(), by: POLE_TOP + 18, sag: 40 + rnd() * 26, flags: 2 },
   ]
   return all.slice(0, Math.max(1, loadout.cables))

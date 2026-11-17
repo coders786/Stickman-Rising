@@ -1826,6 +1826,10 @@ export class CyberBackground {
     // be absent, and its absence is what makes a clear night read as clear.
     // THROUGH THE LEDGER, not around it: one surface, 1.7 MB, counted.
     if (typeof document !== 'undefined') {
+      // One bank resident, ever. A new run must not leave the old 1.7 MB surface
+      // behind for the LRU to find later — that is how 37 untracked surfaces
+      // happened in the first place (12 §4).
+      gameLedger.releasePrefix('cloudbank:')
       const bankKey = `cloudbank:${profForBake.seed}`
       const bankSurface = gameLedger.acquire(bankKey, TILE, 210, 'sky') as unknown as HTMLCanvasElement
       const bankHost = buildCloudBank(profForBake, TILE, 210, bankSurface)

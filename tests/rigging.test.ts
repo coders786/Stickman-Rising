@@ -15,7 +15,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { makeProfile } from '../src/game/world/profile'
-import { Rigging, buildSpecs, riggingFor } from '../src/game/world/rigging'
+import { Rigging, buildMasts, buildSpecs, riggingFor } from '../src/game/world/rigging'
 import { Wind } from '../src/game/world/wind'
 import type { Quality } from '../src/game/world/background'
 
@@ -44,6 +44,30 @@ test('rigging: the anchor layout is deterministic per seed and moves between see
   for (const s of a) {
     assert.ok(s.bx > s.ax, 'a cable must run left to right')
     assert.ok(s.sag >= 20 && s.sag <= 90, `sag ${s.sag} out of authored range`)
+  }
+})
+
+test('rigging: every cable end has a post, and no post is off the deck', () => {
+  for (const tier of TIERS) {
+    const prof = makeProfile(5150)
+    const specs = buildSpecs(prof, riggingFor(tier))
+    const masts = buildMasts(specs)
+    // One post per distinct anchor x — no duplicates, no missing ends.
+    const xs = new Set<number>()
+    for (const s of specs) {
+      xs.add(Math.round(s.ax))
+      xs.add(Math.round(s.bx))
+    }
+    assert.equal(masts.length, xs.size, `${tier}: ${masts.length} posts for ${xs.size} anchors`)
+    for (const s of specs) {
+      for (const [x, y] of [[s.ax, s.ay], [s.bx, s.by]] as const) {
+        const m = masts.find((m) => m.x === Math.round(x))
+        assert.ok(m, `anchor ${x.toFixed(0)} has no post`)
+        assert.ok(m.top <= y, `post at ${m.x} stops below its cable (${m.top} > ${y})`)
+      }
+      // ...and both ends stand on the arena floor (−150..2750).
+      assert.ok(s.ax > -150 && s.bx < 2750, `cable ${s.ax}..${s.bx} runs off the roof`)
+    }
   }
 })
 
