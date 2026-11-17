@@ -170,6 +170,41 @@ const LIFT_COL: ReadonlyArray<string> = ['#ffd9a0', '#9df0e2'];
 
 interface GlyphStroke { x0: number; y0: number; x1: number; y1: number; dot: boolean }
 
+/** BAKED PROP SHADOW — key light comes from the upper right (moon), so a
+ *  roof prop's contact shadow falls to its lower-left. Drawn at bake time
+ *  only; zero runtime cost. */
+function bakePropShadow(g: CanvasRenderingContext2D, cx: number, baseY: number, halfW: number, alpha = 0.3): void {
+  g.fillStyle = `rgba(0,0,0,${alpha})`;
+  g.beginPath();
+  g.ellipse(cx - halfW * 0.3, baseY + 1.5, halfW, Math.max(2.5, halfW * 0.2), 0, 0, TAU);
+  g.fill();
+}
+
+/** PARALLAX FOG PLANE — a soft horizontal haze sheet with procedural
+ *  puffs cut out of it, tiled at its own parallax factor so the mist
+ *  moves WITH depth instead of sticking to the screen. */
+function buildFogPlane(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(512, 170);
+  const gr = g.createLinearGradient(0, 0, 0, 170);
+  gr.addColorStop(0, 'rgba(122,152,192,0)');
+  gr.addColorStop(0.5, 'rgba(122,152,192,0.17)');
+  gr.addColorStop(1, 'rgba(122,152,192,0.02)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 512, 170);
+  const rng = mulberry32(0x40bf11);
+  g.globalCompositeOperation = 'destination-out';          // procedural puffs
+  for (let i = 0; i < 7; i++) {
+    const px = rng() * 512, py = 30 + rng() * 120, pr = 55 + rng() * 95;
+    const rg = g.createRadialGradient(px, py, 0, px, py, pr);
+    rg.addColorStop(0, 'rgba(0,0,0,0.55)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg;
+    g.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  }
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
 /* ======================= static sprite pre-renders ======================= */
 
 /** vertical sky gradient strip (stretched to 0..horizon at draw time) */
@@ -435,6 +470,7 @@ export class CyberBackground {
   private midTile!: HTMLCanvasElement;
   private nearTile!: HTMLCanvasElement;
   private deepTileBlur!: HTMLCanvasElement;
+  private fogPlane!: HTMLCanvasElement;   // parallax haze sheet (procedural puffs)
   private arenaTile!: HTMLCanvasElement;
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
@@ -509,8 +545,10 @@ export class CyberBackground {
     // Moon position — analytic, no coverage scan (nothing reads moonCover
     // since the light rig and god rays were stripped).
     {
-      const moonX = w * 0.87 - cx * 0.03 * cz - 84;
-      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84;
+      // slow orbital drift (~5 min period) — the skybox is alive without
+      // any per-frame cost: this runs inside the cached vault rebuild
+      const moonX = w * 0.87 - cx * 0.03 * cz - 84 + Math.sin(t * 0.021) * 46;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - 84 + Math.cos(t * 0.014) * 16;
       this.moonX = moonX + 84;
       this.moonY = moonY + 84;
       this.moonCover = 0;
@@ -523,6 +561,16 @@ export class CyberBackground {
     const hy = h * 0.5 + (0 - cy) * cz;                     // screen y of world y=0
     const skyH = hy > 1 ? (hy < h ? hy : h) : 1;
     ctx.drawImage(this.skyStrip, 0, 0, 8, 600, 0, 0, w, skyH);
+    // DYNAMIC SKY TINT — a slow ~90s night pulse swinging the vault
+    // between deep indigo and storm-violet. One fillRect inside the
+    // cached sky vault: zero cost on the 60/120Hz frame path.
+    {
+      const tintA = 0.5 + 0.5 * Math.sin(t * 0.07);
+      ctx.globalAlpha = 0.045 + tintA * 0.05;
+      ctx.fillStyle = tintA > 0.5 ? 'rgba(40,72,132,1)' : 'rgba(72,46,112,1)';
+      ctx.fillRect(0, 0, w, skyH);
+      ctx.globalAlpha = 1;
+    }
     ctx.fillStyle = SKY_BELOW;
     this.fillBelow(ctx, hy);
 
@@ -594,12 +642,53 @@ export class CyberBackground {
       ctx.globalAlpha = 1;
     }
 
+    /* DYNAMIC SKY EVENT — SHOOTING STARS: deterministic streaks (pure
+     * function of t, no state) in the first 0.7s of every 9s slot. */
+    {
+      const ev = Math.floor(t / 9);
+      const k = t - ev * 9;
+      if (k < 0.7) {
+        const h1 = ((ev * 9301 + 49297) % 233280) / 233280;
+        const h2 = ((ev * 49297 + 9301) % 233280) / 233280;
+        const prog = k / 0.7;
+        const sx0 = w * (0.08 + h1 * 0.7);
+        const sy0 = h * (0.05 + h2 * 0.22);
+        const dir = h1 < 0.5 ? 1 : -1;
+        const hx = sx0 + dir * prog * 240;
+        const hyy = sy0 + prog * 120;
+        const tail = 110;
+        ctx.globalAlpha = Math.sin(prog * Math.PI) * 0.9;
+        ctx.strokeStyle = 'rgba(226,240,255,0.95)';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(hx, hyy);
+        ctx.lineTo(hx - dir * tail, hyy - tail * 0.5);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.beginPath();
+        ctx.arc(hx, hyy, 1.6, 0, TAU);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
     /* 3 — DEEP + FAR skylines through the shared parallax engine.
      * Both draw from their pre-blurred DOF variants; during a strike the
      * sharp tile re-blits additively → silhouette pop. */
     const I = this.lightningI();
     this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, I, this.deepTileBlur, this.deepTile, DEEP_H, 0.34);
     this.drawCityBand(ctx, LAY_FAR, h, cx, cy, cz, I, this.farTileBlur, this.farTile, FAR_H, 0.3);
+
+    /* 3.5 — PARALLAX FOG PLANE: a procedural haze sheet at its own factor
+     * (0.098 — between far and mid) drifting slowly with time, so the mist
+     * moves WITH depth instead of sticking to the screen. */
+    {
+      const byF2 = h * 0.5 + (LAY_FAR.lift - cy * LAY_FAR.vf) * cz;
+      const fpM = mod(cx * 0.098 * cz + t * 2.4, 512);
+      for (let fx = -fpM; fx < w; fx += 512) {
+        ctx.drawImage(this.fogPlane, fx, byF2 - 216);
+      }
+    }
 
     /* 4 — mid city: baked neon signs, one shared band draw */
     this.drawCityBand(ctx, LAY_MID, h, cx, cy, cz, I, this.midTileBlur, this.midTile, MID_H, 0.14);
@@ -628,7 +717,7 @@ export class CyberBackground {
     // pool) — three props, zero live state
     blitWorldFrustum(ctx, this.arenaTile, ARENA_X0, 0, viewL, viewR);
     // STAIRWELL PRACTICAL — warm head-house + breathing pool (additive)
-    ctx.drawImage(this.doorSpr, DOOR_X - 100, -172);
+    ctx.drawImage(this.doorSpr, DOOR_X - 100, -226);   // sprite grew 54px upward
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.3 + 0.05 * Math.sin(t * 0.11) + 0.06 * this.lightningI();
     ctx.drawImage(this.doorPool, DOOR_X - 260, -68);
@@ -675,6 +764,7 @@ export class CyberBackground {
     this.doorPool = this.buildDoorPool();
     for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
     this.cloudDark = buildCloudTile(false);
+    this.fogPlane = buildFogPlane();
     this.starTile = this.buildStarTile();
     this.deepTile = this.buildDeep();
     this.farTile = this.buildFar();
@@ -900,6 +990,12 @@ export class CyberBackground {
       g.fillRect(x, FAR_H - bh, bw, bh);
       g.fillStyle = 'rgba(142,176,212,0.055)';              // moon catch: top only
       g.fillRect(x, FAR_H - bh, bw, 1);
+      // BAKED VOLUME SHADING — key from the upper right: right face lifts,
+      // left face falls away (extruded-box read, zero runtime cost)
+      g.fillStyle = 'rgba(150,185,215,0.05)';
+      g.fillRect(x + bw - 3, FAR_H - bh, 3, bh);
+      g.fillStyle = 'rgba(0,0,0,0.26)';
+      g.fillRect(x, FAR_H - bh, Math.min(4, bw * 0.22), bh);
       const roof = rng();
       if (roof < 0.25) {                                  // crowning setback
         const sw = bw * (0.35 + rng() * 0.3);
@@ -997,6 +1093,14 @@ export class CyberBackground {
     g.fillRect(0, 0, TILE, FOG.topFadeH);
     g.fillStyle = FOG.farLift;
     g.fillRect(0, 0, TILE, FAR_H);
+    // GLOBAL KEY WASH — one directional gradient ties every tower to the
+    // same moon: bright upper-right → shadowed lower-left (baked 3D read)
+    const keyF = g.createLinearGradient(TILE, 0, 0, FAR_H);
+    keyF.addColorStop(0, 'rgba(170,200,235,0.07)');
+    keyF.addColorStop(0.5, 'rgba(170,200,235,0.015)');
+    keyF.addColorStop(1, 'rgba(10,16,26,0.15)');
+    g.fillStyle = keyF;
+    g.fillRect(0, 0, TILE, FAR_H);
     g.globalCompositeOperation = 'source-over';
     // AERIAL FOCUS — the far plate sits past the focal plane: bake a one-
     // time soft blur (runtime cost ZERO — same drawImage) with wrap-aware
@@ -1016,6 +1120,7 @@ export class CyberBackground {
     const rng = mulberry32(0x2b6e5f);
     const shades = ['#0b141c', '#0d1721', '#0e1924', '#101c27'];
     const cands: { bx: number; bw: number; bh: number }[] = [];
+    const towers: { x: number; bw: number; bh: number }[] = [];
     let x = 0;
     while (x < TILE - 60) {
       let bw = 90 + rng() * 210;
@@ -1035,6 +1140,19 @@ export class CyberBackground {
       g.fillRect(x, MID_H - bh, bw, bh * 0.6);
       g.fillStyle = 'rgba(60,82,90,0.18)';                 // parapet catch-light
       g.fillRect(x, MID_H - bh, bw, 2);
+      // BAKED VOLUME SHADING + BASE CONTACT AO — the key light rakes from
+      // the upper right: lit right face, shadowed left face, and the foot
+      // of every tower darkens into the street it stands on
+      g.fillStyle = 'rgba(160,195,225,0.06)';
+      g.fillRect(x + bw - 4, MID_H - bh, 4, bh);
+      g.fillStyle = 'rgba(0,0,0,0.3)';
+      g.fillRect(x, MID_H - bh, Math.min(5, bw * 0.2), bh);
+      const aoB = g.createLinearGradient(0, MID_H - 30, 0, MID_H);
+      aoB.addColorStop(0, 'rgba(0,0,0,0)');
+      aoB.addColorStop(1, 'rgba(0,0,0,0.32)');
+      g.fillStyle = aoB;
+      g.fillRect(x, MID_H - 30, bw, 30);
+      towers.push({ x, bw, bh });
       const roofKind = rng();
       if (roofKind < 0.3 && bw > 110) {                    // water tower on legs
         const tw = 18 + rng() * 14, th = 20 + rng() * 16;
@@ -1059,6 +1177,7 @@ export class CyberBackground {
           g.lineTo(lx + (li - 1) * 3, ty + th + 9);
           g.stroke();
         }
+        bakePropShadow(g, tx + tw / 2, MID_H - bh, tw * 0.75, 0.34);
       } else if (roofKind < 0.44 && bw > 100) {            // AC condenser + vent pipe
         const aw = 16 + rng() * 14, ah = 8 + rng() * 6;
         const ax2 = x + 10 + rng() * Math.max(4, bw - aw - 20);
@@ -1075,6 +1194,7 @@ export class CyberBackground {
         g.moveTo(ax2 + aw - 3, ay);
         g.lineTo(ax2 + aw - 3, ay - 12 - rng() * 10);
         g.stroke();
+        bakePropShadow(g, ax2 + aw / 2, MID_H - bh, aw * 0.7, 0.3);
       } else if (roofKind < 0.52 && bw > 90) {             // satellite dish
         const dx = x + 14 + rng() * Math.max(4, bw - 40);
         const dy = MID_H - bh - 4;
@@ -1086,6 +1206,7 @@ export class CyberBackground {
         g.stroke();
         g.fillStyle = 'rgba(80,104,116,0.35)';
         g.fillRect(dx - 1, dy, 2, 6);
+        bakePropShadow(g, dx, MID_H - bh, dr * 0.8, 0.26);
       } else if (roofKind < 0.6 && bw > 90) {              // stair bulkhead
         const sw2 = 20 + rng() * 16, sh2 = 12 + rng() * 8;
         const sx2 = x + 8 + rng() * Math.max(4, bw - sw2 - 16);
@@ -1095,6 +1216,7 @@ export class CyberBackground {
         g.fillRect(sx2, MID_H - bh - sh2, sw2, 1);
         g.fillStyle = 'rgba(20,30,38,0.9)';                // door
         g.fillRect(sx2 + sw2 * 0.55, MID_H - bh - sh2 + 3, 6, sh2 - 3);
+        bakePropShadow(g, sx2 + sw2 / 2, MID_H - bh, sw2 * 0.7, 0.32);
       }
       if (rng() < 0.45) {                                  // antenna mast
         const ax = x + bw * (0.15 + rng() * 0.7);
@@ -1138,6 +1260,7 @@ export class CyberBackground {
         g.globalAlpha = 0.8;
         g.drawImage(this.glyphSpr[ci], bx0 + 10, by0 + 8, bwi - 20, bhei - 16);
         g.globalAlpha = 1;
+        bakePropShadow(g, bx0 + bwi / 2, MID_H - bh, bwi * 0.55, 0.3);
       }
       // FACE NEON STRIP — a thin lit line inset from the facade edge
       // (on the FACE, never on the silhouette edge: edge tubes made the
@@ -1178,6 +1301,94 @@ export class CyberBackground {
       if (bw > 130) cands.push({ bx: x, bw, bh });
       x += bw + (rng() < 0.35 ? 12 + rng() * 40 : 0);
     }
+
+    /* SKYBRIDGES — procedural truss spans between neighbouring towers:
+     * deck slab, X-braced truss, lit corridor windows, and baked AO where
+     * the span bites into each tower face. */
+    for (let i = 0; i + 1 < towers.length; i++) {
+      const a = towers[i], b = towers[i + 1];
+      const gap = b.x - (a.x + a.bw);
+      if (gap < 24 || gap > 130) continue;
+      const topA = MID_H - a.bh, topB = MID_H - b.bh;
+      const y0 = Math.max(topA, topB) + 34 + rng() * 56;   // deck under both roofs
+      if (y0 > MID_H - 46) continue;
+      const x0 = a.x + a.bw, x1 = b.x, span = x1 - x0;
+      g.fillStyle = '#0a1219';                             // deck slab
+      g.fillRect(x0, y0, span, 7);
+      g.fillStyle = 'rgba(140,175,205,0.18)';              // moonlit deck edge
+      g.fillRect(x0, y0, span, 1);
+      g.strokeStyle = 'rgba(30,44,54,0.92)';               // truss lattice
+      g.lineWidth = 1.5;
+      const n = Math.max(2, Math.round(span / 24));
+      for (let k = 0; k <= n; k++) {
+        const tx = x0 + (k * span) / n;
+        g.beginPath();
+        g.moveTo(tx, y0 + 7);
+        g.lineTo(tx, y0 + 17);
+        g.stroke();
+        if (k < n) {
+          const nx = x0 + ((k + 1) * span) / n;
+          g.beginPath();
+          g.moveTo(tx, y0 + 17);
+          g.lineTo(nx, y0 + 7);
+          g.stroke();
+        }
+      }
+      g.fillStyle = '#0a1219';                             // bottom chord
+      g.fillRect(x0, y0 + 17, span, 3);
+      g.fillStyle = 'rgba(255,196,130,0.5)';               // lit corridor windows
+      for (let wx = x0 + 5; wx < x1 - 4; wx += 13) {
+        if (rng() < 0.62) g.fillRect(wx, y0 + 2.5, 5, 2.5);
+      }
+      g.fillStyle = 'rgba(0,0,0,0.42)';                    // AO at both bites
+      g.fillRect(x0 - 4, y0 - 3, 6, 26);
+      g.fillRect(x1 - 2, y0 - 3, 6, 26);
+      bakePropShadow(g, (x0 + x1) / 2, Math.max(topA, topB) + 2, span * 0.4, 0.16);
+    }
+
+    /* CONSTRUCTION CRANE — one procedural silhouette per tile, perched on
+     * the tallest tower: lattice mast, jib with hook cable, counterweight,
+     * red warning light. */
+    if (towers.length > 0) {
+      let bt = towers[0];
+      for (const tw2 of towers) if (tw2.bh > bt.bh) bt = tw2;
+      const cxr = bt.x + bt.bw * (0.28 + rng() * 0.4);
+      const baseY = MID_H - bt.bh;
+      const mastH = Math.min(74 + rng() * 84, Math.max(44, baseY - 26));
+      const topY = baseY - mastH;
+      g.strokeStyle = 'rgba(24,36,44,0.95)';
+      g.lineWidth = 2;
+      g.strokeRect(cxr - 6, topY, 12, mastH);              // lattice mast
+      g.lineWidth = 1;
+      for (let yy = topY + 8; yy < baseY - 4; yy += 12) {
+        g.beginPath();
+        g.moveTo(cxr - 6, yy);
+        g.lineTo(cxr + 6, yy + 8);
+        g.stroke();
+      }
+      const jib = 64 + rng() * 70;
+      g.lineWidth = 2.5;
+      g.beginPath();                                       // jib + tower head
+      g.moveTo(cxr - jib * 0.34, topY + 6);
+      g.lineTo(cxr + jib, topY + 2);
+      g.stroke();
+      g.beginPath();
+      g.moveTo(cxr - jib * 0.34, topY + 6);
+      g.lineTo(cxr, topY - 18);
+      g.stroke();
+      g.fillStyle = 'rgba(24,36,44,0.95)';                 // counterweight
+      g.fillRect(cxr - jib * 0.34 - 9, topY + 5, 11, 9);
+      g.strokeStyle = 'rgba(24,36,44,0.7)';                // hook cable
+      g.lineWidth = 1;
+      const hx = cxr + jib * 0.62;
+      g.beginPath();
+      g.moveTo(hx, topY + 3);
+      g.lineTo(hx, topY + 34 + rng() * 46);
+      g.stroke();
+      g.fillStyle = 'rgba(255,80,60,0.65)';                // warning light
+      g.fillRect(cxr - 1, topY - 20, 2, 2);
+    }
+
     if (cands.length >= 3) {                               // 5 neon signs, BAKED
       for (let k = 0; k < 5; k++) {
         let idx = (cands.length * (0.1 + 0.2 * k) + rng() * 2) | 0;
@@ -1213,6 +1424,14 @@ export class CyberBackground {
     g.fillRect(0, MID_H - 70, TILE, 70);
     g.globalCompositeOperation = 'source-atop';            // aerial lift (mid)
     g.fillStyle = 'rgba(36,56,80,0.09)';
+    g.fillRect(0, 0, TILE, MID_H);
+    // GLOBAL KEY WASH — same moon, same law: upper-right lit, lower-left
+    // in shadow, applied only where towers exist (source-atop)
+    const keyM = g.createLinearGradient(TILE, 0, 0, MID_H);
+    keyM.addColorStop(0, 'rgba(175,205,240,0.085)');
+    keyM.addColorStop(0.5, 'rgba(175,205,240,0.02)');
+    keyM.addColorStop(1, 'rgba(8,14,22,0.18)');
+    g.fillStyle = keyM;
     g.fillRect(0, 0, TILE, MID_H);
     g.globalCompositeOperation = 'source-over';
     // AERIAL FOCUS (mid): lighter than the far plate — the action plane
@@ -1251,6 +1470,17 @@ export class CyberBackground {
       g.fillRect(x, NEAR_H - bh, bw, bh * 0.72);
       g.fillStyle = 'rgba(96,130,162,0.3)';                // parapet, moon-tinted
       g.fillRect(x, NEAR_H - bh, bw, 2);
+      // BAKED VOLUME SHADING — key from the upper right (same law as the
+      // deeper bands, stronger contrast this close to camera)
+      g.fillStyle = 'rgba(170,205,235,0.07)';
+      g.fillRect(x + bw - 5, NEAR_H - bh, 5, bh);
+      g.fillStyle = 'rgba(0,0,0,0.36)';
+      g.fillRect(x, NEAR_H - bh, Math.min(6, bw * 0.18), bh);
+      const aoN = g.createLinearGradient(0, NEAR_H - 34, 0, NEAR_H);
+      aoN.addColorStop(0, 'rgba(0,0,0,0)');
+      aoN.addColorStop(1, 'rgba(0,0,0,0.3)');
+      g.fillStyle = aoN;
+      g.fillRect(x, NEAR_H - 34, bw, 34);
       const nb = 1 + ((rng() * 3) | 0);                    // rooftop boxes
       for (let i = 0; i < nb; i++) {
         const rw = 18 + rng() * 42, rh = 8 + rng() * 14;
@@ -1259,12 +1489,13 @@ export class CyberBackground {
         g.fillRect(rx, NEAR_H - bh - rh, rw, rh);
         g.fillStyle = 'rgba(60,84,94,0.1)';
         g.fillRect(rx, NEAR_H - bh - rh, rw, 1);
+        bakePropShadow(g, rx + rw / 2, NEAR_H - bh, rw * 0.6, 0.36);
       }
       const clutter = rng();                               // near-lane roof dressing
       if (clutter < 0.16 && bw > 170) {                    // water tower silhouette
         const tw = 26 + rng() * 16, th = 26 + rng() * 18;
         const tx = x + 14 + rng() * (bw - tw - 28);
-        const ty = NEAR_H - bh - th - 10;
+        const ty = Math.max(2, NEAR_H - bh - th - 10);
         g.fillStyle = '#04080b';
         g.fillRect(tx, ty, tw, th);
         g.beginPath();                                     // conical roof
@@ -1284,10 +1515,11 @@ export class CyberBackground {
         }
         g.fillStyle = 'rgba(70,94,102,0.12)';              // tank sheen
         g.fillRect(tx, ty, 2, th);
+        bakePropShadow(g, tx + tw / 2, NEAR_H - bh, tw * 0.8, 0.4);
       } else if (clutter < 0.27 && bw > 150) {             // billboard, seen from behind
         const bwi = Math.min(120, bw - 50), bhei = 40 + rng() * 22;
         const bx0 = x + 24 + rng() * Math.max(4, bw - bwi - 48);
-        const by0 = NEAR_H - bh - bhei - 16;
+        const by0 = Math.max(2, NEAR_H - bh - bhei - 16);
         g.strokeStyle = 'rgba(20,30,36,0.95)';             // two posts
         g.lineWidth = 4;
         g.beginPath();
@@ -1307,6 +1539,7 @@ export class CyberBackground {
         g.moveTo(bx0 + bwi - 4, by0 + 4);
         g.lineTo(bx0 + 4, by0 + bhei - 4);
         g.stroke();
+        bakePropShadow(g, bx0 + bwi / 2, NEAR_H - bh, bwi * 0.5, 0.4);
       } else if (clutter < 0.38 && bw > 130) {             // AC box with fan circle
         const aw = 20 + rng() * 16, ah = 12 + rng() * 8;
         const ax2 = x + 10 + rng() * Math.max(4, bw - aw - 20);
@@ -1320,6 +1553,7 @@ export class CyberBackground {
         g.stroke();
         g.fillStyle = 'rgba(60,84,94,0.16)';
         g.fillRect(ax2, ay, aw, 1);
+        bakePropShadow(g, ax2 + aw / 2, NEAR_H - bh, aw * 0.7, 0.38);
       }
       if (rng() < 0.16) {                                  // red obstruction light
         const rx2 = x + 8 + rng() * Math.max(4, bw - 16);
@@ -1409,6 +1643,14 @@ export class CyberBackground {
     g.fillRect(0, NEAR_H - 60, TILE, 60);
     g.globalCompositeOperation = 'source-atop';            // whisper of air
     g.fillStyle = 'rgba(30,48,70,0.035)';
+    g.fillRect(0, 0, TILE, NEAR_H);
+    // GLOBAL KEY WASH — strongest of the stack: the near plane carries the
+    // clearest directional read (lit right faces, shadowed left + base)
+    const keyN = g.createLinearGradient(TILE, 0, 0, NEAR_H);
+    keyN.addColorStop(0, 'rgba(180,210,245,0.1)');
+    keyN.addColorStop(0.5, 'rgba(180,210,245,0.025)');
+    keyN.addColorStop(1, 'rgba(6,10,16,0.22)');
+    g.fillStyle = keyN;
     g.fillRect(0, 0, TILE, NEAR_H);
     g.globalCompositeOperation = 'source-over';
     return c;
@@ -1602,6 +1844,64 @@ export class CyberBackground {
     g.fillStyle = lg;
     g.fillRect(dgx - 120, 0, 240, LIP_H);
 
+    /* PRE-BAKED WET-DECK REFLECTIONS — the mirror band below the foot
+     * line. Every source smears straight down the wet concrete: the
+     * streetlamp's cool column, the neon lip colors pulled into long
+     * streaks, and a broad specular sheen. Static — zero runtime cost. */
+    const lampX2 = LAMP_X - ARENA_X0;
+    const lampCol = g.createLinearGradient(0, 14, 0, 128);
+    lampCol.addColorStop(0, 'rgba(178,202,232,0.15)');
+    lampCol.addColorStop(0.5, 'rgba(178,202,232,0.06)');
+    lampCol.addColorStop(1, 'rgba(178,202,232,0)');
+    g.fillStyle = lampCol;
+    g.fillRect(lampX2 - 36, 14, 72, 114);
+    for (let i = 0; i < 7; i++) {                         // neon streaks down the deck
+      const col = smearCols[i % smearCols.length];
+      const mx = 150 + rng() * (W - 320);
+      const mw = 7 + rng() * 16;
+      const mh = 36 + rng() * 74;
+      const sg2 = g.createLinearGradient(0, 14, 0, 14 + mh);
+      sg2.addColorStop(0, `rgba(${col},${(0.1 + rng() * 0.05).toFixed(3)})`);
+      sg2.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = sg2;
+      g.fillRect(mx, 14, mw, mh);
+    }
+    const sheen = g.createLinearGradient(0, 16, 0, 104);   // specular sheen band
+    sheen.addColorStop(0, 'rgba(172,198,216,0.075)');
+    sheen.addColorStop(1, 'rgba(172,198,216,0)');
+    g.fillStyle = sheen;
+    g.fillRect(0, 16, W, 88);
+
+    /* STAGE PROPS (designed, baked) — deck hardware flush with the floor
+     * and dressing on the fall wall, all clear of the play band. */
+    for (const vx of [420, 1180, 2050, 2510]) {            // low floor vents
+      g.fillStyle = '#0b1015';
+      g.fillRect(vx, 142, 44, 7);
+      g.fillStyle = 'rgba(150,175,190,0.16)';
+      g.fillRect(vx, 142, 44, 1);
+      for (let gi = 1; gi < 4; gi++) {
+        g.fillStyle = 'rgba(0,0,0,0.5)';
+        g.fillRect(vx + 3, 142 + gi * 1.6, 38, 0.9);
+      }
+      bakePropShadow(g, vx + 22, 149, 26, 0.34);
+    }
+    for (const px2 of [640, 1560, 2280]) {                 // fall-wall pipe runs
+      g.strokeStyle = 'rgba(40,54,64,0.9)';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(px2, 176);
+      g.lineTo(px2, 244);
+      g.stroke();
+      g.strokeStyle = 'rgba(120,146,160,0.22)';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(px2 - 2, 176);
+      g.lineTo(px2 - 2, 244);
+      g.stroke();
+      g.fillStyle = 'rgba(30,42,50,0.95)';                 // pipe collars
+      g.fillRect(px2 - 4, 196, 8, 4);
+      g.fillRect(px2 - 4, 226, 8, 4);
+    }
     /* PROP GROUNDING — baked, zero live state. The stage's two practicals
      * are anchored to the deck again: a broad static moon wash, contact
      * ellipses under the stairwell and the broken streetlight, and the
@@ -1649,13 +1949,35 @@ export class CyberBackground {
   /** STAIRWELL HEAD-HOUSE with the warm practical door — the scene's warm
    *  anchor against the cool moon (reference-image interior light). */
   private buildDoorStructure(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(200, 186);
+    // 54px antenna zone above the roofline (sprite now 200×240; the draw
+    // site shifts up by the same 54 so the box lands at its old world y)
+    const { c, g } = makeCanvas(200, 240);
+    g.translate(0, 54);
+    // roof antenna (baked 3D dressing on the head-house)
+    g.strokeStyle = 'rgba(26,38,46,0.95)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(154, 4);
+    g.lineTo(154, -36);
+    g.stroke();
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(154, -22);
+    g.lineTo(165, -28);
+    g.stroke();
+    g.fillStyle = 'rgba(255,80,60,0.65)';
+    g.fillRect(153, -38, 2, 2);
     // box
     let gr = g.createLinearGradient(0, 14, 0, 120);
     gr.addColorStop(0, '#0d131a');
     gr.addColorStop(1, '#080c11');
     g.fillStyle = gr;
     g.fillRect(16, 12, 168, 174);
+    // baked side shading: shadowed left face + contact AO at the deck line
+    g.fillStyle = 'rgba(0,0,0,0.3)';
+    g.fillRect(16, 12, 13, 174);
+    g.fillStyle = 'rgba(0,0,0,0.34)';
+    g.fillRect(16, 179, 168, 7);
     // roof cap + moon rims (cool key from upper right)
     g.fillStyle = '#0a0f15';
     g.fillRect(8, 4, 184, 10);
