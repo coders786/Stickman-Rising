@@ -98,6 +98,31 @@ for (const f of [...walk('src/game/entities'), ...walk('src/game/fx')]) {
   })
 }
 
+/* rule 5 — an acquired surface that must outlive a frame is PINNED.
+ *
+ *  THE CRASH THIS PREVENTS, verbatim: the cloud bank was acquired unpinned, the
+ *  run's bake storm pushed the ledger past its byte cap, the LRU sweep released
+ *  the bank — zeroing a canvas that `background.ts` still held — and the next
+ *  blit threw `InvalidStateError: The image argument is a canvas element with a
+ *  width or height of 0` from inside the render loop. A rule that says "if you
+ *  acquire a surface you intend to keep, say so" is the difference between that
+ *  being impossible and it being a matter of remembering. */
+for (const f of walk('src/game')) {
+  if (f.endsWith(`${sep}render${sep}ledger.ts`)) continue
+  const src = readFileSync(f, 'utf8')
+  src.split('\n').forEach((line, i) => {
+    // Only the LEDGER's acquire: `this.acquire()` in the particle pool is a
+    // fixed-size slot index and has nothing to do with canvases.
+    if (!/(?:gameLedger|ledger)\.acquire\(/.test(line)) return
+    const trimmed = line.trim()
+    if (trimmed.startsWith('//') || trimmed.startsWith('*')) return
+    // SurfaceGen calls acquire with `true` internally; anything else must say it.
+    if (!/,\s*true\s*\)/.test(line)) {
+      push(f, i + 1, 'ledger-unpinned', '.acquire() without pin=true — an LRU sweep can zero a live plate')
+    }
+  })
+}
+
 /* --------------------------- baseline compare --------------------------- */
 const counts = new Map()
 for (const v of violations) counts.set(keyOf(v), (counts.get(keyOf(v)) ?? 0) + 1)

@@ -87,8 +87,11 @@ test('the O-08 sweep is wired into the draw path, not just written', () => {
   assert.match(bg, /bakeFilmGrade\(g,\s*W,\s*H,\s*this\.mood,\s*0\.42,\s*rng,\s*this\.profile\?\.grade\)/, 'grade is not passed to the film plate')
   // The bank and the rigging are constructed and drawn.
   assert.match(bg, /buildCloudBank\(profForBake, TILE, 210, bankSurface\)/, 'the cloud bank is never built')
-  assert.match(bg, /gameLedger\.acquire\(bankKey, TILE, 210, 'sky'\)/, 'the bank canvas is not accounted by the ledger')
-  assert.match(bg, /if \(this\.bank\)/, 'the cloud bank is never drawn')
+  assert.match(bg, /gameLedger\.acquire\(bankKey, TILE, 210, 'sky', true\)/, 'the bank canvas is not acquired PINNED from the ledger')
+  // The blit is guarded: a released surface is a 0×0 canvas and drawImage throws.
+  assert.match(bg, /if \(hasPixels\(bank\)\)/, 'the bank blit is not guarded by hasPixels')
+  assert.match(bg, /const bank = this\.bank;/, 'the cloud bank is never read for drawing')
+  assert.match(bg, /if \(hasPixels\(bank\)\)/, 'the cloud bank blit is not guarded')
   assert.match(bg, /this\.rig = new Rigging\(this\.profile, this\.q\)/, 'the rigging is never constructed')
   assert.match(bg, /this\.rig\?\.draw\(ctx\)/, 'the rigging is never drawn')
   assert.match(bg, /this\.rig\?\.update\(d\)/, 'the rigging is never simulated')

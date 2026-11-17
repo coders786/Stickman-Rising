@@ -18,7 +18,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { CanvasLedger, SurfaceGen, bytesFor, type Surface } from '../src/game/render/ledger'
+import { CanvasLedger, SurfaceGen, bytesFor, hasPixels, type Surface } from '../src/game/render/ledger'
 
 interface Stub extends Surface {
   /** Set when the store is released, so a test can prove the bytes were freed. */
@@ -107,6 +107,36 @@ test('ledger: generations and stable keys cannot collide', () => {
   // similar — the prefix is the contract.
   assert.ok(l.list().some((e) => e.key === 'poll:plate'), 'the generation released a foreign key')
   assert.equal(stable.width, 64)
+})
+
+test('ledger: the crash that started this — an unpinned live plate is zeroed', () => {
+  // Reproduces the InvalidStateError from the console: a 2048×210 cloud bank
+  // acquired WITHOUT a pin, then a bake storm (a run's city plates) that crosses
+  // the byte cap. The sweep picks the only unpinned entry and zeroes its store.
+  const l = new CanvasLedger(stubFactory(), { maxSurfaces: 8, maxBytes: 3 * 1024 * 1024, minTrackedBytes: 0 })
+  const bank = l.acquire('cloudbank:123', 2048, 210) as Stub
+  assert.equal(bank.width, 2048)
+  for (let i = 0; i < 12; i++) l.acquire(`bake:${i}`, 1024, 700, 'bake', true)
+  assert.equal(bank.width, 0, 'the hazard did not reproduce — the test is no longer testing anything')
+  // Which is exactly why `hasPixels()` exists: the draw path must be able to ask.
+  assert.equal(hasPixels(bank), false)
+})
+
+test('ledger: pinned, the same bank survives the same storm', () => {
+  const l = new CanvasLedger(stubFactory(), { maxSurfaces: 8, maxBytes: 3 * 1024 * 1024, minTrackedBytes: 0 })
+  const bank = l.acquire('cloudbank:123', 2048, 210, 'sky', true) as Stub
+  for (let i = 0; i < 12; i++) l.acquire(`bake:${i}`, 1024, 700, 'bake', true)
+  assert.equal(bank.width, 2048, 'a pinned plate was zeroed by the sweep')
+  assert.ok(hasPixels(bank))
+  assert.ok(l.stats().surfaces > 8, 'the cap was silently violated instead of evicting (expected: nothing evictable)')
+})
+
+test('ledger: hasPixels is a type guard, not a truthiness check', () => {
+  assert.equal(hasPixels(null), false)
+  assert.equal(hasPixels(undefined), false)
+  assert.equal(hasPixels({ width: 0, height: 10 }), false)
+  assert.equal(hasPixels({ width: 10, height: 0 }), false)
+  assert.equal(hasPixels({ width: 10, height: 10 }), true)
 })
 
 test('ledger: bytes are page-rounded, so small plates cannot pretend to be free', () => {

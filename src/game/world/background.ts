@@ -6,7 +6,7 @@ import { makeProfile, type EnvironmentProfile } from './profile'
 import { NightLayer } from './night'
 import { Rigging } from './rigging'
 import { buildCloudBank, bankParams, type BankParams } from './clouds'
-import { SurfaceGen, gameLedger } from '../render/ledger'
+import { SurfaceGen, gameLedger, hasPixels } from '../render/ledger'
 import { WeatherFront, tintAlpha, tintColour } from './weather'
 import { rgbaConst } from '../render/color'
 import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
@@ -1554,7 +1554,7 @@ export class CyberBackground {
       // light up into the cloud deck than a blackout run.
       const pollA = (this.profile ? this.profile.atmosphere.pollution : 1);
       ctx.globalAlpha = (I0 > 0 ? 1 + I0 * 0.55 : 1) * pollA;
-      ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
+      if (hasPixels(this.pollPlate)) ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
     }
@@ -1593,12 +1593,16 @@ export class CyberBackground {
      * One blit when the profile says the night has one; skipped entirely on a
      * clear run. Sits between the soft decks and the aurora, so the ribbons
      * pass behind the mass the way high aurora does. */
-    if (this.bank) {
+    // A canvas whose store was freed still exists as an object with width 0.
+    // Checking the SIZE (not just the reference) is what stops that from
+    // reaching drawImage; every cached plate blit in this file does the same.
+    const bank = this.bank;
+    if (hasPixels(bank)) {
       const B = this.bankP;
       const bOff = mod(-t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) * this.wxGust - cx * 0.026 * cz, TILE);
       const bY = hy - 210 + (B ? B.lift : 0);
       ctx.globalAlpha = B ? B.opacity : 0.6;
-      for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(this.bank, bx, bY);
+      for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(bank, bx, bY);
       ctx.globalAlpha = 1;
     }
 
@@ -1894,7 +1898,7 @@ export class CyberBackground {
       ctx.translate(dx, y0);
       ctx.scale(1, -1);
       g.globalAlpha = 1;
-      ctx.drawImage(this.reflBuf, 0, bh * (1 - (i + 1) / slices), bw, bh / slices, 0, -sh, w, sh);
+      if (hasPixels(this.reflBuf)) ctx.drawImage(this.reflBuf, 0, bh * (1 - (i + 1) / slices), bw, bh / slices, 0, -sh, w, sh);
       ctx.restore();
     }
     ctx.restore();
@@ -1993,7 +1997,7 @@ export class CyberBackground {
       this.vignette = buildVignettePlate(this.vw, this.vh, this.profile ? this.profile.grade.vignette : 1);
       this.vigW = this.vw; this.vigH = this.vh;
     }
-    ctx.drawImage(this.vignette, 0, 0);
+    if (hasPixels(this.vignette)) ctx.drawImage(this.vignette, 0, 0);
   }
 
   /* --------------------------- private helpers --------------------------- */
@@ -2074,7 +2078,12 @@ export class CyberBackground {
       // happened in the first place (12 §4).
       gameLedger.releasePrefix('cloudbank:')
       const bankKey = `cloudbank:${profForBake.seed}`
-      const bankSurface = gameLedger.acquire(bankKey, TILE, 210, 'sky') as unknown as HTMLCanvasElement
+      // PINNED. The bank lives for the whole run and is blitted every frame; an
+      // unpinned surface is an LRU candidate, and the city bake storm pushes the
+      // ledger over its byte cap on a big frame — the sweep then releases the
+      // bank, zeroing its backing store while `this.bank` still points at it, and
+      // the next blit throws InvalidStateError (a 0×0 canvas). That was the crash.
+      const bankSurface = gameLedger.acquire(bankKey, TILE, 210, 'sky', true) as unknown as HTMLCanvasElement
       const bankHost = buildCloudBank(profForBake, TILE, 210, bankSurface)
       if (!bankHost) gameLedger.release(bankKey)
       this.bank = bankHost

@@ -202,6 +202,22 @@ export class CanvasLedger {
   }
 }
 
+/** IS THIS SURFACE STILL DRAWABLE?
+ *
+ *  A canvas OBJECT outlives its backing store. `release()` zeroes width/height to
+ *  hand the memory back, and `drawImage` on a 0×0 source throws
+ *  `InvalidStateError` — an exception that bubbles out of the render loop and
+ *  stops the game, not a glitch the player can play through.
+ *
+ *  So every blit of a cached plate checks this first. It costs two property
+ *  reads, and it turns "one bad eviction kills the frame" into "one plate is
+ *  skipped for a frame". Belt AND braces on purpose: the entries that must never
+ *  be evicted are pinned (see Entry.pinned), and anything that slips through is
+ *  caught here. */
+export function hasPixels<T extends { width: number; height: number }>(c: T | null | undefined): c is T {
+  return !!c && c.width > 0 && c.height > 0
+}
+
 /** Process-wide ledger for the game. Tests construct their own. */
 export const gameLedger = new CanvasLedger()
 

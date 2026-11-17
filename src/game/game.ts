@@ -715,10 +715,28 @@ export class Game {
   /* main loop                                                            */
   /* ------------------------------------------------------------------ */
 
+  /** Consecutive frames that threw. A render exception is almost always
+   *  transient (a plate released under the draw, a context lost for a moment),
+   *  and the OLD policy — stop the loop on the first throw — turned a single bad
+   *  blit into a dead session with a black screen, which is a P1 the player
+   *  cannot recover from. The policy now is:
+   *
+   *   · a throw is COUNTED and the loop keeps going;
+   *   · two clean frames in a row reset the count (so a one-off cannot accumulate);
+   *   · only a PERSISTENT failure (120 consecutive ≈ 2 s) stops the game — at that
+   *     point it is not transient and continuing would burn the battery for nothing.
+   *
+   *  This is the "for good" part of the canvas fix: `hasPixels()` stops the known
+   *  cause, and the loop survives any unknown one. */
+  private frameErrors = 0
+  private cleanStreak = 0
+
   private loop = (now: number): void => {
     try {
       const t0 = performance.now()
       this.frame(now)
+      this.cleanStreak++
+      if (this.cleanStreak >= 2) this.frameErrors = 0
       const js = performance.now() - t0
       this.jsMs += (js - this.jsMs) * 0.12
       const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
@@ -733,8 +751,24 @@ export class Game {
         // healthy frame; keep it honest so it cannot fake a bottleneck.
         this.waitMs += (Math.max(0, gap - js) - this.waitMs) * 0.1
       }
+      // EXACTLY ONE pending frame is owned by `loop`. `frame()` used to schedule
+      // its own successor, which made the error path double-schedule (two loops,
+      // double speed) if it ever tried to recover.
+      if (!this.destroyed) this.raf = requestAnimationFrame(this.loop)
+      return
     } catch (error) {
-      console.error('Game loop stopped after an unexpected error', error)
+      this.frameErrors++
+      this.cleanStreak = 0
+      // Log ONCE per run of failures, not 60 times a second: a console flooded
+      // with the same stack is how the original InvalidStateError got missed.
+      if (this.frameErrors === 1) {
+        console.error('Frame failed; continuing (will stop after ~2s of failures)', error)
+      }
+      if (this.frameErrors < 120) {
+        this.raf = requestAnimationFrame(this.loop)
+        return
+      }
+      console.error('Game loop stopped: 120 consecutive failed frames', error)
       cancelAnimationFrame(this.raf)
       this.input.setEnabled(false)
       this.audio.destroy()
@@ -744,7 +778,6 @@ export class Game {
 
   private frame(now: number): void {
     if (this.destroyed) return
-    this.raf = requestAnimationFrame(this.loop)
     let dtRaw = (now - this.lastFrame) / 1000
     this.lastFrame = now
     // NO FPS FLOOR: the old 0.05 clamp made every slow frame read as exactly

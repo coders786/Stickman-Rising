@@ -706,7 +706,7 @@ export class PropField {
     for (const p of this.props) {
       if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
       const mask = this.masks[p.kind]
-      if (!mask) continue
+      if (!mask || mask.width <= 0 || mask.height <= 0) continue
       const dir = shadowDirection(p.x, moonX)
       // Distance in FRAMES, same normalisation the fighter shadows use.
       const reach = shadowReach(elevation, Math.abs(p.x - moonX) * zoom * inv)
