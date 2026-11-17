@@ -64,3 +64,4 @@ server.log
 # Intermediate motion-study / browser capture frames (published previews live in research/)
 /.cache/
 tool-results/
+.next-build

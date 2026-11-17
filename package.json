@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 -p 3000",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build:iso": "STICKMAN_DIST_DIR=.next-build next build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "test": "node --import tsx --test tests/*.test.ts",

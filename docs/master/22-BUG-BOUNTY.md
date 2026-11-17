@@ -7,8 +7,9 @@ carries: how it was found, what the player actually experiences, the evidence,
 and whether this run fixed it. Nothing here is "looks better now".
 
 **No screenshots, no Playwright.** The verification stack is: `tsc`, 313 tests,
-a production `next build`, `scripts/lint-boundaries.mjs`, `scripts/bench-render.mjs`,
-and code inspection. The user's eye remains the final gate on anything visual —
+a production build (`npm run build:iso` while the preview server is up — see the
+note on `distDir` in `next.config.ts`), `scripts/lint-boundaries.mjs`,
+`scripts/bench-render.mjs`, and code inspection. The user's eye remains the final gate on anything visual —
 which is why every claim below is stated as a mechanism you can check, not as a
 picture you must trust.
 
@@ -119,6 +120,19 @@ regression test waiting to be written, and a closed bug without one is a rumour.
 | O-08 ✅ | **P2** | 8 profile axes were computed and **not consumed** by any renderer: `aurora.hue`, `clouds.texture`, `stars.twinkle`, `props.crateBias`, `weather.stormBias`, `weather.rain`, `weather.cadence`, `grade.*` | `tests/profile-consumption.test.ts` (now a gate) | **CLOSED.** All 34 axes have a named consumer in `world/consumers.ts`, and the gate fails if any axis loses one. New art landed with them: `world/clouds.ts` (conditional cumulus bank — clear nights have none), `world/rigging.ts` (cables + pennants on a shared `world/wind.ts`), film-grade/vignette/aurora-hue args on the bake, `StormEngine.applyProfile`, `uTwinkle`, `weightOf()`. The file-level grep check is a floor, not a proof — correctness lives in `tests/rigging|clouds|night-plates`. |
 | O-09 ✅ | P3 | The run identity was only visible in the developer frame readout | play 18 s, then die | **CLOSED.** `TONIGHT · <label> · <id>` is drawn top-right for the first 18 s of every run (fading 14→18 s), and the results card carries `TONIGHT'S RIG` with the same label + seed via `Game.runIdentity()`, so the night can still be read when the run is over and "that one" can be re-rolled. |
 | O-10 ✅ | P3 | `renderer.ground()` used a hard-coded lower-left contact shadow regardless of the moon's side | rotate the profile until the moon is on the left | **CLOSED.** `CyberBackground.moonScreenX()` is inverted into world space through the live camera and the shadow is projected *away* from the moon, stretched by distance from it (closer = shorter). Cost: one comparison and a multiply per figure. |
+
+---
+
+### O-11 · **P1** — "the server is corrupted": the preview died after every build
+Two processes shared one output directory. `next dev` owns `.next/`, and the
+`next build` used to verify the tree deletes its manifests; the dev server keeps
+answering `200` from resident memory while every chunk under `/_next/static`
+404s, so the game renders nothing and the page looks alive. Restarting the server
+"fixed" it every time, which is why it looked like a corrupt server and not like
+two writers.
+**Fix:** `next.config.ts` takes `distDir` from `STICKMAN_DIST_DIR`, and
+`npm run build:iso` builds into `.next-build`. Verified by building while the dev
+server was up and then fetching three of the page's own chunk URLs — all `200`.
 
 ---
 
