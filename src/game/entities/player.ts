@@ -3031,6 +3031,9 @@ export class Player {
           ty: this.y - cy,
         }
       }
+      // Destructible stage props receive the EXACT same sweep volume as
+      // bodies: visual contact == gameplay contact, for props too.
+      w.strikeProps?.(curSeg, info, this.x)
       for (const e of w.enemies) {
         if (e.dead || (e.spawning && e.y < -90)) continue
         const last = a.hitMap.get(e.id)

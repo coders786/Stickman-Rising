@@ -59,6 +59,9 @@ export interface BackgroundRenderer {
   update(dt:number):void
   /** Change the draw budget WITHOUT discarding baked art. */
   setQuality(q:Quality):void
+  /** OPTIONAL: re-seed the procedural skyline for a fresh run. Invalidates
+   *  the baked tiles; the rebuild happens once, before the next frame. */
+  setRunSeed?(seed:number):void
   lightningI():number
   lightningAz():number
   drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
@@ -124,6 +127,307 @@ function rrPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h:
   g.arcTo(x, y, x + w, y, k);
   g.closePath();
 }
+
+/* ============================================================================
+ * ADVANCED PRE-BAKED LIGHTING + PROCEDURAL ARCHETYPE TOOLKIT
+ * ----------------------------------------------------------------------------
+ * Everything below runs ONCE inside build*(). Nothing here is on the frame
+ * path — no shaders, no WebGL, no live lights, no per-frame gradients. The
+ * techniques follow the standard baked-lightmap practice: emissive windows
+ * spill soft radial light onto their own facade, a single directional key
+ * gives every extrusion a lit face / shadow face / contact AO, and skewed
+ * shadow volumes are projected onto neighbouring geometry with source-atop.
+ * Reflections use the canonical cheap 2D trick: a vertically FLIPPED sprite
+ * with a baked vertical alpha fade — one drawImage, zero live mirror cost.
+ * ==========================================================================*/
+
+/** one soft radial light disc, baked once, reused for every emissive source */
+function buildGlowDisc(rgb: string): HTMLCanvasElement {
+  const { c, g } = makeCanvas(64, 64);
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, `rgba(${rgb},0.9)`);
+  gr.addColorStop(0.32, `rgba(${rgb},0.3)`);
+  gr.addColorStop(0.7, `rgba(${rgb},0.07)`);
+  gr.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+/** EMISSIVE LIGHTMAP SPILL — additive soft light from a source onto its
+ *  surrounding surface. Baked into the tile, so the facade looks lit by its
+ *  own windows/signs at zero runtime cost. */
+function bakeSpill(g: CanvasRenderingContext2D, disc: HTMLCanvasElement, cx: number, cy: number, r: number, a: number): void {
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = a;
+  g.drawImage(disc, cx - r, cy - r, r * 2, r * 2);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+/** DIRECTIONAL 3D KEY — one moon from the upper right: lit right face,
+ *  occluded left face, a diagonal falloff across the plane, and ledge AO
+ *  where a horizontal surface bites into the wall below it. */
+function bake3DKey(g: CanvasRenderingContext2D, x: number, topY: number, bw: number, bh: number, s: number): void {
+  const gr = g.createLinearGradient(x + bw, topY, x, topY + bh);
+  gr.addColorStop(0, `rgba(186,216,246,${(0.075 * s).toFixed(3)})`);
+  gr.addColorStop(0.52, 'rgba(0,0,0,0)');
+  gr.addColorStop(1, `rgba(2,5,10,${(0.2 * s).toFixed(3)})`);
+  g.fillStyle = gr;
+  g.fillRect(x, topY, bw, bh);
+  g.fillStyle = `rgba(190,220,250,${(0.1 * s).toFixed(3)})`;
+  g.fillRect(x + bw - 5, topY, 5, bh);
+  g.fillStyle = `rgba(0,0,0,${(0.28 * s).toFixed(3)})`;
+  g.fillRect(x, topY, Math.min(6, bw * 0.15), bh);
+  const ao = g.createLinearGradient(0, topY, 0, topY + 22);
+  ao.addColorStop(0, `rgba(0,0,0,${(0.3 * s).toFixed(3)})`);
+  ao.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = ao;
+  g.fillRect(x, topY, bw, 22);
+}
+
+/** PROJECTED CAST SHADOWS — skewed shadow volumes thrown to the lower-left
+ *  by every tower. source-atop clips them to the existing city silhouettes
+ *  so sky gaps stay clean and a tall tower darkens its shorter neighbour. */
+function bakeCastShadows(g: CanvasRenderingContext2D, towers: ReadonlyArray<{ x: number; bw: number; bh: number }>, H: number, alpha: number): void {
+  g.save();
+  g.globalCompositeOperation = 'source-atop';
+  for (const t of towers) {
+    const y = H - t.bh;
+    const lean = 34 + t.bh * 0.14;
+    const w = Math.min(t.bw * 0.72, 118);
+    g.fillStyle = `rgba(0,0,0,${alpha})`;
+    g.beginPath();
+    g.moveTo(t.x - w, H);
+    g.lineTo(t.x - w + lean, y + 10);
+    g.lineTo(t.x + w * 0.4 + lean, y + 10);
+    g.lineTo(t.x + w * 0.4, H);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+}
+
+/** FLIPPED-SPRITE REFLECTION — the cheapest possible 2D mirror: copy the
+ *  sprite upside down, squash it, fade it with destination-in, then blit it
+ *  under the object. Fully baked. No render target, no readback, no shader. */
+function bakeFlipReflection(
+  g: CanvasRenderingContext2D, spr: HTMLCanvasElement,
+  dx: number, dy: number, dw: number, dh: number, alpha: number,
+): void {
+  const { c, g: m } = makeCanvas(Math.max(1, Math.round(dw)), Math.max(1, Math.round(dh)));
+  m.save();
+  m.translate(0, dh);
+  m.scale(1, -1);
+  m.drawImage(spr, 0, 0, dw, dh);
+  m.restore();
+  m.globalCompositeOperation = 'destination-in';
+  const fade = m.createLinearGradient(0, 0, 0, dh);
+  fade.addColorStop(0, 'rgba(0,0,0,0.85)');
+  fade.addColorStop(0.35, 'rgba(0,0,0,0.4)');
+  fade.addColorStop(1, 'rgba(0,0,0,0)');
+  m.fillStyle = fade;
+  m.fillRect(0, 0, dw, dh);
+  m.globalCompositeOperation = 'source-over';
+  // additive over the wet deck: only the sprite's LIT pixels contribute,
+  // so the mirror reads as reflected light instead of a dark smudge.
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = alpha;
+  g.drawImage(c, dx, dy);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+}
+
+/* ---------------------- procedural building archetypes ------------------- */
+
+export type ArchKind = 'slab' | 'setback' | 'glass' | 'warehouse' | 'spire';
+
+interface BldSpec {
+  x: number; bw: number; bh: number; H: number; shade: string;
+  rng: () => number;
+  /** personality baked into the facade: 0 grid / 1 shaft / 2 checker / 3 clusters */
+  persona: number;
+  warm: HTMLCanvasElement; cool: HTMLCanvasElement;
+}
+
+/** ARCHETYPE GENERATOR — five genuinely different silhouettes + four window
+ *  personalities, chosen per building from the seeded RNG. This is the
+ *  "visibly procedural" layer: no two runs share the same skyline shape. */
+function bakeArchetype(g: CanvasRenderingContext2D, b: BldSpec, kind: ArchKind): void {
+  const { x, bw, bh, H, rng, warm, cool, persona } = b;
+  const top = H - bh;
+  const lit = (px: number, py: number, r: number, a: number, coolLight = false): void =>
+    bakeSpill(g, coolLight ? cool : warm, px, py, r, a);
+
+  if (kind === 'setback') {
+    // three receding tiers, each with its own ledge AO + emissive crown
+    let tw = bw, ty = top, tx = x;
+    for (let i = 0; i < 3; i++) {
+      const th = i === 0 ? 12 + rng() * 18 : 30 + rng() * 48;
+      g.fillStyle = b.shade;
+      g.fillRect(tx, ty - th, tw, th);
+      g.fillStyle = 'rgba(160,196,228,0.13)';
+      g.fillRect(tx, ty - th, tw, 1.5);
+      g.fillStyle = 'rgba(0,0,0,0.34)';
+      g.fillRect(tx, ty - 1, tw, 3);
+      lit(tx + tw * 0.5, ty - th - 1, 26, 0.14, i === 2);
+      ty -= th;
+      const nw = tw * (0.6 + rng() * 0.16);
+      tx += (tw - nw) * (0.3 + rng() * 0.4);
+      tw = nw;
+    }
+    bake3DKey(g, tx, ty, tw, top - ty + 8, 0.8);
+  } else if (kind === 'glass') {
+    // curtain wall: reflected sky gradient + vertical mullions + cool seams
+    const gr = g.createLinearGradient(x, top, x + bw * 0.7, top + bh);
+    gr.addColorStop(0, 'rgba(96,148,196,0.19)');
+    gr.addColorStop(0.38, 'rgba(24,42,64,0.05)');
+    gr.addColorStop(0.62, 'rgba(126,178,214,0.1)');
+    gr.addColorStop(1, 'rgba(6,12,20,0)');
+    g.fillStyle = gr;
+    g.fillRect(x, top, bw, bh);
+    const step = 9 + rng() * 7;
+    for (let px = x + 4; px < x + bw - 3; px += step) {
+      g.fillStyle = 'rgba(140,190,220,0.09)';
+      g.fillRect(px, top, 1, bh);
+      g.fillStyle = 'rgba(0,0,0,0.2)';
+      g.fillRect(px + 1, top, 1.5, bh);
+    }
+    for (let py = top + 16; py < H - 14; py += 22 + rng() * 10) {
+      g.fillStyle = 'rgba(150,196,226,0.055)';
+      g.fillRect(x, py, bw, 1);
+    }
+    g.fillStyle = 'rgba(170,214,244,0.24)';
+    g.fillRect(x + bw - 3, top, 3, bh);
+  } else if (kind === 'warehouse') {
+    // sawtooth roof, shutter bays, sodium interior spill
+    const teeth = Math.max(2, Math.round(bw / 58));
+    const th = 12 + rng() * 14;
+    for (let i = 0; i < teeth; i++) {
+      const sx = x + (i * bw) / teeth;
+      g.fillStyle = b.shade;
+      g.beginPath();
+      g.moveTo(sx, top);
+      g.lineTo(sx + bw / teeth, top - th);
+      g.lineTo(sx + bw / teeth, top);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = 'rgba(150,186,216,0.12)';
+      g.lineWidth = 1;
+      g.stroke();
+    }
+    const bays = 2 + ((rng() * 2) | 0);
+    for (let i = 0; i < bays; i++) {
+      const sx = x + 10 + i * (bw - 20) / bays;
+      const sw = (bw - 20) / bays - 6;
+      const sh = 34 + rng() * 26;
+      const sy = H - sh - 12;
+      g.fillStyle = '#080d12';
+      g.fillRect(sx, sy, sw, sh);
+      g.fillStyle = 'rgba(255,182,108,0.12)';
+      g.fillRect(sx + 2, sy + 2, sw - 4, sh - 5);
+      for (let sy2 = sy + 4; sy2 < sy + sh - 3; sy2 += 5) {
+        g.fillStyle = 'rgba(0,0,0,0.45)';
+        g.fillRect(sx + 2, sy2, sw - 4, 1.5);
+      }
+      lit(sx + sw * 0.5, sy + 4, 34, 0.2);
+    }
+  } else if (kind === 'spire') {
+    // tapered crown + emissive ring + beacon
+    const cw = bw * (0.28 + rng() * 0.18);
+    const ch = 26 + rng() * 60;
+    const cx = x + bw * (0.35 + rng() * 0.3);
+    g.fillStyle = b.shade;
+    g.beginPath();
+    g.moveTo(cx - cw / 2, top);
+    g.lineTo(cx - cw * 0.18, top - ch);
+    g.lineTo(cx + cw * 0.18, top - ch);
+    g.lineTo(cx + cw / 2, top);
+    g.closePath();
+    g.fill();
+    g.fillStyle = 'rgba(170,208,240,0.22)';
+    g.fillRect(cx - cw * 0.18, top - ch, cw * 0.36, 1.5);
+    lit(cx, top - ch + 2, 22, 0.24, true);
+    g.fillStyle = '#0a1118';
+    g.fillRect(cx - 1, top - ch - 26 - rng() * 30, 2, 28);
+    g.fillStyle = BEACON_CORE;
+    g.fillRect(cx - 1.5, top - ch - 30, 3, 3);
+  } else {
+    // slab: horizontal floor bands + one long lit ribbon
+    for (let i = 1; i <= 3; i++) {
+      const py = top + (bh * i) / 4;
+      g.fillStyle = 'rgba(0,0,0,0.24)';
+      g.fillRect(x, py, bw, 3);
+      g.fillStyle = 'rgba(150,186,214,0.07)';
+      g.fillRect(x, py + 3, bw, 1);
+    }
+    g.fillStyle = 'rgba(255,190,120,0.16)';
+    g.fillRect(x + 6, top + bh * 0.5, bw - 12, 2);
+    lit(x + bw * 0.5, top + bh * 0.5, bw * 0.38, 0.13);
+  }
+
+  // Consistent 3D key on EVERY archetype (setback already has its own
+  // stronger crown key): diagonal falloff, moon rim, left-face occlusion
+  // and ledge contact AO. Fully baked, zero runtime cost.
+  bake3DKey(g, x, top, bw, bh, kind === 'setback' ? 0.3 : 0.45);
+
+  /* WINDOW PERSONALITY — per-building occupancy. Every lit cell emits a
+   * baked spill disc so the wall around it is actually illuminated. */
+  const n = persona === 3 ? 14 : 8;
+  for (let i = 0; i < n; i++) {
+    let wx: number, wy: number;
+    if (persona === 1) {                       // vertical service shaft
+      wx = x + bw * (0.24 + rng() * 0.5);
+      wy = top + 14 + rng() * Math.max(8, bh - 40);
+    } else if (persona === 2) {                // checkerboard occupancy
+      wx = x + 8 + ((i * 17 + (rng() * 5) | 0)) % Math.max(10, bw - 18);
+      wy = top + 12 + ((i * 29) % Math.max(10, bh - 28));
+    } else if (persona === 3) {                // clustered apartments
+      wx = x + 8 + rng() * Math.max(8, bw - 20);
+      wy = top + 16 + rng() * Math.max(8, bh - 40);
+    } else {                                   // strict office grid
+      wx = x + 7 + ((i % 4) * (bw - 16)) / 4;
+      wy = top + 14 + Math.floor(i / 4) * 26;
+    }
+    if (wy > H - 14 || wy < 2) continue;
+    const coolL = rng() < 0.2;
+    g.fillStyle = coolL ? 'rgba(150,236,228,0.82)' : 'rgba(255,198,132,0.85)';
+    g.fillRect(wx, wy, 3, 4);
+    lit(wx + 1.5, wy + 2, 13 + rng() * 9, 0.22 + rng() * 0.16, coolL);
+  }
+}
+
+/** AURORA / HIGH-CLOUD SHEET — a sixth parallax plane baked from soft
+ *  procedural ribbons. Drifts at its own factor with a slow alpha pulse;
+ *  lives inside the cached sky vault so the frame cost is one blit. */
+function buildAuroraTile(): HTMLCanvasElement {
+  const { c, g } = makeCanvas(512, 190);
+  const rng = mulberry32(0xa0c17e);
+  const cols = ['86,220,190', '92,150,236', '150,104,222'];
+  g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 5; i++) {
+    const col = cols[i % cols.length];
+    const y = 20 + rng() * 90;
+    const amp = 10 + rng() * 24;
+    const ph = rng() * TAU;
+    const gr = g.createLinearGradient(0, y - 34, 0, y + 62);
+    gr.addColorStop(0, `rgba(${col},0)`);
+    gr.addColorStop(0.45, `rgba(${col},${(0.09 + rng() * 0.05).toFixed(3)})`);
+    gr.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = gr;
+    g.beginPath();
+    g.moveTo(0, y + 60);
+    for (let px = 0; px <= 512; px += 8) {
+      g.lineTo(px, y - 20 + Math.sin(px * 0.018 + ph) * amp + Math.sin(px * 0.047 + ph * 1.7) * amp * 0.3);
+    }
+    g.lineTo(512, y + 60);
+    g.closePath();
+    g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
 
 /* ============================ layer tuning =============================== */
 
@@ -471,6 +775,11 @@ export class CyberBackground {
   private nearTile!: HTMLCanvasElement;
   private deepTileBlur!: HTMLCanvasElement;
   private fogPlane!: HTMLCanvasElement;   // parallax haze sheet (procedural puffs)
+  private auroraTile!: HTMLCanvasElement; // 6th parallax plane: aurora ribbons
+  private glowWarm!: HTMLCanvasElement;   // baked emissive light discs
+  private glowCool!: HTMLCanvasElement;
+  private glowSigns: HTMLCanvasElement[] = [];
+  private lampSpr!: HTMLCanvasElement;    // broken streetlight, restored + baked
   private arenaTile!: HTMLCanvasElement;
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
   private doorSpr!: HTMLCanvasElement;    // stairwell head-house + warm door
@@ -491,6 +800,7 @@ export class CyberBackground {
   private midTileBlur!: HTMLCanvasElement;
 
   private q: Quality;
+  private runSeed = 0;
   private skyVault = new SkyVaultCache();
   private lastCam: BgCam = { x: 1300, y: NOMINAL_Y, zoom: 1 };
 
@@ -505,6 +815,18 @@ export class CyberBackground {
    *  art is identical at every tier — only how much of it we draw differs. */
   setQuality(q:Quality):void{
     this.q=q;
+  }
+
+  /** RE-SEED THE SKYLINE — the whole point of procedural generation: every
+   *  run gets a different set of building archetypes, silhouettes, window
+   *  personalities, bridges and neon. Baked once on the next draw, so the
+   *  120 Hz frame path is unchanged (still one blit per band). */
+  setRunSeed(seed:number):void{
+    const s=seed>>>0;
+    if(s===this.runSeed)return;
+    this.runSeed=s;
+    this.built=false;
+    this.skyVault.invalidate();   // force one composite with the NEW skyline
   }
 
   /** CSS-pixel size of the game canvas viewport. */
@@ -626,6 +948,19 @@ export class CyberBackground {
       ctx.globalAlpha = 1;
     }
 
+    /* 2.6 — AURORA / HIGH-CLOUD SHEET — a sixth parallax plane. Soft
+     * procedural ribbons at f=0.045 with a slow alpha pulse; inside the
+     * cached vault, so this is one blit per vault rebuild, not per frame. */
+    {
+      const aOff = mod(-t * 1.6 - cx * 0.045 * cz, 512);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.42 + 0.24 * Math.sin(t * 0.033 + 1.2);
+      const ay = hy * 0.08 - 30 - (cy - NOMINAL_Y) * 0.03 * cz;
+      for (let ax = -aOff; ax < w; ax += 512) ctx.drawImage(this.auroraTile, ax, ay);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+
     /* 2.8 — THE MOON: two baked blits (disc + halo). No eclipse scan, no
      * ring/zodiac/pillar optics — stripped with the rest of the engines. */
     {
@@ -716,6 +1051,10 @@ export class CyberBackground {
     // the stairwell and the broken streetlight, its ground pool, the moon
     // pool) — three props, zero live state
     blitWorldFrustum(ctx, this.arenaTile, ARENA_X0, 0, viewL, viewR);
+    // BROKEN STREETLIGHT — restored foreground practical, one baked blit.
+    // The pole's rim light, glow spill and contact AO are all in the sprite;
+    // its flipped reflection is baked into the arena tile below.
+    ctx.drawImage(this.lampSpr, LAMP_X - 48, -286);
     // STAIRWELL PRACTICAL — warm head-house + breathing pool (additive)
     ctx.drawImage(this.doorSpr, DOOR_X - 100, -226);   // sprite grew 54px upward
     ctx.globalCompositeOperation = 'lighter';
@@ -765,6 +1104,13 @@ export class CyberBackground {
     for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
     this.cloudDark = buildCloudTile(false);
     this.fogPlane = buildFogPlane();
+    this.auroraTile = buildAuroraTile();
+    this.glowWarm = buildGlowDisc('255,186,112');
+    this.glowCool = buildGlowDisc('126,214,244');
+    for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255']) {
+      this.glowSigns.push(buildGlowDisc(rgb));
+    }
+    this.lampSpr = this.buildLampProp();
     this.starTile = this.buildStarTile();
     this.deepTile = this.buildDeep();
     this.farTile = this.buildFar();
@@ -856,7 +1202,7 @@ export class CyberBackground {
    */
   private buildDeep(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, DEEP_H);
-    const rng = mulberry32(0x33d1e7);
+    const rng = mulberry32(0x33d1e7 ^ this.runSeed);
     const shades = ['#16222f', '#182534', '#1a2838', '#152030'];
     const glow: ReadonlyArray<string> = [
       'rgba(255,45,149,0.20)', 'rgba(41,230,210,0.20)', 'rgba(255,176,46,0.18)',
@@ -975,7 +1321,7 @@ export class CyberBackground {
 
   private buildFar(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, FAR_H);
-    const rng = mulberry32(0xc1f3a0);
+    const rng = mulberry32(0xc1f3a0 ^ this.runSeed);
     const shades = ['#121d28', '#14202b', '#15222e', '#172432'];
     let beaconCount = 0;
     let x = 0;
@@ -1044,6 +1390,14 @@ export class CyberBackground {
           beaconCount++;
         }
       }
+      /* PROCEDURAL ARCHETYPE — silhouette + window personality are chosen
+       * per building from this band's seeded RNG. Five shapes, four
+       * occupancy patterns, baked emissive spill on every lit cell. */
+      const arch = (['slab', 'setback', 'glass', 'warehouse', 'spire'] as const)[(rng() * 5) | 0];
+      bakeArchetype(g, {
+        x, bw, bh, H: FAR_H, shade, rng, persona: (rng() * 4) | 0,
+        warm: this.glowWarm, cool: this.glowCool,
+      }, arch);
       // LIT FLOOR: sometimes a whole office floor burns at night (band row),
       // sometimes one stairwell shaft runs the full height — both read as
       // occupancy instead of random noise
@@ -1065,6 +1419,7 @@ export class CyberBackground {
               ? `rgba(141,150,255,${(a * 0.8).toFixed(3)})`
               : warm ? `rgba(255,180,107,${a.toFixed(3)})` : `rgba(125,232,220,${a.toFixed(3)})`;
             g.fillRect(wx, wy, 2, rng() < 0.3 ? 3 : 2);
+            bakeSpill(g, cool ? this.glowCool : warm ? this.glowWarm : this.glowCool, wx + 1, wy + 1, 9, 0.13);
           }
         }
       }
@@ -1117,7 +1472,7 @@ export class CyberBackground {
 
   private buildMid(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, MID_H);
-    const rng = mulberry32(0x2b6e5f);
+    const rng = mulberry32(0x2b6e5f ^ this.runSeed);
     const shades = ['#0b141c', '#0d1721', '#0e1924', '#101c27'];
     const cands: { bx: number; bw: number; bh: number }[] = [];
     const towers: { x: number; bw: number; bh: number }[] = [];
@@ -1279,6 +1634,14 @@ export class CyberBackground {
         g.globalCompositeOperation = 'source-over';
         g.globalAlpha = 1;
       }
+      /* PROCEDURAL ARCHETYPE — silhouette + window personality are chosen
+       * per building from this band's seeded RNG. Five shapes, four
+       * occupancy patterns, baked emissive spill on every lit cell. */
+      const arch = (['slab', 'setback', 'glass', 'warehouse', 'spire'] as const)[(rng() * 5) | 0];
+      bakeArchetype(g, {
+        x, bw, bh, H: MID_H, shade, rng, persona: (rng() * 4) | 0,
+        warm: this.glowWarm, cool: this.glowCool,
+      }, arch);
       if (rng() >= 0.22) {                                 // windows (some towers unlit)
         // LIT FLOOR bands + occasional server-floor hue, over the random grid
         const litFloorY = rng() < 0.3 ? MID_H - bh + 16 + rng() * Math.max(14, bh - 50) : -999;
@@ -1294,6 +1657,7 @@ export class CyberBackground {
                 ? `rgba(120,150,255,${(a * 0.75).toFixed(3)})`
                 : warm ? `rgba(255,184,119,${a.toFixed(3)})` : `rgba(141,240,226,${a.toFixed(3)})`;
               g.fillRect(wx, wy, 3, 4);
+              bakeSpill(g, serverFloor || !warm ? this.glowCool : this.glowWarm, wx + 1.5, wy + 2, 13, 0.2);
             }
           }
         }
@@ -1415,8 +1779,15 @@ export class CyberBackground {
         g.globalAlpha = 0.85;
         g.drawImage(this.glyphSpr[ci], x0 + 5, y0 + 5, sw - 10, sh - 10);
         g.globalAlpha = 1;
+        // NEON SPILL — the sign actually lights the wall around it. Baked
+        // once with a color-matched radial disc; zero per-frame light cost.
+        bakeSpill(g, this.glowSigns[ci], x0 + sw * 0.5, y0 + sh * 0.5, sw * 0.95, 0.42);
+        bakeSpill(g, this.glowSigns[ci], x0 + sw * 0.5, y0 + sh + 22, sw * 1.25, 0.16);
       }
     }
+    // PROJECTED 3D SHADOWS — each tower throws a skewed volume onto the
+    // geometry to its lower-left; source-atop keeps the sky gaps clean.
+    bakeCastShadows(g, towers, MID_H, 0.2);
     const gr = g.createLinearGradient(0, MID_H - 70, 0, MID_H);
     gr.addColorStop(0, 'rgba(7,13,18,0)');
     gr.addColorStop(1, 'rgba(7,13,18,0.6)');
@@ -1447,7 +1818,7 @@ export class CyberBackground {
 
   private buildNear(): HTMLCanvasElement {
     const { c, g } = makeCanvas(TILE, NEAR_H);
-    const rng = mulberry32(0x77d1ee);
+    const rng = mulberry32(0x77d1ee ^ this.runSeed);
     const shades = ['#05090d', '#060b10', '#071015', '#050a0f'];
     const towers: { x: number; w: number; h: number }[] = [];
     let x = 0;
@@ -1577,6 +1948,14 @@ export class CyberBackground {
         g.lineTo(px - 1.5, NEAR_H - 6);
         g.stroke();
       }
+      /* PROCEDURAL ARCHETYPE — silhouette + window personality are chosen
+       * per building from this band's seeded RNG. Five shapes, four
+       * occupancy patterns, baked emissive spill on every lit cell. */
+      const arch = (['slab', 'setback', 'glass', 'warehouse', 'spire'] as const)[(rng() * 5) | 0];
+      bakeArchetype(g, {
+        x, bw, bh, H: NEAR_H, shade, rng, persona: (rng() * 4) | 0,
+        warm: this.glowWarm, cool: this.glowCool,
+      }, arch);
       if (rng() < 0.7) {                                   // windows + lit floor bands
         const litFloorY = rng() < 0.3
           ? NEAR_H - bh + 20 + rng() * Math.max(16, bh - 60)
@@ -1593,12 +1972,45 @@ export class CyberBackground {
                 ? `rgba(230,190,140,${a.toFixed(3)})`
                 : `rgba(84,112,122,${a.toFixed(3)})`;
               g.fillRect(wx, wy, 2, 2);
+              bakeSpill(g, onFloor ? this.glowWarm : this.glowCool, wx + 1, wy + 1, 12, 0.16);
             }
           }
         }
       }
       towers.push({ x, w: bw, h: bh });
       x += bw + 18 + rng() * 60;
+    }
+    // 3D cast shadows across the near skyline (baked, source-atop clipped)
+    bakeCastShadows(g, towers.map((t) => ({ x: t.x, bw: t.w, bh: t.h })), NEAR_H, 0.24);
+    /* ENCLOSED GLASS SKYBRIDGES — a second bridge family on the near plane:
+     * lit corridor slab, mullioned glazing, baked AO at both junction bites. */
+    for (let i = 0; i + 1 < towers.length; i++) {
+      const a = towers[i], b = towers[i + 1];
+      const gap = b.x - (a.x + a.w);
+      if (gap < 20 || gap > 108 || rng() < 0.38) continue;
+      const y0 = Math.max(NEAR_H - a.h, NEAR_H - b.h) + 26 + rng() * 42;
+      if (y0 > NEAR_H - 44) continue;
+      const bx0 = a.x + a.w;
+      const span = b.x - bx0;
+      g.fillStyle = '#070c11';
+      g.fillRect(bx0, y0, span, 18);
+      g.fillStyle = 'rgba(150,192,224,0.16)';
+      g.fillRect(bx0, y0, span, 1.4);
+      g.fillStyle = 'rgba(255,188,116,0.4)';
+      for (let wx2 = bx0 + 4; wx2 < b.x - 3; wx2 += 11) {
+        if (rng() < 0.75) g.fillRect(wx2, y0 + 5, 6, 8);
+      }
+      g.fillStyle = 'rgba(140,184,214,0.08)';
+      g.fillRect(bx0, y0 + 4, span, 10);
+      g.strokeStyle = 'rgba(18,28,36,0.9)';
+      g.lineWidth = 1.4;
+      for (let wx2 = bx0 + 8; wx2 < b.x; wx2 += 12) {
+        g.beginPath(); g.moveTo(wx2, y0 + 2); g.lineTo(wx2, y0 + 18); g.stroke();
+      }
+      g.fillStyle = 'rgba(0,0,0,0.44)';
+      g.fillRect(bx0 - 4, y0 - 3, 6, 24);
+      g.fillRect(b.x - 2, y0 - 3, 6, 24);
+      bakeSpill(g, this.glowWarm, bx0 + span * 0.5, y0 + 9, span * 0.7, 0.12);
     }
     g.lineWidth = 1;                                       // hanging cables
     g.strokeStyle = 'rgba(28,40,48,0.85)';
@@ -1937,6 +2349,30 @@ export class CyberBackground {
     g.beginPath();
     g.ellipse(lampX, 6, 28, 5, 0, 0, TAU);
     g.fill();
+
+    /* FLIPPED-SPRITE REFLECTIONS — the cheap-on-hardware mirror for every
+     * foreground object. Duplicate the sprite, flip it vertically, squash
+     * it into the wet deck and bake a vertical alpha fade. No live reflection
+     * pass, no render target, no shader: these pixels are part of this tile. */
+    bakeFlipReflection(g, this.doorSpr, doorX - 84, LIP_H + 1, 168, 108, 0.45);
+    bakeFlipReflection(g, this.lampSpr, lampX - 44, LIP_H + 1, 88, 122, 0.55);
+    // warm bounce from the doorway onto the water just below it
+    bakeSpill(g, this.glowWarm, doorX, LIP_H + 16, 92, 0.14);
+    // wet-concrete micro-ripples chop both mirrors into believable water
+    for (let i = 0; i < 22; i++) {
+      const ry = LIP_H + 8 + rng() * 108;
+      const rx = rng() < 0.5 ? doorX - 90 + rng() * 180 : lampX - 48 + rng() * 96;
+      g.fillStyle = `rgba(12,20,28,${(0.1 + rng() * 0.22).toFixed(3)})`;
+      g.fillRect(rx, ry, 8 + rng() * 34, 0.8 + rng() * 1.2);
+    }
+    // specular hairlines: the wet deck catches the two practicals as thin
+    // broken highlights straight below their feet
+    for (let i = 0; i < 9; i++) {
+      const hx = (i % 2 ? lampX : doorX) + (rng() - 0.5) * 70;
+      const hy = LIP_H + 6 + i * 11;
+      g.fillStyle = i % 2 ? 'rgba(178,210,238,0.16)' : 'rgba(255,178,112,0.16)';
+      g.fillRect(hx - 8 - rng() * 12, hy, 16 + rng() * 26, 1);
+    }
     return c;
   }
 
@@ -1945,6 +2381,48 @@ export class CyberBackground {
    *  wet-asphalt character; destination-out PUDDLE WINDOWS let the sharp
    *  mirror through, each with a moonlit specular rim on the moon side.
    *  Pre-baked: one blit per frame, zero allocs. */
+
+  /* ---------------------- foreground practical props -------------------- */
+
+  /** BROKEN STREETLIGHT — restored physical prop with baked 3D lighting:
+   *  leaning pole, moon rim on the right face, left-face occlusion, a cool
+   *  emissive head, a baked glow spill and a contact AO at the deck line.
+   *  One canvas, one blit at runtime; its mirror is baked into the arena. */
+  private buildLampProp(): HTMLCanvasElement {
+    const { c, g } = makeCanvas(96, 300);
+    // leaning pole (quad, not a rect — reads as a real extrusion)
+    g.fillStyle = '#080d13';
+    g.beginPath();
+    g.moveTo(44, 26); g.lineTo(53, 26); g.lineTo(57, 300); g.lineTo(40, 300);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(168,204,238,0.16)';            // moon rim, right face
+    g.beginPath();
+    g.moveTo(53, 26); g.lineTo(57, 300); g.lineTo(54, 300); g.lineTo(51, 26);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.4)';                   // left face occlusion
+    g.fillRect(40, 26, 4, 274);
+    // bracket arm + lamp head (trapezoid with a lit underside)
+    g.fillStyle = '#070c11';
+    g.fillRect(53, 18, 30, 5);
+    g.beginPath();
+    g.moveTo(30, 10); g.lineTo(76, 10); g.lineTo(70, 28); g.lineTo(36, 28);
+    g.closePath(); g.fill();
+    g.fillStyle = 'rgba(160,198,232,0.22)';
+    g.fillRect(30, 10, 46, 1.6);
+    g.fillStyle = 'rgba(190,224,250,0.7)';              // lamp glass
+    g.fillRect(38, 26, 30, 3);
+    bakeSpill(g, this.glowCool, 53, 30, 62, 0.5);
+    bakeSpill(g, this.glowCool, 53, 30, 26, 0.35);
+    // warning band + base collar (baked contact AO)
+    g.fillStyle = 'rgba(214,158,52,0.5)';
+    g.fillRect(41, 262, 15, 3);
+    g.fillRect(41, 270, 15, 3);
+    g.fillStyle = '#05090d';
+    g.fillRect(36, 292, 24, 8);
+    g.fillStyle = 'rgba(0,0,0,0.5)';
+    g.beginPath(); g.ellipse(48, 299, 20, 4, 0, 0, TAU); g.fill();
+    return c;
+  }
 
   /** STAIRWELL HEAD-HOUSE with the warm practical door — the scene's warm
    *  anchor against the cool moon (reference-image interior light). */

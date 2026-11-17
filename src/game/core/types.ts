@@ -86,6 +86,9 @@ export interface WorldRef {
   combo?: { hits: number }
   /** Resolve contact once; callers use the outcome rather than assuming a hit. */
   hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo): import('../combat/hit-resolution').HitResolution
+  /** OPTIONAL: the same blade sweep is also offered to destructible stage
+   *  props. Optional so lightweight test worlds need no prop system. */
+  strikeProps?: (blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo, px: number) => void
   /** Enemy attack / projectile is about to damage the player. Returns true if parried. */
   enemyStrikePlayer(dmg: number, dir: number, heavy: boolean, sourceX: number): boolean
   spawnProjectile(p: import('../entities/projectiles').ProjectileSpawn): void

@@ -11,6 +11,7 @@ import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground, type BackgroundRenderer } from './world/background'
+import { PropField, type PropHooks } from './world/props'
 import { cycleParticleLevel, getParticleLevel } from './fx/particles1d'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
@@ -179,6 +180,8 @@ export class Game {
   qaMode = false
   enemies: Enemy[] = []
   projectiles = new ProjectilePool()
+  /** procedurally placed destructible props — a fresh lane every run */
+  props = new PropField()
   waves: WaveDirector
   combo = new ComboTracker()
 
@@ -268,6 +271,7 @@ export class Game {
     this.cam.setArena(ARENA_MIN, ARENA_MAX)
     this.player.reset(1300)
     this.cam.snapTo(1300, -150)
+    this.props.reset(0x51a2c9)
   }
 
   on(cb: (e: GameEvent) => void): () => void {
@@ -583,6 +587,11 @@ export class Game {
     if (!this.loadout.includes(swordId)) this.setLoadout([swordId])
     this.equipProgressedSword(this.loadout.includes(swordId) ? swordId : this.loadout[0])
     this.player.reset(1300)
+    // ONE run seed drives BOTH the skyline archetypes and the prop lane,
+    // so each run is a visibly different level, not a re-skinned one.
+    const runSeed = (Math.random() * 0xffffffff) >>> 0
+    this.bg.setRunSeed?.(runSeed)
+    this.props.reset(runSeed)
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
@@ -629,6 +638,7 @@ export class Game {
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
+    this.props.reset()
     this.waves.reset()
     this.player.reset(1300)
     this.combo.reset()
@@ -799,6 +809,7 @@ export class Game {
         enemies: this.enemies,
         player: this.player,
         projectiles: this.projectiles,
+        props: this.props,
         hud: this.hud,
         hudState: this.buildHudState(),
         time: this.renderTime,
@@ -914,6 +925,7 @@ export class Game {
         this.handleMetaInput()
       }
       this.player.update(dt, this.worldRef)
+      this.props.update(dt, this.worldRef, this.propHooks, this.player)
       for (const e of this.enemies) {
         e.update(dt, this.worldRef)
       }
@@ -942,6 +954,7 @@ export class Game {
     } else if (this.phase === 'attract') {
       // idle hero breathing on the rooftop (framed below the title logo)
       this.player.update(dt, this.worldRef)
+      this.props.update(dt, this.worldRef, this.propHooks, this.player)
       this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
     }
   }
@@ -1067,6 +1080,21 @@ export class Game {
   /* combat resolution (WorldRef)                                         */
   /* ------------------------------------------------------------------ */
 
+  /** prop effects that only the Game can own (HP, score, combo, physics) */
+  private propHooks: PropHooks = {
+    heal: (n) => {
+      const before = this.player.hp
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + n)
+      this.fx.text(this.player.x, this.player.y - 108, `+${Math.round(this.player.hp - before)} HP`, '#5cffb4', 15)
+    },
+    launch: (vy) => {
+      this.player.vy = vy
+      this.player.grounded = false
+    },
+    score: (n) => { this.stats.score += Math.round(n * this.combo.mult) },
+    comboHit: () => this.combo.onHit(),
+  }
+
   private worldRef: WorldRef = {
     fx: this.fx,
     audio: this.audio,
@@ -1081,6 +1109,7 @@ export class Game {
     quality: 'high',
     gore: 'energy',
     hitEnemy: (id, blade, atk) => this.hitEnemy(id, blade, atk),
+    strikeProps: (blade, atk, px) => this.props.strike(blade, atk, px, this.worldRef, this.propHooks),
     enemyStrikePlayer: (dmg, dir, heavy, sourceX) => this.enemyStrikePlayer(dmg, dir, heavy, sourceX),
     spawnProjectile: (p) => this.projectiles.spawn(p),
     addHitstop: (t, zoom) => this.addHitstop(t, zoom),

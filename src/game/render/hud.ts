@@ -85,6 +85,7 @@ export class HUD {
 
   /* low-HP red vignette: baked plate (see drawLowHpVignette) */
   private lowHpPlate: HTMLCanvasElement | null = null
+  private propLegend: HTMLCanvasElement | null = null
   private lowHpW = 0
   private lowHpH = 0
 
@@ -117,6 +118,7 @@ export class HUD {
     this.drawBanner(ctx, w, s, dt)
     this.drawPrompts(ctx, s)
     this.drawHints(ctx, w, h, s)
+    this.drawPropLegend(ctx, w, h, s)
     this.drawLowHpVignette(ctx, w, h, s)
     if (s.showFps) {
       ctx.save()
@@ -394,6 +396,46 @@ export class HUD {
       h - 16,
       w-24,
     )
+    ctx.restore()
+  }
+
+  /** PROP PURPOSE LEGEND — a single baked plate (built once, blitted once
+   *  per frame) so the six destructible props are self-explanatory. No live
+   *  text layout on the 120 Hz path. */
+  private drawPropLegend(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
+    if (typeof document === 'undefined' || w < 650) return
+    const a = clamp01((26 - s.runTime) / 4) * 0.82
+    if (a <= 0.01) return
+    if (!this.propLegend) {
+      const c = document.createElement('canvas')
+      c.width = 660; c.height = 22
+      const g = c.getContext('2d')
+      if (!g) return
+      g.textBaseline = 'middle'
+      g.font = `bold 10px ${MONO}`
+      g.fillStyle = 'rgba(198,216,228,0.9)'
+      g.fillText('BREAK PROPS', 4, 11)
+      const items: ReadonlyArray<readonly [string, string, string]> = [
+        ['!', 'BLAST', '#ff7a3c'], ['+', 'HEAL', '#5cffb4'], ['^', 'LAUNCH', '#9fd8ff'],
+        ['Z', 'STUN', '#a6d0ff'], ['~', 'EXPOSE', '#c39cff'], ['$', 'SCORE', '#ffd670'],
+      ]
+      let x = 92
+      for (const [sym, label, col] of items) {
+        g.fillStyle = col
+        g.fillRect(x, 4, 13, 14)
+        g.fillStyle = '#050a0e'
+        g.font = `bold 10px ${MONO}`
+        g.fillText(sym, x + 3, 11)
+        g.fillStyle = 'rgba(214,230,240,0.95)'
+        g.font = `10px ${MONO}`
+        g.fillText(label, x + 17, 11)
+        x += 21 + g.measureText(label).width + 12
+      }
+      this.propLegend = c
+    }
+    ctx.save()
+    ctx.globalAlpha = a
+    ctx.drawImage(this.propLegend, Math.max(8, (w - 660) * 0.5), h - 38)
     ctx.restore()
   }
 

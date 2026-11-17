@@ -11,6 +11,7 @@ import { Enemy } from '../entities/enemy'
 import { Player } from '../entities/player'
 import { ProjectilePool } from '../entities/projectiles'
 import type { BackgroundRenderer } from '../world/background'
+import type { PropField } from '../world/props'
 import { HUD, HudState } from './hud'
 import { GameSettings } from '../core/types'
 
@@ -21,6 +22,7 @@ export interface RenderWorld {
   enemies: Enemy[]
   player: Player
   projectiles: ProjectilePool
+  props: PropField
   hud: HUD
   hudState: HudState
   time: number
@@ -48,7 +50,7 @@ export class Renderer {
   }
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
-    const { cam, fx, bg, player, enemies, projectiles, hud, hudState } = world
+    const { cam, fx, bg, player, enemies, projectiles, props, hud, hudState } = world
     const time = world.time
 
     // 1. sky (screen space, own parallax)
@@ -66,6 +68,10 @@ export class Renderer {
 
     // arena floor + stage props
     bg.drawArena(ctx)
+
+    // DESTRUCTIBLE PROPS — one baked sprite each (body + flipped reflection
+    // in the same canvas), frustum-culled, drawn behind the fighters.
+    props.draw(ctx, cam.x + cam.offX - viewHalfW, cam.x + cam.offX + viewHalfW)
 
     // grounding first, so every figure stands ON its contact shadow
     this.ground(ctx, player.x, player.y, 30)
