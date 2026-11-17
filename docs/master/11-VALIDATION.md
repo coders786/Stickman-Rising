@@ -35,6 +35,7 @@ GPU in the sandbox — discovery M1), E3 is the user.
 | `M-BAKE-COLD` | cold bake ms | `performance.now()` around bake with stub ctx | ≤30 ms low/med, ≤40 ms high/ultra **[T]** | 06 §2, 12 §8 |
 | `M-BAKE-WARM` | warm re-bake ms | re-run bake with same profile | ≤16 ms **[T]** (measured 9.6 ms **[M]**) | REQ-703 |
 | `M-BLITS` | blits per frame, by composite op | instrumented stub ctx counter | 14/18/20/26 **[T]** | REQ-701 |
+| `M-OVERDRAW` | pixels touched per frame = Σ(w·h) over every draw ÷ canvas area | instrumented draw wrapper, 0 alloc | **≤4.0× screen** | `17` §2 |
 | `M-RESIDENT` | resident canvas bytes `w*h*4` | ledger, not "allocated" | ≤38 MB at 720p **[T]** | REQ-702 |
 | `M-CANVAS-COUNT` | live canvases | ledger | ≤48 mobile / ≤64 desktop **[T]** | 12 §4 |
 | `M-LEDGER` | released-but-not-zeroed | ledger assertion | **0** | 12 §4 |

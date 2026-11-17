@@ -80,6 +80,14 @@ cumulus samples     = 553 k × ~18 noise lookups ≈ 10.0 M lookups/frame
 + stratus/cirrus/fog ≈ +4 M
 ```
 
+> **Superseded for the shipping path by `13-SHADER-SPEC.md` §1:** the octaves come
+> from a GPU-generated **noise atlas** (4 octaves per `texture()`), because a
+> texture fetch is ~35 % cheaper than one octave of hashed gradient noise and
+> mobile samplers fetch 4–8 texels/cycle in fixed-function hardware. Cumulus
+> drops from 18–54 hash samples/px to **10–12 texture fetches/px**, and in B3 the
+> cost is paid once at bake, not per frame (`13` §7). The arithmetic below still
+> applies to the desktop B1 experiment.
+
 Mitigations, in order of value:
 1. **Half-res atmosphere** (render at 0.5×, upscale): **4× fewer pixels** →
    ≈ 2.5 M lookups. Prototype P1 decides if cirrus survives it.

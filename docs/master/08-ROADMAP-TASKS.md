@@ -44,7 +44,7 @@ testable, and testable logic is the only kind worth building first.
 | `T1.2` | Canvas ledger: acquire/release/zero-on-release/LRU + caps (`12` §4) | `src/game/render/canvasLedger.ts` | 140 LOC | `M-LEDGER`, `M-CANVAS-COUNT` | R-04, R-16, R-18 |
 | `T1.3` | Lint rule: only the ledger may create canvases; `src/gpu/**` may not import `entities` | `scripts/lint-boundaries.mjs` | 80 LOC | G1 | R-14 |
 | `T1.4` | Quality ladder as a pure state machine: shed order, 4 s tick, 12 s raise guard, 30 fps floor | `src/game/render/quality.ts` | 120 LOC | unit test: one step per window, no oscillation | R-09 |
-| `T1.5` | `scripts/bench-render.mjs`: blits by op, resident bytes, canvas count, bake ms, per-tier table, `exit 1` on breach | `scripts/bench-render.mjs` | 220 LOC | G2/G3/G4 table prints | R-28 |
+| `T1.5` | `scripts/bench-render.mjs`: blits by op, **overdraw multiple**, resident bytes, canvas count, bake ms, per-tier table, `exit 1` on breach | `scripts/bench-render.mjs` | 240 LOC | G2/G3/G4 table prints; `M-OVERDRAW ≤4.0×` at `low` | R-28, `17` §5 |
 | `T1.6` | Move (not edit) the 37-canvas creation in `background.ts` onto the ledger | `src/game/world/background.ts` | ~60 LOC churn | blit counts unchanged vs golden table | R-13 |
 
 **Exit:** G0, G1, G4; `bench-render` prints a table that matches `12` §8 for

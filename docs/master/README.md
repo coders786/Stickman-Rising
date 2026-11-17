@@ -25,6 +25,11 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 10 | `10-PROTOTYPES.md` | 14 | **DELIVERED** — P1–P8 with numeric accept/reject; P4 demoted to desktop-only by D7 |
 | 11 | `11-VALIDATION.md` | 15, 21–24 | **DELIVERED** — 3 measurement environments, metric catalogue, frame-percentile method, gate ladder G0–G8, anti-self-deception rules, E3 rubric |
 | 12 | `12-MOBILE-PERFORMANCE.md` | 8b | **DELIVERED** — the mobile reality check: no GPU timer on phones, resolution-first shedding, iOS canvas caps + ledger, and **D7** (single canvas default) |
+| 13 | `13-SHADER-SPEC.md` | 6b | **DELIVERED** — 8 programs with real math, the **noise atlas** decision, precision map, straight-alpha/Y-flip contract, bake budget of ≤6 ms per plate |
+| 14 | `14-DEVICE-TIERS.md` | 10 | **DELIVERED** — tier detection by **measurement** (renderer strings are blocked/falsified), 120 ms boot probe, C0–C3 classes |
+| 15 | `15-CONTRACTS.md` | 11 | **DELIVERED** — TypeScript interfaces for profile, ledger, governor, env controller, GPU bake; determinism/allocation contract; 6 test files |
+| 16 | `16-PROFILE-DATA.md` | 9b | **DELIVERED** — the actual numbers for 6 archetypes × every field, jitter clamps, 12 machine-checkable invariants |
+| 17 | `17-FRAME-COST-MODEL.md` | 8c | **DELIVERED** — `T_frame` equation, overdraw budget ≤4×, dpr arithmetic (dpr3 = 2.96 Mpx vs 1.5 = 0.74), derived governor thresholds, falsification table |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,
