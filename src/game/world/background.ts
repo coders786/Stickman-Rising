@@ -2,6 +2,8 @@ import {StormEngine} from './storm'
 import {FOG} from '../render/look'
 import { SkyVaultCache, blitWorldFrustum } from '../render/bhst'
 import { MOOD_PALETTES, moodForSeed, type MoodPalette } from './mood'
+import { makeProfile, type EnvironmentProfile } from './profile'
+import { NightLayer } from './night'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -77,8 +79,15 @@ export interface BackgroundRenderer {
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void
   /** V3 reactive layer (optional so lightweight test doubles stay valid) */
   practicalLight?(x: number): { warm: number; cool: number }
-  drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number): void
+  drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number, face?: number): void
   drawReflections?(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality): void
+  /** The run identity (world/profile.ts). Optional so the test doubles and the
+   *  HUD-only renderers do not need a night. */
+  getProfile?(): EnvironmentProfile | null
+  /** Which path baked this run's plates ('gpu' = the WebGL2 baker ran). */
+  plateStats?(): ReturnType<NightLayer['stats']> | null
+  /** Bake the run's plates now and report the cost in ms (see warm above). */
+  warm?(): number
 }
 
 /* ============================ seeded RNG ================================= */
@@ -1169,6 +1178,15 @@ export class CyberBackground {
   private runSeed = 0;
   /** dual-register colour identity for this run (60/30/10 harmony) */
   private mood: MoodPalette = MOOD_PALETTES[0];
+  /** THE RUN IDENTITY (world/profile.ts): twelve axes of night, all visible,
+   *  all baked. Null until the first ensureBuilt, so a headless import never
+   *  touches a canvas. */
+  private profile: EnvironmentProfile | null = null;
+  /** Baked plates + the two reactive passes for the current profile. */
+  private night: NightLayer | null = null;
+  /** Last few run seeds, so a new run cannot be a near-copy of the last one
+   *  (profile.ts §LAW 3). Bounded: three is enough for the metric to work. */
+  private seedHistory: number[] = [];
   private heroDisc!: HTMLCanvasElement;
   private vignette: HTMLCanvasElement | null = null;
   /* V3 reactive layer — baked sprites + a tiny reflection buffer */
@@ -1206,11 +1224,40 @@ export class CyberBackground {
     const s=seed>>>0;
     if(s===this.runSeed)return;
     this.runSeed=s;
-    this.mood = moodForSeed(s);   // coherent colour identity + per-run novelty
+    // The profile is the run's identity: mood, moon, stars, clouds, aurora,
+    // fog, grade, practicals and prop density, all from one seed. `seedHistory`
+    // keeps a new run from being a near-copy of the previous one.
+    this.profile = makeProfile(s, this.seedHistory);
+    this.seedHistory = [s, ...this.seedHistory].slice(0, 3);
+    this.mood = this.profile.mood;   // coherent colour identity + per-run novelty
+    // Release the old plates BEFORE building the new ones: two nights resident
+    // at once is exactly the doubling the ledger exists to prevent.
+    this.night?.dispose();
+    this.night = new NightLayer(this.profile);
     this.pollMood = -1;           // force the horizon bloom to re-bake
     this.built=false;
     this.skyVault.invalidate();   // force one composite with the NEW skyline
   }
+
+  /** The current run identity, for the debug overlay and the bench. */
+  getProfile(): EnvironmentProfile | null { return this.profile; }
+
+  /** BAKE NOW, NOT ON THE FIRST ACTION FRAME.
+   *
+   * A reseed invalidates every tile, and the bake used to happen inside the
+   * first `drawSky` of the run — i.e. the player pressed PLAY and watched a
+   * frozen frame (measured 120–400 ms depending on the device's canvas speed).
+   * Warming synchronously at the moment of the click moves that cost onto the
+   * menu, where a still frame is what the player already expects. Returns the
+   * milliseconds spent so the frame log can report the truth. */
+  warm(): number {
+    const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    this.ensureBuilt()
+    return (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0
+  }
+
+  /** Which path baked the plates this run — 'gpu' means the WebGL2 baker ran. */
+  plateStats(): ReturnType<NightLayer['stats']> | null { return this.night?.stats() ?? null; }
 
   /** CSS-pixel size of the game canvas viewport. */
   resize(w: number, h: number): void {
@@ -1314,7 +1361,10 @@ export class CyberBackground {
         this.pollMood = mi;
       }
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = I0 > 0 ? 1 + I0 * 0.55 : 1;
+      // The megapolis' glow is a profile axis: a bright-city run breathes more
+      // light up into the cloud deck than a blackout run.
+      const pollA = (this.profile ? this.profile.atmosphere.pollution : 1);
+      ctx.globalAlpha = (I0 > 0 ? 1 + I0 * 0.55 : 1) * pollA;
       ctx.drawImage(this.pollPlate, 0, hy - 210, w, 216);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
@@ -1323,20 +1373,29 @@ export class CyberBackground {
     /* 2 — stars + moon (celestial parallax) */
     const starBase = hy - 70 > h * 0.25 ? hy - 70 : h * 0.25;
     const ms = mod(cx * 0.015 * cz, TILE);
-    this.blitRow(ctx, this.starTile, ms, starBase - STAR_H);
+    // The tile may be a half-resolution bake (GPU/CPU star field); blitRowScaled
+    // handles both cases and is one drawImage per wrap either way.
+    if (this.starTile.width === TILE) this.blitRow(ctx, this.starTile, ms, starBase - STAR_H);
+    else this.blitRowScaled(ctx, this.starTile, ms, starBase - STAR_H, STAR_H);
     /* 2.5 — DRIFTING CLOUD DECKS: three parallax sheets (high slow thin /
      * main bank / low fast wisps). While lightning scatters through them the
      * LIT twin re-blits additively on the lower two decks. Behind skyline. */
     {
-      const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz;
-      const offA = mod(-t * 3.2 - cx * 0.013 * cz, TILE);
-      const offB = mod(-t * 5 - cx * 0.02 * cz, TILE);
-      const offC = mod(-t * 8.4 - cx * 0.03 * cz, TILE);
-      ctx.globalAlpha = 0.5;
+      const C = this.profile ? this.profile.clouds : null;
+      const cov = C ? C.coverage : 0.6;      // 0 clear .. 1 overcast
+      const spd = C ? C.speed : 1;           // drift multiplier
+      const alt = C ? C.altitude : 1;        // bank height
+      const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz + (alt - 1) * 54;
+      const offA = mod(-t * 3.2 * spd - cx * 0.013 * cz, TILE);
+      const offB = mod(-t * 5 * spd - cx * 0.02 * cz, TILE);
+      const offC = mod(-t * 8.4 * spd - cx * 0.03 * cz, TILE);
+      // Coverage scales all three decks together; a clear run keeps a thin
+      // high veil (that is what "clear" looks like in a lit city, not black).
+      ctx.globalAlpha = 0.10 + 0.42 * cov;
       this.blitRow(ctx, this.cloudDark, offA, cloudY - 84);
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = 0.14 + 0.62 * cov;
       this.blitRow(ctx, this.cloudDark, offB, cloudY);
-      ctx.globalAlpha = 0.44;
+      ctx.globalAlpha = 0.08 + 0.38 * cov;
       this.blitRow(ctx, this.cloudDark, offC, cloudY + 104);
       ctx.globalAlpha = 1;
     }
@@ -1345,27 +1404,45 @@ export class CyberBackground {
      * procedural ribbons at f=0.045 with a slow alpha pulse; inside the
      * cached vault, so this is one blit per vault rebuild, not per frame. */
     {
-      const aOff = mod(-t * 1.6 - cx * 0.045 * cz, 512);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.42 + 0.24 * Math.sin(t * 0.033 + 1.2);
-      const ay = hy * 0.08 - 30 - (cy - NOMINAL_Y) * 0.03 * cz;
-      for (let ax = -aOff; ax < w; ax += 512) ctx.drawImage(this.auroraTile, ax, ay);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
+      // Aurora is RARE by design (≈1 run in 3, profile.ts): when it is absent
+      // the whole pass is skipped, which is both cheaper and honest — a faint
+      // always-on ribbon is a filter, not an event.
+      const A = this.profile ? this.profile.aurora : null;
+      const presence = A ? A.presence : 1;
+      if (presence > 0.02) {
+        const aOff = mod(-t * 1.6 - cx * 0.045 * cz, 512);
+        const hgt = A ? A.height : 1;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = (0.42 + 0.24 * Math.sin(t * 0.033 + 1.2)) * presence;
+        const ay = hy * 0.08 - 30 - (cy - NOMINAL_Y) * 0.03 * cz;
+        for (let ax = -aOff; ax < w; ax += 512) {
+          ctx.drawImage(this.auroraTile, ax, ay, 512, this.auroraTile.height * hgt);
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
     }
 
     /* 2.8 — THE MOON: two baked blits (disc + halo). No eclipse scan, no
      * ring/zodiac/pillar optics — stripped with the rest of the engines. */
     {
-      const moonX = w * 0.87 - cx * 0.03 * cz - MOON_HALF;
-      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - MOON_HALF;
-      this.moonX = moonX + MOON_HALF;
-      this.moonY = moonY + MOON_HALF;
+      // Size and drift are profile axes: a big low moon and a small high one
+      // are the two most legible "different night" signals in the sky.
+      const M = this.profile ? this.profile.moon : null;
+      const sizeMul = M ? M.size : 1;
+      const D = MOON_D * sizeMul;
+      const half = D * 0.5;
+      const drift = M ? M.drift : 1;
+      const moonX = w * 0.87 - cx * 0.03 * cz - half + Math.sin(t * 0.021 * drift) * 46;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - half + Math.cos(t * 0.014 * drift) * 16;
+      this.moonX = moonX + half;
+      this.moonY = moonY + half;
       ctx.globalAlpha = 1;
-      ctx.drawImage(this.moonSpr, moonX, moonY, MOON_D, MOON_D);
+      ctx.drawImage(this.moonSpr, moonX, moonY, D, D);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.82;
-      ctx.drawImage(this.moonHalo, moonX + MOON_HALF - MOON_HALO_D * 0.5, moonY + MOON_HALF - MOON_HALO_D * 0.5, MOON_HALO_D, MOON_HALO_D);
+      const haloD = MOON_HALO_D * sizeMul;
+      ctx.globalAlpha = 0.82 * (M ? Math.min(1.2, M.corona) : 1);
+      ctx.drawImage(this.moonHalo, moonX + half - haloD * 0.5, moonY + half - haloD * 0.5, haloD, haloD);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
@@ -1373,8 +1450,11 @@ export class CyberBackground {
     /* DYNAMIC SKY EVENT — SHOOTING STARS: deterministic streaks (pure
      * function of t, no state) in the first 0.7s of every 9s slot. */
     {
-      const ev = Math.floor(t / 9);
-      const k = t - ev * 9;
+      // Cadence is a profile axis: some nights the sky is busy, some it is not.
+      const meteorMul = this.profile ? this.profile.atmosphere.meteors : 1;
+      const slot = 9 / Math.max(0.35, meteorMul);
+      const ev = Math.floor(t / slot);
+      const k = t - ev * slot;
       if (k < 0.7) {
         const h1 = ((ev * 9301 + 49297) % 233280) / 233280;
         const h2 = ((ev * 49297 + 9301) % 233280) / 233280;
@@ -1413,9 +1493,16 @@ export class CyberBackground {
     {
       const byF2 = h * 0.5 + (LAY_FAR.lift - cy * LAY_FAR.vf) * cz;
       const fpM = mod(cx * 0.098 * cz + t * 2.4, 512);
+      // Fog is a profile axis and it is the cheapest depth cue in the sky: a
+      // heavy-fog run separates the four parallax bands without new geometry.
+      const A2 = this.profile ? this.profile.atmosphere : null;
+      const fogA = Math.min(1.2, A2 ? A2.fog : 1);
+      const fogY = byF2 - 216 * (A2 ? A2.fogHeight : 1);
+      ctx.globalAlpha = fogA;
       for (let fx = -fpM; fx < w; fx += 512) {
-        ctx.drawImage(this.fogPlane, fx, byF2 - 216);
+        ctx.drawImage(this.fogPlane, fx, fogY);
       }
+      ctx.globalAlpha = 1;
     }
 
     /* 4 — mid city: baked neon signs, one shared band draw */
@@ -1450,19 +1537,34 @@ export class CyberBackground {
    *  baked sprites with an alpha driven by proximity to the nearest practical.
    *  This is the only lighting in the game that reacts to the player, and it
    *  costs at most 2 additive blits per frame. */
-  drawPlayerLight(ctx: CanvasRenderingContext2D, px: number, py: number): void {
+  drawPlayerLight(ctx: CanvasRenderingContext2D, px: number, py: number, face = 1): void {
     this.ensureBuilt();
     const L = this.practicalLight(px);
     const a = Math.max(L.warm, L.cool);
-    if (a <= 0.02) return;
-    const rim = L.warm >= L.cool ? this.rimWarm : this.rimCool;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.55 * a;
-    ctx.drawImage(rim, px - 48, py - 190, 96, 190);
-    ctx.globalAlpha = 0.42 * a;
-    ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
+    const K = this.profile ? this.profile.light : null;
+    // Practicals are profile-lightable: a run whose stairwell is dying is a
+    // different place to stand than one where it is blazing.
+    if (a > 0.02) {
+      const rim = L.warm >= L.cool ? this.rimWarm : this.rimCool;
+      const gain = (L.warm >= L.cool ? (K ? K.warm : 1) : (K ? K.cool : 1));
+      // A failing tube's flicker only ever DIMS the practical (never adds
+      // light): an additive flicker reads as a strobe, which is a medical
+      // consideration as well as a taste one.
+      const fl = K ? 1 - K.flicker * 0.35 * (0.5 + 0.5 * Math.sin(this.t * 13.3)) : 1;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.8, 0.55 * a * gain * fl);
+      ctx.drawImage(rim, px - 48, py - 190, 96, 190);
+      ctx.globalAlpha = Math.min(0.7, 0.42 * a * gain * fl);
+      ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // MOON KEY RIM — the reactive light that is never absent, because the moon
+    // is never absent. It answers the practical the player stands in (near) and
+    // the phase (a crescent rims harder than a full disc, which flattens it).
+    if (this.night) {
+      this.night.drawKeyRim(ctx, px, py, face, a, this.t);
+    }
   }
 
   /** SCREEN-SPACE REFLECTION — the "very low cpu post processing" pass.
@@ -1516,6 +1618,13 @@ export class CyberBackground {
     ctx.restore();
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
+    // MOON GLITTER — the moon touching the wet roof, two additive blits. The
+    // mirror above shows the city; this shows the SKY, and together they are
+    // the whole reflection story for two drawImage calls and no readback.
+    if (this.night) {
+      const wet = 0.55 + 0.45 * Math.min(1, this.storm.intensity * 4);
+      this.night.drawGlitter(ctx, this.moonX, deckY, w, h, wet, this.t);
+    }
   }
 
   /* ----------------------- world-space arena pass ------------------------ */
@@ -1587,8 +1696,21 @@ export class CyberBackground {
   private ensureBuilt(): void {
     if (this.built) return;
     this.built = true;
+    // The profile exists before any plate is painted: every bake below reads
+    // its axes, so a null here would silently bake the previous night.
+    if (!this.profile) {
+      this.profile = makeProfile(this.runSeed);
+      this.night?.dispose();
+      this.night = new NightLayer(this.profile);
+      this.mood = this.profile.mood;
+    }
     this.skyStrip = buildSkyStrip();
-    this.moonSpr = buildMoon(this.mood);
+    // MOON: the GPU/CPU baker owns it when a DOM exists (phase, tilt, tint and
+    // procedural craters from the profile); the legacy plate is the last-resort
+    // fallback so a headless import still produces a drawable sprite.
+    this.night?.ensure();
+    const bakedMoon = this.night?.moonPlate() ?? null;
+    this.moonSpr = bakedMoon ?? buildMoon(this.mood);
     this.moonHalo = buildMoonHalo(this.mood);
     // Emissive discs FIRST: buildDoorStructure/buildLampProp paint baked
     // spill with these, so they must exist before any plate that lights.
@@ -1614,7 +1736,12 @@ export class CyberBackground {
     this.fogPlane = buildFogPlane();
     this.auroraTile = buildAuroraTile(this.mood);
     this.lampSpr = this.buildLampProp();
-    this.starTile = this.buildStarTile();
+    // STARS: density and warm/cool split come from the profile, so a clear run
+    // and an overcast run are visibly different skies (not just different alpha).
+    const bakedStars = this.night?.starPlate() ?? null;
+    this.starTile = bakedStars && bakedStars.width >= 256
+      ? bakedStars
+      : this.buildStarTile();
     this.deepTile = this.buildDeep();
     this.farTile = this.buildFar();
     this.midTile = this.buildMid();

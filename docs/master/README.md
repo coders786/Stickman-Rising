@@ -5,6 +5,16 @@ architecture → roadmap → risk → prototype → implement → validate.
 
 Baseline commit for all numbers in this package: `5b874fc`.
 
+**Implementation status (this branch, after run 1):** the planning package is
+complete *and* its first executable slice is in the tree — `world/profile.ts`
+(12-axis run identity), `gpu/context.ts` + `gpu/sky.ts` (WebGL2 moon/star baker
+with a Canvas2D fallback), `world/night.ts` (glitter + moon key rim),
+`render/ledger.ts`, `render/quality.ts` (p95 ladder), `render/color.ts`
+(allocation-free colour), `render/frameLog.ts`, `anim/natural.ts` (M4.5 core),
+`scripts/bench-render.mjs`, `scripts/lint-boundaries.mjs`, and
+`npm run gate`. Tests: **289/294** (5 known fails, all filed). See
+`22-BUG-BOUNTY.md` §0–§4 for the verification stack and the re-test protocol.
+
 ---
 
 ## Package map (what exists, what is next)
@@ -34,6 +44,7 @@ Baseline commit for all numbers in this package: `5b874fc`.
 | 19 | `19-ANIMATION-CADENCE.md` | 6d | **DELIVERED** — how movements/animations actually reach 120: sample time-driven, interpolate state-driven (D10), latency ledger, angle-space pose interpolation, rig batching (20 strokes/frame measured), input coalescing, FID-37…41 |
 | 20 | `20-NATURAL-MOTION.md` | 6e | **DELIVERED** — higher graphics with **zero assets**: minimum-jerk (0.533 signature), 2/3 power law arcs, spring chains (21 pts, ζ bounds), aperiodic micro-life, sub-frame contacts, **0 MB / 0 blits** → new milestone M4.5 |
 | 21 | `21-OPTIMISATION-CATALOG.md` | 8d | **DELIVERED** — every browser-game optimisation technique for 2.5D with an ADOPT/COND/**REJECT** verdict, a slow-frame decision tree, and a top-15 ranked for this game |
+| 22 | `22-BUG-BOUNTY.md` | 24 | **DELIVERED** — first UX bug-bounty run: 10 defects found and fixed (2 of them made the game unplayable on a LAN origin), 10 filed with repro, and the re-test protocol |
 
 Existing research that this package builds on (kept, not duplicated):
 `docs/LIGHTING-RESEARCH-V4.md`, `docs/LIGHT-SHADOW-V4-PLAN.md`,

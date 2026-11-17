@@ -27,6 +27,9 @@ import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
+import { QualityLadder, type Tier } from './render/quality'
+import { FrameLog } from './render/frameLog'
+import type { EnvironmentProfile } from './world/profile'
 import { Inspect, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
@@ -173,6 +176,13 @@ export class Game {
   }
   hud = new HUD()
   private renderer = new Renderer()
+  /** p95-based tier controller (render/quality.ts). The DPR governor below
+   *  still owns resolution; this owns the DRAW BUDGET, because an average FPS
+   *  hides exactly the variance that makes a phone feel bad. */
+  private ladder = new QualityLadder(DEFAULT_SETTINGS.quality as Tier)
+  /** Rolling frame statistics for the debug overlay and the bug-bounty report.
+   *  Ring-buffered: sampling allocates nothing. */
+  readonly frameLog = new FrameLog()
   player = new Player()
   /** animation inspection lab (skeleton viz / contact sheets / QA) */
   inspect!: Inspect
@@ -250,6 +260,10 @@ export class Game {
    *  it — otherwise a transient hitch would permanently rewrite the user's
    *  settings. Only user-initiated applySettings calls move this. */
   private qualityCeiling = (['ultra','high','medium','low'] as const).indexOf(DEFAULT_SETTINGS.quality)
+  /** Last run's seed — re-applied if the scene is rebuilt mid-run. */
+  private lastRunSeed = 0
+  /** Wall-clock cost of the run's plate bake (0 = not measured yet). */
+  bakeMs = 0
   private autoQuality = true
 
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
@@ -431,19 +445,21 @@ export class Game {
     const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 1
     const offer = busy < 0.35 ? Math.min(60, 1 / Math.max(1e-4, this.frameFloor)) : 60
     const scale = offer / 60
-    const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
-    const tier = order.indexOf(this.settings.quality)
+    // THE TIER IS DECIDED BY p95, NOT BY THE AVERAGE. The average is the
+    // metric that hides stutter; a 4 s p95 window with a 12 s dwell is the
+    // only controller here that can neither oscillate nor permanently
+    // downgrade a session because of one GC pause.
+    const stepped = this.ladder.frame(this.frameMs, 0.8)
+    if (stepped) {
+      this.applySettings({ ...this.settings, quality: stepped }, true)
+      this.govCool = 4
+      return
+    }
     if (this.fpsAvg < 44 * scale && this.dprTarget > 0.8) {
       this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
       this.resize()
-    } else if (this.fpsAvg < 36 * scale && this.dprTarget <= 0.81 && tier < order.length - 1) {
-      // Resolution floor reached and still drowning → drop a draw tier.
-      // This is now CHEAP (setQuality, no re-bake) and reversible below.
-      this.applySettings({ ...this.settings, quality: order[tier + 1] }, true)
-      this.lastDropAt = this.wall
-      this.govCool = 4
     } else if (
       this.fpsAvg > 57 * scale
       && this.dprTarget < cap
@@ -455,21 +471,6 @@ export class Game {
       this.lastRaiseAt = this.wall
       this.govCool = 3
       this.resize()
-    } else if (
-      // TIER RECOVERY. Quality used to be a one-way ratchet: one transient
-      // hitch permanently downgraded the session's art. Only climb back at
-      // the resolution ceiling after a long calm spell, and never above the
-      // tier the user actually chose.
-      this.fpsAvg > 57 * scale
-      && this.dprTarget >= cap
-      && tier > this.qualityCeiling
-      && this.wall - this.lastDropAt > 25
-      && this.wall - this.lastRaiseAt > 8
-      && this.enemies.length < 3
-    ) {
-      this.applySettings({ ...this.settings, quality: order[tier - 1] }, true)
-      this.lastRaiseAt = this.wall
-      this.govCool = 6
     }
   }
 
@@ -522,6 +523,9 @@ export class Game {
     const levelChanged = s.level !== this.bgLevel
     if (!fromGovernor) {
       this.qualityCeiling = (['ultra', 'high', 'medium', 'low'] as const).indexOf(s.quality)
+      // The user's pick is the ladder's CEILING: the governor may shed below
+      // it in a heat wave, and may never raise above it.
+      this.ladder.setCeiling(s.quality as Tier)
     }
     this.settings = { ...s }
     this.fx.setQuality?.(s.quality)
@@ -551,6 +555,10 @@ export class Game {
       this.storm.setQuality?.(s.quality)
       this.bg = new CyberBackground(s.quality,this.storm)
       syncBgQuality(this.bg, s.quality)
+      // A new scene must inherit the RUN, not a fresh mood: without this the
+      // skyline, the moon and the profile resampled mid-session on a level
+      // change (a visible continuity break the player reads as a bug).
+      if (this.lastRunSeed) this.bg.setRunSeed?.(this.lastRunSeed)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
@@ -593,8 +601,20 @@ export class Game {
     // ONE run seed drives BOTH the skyline archetypes and the prop lane,
     // so each run is a visibly different level, not a re-skinned one.
     const runSeed = (Math.random() * 0xffffffff) >>> 0
+    this.lastRunSeed = runSeed
     this.bg.setRunSeed?.(runSeed)
+    // BAKE DURING THE CLICK, NOT DURING PLAY. A new seed invalidates every
+    // tile in the city and every plate in the sky; if that bake runs inside the
+    // first drawn frame of the run, the player presses PLAY and the game
+    // freezes. Doing it here costs the same milliseconds, one click earlier,
+    // while the menu is still on screen — and the cost is recorded so a slow
+    // device shows up in the log instead of in a complaint.
+    this.bakeMs = this.bg.warm?.() ?? 0
     this.props.reset(runSeed)
+    // The prop lane inherits the run's density axes: 2–5 auto-placed props on
+    // a jittered timer, so the rooftop is dressed differently every run.
+    const prof = this.bg.getProfile?.()
+    if (prof) this.props.setRunDensity(prof.props.density, prof.props.timerJitter)
     this.props.setMood(moodIndexForSeed(runSeed))
     this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(runSeed)].name)
     this.enemies.length = 0
@@ -647,6 +667,7 @@ export class Game {
     this.props.reset(menuSeed)
     this.props.setMood(moodIndexForSeed(menuSeed))
     this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(menuSeed)].name)
+    this.lastRunSeed = menuSeed
     this.bg.setRunSeed?.(menuSeed)
     this.waves.reset()
     this.player.reset(1300)
@@ -688,6 +709,10 @@ export class Game {
       this.jsMs += (js - this.jsMs) * 0.12
       const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
       this.lastGapAt = now
+      // p50/p95/p99 — the honest frame record. Gaps (tab switches, debugger
+      // pauses) are excluded rather than averaged in, because a 30 s "frame"
+      // would otherwise define the session's p99.
+      this.frameLog.sample(gap)
       if (gap > 0) {
         this.frameMs += (gap - this.frameMs) * 0.1
         // Residual, NOT a GPU measurement. Most of it is vsync idle on a
@@ -849,7 +874,17 @@ export class Game {
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
         const drop = this.overloadDropped > 0.001 ? ` · dropped ${this.overloadDropped.toFixed(2)}s sim` : ''
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · frame ${this.frameMs.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · wait ${this.waitMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr} · ${this.settings.quality}${drop}${locked}`, this.cssW - 12, 62)
+        const snap = this.frameLog.snapshot()
+        const prof = this.bg.getProfile?.()
+        const plates = this.bg.plateStats?.()
+        const bake = plates && plates.moonSource !== 'none'
+          ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
+          : ''
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}`, this.cssW - 12, 62)
+        if (prof) {
+          ctx.fillStyle = 'rgba(190,220,232,.38)'
+          ctx.fillText(`${prof.id} ${prof.label} · moon ${prof.moon.phase.toFixed(2)} · cloud ${prof.clouds.coverage.toFixed(2)}`, this.cssW - 12, 76)
+        }
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)

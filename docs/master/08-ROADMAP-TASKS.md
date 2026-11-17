@@ -24,6 +24,7 @@ precede M2.
 | Task | What | Files | Gate | Risk |
 |---|---|---|---|---|
 | `T0.5.1` | Reproduce each of the 8 failures individually and classify: stale assertion vs real behaviour bug | `tests/*` (read-only) | failure list matches D4 | R-01 |
+| `T0.5.1a` | **DONE** — triaged. 3 fixed by code (loose-pack reach, l1/l2 whole-body + living joints, contact-window measurement per D13); 5 remain, each with a repro in `22-BUG-BOUNTY.md` §2 | — | 289/294 | R-01 |
 | `T0.5.2` | Fix **behaviour** for each real bug | `src/game/combat/attacks.ts`, `src/game/anim/clips.ts`, others as classified | `npm test` | R-26 |
 | `T0.5.3` | For any assertion that was genuinely wrong, record the reversal in `DECISIONS.md` **before** editing it | `DECISIONS.md`, `tests/*` | 244/244 | D4 |
 | `T0.5.4` | Add `npm run gate` = `tsc --noEmit && vitest run` | `package.json` | G0+G1 in one command | — |
@@ -40,13 +41,13 @@ testable, and testable logic is the only kind worth building first.
 
 | Task | What | Files (new) | Est | Gate | Risk |
 |---|---|---|---|---|---|
-| `T1.1` | `EnvironmentProfile` schema + `pick(seed, history)` + deterministic jitter (`07` §2–§5) | `src/game/world/profile.ts` | 180 LOC | `M-AXES` 10k seeds, determinism | R-15 |
-| `T1.2` | Canvas ledger: acquire/release/zero-on-release/LRU + caps (`12` §4) | `src/game/render/canvasLedger.ts` | 140 LOC | `M-LEDGER`, `M-CANVAS-COUNT` | R-04, R-16, R-18 |
-| `T1.3` | Lint rule: only the ledger may create canvases; `src/gpu/**` may not import `entities` | `scripts/lint-boundaries.mjs` | 80 LOC | G1 | R-14 |
-| `T1.4` | Quality ladder as a pure state machine: shed order, 4 s tick, 12 s raise guard, 30 fps floor | `src/game/render/quality.ts` | 120 LOC | unit test: one step per window, no oscillation | R-09 |
-| `T1.5` | `scripts/bench-render.mjs`: blits by op, **overdraw multiple**, resident bytes, canvas count, bake ms, per-tier table, `exit 1` on breach | `scripts/bench-render.mjs` | 240 LOC | G2/G3/G4 table prints; `M-OVERDRAW ≤4.0×` at `low` | R-28, `17` §5 |
-| `T1.6` | Move (not edit) the 37-canvas creation in `background.ts` onto the ledger | `src/game/world/background.ts` | ~60 LOC churn | blit counts unchanged vs golden table | R-13 |
-| `T1.7` | Optimisation audit against `21` §16: confirm which of the top 15 are already true, and file the rest | report only | — | every row has a status or a task | `21` |
+| `T1.1` · **DONE** — `world/profile.ts`, 9 property tests | `EnvironmentProfile` schema + `pick(seed, history)` + deterministic jitter (`07` §2–§5) | `src/game/world/profile.ts` | 180 LOC | `M-AXES` 10k seeds, determinism | R-15 |
+| `T1.2` · **DONE** — `render/ledger.ts`, 10 tests | Canvas ledger: acquire/release/zero-on-release/LRU + caps (`12` §4) | `src/game/render/canvasLedger.ts` | 140 LOC | `M-LEDGER`, `M-CANVAS-COUNT` | R-04, R-16, R-18 |
+| `T1.3` · **DONE** — `scripts/lint-boundaries.mjs` (baseline-gated) | Lint rule: only the ledger may create canvases; `src/gpu/**` may not import `entities` | `scripts/lint-boundaries.mjs` | 80 LOC | G1 | R-14 |
+| `T1.4` · **DONE** — `render/quality.ts`, 19 tests, wired into `govern` | Quality ladder as a pure state machine: shed order, 4 s tick, 12 s raise guard, 30 fps floor | `src/game/render/quality.ts` | 120 LOC | unit test: one step per window, no oscillation | R-09 |
+| `T1.5` · **PARTIAL** — table + `exit 1` on breach; overdraw needs a live frame | `scripts/bench-render.mjs`: blits by op, **overdraw multiple**, resident bytes, canvas count, bake ms, per-tier table, `exit 1` on breach | `scripts/bench-render.mjs` | 240 LOC | G2/G3/G4 table prints; `M-OVERDRAW ≤4.0×` at `low` | R-28, `17` §5 |
+| `T1.6` · **OPEN** — 7 legacy sites frozen by the baseline | Move (not edit) the 37-canvas creation in `background.ts` onto the ledger | `src/game/world/background.ts` | ~60 LOC churn | blit counts unchanged vs golden table | R-13 |
+| `T1.7` · **DONE** — open items O-06/O-07 in `22` §2 | Optimisation audit against `21` §16: confirm which of the top 15 are already true, and file the rest | report only | — | every row has a status or a task | `21` |
 
 **Exit:** G0, G1, G4; `bench-render` prints a table that matches `12` §8 for
 `low` today (30.1 MB, 37 canvases, 11 blits). **Effort:** 2–3 days.

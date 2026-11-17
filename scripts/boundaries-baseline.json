@@ -1,0 +1,12 @@
+{
+  "src/game/audio/audio.ts|determinism": 9,
+  "src/game/core/camera.ts|determinism": 2,
+  "src/game/entities/enemy.ts|determinism": 4,
+  "src/game/entities/player.ts|determinism": 4,
+  "src/game/fx/fx.ts|canvas-ownership": 1,
+  "src/game/render/hud.ts|canvas-ownership": 2,
+  "src/game/world/background.ts|canvas-ownership": 2,
+  "src/game/world/night.ts|canvas-ownership": 1,
+  "src/game/world/props.ts|canvas-ownership": 1,
+  "src/game/world/props.ts|determinism": 1
+}

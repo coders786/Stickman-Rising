@@ -108,7 +108,7 @@ export class Renderer {
 
     // V3 REACTIVE LIGHT — the player's key/rim light + wet deck pool, keyed to
     // whichever practical they are standing in (≤2 additive blits)
-    bg.drawPlayerLight?.(ctx, player.x, player.y)
+    bg.drawPlayerLight?.(ctx, player.x, player.y, player.face)
 
     // projectiles
     projectiles.draw(ctx, time)

@@ -12,7 +12,10 @@
     "check": "bun run typecheck && bun run lint && bun run test && bun run test:animations",
     "test:animations": "bun .qa/audit-player-anim.ts && bun .qa/continuity-check.ts",
     "art:player": "node --import tsx scripts/render-player-sheet.ts",
-    "art:dash-motion": "node --import tsx scripts/render-dash-motion.ts"
+    "art:dash-motion": "node --import tsx scripts/render-dash-motion.ts",
+    "bench": "node --import tsx scripts/bench-render.mjs",
+    "lint:bounds": "node scripts/lint-boundaries.mjs",
+    "gate": "tsc --noEmit && node scripts/lint-boundaries.mjs && node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

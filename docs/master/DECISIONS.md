@@ -290,3 +290,76 @@ The reason this is a decision rather than a note: each rejected technique is
 individually well-documented advice that would cost days and buy nothing *here*, and
 the failure mode of a research-led project is implementing good advice for a different
 problem. A rejection with a reason is worth more than an adoption without one.
+
+---
+
+## D13 · The contact-window test measures movement INSIDE the window, not at its edge
+
+**Reversal:** `tests/full-body.test.ts` — "each strike holds an extreme at
+contact" used to sample the striking joint 1/240 s either side of `hit.start`
+and require >60 px/s. That assertion could never pass under the art direction
+it was written to protect.
+
+The reason is mechanical, not an excuse: every empty-hand clip is `step`
+exposure (moveset.ts §"Global empty-hand exposure law"). A stepped clip is a
+sequence of HELD DRAWINGS; the pose is constant on open intervals and changes
+instantaneously at each drawing boundary. Sampling inside a hold therefore
+measures exactly 0 px/s no matter how violent the strike is, and the motion the
+player actually sees is carried by the smear the renderer paints behind the
+limb (player.ts drawStrikeSmear). The old assertion was measuring the
+projection of the drawing schedule, not the animation.
+
+The amended assertion keeps the intent — damage must correspond to movement —
+by measuring the MAXIMUM speed across the hit window (including the snap
+boundary), which is where a stepped clip's velocity genuinely lives. It still
+fails for a clip whose striking limb never moves at all, which is the bug the
+test was written for.
+
+Recorded here rather than silently edited, per T0.5.3: an assertion that is
+genuinely wrong must be reversed in writing, with the reason, before it is
+touched.
+
+---
+
+## D14 · Bake at the click, never on the first frame of play
+
+Every invalidating event (a reseed, a tier change that needs new art, a device
+pixel ratio change) must pay its bake immediately, in the same task as the user
+action that caused it, and report the milliseconds.
+
+The reason is that the two placements are not equivalent to the player even
+though they are equivalent to the profiler. A 200 ms bake inside the first drawn
+frame of a run is a **frozen game**: the player pressed PLAY and the picture did
+not move, which reads as a hang. The same 200 ms inside the click that starts the
+run is a menu that hesitated for a fifth of a second — invisible, because the
+menu is a still image anyway. The cost is identical; the *interpretation* is not.
+
+This also makes the cost visible: `bakeMs` is printed in the frame readout, so a
+slow device reports itself instead of producing a bug report that says "sometimes
+it freezes when I press play".
+
+## D15 · The drawn blade is the hitbox, so the arm swings with the leg
+
+With a sword drawn, `player.ts` resolves a kick through the SWORD segment. The
+kick clips only posed the legs and left the sword arm in guard, so the blade
+pointed down and back while the heel travelled forward: measured, an axe kick
+"cut" 3 of 5 bodies and a step kick the same.
+
+The fix is authorship, not a hit-test widening: the striking hand now drives
+forward through each kick's own contact beat (`bladeSweepWithKick` in
+moveset.ts), weighted to zero away from that beat so the rest of the clip is
+untouched. Widening the segment instead would have credited hits the picture does
+not show, which is the exact failure the blade-cleave suite exists to catch.
+
+## D16 · The tier governor reads p95, not the average
+
+`fpsAvg` is a lie about the frame a player remembers: a smooth 55 fps and a 55 fps
+interrupted by 200 ms hitches produce the same number and completely different
+experiences. Tier changes are therefore driven by `render/quality.ts`, which
+decides on a 4 s p95 window, one step per window, with a 12 s dwell after a shed,
+a hard floor and the user's choice as a ceiling.
+
+The DPR governor keeps its own job (resolution), because resolution and draw
+budget fail differently and recover at different rates. Two controllers, two
+signals, no shared state — and the tier one is a pure state machine with
+nineteen tests, so its behaviour is proven rather than observed.

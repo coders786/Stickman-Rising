@@ -31,6 +31,7 @@ import type { WorldRef } from '../core/types'
 import type { AttackRuntimeInfo } from '../combat/attacks'
 import type { Player } from '../entities/player'
 import { MOOD_PALETTES, type MoodPalette } from './mood'
+import { rgbaConst } from '../render/color'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
 
@@ -334,7 +335,7 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
   // water ripples chop the mirror into wet-asphalt character (baked)
   refl.g.globalCompositeOperation = 'destination-out'
   for (let i = 0; i < 6; i++) {
-    refl.g.fillStyle = `rgba(0,0,0,${(0.18 + i * 0.06).toFixed(2)})`
+    refl.g.fillStyle = rgbaConst('0,0,0', 0.18 + i * 0.06)
     refl.g.fillRect((i * 13) % PW, 4 + i * 5.5, PW * 0.6, 1)
   }
   g.drawImage(refl.c, 0, PH)
@@ -373,6 +374,23 @@ export class PropField {
   private nextId = 1
   private spawnClock = 0      // field time of the next arrival
   private spawnTick = 0       // hash counter — keeps arrivals deterministic
+  /** PROFILE OVERRIDE (world/profile.ts): how many props the lane wants alive,
+   *  0 = use the authored ramp. This is the "auto-placed on a timer" knob: a
+   *  2-prop run is a spare, empty rooftop; five is a cluttered bazaar. */
+  private densityCap = 0
+  /** Multiplier on the arrival gap — jittery lanes breathe unevenly. */
+  private timerJitter = 1
+
+  /** Adopt the run profile's prop axes. Called once per run; pure data, so it
+   *  is safe in a headless test world. */
+  setRunDensity(density: number, timerJitter = 1): void {
+    this.densityCap = Math.max(1, Math.min(6, Math.round(density)))
+    this.timerJitter = Math.max(0.5, Math.min(2, timerJitter))
+    // Bring the first arrival forward/back so the density reads IMMEDIATELY:
+    // a 5-prop run that waits the authored 3 s looks identical to a 2-prop run.
+    const want = this.densityCap - 1
+    if (want > 0) this.spawnClock = Math.min(this.spawnClock, 1.1 + want * 0.35)
+  }
 
   /** Match the skyline's curated mood palette so the props and the city
    *  read as ONE designed frame. Re-bakes the six sprites once. */
@@ -406,6 +424,7 @@ export class PropField {
   }
 
   private cap(): number {
+    if (this.densityCap > 0) return this.densityCap
     return this.clock >= CAP_RAMP_AT ? CAP_LATE : CAP_EARLY
   }
 
@@ -482,7 +501,7 @@ export class PropField {
     if (this.clock >= this.spawnClock && this.aliveCount() < this.cap()) {
       this.spawn(player.x)
       const h = this.hash(++this.spawnTick * 11 + 9)
-      this.spawnClock = this.clock + SPAWN_GAP[0] + h * (SPAWN_GAP[1] - SPAWN_GAP[0])
+      this.spawnClock = this.clock + (SPAWN_GAP[0] + h * (SPAWN_GAP[1] - SPAWN_GAP[0])) * this.timerJitter
     }
     for (const p of this.props) {
       if (p.dead) {
