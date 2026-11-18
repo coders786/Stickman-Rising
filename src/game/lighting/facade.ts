@@ -8,6 +8,7 @@ export function lightFacade(
   w: number,
   h: number,
   index: number,
+  gain = 1,
 ) {
   const top = base - h,
     cold = index % 3 !== 1,
@@ -16,6 +17,7 @@ export function lightFacade(
     side = index % 2 ? -1 : 1,
     foot = base - 46 - (index % 4) * 14
   g.save()
+  g.globalAlpha *= gain
   g.beginPath()
   g.rect(x, top, w, h)
   g.clip()

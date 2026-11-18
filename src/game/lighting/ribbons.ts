@@ -216,11 +216,15 @@ export class Ribbon {
             (l.kind==='city'?0:1)*wet*(.45+.55*Math.sin(j*2.7+Math.sin(x*.051)*1.7)**2)*
             Math.exp(-((dx/(9+24*(1-wet)+v*33))**2))*.85) *
           (1 - v * v)
+        // Receiver cannot light a neighboring material. Reach zero at the
+        // first/last texel so upsampling doesn't leave a bright curb cutoff.
+        const t = Math.min(1, j / 3, (DECK_H - 1 - j) / 3)
+        const edge = t * t * (3 - 2 * t)
         const k = offset + 4 * (j * DECK_W + i)
         pixels[k] = rgb[0]
         pixels[k + 1] = rgb[1]
         pixels[k + 2] = rgb[2]
-        pixels[k + 3] = Math.round(255 * energy)
+        pixels[k + 3] = Math.round(255 * energy * edge)
       }
   }
 }

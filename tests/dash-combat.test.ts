@@ -2,6 +2,7 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {Player} from '../src/game/entities/player'
 import {Input} from '../src/game/core/input'
+import {getParticleLevel,setParticleLevel} from '../src/game/fx/particles1d'
 import {FX} from '../src/game/fx/fx'
 import {Enemy} from '../src/game/entities/enemy'
 import {resolveEnemyHit} from '../src/game/combat/hit-resolution'
@@ -208,7 +209,8 @@ test('opposite input cannot instantly steer power skid, but attacks remain avail
  }
 })
 
-test('power charge tremor and launch shatter fire within bounded effects',()=>{
+test('power charge tremor and launch shatter fire within bounded effects', t=>{
+ const previous=getParticleLevel();setParticleLevel(2);t.after(()=>setParticleLevel(previous))
  for(const dir of [-1,1]){
   const s=setup(),fx=new FX(),shakes:number[]=[]
   s.w.fx=fx;s.w.cam={addTrauma:(n:number)=>{shakes.push(n)}} as unknown as WorldRef['cam']

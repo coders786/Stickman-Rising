@@ -391,6 +391,7 @@ export function ikArm3D(
 /* ------------------------------------------------------------------ */
 
 export interface FighterDrawOpts {
+  cloth?: string
   motionEnergy?: number
   hands?: import('./hand-gestures').HandGestures
   /** Contour-only rim, never interior bone strokes. */

@@ -118,6 +118,14 @@ export const ENEMY_CONFIGS: Record<EnemyKind, EnemyConfig> = {
   },
 }
 
+// Art-only finishes. Keep the existing scale, limb solve, weapon silhouette
+// and warning colors: the heavy still reads by mass, the assassin by profile.
+const NOIR_FINISH: Partial<Record<EnemyKind, StickStyle>> = {
+  grunt: { ...ENEMY_CONFIGS.grunt.style, body: '#a2abb7', dark: '#596572' },
+  assassin: { ...ENEMY_CONFIGS.assassin.style, body: '#998dad', dark: '#5b506d' },
+  heavy: { ...ENEMY_CONFIGS.heavy.style, body: '#b89a66', dark: '#76634b' },
+}
+
 let nextId = 1
 
 /* How much of a LIGHT hit's authored knockback actually moves the body.
@@ -1029,7 +1037,7 @@ export class Enemy {
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
 
-  draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight): void {
+  draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight, noir = false): void {
     if (this.dead || this.spawning) return
     const s = this.scale
     const cfg = this.cfg
@@ -1050,7 +1058,7 @@ export class Enemy {
     }
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * s, s)
-    drawStick(ctx, this.geom, cfg.style, {
+    drawStick(ctx, this.geom, (noir && NOIR_FINISH[this.kind]) || cfg.style, {
       time,
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',

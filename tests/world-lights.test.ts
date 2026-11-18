@@ -319,17 +319,17 @@ test('wiring: the field is sampled, not just tabulated', () => {
   const bg = readFileSync('src/game/world/background.ts', 'utf8')
   assert.match(bg, /this\.lighting\(\)\.sample\(/, 'background never samples the field')
   assert.match(bg, /makeStageLights\(/, 'the stage lights are not built from the profile')
-  assert.match(bg, /makeStageLights\(this.profile, this.runSeed\).concat\(bulbs\)/, 'the roof bulb is not in the field')
-  assert.match(bg, /drawLightPools\(ctx: CanvasRenderingContext2D\)/, 'no deck pools')
+  assert.match(bg, /makeStageLights\(this.profile, this.runSeed, this.art.amberSpecimen\).concat\(bulbs\)/, 'the roof bulb is not in the field')
+  assert.match(bg, /drawLightPools\(ctx: CanvasRenderingContext2D,/, 'no deck pools')
   for (const band of ['deep', 'far', 'mid', 'near']) {
     assert.match(bg, new RegExp(`collectAnims\\('${band}'`), `the ${band} band emits no city life`)
     assert.match(bg, new RegExp(`drawBandAnims\\(ctx, '${band}'`), `the ${band} band never draws its city life`)
   }
   assert.match(bg, /drawRoofProps\(ctx, this\.roof\.props, viewL, viewR/, 'the roof props are never drawn')
-  assert.match(bg, /this\.drawLightPools\(ctx\)/, 'the pools are built but never called')
+  assert.match(bg, /this\.drawLightPools\(ctx, cam\)/, 'the pools are built but never called')
 
   const r = readFileSync('src/game/render/renderer.ts', 'utf8')
-  assert.match(r, /e\.draw\(ctx, time, lighting\(e\)\)/, 'enemies stand in the light and stay unlit')
+  assert.match(r, /e\.draw\(ctx, time, lighting\(e\), noirEnemies\)/, 'enemies stand in the light and stay unlit')
 })
 
 
@@ -428,7 +428,7 @@ test('the roof sits in the city glow, gated by the tier', () => {
   const bg = readFileSync('src/game/world/background.ts', 'utf8')
   assert.match(bg, /function buildCityGlow/, 'no city glow plate')
   assert.match(bg, /hasPixels\(this\.cityGlow\) && RF\.lightPools > 0/, 'the city glow is not tier-gated')
-  assert.match(bg, /drawImage\(glow, gx, -glow\.height \+ 2\)/, 'the glow is not anchored to the deck line')
+  assert.match(bg, /drawImage\(glow, gx, ROAD\.sidewalk - glow\.height \+ 28\)/, 'the glow is not anchored to the deck line')
   const rp = readFileSync('src/game/world/roofprops.ts', 'utf8')
   assert.match(rp, /const CITY_EDGE/, 'roof props are not lit from below by the city')
   assert.match(rp, /CITY_UNDER/, 'no city bounce around the prop bases')

@@ -39,7 +39,8 @@
 export const PARTICLE_LEVELS = ['OFF', 'LOW', 'FULL'] as const
 export type ParticleLevel = 0 | 1 | 2
 
-let particleLevel: ParticleLevel = 2
+// Start clean during the Ultra art review; B can restore the live effects.
+let particleLevel: ParticleLevel = 0
 
 export function getParticleLevel(): ParticleLevel {
   return particleLevel

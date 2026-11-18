@@ -40,8 +40,6 @@ export interface GraphicsFeatures {
   dust: boolean
   /** Reflection band: 0 = off, otherwise the downscale factor (smaller = finer). */
   reflection: number
-  /** How many slices the mirror band is drawn in (each is one blit). */
-  reflectionSlices: number
   /** Device-pixel-ratio cap. This is the single most expensive dial. */
   dprCap: number
   /** Moon glitter on the wet deck. */
@@ -91,7 +89,6 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     shafts: false,
     dust: false,
     reflection: 0,
-    reflectionSlices: 0,
     dprCap: 1,
     glitter: false,
     gradeTint: false,
@@ -112,7 +109,6 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     shafts: false,
     dust: false,
     reflection: 8,
-    reflectionSlices: 2,
     dprCap: 1.25,
     glitter: true,
     gradeTint: true,
@@ -133,7 +129,6 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     shafts: true,
     dust: false,
     reflection: 6,
-    reflectionSlices: 3,
     dprCap: 1.5,
     glitter: true,
     gradeTint: true,
@@ -154,7 +149,6 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     shafts: true,
     dust: true,
     reflection: 3,
-    reflectionSlices: 5,
     dprCap: 2.25,
     glitter: true,
     gradeTint: true,

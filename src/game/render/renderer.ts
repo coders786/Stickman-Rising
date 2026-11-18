@@ -19,6 +19,7 @@ import { featuresFor, type GraphicsFeatures, type Tier } from './graphics'
 import { shadowLength, shadowOutline, type ShadowActor, drawCastShadow, drawContactAO, usesCastShadow, usesPropShadows } from './shadows'
 import { Camera } from '../core/camera'
 import { FX } from '../fx/fx'
+import { particlesDraw } from '../fx/particles1d'
 import { Enemy } from '../entities/enemy'
 import { Player } from '../entities/player'
 import { ProjectilePool } from '../entities/projectiles'
@@ -124,7 +125,7 @@ export class Renderer {
       const contact=-actor.hipY/scale,far=contact-ROAD.front/(.62*scale)
       const tint=hero?'13,23,34':'130,148,161'
       const wet=ctx.createLinearGradient(0,contact,0,far)
-      wet.addColorStop(0,`rgba(${tint},.22)`);wet.addColorStop(1,`rgba(${tint},0)`)
+      wet.addColorStop(0,`rgba(${tint},0)`);wet.addColorStop(.17,`rgba(${tint},${.34 * (bg.surfaceWetness?.(x) ?? .65) * (bg.actorReflectionGain?.() ?? 1)})`);wet.addColorStop(1,`rgba(${tint},0)`)
       ctx.fillStyle=wet;ctx.fill(path);ctx.restore()
     }
     drawCastShadow(ctx, actor, path, dir * shadowLength(1,reach), .46, F.penumbra)
@@ -145,10 +146,14 @@ export class Renderer {
 
     // 2. world pass
     ctx.save()
-    ctx.translate(w / 2, h / 2)
-    ctx.rotate(cam.rot)
-    ctx.scale(cam.zoom, cam.zoom)
-    ctx.translate(-(cam.x + cam.offX), -(cam.y + cam.offY))
+    const worldCam = { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom, rot: cam.rot }
+    const applyWorldCamera = () => {
+      ctx.translate(w / 2, h / 2)
+      ctx.rotate(worldCam.rot)
+      ctx.scale(worldCam.zoom, worldCam.zoom)
+      ctx.translate(-worldCam.x, -worldCam.y)
+    }
+    applyWorldCamera()
 
     const viewHalfW = w / (2 * cam.zoom) + 240
 
@@ -156,7 +161,7 @@ export class Renderer {
     const moon=directionalProjection(key??{azimuth:0,elevation:.78})
 
     // arena floor + stage props
-    bg.drawArena(ctx,this.forward && this.features.bloom)
+    bg.drawArena(ctx,this.forward && this.features.bloom,worldCam)
 
     const viewL = cam.x + cam.offX - viewHalfW
     const viewR = cam.x + cam.offX + viewHalfW
@@ -200,10 +205,11 @@ export class Renderer {
     const lighting = (actor: ShadowActor) => this.features.rim ? this.probes.get(actor) : undefined
 
     // enemies
+    const noirEnemies = bg.useQuietEnemyFinish?.() ?? false
     for (const e of enemies) {
       if (e.dead || e.spawning || !visible(e.x)) continue
       this.cullDrawn++
-      e.draw(ctx, time, lighting(e))
+      e.draw(ctx, time, lighting(e), noirEnemies)
     }
 
     // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
@@ -214,41 +220,35 @@ export class Renderer {
     player.drawStrikeSmear(ctx)
 
     // player
-    player.draw(ctx, time, false, lighting(player))
+    player.draw(ctx, time, false, lighting(player), bg.heroCloth?.())
 
     // DUST IN THE SHAFTS — air you can see (ultra). Drawn after the players so the
     // motes sit in front of the light rather than behind the fighter.
-    if (this.features.dust) bg.drawMotes?.(ctx, time)
+    if (this.features.dust && particlesDraw(2)) bg.drawMotes?.(ctx, time)
 
     // projectiles
     projectiles.draw(ctx, time)
 
-    // FOREGROUND PROPS — the near-lane plate occludes fighters
-    bg.drawFront?.(ctx)
-
-    // additive FX (trails, motion lines, particles, rings, ghosts)
-    fx.drawAdditive(ctx, time)
-
-    // MANGA IMPACT FRAMES — black spikes punch through the glow layer
-    fx.drawImpactFrames(ctx)
-
     ctx.restore()
 
-    // 2.5 REFLECTION POST-PASS — one 1/8-scale downscale of the frame above
-    // the deck line, blitted back flipped + rippled. Screen space, 4 blits,
-    // contains the player/enemies/FX because its source IS the frame.
-    // NOTE: the world camera (offset applied), not the parallax sky cam — the
-    // deck line is a world y, so using the sky cam would misalign the band.
-    if (this.features.reflection > 0) {
-      bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality,this.forward && this.features.keyTop)
+    // Capture opaque scene geometry, not foreground occluders or impact FX.
+    if (this.features.reflection > 0 && bg.drawReflections) {
+      bg.drawReflections(ctx, worldCam, this.quality, this.forward && this.features.keyTop)
     }
+
+    ctx.save()
+    applyWorldCamera()
+    bg.drawFront?.(ctx)
+    fx.drawAdditive(ctx, time)
+    fx.drawImpactFrames(ctx)
+    ctx.restore()
 
     /* 4.5 — THE ULTRA STACK. Order matters: the rays are the air around the
      * sources, the bloom is the sources themselves spilling. Doing bloom first
      * would make the rays smear a glow instead of a scene. */
     if (!this.forward && (this.features.godRays || this.features.bloom)) {
       const lights = this.features.godRays ? bg.raySources?.(w,h,{x:cam.x+cam.offX,y:cam.y+cam.offY,zoom:cam.zoom,rot:cam.rot}) : undefined
-      this.post.compose(ctx,w,h,lights ?? [],.2,this.features.bloom ? 1 : 0)
+      this.post.compose(ctx,w,h,lights ?? [],.2,this.features.bloom ? (bg.bloomGain?.() ?? 1) : 0)
     }
 
     // Screen overlays come AFTER optical capture: a flash is not an emitter.

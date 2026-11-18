@@ -195,7 +195,7 @@ export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:stri
   // sticks — the girdle has to shrink with the limbs or neither reads.
   outline(ctx,[at(-.09,-4.4),at(0,-5.2),at(.32,-4.5),at(.73,-8.6),at(.98,-9.6),
     at(1.08,-3),at(1.08,3),at(.98,9.6),at(.73,8.6),at(.32,4.5),at(0,5.2),at(-.09,4.4)])
-  ctx.fillStyle=volume?volumeBrush(ctx,'#000000',opts.light,opts.flipX??1,waistLine.x,waistLine.y,11,l*.68,Math.atan2(dx,-dy),true,color):color;ctx.fill()
+  ctx.fillStyle=volume?volumeBrush(ctx,opts.cloth ?? '#000000',opts.light,opts.flipX??1,waistLine.x,waistLine.y,11,l*.68,Math.atan2(dx,-dy),true,color,0,true):color;ctx.fill()
   // No thigh-length gi flaps: they fused into a low diaper-shaped crotch.
   // The pelvis contour ends at the femoral heads; legs supply the rest.
   // Raised collar and short split obi ends stylize the OUTLINE only.
@@ -238,7 +238,7 @@ export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:stri
   ctx.lineTo(.2,-7.8);ctx.lineTo(1.8,-7.2);ctx.lineTo(5.2,-7.4)
   ctx.lineTo(4.1,-5.1);ctx.lineTo(5.5,-3.8);ctx.lineTo(4.6,-2)
   ctx.lineTo(5.6,.3);ctx.lineTo(4.5,.9);ctx.lineTo(4.5,3.3)
-  ctx.lineTo(1.6,5.5);ctx.lineTo(-3.1,4.2);ctx.closePath();ctx.fillStyle=volume?volumeBrush(ctx,'#000000',opts.light,opts.flipX??1,0,-1,7,8,0,false,color,g.headAng):color;ctx.fill()
+  ctx.lineTo(1.6,5.5);ctx.lineTo(-3.1,4.2);ctx.closePath();ctx.fillStyle=volume?volumeBrush(ctx,opts.cloth ?? '#000000',opts.light,opts.flipX??1,0,-1,7,8,0,false,color,g.headAng,true):color;ctx.fill()
   ctx.restore()
 }
 
@@ -262,7 +262,7 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
     silhouette(ctx,g,edge,opts)
     ctx.restore()
   }
-  silhouette(ctx,g,opts.ghost ?? material(ctx,'#000000',light,face),opts,!opts.ghost)
+  silhouette(ctx,g,opts.ghost ?? material(ctx,opts.cloth ?? '#000000',light,face,true),opts,!opts.ghost)
   // Impact flashes remain an explicit temporary combat effect, not clothing.
   if((opts.flash??0)>.02){ctx.save();ctx.globalAlpha*=clamp01(opts.flash??0);silhouette(ctx,g,opts.flashColor??'#fff',opts);ctx.restore()}
   ctx.restore()

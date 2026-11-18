@@ -44,3 +44,30 @@ test('lightning decays once and the rain pass cannot flash the whole frame',()=>
  for(let i=0;i<30;i++){s.drawRain(g as unknown as CanvasRenderingContext2D);s.update(1/60);assert.ok(s.intensity<=prev);prev=s.intensity}
  assert.equal(flashes,0)
 })
+
+test('deck splashes scatter across the road instead of piling up on the fight rail',()=>{
+ const s=new StormEngine('high');s.resize(800,500);s.setView({x:400,y:0,zoom:1})
+ for(let i=0;i<90;i++)s.update(1/120)
+ const g=createCanvas(800,140).getContext('2d');g.translate(0,70)
+ s.drawSplashes(g as unknown as CanvasRenderingContext2D,100,700)
+ const data=g.getImageData(0,0,800,140).data
+ let rear=0,front=0
+ for(let y=0;y<140;y++)for(let x=0;x<800;x++)if(data[(y*800+x)*4+3]){
+  assert.ok(x>=100&&x<700&&y>=18&&y<122,'splash leaked outside the road')
+  if(y<55)rear++
+  if(y>85)front++
+ }
+ assert.ok(rear>20&&front>20,'both halves of the road should get impacts away from the rail')
+})
+
+test('sharp rain changes travel without adding drops or rescheduling lightning',()=>{
+ const stock=new StormEngine('ultra'),sharp=new StormEngine('ultra');sharp.setSharpRain(true)
+ for(let i=0;i<2400;i++){
+  stock.update(1/120);sharp.update(1/120)
+  assert.equal(sharp.snapshot.strikes,stock.snapshot.strikes)
+  assert.equal(sharp.snapshot.intensity,stock.snapshot.intensity)
+ }
+ assert.ok(stock.snapshot.strikes>=3)
+ assert.equal(sharp.snapshot.visibleDrops,stock.snapshot.visibleDrops)
+ assert.ok(sharp.snapshot.impacts>stock.snapshot.impacts)
+})

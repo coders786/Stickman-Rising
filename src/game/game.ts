@@ -1,3 +1,4 @@
+import { ART_GRADES, BRIDGE_ART, type SceneArtOptions } from './world/art-grade'
 import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolution} from './combat/hit-resolution'
 /** STICKMAN RISING — the Game orchestrator: loop, timing (hitstop/slow-mo),
  * combat resolution, combo & score, executions, ultimates, waves, events.
@@ -179,7 +180,8 @@ export class Game {
   readonly storm=new StormEngine('high')
   // NEON ROOFTOP is the only stage left — the moonlit zen scene and every
   // shader/engine behind it are gone in the 120 fps strip.
-  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
+  private sceneArt: SceneArtOptions = BRIDGE_ART
+  bg:BackgroundRenderer = new CyberBackground('high',this.storm,this.sceneArt)
   /** THE HIT LIGHT — one closure, wired once. `fx.impact()` asks this at the
    *  strike point, so a blade that lands inside the stairwell's spill blooms
    *  warm and one that lands under the failing tube blooms cool. Without it a
@@ -329,7 +331,7 @@ export class Game {
     this.cam.snapTo(1300, -150)
     this.props.reset(0x51a2c9)
     this.props.setMood(moodIndexForSeed(0x51a2c9))
-    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(0x51a2c9)].name)
+    this.hud.setMoodLabel(ART_GRADES['deep-noir'].palette.name)
   }
 
   on(cb: (e: GameEvent) => void): () => void {
@@ -362,6 +364,12 @@ export class Game {
   /* ------------------------------------------------------------------ */
 
   mount(canvas: HTMLCanvasElement, hudLayer?: HTMLCanvasElement | null): void {
+    if (process.env.NODE_ENV === 'development' && new URLSearchParams(window.location.search).get('ultraReview') === 'amber') {
+      this.sceneArt = { ...BRIDGE_ART, clean: true }
+      this.bg = new CyberBackground(this.settings.quality, this.storm, this.sceneArt)
+      this.wireHitLight()
+      this.hud.setMoodLabel(ART_GRADES['deep-noir'].palette.name)
+    }
     this.desktopPacing = window.matchMedia?.('(pointer: fine)').matches === true
     this.renderer.setDesktopLighting(this.desktopPacing)
     this.canvas = canvas
@@ -587,7 +595,7 @@ export class Game {
     this.fx.setScreenStrength(s.shake && !reducedMotion ? s.shakeIntensity : 0)
     this.fx.setGore(s.gore)
     this.renderer.setQuality?.(s.quality) // grain cadence follows the tier
-    this.cam.setShakeEnabled(s.shake, s.shakeIntensity)
+    this.cam.setShakeEnabled(s.shake && !reducedMotion, s.shakeIntensity)
     this.audio.setSfxVolume(s.sfxVolume)
     this.audio.setMusicVolume(s.musicVolume)
     this.audio.setMuted(s.muted)
@@ -609,7 +617,7 @@ export class Game {
     // — the self-inflicted "hangs when enemies appear" loop.
     if (levelChanged) {
       this.storm.setQuality?.(s.quality)
-      this.bg = new CyberBackground(s.quality,this.storm)
+      this.bg = new CyberBackground(s.quality,this.storm,this.sceneArt)
       this.wireHitLight()
       syncBgQuality(this.bg, s.quality)
       // A new scene must inherit the RUN, not a fresh mood: without this the
@@ -625,6 +633,7 @@ export class Game {
       syncBgQuality(this.bg, s.quality)
       this.resize() // the DPR cap is tier-dependent
     }
+    this.bg.setReducedMotion?.(Boolean(reducedMotion))
   }
 
   setUnlocked(list: SwordId[], totalKills = this.lifetimeKills): void {
@@ -661,7 +670,7 @@ export class Game {
     // seed. Label and dress the scene the background actually baked.
     const mood = this.bg.getProfile?.()?.mood ?? MOOD_PALETTES[moodIndexForSeed(seed)]
     this.props.setMood(MOOD_PALETTES.indexOf(mood))
-    this.hud.setMoodLabel(mood.name)
+    this.hud.setMoodLabel(this.sceneArt.grade ? ART_GRADES[this.sceneArt.grade].palette.name : mood.name)
   }
 
   startRun(swordId: SwordId): void {
@@ -849,7 +858,7 @@ export class Game {
     // Weather has its own real visual clock, independent of combat hitstop.
     // The pose editor freezes the whole frame for authoring.
     const editFrozen = this.inspect.mode === 'edit'
-    if(this.phase!=='paused' && !editFrozen)this.storm.update(dtRaw)
+    if(this.phase!=='paused' && !editFrozen && !this.sceneArt.clean)this.storm.update(dtRaw)
 
     const ctx = this.ctx
     if (!ctx) return
