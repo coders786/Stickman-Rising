@@ -253,6 +253,83 @@ because the field drew a pool over the bake's own.
 
 ---
 
+## 2.6 · Run 4b — the city on the roof, the inn, and the hit that was a circle
+
+Three complaints, taken literally: *"use city lights on rooftop"*, *"the lighting
+of inn and other sucks"*, *"when hit enemies a kind of circle glow appears rather
+than the appropriate lighting"*.
+
+### 2.6.1 · The roof sits in the city
+
+A rooftop over a neon city is never dark. That light has no single source —
+sodium street lighting, shop fronts, sign spill — so it is modelled as three
+**city-bounce** sources (`kind: 'city'`): gain 0.14–0.26 against the door's ~1.2,
+radius 420–560, y *below* the deck (it comes up over the parapet), placed from the
+run seed so a new run moves the light.
+
+On top of that, one baked **glow plate** along the back edge:
+
+- its vertical profile is a stack of ten stops of `0.24·(1−u)^1.8`, so the alpha
+  reaches exactly 0 at the top of the plate — a glow that ends on a visible line
+  is a rectangle;
+- its pockets are small and low, because a radial gradient clipped by a canvas
+  edge leaves a hard line (the first version did exactly that);
+- rooftop props are lit **from below** by it (`CITY_EDGE` / `CITY_UNDER` in
+  `world/roofprops.ts`) — the underside edge is the cue that says *six floors up*
+  rather than *a crate on a dark floor*.
+
+The city bounce is also a **shadow liar's check**: it may darken the deck under a
+fighter, but it is capped at 0.45 strength for the second cast shadow, because a
+crisp shadow from a source you cannot point at is a lie about where the light is.
+
+### 2.6.2 · The inn is a room now
+
+The doorway used to be one vertical gradient filling the opening — a glowing
+panel. It is now five passes: a dim ceiling, a warm body, **a floor bounce** (the
+hot ellipse where light hits the deck inside), **an open leaf** splitting the
+field with its lit edge and its shadow, and **jambs** whose inner edges catch the
+light. The spill is *local* (28 px of wall bounce, one threshold pool) instead of
+a 120 px halo — everything beyond that is the live field's job.
+
+### 2.6.3 · A hit is a light, not a circle
+
+The impact effect was a 64 px radial sprite blitted as a perfect circle plus a
+lens cross, identical everywhere. That is why it read as "a circle appears". Four
+changes, in order of how much they mattered:
+
+1. **Direction.** The bloom is an ellipse stretched 2.15 : 0.5 along the strike
+   axis — a forward lobe into the target with a short tail back to the blade — and
+   the shockwave ring is squashed (0.62 heavy / 0.78 light) and rotated to the
+   same axis. A perfect circle is the most "this is a UI element" shape a hit can
+   produce.
+2. **Colour from the place.** `FX.setLightSampler()` is wired once to the field
+   (`game.ts` → `hitLight`), so a strike inside the stairwell blooms warm, one
+   under the failing tube blooms cool, and one out in the middle keeps the blade's
+   own colour. The takeover threshold is 0.35 — deliberately above the city bounce
+   (~0.2), or every hit on the roof would be the same amber.
+3. **Local exposure.** A new light in an already-bright place barely registers,
+   and additively a full-strength bloom over a lit doorway clips to white. The
+   flash is dimmed by the light it happens in: `1 − 0.45·k`.
+4. **A hot core + a thin wave.** The wide pass of the ring is now 0.12 alpha and
+   2× width (it was a grey donut at 0.28 / 3.2×), and the core sprite is 0.38 r.
+
+**The bug this exposed, and it is a good one.** The first version of the hit light
+passed `"255,168,92"` to `rgba()` — but there are two colour helpers in this
+codebase: `rgbaConst()` takes `"r,g,b"` (the draw path's cached strings, the
+shadow inks) and `rgba()` takes `"#rrggbb"`. Feeding a triple to the hex parser
+silently produces `rgb(37,81,146)`: a **blue** bloom in a warm doorway. Hence
+`LIGHT_HEX` in `world/lightfield.ts` and a test that every light kind's tint
+matches `/^#[0-9a-f]{6}$/` and that no two are the same.
+
+### 2.6.4 · Verified in paint
+
+`.qa/verify-hit.mts` renders the same strike twice — once inside the door's spill,
+once in the unlit middle of the deck — and writes close-ups to `.qa/`. The
+difference is visible, not asserted: warm ellipse + warm wave at the door, cold
+white blade-light in the dark.
+
+---
+
 ## 3 · What this does NOT claim
 
 - **Not "god level" as a guarantee.** "God level" is a taste judgement and the

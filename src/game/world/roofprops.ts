@@ -183,6 +183,11 @@ export function makeRoofProps(
 const INK_BODY = '#0b131b'
 const INK_DARK = '#080f16'
 const MOON_EDGE = 'rgba(150,185,220,0.22)'
+/** THE CITY IS BELOW YOU. A rooftop object at night is lit from UNDERNEATH by
+ *  the street it stands above — that underside edge is the single cue that says
+ *  "six floors up" instead of "a crate on a dark floor". */
+const CITY_EDGE = 'rgba(255,190,128,0.30)'
+const CITY_UNDER = 'rgba(255,170,102,0.10)'
 const BULB_GLOW = '255,214,160'
 
 /**
@@ -208,12 +213,19 @@ export function drawRoofProps(
     const by = p.y - p.h
     const sway = Math.sin(t * 1.4 + p.phase * 6.283)
     if (shadow) {
+      // contact chip + the city's bounce spilling around the base: the object
+      // blocks the light from below, so it is darkest exactly where it meets the
+      // deck and warm at its outer edge.
       ctx.globalAlpha = 0.34
       ctx.fillStyle = '#000'
       ctx.beginPath()
       ctx.ellipse(p.x, p.y + 1, p.w * 0.62, 2.6, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.globalAlpha = 1
+      ctx.fillStyle = CITY_UNDER
+      ctx.beginPath()
+      ctx.ellipse(p.x, p.y + 1.5, p.w * 0.92, 4.2, 0, 0, Math.PI * 2)
+      ctx.fill()
     }
     switch (p.kind) {
       case 'ac': {
@@ -384,6 +396,13 @@ export function drawRoofProps(
         ctx.globalCompositeOperation = 'source-over'
         break
       }
+    }
+    // THE UNDERSIDE — a warm line where the city's light grazes the object.
+    // Only for things that actually stand on legs or a plinth: a bulb's cable
+    // does not catch light from below, a condenser's skirt does.
+    if (p.kind === 'ac' || p.kind === 'tank' || p.kind === 'crate' || p.kind === 'coil' || p.kind === 'planter') {
+      ctx.fillStyle = CITY_EDGE
+      ctx.fillRect(bx, p.y - 1.5, p.w, 1.5)
     }
     drawn++
   }

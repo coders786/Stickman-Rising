@@ -29,6 +29,7 @@ import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
 import { QualityLadder, type Tier } from './render/quality'
 import { featuresFor } from './render/graphics'
+import { LIGHT_HEX } from './world/lightfield'
 import { FrameLog } from './render/frameLog'
 import type { EnvironmentProfile } from './world/profile'
 import { Inspect, InspectMode } from './debug/inspect'
@@ -168,10 +169,28 @@ export class Game {
   // NEON ROOFTOP is the only stage left — the moonlit zen scene and every
   // shader/engine behind it are gone in the 120 fps strip.
   bg:BackgroundRenderer = new CyberBackground('high',this.storm)
+  /** THE HIT LIGHT — one closure, wired once. `fx.impact()` asks this at the
+   *  strike point, so a blade that lands inside the stairwell's spill blooms
+   *  warm and one that lands under the failing tube blooms cool. Without it a
+   *  hit flash is a white circle that could be happening anywhere. */
+  private hitLight = (x: number, y: number): { color: string; k: number } | null => {
+    const s = this.bg.lightAt?.(x, y)
+    if (!s || !s.best) return null
+    const k = Math.min(1, Math.max(s.warm, s.cool, s.neon))
+    if (k <= 0.12) return null
+    // HEX, not 'r,g,b': `rgba()` in core/utils parses '#rrggbb' and silently
+    // produces a garbage colour from a triple (that bug is why the first version
+    // of this bloom came out blue in a warm doorway).
+    return { color: LIGHT_HEX[s.best.kind], k }
+  }
   /** which level the current bg was built for — applySettings rebuilds on
    *  mismatch, so the saved/default stage actually loads at startup */
   private bgLevel:LevelId = DEFAULT_SETTINGS.level
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
+  private wireHitLight(): void {
+    this.fx.setLightSampler(this.hitLight)
+  }
+
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
   }
@@ -281,6 +300,10 @@ export class Game {
   private f9ViewBound: ((e: KeyboardEvent) => void) | null = null
 
   constructor() {
+    // The default background exists before any settings are applied; wire the
+    // hit light to it here as well, so the very first swing in the very first
+    // frame already knows what light it happens in.
+    this.wireHitLight()
     this.waves = new WaveDirector({
       spawnEnemy: (kind, x, scale) => this.spawnEnemy(kind, x, scale),
       onWaveStart: (wave, boss) => this.onWaveStart(wave, boss),
@@ -560,6 +583,7 @@ export class Game {
     if (levelChanged) {
       this.storm.setQuality?.(s.quality)
       this.bg = new CyberBackground(s.quality,this.storm)
+      this.wireHitLight()
       syncBgQuality(this.bg, s.quality)
       // A new scene must inherit the RUN, not a fresh mood: without this the
       // skyline, the moon and the profile resampled mid-session on a level

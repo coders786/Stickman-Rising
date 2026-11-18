@@ -913,6 +913,62 @@ function buildWash(rgb: string): HTMLCanvasElement {
   return c
 }
 
+/** CITY GLOW — the light a rooftop sits in that has no single source.
+ *
+ *  Drawn as one additive plate along the back edge of the deck, scrolling slowly
+ *  with its own parallax. Two things make it a GLOW and not a stripe:
+ *
+ *   · the vertical profile is sampled from a smooth curve (a stack of linear
+ *     stops), so the alpha reaches exactly 0 at the top of the plate instead of
+ *     ending on a visible line;
+ *   · the bright pockets are placed low and kept small enough that they never
+ *     touch the top edge — a radial gradient clipped by a canvas edge leaves a
+ *     hard line, which is the giveaway that a "glow" is a rectangle.
+ */
+function buildCityGlow(pal: MoodPalette): HTMLCanvasElement {
+  const W = 1024
+  const H = 220
+  const { c, g } = makeCanvas(W, H)
+  g.globalCompositeOperation = 'lighter'
+  // The rise: city light is a column that fades with height, roughly as
+  // (1 - y/H)^1.8. Ten stops of that curve, warm at the base.
+  const gr = g.createLinearGradient(0, H, 0, 0)
+  for (let i = 0; i <= 10; i++) {
+    const u = i / 10                     // 0 at the deck line, 1 at the top
+    const a = 0.24 * Math.pow(1 - u, 1.8)
+    const mix = 0.35 + 0.65 * (1 - u)
+    gr.addColorStop(u, `rgba(${pal.highlight},${a.toFixed(4)})`)
+    void mix
+  }
+  g.fillStyle = gr
+  g.fillRect(0, 0, W, H)
+  // a cooler upper layer — haze scatters blue, so the top of the rise is cooler
+  const gc = g.createLinearGradient(0, H, 0, 0)
+  for (let i = 0; i <= 6; i++) {
+    const u = i / 6
+    gc.addColorStop(u, `rgba(${pal.pop2},${(0.07 * Math.pow(1 - u, 2.4)).toFixed(4)})`)
+  }
+  g.fillStyle = gc
+  g.fillRect(0, 0, W, H)
+  // Three pockets — a street, a sign, a shop front. Low, small, wrap-aware so
+  // the plate tiles without a seam.
+  const pockets: ReadonlyArray<readonly [string, number, number, number]> = [
+    [`rgba(${pal.pop},0.15)`, 0.18, 26, 104],
+    [`rgba(${pal.pop2},0.12)`, 0.52, 18, 86],
+    [`rgba(${pal.highlight},0.16)`, 0.81, 30, 120],
+  ]
+  for (const [col, px, py, rad] of pockets) {
+    for (const ox of [-W, 0, W]) {
+      const rg = g.createRadialGradient(px * W + ox, H - py, 2, px * W + ox, H - py, rad)
+      rg.addColorStop(0, col)
+      rg.addColorStop(1, 'rgba(0,0,0,0)')
+      g.fillStyle = rg
+      g.fillRect(px * W + ox - rad, H - py - rad, rad * 2, rad * 2)
+    }
+  }
+  return c
+}
+
 function buildDeckPool(): HTMLCanvasElement {
   const { c, g } = makeCanvas(240, 64);
   g.globalCompositeOperation = 'lighter';
@@ -1344,6 +1400,9 @@ export class CyberBackground {
   private washWarm: HTMLCanvasElement | null = null
   private washCool: HTMLCanvasElement | null = null
   private washBulb: HTMLCanvasElement | null = null
+  private washCity: HTMLCanvasElement | null = null
+  /** city light pollution rising over the parapet (one baked plate) */
+  private cityGlow: HTMLCanvasElement | null = null
   /** The cumulus bank (world/clouds.ts) — null on a clear run. */
   private bank: HTMLCanvasElement | null = null;
   /** Its derived parameters, resolved ONCE (the draw path must not allocate). */
@@ -1832,9 +1891,13 @@ export class CyberBackground {
     // three disagreed, the light would be lying about itself.
     const s = sampleLight(this.lights, x, 0, this.t, this.sample)
     if (!s.best || s.bestW < 0.04) return null
+    // A city bounce is a wash, not a lamp: it can darken the deck under a
+    // fighter, but a crisp second shadow from a source you cannot point at would
+    // be a lie about where the light is.
+    const k = s.best.kind === 'city' ? 0.45 : 1
     return {
       dir: s.dir,
-      strength: Math.min(1, s.bestW),
+      strength: Math.min(1, s.bestW) * k,
       // Never pure black: a practical's shadow is a COLOURED absence, because
       // the light it blocks is coloured. Warm blocked is a brown shadow, cool
       // blocked is a blue one, a bulb is a dirty amber one.
@@ -1900,7 +1963,10 @@ export class CyberBackground {
     const F = featuresFor(this.q as Tier);
     if (!F.rim) return
     const s = sampleLight(this.lights, px, py, this.t, this.sample)
-    const a = Math.max(s.warm, s.cool, s.neon * 0.5)
+    // The city bounce is included at 0.7: it must be able to tint a body (that
+    // is the whole point of a rooftop over a neon city) without ever out-shouting
+    // a practical you are standing in.
+    const a = Math.max(s.warm, s.cool, s.neon * 0.5, s.city * 0.7)
     if (a > 0.02 && s.best) {
       const kind = s.best.kind
       const warmSide = s.warm >= s.cool
@@ -1908,7 +1974,10 @@ export class CyberBackground {
       // Wash: the BODY takes the colour. One disc, squashed to the figure's
       // height, additive at a low alpha — at 0.10–0.16 it reads as "lit by
       // something warm", above ~0.25 it reads as a colour filter, so it is capped.
-      const wash = kind === 'cool' ? this.washCool : kind === 'bulb' ? this.washBulb : this.washWarm
+      const wash = kind === 'cool' ? this.washCool
+        : kind === 'bulb' ? this.washBulb
+          : kind === 'city' ? this.washCity
+            : this.washWarm
       if (wash) {
         ctx.globalCompositeOperation = 'lighter'
         ctx.globalAlpha = Math.min(0.18, 0.14 * a)
@@ -1976,13 +2045,19 @@ export class CyberBackground {
       // tube's pool shrinks with it — that is what "failing" looks like).
       const g = liveGain(l, this.t)
       if (g <= 0.02) continue
-      const wide = Math.min(1.5, l.radius / 220)
+      // A city source is wide: its pool is the whole width of the street light
+      // lying on the wet deck, not a circle under a lamp.
+      const wide = l.kind === 'city' ? 3.2 : Math.min(1.5, l.radius / 220)
       /* A practical already has a pool BAKED into the arena tile, so its live
        * pool is drawn at HALF strength: enough to answer the tube's flicker
        * (which a bake cannot), not enough to double up into a white blob. The
        * run's own bulb has no baked pool, so it gets the full one. */
       const authored = l.id.startsWith('stage:')
-      ctx.globalAlpha = Math.min(0.62, 0.42 * g) * (authored ? 0.5 : 1)
+      // City pools are scaled UP: a 0.2-gain source would otherwise be invisible,
+      // and its job is exactly the opposite — to be the light you notice as
+      // "the roof is not dark", never as a lamp.
+      const boost = l.kind === 'city' ? 3.4 : authored ? 0.5 : 1
+      ctx.globalAlpha = Math.min(0.5, 0.42 * g * boost)
       ctx.drawImage(this.deckPool, l.x - 120 * wide, -14, 240 * wide, 64)
     }
     ctx.globalAlpha = 1
@@ -1997,9 +2072,12 @@ export class CyberBackground {
     const F = featuresFor(this.q as Tier)
     if (F.lightPools < 2) return
     const s = sampleLight(this.lights, x, y, this.t, this.sample)
-    const a = Math.max(s.warm, s.cool)
+    const a = Math.max(s.warm, s.cool, s.city * 0.7)
     if (a <= 0.06 || !s.best) return
-    const wash = s.best.kind === 'cool' ? this.washCool : s.best.kind === 'bulb' ? this.washBulb : this.washWarm
+    const wash = s.best.kind === 'cool' ? this.washCool
+      : s.best.kind === 'bulb' ? this.washBulb
+        : s.best.kind === 'city' ? this.washCity
+          : this.washWarm
     if (!wash) return
     ctx.globalCompositeOperation = 'lighter'
     ctx.globalAlpha = Math.min(0.15, 0.12 * a)
@@ -2102,6 +2180,21 @@ export class CyberBackground {
      * The tier caps how many of the run's props are DRAWN; the set itself never
      * changes, so switching quality does not re-roll the roof. */
     const RF = featuresFor(this.q as Tier)
+    /* CITY LIGHT ON THE ROOF — the plate every prop is a silhouette against.
+     * One additive blit per 1024 px of view, scrolled at its own slow parallax
+     * so the glow belongs to the city and not to the camera. */
+    if (hasPixels(this.cityGlow) && RF.lightPools > 0) {
+      const glow = this.cityGlow
+      const off = mod((cam.x || 0) * 0.06, 1024)
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.globalAlpha = 0.85 + 0.05 * Math.sin(t * 0.13)
+      for (let gx = (cam.x - halfW) - mod(off, 1024); gx < (cam.x + halfW); gx += 1024) {
+        ctx.drawImage(glow, gx, -glow.height + 2)
+      }
+      ctx.globalAlpha = 1
+      ctx.restore()
+    }
     if (RF.roofProps > 0 && this.roof.props.length > 0) {
       const props = this.roof.props.length > RF.roofProps ? this.roof.props.slice(0, RF.roofProps) : this.roof.props
       drawRoofProps(ctx, props, t, viewL, viewR, true)
@@ -2235,6 +2328,8 @@ export class CyberBackground {
     this.washWarm = buildWash(`${LIGHT_TINT.warm[0]},${LIGHT_TINT.warm[1]},${LIGHT_TINT.warm[2]}`)
     this.washCool = buildWash(`${LIGHT_TINT.cool[0]},${LIGHT_TINT.cool[1]},${LIGHT_TINT.cool[2]}`)
     this.washBulb = buildWash(`${LIGHT_TINT.bulb[0]},${LIGHT_TINT.bulb[1]},${LIGHT_TINT.bulb[2]}`)
+    this.washCity = buildWash(`${LIGHT_TINT.city[0]},${LIGHT_TINT.city[1]},${LIGHT_TINT.city[2]}`)
+    this.cityGlow = buildCityGlow(this.mood)
     // Shafts are baked from the palette, so the cone is the same colour as the
     // pool it belongs to — a warm door does not cast a green shaft.
     this.shaftWarm = buildShaft(this.mood.highlight, 54, 210, 420);
@@ -3905,28 +4000,125 @@ export class CyberBackground {
     g.fillStyle = `rgba(${this.mood.pop},0.28)`;
     g.fillRect(8, 4, 184, 1);
     bakeSpill(g, this.heroDisc, 100, 66, 74, 0.12);
-    // THE WARM DOOR — hot core, warm falloff, dark frame
-    gr = g.createLinearGradient(0, 62, 0, 186);
-    gr.addColorStop(0, '#f5d9ab');
-    gr.addColorStop(0.4, '#ffb066');
-    gr.addColorStop(1, '#c96f31');
-    g.fillStyle = gr;
-    g.fillRect(68, 62, 64, 124);
-    g.fillStyle = '#070a0e';
-    g.fillRect(63, 57, 74, 5);
-    g.fillRect(63, 57, 5, 129);
-    g.fillRect(128, 57, 5, 129);
-    // baked glow spill around the doorway
-    g.globalCompositeOperation = 'lighter';
-    gr = g.createRadialGradient(100, 128, 8, 100, 128, 120);
-    gr.addColorStop(0, 'rgba(255,150,72,0.34)');
-    gr.addColorStop(0.55, 'rgba(255,130,60,0.12)');
-    gr.addColorStop(1, 'rgba(255,120,50,0)');
-    g.fillStyle = gr;
-    g.fillRect(0, 20, 200, 166);
-    // small warm vent window
-    g.fillStyle = 'rgba(255,186,116,0.55)';
-    g.fillRect(28, 42, 26, 16);
+    /* THE WARM DOOR — the inn's interior, baked as LIGHT rather than as a
+     * coloured rectangle.
+     *
+     * The old bake was a flat vertical gradient filling the opening: pale at the
+     * top, orange at the bottom. Two things made it read as a glowing panel:
+     * nothing in it was in shadow, and nothing in it had a shape. An interior you
+     * can see into is a ROOM — its ceiling is darker than its floor, the floor
+     * bounces a hot pool back out, the jambs cut the light, and an open leaf
+     * splits the field in two. Five fills instead of one.
+     */
+    const DX0 = 68, DY0 = 62, DW = 64, DH = 124
+    const DX1 = DX0 + DW, DY1 = DY0 + DH
+
+    // 1. the room itself: dim toward the ceiling, warm in the body
+    gr = g.createLinearGradient(0, DY0, 0, DY1)
+    gr.addColorStop(0, '#3a1c0b')       // ceiling: the light does not reach it
+    gr.addColorStop(0.22, '#8a4a1e')
+    gr.addColorStop(0.62, '#d68a45')
+    gr.addColorStop(1, '#8f4d1d')       // the floor near the back wall, unlit
+    g.fillStyle = gr
+    g.fillRect(DX0, DY0, DW, DH)
+
+    // 2. THE FLOOR BOUNCE — the hot ellipse where the light hits the deck inside.
+    //    This is the shape that says "lit room" instead of "lit rectangle".
+    g.save()
+    g.beginPath()
+    g.rect(DX0, DY0, DW, DH)
+    g.clip()
+    const floorY = DY1 - 14
+    gr = g.createRadialGradient(DX0 + DW * 0.5, floorY, 2, DX0 + DW * 0.5, floorY, DW * 0.62)
+    gr.addColorStop(0, 'rgba(255,232,190,0.92)')
+    gr.addColorStop(0.45, 'rgba(255,196,128,0.42)')
+    gr.addColorStop(1, 'rgba(255,170,90,0)')
+    g.fillStyle = gr
+    g.save()
+    g.scale(1, 0.5)
+    g.beginPath()
+    g.arc(DX0 + DW * 0.5, floorY / 0.5, DW * 0.62, 0, TAU)
+    g.fill()
+    g.restore()
+
+    // 3. THE CEILING SHADOW — a band of near-dark at the header, so the opening
+    //    has a depth instead of a gradient.
+    gr = g.createLinearGradient(0, DY0, 0, DY0 + 30)
+    gr.addColorStop(0, 'rgba(12,6,2,0.85)')
+    gr.addColorStop(1, 'rgba(12,6,2,0)')
+    g.fillStyle = gr
+    g.fillRect(DX0, DY0, DW, 30)
+
+    // 4. THE OPEN LEAF — ajar into the room, its lit edge splitting the field.
+    const leaf = 26
+    g.fillStyle = '#1c0f06'
+    g.beginPath()
+    g.moveTo(DX1 - 3, DY0 + 2)
+    g.lineTo(DX1 - 3 - leaf, DY0 + 12)
+    g.lineTo(DX1 - 3 - leaf, DY1 - 2)
+    g.lineTo(DX1 - 3, DY1)
+    g.closePath()
+    g.fill()
+    g.strokeStyle = 'rgba(255,214,160,0.85)'
+    g.lineWidth = 1.2
+    g.beginPath()
+    g.moveTo(DX1 - 3 - leaf, DY0 + 12)
+    g.lineTo(DX1 - 3 - leaf, DY1 - 2)
+    g.stroke()
+    // its shadow falls across the floor bounce, away from the light
+    g.fillStyle = 'rgba(20,10,4,0.35)'
+    g.beginPath()
+    g.moveTo(DX1 - 3 - leaf, DY1 - 2)
+    g.lineTo(DX1 - 3 - leaf - 12, DY1)
+    g.lineTo(DX1 - 3 - leaf, DY1 + 8)
+    g.closePath()
+    g.fill()
+    g.restore()
+
+    // 5. THE JAMBS — dark, with the inner edge catching the light. The cut is
+    //    what makes the opening read as a hole in a wall.
+    g.fillStyle = '#05080b'
+    g.fillRect(DX0 - 5, DY0 - 5, DW + 10, 5)
+    g.fillRect(DX0 - 5, DY0 - 5, 5, DH + 10)
+    g.fillRect(DX1, DY0 - 5, 5, DH + 10)
+    g.fillStyle = 'rgba(255,196,132,0.55)'
+    g.fillRect(DX0, DY0, 1, DH)
+    g.fillRect(DX1 - 1, DY0, 1, DH)
+    g.fillRect(DX0, DY0, DW, 1)
+
+    /* THE SPILL — LOCAL to the doorway, not a 120 px halo. Two shapes: a warm
+     * wall bounce that hugs the jambs and dies within ~28 px, and a threshold
+     * pool on the deck right under the opening. Everything beyond that is the
+     * live field's job (drawLightPools / drawFigureLighting). */
+    g.globalCompositeOperation = 'lighter'
+    gr = g.createRadialGradient(DX0 + DW * 0.5, DY0 + DH * 0.55, 6, DX0 + DW * 0.5, DY0 + DH * 0.55, 74)
+    gr.addColorStop(0, 'rgba(255,150,72,0.30)')
+    gr.addColorStop(0.42, 'rgba(255,138,64,0.13)')
+    gr.addColorStop(1, 'rgba(255,120,50,0)')
+    g.fillStyle = gr
+    g.fillRect(DX0 - 40, DY0 - 20, DW + 80, DH + 44)
+    gr = g.createRadialGradient(DX0 + DW * 0.5, DY1 + 2, 4, DX0 + DW * 0.5, DY1 + 2, 62)
+    gr.addColorStop(0, 'rgba(255,206,150,0.5)')
+    gr.addColorStop(0.5, 'rgba(255,168,96,0.16)')
+    gr.addColorStop(1, 'rgba(255,150,80,0)')
+    g.fillStyle = gr
+    g.save()
+    g.scale(1, 0.34)
+    g.beginPath()
+    g.arc(DX0 + DW * 0.5, (DY1 + 2) / 0.34, 62, 0, TAU)
+    g.fill()
+    g.restore()
+    g.globalCompositeOperation = 'source-over'
+
+    // small warm vent window — a slot with a falloff, not a lit sticker
+    {
+      const vg = g.createLinearGradient(0, 42, 0, 58)
+      vg.addColorStop(0, 'rgba(255,196,132,0.30)')
+      vg.addColorStop(0.5, 'rgba(255,186,116,0.62)')
+      vg.addColorStop(1, 'rgba(150,90,44,0.35)')
+      g.fillStyle = vg
+      g.fillRect(28, 42, 26, 16)
+    }
     g.fillStyle = '#070a0e';
     g.fillRect(28, 49, 26, 2);
     g.globalCompositeOperation = 'source-over';

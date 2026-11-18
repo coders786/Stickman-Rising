@@ -76,6 +76,12 @@ interface Ring {
   color: string
   width: number
   squash: number
+  /** Rotation of the squash axis, radians. A shockwave thrown by a swing is an
+   *  ellipse ALONG the strike — a perfect circle is the single most "this is a
+   *  UI element" shape a hit can produce. */
+  axis: number
+  /** The local light's colour on the wide pass ('': use `color`). See Flash.lit. */
+  litColor?: string
 }
 
 interface Crack {
@@ -128,6 +134,14 @@ interface Flash {
   age: number; life: number
   color: string
   heavy: boolean
+  /** The strike's axis, radians. The bloom is thrown ALONG it (it is light
+   *  leaving the blade), never as an even circle around the point. */
+  axis: number
+  /** How strongly this hit is standing in a practical: 0 = unlit, 1 = in the
+   *  middle of the door's spill. The bloom takes that light's colour. */
+  lit: number
+  /** The light's colour as a packed rgb string, or '' when unlit. */
+  litColor: string
 }
 
 /** HDR MOTION LINE — one clean velocity streak replacing the old particle
@@ -169,12 +183,17 @@ const aiPose = makePose()
  * cache is bounded (FIFO, 32 entries) and evicted canvases are shrunk
  * so the backing store is actually released.
  * ------------------------------------------------------------------ */
+/** How much local light it takes for a hit to take that light's colour. The city
+ *  bounce sits at ~0.2 and must NOT qualify — otherwise every strike anywhere on
+ *  the roof comes out the same amber and the blade's own colour is never seen. */
+const LIT_TAKEOVER = 0.35
 const FLASH_GLOW_MAX = 32
 const flashGlowCache = new Map<string, HTMLCanvasElement>()
 
-function flashGlowSprite(color: string): HTMLCanvasElement | null {
+function flashGlowSprite(color: string, hot = true): HTMLCanvasElement | null {
   if (typeof document === 'undefined') return null
-  const hit = flashGlowCache.get(color)
+  const key = hot ? color : `${color}|cool`
+  const hit = flashGlowCache.get(key)
   if (hit) return hit
   if (flashGlowCache.size >= FLASH_GLOW_MAX) {
     const oldest = flashGlowCache.keys().next().value
@@ -185,16 +204,20 @@ function flashGlowSprite(color: string): HTMLCanvasElement | null {
       flashGlowCache.delete(oldest)
     }
   }
-  const c = gameLedger.acquire(`fx:flash:${color}`, 64, 64, 'fx', true) as unknown as HTMLCanvasElement
+  const c = gameLedger.acquire(`fx:flash:${key}`, 64, 64, 'fx', true) as unknown as HTMLCanvasElement
   const g = c.getContext('2d')
   if (!g) return null
   const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
-  grad.addColorStop(0, rgba('#ffffff', 0.95))
-  grad.addColorStop(0.35, rgba(color, 0.55))
+  /* A HOT sprite has a white core; a COOL one is pure colour. The lobe of a hit
+   * must be the COLOUR OF THE LIGHT IT HAPPENS IN — if every lobe carried its own
+   * white core, every hit would read white no matter where it landed, which is
+   * exactly the "circle appears" problem. */
+  grad.addColorStop(0, hot ? rgba('#ffffff', 0.95) : rgba(color, 0.9))
+  grad.addColorStop(hot ? 0.35 : 0.22, rgba(color, hot ? 0.55 : 0.42))
   grad.addColorStop(1, rgba(color, 0))
   g.fillStyle = grad
   g.fillRect(0, 0, 64, 64)
-  flashGlowCache.set(color, c)
+  flashGlowCache.set(key, c)
   return c
 }
 
@@ -226,6 +249,16 @@ export class FX {
   private smFree: ShadowSmear[] = []
   /** point impact flashes (bloom + lens cross) */
   private flashes: Flash[] = []
+  /** WHAT LIGHT IS HERE? Wired once by the game to the background's light field
+   *  (world/lightfield.ts). A hit near the stairwell blooms warm, a hit near the
+   *  failing tube blooms cool, a hit in the dark stays the blade's own colour —
+   *  which is the difference between an effect and a light. Null in tests and in
+   *  any headless render, where it degrades to the unlit colour. */
+  private lightSampler: ((x: number, y: number) => { color: string; k: number } | null) | null = null
+
+  setLightSampler(fn: ((x: number, y: number) => { color: string; k: number } | null) | null): void {
+    this.lightSampler = fn
+  }
   private flFree: Flash[] = []
 
   /** chromatic aberration intensity (0..1) — edge lens strain on dashes
@@ -454,7 +487,7 @@ export class FX {
 
   /** impact flash + directional sparks + micro ring */
   impact(x: number, y: number, dir: number, heavy: boolean, color: string, accent: string): void {
-    this.pointFlash(x, y, color, heavy)
+    this.pointFlash(x, y, color, heavy, dir)
     this.sparks(x, y, dir, heavy ? 0.9 : 0.6, heavy ? 16 : 9, color, heavy ? 480 : 340, heavy ? 0.55 : 0.35)
     this.sparks(x, y, dir, 0.4, heavy ? 6 : 3, '#ffffff', heavy ? 620 : 420, 0.2)
     const r = this.nextRing()
@@ -465,7 +498,15 @@ export class FX {
       r.age = 0; r.life = heavy ? 0.3 : 0.2
       r.color = heavy ? color : accent
       r.width = heavy ? 5 : 3
-      r.squash = 1
+      // Squashed along the swing, and squashed more the heavier the hit: a
+      // heavy connecting blow throws a flat, fast wave, a light one a rounder
+      // blip.
+      r.squash = heavy ? 0.62 : 0.78
+      r.axis = dir
+      // The wave in the air is lit BY THE ROOM: inside the stairwell's spill the
+      // ring is warm, out in the dark it is the blade's own colour.
+      const ls = this.lightSampler ? this.lightSampler(x, y) : null
+      r.litColor = ls && ls.k > LIT_TAKEOVER ? ls.color : ''
     }
     if (heavy) {
       this.burst(x, y, 8, accent, 200, 0.4, 'shard')
@@ -484,16 +525,24 @@ export class FX {
   }
 
   /** pooled point bloom + lens cross at the strike point (drawn in drawAdditive) */
-  private pointFlash(x: number, y: number, color: string, heavy: boolean): void {
+  private pointFlash(x: number, y: number, color: string, heavy: boolean, axis: number): void {
     if (this.flashes.length > 6) return
     const f = this.flFree.pop() ?? {
       active: false, x: 0, y: 0, age: 0, life: 0.16, color: '#fff', heavy: false,
+      axis: 0, lit: 0, litColor: '',
     }
     f.active = true
     f.x = x; f.y = y
     f.age = 0; f.life = heavy ? 0.18 : 0.13
     f.color = color
     f.heavy = heavy
+    f.axis = axis
+    // ASK THE FIELD. A flash that ignores the place it happens in is the reason
+    // hit feedback read as "a circle appears": the colour was always the
+    // weapon's, even when the strike landed inside a lit doorway.
+    const s = this.lightSampler ? this.lightSampler(x, y) : null
+    f.lit = s ? Math.max(0, Math.min(1, s.k)) : 0
+    f.litColor = s && s.k > LIT_TAKEOVER ? s.color : ''
     this.flashes.push(f)
   }
 
@@ -559,6 +608,7 @@ export class FX {
       r.color = accent
       r.width = 4
       r.squash = 1
+      r.axis = 0
     }
   }
 
@@ -567,7 +617,7 @@ export class FX {
   private nextRing(): Ring | null {
     let r = this.rFree.pop()
     if (!r) {
-      r = { active: false, x: 0, y: 0, r0: 0, r1: 0, age: 0, life: 1, color: '#fff', width: 3, squash: 1 }
+      r = { active: false, x: 0, y: 0, r0: 0, r1: 0, age: 0, life: 1, color: '#fff', width: 3, squash: 1, axis: 0 }
     }
     // POOL LAW (M02): recycled rings rejoin the live set (see nextParticle).
     r.active = true
@@ -1134,30 +1184,71 @@ export class FX {
       if (!f.active) continue
       const k = 1 - f.age / f.life
       const r = (f.heavy ? 46 : 26) * (0.5 + 0.5 * k)
-      const spr = flashGlowSprite(f.color)
-      if (spr) {
-        ctx.globalAlpha = k
-        ctx.drawImage(spr, f.x - r, f.y - r, r * 2, r * 2)
-        ctx.globalAlpha = 1
-      } else {
-        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r)
-        g.addColorStop(0, rgba('#ffffff', 0.95 * k))
-        g.addColorStop(0.35, rgba(f.color, 0.55 * k))
-        g.addColorStop(1, rgba(f.color, 0))
-        ctx.fillStyle = g
-        ctx.beginPath()
-        ctx.arc(f.x, f.y, r, 0, TAU)
-        ctx.fill()
+      /* A HIT IS A LIGHT, NOT A STICKER.
+       *
+       * The old bloom was one circular blit at the impact point, identical in
+       * every situation, which reads exactly as what it is: a circle appearing.
+       * Three things make it read as light:
+       *
+       *   1. DIRECTION. Light leaves the blade along the strike axis. The bloom
+       *      is therefore an ELLIPSE stretched along `axis` (1.75 : 0.72) — a
+       *      forward lobe into the target, a short tail back toward the sword.
+       *   2. COLOUR FROM THE PLACE. Inside a practical it takes that light's
+       *      colour (`lit`), because the hit is happening IN that light.
+       *   3. A HOT CORE. A small round sprite at 0.5 r on top of the lobe: real
+       *      light has a core much harder than its falloff, and without one an
+       *      elongated blob just looks like a smear.
+       *
+       * Still two cached blits, no gradient, no allocation. */
+      // 0.35, not 0.15: the CITY BOUNCE is always present (~0.2) and if it
+      // qualified, every hit anywhere on the roof would come out the same amber
+      // and the blade's own colour would never be seen. Only standing in an
+      // actual practical changes what colour the hit is.
+      const coreColor = f.litColor || f.color
+      /* LOCAL EXPOSURE. Your eye (and a camera) barely registers a new light in a
+       * place that is already bright — and additively, a full-strength bloom on
+       * top of a lit doorway just clips to white, which is the "grey circle"
+       * everybody reads as an effect. So the flash is DIMMED by the light it
+       * happens in: full strength in the dark, ~55 % inside a practical. */
+      const expo = 1 - 0.45 * Math.min(1, f.lit)
+      const lobe = flashGlowSprite(coreColor, false)
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.translate(f.x, f.y)
+      if (f.axis) ctx.rotate(f.axis)
+      ctx.scale(2.15, 0.5)
+      if (lobe) {
+        ctx.globalAlpha = k * 0.62 * expo
+        ctx.drawImage(lobe, -r, -r, r * 2, r * 2)
       }
-      // lens cross — shrinking horizontal/vertical streaks through the core
+      // The CORE takes the light's colour too when the hit is in one: a hot
+      // filament in a warm room is warm-white, not cyan. Out in the dark the
+      // blade's own colour is the only light there is, so it keeps it.
+      const core = flashGlowSprite(f.litColor || f.color)
+      if (core) {
+        ctx.globalAlpha = k * expo
+        const cr = r * 0.38
+        // undo the scale so the core stays round in world space
+        ctx.scale(1 / 2.15, 1 / 0.5)
+        ctx.drawImage(core, -cr, -cr, cr * 2, cr * 2)
+      }
+      ctx.restore()
+      ctx.globalAlpha = 1
+      ctx.globalCompositeOperation = 'source-over'
+      // LENS CROSS — along the strike axis, not screen-horizontal: a flare
+      // through a lens is perpendicular to the camera's, and this one belongs to
+      // the hit, so it follows the swing.
       const s = (f.heavy ? 30 : 18) * k * k
-      ctx.strokeStyle = rgba('#ffffff', 0.5 * k)
+      const ca = f.axis || 0
+      const cx = Math.cos(ca) * s
+      const cy = Math.sin(ca) * s
+      ctx.strokeStyle = rgba('#ffffff', 0.45 * k)
       ctx.lineWidth = 1.4
       ctx.beginPath()
-      ctx.moveTo(f.x - s, f.y)
-      ctx.lineTo(f.x + s, f.y)
-      ctx.moveTo(f.x, f.y - s * 0.6)
-      ctx.lineTo(f.x, f.y + s * 0.6)
+      ctx.moveTo(f.x - cx, f.y - cy)
+      ctx.lineTo(f.x + cx, f.y + cy)
+      ctx.moveTo(f.x + cy * 0.6, f.y - cx * 0.6)
+      ctx.lineTo(f.x - cy * 0.6, f.y + cx * 0.6)
       ctx.stroke()
     }
 
@@ -1248,10 +1339,20 @@ export class FX {
       if (!r.active) continue
       const k = 1 - r.age / r.life
       const rr = r.r0 + (r.r1 - r.r0) * (1 - k * k)
-      ctx.strokeStyle = rgba(r.color, k * 0.9)
+      // Two passes of the same ellipse: a wide faint one (the wave in the air)
+      // and a thin bright one (its leading edge). One stroke alone reads as a
+      // drawn circle; two read as a shockwave.
+      ctx.strokeStyle = rgba(r.litColor || r.color, k * 0.12)
+      ctx.lineWidth = (r.width * k + 0.5) * 2
+      ctx.beginPath()
+      ctx.ellipse(r.x, r.y, rr, rr * r.squash, r.axis || 0, 0, TAU)
+      ctx.stroke()
+      // Inside a practical the whole wave is that light's colour: a white ring
+      // in a warm doorway reads as a UI circle, which is exactly the complaint.
+      ctx.strokeStyle = rgba(r.litColor || r.color, k * 0.6)
       ctx.lineWidth = r.width * k + 0.5
       ctx.beginPath()
-      ctx.ellipse(r.x, r.y, rr, rr * r.squash, 0, 0, TAU)
+      ctx.ellipse(r.x, r.y, rr, rr * r.squash, r.axis || 0, 0, TAU)
       ctx.stroke()
       ctx.strokeStyle = rgba('#ffffff', k * 0.5)
       ctx.lineWidth = 1.2

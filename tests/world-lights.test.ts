@@ -16,9 +16,10 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 import {
-  PRACTICAL_DOOR_X, PRACTICAL_LAMP_X, LIGHT_INK, falloff, liveGain,
+  PRACTICAL_DOOR_X, PRACTICAL_LAMP_X, LIGHT_HEX, LIGHT_INK, falloff, liveGain,
   makeStageLights, newSample, sampleLight, type PointLight,
 } from '../src/game/world/lightfield'
+import { FX } from '../src/game/fx/fx'
 import { animsForBuilding, drawBuildingAnims, h01, type BuildingAnim } from '../src/game/world/buildings'
 import { drawRoofProps, makeRoofProps } from '../src/game/world/roofprops'
 import { featuresFor, type Tier } from '../src/game/render/graphics'
@@ -103,7 +104,8 @@ test('light field: a failing source is a pure function of time and only ever DIM
 
 test('light field: the stage has exactly two authored practicals, warm and cool', () => {
   const lights = makeStageLights({ light: { warm: 1, cool: 1, flicker: 0.4 } }, 1234)
-  assert.equal(lights.length, 2)
+  // two authored practicals + the city bounce (which is not a practical)
+  assert.equal(lights.filter((l) => l.kind !== 'city').length, 2)
   const warm = lights.find((l) => l.kind === 'warm')
   const cool = lights.find((l) => l.kind === 'cool')
   assert.ok(warm && cool, 'the field lost a practical')
@@ -324,4 +326,106 @@ test('wiring: the field is sampled, not just tabulated', () => {
 
   const r = readFileSync('src/game/render/renderer.ts', 'utf8')
   assert.match(r, /bg\.drawFigureWash\(ctx, e\.x, e\.y/, 'enemies stand in the light and stay unlit')
+})
+
+
+/* ---------------------------------------------- the city bounce (run 4b) -- */
+
+test('city bounce: the roof is lit by the city even with no practicals in reach', () => {
+  const lights = makeStageLights(null, 4242)
+  const city = lights.filter((l) => l.kind === 'city')
+  assert.equal(city.length, 3, 'the roof has no city light')
+  const s = sampleLight(lights, 1276, 0, 0, newSample())
+  assert.ok(s.city > 0.08, `the middle of the deck has no city light (${s.city.toFixed(3)})`)
+  // ...and it can never out-shout a practical you are standing in.
+  const atDoor = sampleLight(lights, PRACTICAL_DOOR_X, 0, 0, newSample())
+  assert.ok(atDoor.warm > s.city * 3, 'the city bounce is competing with the stairwell')
+})
+
+test('city bounce: it is dim, wide and per-run', () => {
+  const a = makeStageLights(null, 11).filter((l) => l.kind === 'city')
+  const b = makeStageLights(null, 11).filter((l) => l.kind === 'city')
+  const c = makeStageLights(null, 12).filter((l) => l.kind === 'city')
+  for (const l of a) {
+    assert.ok(l.gain < 0.3, `a city source is a lamp, not a bounce (gain ${l.gain})`)
+    assert.ok(l.radius >= 420, `a city source is not wide enough to be ambient (${l.radius})`)
+    // and it is BELOW the deck: light pollution comes up over the parapet
+    assert.ok(l.y > 0, 'the city light is not coming from below the roof')
+  }
+  assert.deepEqual(a.map((l) => Math.round(l.x)), b.map((l) => Math.round(l.x)))
+  assert.notDeepEqual(a.map((l) => Math.round(l.x)), c.map((l) => Math.round(l.x)), 'the run seed does not move the city light')
+})
+
+test('city bounce: it never casts a crisp second shadow', () => {
+  const bg = readFileSync('src/game/world/background.ts', 'utf8')
+  assert.match(bg, /best\.kind === 'city' \? 0\.45 : 1/, 'a city bounce casts a hard shadow, which is a lie about where the light is')
+})
+
+/* --------------------------------------------- colour formats (the bug) -- */
+
+test('colour: every light kind has a HEX tint, because rgba() parses hex', () => {
+  // The first version of the hit light passed "255,168,92" to `rgba()` (which
+  // takes '#rrggbb'), silently producing rgb(37,81,146) — a BLUE bloom in a warm
+  // doorway. This test is the guard against that class of bug.
+  for (const [kind, hex] of Object.entries(LIGHT_HEX)) {
+    assert.match(hex, /^#[0-9a-f]{6}$/, `${kind} is not a hex colour: ${hex}`)
+  }
+  assert.equal(new Set(Object.values(LIGHT_HEX)).size, Object.keys(LIGHT_HEX).length)
+})
+
+/* ---------------------------------------------------- the hit light (FX) -- */
+
+test('hit light: a strike inside a practical blooms that light, one outside keeps the blade', () => {
+  const fx = new FX()
+  fx.setLightSampler((x) => (x > 1400 ? { color: '#ffa85c', k: 0.9 } : { color: '#ffba78', k: 0.2 }))
+  fx.impact(1500, -60, 0, true, '#eafcff', '#9fe8ff')
+  fx.impact(1200, -60, 0, true, '#eafcff', '#9fe8ff')
+  const flashes = (fx as unknown as { flashes: { lit: number; litColor: string }[] }).flashes
+  assert.equal(flashes.length, 2)
+  assert.ok(flashes[0].lit > 0.5, 'a hit in the door is not lit by the door')
+  assert.equal(flashes[0].litColor, '#ffa85c')
+  // The city bounce alone (k ≈ 0.2) must NOT recolour the hit, or every strike
+  // on the roof would come out the same amber.
+  assert.ok(flashes[1].lit <= 0.35)
+  assert.equal(flashes[1].litColor, '')
+})
+
+test('hit light: the wave is an ellipse along the swing, never a circle', () => {
+  const fx = new FX()
+  fx.impact(500, -60, 0.8, true, '#eafcff', '#9fe8ff')
+  const rings = (fx as unknown as { rings: { squash: number; axis: number }[] }).rings
+  assert.equal(rings.length, 1)
+  assert.ok(rings[0].squash < 0.8 && rings[0].squash > 0, `the shockwave is a circle (squash ${rings[0].squash})`)
+  assert.equal(rings[0].axis, 0.8, 'the shockwave ignores the strike direction')
+})
+
+test('hit light: the game wires the field into FX, once per background', () => {
+  const g = readFileSync('src/game/game.ts', 'utf8')
+  assert.match(g, /fx\.setLightSampler\(this\.hitLight\)/, 'the hit light is never wired')
+  assert.match(g, /this\.wireHitLight\(\)/, 'the wiring is never called')
+  assert.match(g, /LIGHT_HEX\[s\.best\.kind\]/, 'the hit light is not taken from the field')
+  const f = readFileSync('src/game/fx/fx.ts', 'utf8')
+  assert.match(f, /private lightSampler/, 'FX has no sampler')
+  assert.match(f, /ctx\.scale\(2\.15, 0\.5\)/, 'the bloom is not thrown along the strike')
+  assert.match(f, /const expo = 1 - 0\.45 \* Math\.min\(1, f\.lit\)/, 'no local exposure: the bloom clips to white in a lit doorway')
+})
+
+/* ------------------------------------------- the inn + the roof (run 4b) -- */
+
+test('the inn is baked as a lit room, not a glowing rectangle', () => {
+  const bg = readFileSync('src/game/world/background.ts', 'utf8')
+  assert.match(bg, /THE FLOOR BOUNCE/, 'the doorway has no floor bounce — it is a flat panel')
+  assert.match(bg, /THE OPEN LEAF/, 'the doorway has no open leaf')
+  assert.match(bg, /THE JAMBS/, 'the doorway has no jambs')
+  assert.match(bg, /THE CEILING SHADOW/, 'the room has no ceiling falloff')
+})
+
+test('the roof sits in the city glow, gated by the tier', () => {
+  const bg = readFileSync('src/game/world/background.ts', 'utf8')
+  assert.match(bg, /function buildCityGlow/, 'no city glow plate')
+  assert.match(bg, /hasPixels\(this\.cityGlow\) && RF\.lightPools > 0/, 'the city glow is not tier-gated')
+  assert.match(bg, /drawImage\(glow, gx, -glow\.height \+ 2\)/, 'the glow is not anchored to the deck line')
+  const rp = readFileSync('src/game/world/roofprops.ts', 'utf8')
+  assert.match(rp, /const CITY_EDGE/, 'roof props are not lit from below by the city')
+  assert.match(rp, /CITY_UNDER/, 'no city bounce around the prop bases')
 })
