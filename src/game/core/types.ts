@@ -17,7 +17,8 @@ export type Facing = 1 | -1
 export type GamePhase = 'attract' | 'playing' | 'paused' | 'gameover'
 
 export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra'
-export type LevelId = 'rooftop' | 'zen-night'
+/** NEON ROOFTOP is the only stage left — the moonlit zen scene is gone. */
+export type LevelId = 'rooftop'
 
 export interface RunStats {
   score: number
@@ -42,8 +43,10 @@ export interface GameSettings {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  quality: 'high',
-  level: 'zen-night',
+  // 'low' is the 120 fps default: the storm's rain budget and the fx
+  // particle level key off it, and every graphics engine is gone anyway.
+  quality: 'low',
+  level: 'rooftop',
   shake: true,
   shakeIntensity: 1,
   sfxVolume: 0.8,
@@ -83,6 +86,9 @@ export interface WorldRef {
   combo?: { hits: number }
   /** Resolve contact once; callers use the outcome rather than assuming a hit. */
   hitEnemy(enemyId: number, blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo): import('../combat/hit-resolution').HitResolution
+  /** OPTIONAL: the same blade sweep is also offered to destructible stage
+   *  props. Optional so lightweight test worlds need no prop system. */
+  strikeProps?: (blade: { bx: number; by: number; tx: number; ty: number }, atk: import('../combat/attacks').AttackRuntimeInfo, px: number) => void
   /** Enemy attack / projectile is about to damage the player. Returns true if parried. */
   enemyStrikePlayer(dmg: number, dir: number, heavy: boolean, sourceX: number): boolean
   spawnProjectile(p: import('../entities/projectiles').ProjectileSpawn): void

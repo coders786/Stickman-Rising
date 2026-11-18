@@ -29,7 +29,6 @@ import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch 
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -46,6 +45,7 @@ import { drawSword, SWORDS, SwordDef, SwordId, upgradedSword } from '../combat/s
 import { Trail } from '../fx/fx'
 import { WorldRef } from '../core/types'
 import { clamp, clamp01, damp, rand, rgba, segHitsCircle } from '../core/utils'
+import { rgbaConst } from '../render/color'
 
 /** The reference finish: upright chest, extended trailing leg and a bent
  * forward support leg. Keep attack arms authored by the attack itself. */
@@ -3032,6 +3032,9 @@ export class Player {
           ty: this.y - cy,
         }
       }
+      // Destructible stage props receive the EXACT same sweep volume as
+      // bodies: visual contact == gameplay contact, for props too.
+      w.strikeProps?.(curSeg, info, this.x)
       for (const e of w.enemies) {
         if (e.dead || (e.spawning && e.y < -90)) continue
         const last = a.hitMap.get(e.id)
@@ -4778,46 +4781,12 @@ export class Player {
   /* render                                                               */
   /* ------------------------------------------------------------------ */
 
-  /* ---- LIGHTING ENGINE: projected-skeleton cast shadow ----
-   * Every solved joint (and the blade) projects along the key light onto
-   * the ground plane — the shadow deforms with the pose, stretches when
-   * the storm strobes, detaches + fades when airborne, and carries tight
-   * contact-AO cores under the legik-planted feet. */
-  private shChains: number[][] = [[], [], [], [], []]
-  private shHead = { x: 0, y: 0, r: 0 }
-  private shBlade = { x0: 0, y0: 0, x1: 0, y1: 0 }
-  private shFig: ShadowFigure = { chains: this.shChains, head: this.shHead, blade: this.shBlade }
-  /* strobe rim state — set by the renderer each frame from the key light */
-  strobeLight: KeyLight | null = null
+  /* strobe rim strength — the lighting engine that drove it is gone in the
+   * 120 fps strip; the field stays so rim tint code can reference it. */
   strobeK = 0
   /** contact-AO anchors from the plant-snap pass (non-gait stances:
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
-
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
-    if (this.state === 'dead' && this.deadT > 2.6) return
-    // Planted-foot contact anchors for the ground-plane AO pads
-    const contacts = this.shChains[0]
-    contacts.length = 0
-    if (this.grounded) {
-      if (this.gaitW > 0.5) {
-        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
-        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-      }
-      for (const c of this.snapContacts) contacts.push(c)
-    }
-    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
-    // pose cast along the resultant local light vector onto the deck
-    drawProjectedShadow(ctx, light, (c, col) => {
-      c.save()
-      c.translate(this.x, this.hipY)
-      c.scale(this.face * SCALE, SCALE)
-      silhouette(c, this.geom, col, { flipX: this.face, unit: SCALE })
-      c.restore()
-    }, {
-      alpha: 0.92 * alphaScale, height: this.y, rootX: this.x, lightBoost: light.i, contacts, scale: 1,
-    })
-  }
 
   private updateScarf(dt: number, time: number): void {
     const collarX = (this.geom.chest.x + this.geom.neckTop.x) * 0.5
@@ -4881,7 +4850,7 @@ export class Player {
     const needle=(px:number,py:number,len:number,w:number,alpha:number)=>{
       const gx=px-this.face*len
       const ng=ctx.createLinearGradient(gx,py,px,py)
-      ng.addColorStop(0,'rgba(192,205,211,0)');ng.addColorStop(1,`rgba(212,224,230,${alpha})`)
+      ng.addColorStop(0,'rgba(192,205,211,0)');ng.addColorStop(1,rgbaConst('212,224,230', alpha))
       ctx.strokeStyle=ng;ctx.lineWidth=w
       ctx.beginPath();ctx.moveTo(gx,py);ctx.lineTo(px-this.face*2,py);ctx.stroke()
     }
@@ -4923,7 +4892,7 @@ export class Player {
         // mid-spin blind spot: a wide 180° circular motion-blur arc wraps
         // behind the torso (the sweep the body just traveled)
         for(let i=0;i<3;i++){
-          ctx.strokeStyle=`rgba(192,205,211,${(.09-i*.022)*life})`
+          ctx.strokeStyle=rgbaConst('192,205,211', (.09-i*.022)*life)
           ctx.lineWidth=7-i*2.2
           ctx.beginPath();ctx.arc(this.x,this.hipY-28,46+i*9,Math.PI*.55,Math.PI*1.62,false);ctx.stroke()
         }
@@ -4932,39 +4901,39 @@ export class Player {
         // along the arc the arm actually swung through
         const ang=Math.atan2(ty-hy,tx-hx)
         for(let i=0;i<3;i++){
-          ctx.strokeStyle=`rgba(200,212,218,${(.17-i*.032)*life})`
+          ctx.strokeStyle=rgbaConst('200,212,218', (.17-i*.032)*life)
           ctx.lineWidth=8-i*2.4
           ctx.beginPath();ctx.arc(hx,hy,L-i*7,ang-.85,ang-.16,false);ctx.stroke()
         }
       }
       // fading horizontal wisps around the knuckles
-      for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(206,218,224,${(.13-i*.032)*life})`;ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(tx-this.face*(8+i*8),ty+(i-1)*5);ctx.lineTo(tx-this.face*(2+i*8),ty+(i-1)*5);ctx.stroke()}
+      for(let i=0;i<3;i++){ctx.strokeStyle=rgbaConst('206,218,224', (.13-i*.032)*life);ctx.lineWidth=1.7;ctx.beginPath();ctx.moveTo(tx-this.face*(8+i*8),ty+(i-1)*5);ctx.lineTo(tx-this.face*(2+i*8),ty+(i-1)*5);ctx.stroke()}
     } else if(style==='drop'){
       const both=[hand('R'),hand('L')]
       if(a.animT<hit.start){
         // wind-up/apex: short vertical up-streaks trail below both forearms
-        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(192,205,211,${(.13-i*.03)*life})`;ctx.lineWidth=2.4+i*.8;ctx.beginPath();ctx.moveTo(p.x+(i-1)*8-5,p.y+6);ctx.lineTo(p.x+(i-1)*8+3,p.y+30+i*10);ctx.stroke()}
+        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=rgbaConst('192,205,211', (.13-i*.03)*life);ctx.lineWidth=2.4+i*.8;ctx.beginPath();ctx.moveTo(p.x+(i-1)*8-5,p.y+6);ctx.lineTo(p.x+(i-1)*8+3,p.y+30+i*10);ctx.stroke()}
       } else if(a.animT<=hit.end){
         // slam: one long dramatic descent streak covers the whole fall path
         for(const p of both){
           const dg=ctx.createLinearGradient(p.x,p.y-132,p.x,p.y)
-          dg.addColorStop(0,'rgba(206,218,224,0)');dg.addColorStop(1,`rgba(216,228,234,${.27*life})`)
+          dg.addColorStop(0,'rgba(206,218,224,0)');dg.addColorStop(1,rgbaConst('216,228,234', .27*life))
           ctx.strokeStyle=dg;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(p.x,p.y-126);ctx.lineTo(p.x,p.y-4);ctx.stroke()
-          for(let i=-1;i<=1;i+=2){ctx.strokeStyle=`rgba(192,205,211,${.12*life})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x+i*13,p.y-114);ctx.lineTo(p.x+i*13,p.y-2);ctx.stroke()}
+          for(let i=-1;i<=1;i+=2){ctx.strokeStyle=rgbaConst('192,205,211', .12*life);ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x+i*13,p.y-114);ctx.lineTo(p.x+i*13,p.y-2);ctx.stroke()}
         }
       } else {
         // recovery: fading downward wisps at floor level
-        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=`rgba(192,205,211,${(.11-i*.026)*life})`;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(p.x+(i-1)*12,p.y-27-i*7);ctx.lineTo(p.x+(i-1)*12+this.face*3,p.y-2);ctx.stroke()}
+        for(const p of both)for(let i=0;i<3;i++){ctx.strokeStyle=rgbaConst('192,205,211', (.11-i*.026)*life);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(p.x+(i-1)*12,p.y-27-i*7);ctx.lineTo(p.x+(i-1)*12+this.face*3,p.y-2);ctx.stroke()}
       }
     } else {
       const mul=style==='solid'?1.5:1
       // Broad sumi-e wake, darkest at the live limb tip and transparent at origin.
       const g=ctx.createLinearGradient(sx,sy,tx,ty)
-      g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,`rgba(8,12,16,${.09*life})`);g.addColorStop(1,`rgba(206,218,224,${(.22+.05*mul)*life})`)
+      g.addColorStop(0,'rgba(4,7,10,0)');g.addColorStop(.55,rgbaConst('8,12,16', .09*life));g.addColorStop(1,rgbaConst('206,218,224', (.22+.05*mul)*life))
       ctx.strokeStyle=g;ctx.lineWidth=(arm?10:12)*mul;ctx.beginPath();ctx.moveTo(sx,sy);ctx.quadraticCurveTo(hx+nx*24,hy+ny*24,tx-this.face*5,ty);ctx.stroke()
       // Separated brush filaments make speed readable without a neon ribbon —
       // three streaks of varying length, exactly like the reference sheet.
-      for(let i=-1;i<=1;i++){ctx.strokeStyle=`rgba(192,205,211,${(.15-Math.abs(i)*.026)*life*mul})`;ctx.lineWidth=1.5+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
+      for(let i=-1;i<=1;i++){ctx.strokeStyle=rgbaConst('192,205,211', (.15-Math.abs(i)*.026)*life*mul);ctx.lineWidth=1.5+(.5-Math.abs(i)*.15);ctx.beginPath();ctx.moveTo(sx-dx*(.04*i),sy+nx*i*7);ctx.quadraticCurveTo(hx+nx*(22+i*9),hy+ny*(22+i*9),tx-dx*(.08+.035*i)+nx*i*4,ty-dy*(.08+.035*i)+ny*i*4);ctx.stroke()}
     }
     ctx.restore()
   }

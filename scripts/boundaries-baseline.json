@@ -1,0 +1,7 @@
+{
+  "src/game/audio/audio.ts|determinism": 9,
+  "src/game/core/camera.ts|determinism": 2,
+  "src/game/entities/enemy.ts|determinism": 4,
+  "src/game/entities/player.ts|determinism": 4,
+  "src/game/world/props.ts|determinism": 1
+}

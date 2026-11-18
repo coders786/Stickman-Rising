@@ -5,17 +5,20 @@ import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolut
 
 import { Camera } from './core/camera'
 import { Input } from './core/input'
+import { advanceSimClock } from './core/sim-clock'
 import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, LevelId, RunStats, WorldRef } from './core/types'
 import { clamp, clamp01, damp, fmt, rand } from './core/utils'
 import { AudioEngine } from './audio/audio'
 import { FX } from './fx/fx'
 import { CyberBackground, type BackgroundRenderer } from './world/background'
-import { ZenNightBackground } from './world/zen-night'
+import { PropField, type PropHooks } from './world/props'
+import { MOOD_PALETTES, moodIndexForSeed } from './world/mood'
+import { cycleParticleLevel, getParticleLevel } from './fx/particles1d'
 import {StormEngine} from './world/storm'
 import { WaveDirector } from './world/waves'
 import { Enemy, EnemyKind, PLAYER_X_REF } from './entities/enemy'
 import { Player } from './entities/player'
-import { PLAYER_POS, ProjectilePool } from './entities/projectiles'
+import { PLAYER_BODY, PLAYER_POS, ProjectilePool } from './entities/projectiles'
 import { ATTACKS, AttackRuntimeInfo } from './combat/attacks'
 import { SWORDS, SwordId, SWORD_ORDER, swordTier, upgradedSword } from './combat/swords'
 import { crossedExecutionCuts, executionRoot, executionTimeline } from './combat/execution'
@@ -24,6 +27,12 @@ import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
+import { QualityLadder, type Tier } from './render/quality'
+import { featuresFor } from './render/graphics'
+import { LIGHT_HEX } from './world/lightfield'
+import { FAR_DIVISOR, HordeGrid, planTicks, type TickPlan } from './combat/horde'
+import { FrameLog } from './render/frameLog'
+import type { EnvironmentProfile } from './world/profile'
 import { Inspect, InspectMode } from './debug/inspect'
 
 const ARENA_MIN = -60
@@ -136,6 +145,9 @@ export class Game {
   // frame advances smoothly at any refresh rate. Physics and sprite frames
   // are untouched — only the drawn position/time are sampled continuously.
   private simAccum = 0
+  /** seconds of gameplay time explicitly dropped under overload (M03
+   *  telemetry — requested vs simulated time is never silently mixed) */
+  overloadDropped = 0
   private prevStepTime = 0
   private renderTime = 0
   private interpInstalled = false
@@ -148,6 +160,14 @@ export class Game {
   settings: GameSettings = { ...DEFAULT_SETTINGS }
   unlocked: SwordId[] = ['katana']
   private lifetimeKills = 0
+  /** HORDE SCHEDULER (combat/horde.ts): a fixed-step counter and one reused
+   *  plan. Far enemies tick 1-in-FAR_DIVISOR with dt×FAR_DIVISOR, so their
+   *  average behaviour is unchanged and the horde's CPU is not linear in its
+   *  off-screen population. */
+  private hordeTick = 0
+  private hordePlan: TickPlan = { near: [], far: [], saved: 0 }
+  private hordeGrid = new HordeGrid(220)
+  private hordeQuery: number[] = []
   private loadout: SwordId[] = ['katana']
 
   input = new Input()
@@ -155,18 +175,43 @@ export class Game {
   cam = new Camera()
   fx = new FX()
   readonly storm=new StormEngine('high')
-  bg:BackgroundRenderer = DEFAULT_SETTINGS.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground('high',this.storm)
+  // NEON ROOFTOP is the only stage left — the moonlit zen scene and every
+  // shader/engine behind it are gone in the 120 fps strip.
+  bg:BackgroundRenderer = new CyberBackground('high',this.storm)
+  /** THE HIT LIGHT — one closure, wired once. `fx.impact()` asks this at the
+   *  strike point, so a blade that lands inside the stairwell's spill blooms
+   *  warm and one that lands under the failing tube blooms cool. Without it a
+   *  hit flash is a white circle that could be happening anywhere. */
+  private hitLight = (x: number, y: number): { color: string; k: number } | null => {
+    const s = this.bg.lightAt?.(x, y)
+    if (!s || !s.best) return null
+    const k = Math.min(1, Math.max(s.warm, s.cool, s.neon))
+    if (k <= 0.12) return null
+    // HEX, not 'r,g,b': `rgba()` in core/utils parses '#rrggbb' and silently
+    // produces a garbage colour from a triple (that bug is why the first version
+    // of this bloom came out blue in a warm doorway).
+    return { color: LIGHT_HEX[s.best.kind], k }
+  }
   /** which level the current bg was built for — applySettings rebuilds on
-   *  mismatch, so the saved/default stage actually loads at startup (the
-   *  old levelChanged check compared settings-to-settings and silently
-   *  kept CyberBackground for a zen-night save) */
+   *  mismatch, so the saved/default stage actually loads at startup */
   private bgLevel:LevelId = DEFAULT_SETTINGS.level
   /* ambient storm audio: a soft distant crackle each time the sky strikes */
+  private wireHitLight(): void {
+    this.fx.setLightSampler(this.hitLight)
+  }
+
   private thunderCb = (): void => {
     this.audio.play('lightning', { volume: 0.22 })
   }
   hud = new HUD()
   private renderer = new Renderer()
+  /** p95-based tier controller (render/quality.ts). The DPR governor below
+   *  still owns resolution; this owns the DRAW BUDGET, because an average FPS
+   *  hides exactly the variance that makes a phone feel bad. */
+  private ladder = new QualityLadder(DEFAULT_SETTINGS.quality as Tier)
+  /** Rolling frame statistics for the debug overlay and the bug-bounty report.
+   *  Ring-buffered: sampling allocates nothing. */
+  readonly frameLog = new FrameLog()
   player = new Player()
   /** animation inspection lab (skeleton viz / contact sheets / QA) */
   inspect!: Inspect
@@ -175,6 +220,8 @@ export class Game {
   qaMode = false
   enemies: Enemy[] = []
   projectiles = new ProjectilePool()
+  /** procedurally placed destructible props — a fresh lane every run */
+  props = new PropField()
   waves: WaveDirector
   combo = new ComboTracker()
 
@@ -190,9 +237,11 @@ export class Game {
 
   /* ---- PERFORMANCE GOVERNOR (the "hangs when enemies appear" fix) ----
    * Frame cost must NOT grow when the frame rate falls. Three defenses:
-   *   1. substeps are CAPPED (3 × 1/60) — a slow frame simulates at most
-   *      50ms of world, never 5× full-cost steps (the old death spiral:
-   *      raster slows → more substeps → slower → more substeps → freeze)
+   *   1. substeps are CAPPED (4 × 1/60 fixed, see core/sim-clock.ts) — a
+   *      slow frame simulates at most ~67ms of world in FIXED steps, and
+   *      excess backlog is dropped explicitly (overloadDropped), never
+   *      run as a variable tick (the old death spiral: raster slows →
+   *      more substeps → slower → more substeps → freeze)
    *   2. visual systems (weather, particles, camera) tick ONCE per frame,
    *      not per substep — rain never integrates at 450Hz
    *   3. render resolution (DPR) auto-scales to the measured frame rate */
@@ -240,6 +289,13 @@ export class Game {
    *  it — otherwise a transient hitch would permanently rewrite the user's
    *  settings. Only user-initiated applySettings calls move this. */
   private qualityCeiling = (['ultra','high','medium','low'] as const).indexOf(DEFAULT_SETTINGS.quality)
+  /** Last run's seed — re-applied if the scene is rebuilt mid-run. */
+  private lastRunSeed = 0
+  /** Wall-clock cost of the run's plate bake (0 = not measured yet). */
+  bakeMs = 0
+  /** Cached frame percentiles for the readout (see the draw path comment). */
+  private snap = new FrameLog(1).snapshot()
+  private snapAt = -1
   private autoQuality = true
 
   stats: RunStats = { score: 0, kills: 0, maxCombo: 0, wave: 0, timeAlive: 0, bestRank: '' }
@@ -253,6 +309,10 @@ export class Game {
   private f9ViewBound: ((e: KeyboardEvent) => void) | null = null
 
   constructor() {
+    // The default background exists before any settings are applied; wire the
+    // hit light to it here as well, so the very first swing in the very first
+    // frame already knows what light it happens in.
+    this.wireHitLight()
     this.waves = new WaveDirector({
       spawnEnemy: (kind, x, scale) => this.spawnEnemy(kind, x, scale),
       onWaveStart: (wave, boss) => this.onWaveStart(wave, boss),
@@ -262,6 +322,9 @@ export class Game {
     this.cam.setArena(ARENA_MIN, ARENA_MAX)
     this.player.reset(1300)
     this.cam.snapTo(1300, -150)
+    this.props.reset(0x51a2c9)
+    this.props.setMood(moodIndexForSeed(0x51a2c9))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(0x51a2c9)].name)
   }
 
   on(cb: (e: GameEvent) => void): () => void {
@@ -277,6 +340,14 @@ export class Game {
   }
 
   private setPhase(p: GamePhase): void {
+    if (p !== this.phase) {
+      // PHASE-BOUNDARY EDGE RESET (intentional, documented): edges or combo
+      // buffers accepted in one phase must never leak into the next run
+      // (e.g. a 'pause' press during game-over firing on the first step of
+      // a new run). Hold states are untouched; this is a deliberate
+      // gesture cancel at a state boundary, not a lost command.
+      this.input.clearEdges()
+    }
     this.phase = p
     this.emit({ type: 'phase', phase: p })
   }
@@ -374,7 +445,9 @@ export class Game {
     const h = parent?.clientHeight ?? window.innerHeight
     this.cssW = Math.max(320, w)
     this.cssH = Math.max(240, h)
-    const cap = this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1
+    // The DPR cap is the tier table's number, not an inline ternary: one source
+    // of truth for "how many pixels does this tier cost" (render/graphics.ts).
+    const cap = featuresFor(this.settings.quality as Tier).dprCap
     this.dpr = Math.min(this.dprTarget, cap)
     const bw = Math.floor(this.cssW * this.dpr)
     const bh = Math.floor(this.cssH * this.dpr)
@@ -400,7 +473,7 @@ export class Game {
     this.govT = 0
     if (this.govCool > 0) return
     const cap = Math.min(
-      this.settings.quality === 'ultra' ? 2 : this.settings.quality === 'high' ? 1.5 : this.settings.quality === 'medium' ? 1.25 : 1,
+      featuresFor(this.settings.quality as Tier).dprCap,
       this.dprCeil,
     )
     // What is this display actually offering? Only trust a sub-60 offer
@@ -410,19 +483,21 @@ export class Game {
     const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 1
     const offer = busy < 0.35 ? Math.min(60, 1 / Math.max(1e-4, this.frameFloor)) : 60
     const scale = offer / 60
-    const order: GameSettings['quality'][] = ['ultra','high', 'medium', 'low']
-    const tier = order.indexOf(this.settings.quality)
+    // THE TIER IS DECIDED BY p95, NOT BY THE AVERAGE. The average is the
+    // metric that hides stutter; a 4 s p95 window with a 12 s dwell is the
+    // only controller here that can neither oscillate nor permanently
+    // downgrade a session because of one GC pause.
+    const stepped = this.ladder.frame(this.frameMs, 0.8)
+    if (stepped) {
+      this.applySettings({ ...this.settings, quality: stepped }, true)
+      this.govCool = 4
+      return
+    }
     if (this.fpsAvg < 44 * scale && this.dprTarget > 0.8) {
       this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
       this.resize()
-    } else if (this.fpsAvg < 36 * scale && this.dprTarget <= 0.81 && tier < order.length - 1) {
-      // Resolution floor reached and still drowning → drop a draw tier.
-      // This is now CHEAP (setQuality, no re-bake) and reversible below.
-      this.applySettings({ ...this.settings, quality: order[tier + 1] }, true)
-      this.lastDropAt = this.wall
-      this.govCool = 4
     } else if (
       this.fpsAvg > 57 * scale
       && this.dprTarget < cap
@@ -434,21 +509,6 @@ export class Game {
       this.lastRaiseAt = this.wall
       this.govCool = 3
       this.resize()
-    } else if (
-      // TIER RECOVERY. Quality used to be a one-way ratchet: one transient
-      // hitch permanently downgraded the session's art. Only climb back at
-      // the resolution ceiling after a long calm spell, and never above the
-      // tier the user actually chose.
-      this.fpsAvg > 57 * scale
-      && this.dprTarget >= cap
-      && tier > this.qualityCeiling
-      && this.wall - this.lastDropAt > 25
-      && this.wall - this.lastRaiseAt > 8
-      && this.enemies.length < 3
-    ) {
-      this.applySettings({ ...this.settings, quality: order[tier - 1] }, true)
-      this.lastRaiseAt = this.wall
-      this.govCool = 6
     }
   }
 
@@ -501,6 +561,9 @@ export class Game {
     const levelChanged = s.level !== this.bgLevel
     if (!fromGovernor) {
       this.qualityCeiling = (['ultra', 'high', 'medium', 'low'] as const).indexOf(s.quality)
+      // The user's pick is the ladder's CEILING: the governor may shed below
+      // it in a heat wave, and may never raise above it.
+      this.ladder.setCeiling(s.quality as Tier)
     }
     this.settings = { ...s }
     this.fx.setQuality?.(s.quality)
@@ -528,8 +591,13 @@ export class Game {
     // — the self-inflicted "hangs when enemies appear" loop.
     if (levelChanged) {
       this.storm.setQuality?.(s.quality)
-      this.bg = s.level==='zen-night' ? new ZenNightBackground(this.storm) : new CyberBackground(s.quality,this.storm)
+      this.bg = new CyberBackground(s.quality,this.storm)
+      this.wireHitLight()
       syncBgQuality(this.bg, s.quality)
+      // A new scene must inherit the RUN, not a fresh mood: without this the
+      // skyline, the moon and the profile resampled mid-session on a level
+      // change (a visible continuity break the player reads as a bug).
+      if (this.lastRunSeed) this.bg.setRunSeed?.(this.lastRunSeed)
       this.bgLevel = s.level
       this.bg.onThunder = this.thunderCb
       this.bg.resize(this.cssW, this.cssH)
@@ -562,6 +630,14 @@ export class Game {
   /* run control                                                          */
   /* ------------------------------------------------------------------ */
 
+  /** Tonights' sky, for the results screen: the run-identity line and the
+   *  seed both come from the baked profile, so the card cannot disagree with
+   *  what the player just looked at for two minutes. */
+  runIdentity(): { label: string; id: string } {
+    const prof = this.bg.getProfile?.()
+    return { label: prof?.label ?? 'CLEAR NIGHT', id: prof?.id ?? '0000' }
+  }
+
   startRun(swordId: SwordId): void {
     this.audio.resume()
     this.audio.startMusic()
@@ -569,6 +645,25 @@ export class Game {
     if (!this.loadout.includes(swordId)) this.setLoadout([swordId])
     this.equipProgressedSword(this.loadout.includes(swordId) ? swordId : this.loadout[0])
     this.player.reset(1300)
+    // ONE run seed drives BOTH the skyline archetypes and the prop lane,
+    // so each run is a visibly different level, not a re-skinned one.
+    const runSeed = (Math.random() * 0xffffffff) >>> 0
+    this.lastRunSeed = runSeed
+    this.bg.setRunSeed?.(runSeed)
+    // BAKE DURING THE CLICK, NOT DURING PLAY. A new seed invalidates every
+    // tile in the city and every plate in the sky; if that bake runs inside the
+    // first drawn frame of the run, the player presses PLAY and the game
+    // freezes. Doing it here costs the same milliseconds, one click earlier,
+    // while the menu is still on screen — and the cost is recorded so a slow
+    // device shows up in the log instead of in a complaint.
+    this.bakeMs = this.bg.warm?.() ?? 0
+    this.props.reset(runSeed)
+    // The prop lane inherits the run's density axes: 2–5 auto-placed props on
+    // a jittered timer, so the rooftop is dressed differently every run.
+    const prof = this.bg.getProfile?.()
+    if (prof) this.props.setRunDensity(prof.props.density, prof.props.timerJitter, prof.props.crateBias)
+    this.props.setMood(moodIndexForSeed(runSeed))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(runSeed)].name)
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
@@ -580,6 +675,7 @@ export class Game {
     this.time = 0
     this.prevStepTime = 0
     this.simAccum = 0
+    this.overloadDropped = 0
     this.timeScale = 1
     this.slowmoT = 0
     this.hitstopT = 0
@@ -614,6 +710,12 @@ export class Game {
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
+    const menuSeed = (Math.random() * 0xffffffff) >>> 0
+    this.props.reset(menuSeed)
+    this.props.setMood(moodIndexForSeed(menuSeed))
+    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(menuSeed)].name)
+    this.lastRunSeed = menuSeed
+    this.bg.setRunSeed?.(menuSeed)
     this.waves.reset()
     this.player.reset(1300)
     this.combo.reset()
@@ -646,22 +748,60 @@ export class Game {
   /* main loop                                                            */
   /* ------------------------------------------------------------------ */
 
+  /** Consecutive frames that threw. A render exception is almost always
+   *  transient (a plate released under the draw, a context lost for a moment),
+   *  and the OLD policy — stop the loop on the first throw — turned a single bad
+   *  blit into a dead session with a black screen, which is a P1 the player
+   *  cannot recover from. The policy now is:
+   *
+   *   · a throw is COUNTED and the loop keeps going;
+   *   · two clean frames in a row reset the count (so a one-off cannot accumulate);
+   *   · only a PERSISTENT failure (120 consecutive ≈ 2 s) stops the game — at that
+   *     point it is not transient and continuing would burn the battery for nothing.
+   *
+   *  This is the "for good" part of the canvas fix: `hasPixels()` stops the known
+   *  cause, and the loop survives any unknown one. */
+  private frameErrors = 0
+  private cleanStreak = 0
+
   private loop = (now: number): void => {
     try {
       const t0 = performance.now()
       this.frame(now)
+      this.cleanStreak++
+      if (this.cleanStreak >= 2) this.frameErrors = 0
       const js = performance.now() - t0
       this.jsMs += (js - this.jsMs) * 0.12
       const gap = this.lastGapAt ? Math.max(0, now - this.lastGapAt) : 0
       this.lastGapAt = now
+      // p50/p95/p99 — the honest frame record. Gaps (tab switches, debugger
+      // pauses) are excluded rather than averaged in, because a 30 s "frame"
+      // would otherwise define the session's p99.
+      this.frameLog.sample(gap)
       if (gap > 0) {
         this.frameMs += (gap - this.frameMs) * 0.1
         // Residual, NOT a GPU measurement. Most of it is vsync idle on a
         // healthy frame; keep it honest so it cannot fake a bottleneck.
         this.waitMs += (Math.max(0, gap - js) - this.waitMs) * 0.1
       }
+      // EXACTLY ONE pending frame is owned by `loop`. `frame()` used to schedule
+      // its own successor, which made the error path double-schedule (two loops,
+      // double speed) if it ever tried to recover.
+      if (!this.destroyed) this.raf = requestAnimationFrame(this.loop)
+      return
     } catch (error) {
-      console.error('Game loop stopped after an unexpected error', error)
+      this.frameErrors++
+      this.cleanStreak = 0
+      // Log ONCE per run of failures, not 60 times a second: a console flooded
+      // with the same stack is how the original InvalidStateError got missed.
+      if (this.frameErrors === 1) {
+        console.error('Frame failed; continuing (will stop after ~2s of failures)', error)
+      }
+      if (this.frameErrors < 120) {
+        this.raf = requestAnimationFrame(this.loop)
+        return
+      }
+      console.error('Game loop stopped: 120 consecutive failed frames', error)
       cancelAnimationFrame(this.raf)
       this.input.setEnabled(false)
       this.audio.destroy()
@@ -671,7 +811,6 @@ export class Game {
 
   private frame(now: number): void {
     if (this.destroyed) return
-    this.raf = requestAnimationFrame(this.loop)
     let dtRaw = (now - this.lastFrame) / 1000
     this.lastFrame = now
     // NO FPS FLOOR: the old 0.05 clamp made every slow frame read as exactly
@@ -692,8 +831,18 @@ export class Game {
     const ctx = this.ctx
     if (!ctx) return
 
+    // particle toggle (B): OFF → LOW → FULL — raw physical edge, consumed
+    // once per render (cleared by endRenderFrame at the bottom of frame())
+    if (this.input.rawPressed('KeyB')) cycleParticleLevel()
+
     if (this.phase === 'paused' || editFrozen) {
-      // frozen frame, HUD still drawn (edit = pose-editor authoring freeze)
+      // frozen frame, HUD still drawn (edit = pose-editor authoring freeze).
+      // FROZEN FRAMES DISCARD GAMEPLAY EDGES: no simulation step will ever
+      // consume them, so keeping them would fire stale presses on resume.
+      // (Pause additionally disables/resets input; this covers edit-freeze
+      // and any phase where input stays enabled.) Raw editor edges keep
+      // their per-render lifetime via endRenderFrame below.
+      this.input.endFrame(0)
     } else {
       // --- timing: hitstop & slow-mo ---
       let simDt = dtRaw
@@ -713,17 +862,22 @@ export class Game {
       // --- cinematics run on real time ---
       this.updateCinematics(dtRaw)
 
-      // --- fixed-timestep substeps + accumulator (render interpolation):
-      // the sim always advances in exact 1/60 steps (the tested, tuned
-      // configuration at EVERY frame rate) and the leftover time carries
-      // over. NO death spiral: at most 3 steps + one clamped catch-up tick
-      // per frame, so the cost of a frame stays bounded on slow machines.
-      this.simAccum += simDt
-      let substeps = 0
-      let caughtUp = false
-      while (this.simAccum >= 1 / 60 && substeps < 3) {
+      // --- FIXED-TIMESTEP SCHEDULER (plan M03) ---
+      // The sim advances only in exact 1/60 steps (the tested, tuned
+      // configuration at EVERY frame rate). Backlog above the bounded cap
+      // is DROPPED EXPLICITLY and counted in `overloadDropped` — never
+      // disguised as a variable-size catch-up tick (a 50 ms "step" is a
+      // different simulation than 1/60). Work per render is bounded at
+      // maxSteps fixed updates, so a slow machine cannot enter the death
+      // spiral (raster slows → more substeps → slower → freeze).
+      const adv = advanceSimClock(this.simAccum, simDt)
+      this.simAccum = adv.acc
+      this.overloadDropped += adv.dropped
+      const substeps = adv.steps
+      const caughtUp = adv.dropped > 0
+      for (let i = 0; i < substeps; i++) {
         this.recordPrev()
-        this.step(1 / 60)
+        this.step(adv.stepDt)
         // EDGE LIFETIME = ONE SUBSTEP. pressed()/released() edges must be
         // visible to exactly ONE simulation step: clearing them only once
         // per RENDERED frame let a single jump press fire doJump in BOTH
@@ -733,21 +887,15 @@ export class Game {
         // rAF callbacks, so no press is ever missed; presses that land while
         // a state ignores them are still caught by the combo BUFFER, which
         // is pressTime-based and deliberately spans substeps and frames.
-        this.input.endFrame(1 / 60)
-        this.simAccum -= 1 / 60
-        substeps++
+        // A render that runs ZERO substeps must NOT clear edges (M01): the
+        // press survives to the next legal simulation opportunity.
+        this.input.endFrame(adv.stepDt)
       }
-      if (this.simAccum >= 1 / 60) {
-        // very slow frame: consume the backlog as one clamped catch-up tick
-        // so the world keeps roughly real-time without multiplying cost
-        this.recordPrev()
-        this.step(Math.min(this.simAccum, 0.05))
-        this.input.endFrame(0.05)
-        this.simAccum = 0
-        caughtUp = true
-        // collapse the interpolation history onto the frontier: the jump is
-        // shown on this frame (the display froze anyway) and the NEXT frames
-        // interpolate strictly forward from here — never rewind.
+      if (caughtUp) {
+        // collapse the interpolation history onto the frontier: the last
+        // fixed step is shown on this frame (the display was hitched anyway)
+        // and the NEXT frames interpolate strictly forward from here —
+        // never rewind.
         this.recordPrev()
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
@@ -775,6 +923,7 @@ export class Game {
         enemies: this.enemies,
         player: this.player,
         projectiles: this.projectiles,
+        props: this.props,
         hud: this.hud,
         hudState: this.buildHudState(),
         time: this.renderTime,
@@ -804,14 +953,45 @@ export class Game {
         ctx.font = '10px ui-monospace,monospace'
         ctx.fillStyle = 'rgba(190,220,232,.55)'
         ctx.textAlign = 'right'
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · frame ${this.frameMs.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · wait ${this.waitMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr} · ${this.settings.quality}${locked}`, this.cssW - 12, 62)
+        const drop = this.overloadDropped > 0.001 ? ` · dropped ${this.overloadDropped.toFixed(2)}s sim` : ''
+        // CACHE THE SNAPSHOT. snapshot() sorts an array of up to 600 frame
+        // times; calling it in the draw path made the debug readout itself a
+        // measurable cost (and an allocation site) — the exact class of bug
+        // 21 §8 is about. Refreshed twice a second, which is faster than a
+        // human can read it.
+        if (this.wall - this.snapAt > 0.5) {
+          this.snapAt = this.wall
+          this.snap = this.frameLog.snapshot()
+        }
+        const snap = this.snap
+        const prof = this.bg.getProfile?.()
+        const plates = this.bg.plateStats?.()
+        const wx = this.bg.weatherState?.()
+        const wxTxt = wx ? ` · ${wx.kind} ${Math.round(wx.s * 100)}% ${wx.changes}ch` : ''
+        const bake = plates && plates.moonSource !== 'none'
+          ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
+          : ''
+        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}${wxTxt} · ${this.renderer.graphicsSummary()}`, this.cssW - 12, 62)
+        // THE RUN IDENTITY, shown for the first seconds of a run and then
+        // faded out. The whole point of the profile work is that tonight is a
+        // different night — but a debug line that never leaves is clutter, and
+        // a player who has to open a console to see the feature never sees it.
+        if (prof && this.time < 18) {
+          const fade = this.time < 14 ? 1 : 1 - (this.time - 14) / 4
+          ctx.fillStyle = `rgba(190,220,232,${(0.42 * Math.max(0, fade)).toFixed(3)})`
+          ctx.fillText(`TONIGHT · ${prof.label} · ${prof.id}`, this.cssW - 12, 76)
+        }
       }
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)
       this.uninstallRenderLerp()
     }
 
-    this.input.endFrame(dtRaw)
+    // RENDER tick: clear ONLY raw editor-key edges. Gameplay edges are
+    // owned by simulation steps (consumed there) — clearing them here on a
+    // zero-step render was the M01 input-loss bug (an 8 ms frame with no
+    // substep deleted a parry press before any step could see it).
+    this.input.endRenderFrame()
   }
 
   /** Snapshot sim positions before a step (render interpolation). */
@@ -885,13 +1065,30 @@ export class Game {
         this.handleMetaInput()
       }
       this.player.update(dt, this.worldRef)
-      for (const e of this.enemies) {
-        e.update(dt, this.worldRef)
+      this.props.update(dt, this.worldRef, this.propHooks, this.player)
+      /* THE HORDE, SCHEDULED. Near enemies at full rate; far ones at 1/3 rate
+       * with 3× dt (same average, coarser sampling). `hordeTick` counts STEPS,
+       * not frames, so the schedule is a pure function of the simulation. */
+      this.hordeTick++
+      const plan = planTicks(this.enemies, this.player.x, this.hordeTick, this.hordePlan)
+      for (let i = 0; i < plan.near.length; i++) {
+        const e = this.enemies[plan.near[i]]
+        if (e) e.update(dt, this.worldRef)
+      }
+      for (let i = 0; i < plan.far.length; i++) {
+        const e = this.enemies[plan.far[i]]
+        if (e) e.update(dt * FAR_DIVISOR, this.worldRef)
       }
       // purge dead
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         if (this.enemies[i].dead) this.enemies.splice(i, 1)
       }
+      // Player body sweep endpoints for swept projectile collision (M05):
+      // pre-step root (PLAYER_POS, set above) → post-movement root.
+      PLAYER_BODY.x0 = PLAYER_POS.x
+      PLAYER_BODY.y0 = PLAYER_POS.y
+      PLAYER_BODY.x1 = this.player.x
+      PLAYER_BODY.y1 = this.player.y
       this.projectiles.update(dt, this.worldRef)
 
       if (this.phase === 'playing') {
@@ -907,6 +1104,7 @@ export class Game {
     } else if (this.phase === 'attract') {
       // idle hero breathing on the rooftop (framed below the title logo)
       this.player.update(dt, this.worldRef)
+      this.props.update(dt, this.worldRef, this.propHooks, this.player)
       this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
     }
   }
@@ -1032,6 +1230,21 @@ export class Game {
   /* combat resolution (WorldRef)                                         */
   /* ------------------------------------------------------------------ */
 
+  /** prop effects that only the Game can own (HP, score, combo, physics) */
+  private propHooks: PropHooks = {
+    heal: (n) => {
+      const before = this.player.hp
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + n)
+      this.fx.text(this.player.x, this.player.y - 108, `+${Math.round(this.player.hp - before)} HP`, '#5cffb4', 15)
+    },
+    launch: (vy) => {
+      this.player.vy = vy
+      this.player.grounded = false
+    },
+    score: (n) => { this.stats.score += Math.round(n * this.combo.mult) },
+    comboHit: () => this.combo.onHit(),
+  }
+
   private worldRef: WorldRef = {
     fx: this.fx,
     audio: this.audio,
@@ -1046,6 +1259,7 @@ export class Game {
     quality: 'high',
     gore: 'energy',
     hitEnemy: (id, blade, atk) => this.hitEnemy(id, blade, atk),
+    strikeProps: (blade, atk, px) => this.props.strike(blade, atk, px, this.worldRef, this.propHooks),
     enemyStrikePlayer: (dmg, dir, heavy, sourceX) => this.enemyStrikePlayer(dmg, dir, heavy, sourceX),
     spawnProjectile: (p) => this.projectiles.spawn(p),
     addHitstop: (t, zoom) => this.addHitstop(t, zoom),
@@ -1491,6 +1705,7 @@ export class Game {
       abilityReady: p.energy >= p.sword.ability.cost,
       fps: this.fps,
       showFps: this.settings.showFps,
+      particleLevel: getParticleLevel(),
       runTime: this.runTime,
       attract: this.phase === 'attract',
     }

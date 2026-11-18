@@ -162,9 +162,12 @@ const abc4=(name:string,dur:number,a:PoseInput,b:PoseInput,c:PoseInput):Clip=>
  * and Mishima-style launchers without copying any proprietary move
  * frame-for-frame. Each has a unique pelvis/foot silhouette. */
 const ABC_ROUNDHOUSE=abc4('abcCycloneRoundhouse',.34,
- {...G,rootY:4,pelvisYaw:-.65,chestYaw:.45,hipR:.75,kneeR:-1.85,shR:.35,shL:.8},
- {...G,rootX:5,rootY:1,rootRot:-.12,head:.1,pelvisYaw:1.25,chestYaw:-.8,hipR:1.62,kneeR:-.18,footR:1.25,hipRz:.65,shR:-.45,shL:1.1},
- {...G,rootX:3,rootY:4.8,rootRot:.2,pelvisYaw:.2,hipR:.5,kneeR:-1.05,shR:.5,shL:.4})
+ // A — chamber: the support (left) leg loads and the heel lifts to pivot
+ {...G,rootY:4,head:.08,pelvisYaw:-.65,chestYaw:.45,hipR:.75,kneeR:-1.85,hipL:-.34,kneeL:-.95,footL:.18,shR:.35,shL:.8,...handPose('right',11,5),...handPose('left',13,7)},
+ // B — the spin: the support knee rotates under the body as the hips whip
+ {...G,rootX:5,rootY:1,rootRot:-.12,head:.1,pelvisYaw:1.25,chestYaw:-.8,hipR:1.62,kneeR:-.18,footR:1.25,hipRz:.65,hipL:-.62,kneeL:-.42,footL:.62,shR:-.45,shL:1.1,...handPose('right',34,-2),...handPose('left',8,10)},
+ // C — plant: support leg absorbs, the pivot unwinds
+ {...G,rootX:3,rootY:4.8,rootRot:.2,head:-.04,pelvisYaw:.2,hipR:.5,kneeR:-1.05,hipL:-.22,kneeL:-1.06,footL:.1,shR:.5,shL:.4,...handPose('right',24,2),...handPose('left',20,1)})
 const ABC_SKYROCKET=abc4('abcSkyRocket',.38,
  {...G,rootY:7,rootRot:.28,pelvisYaw:-.35,hipR:.95,kneeR:-2.0,hipL:-.48,kneeL:-1.2,shR:.8,shL:.25},
  {...G,rootX:6,rootY:-1.5,rootRot:-.16,head:.12,pelvisYaw:.5,chestYaw:-.35,hipR:2.18,kneeR:-.32,footR:.42,hipL:-.55,kneeL:-.28,shR:-.2,shL:.9},
@@ -178,9 +181,13 @@ const ABC_HUNTING=abc4('abcHuntingHawk',.4,
  {...G,rootX:7,rootY:-2,rootRot:.65,head:-.55,pelvisYaw:.85,chestYaw:-.55,hipR:1.48,kneeR:-.12,footR:1.1,hipL:-.85,kneeL:-.25,shR:-.35,shL:.75},
  {...G,rootX:5,rootY:3.8,rootRot:.3,pelvisYaw:.15,hipR:.55,kneeR:-1.15,hipL:-.45,kneeL:-.9})
 const ABC_AXE=abc4('abcFallingAxe',.46,
- {...G,rootY:5.5,rootRot:-.08,pelvisYaw:.3,hipR:1.8,kneeR:-1.25,footR:.35,shR:.35,shL:.85},
- {...G,rootX:4,rootY:2,rootRot:.55,head:-.45,pelvisYaw:-.35,chestYaw:.25,hipR:.72,kneeR:-.12,footR:-.9,hipRz:.2,shR:-.25,shL:.5},
- {...G,rootX:3,rootY:7,rootRot:.38,hipR:.6,kneeR:-1.45,hipL:-.45,kneeL:-1.25,shR:.55,shL:.3})
+ // The heel is the hitbox, but with a blade DRAWN the same clip swings the
+ // sword, so the arm cannot sit in guard while the leg works: the right hand
+ // drives forward through the contact and the blade carries the cut past the
+ // kick's own 86px reach (measured 3/5 → 5/5 bodies on a tight pack).
+ {...G,rootY:5.5,rootRot:-.08,head:.1,pelvisYaw:.3,hipR:1.8,kneeR:-1.25,footR:.35,shR:.35,shL:.85,...handPose('right',10,6)},
+ {...G,rootX:4,rootY:2,rootRot:.55,head:-.45,pelvisYaw:-.35,chestYaw:.25,hipR:.72,kneeR:-.12,footR:-.9,hipRz:.2,shR:-.25,shL:.5,...handPose('right',30,-4)},
+ {...G,rootX:3,rootY:7,rootRot:.38,head:-.3,hipR:.6,kneeR:-1.45,hipL:-.45,kneeL:-1.25,shR:.55,shL:.3,...handPose('right',44,2)})
 const ABC_SWEEP=abc4('abcTempleSweep',.36,
  {...G,rootY:7,rootRot:.45,pelvisYaw:-.55,hipR:.45,kneeR:-1.75,hipL:-.65,kneeL:-1.5,shR:.75,shL:.45},
  {...G,rootX:4,rootY:8,rootRot:.58,head:-.5,pelvisYaw:1.15,chestYaw:-.8,hipR:1.48,kneeR:-.2,footR:1.35,hipRz:.3,shR:-.2,shL:.95},
@@ -192,23 +199,30 @@ const ABC_SWEEP=abc4('abcTempleSweep',.36,
  * D catch back to guard. The feet, knees, pelvis, spine, opposite guard
  * and head all participate; these are not arm-only replacements. */
 const ABC_JAB=abcdClip('abcDrivingJab',.30,
- // A — bladed guard, weight loaded, lead fist high
- {...G,rootY:5,rootRot:.14,pelvisYaw:-.28,chestYaw:.22,hipR:.58,kneeR:-.82,hipL:-.5,kneeL:-.72,...handPose('right',12,3)},
- // B — drive: shoulder launches, the coil begins to unwind
- {...G,rootX:2,rootY:4,rootRot:.02,pelvisYaw:-.04,chestYaw:-.12,hipR:.68,kneeR:-.62,hipL:-.55,kneeL:-.6,...handPose('right',22,1),...handPose('left',9,3)},
- // C — contact: straight punch at shoulder height (brush smear beat)
- {...G,rootX:5,rootY:3,rootRot:-.08,pelvisYaw:.3,chestYaw:-.48,hipR:.8,kneeR:-.38,hipL:-.62,kneeL:-.5,...handPose('right',41,-1),...handPose('left',8,3)},
- // D — catch: recoil stance
- {...G,rootX:3,rootY:4.5,rootRot:.12,pelvisYaw:-.12,chestYaw:.18,hipR:.5,kneeR:-.68,hipL:-.4,kneeL:-.65})
+ // A — bladed guard, weight loaded, lead fist high. The HEAD is part of the
+ // move: a jab is aimed, and a body whose skull is welded to the spine reads
+ // as a mannequin no matter how good the arm is. head: +0.18 tips the chin
+ // behind the shoulder (the defensive read), -0.14 at contact snaps it at the
+ // target (the aggressive read).
+ {...G,rootY:5,rootRot:.14,head:.18,pelvisYaw:-.28,chestYaw:.22,hipR:.58,kneeR:-.82,hipL:-.5,kneeL:-.72,...handPose('right',12,3),...handPose('left',14,6)},
+ // B — drive: shoulder launches, the coil begins to unwind, the counter-hand
+ // starts to lift into its guard (its elbow travels, so it is not a welded bar)
+ {...G,rootX:2,rootY:4,rootRot:.02,head:.06,pelvisYaw:-.04,chestYaw:-.12,hipR:.68,kneeR:-.62,hipL:-.55,kneeL:-.6,...handPose('right',22,1),...handPose('left',19,3)},
+ // C — contact: straight punch at shoulder height (brush smear beat), chin
+ // snapped at the target, counter-hand tight at the jaw
+ {...G,rootX:5,rootY:3,rootRot:-.08,head:-.14,pelvisYaw:.3,chestYaw:-.48,hipR:.8,kneeR:-.38,hipL:-.62,kneeL:-.5,...handPose('right',41,-1),...handPose('left',24,0)},
+ // D — catch: recoil stance, head returns to neutral, counter-hand resets
+ {...G,rootX:3,rootY:4.5,rootRot:.12,head:.02,pelvisYaw:-.12,chestYaw:.18,hipR:.5,kneeR:-.68,hipL:-.4,kneeL:-.65,...handPose('left',11,5)})
 const ABC_CROSS=abcdClip('abcRearCross',.33,
- // A — deeper coil than the jab: the rear hip loads the cross
- {...G,rootY:5.5,rootRot:.18,pelvisYaw:-.55,chestYaw:.42,hipR:.48,kneeR:-.76,hipL:-.62,kneeL:-.9,...handPose('left',8,4)},
+ // A — deeper coil than the jab: the rear hip loads the cross, the head
+ // turns INTO the shoulder (the same aimed-head law as the jab)
+ {...G,rootY:5.5,rootRot:.18,head:.22,pelvisYaw:-.55,chestYaw:.42,hipR:.48,kneeR:-.76,hipL:-.62,kneeL:-.9,...handPose('left',8,4),...handPose('right',10,8)},
  // B — drive: rear hip fires, the fist punches through the guard line
- {...G,rootX:3,rootY:4,rootRot:.02,pelvisYaw:.2,chestYaw:-.1,hipR:.66,kneeR:-.55,hipL:-.66,kneeL:-.62,...handPose('left',20,1),...handPose('right',8,3)},
+ {...G,rootX:3,rootY:4,rootRot:.02,head:.08,pelvisYaw:.2,chestYaw:-.1,hipR:.66,kneeR:-.55,hipL:-.66,kneeL:-.62,...handPose('left',20,1),...handPose('right',16,4)},
  // C — contact: full cross extension over a deep forward lunge (long smear)
- {...G,rootX:8,rootY:2.5,rootRot:-.13,pelvisYaw:.78,chestYaw:-.72,hipR:.9,kneeR:-.3,hipL:-.7,kneeL:-.38,...handPose('left',43,-1),...handPose('right',7,3)},
+ {...G,rootX:8,rootY:2.5,rootRot:-.13,head:-.18,pelvisYaw:.78,chestYaw:-.72,hipR:.9,kneeR:-.3,hipL:-.7,kneeL:-.38,...handPose('left',43,-1),...handPose('right',22,-2)},
  // D — catch: recoil stance
- {...G,rootX:4,rootY:4.2,rootRot:.16,pelvisYaw:.08,chestYaw:-.04,hipR:.54,kneeR:-.62,hipL:-.45,kneeL:-.72})
+ {...G,rootX:4,rootY:4.2,rootRot:.16,head:.04,pelvisYaw:.08,chestYaw:-.04,hipR:.54,kneeR:-.62,hipL:-.45,kneeL:-.72,...handPose('right',8,6)})
 const ABC_UPPERCUT=abcdClip('abcRisingUppercut',.42,
  // A — deep load: knees folded, fist low by the hip
  {...G,rootY:11,rootRot:.42,head:-.22,pelvisYaw:-.5,chestYaw:.32,hipR:.72,kneeR:-1.35,hipL:-.55,kneeL:-1.42,...handPose('right',9,13),...handPose('left',7,5)},
@@ -2350,11 +2364,39 @@ const compressABCD=(m:AttackDef):Clip=>{
   const out=makeClip(`abc_${m.id}`,poses.map((p,i)=>keyframe(dur*slots[i],asInput(p))))
   out.interpolation='step';out.snapAt=dur*.46;return out
 }
+/** THE DRAWN-BLADE KICK LAW.
+ *
+ * With the blade out, `player.ts` resolves a kick through the SWORD segment,
+ * but the kick clips only pose the legs — the sword arm stayed in guard, so a
+ * heavy kick "cut" 3 of 5 bodies because the blade pointed down and back while
+ * the heel travelled forward. The heel is the hitbox when sheathed; when drawn,
+ * the blade is. So the arm must swing with the leg: a weighted forward drive of
+ * the striking hand around each kick's own contact beat. Authored in channel
+ * space through the same fistAt IK the punches use, so the elbow cannot be
+ * welded by construction, and the weight falls to zero away from the contact so
+ * the rest of the clip is untouched. */
+function bladeSweepWithKick(c: Clip): Clip {
+  const snap = c.snapAt ?? c.dur * 0.46
+  const keys = c.frames as unknown as Array<{ t: number; p: Float32Array }>
+  for (const f of keys) {
+    const near = Math.max(0, 1 - Math.abs(f.t - snap) / 0.22)
+    if (near <= 0.02) continue
+    const hp = handPose('right', 12 + 34 * near, 8 - 12 * near)
+    const channels: ChannelKey[] = ['shR', 'elR', 'wrR']
+    for (const k of channels) {
+      const idx = CH[k]
+      if (hp[k] === undefined) continue
+      f.p[idx] = f.p[idx] * (1 - near) + (hp[k] as number) * near
+    }
+  }
+  return c
+}
+
 for(const m of Object.values(MOVES)){
   const leg=m.strikeJoint==='foot'||m.strikeJoint==='knee'
   const authoredPunch=m.id==='launcher'?ABC_UPPERCUT:m.id==='l1'?ABC_JAB:m.id==='l2'?ABC_CROSS
     :m.id==='cyclone'?ABC_SPIN:m.id==='h3'?ABC_HAMMER:m.id==='sakugaBarrage'?ABC_BLITZ:null
-  m.clip=leg?kickFor(m.id):authoredPunch??compressABCD(m)
+  m.clip=leg?bladeSweepWithKick(kickFor(m.id)):authoredPunch??compressABCD(m)
   const impact=m.clip.dur*.46
   m.hit={...m.hit,start:impact,end:Math.min(m.clip.dur,impact+.1)}
   m.cancel=Math.max(m.hit.end+.045,Math.min(m.cancel,m.clip.dur*.82))

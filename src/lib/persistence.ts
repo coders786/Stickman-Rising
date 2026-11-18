@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { SWORD_ORDER } from '@/game/combat/swords'
-import { DEFAULT_SETTINGS, type GameSettings } from '@/game/core/types'
+import { DEFAULT_SETTINGS, type GameSettings, type QualityLevel } from '@/game/core/types'
 
 export const SAVE_KEY = 'sr_save_v1'
 export const SETTINGS_KEY = 'sr_settings_v1'
@@ -20,12 +20,19 @@ export function parseSave(raw: string | null): SaveData {
     return { totalKills: 0, best: 0, unlocked: ['katana'] }
   }
 }
-export function parseSettings(raw: string | null, coarse = false): GameSettings {
-  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: coarse ? 'medium' : 'high' }
+export function parseSettings(raw: string | null, coarse = false, detected?: QualityLevel): GameSettings {
+  // THE FIRST IMPRESSION. A brand-new player previously started at a hard-coded
+  // 'low', which is why a desktop with a discrete GPU could launch the game into
+  // its cheapest tier and conclude the graphics were bad. The default is now the
+  // device's own starting tier (render/graphics.ts `classifyDevice`), clamped by
+  // its ceiling; `coarse` (touch) still floors at 'medium' because a phone should
+  // never be handed a cast-shadow pass it will immediately shed.
+  const start: QualityLevel = detected ?? (coarse ? 'medium' : DEFAULT_SETTINGS.quality)
+  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: start }
   const unit = (fallback: number) => z.number().min(0).max(1).catch(fallback)
   const schema = z.object({
     quality: z.enum(['low', 'medium', 'high', 'ultra']).catch(defaults.quality),
-    level: z.enum(['rooftop', 'zen-night']).catch(defaults.level),
+    level: z.enum(['rooftop']).catch(defaults.level),
     shake: z.boolean().catch(defaults.shake),
     shakeIntensity: z.number().min(0.2).max(1.5).catch(defaults.shakeIntensity),
     sfxVolume: unit(defaults.sfxVolume),
@@ -34,7 +41,23 @@ export function parseSettings(raw: string | null, coarse = false): GameSettings 
     showFps: z.boolean().catch(defaults.showFps),
     gore: z.enum(['energy', 'blood']).catch(defaults.gore),
   })
-  try { return schema.parse(JSON.parse(raw ?? '{}')) } catch { return defaults }
+  try {
+    const parsed = JSON.parse(raw ?? '{}') as Record<string, unknown>
+    const out = schema.parse(parsed)
+    /* MIGRATION — a saved quality of 'low' may not be a CHOICE.
+     *
+     * Every player who has touched this build before today has `quality: 'low'`
+     * in localStorage, because that was the hard-coded default. Keeping it would
+     * pin exactly the people who complained about the graphics to the cheapest
+     * tier, and they would reasonably conclude nothing changed. So: a legacy
+     * record (no `qualityV`) with quality 'low' is treated as "never chosen" and
+     * re-detected once. Records written from now on carry `qualityV: 2`, and from
+     * then on 'low' means what it says. */
+    if (parsed.qualityV !== 2 && parsed.quality === 'low' && detected) {
+      out.quality = detected
+    }
+    return out
+  } catch { return defaults }
 }
 export function readStorage(key: string): string | null {
   try { return window.localStorage.getItem(key) } catch { return null }

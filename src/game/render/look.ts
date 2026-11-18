@@ -149,10 +149,14 @@ export const REFLECTION = {
   strips: 8,
   /** reflection zone depth below the foot line (world px) */
   depth: 150,
-  /** REFLECTION ATLAS PERIOD (seconds). The mirrored pose is re-drawn only
-   *  when a limb tip can move a perceptible amount: at 20 Hz the worst-case
-   *  tip delta is <1.5 px, and the strip composite keeps running at 60 Hz so
-   *  the water chop never loses a frame. */
+  /** REFLECTION ATLAS PERIOD (seconds) — FALLBACK bound only (plan F07/F08).
+   *  The old "<1.5 px at 20 Hz" claim was wrong: 2 600 px/s × 50 ms allows
+   *  130 world px of travel between refreshes. Refreshes are now driven by
+   *  the identity key (span/tier/camera/realloc/player/enemy roots+states,
+   *  see render/reflection-key.ts); this period only bounds pose-internal
+   *  limb motion the key cannot observe, until MCRI error gates (M4)
+   *  replace it. The strip composite still runs every display frame so the
+   *  water chop never loses a frame. */
   atlasHz: 1 / 20,
 }
 

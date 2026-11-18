@@ -64,3 +64,7 @@ server.log
 # Intermediate motion-study / browser capture frames (published previews live in research/)
 /.cache/
 tool-results/
+.next-build
+
+# local visual verification output (.qa/verify-lighting.mts)
+/.qa/*.png

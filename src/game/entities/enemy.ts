@@ -9,7 +9,6 @@
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
-import { KeyLight, ShadowFigure, drawCastShadow, drawProjectedShadow, drawStrobeRim } from '../render/lighting'
 import { emitterFills, smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
@@ -1027,42 +1026,11 @@ export class Enemy {
     this.litT = Math.max(this.litT, t)
   }
 
-  /* ---- LIGHTING ENGINE: projected-skeleton cast shadow ---- */
-  private shChains: number[][] = [[], [], [], [], []]
-  private shHead = { x: 0, y: 0, r: 0 }
-  private shBlade = { x0: 0, y0: 0, x1: 0, y1: 0 }
-  private shFig: ShadowFigure = { chains: this.shChains, head: this.shHead, blade: this.shBlade }
-  /* strobe rim state — set by the renderer each frame from the key light */
-  strobeLight: KeyLight | null = null
+  /* strobe rim strength — the lighting engine that drove it is gone in the
+   * 120 fps strip; the field stays so rim tint code can reference it. */
   strobeK = 0
-  private rimChains: number[][] = [[], [], [], [], []]
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
-
-  drawShadow(ctx: CanvasRenderingContext2D, light: KeyLight, alphaScale = 1): void {
-    const s = this.scale
-    const contacts = this.shChains[0]
-    contacts.length = 0
-    if (this.y > -0.5) {
-      if (this.gaitW > 0.5) {
-        if (this.gait.footL.planted) contacts.push(this.gait.footL.x)
-        if (this.gait.footR.planted) contacts.push(this.gait.footR.x)
-      }
-      for (const c of this.snapContacts) contacts.push(c)
-    }
-    const flying = this.kind === 'drone' ? this.y : this.y
-    // ANAMORPHIC GROUND-PLANE SILHOUETTE SHADOW — low-stature foreshortened
-    // pose along the resultant local light vector
-    drawProjectedShadow(ctx, light, (c, col) => {
-      c.save()
-      c.translate(this.x, this.hipY)
-      c.scale(this.face * s, s)
-      drawStick(c, this.geom, this.cfg.style, { ghost: col, ghostAlpha: 1, simple: true })
-      c.restore()
-    }, {
-      alpha: (this.kind === 'drone' ? 0.52 : 0.76) * alphaScale, height: flying, rootX: this.x, contacts, scale: s,
-    })
-  }
 
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     if (this.dead || this.spawning) return
@@ -1108,25 +1076,6 @@ export class Enemy {
         time,
       })
       ctx.restore()
-    }
-    // STROBE RIM (lighting engine): the sky bolt lights every figure's
-    // lit side — same additive edge pass the player gets
-    if (this.strobeLight && this.kind !== 'drone') {
-      const g = this.geom
-      const rc = this.rimChains
-      const L = (j: { x: number; y: number }, out: number[]) => { out.push(j.x, j.y) }
-      rc[0].length = 0
-      L(g.hipPtL, rc[0]); L(g.kneeL, rc[0]); L(g.ankleL, rc[0])
-      rc[1].length = 0
-      L(g.hipPtR, rc[1]); L(g.kneeR, rc[1]); L(g.ankleR, rc[1])
-      rc[2].length = 0
-      L(g.hip, rc[2]); L(g.waist, rc[2]); L(g.chest, rc[2]); L(g.neckTop, rc[2])
-      rc[3].length = 0
-      L(g.shoulderL, rc[3]); L(g.elbL, rc[3]); L(g.handL, rc[3])
-      rc[4].length = 0
-      L(g.shoulderR, rc[4]); L(g.elbR, rc[4]); L(g.handR, rc[4])
-      drawStrobeRim(ctx, this.strobeLight, Math.max(this.strobeK, 0.45), rc,
-        { x: g.headC.x, y: g.headC.y, r: 8.4 }, this.face, 3.4)
     }
     ctx.restore()
 

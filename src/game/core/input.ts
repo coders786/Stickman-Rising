@@ -234,14 +234,33 @@ export class Input {
     return Math.max(-1, Math.min(1, y))
   }
 
-  /** Tick: clear edge flags. Call once at end of frame. (The clock is
-   * real-time via performance.now — no dt accumulation needed.) */
+  /** STEP CONSUMPTION: clear gameplay edge flags. Call exactly once after
+   * each SIMULATION step has read them — never on a render that ran no
+   * step (a press must survive until a legal simulation opportunity; see
+   * Game.frame). The clock is real-time via performance.now — no dt
+   * accumulation needed. */
   endFrame(_dt: number): void {
-    this.rawPresses.clear()
     for (const a of ACTIONS) {
       this.pressedMap.set(a, false)
       this.releasedMap.set(a, false)
     }
+  }
+
+  /** RENDER-FRAME tick: clear ONLY the raw editor-key edges (per-render
+   * scrub/jog semantics). Gameplay pressed()/released() edges are NOT
+   * touched here — they belong to the next simulation step that consumes
+   * them. Called at the bottom of every rendered frame. */
+  endRenderFrame(): void {
+    this.rawPresses.clear()
+  }
+
+  /** Intentional full reset of every edge/buffer (pause, blur, disable,
+   * phase transitions). Cancelling a whole gesture at a state boundary is
+   * deliberate policy, not an edge being lost. */
+  clearEdges(): void {
+    this.endFrame(0)
+    this.consumedBuffer.clear()
+    this.pressTime.clear()
   }
 
   /* ---------- virtual (touch) API — called by React layer ---------- */

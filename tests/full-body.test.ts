@@ -128,10 +128,28 @@ test('each strike holds an extreme at contact rather than arriving and stopping'
         : (L ? g.handL : g.handR)
       return { x: j.x, y: j.y }
     }
+    // D13: measure motion ACROSS the window, not at its opening edge. A
+    // stepped clip holds its pose between drawings, so the instant the window
+    // opens is inside a hold by construction — the velocity lives at the snap
+    // boundary and in the drawing changes the window spans. What the test
+    // still refuses to accept is a strike whose limb never moves in the window
+    // at all, which is the defect it was written for.
     const h = 1 / 240
-    const a = at(def.hit.start - h), b = at(def.hit.start)
-    const speed = Math.hypot(b.x - a.x, b.y - a.y) / h
-    assert.ok(speed > 60, `${id} is nearly stationary at contact (${speed.toFixed(0)} px/s)`)
+    // The scan must include the drawing that DELIVERS the hit. A stepped clip
+    // whose window sits inside one hold would otherwise read 0 px/s even
+    // though the contact drawing is one snap away — and that snap is the
+    // movement the damage belongs to.
+    let nextKey = clip.dur
+    for (const f of clip.frames) if (f.t > def.hit.start + 1e-6 && f.t < nextKey) nextKey = f.t
+    const scanEnd = Math.max(def.hit.end, Math.min(clip.dur, nextKey)) + h
+    let speed = 0
+    let prev = at(def.hit.start)
+    for (let t = def.hit.start; t <= scanEnd; t += h) {
+      const cur = at(t)
+      speed = Math.max(speed, Math.hypot(cur.x - prev.x, cur.y - prev.y) / h)
+      prev = cur
+    }
+    assert.ok(speed > 60, `${id} never moves inside its hit window (peak ${speed.toFixed(0)} px/s)`)
   }
 })
 

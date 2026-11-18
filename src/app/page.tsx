@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Game } from '@/game/game'
 import { SWORDS, SWORD_ORDER, SwordId, swordTier, upgradedSword } from '@/game/combat/swords'
-import { DEFAULT_SETTINGS, GameSettings, RunStats } from '@/game/core/types'
+import { DEFAULT_SETTINGS, GameSettings, RunStats, type QualityLevel } from '@/game/core/types'
+import { classifyDevice } from '@/game/render/graphics'
 import { Input as GameInput, Action } from '@/game/core/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,10 +23,66 @@ import { Swords, Trophy, Play, Settings as SettingsIcon, BookOpen, ChevronRight,
 
 type Screen = 'title' | 'arsenal' | 'howto' | 'scores' | 'settings' | 'playing' | 'paused' | 'gameover'
 
+/** Submission id without assuming a secure context.
+ *
+ * `crypto.randomUUID()` exists only on https/localhost. This app is routinely
+ * opened over a LAN address (http://192.168.x.x:3000) from a phone, where the
+ * call throws — and because it ran inside the ENGAGE click handler, the effect
+ * was "the play button does nothing". Falling back to getRandomValues keeps the
+ * idempotency key strong on every origin that can run the game at all. */
+function submissionId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  } catch { /* insecure context — fall through */ }
+  const bytes = new Uint8Array(16)
+  try {
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) crypto.getRandomValues(bytes)
+    else for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256)
+  } catch {
+    for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40
+  bytes[8] = (bytes[8] & 0x3f) | 0x80
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+const SCREEN_LABEL: Record<Screen, string> = {
+  title: 'Main menu',
+  arsenal: 'Arsenal: choose a blade',
+  howto: 'How to play',
+  scores: 'Leaderboard',
+  settings: 'Settings',
+  playing: 'Playing',
+  paused: 'Paused',
+  gameover: 'Run over: score summary',
+}
+
+/** What each tier actually turns on, in the player's language. These are the
+ *  render/graphics.ts table's contents, not marketing: if a line here is false,
+ *  the table is wrong. */
+const QUALITY_BLURB: Record<QualityLevel, string> = {
+  low: 'CONTACT SHADOWS · NO REFLECTIONS · 1× RESOLUTION — the 120 fps floor',
+  medium: 'SOFT CONTACT · WET REFLECTION · PENUMBRA · RIM LIGHT',
+  high: 'CAST SHADOWS · TWO LIGHTS PER FIGHTER · VOLUMETRIC SHAFTS · FINER MIRROR',
+  ultra: 'PROP SILHOUETTE SHADOWS · DUST IN THE LIGHT · FULL-PIXEL MIRROR · 2× DPR',
+}
+
 function loadSave(): SaveData { return parseSave(readStorage(SAVE_KEY)) }
+/** The player's first impression is the tier their DEVICE starts at, not a
+ *  hard-coded 'low'. `classifyDevice` reads behavioural facts (fine pointer, no
+ *  touch, shaded megapixels) because renderer strings are blocked often enough to
+ *  be a coin flip (14 §2). */
+function detectStartTier(): QualityLevel | undefined {
+  if (typeof window === 'undefined') return undefined
+  const fine = window.matchMedia?.('(pointer: fine)').matches ?? false
+  const touch = (navigator.maxTouchPoints ?? 0) > 0
+  const cls = classifyDevice({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio || 1, finePointer: fine, touch })
+  return cls.start
+}
 function loadSettings(): GameSettings {
   const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false)
-  return parseSettings(readStorage(SETTINGS_KEY), coarse)
+  return parseSettings(readStorage(SETTINGS_KEY), coarse, detectStartTier())
 }
 
 /* ================================================================== */
@@ -39,6 +96,11 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>('title')
   const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
   const [stats, setStats] = useState<RunStats | null>(null)
+  /* Which night this was: the profile label + seed of the sky the player just
+     fought under. Shown on the results card because the identity line in-game
+     only lives for 18 s — a player who wants to re-roll "that ribbed night"
+     needs to still be able to read it when the run is over. */
+  const [nightLabel, setNightLabel] = useState('')
   const [runSword, setRunSword] = useState<SwordId>('katana')
   const submissionKey = useRef<string | null>(null)
   /* persisted state starts from SSR-safe defaults; real values load in a
@@ -46,6 +108,9 @@ export default function Home() {
    * hydration mismatch badge) */
   const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
   const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
+  /* The device's class, measured once on mount: which tiers exist for it at all,
+     and what the settings screen tells the player about the machine it is on. */
+  const [deviceClass, setDeviceClass] = useState(() => classifyDevice({ width: 1280, height: 720, dpr: 1, finePointer: false, touch: true }))
   const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
   const [loadout, setLoadout] = useState<SwordId[]>(['katana'])
   const [scores, setScores] = useState<ScoreRow[]>([])
@@ -63,6 +128,9 @@ export default function Home() {
   const [newUnlocks, setNewUnlocks] = useState<SwordId[]>([])
   const [touchMode, setTouchMode] = useState(false)
   const [gameInput, setGameInput] = useState<GameInput | null>(null)
+  /** Teardown for the coarse-pointer listener, assigned inside the hydrate
+   *  effect so it can be removed on unmount without a second effect. */
+  const cleanupTouchMode = useRef<(() => void) | null>(null)
 
   /* hydrate persisted values AFTER mount (SSR-safe pattern). Batched into a
    * rAF callback: asynchronous by design, so no cascading renders and no
@@ -76,11 +144,32 @@ export default function Home() {
       setSelectedSword(latest)
       setLoadout([latest])
       setSettings(loadSettings())
+      setDeviceClass(
+        classifyDevice({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          dpr: window.devicePixelRatio || 1,
+          finePointer: window.matchMedia?.('(pointer: fine)').matches ?? false,
+          touch: (navigator.maxTouchPoints ?? 0) > 0,
+        }),
+      )
       setHydrated(true)
       setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
+      // A tablet that gains a mouse (or a phone that rotates into a keyboard
+      // case) must not keep showing thumb buttons, and vice versa. One listener,
+      // removed on unmount.
+      const mq = window.matchMedia?.('(pointer: coarse)')
+      if (mq) {
+        const onChange = (ev: MediaQueryListEvent) => setTouchMode(ev.matches)
+        mq.addEventListener?.('change', onChange)
+        cleanupTouchMode.current = () => mq.removeEventListener?.('change', onChange)
+      }
       setName((readStorage(NAME_KEY) ?? '').slice(0, 16))
     })
-    return () => cancelAnimationFrame(id)
+    return () => {
+      cancelAnimationFrame(id)
+      cleanupTouchMode.current?.()
+    }
   }, [])
 
   /* ---------------- game mount ---------------- */
@@ -103,6 +192,8 @@ export default function Home() {
       } else if (e.type === 'gameover') {
         setRunSword(game.player.sword.id)
         setStats(e.stats)
+        const night = game.runIdentity?.()
+        setNightLabel(night ? `${night.label} · ${night.id}` : '')
         setScreen('gameover')
         setSubmitted(false)
         setSubmitError(null)
@@ -170,7 +261,8 @@ export default function Home() {
     } catch (settingsErr) {
       console.warn('Applying settings failed:', settingsErr)
     }
-    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify(settings)))
+    // `qualityV` marks the record as post-migration: see parseSettings' note.
+    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify({ ...settings, qualityV: 2 })))
   }, [settings, hydrated])
 
   useEffect(() => {
@@ -184,15 +276,26 @@ export default function Home() {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
       if (e.repeat || (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable))) return
-      if (e.code === 'Escape' || e.code === 'KeyP') {
-        if (screen === 'paused') {
-          gameRef.current?.resume()
-        }
+      if (e.code !== 'Escape' && e.code !== 'KeyP') return
+      // ESCAPE IS THE UNIVERSAL BACK, and P is the pause toggle. Before this,
+      // Escape did nothing on four of the eight screens — and on a keyboard-only
+      // playthrough Settings was a trap with no way out but the mouse.
+      if (screen === 'paused') {
+        if (e.code === 'Escape' || e.code === 'KeyP') gameRef.current?.resume()
+      } else if (screen === 'settings') {
+        setScreen(settingsFrom)
+      } else if (screen === 'arsenal' || screen === 'howto' || screen === 'scores') {
+        setScreen('title')
+      } else if (screen === 'gameover') {
+        gameRef.current?.quitToMenu()
+        setScreen('title')
+      } else if (screen === 'playing' && e.code === 'KeyP') {
+        gameRef.current?.pause()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [screen])
+  }, [screen, settingsFrom])
 
   /* ---------------- actions ---------------- */
 
@@ -221,7 +324,7 @@ export default function Home() {
   const startGame = useCallback((sword: SwordId) => {
     if (!gameRef.current || !hydrated) return
     runRef.current += 1
-    submissionKey.current = crypto.randomUUID()
+    submissionKey.current = submissionId()
     setSubmitted(false)
     setSubmitError(null)
     setNewUnlocks([])
@@ -270,7 +373,21 @@ export default function Home() {
 
   return (
     <div ref={wrapRef} className="relative w-screen h-[100dvh] overflow-hidden bg-black select-none">
-      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-label="Stickman Rising game canvas" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 block h-full w-full"
+        aria-label="Stickman Rising game canvas"
+        aria-describedby="canvas-controls"
+      />
+      {/* Keyboard controls, readable by a screen reader and invisible on screen.
+          A canvas game with an aria-label and nothing else is a black box. */}
+      <p id="canvas-controls" className="sr-only">
+        Arrow keys or A and D move. Space jumps. J light attack, K heavy attack, L dash,
+        I ultimate, U ability, B cycles particle effects, P or Escape pauses.
+      </p>
+      {/* Screen announcements: every menu is a mode change, and a mode change
+          that a screen reader cannot see is a broken menu. */}
+      <p className="sr-only" role="status" aria-live="polite">{SCREEN_LABEL[screen]}</p>
 
       {gameError && <div role="alert" className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black p-6 text-white"><p>{gameError}</p><Button onClick={() => window.location.reload()}>RELOAD</Button></div>}
       {storageError && <p role="status" className="absolute bottom-2 left-2 z-40 text-xs text-amber-300">Local storage is unavailable. Progress may not survive a reload.</p>}
@@ -290,6 +407,7 @@ export default function Home() {
             <Button
               size="lg"
               className={`${menuBtn} bg-red-600 text-white hover:bg-red-500`}
+              autoFocus
               onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}
             >
               <Play className="mr-2 h-4 w-4" /> ENGAGE
@@ -501,25 +619,34 @@ export default function Home() {
               <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">LEVEL</div>
                 <div className="flex gap-2">
-                  {([['zen-night','MOONLIT ZEN'],['rooftop','NEON ROOFTOP']] as const).map(([id,label]) => (
-                    <Button key={id} variant="outline" className={`flex-1 font-black tracking-widest ${settings.level === id ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, level: id })) }}>{label}</Button>
-                  ))}
+                  <Button variant="outline" className="flex-1 font-black tracking-widest border-red-500 bg-red-950/60 text-red-300">NEON ROOFTOP</Button>
                 </div>
-                <div className="mt-2 text-[10px] tracking-widest text-slate-500">LEVEL ART IS INDEPENDENT OF GRAPHICS QUALITY</div>
+                <div className="mt-2 text-[10px] tracking-widest text-slate-500">THE MOONLIT ZEN SCENE WAS REMOVED IN THE 120 FPS STRIP</div>
               </div>
               <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
                 <div className="flex gap-2">
-                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => (
-                    <Button
-                      key={q}
-                      variant="outline"
-                      className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`}
-                      onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
-                    >{q.toUpperCase()}</Button>
-                  ))}
+                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => {
+                    // A tier this device is not offered is DISABLED, not hidden:
+                    // the player should be able to see that ultra exists and that
+                    // it is a desktop tier, rather than wonder where it went.
+                    const beyond = (['low', 'medium', 'high', 'ultra'] as const).indexOf(q) > (['low', 'medium', 'high', 'ultra'] as const).indexOf(deviceClass.ceiling)
+                    return (
+                      <Button
+                        key={q}
+                        variant="outline"
+                        disabled={beyond}
+                        title={beyond ? 'Desktop only' : QUALITY_BLURB[q]}
+                        className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'} ${beyond ? 'opacity-30' : ''}`}
+                        onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
+                      >{q.toUpperCase()}</Button>
+                    )
+                  })}
                 </div>
-                {settings.quality === 'ultra' && <div className="mt-2 text-[10px] tracking-widest text-slate-400">CINEMATIC 2.5D · VOLUMETRIC MOON FOG · WET REFLECTIONS · DEPTH SHADOWS</div>}
+                <div className="mt-2 text-[10px] tracking-widest text-slate-400">{QUALITY_BLURB[settings.quality]}</div>
+                <div className="mt-1 text-[10px] tracking-widest text-slate-600">
+                  ULTRA IS A DESKTOP TIER · DEVICE DETECTED: {deviceClass.desktop ? 'DESKTOP' : 'TOUCH'} · {deviceClass.megapixels.toFixed(1)} MP
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -573,7 +700,7 @@ export default function Home() {
           <div className="text-[10px] font-bold tracking-[0.6em] text-zinc-500">SYSTEM SUSPENDED</div>
           <h2 className="mt-1 text-5xl font-black tracking-widest text-white">PAUSED</h2>
           <div className="mt-8 flex flex-col gap-3">
-            <Button size="lg" className="bg-red-600 px-16 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.resume() }}>RESUME</Button>
+            <Button size="lg" className="bg-red-600 px-16 font-black tracking-[0.25em] text-white hover:bg-red-500" autoFocus onClick={(e) => { e.currentTarget.blur(); gameRef.current?.resume() }}>RESUME</Button>
             <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setSettingsFrom('paused'); setScreen('settings') }}>SETTINGS</Button>
             <Button size="lg" variant="outline" className="border-zinc-800 bg-black/60 font-black tracking-[0.25em] text-zinc-500 hover:text-red-400" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.quitToMenu(); setScreen('title') }}>ABORT MISSION</Button>
           </div>
@@ -590,6 +717,13 @@ export default function Home() {
             <div className="mt-4 border border-amber-500/60 bg-amber-950/40 px-6 py-2 text-center">
               <div className="text-[10px] font-black tracking-[0.3em] text-amber-400">NEW BLADE UNLOCKED</div>
               <div className="text-sm font-black tracking-widest text-amber-200">{newUnlocks.map((id) => SWORDS[id].name).join(' / ')}</div>
+            </div>
+          )}
+
+          {nightLabel && (
+            <div className="mt-4 text-center">
+              <div className="text-[9px] font-black tracking-[0.4em] text-zinc-500">TONIGHT&apos;S RIG</div>
+              <div className="mt-0.5 font-mono text-[11px] tracking-[0.2em] text-cyan-300/80">{nightLabel}</div>
             </div>
           )}
 
@@ -617,7 +751,7 @@ export default function Home() {
 
           {submitError && <p role="alert" className="mt-3 text-sm text-red-300">{submitError}</p>}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
+            <Button size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" autoFocus onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
               <RotateCcw className="mr-2 h-4 w-4" /> RETRY
             </Button>
             <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('arsenal') }}>

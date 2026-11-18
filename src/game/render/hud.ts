@@ -3,6 +3,7 @@
  */
 
 import { clamp01, damp, fmt, rgba, TAU } from '../core/utils'
+import { gameLedger } from './ledger'
 import {DASH_STAMINA_COST,POWER_DASH_STAMINA_COST} from '../combat/stamina'
 
 export interface HudComboState {
@@ -49,6 +50,8 @@ export interface HudState {
   abilityReady: boolean
   fps: number
   showFps: boolean
+  /** particle system level (0 OFF / 1 LOW / 2 FULL) — B toggles in-game */
+  particleLevel: number
   runTime: number
   attract: boolean
 }
@@ -83,6 +86,8 @@ export class HUD {
 
   /* low-HP red vignette: baked plate (see drawLowHpVignette) */
   private lowHpPlate: HTMLCanvasElement | null = null
+  private propLegend: HTMLCanvasElement | null = null
+  private moodName = 'NEON NOIR'
   private lowHpW = 0
   private lowHpH = 0
 
@@ -115,13 +120,15 @@ export class HUD {
     this.drawBanner(ctx, w, s, dt)
     this.drawPrompts(ctx, s)
     this.drawHints(ctx, w, h, s)
+    this.drawPropLegend(ctx, w, h, s)
     this.drawLowHpVignette(ctx, w, h, s)
     if (s.showFps) {
       ctx.save()
       ctx.font = `12px ${MONO}`
       ctx.fillStyle = 'rgba(180,200,210,0.8)'
       ctx.textAlign = 'right'
-      ctx.fillText(`${Math.round(s.fps)} FPS`, w - 14, h - 14)
+      const fxLabel = (['OFF', 'LOW', 'FULL'] as const)[s.particleLevel] ?? 'FULL'
+      ctx.fillText(`${Math.round(s.fps)} FPS · FX ${fxLabel} [B]`, w - 14, h - 14)
       ctx.restore()
     }
   }
@@ -394,6 +401,72 @@ export class HUD {
     ctx.restore()
   }
 
+  /** Re-bake the legend when the run's curated palette changes. */
+  setMoodLabel(name: string): void {
+    if (this.moodName === name) return
+    this.moodName = name
+    this.propLegend = null
+  }
+
+  /** PROP PURPOSE LEGEND — a single baked plate (built once, blitted once
+   *  per frame) so the six destructible props are self-explanatory. No live
+   *  text layout on the 120 Hz path. */
+  private drawPropLegend(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
+    if (typeof document === 'undefined' || w < 650) return
+    const a = clamp01((26 - s.runTime) / 4) * 0.82
+    if (a <= 0.01) return
+    if (!this.propLegend) {
+      // Through the ledger: pinned, so the LRU sweep can never blank the legend
+      // mid-run (it is drawn every frame for the first 26 s and then never).
+      const c = gameLedger.acquire('hud:legend', 660, 22, 'hud', true) as unknown as HTMLCanvasElement
+      const g = c.getContext('2d')
+      if (!g) return
+      // dark plate + accent hairline: a light figure on a dark ground
+      g.fillStyle = 'rgba(3,7,12,0.78)'
+      g.fillRect(0, 0, 660, 22)
+      g.fillStyle = 'rgba(120,226,255,0.4)'
+      g.fillRect(0, 0, 660, 1)
+      g.fillRect(0, 21, 660, 1)
+      g.textBaseline = 'middle'
+      g.font = `bold 10px ${MONO}`
+      g.fillStyle = 'rgba(198,216,228,0.9)'
+      g.fillText('BREAK PROPS', 4, 11)
+      const items: ReadonlyArray<readonly [string, string, string]> = [
+        ['!', 'BLAST', '#ff7a3c'], ['+', 'HEAL', '#5cffb4'], ['^', 'LAUNCH', '#9fd8ff'],
+        ['Z', 'STUN', '#a6d0ff'], ['~', 'EXPOSE', '#c39cff'], ['$', 'SCORE', '#ffd670'],
+      ]
+      let x = 92
+      for (const [sym, label, col] of items) {
+        g.fillStyle = col
+        g.fillRect(x, 4, 13, 14)
+        g.fillStyle = '#050a0e'
+        g.font = `bold 10px ${MONO}`
+        g.fillText(sym, x + 3, 11)
+        g.fillStyle = 'rgba(214,230,240,0.95)'
+        g.font = `10px ${MONO}`
+        g.fillText(label, x + 17, 11)
+        x += 21 + g.measureText(label).width + 12
+      }
+      // MOOD BADGE — names the curated palette; makes each run read as a
+      // deliberately designed level rather than a random colour shuffle.
+      g.fillStyle = 'rgba(120,226,255,0.12)'
+      g.fillRect(556, 3, 100, 16)
+      g.strokeStyle = 'rgba(120,226,255,0.6)'
+      g.lineWidth = 1
+      g.strokeRect(556.5, 3.5, 99, 15)
+      g.fillStyle = '#bfefff'
+      g.font = `bold 9px ${MONO}`
+      g.textAlign = 'center'
+      g.fillText(this.moodName, 606, 11)
+      g.textAlign = 'left'
+      this.propLegend = c
+    }
+    ctx.save()
+    ctx.globalAlpha = a
+    ctx.drawImage(this.propLegend, Math.max(8, (w - 660) * 0.5), h - 38)
+    ctx.restore()
+  }
+
   private drawLowHpVignette(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
     const frac = s.hp / s.maxHp
     if (frac > 0.32) return
@@ -404,9 +477,9 @@ export class HUD {
     // gradient + full-screen fill cost ~10-15ms/frame on software raster,
     // exactly when the player is hurt and combat is hottest
     if (!this.lowHpPlate || this.lowHpW !== w || this.lowHpH !== h) {
-      const c = document.createElement('canvas')
-      c.width = Math.max(2, Math.floor(w))
-      c.height = Math.max(2, Math.floor(h))
+      // A stable key: the ledger RESIZES a surface in place when the frame size
+      // changes, which is exactly the reallocation this plate wants.
+      const c = gameLedger.acquire('hud:lowhp', Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)), 'hud', true) as unknown as HTMLCanvasElement
       const g = c.getContext('2d')
       if (g) {
         const rg = g.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)
