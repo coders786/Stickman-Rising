@@ -3,7 +3,7 @@ import {resolveEnemyHit,missedHit,parriedHit,rewardsConfirmedHit,type HitResolut
  * combat resolution, combo & score, executions, ultimates, waves, events.
  */
 
-import { Camera } from './core/camera'
+import { Camera, PLAY_ZOOM } from './core/camera'
 import { Input } from './core/input'
 import { advanceSimClock } from './core/sim-clock'
 import { DEFAULT_SETTINGS, GameEvent, GamePhase, GameSettings, LevelId, RunStats, WorldRef } from './core/types'
@@ -27,7 +27,7 @@ import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState, rankForHits } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
-import { QualityLadder, type Tier } from './render/quality'
+import { DesktopCadence, QualityLadder, type Tier } from './render/quality'
 import { featuresFor } from './render/graphics'
 import { LIGHT_HEX } from './world/lightfield'
 import { FAR_DIVISOR, HordeGrid, planTicks, type TickPlan } from './combat/horde'
@@ -136,6 +136,8 @@ interface UltState {
 /* ------------------------------------------------------------------ */
 
 export class Game {
+  touchControls = false
+  private hudCtx: CanvasRenderingContext2D | null = null
   private canvas: HTMLCanvasElement | null = null
   private ctx: CanvasRenderingContext2D | null = null
   private raf = 0
@@ -208,6 +210,8 @@ export class Game {
   /** p95-based tier controller (render/quality.ts). The DPR governor below
    *  still owns resolution; this owns the DRAW BUDGET, because an average FPS
    *  hides exactly the variance that makes a phone feel bad. */
+  private desktopClock = new DesktopCadence()
+  private desktopPacing = false
   private ladder = new QualityLadder(DEFAULT_SETTINGS.quality as Tier)
   /** Rolling frame statistics for the debug overlay and the bug-bounty report.
    *  Ring-buffered: sampling allocates nothing. */
@@ -294,7 +298,8 @@ export class Game {
   /** Wall-clock cost of the run's plate bake (0 = not measured yet). */
   bakeMs = 0
   /** Cached frame percentiles for the readout (see the draw path comment). */
-  private snap = new FrameLog(1).snapshot()
+  private perfLabel = ''
+  private sampledFps = 60
   private snapAt = -1
   private autoQuality = true
 
@@ -356,10 +361,13 @@ export class Game {
   /* lifecycle                                                            */
   /* ------------------------------------------------------------------ */
 
-  mount(canvas: HTMLCanvasElement): void {
+  mount(canvas: HTMLCanvasElement, hudLayer?: HTMLCanvasElement | null): void {
+    this.desktopPacing = window.matchMedia?.('(pointer: fine)').matches === true
+    this.renderer.setDesktopLighting(this.desktopPacing)
     this.canvas = canvas
     this.ctx = canvas.getContext('2d', { alpha: false, desynchronized: true })
     if (!this.ctx) throw new Error('Your browser could not initialize the game canvas.')
+    this.hudCtx = hudLayer?.getContext('2d') ?? null
     this.input.attach()
     this.resize()
     this.visibilityBound = () => {
@@ -457,6 +465,14 @@ export class Game {
     if (this.canvas.height !== bh) this.canvas.height = bh
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
+    // Keep glyphs on a stable device-pixel grid while the governor scales the scene.
+    if (this.hudCtx) {
+      const c=this.hudCtx.canvas, ratio=Math.min(2,window.devicePixelRatio || 1)
+      const hw=Math.round(this.cssW*ratio), hh=Math.round(this.cssH*ratio)
+      if(c.width!==hw)c.width=hw
+      if(c.height!==hh)c.height=hh
+      this.hudCtx.setTransform(hw/this.cssW,0,0,hh/this.cssH,0,0)
+    }
     this.cam.setViewport(this.cssW, this.cssH)
     this.bg.resize(this.cssW, this.cssH)
   }
@@ -467,6 +483,14 @@ export class Game {
    * (rain/mote/fog/mist/reflection density all scale with tier). */
   private govern(dt: number): void {
     if (!this.autoQuality || this.phase !== 'playing') return
+    // The ladder measures each displayed frame; only the DPR governor is throttled.
+    const goal=this.desktopPacing?this.desktopClock.observe(dt*1000):60
+    const stepped = this.ladder.frame(dt * 1000, dt, goal)
+    if (stepped) {
+      this.applySettings({ ...this.settings, quality: stepped }, true)
+      this.govCool = 4
+      return
+    }
     this.govT += dt
     this.govCool = Math.max(0, this.govCool - dt)
     if (this.govT < 0.8) return
@@ -482,18 +506,8 @@ export class Game {
     // is slow and the governor would stop trying to improve.
     const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 1
     const offer = busy < 0.35 ? Math.min(60, 1 / Math.max(1e-4, this.frameFloor)) : 60
-    const scale = offer / 60
-    // THE TIER IS DECIDED BY p95, NOT BY THE AVERAGE. The average is the
-    // metric that hides stutter; a 4 s p95 window with a 12 s dwell is the
-    // only controller here that can neither oscillate nor permanently
-    // downgrade a session because of one GC pause.
-    const stepped = this.ladder.frame(this.frameMs, 0.8)
-    if (stepped) {
-      this.applySettings({ ...this.settings, quality: stepped }, true)
-      this.govCool = 4
-      return
-    }
-    if (this.fpsAvg < 44 * scale && this.dprTarget > 0.8) {
+    const scale = goal>60 ? goal/60 : offer/60
+    if (this.fpsAvg < (goal>60?51:44) * scale && this.dprTarget > 0.8) {
       this.dprTarget = Math.max(0.8, this.dprTarget - 0.25)
       this.lastDropAt = this.wall
       this.govCool = 2.2 // pacing needs seconds to climb back from a realloc
@@ -563,10 +577,14 @@ export class Game {
       this.qualityCeiling = (['ultra', 'high', 'medium', 'low'] as const).indexOf(s.quality)
       // The user's pick is the ladder's CEILING: the governor may shed below
       // it in a heat wave, and may never raise above it.
-      this.ladder.setCeiling(s.quality as Tier)
+      if (this.ladder.current !== s.quality || this.ladder.ceilingTier !== s.quality) {
+        this.ladder = new QualityLadder(s.quality as Tier)
+      }
     }
     this.settings = { ...s }
     this.fx.setQuality?.(s.quality)
+    const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    this.fx.setScreenStrength(s.shake && !reducedMotion ? s.shakeIntensity : 0)
     this.fx.setGore(s.gore)
     this.renderer.setQuality?.(s.quality) // grain cadence follows the tier
     this.cam.setShakeEnabled(s.shake, s.shakeIntensity)
@@ -638,6 +656,14 @@ export class Game {
     return { label: prof?.label ?? 'CLEAR NIGHT', id: prof?.id ?? '0000' }
   }
 
+  private syncSceneMood(seed: number): void {
+    // Novelty selection can resolve to a different profile than the initial
+    // seed. Label and dress the scene the background actually baked.
+    const mood = this.bg.getProfile?.()?.mood ?? MOOD_PALETTES[moodIndexForSeed(seed)]
+    this.props.setMood(MOOD_PALETTES.indexOf(mood))
+    this.hud.setMoodLabel(mood.name)
+  }
+
   startRun(swordId: SwordId): void {
     this.audio.resume()
     this.audio.startMusic()
@@ -662,8 +688,7 @@ export class Game {
     // a jittered timer, so the rooftop is dressed differently every run.
     const prof = this.bg.getProfile?.()
     if (prof) this.props.setRunDensity(prof.props.density, prof.props.timerJitter, prof.props.crateBias)
-    this.props.setMood(moodIndexForSeed(runSeed))
-    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(runSeed)].name)
+    this.syncSceneMood(runSeed)
     this.enemies.length = 0
     this.projectiles.clear()
     this.fx.clear()
@@ -682,8 +707,7 @@ export class Game {
     this.exec = null
     this.ult = null
     this.banner = null
-    this.cam.snapTo(this.player.x, -150)
-    this.cam.setZoom(1)
+    this.cam.startOnRoad(this.player.x)
     this.input.setEnabled(true)
     this.setPhase('playing')
     this.audio.play('uiConfirm')
@@ -712,10 +736,9 @@ export class Game {
     this.fx.clear()
     const menuSeed = (Math.random() * 0xffffffff) >>> 0
     this.props.reset(menuSeed)
-    this.props.setMood(moodIndexForSeed(menuSeed))
-    this.hud.setMoodLabel(MOOD_PALETTES[moodIndexForSeed(menuSeed)].name)
     this.lastRunSeed = menuSeed
     this.bg.setRunSeed?.(menuSeed)
+    this.syncSceneMood(menuSeed)
     this.waves.reset()
     this.player.reset(1300)
     this.combo.reset()
@@ -899,7 +922,7 @@ export class Game {
         this.recordPrev()
       }
       // --- visual systems tick ONCE per frame (never per substep) ---
-      this.fx.update(simDt)
+      this.fx.update(simDt, dtRaw)
       this.bg.update(simDt)
       // --- sample the render between the last two sim states ---
       // alpha sweeps 0..1 as the leftover accumulator fills toward the next
@@ -916,7 +939,10 @@ export class Game {
     // --- render ---
     try {
       ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
+      const hudCtx=this.hudCtx
+      hudCtx?.clearRect(0,0,this.cssW,this.cssH)
       const world: RenderWorld = {
+        hudCtx: this.inspect.mode === 'off' ? hudCtx : null,
         cam: this.cam,
         fx: this.fx,
         bg: this.bg,
@@ -934,54 +960,7 @@ export class Game {
       if (editFrozen) this.inspect.editorFrame(this, dtRaw)
       // inspection overlay (solo/sheet/edit views + state readout)
       this.inspect.draw(ctx, this, this.renderTime)
-      // PERF READOUT — the bottleneck, SHOWN live: JS frame cost vs the
-      // leftover inter-frame gap (raster/present estimate), the bound class,
-      // and the governor's active levers. "Something is bottlenecked but not
-      // shown" — now it is shown.
-      {
-        // Bound classification from what we can ACTUALLY measure. `wait`
-        // is vsync idle + compositor + unattributed raster; a large wait
-        // with small js means we are NOT the bottleneck (usually pacing).
-        // We do not claim "GPU-bound" — JS cannot see GPU time here.
-        const busy = this.frameMs > 0 ? this.jsMs / this.frameMs : 0
-        const bound = busy > 0.6 ? 'cpu' : busy < 0.25 ? 'paced/wait' : 'mixed'
-        const offer = Math.min(60, 1 / Math.max(1e-4, this.frameFloor))
-        const locked = this.fpsAvg < offer * 0.62 && busy < 0.25
-          ? ` · presented below the ~${Math.round(offer)}Hz this display offers (throttle/iframe/vsync?)`
-          : ''
-        ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-        ctx.font = '10px ui-monospace,monospace'
-        ctx.fillStyle = 'rgba(190,220,232,.55)'
-        ctx.textAlign = 'right'
-        const drop = this.overloadDropped > 0.001 ? ` · dropped ${this.overloadDropped.toFixed(2)}s sim` : ''
-        // CACHE THE SNAPSHOT. snapshot() sorts an array of up to 600 frame
-        // times; calling it in the draw path made the debug readout itself a
-        // measurable cost (and an allocation site) — the exact class of bug
-        // 21 §8 is about. Refreshed twice a second, which is faster than a
-        // human can read it.
-        if (this.wall - this.snapAt > 0.5) {
-          this.snapAt = this.wall
-          this.snap = this.frameLog.snapshot()
-        }
-        const snap = this.snap
-        const prof = this.bg.getProfile?.()
-        const plates = this.bg.plateStats?.()
-        const wx = this.bg.weatherState?.()
-        const wxTxt = wx ? ` · ${wx.kind} ${Math.round(wx.s * 100)}% ${wx.changes}ch` : ''
-        const bake = plates && plates.moonSource !== 'none'
-          ? ` · bake ${plates.moonSource}/${plates.starSource} ${this.bakeMs.toFixed(0)}ms`
-          : ''
-        ctx.fillText(`${Math.round(this.fpsAvg)}fps · p95 ${snap.p95.toFixed(1)}ms · js ${this.jsMs.toFixed(1)}ms · ${bound} · dpr ${this.dpr.toFixed(2)} · ${this.ladder.current}${drop}${locked}${bake}${wxTxt} · ${this.renderer.graphicsSummary()}`, this.cssW - 12, 62)
-        // THE RUN IDENTITY, shown for the first seconds of a run and then
-        // faded out. The whole point of the profile work is that tonight is a
-        // different night — but a debug line that never leaves is clutter, and
-        // a player who has to open a console to see the feature never sees it.
-        if (prof && this.time < 18) {
-          const fade = this.time < 14 ? 1 : 1 - (this.time - 14) / 4
-          ctx.fillStyle = `rgba(190,220,232,${(0.42 * Math.max(0, fade)).toFixed(3)})`
-          ctx.fillText(`TONIGHT · ${prof.label} · ${prof.id}`, this.cssW - 12, 76)
-        }
-      }
+
     } finally {
       // ALWAYS hand the sim its true positions back (crash-safe)
       this.uninstallRenderLerp()
@@ -1105,7 +1084,7 @@ export class Game {
       // idle hero breathing on the rooftop (framed below the title logo)
       this.player.update(dt, this.worldRef)
       this.props.update(dt, this.worldRef, this.propHooks, this.player)
-      this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y - 110, 0, 0)
+      this.cam.focus(this.player.x + Math.sin(this.time * 0.14) * 140, this.player.y, 0, 0)
     }
   }
 
@@ -1125,7 +1104,7 @@ export class Game {
       }
       this.cam.focus(tx, ty, vx, vy)
       // dynamic zoom: pull back when many enemies, punch in during cinematics
-      let zoom = 1.04
+      let zoom: number = PLAY_ZOOM
       const n = this.enemies.length
       if (n > 10) zoom = 0.94
       if (n > 18) zoom = 0.88
@@ -1337,14 +1316,10 @@ export class Game {
         this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), atk.heavy, sword.colors.glow, sword.colors.accent)
         const dmgShown = Math.round(resolution.actualDamage)
         this.fx.text(ex, ey - 46, `${dmgShown}`, atk.heavy ? sword.colors.accent : '#f4f9fc', atk.heavy ? 17 : 13)
-        // crash-zoom punch on heavies (Z-axis push-pull) + impact frames on
-        // the big connects — the anime kill-frame language
-        this.addHitstop(atk.hitstop, atk.heavy ? 0.09 : 0)
-        if (atk.heavy && atk.dmg >= 15) {
-          this.fx.impactFrame(ex, ey, sword.colors.glow)
-        } else if (atk.heavy) {
-          this.fx.chroma(0.45)
-        }
+        // A heavy connection still pauses the blades. Only a broken defence
+        // earns the screen treatment; a whole cleave gets at most one beat.
+        const accent = res === 'guardBreak' && this.fx.impactFrame(ex, ey, sword.colors.glow, 'guardBreak')
+        this.addHitstop(atk.hitstop, accent ? 0.045 : 0)
         this.cam.addTrauma(atk.shake)
         if (e.vulnerableT > 0) this.fx.text(ex, ey - 70, 'WEAK POINT', '#ffe14d', 11)
         break
@@ -1369,8 +1344,7 @@ export class Game {
     if (heavyDeath) {
       this.fx.dismember(e.x, e.y, Math.sign(e.x - this.player.x) || 1, e.cfg.style.body, gore === 'blood' ? '#c31432' : sword.colors.glow)
       this.audio.play('deathHeavy', { volume: 0.8, pitch: e.kind === 'heavy' ? 0.7 : 1 })
-      this.fx.screenFlash(sword.colors.trail, 0.1, 4)
-      this.addHitstop(0.08, 0.08)
+      this.addHitstop(0.08)
       this.cam.addTrauma(0.3)
     } else {
       this.fx.dissolve(e.x, e.y - 30, e.cfg.style.body, gore === 'blood' ? '#c31432' : e.cfg.style.glow)
@@ -1397,10 +1371,9 @@ export class Game {
     this.audio.play('explosion', { volume: 1 })
     this.audio.play('deathHeavy', { volume: 1, pitch: 0.6 })
     this.addSlowmo(0.2, 1.6)
-    this.addHitstop(0.16, 0.15)
+    const accent = this.fx.impactFrame(e.x, e.y - 60, '#ffae2e', 'bossDefeat')
+    this.addHitstop(0.16, accent ? 0.08 : 0)
     this.cam.addTrauma(1)
-    this.fx.impactFrame(e.x, e.y - 60, '#ffae2e')
-    this.fx.screenFlash('#ffffff', 0.5, 1.6)
     for (let i = 0; i < 6; i++) {
       const ex = e.x + rand(-90, 90)
       const ey = e.y - rand(20, 160)
@@ -1509,13 +1482,13 @@ export class Game {
       if(ex.step===cuts.length&&ex.t>=timeline.separateAt){
         ex.step++
         this.audio.play('deathHeavy',{volume:.9,pitch:.82})
-        this.fx.impactFrame(e.x,e.y-42,sword.mundane?'#c7ccc9':sword.colors.accent)
+        const accent = this.fx.impactFrame(e.x,e.y-42,sword.mundane?'#c7ccc9':sword.colors.accent,'execution')
         this.fx.executionPieces(e.x,e.y,this.player.face,e.cfg.style.body,
           this.settings.gore==='blood'?'#c31432':sword.mundane?'#737a76':sword.colors.glow,
           sword.form==='greatblade'?8:sword.id==='katana'?12:10)
         if(sword.mundane){this.fx.dust(e.x,e.y,6);this.fx.burst(e.x,e.y-40,6,'#aeb3af',140,.24,'spark')}
         this.cam.addTrauma(sword.form==='greatblade'?.72:.48)
-        this.addHitstop(.1,.08)
+        this.addHitstop(.1,accent ? .06 : 0)
         this.onEnemyExecuted(e)
         this.player.hp=Math.min(this.player.maxHp,this.player.hp+22)
         this.player.energy=Math.min(this.player.maxEnergy,this.player.energy+40)
@@ -1655,6 +1628,12 @@ export class Game {
   /* ------------------------------------------------------------------ */
 
   private buildHudState(): HudState {
+    if (this.settings.showFps && this.wall-this.snapAt >= .5) {
+      this.snapAt=this.wall
+      this.sampledFps=Math.round(this.fps)
+      const p95=this.frameLog.snapshot().p95
+      this.perfLabel=`p95 ${p95.toFixed(1)}ms · JS ${this.jsMs.toFixed(1)}ms · DPR ${this.dpr.toFixed(2)} · ${this.ladder.current}`
+    }
     const p = this.player
     const boss = this.enemies.find((e) => e.kind === 'boss' && !e.dead)
     let execPrompt: { x: number; y: number } | null = null
@@ -1703,7 +1682,9 @@ export class Game {
       executePrompt: execPrompt,
       ultReady: p.meter >= 100,
       abilityReady: p.energy >= p.sword.ability.cost,
-      fps: this.fps,
+      fps: this.sampledFps,
+      perfLabel: this.perfLabel,
+      touch: this.touchControls,
       showFps: this.settings.showFps,
       particleLevel: getParticleLevel(),
       runTime: this.runTime,

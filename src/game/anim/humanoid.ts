@@ -1,56 +1,15 @@
+import { volumeBrush } from '../lighting/volume'
 /** Shadow Ronin — matte-black continuous anatomical silhouette renderer. No capsules, hinge discs or armor rings.
  * The skeleton is hidden: it supplies landmarks, not visible body primitives.
  */
 import type { FighterGeom, FighterDrawOpts } from './rig3d'
 import type { StickStyle } from './skeleton'
 import { clamp01 } from '../core/utils'
-import { rimPlan } from '../render/look'
+import { material } from '../lighting/material'
 
 type Point = { x: number; y: number }
 type SurfacePoint = Point & { radius: number }
 
-/* Per-ctx wash gradient caches: the wash STOP colors are fixed (full
- * intensity); live brightness rides globalAlpha — the composited product is
- * identical to baking alpha into the stops, but zero gradients/strings are
- * allocated per frame (GC was ~30% of frame CPU). */
-const keyWashCache = new WeakMap<CanvasRenderingContext2D, Map<number, CanvasGradient>>()
-function keyWashGrad(ctx: CanvasRenderingContext2D, dir: number): CanvasGradient {
-  let m = keyWashCache.get(ctx)
-  if (!m) { m = new Map(); keyWashCache.set(ctx, m) }
-  const d = dir < 0 ? -1 : 1
-  let g = m.get(d)
-  if (!g) {
-    g = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
-    g.addColorStop(0, 'rgba(165,210,242,0)')
-    g.addColorStop(0.62, 'rgba(165,210,242,0.17)')
-    g.addColorStop(1, 'rgba(185,222,248,0.34)')
-    m.set(d, g)
-  }
-  return g
-}
-const sfWashCache = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
-function sfWashGrad(ctx: CanvasRenderingContext2D, color: string, dir: number): CanvasGradient {
-  let m = sfWashCache.get(ctx)
-  if (!m) { m = new Map(); sfWashCache.set(ctx, m) }
-  const k = color + (dir < 0 ? '|L' : '|R')
-  let g = m.get(k)
-  if (!g) {
-    const d = dir < 0 ? -1 : 1
-    g = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
-    g.addColorStop(0, 'rgba(255,255,255,0)')
-    g.addColorStop(0.58, hexA(color, 0.32))
-    g.addColorStop(1, hexA(color, 0.85))
-    m.set(k, g)
-  }
-  return g
-}
-
-/** '#rrggbb' + alpha → 'rgba(r,g,b,a)' (gradient stops need components) */
-const hexA = (hex: string, a: number): string => {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex)
-  const n = parseInt(m ? m[1] : '8899aa', 16)
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`
-}
 const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
 
 /** C1 contour through the midpoints of an anatomical profile. */
@@ -210,7 +169,7 @@ ctx.quadraticCurveTo(1.1,-1.5-o*.25,1.8+o*.3,-.5-o*.45);ctx.stroke()
 ctx.restore()
 }
 
-export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string|CanvasGradient,opts:FighterDrawOpts):void {
+export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:string|CanvasGradient,opts:FighterDrawOpts,volume=false):void {
   // every limb is drawn with its joints' true depths, so the near end of a
   // limb aimed at the camera widens while its length compresses
   const limb=(a:Point,b:Point,c:Point,r:number[],za=0,zb=0,zc=0)=>
@@ -236,7 +195,7 @@ export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:stri
   // sticks — the girdle has to shrink with the limbs or neither reads.
   outline(ctx,[at(-.09,-4.4),at(0,-5.2),at(.32,-4.5),at(.73,-8.6),at(.98,-9.6),
     at(1.08,-3),at(1.08,3),at(.98,9.6),at(.73,8.6),at(.32,4.5),at(0,5.2),at(-.09,4.4)])
-  ctx.fillStyle=color;ctx.fill()
+  ctx.fillStyle=volume?volumeBrush(ctx,'#000000',opts.light,opts.flipX??1,waistLine.x,waistLine.y,11,l*.68,Math.atan2(dx,-dy),true,color):color;ctx.fill()
   // No thigh-length gi flaps: they fused into a low diaper-shaped crotch.
   // The pelvis contour ends at the femoral heads; legs supply the rest.
   // Raised collar and short split obi ends stylize the OUTLINE only.
@@ -279,7 +238,7 @@ export function silhouette(ctx:CanvasRenderingContext2D,g:FighterGeom,color:stri
   ctx.lineTo(.2,-7.8);ctx.lineTo(1.8,-7.2);ctx.lineTo(5.2,-7.4)
   ctx.lineTo(4.1,-5.1);ctx.lineTo(5.5,-3.8);ctx.lineTo(4.6,-2)
   ctx.lineTo(5.6,.3);ctx.lineTo(4.5,.9);ctx.lineTo(4.5,3.3)
-  ctx.lineTo(1.6,5.5);ctx.lineTo(-3.1,4.2);ctx.closePath();ctx.fillStyle=color;ctx.fill()
+  ctx.lineTo(1.6,5.5);ctx.lineTo(-3.1,4.2);ctx.closePath();ctx.fillStyle=volume?volumeBrush(ctx,'#000000',opts.light,opts.flipX??1,0,-1,7,8,0,false,color,g.headAng):color;ctx.fill()
   ctx.restore()
 }
 
@@ -288,50 +247,22 @@ export function drawHumanoid(ctx:CanvasRenderingContext2D,g:FighterGeom,_style:S
   const alpha=clamp01(opts.alpha??1)*clamp01(opts.ghostAlpha??1)
   if(alpha<=.001)return
   ctx.save();ctx.globalAlpha*=alpha;ctx.lineJoin='round';ctx.lineCap='round'
-  // DIRECTIONAL RIM (universal look contract) — the rim exists only on
-  // edges FACING the key light (moon upper-right), carved behind the opaque
-  // surface; the lower edges facing the neon city pick up faint cyan/
-  // magenta sign bounce. NEVER a uniform outline around the silhouette.
-  // LIGHT WRAP + EMITTER FILL: a wide soft key-side halo bleeds around the
-  // thin limbs (translucency/volume cue), and the shadow side catches
-  // colored bounce from whatever practical light reaches the subject.
-  if((opts.rimAlpha??0)>.01){
-    const rk=clamp01(opts.rimAlpha??0)
-    const rim=rimPlan()
-    // TAP TRANSLATE: the body draws in the face-flipped, SCALE-scaled local
-    // space — every world-space tap offset must be unflipped/un-scaled here
-    // or the light lands on the WRONG side of a left-facing figure (and at
-    // the wrong size). fx = face sign, u = context scale.
-    const fx=opts.flipX??1,u=opts.unit??1
-    const tap=(dx:number,dy:number)=>ctx.translate(dx*fx/u,dy/u)
-    // FORM WASH (the real-time 2D lighting read): the body TAKES the key as
-    // a directional gradient — bright toward the light, falling to dark
-    // across the form. This is what makes figures look LIT, not outlined.
-    const tL=Math.sign(rim.keyDX)*fx
-    ctx.save();ctx.globalAlpha*=rk*rim.keyA;silhouette(ctx,g,keyWashGrad(ctx,tL),opts);ctx.restore()
-    // PRACTICAL WASHES — near a bright practical the body visibly warms/
-    // cools on the side facing it (inverse-square via emitterFills) — the
-    // 'lighting updates near the house light' behavior, one gradient per
-    // source so light lands on the side facing EACH emitter.
-    for(const sf of opts.sideFills??[]){
-      if(sf.a>.01){
-        ctx.save();ctx.globalAlpha*=clamp01(sf.a)
-        silhouette(ctx,g,sfWashGrad(ctx,sf.color,sf.dx*fx),opts);ctx.restore()
-      }
-    }
-    // edge accents (thin, corrected): wrap translucency + tight key rim
-    ctx.save();ctx.globalAlpha*=rk*rim.wrapA*.8
-    tap(rim.wrapDX,rim.wrapDY);silhouette(ctx,g,opts.rimColor??rim.keyColor,opts);ctx.restore()
-    ctx.save();ctx.globalAlpha*=rk*rim.keyA*.62
-    tap(rim.keyDX,rim.keyDY);silhouette(ctx,g,opts.rimColor??rim.keyColor,opts);ctx.restore()
-    // neon city bounce — FRACTURED faint floor glow (the no-disco law: it
-    // is a whisper on the lower edges, never a second key)
-    ctx.save();ctx.globalAlpha*=rk*rim.bounceA*.38
-    tap(rim.bounceCyanDX,rim.bounceCyanDY);silhouette(ctx,g,'#3fd8e8',opts);ctx.restore()
-    ctx.save();ctx.globalAlpha*=rk*rim.bounceA*.24
-    tap(rim.bounceMagentaDX,rim.bounceMagentaDY);silhouette(ctx,g,'#d45bc8',opts);ctx.restore()
+  const light = opts.light, face = opts.flipX ?? 1
+  // One sub-pixel moon-facing edge behind the opaque material. Neither pass
+  // changes the coverage of the air between the limbs.
+  if (!opts.ghost && (opts.rimAlpha ?? 0) > .01) {
+    ctx.save()
+    const unit = opts.unit ?? 1
+    const local=light ? Math.min(1,Math.max(light.r,light.g,light.b)) : 0
+    ctx.translate(((light?.keyX ?? 1)+(light?.dx ?? 0)*.85) * face / unit, -(1.15+.35*local) / unit)
+    ctx.globalAlpha *= (opts.rimAlpha ?? 0) * .72
+    // The silhouette picks up practical colour as it crosses the pools;
+    // the unlit side stays black instead of getting an all-around outline.
+    const edge=light && local>.02 ? `rgb(${Math.min(255,Math.round(100+135*light.r))},${Math.min(255,Math.round(150+95*light.g))},${Math.min(255,Math.round(183+70*light.b))})` : opts.rimColor ?? '#a5d2f2'
+    silhouette(ctx,g,edge,opts)
+    ctx.restore()
   }
-  silhouette(ctx,g,opts.ghost??'#000000',opts)
+  silhouette(ctx,g,opts.ghost ?? material(ctx,'#000000',light,face),opts,!opts.ghost)
   // Impact flashes remain an explicit temporary combat effect, not clothing.
   if((opts.flash??0)>.02){ctx.save();ctx.globalAlpha*=clamp01(opts.flash??0);silhouette(ctx,g,opts.flashColor??'#fff',opts);ctx.restore()}
   ctx.restore()

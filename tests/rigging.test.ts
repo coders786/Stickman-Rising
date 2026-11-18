@@ -143,12 +143,28 @@ test('wind: cables bow further on a windy run than on a calm one', () => {
   windy.clouds.speed = 1.7
   const rc = new Rigging(calm, 'high')
   const rw = new Rigging(windy, 'high')
-  const cableY = (r: Rigging): number => (r as unknown as { cables: { p: Float32Array }[] }).cables[0].p[9]
-  const base = cableY(new Rigging(calm, 'high'))
+  const cableX = (r: Rigging): number => (r as unknown as { cables: { p: Float32Array }[] }).cables[0].p[8]
+  const base = cableX(new Rigging(calm, 'high'))
   for (let i = 0; i < 240; i++) {
     rc.update(1 / 60)
     rw.update(1 / 60)
   }
-  void 0 // (base only documents the rest shape)
-  assert.ok(Math.abs(cableY(rw) - base) > Math.abs(cableY(rc) - base), 'wind did not reach the cable')
+  // Wind is lateral acceleration. Test lateral motion, not vertical collapse.
+  assert.ok(Math.abs(cableX(rw) - base) > Math.abs(cableX(rc) - base), 'wind did not reach the cable')
+})
+
+// Endpoints alone missed the falling interior and the long diagonal back to the mast.
+test('every settled cable segment stays overhead, including after a tier change', () => {
+  for (const seed of [9911, 0xa17e, 777]) {
+    const r = new Rigging(makeProfile(seed),'low')
+    for(const tier of ['low','medium','high','ultra'] as const){
+      r.setTier(tier)
+      for(let i=0;i<260;i++){
+        r.update(i%31===0 ? .14 : 1/60)
+        for(const c of (r as unknown as {cables:{p:Float32Array}[]}).cables){
+          for(let j=1;j<c.p.length;j+=2) assert.ok(c.p[j]<-180,'wire entered the combat lane')
+        }
+      }
+    }
+  }
 })

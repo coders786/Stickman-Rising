@@ -1,27 +1,4 @@
-/** STICKMAN RISING — src/game/world/night.ts
- * THE PER-RUN NIGHT: baked plates + the two reactive passes that answer the player.
- * ----------------------------------------------------------------------------
- * `profile.ts` decides *what kind of night it is*; `gpu/sky.ts` bakes the hard
- * surfaces; this file is the join between them and the frame — and it owns the
- * two pieces of lighting that must react to the player every frame:
- *
- *  1. GLITTER on the wet deck under the moon. A single baked streak sprite,
- *     blitted twice with an alpha that follows the moon's screen x and the
- *     player's proximity. This is the "very low CPU reflections" requirement
- *     taken further than the mirrored band already in background.ts: a mirror
- *     shows the city, glitter shows *the moon touching the roof*, and it costs
- *     two drawImage calls with no readback.
- *
- *  2. The MOON KEY RIM on the figure. The contact shadow in renderer.ts is
- *     pushed lower-left because the moon keys from the upper right; the rim is
- *     the other half of that story. One cached crescent, additive, alpha driven
- *     by the player's distance from the moon's azimuth and by `profile.light.key`.
- *
- * Memory law: every sprite here is baked once per seed and RELEASED (w=h=0) on
- * reseed. Nothing in this file allocates in the draw path: the alpha strings are
- * quantised through render/color.ts, and the shimmer is a pure function of time.
- * ==========================================================================*/
-
+/** Per-run sky plates and wet-deck glitter. Actor lighting lives in render/surface-light. */
 import type { EnvironmentProfile } from './profile'
 import type { MoodPalette } from './mood'
 import { bakeMoonPlate, bakeStarPlate, type Plate } from '../../gpu/sky'
@@ -83,47 +60,12 @@ function buildGlitter(rgb: string, seed: number): HTMLCanvasElement | null {
   return c
 }
 
-/** The key-rim crescent: a soft arc of light down the lit side of a figure. */
-function buildRim(rgb: string, flip: boolean): HTMLCanvasElement | null {
-  const w = 96, h = 190
-  const c = blank(w, h)
-  if (!c) return null
-  const g = c.getContext('2d')
-  if (!g) return c
-  g.globalCompositeOperation = 'lighter'
-  // three nested arcs: wide soft, mid, tight hot — the same three-band trick the
-  // baked practicals use, so the new light reads as part of the same rig.
-  const bands: ReadonlyArray<[number, number]> = [[16, 0.10], [9, 0.16], [4, 0.30]]
-  for (const [lw, a] of bands) {
-    g.strokeStyle = rgbaConst(rgb, a)
-    g.lineWidth = lw
-    g.beginPath()
-    // A crescent, not a circle: an arc that hugs the silhouette from shoulder
-    // to knee on the moon side.
-    g.ellipse(w * 0.5, h * 0.52, w * 0.30, h * 0.40, 0, -1.25, 1.25, false)
-    g.stroke()
-  }
-  if (flip) {
-    const out = blank(w, h)
-    const o = out?.getContext('2d')
-    if (out && o) {
-      o.translate(w, 0)
-      o.scale(-1, 1)
-      o.drawImage(c, 0, 0)
-      return out
-    }
-  }
-  return c
-}
-
 export class NightLayer {
   readonly profile: EnvironmentProfile
   private readonly mood: MoodPalette
   private moon: Plate | null = null
   private star: Plate | null = null
   private glitter: HTMLCanvasElement | null = null
-  private rimR: HTMLCanvasElement | null = null
-  private rimL: HTMLCanvasElement | null = null
   private built = false
 
   constructor(profile: EnvironmentProfile) {
@@ -146,8 +88,6 @@ export class NightLayer {
     this.moon = bakeMoonPlate(this.profile, this.mood, 512)
     this.star = bakeStarPlate(this.profile, starW, starH)
     this.glitter = buildGlitter(this.mood.highlight, this.profile.seed)
-    this.rimR = buildRim(this.mood.highlight, false)
-    this.rimL = buildRim(this.mood.highlight, true)
   }
 
   moonPlate(): HTMLCanvasElement | null {
@@ -167,7 +107,7 @@ export class NightLayer {
       moonMs: this.moon?.ms ?? 0,
       starMs: this.star?.ms ?? 0,
       note: this.moon?.note ?? this.star?.note ?? '',
-      sprites: (this.glitter ? 1 : 0) + (this.rimR ? 1 : 0) + (this.rimL ? 1 : 0),
+      sprites: (this.glitter ? 1 : 0),
     }
   }
 
@@ -201,27 +141,6 @@ export class NightLayer {
     ctx.restore()
   }
 
-  /** MOON KEY RIM — the reactive half of the directional rig. `near` is 0..1
-   *  proximity to a practical (the warm/cool light the player stands in); the
-   *  rim stays the MOON's colour and merely brightens, because a light that
-   *  changes hue as you walk reads as a bug. */
-  drawKeyRim(ctx: CanvasRenderingContext2D, px: number, py: number, face: number, near: number, t: number, keySide = 1): void {
-    // A crescent presents one lit edge no matter where you stand, so it takes
-    // the key's side. A gibbous has TWO lit edges and the figure's own facing
-    // picks which one faces the camera — but still biased by where the key is.
-    const spr = this.profile.moon.phase < 0.5
-      ? (keySide >= 0 ? this.rimR : this.rimL)
-      : (face * keySide >= 0 ? this.rimR : this.rimL)
-    if (!spr) return
-    const key = this.profile.light.key
-    const breathe = 0.9 + 0.1 * Math.sin(t * 0.9)
-    ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    ctx.globalAlpha = Math.min(0.5, (0.16 + 0.12 * near) * key * breathe)
-    ctx.drawImage(spr, px - 48, py - 188, 96, 190)
-    ctx.restore()
-  }
-
   /** Zero the backing stores. Called on reseed and on teardown — this is the
    *  ledger's rule expressed for objects the ledger does not own. */
   dispose(): void {
@@ -231,8 +150,6 @@ export class NightLayer {
     this.moon = null
     this.star = null
     this.glitter = null
-    this.rimR = null
-    this.rimL = null
     this.built = false
   }
 }

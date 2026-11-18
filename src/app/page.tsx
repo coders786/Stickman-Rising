@@ -89,6 +89,7 @@ function loadSettings(): GameSettings {
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const hudRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<Game | null>(null)
   const saveRef = useRef<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
@@ -230,7 +231,7 @@ export default function Home() {
       }
       const progress = loadSave()
       game.setUnlocked(progress.unlocked, progress.totalKills)
-      game.mount(canvas)
+      game.mount(canvas, hudRef.current)
       setGameInput(game.input)
     } catch (error) {
       console.error('Game initialization failed', error)
@@ -250,6 +251,8 @@ export default function Home() {
       gameRef.current = null
     }
   }, [])
+
+  useEffect(() => { if (gameRef.current) gameRef.current.touchControls = touchMode }, [touchMode])
 
   /* ---------------- settings persistence ---------------- */
 
@@ -280,6 +283,7 @@ export default function Home() {
       // ESCAPE IS THE UNIVERSAL BACK, and P is the pause toggle. Before this,
       // Escape did nothing on four of the eight screens — and on a keyboard-only
       // playthrough Settings was a trap with no way out but the mouse.
+      if (e.code === 'KeyP' && screen !== 'playing' && screen !== 'paused') return
       if (screen === 'paused') {
         if (e.code === 'Escape' || e.code === 'KeyP') gameRef.current?.resume()
       } else if (screen === 'settings') {
@@ -379,6 +383,7 @@ export default function Home() {
         aria-label="Stickman Rising game canvas"
         aria-describedby="canvas-controls"
       />
+      <canvas ref={hudRef} aria-hidden="true" className="pointer-events-none absolute inset-0 block h-full w-full" />
       {/* Keyboard controls, readable by a screen reader and invisible on screen.
           A canvas game with an aria-label and nothing else is a black box. */}
       <p id="canvas-controls" className="sr-only">
@@ -396,7 +401,7 @@ export default function Home() {
 
       {/* ------------ TITLE ------------ */}
       {screen === 'title' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/60 via-black/25 to-black/70 px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center-safe overflow-y-auto py-4 bg-gradient-to-b from-black/60 via-black/25 to-black/70 px-4">
           <div className="animate-pulse text-[10px] font-bold tracking-[0.6em] text-red-400/90">DASH &amp; SLASH PROTOCOL</div>
           <h1 className="mt-2 text-center font-black leading-none tracking-tight text-white drop-shadow-[0_0_25px_rgba(255,42,74,0.35)]">
             <span className="block text-4xl sm:text-6xl">STICKMAN</span>
@@ -416,7 +421,7 @@ export default function Home() {
               <Swords className="mr-2 h-4 w-4" /> ARSENAL
             </Button>
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('howto') }}><BookOpen className="mr-2 h-4 w-4" /> HOW TO PLAY</Button>
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('scores') }}><Trophy className="mr-2 h-4 w-4" /> LEADERBOARD</Button>
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setSettingsFrom('title'); setScreen('settings') }}><SettingsIcon className="mr-2 h-4 w-4" /> SETTINGS</Button>
@@ -625,7 +630,7 @@ export default function Home() {
               </div>
               <div>
                 <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(['low', 'medium', 'high', 'ultra'] as const).map((q) => {
                     // A tier this device is not offered is DISABLED, not hidden:
                     // the player should be able to see that ultra exists and that
@@ -636,9 +641,10 @@ export default function Home() {
                         key={q}
                         variant="outline"
                         disabled={beyond}
+                        aria-pressed={settings.quality === q}
                         title={beyond ? 'Desktop only' : QUALITY_BLURB[q]}
                         className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'} ${beyond ? 'opacity-30' : ''}`}
-                        onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, quality: q })) }}
+                        onClick={() => setSettings((s) => ({ ...s, quality: q }))}
                       >{q.toUpperCase()}</Button>
                     )
                   })}
@@ -654,23 +660,23 @@ export default function Home() {
                   <div className="text-[10px] text-zinc-600">Impact trauma on the camera</div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Slider className="w-36" value={[settings.shakeIntensity]} min={0.2} max={1.5} step={0.1} onValueChange={(v) => setSettings((s) => ({ ...s, shakeIntensity: v[0] ?? 1 }))} />
-                  <Switch checked={settings.shake} onCheckedChange={(v) => setSettings((s) => ({ ...s, shake: v }))} />
+                  <Slider className="w-36" aria-label="Shake intensity" value={[settings.shakeIntensity]} min={0.2} max={1.5} step={0.1} onValueChange={(v) => setSettings((s) => ({ ...s, shakeIntensity: v[0] ?? 1 }))} />
+                  <Switch aria-label="Screen shake" checked={settings.shake} onCheckedChange={(v) => setSettings((s) => ({ ...s, shake: v }))} />
                 </div>
               </div>
               <Separator className="bg-zinc-900" />
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SFX VOLUME</div>
-                  <Slider className="w-44" value={[settings.sfxVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, sfxVolume: v[0] ?? 0.8 }))} />
+                  <Slider className="w-44" aria-label="Sound effects volume" value={[settings.sfxVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, sfxVolume: v[0] ?? 0.8 }))} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUSIC VOLUME</div>
-                  <Slider className="w-44" value={[settings.musicVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, musicVolume: v[0] ?? 0.55 }))} />
+                  <Slider className="w-44" aria-label="Music volume" value={[settings.musicVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, musicVolume: v[0] ?? 0.55 }))} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUTE ALL</div>
-                  <Switch checked={settings.muted} onCheckedChange={(v) => setSettings((s) => ({ ...s, muted: v }))} />
+                  <Switch aria-label="Mute all" checked={settings.muted} onCheckedChange={(v) => setSettings((s) => ({ ...s, muted: v }))} />
                 </div>
               </div>
               <Separator className="bg-zinc-900" />
@@ -686,7 +692,7 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SHOW FPS</div>
-                <Switch checked={settings.showFps} onCheckedChange={(v) => setSettings((s) => ({ ...s, showFps: v }))} />
+                <Switch aria-label="Show FPS" checked={settings.showFps} onCheckedChange={(v) => setSettings((s) => ({ ...s, showFps: v }))} />
               </div>
             </div>
           </ScrollArea>
@@ -696,7 +702,7 @@ export default function Home() {
 
       {/* ------------ PAUSED ------------ */}
       {screen === 'paused' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center-safe overflow-y-auto py-4 bg-black/70 px-4">
           <div className="text-[10px] font-bold tracking-[0.6em] text-zinc-500">SYSTEM SUSPENDED</div>
           <h2 className="mt-1 text-5xl font-black tracking-widest text-white">PAUSED</h2>
           <div className="mt-8 flex flex-col gap-3">
@@ -709,7 +715,7 @@ export default function Home() {
 
       {/* ------------ GAME OVER ------------ */}
       {screen === 'gameover' && stats && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-black/85 via-red-950/30 to-black/90 px-4">
+        <div className="absolute inset-0 flex flex-col items-center justify-center-safe overflow-y-auto py-4 bg-gradient-to-b from-black/85 via-red-950/30 to-black/90 px-4">
           <div className="text-[10px] font-bold tracking-[0.6em] text-red-400">CONNECTION LOST</div>
           <h2 className="mt-1 text-center text-5xl font-black tracking-widest text-red-500 drop-shadow-[0_0_20px_rgba(255,42,74,0.4)]">YOU HAVE FALLEN</h2>
 
@@ -736,7 +742,7 @@ export default function Home() {
             <Stat label="RANK" value={stats.bestRank} accent />
           </div>
 
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <TextInput
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 16))}
@@ -825,6 +831,12 @@ function TouchLayer({ input, onPause }: { input: GameInput; onPause: () => void 
 }
 
 function TouchBtn({ input, action, label, small }: { input: GameInput; action: Action; label: string; small?: boolean }) {
+  const owner = useRef<number | null>(null)
+  useEffect(() => () => { input.setVirtual(action,false) }, [action,input])
+  const release = (e: React.PointerEvent) => {
+    if (owner.current !== e.pointerId) return
+    owner.current=null; input.setVirtual(action,false)
+  }
   const cls = small ? 'text-[9px]' : 'text-[10px]'
   const size = small
     ? 'clamp(44px, min(11dvh, calc((100vw - 120px) / 3)), 56px)'
@@ -835,10 +847,13 @@ function TouchBtn({ input, action, label, small }: { input: GameInput; action: A
       aria-label={label}
       style={{ width: size, height: size }}
       className={`${cls} touch-none select-none rounded-full border border-zinc-600/80 bg-black/55 font-black tracking-widest text-zinc-200 backdrop-blur-sm active:border-red-500 active:bg-red-950/70 active:text-red-200`}
-      onPointerDown={(e) => { e.preventDefault(); input.setVirtual(action, true) }}
-      onPointerUp={() => input.setVirtual(action, false)}
-      onPointerLeave={() => input.setVirtual(action, false)}
-      onPointerCancel={() => input.setVirtual(action, false)}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        if (owner.current !== null) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        owner.current=e.pointerId; input.setVirtual(action,true)
+      }}
+      onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}
@@ -848,7 +863,8 @@ function TouchBtn({ input, action, label, small }: { input: GameInput; action: A
 
 function Joystick({ input }: { input: GameInput }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [knob, setKnob] = useState({ x: 0, y: 0 })
+  const knob = useRef<HTMLDivElement>(null)
+  useEffect(() => () => input.setVirtualAxis(0,0), [input])
   const activeId = useRef<number | null>(null)
 
   const handle = (e: React.PointerEvent) => {
@@ -865,13 +881,13 @@ function Joystick({ input }: { input: GameInput }) {
       dy /= len
     }
     input.setVirtualAxis(dx, dy)
-    setKnob({ x: dx * (rect.width / 2 - 22), y: dy * (rect.height / 2 - 22) })
+    if(knob.current) knob.current.style.translate = `${dx * (rect.width / 2 - 22)}px ${dy * (rect.height / 2 - 22)}px`
   }
 
   const release = () => {
     activeId.current = null
     input.setVirtualAxis(0, 0)
-    setKnob({ x: 0, y: 0 })
+    if(knob.current) knob.current.style.translate = '0px 0px'
   }
 
   return (
@@ -896,7 +912,7 @@ function Joystick({ input }: { input: GameInput }) {
     >
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 rounded-full border border-zinc-500 bg-zinc-800/90"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
+        ref={knob} style={{ transform: 'translate(-50%, -50%)' }}
       />
     </div>
   )

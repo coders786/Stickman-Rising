@@ -8,6 +8,8 @@ export interface BgCamView {
   zoom: number
 }
 
+export const PLAY_ZOOM = 1.04
+
 export class Camera {
   x = 1300
   y = -150
@@ -19,12 +21,6 @@ export class Camera {
 
   private tx = 1300
   private ty = -150
-  /** the camera height without the jump transient (see focus) */
-  private yBase = Number.NaN
-  /** the raw altitude target of the current frame (see focus) */
-  private yTarget = Number.NaN
-  /** seconds the altitude target has stayed away from the baseline */
-  private yFarT = 0
   private tzoom = 1
   private baseZoom = 1
   private zoomBoost = 0
@@ -52,16 +48,25 @@ export class Camera {
     this.shakeScale = on ? intensity : 0
   }
 
-  /** Camera wants to focus this point (world coords) with look-ahead velocity. */
+  /** The road is the stable reference, not the last airborne target. Use the
+   * same composition at entry and during play (including wave intermissions).
+   * Short viewports need less headroom; wide viewports must not move the road. */
+  private get roadCentreY(): number {
+    return -clamp(this.viewH * .215, 52, 158) / PLAY_ZOOM
+  }
+
   focus(x: number, y: number, vx: number, vy: number): void {
     this.tx = x + vx * 0.13
-    // The raw altitude target; update() folds it into the baseline below.
-    this.yTarget = y + vy * 0.06 - 62
-    if (!Number.isFinite(this.yBase)) {
-      this.yBase = this.yTarget
-      this.yFarT = 0
-      this.ty = this.yBase
-    }
+    // Leave ordinary footwork in a dead zone. Follow higher jumps gradually,
+    // without a timer that can suddenly rebase the horizon mid-fight.
+    const altitude = Math.max(0, -y - clamp(vy * .04, -20, 20) - 55)
+    this.ty = this.roadCentreY - altitude * .8
+  }
+
+  startOnRoad(x: number): void {
+    this.baseZoom = this.tzoom = this.zoom = PLAY_ZOOM
+    this.zoomBoost = this.trauma = this.rot = this.offX = this.offY = 0
+    this.snapTo(x, this.roadCentreY)
   }
 
   setZoom(z: number): void {
@@ -80,38 +85,14 @@ export class Camera {
   snapTo(x: number, y: number): void {
     this.x = this.tx = x
     this.y = this.ty = y
-    this.yBase = this.yTarget = y
-    this.yFarT = 0
   }
 
   update(dt: number): void {
-    // Fold the raw altitude target into the slow BASELINE. A jump (or launch)
-    // transient moves the target fast and far, then returns — the horizon
-    // must not follow it: the mountains/sky are keyed to the horizon line, so
-    // sliding it makes the far ridges float free of the scene (it reads as
-    // space). The baseline only accepts a displacement that PERSISTS far
-    // longer than any airborne round-trip (a real ground-level change).
-    if (Number.isFinite(this.yTarget)) {
-      if (!Number.isFinite(this.yBase)) {
-        this.yBase = this.yTarget
-        this.yFarT = 0
-      } else if (Math.abs(this.yTarget - this.yBase) < 70) {
-        this.yBase = this.yTarget
-        this.yFarT = 0
-      } else {
-        this.yFarT += dt
-        if (this.yFarT > 2.4) {
-          this.yBase = this.yTarget
-          this.yFarT = 0
-        }
-      }
-      this.ty = this.yBase
-    }
     // clamp target inside arena so we never show void beyond the roof
     const halfW = this.viewW / (2 * this.zoom)
     const halfH = this.viewH / (2 * this.zoom)
     const cx = clamp(this.tx, this.arenaMin + halfW - 60, this.arenaMax - halfW + 60)
-    const cy = clamp(this.ty, -420 + halfH * 0.4, -40)
+    const cy = clamp(this.ty, Math.min(this.roadCentreY, -420 + halfH * 0.4), -40)
     this.x = damp(this.x, cx, 6.5, dt)
     this.y = damp(this.y, cy, 5, dt)
 

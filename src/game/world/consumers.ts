@@ -74,7 +74,7 @@ export const PROFILE_CONSUMERS: readonly AxisConsumer[] = [
   { axis: 'light.warm', file: 'src/game/world/background.ts', how: 'gain on the stairwell practical' },
   { axis: 'light.cool', file: 'src/game/world/background.ts', how: 'gain on the streetlight practical' },
   { axis: 'light.flicker', file: 'src/game/world/background.ts', how: 'dim-only flicker of the failing tube' },
-  { axis: 'light.key', file: 'src/game/world/night.ts', how: 'gain of the moon key rim on the figure' },
+  { axis: 'light.key', file: 'src/game/render/renderer.ts', how: 'gain of the moon key rim on the figure' },
   // ---- props ----
   { axis: 'props.density', file: 'src/game/world/props.ts', how: 'concurrent cap of auto-placed props' },
   { axis: 'props.timerJitter', file: 'src/game/world/props.ts', how: 'multiplier on the arrival gap' },

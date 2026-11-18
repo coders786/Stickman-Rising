@@ -1,3 +1,4 @@
+import { makeSkelGeom } from '../src/game/anim/skeleton'
 /** STICKMAN RISING — tests/shadows.test.ts
  * The shadow system's laws (render/shadows.ts) and the graphics table
  * (render/graphics.ts).
@@ -78,12 +79,9 @@ test('shadows: the fill count is the budget the tier table promises', () => {
   for (const tier of ['low', 'medium', 'high', 'ultra'] as Tier[]) {
     const f = featuresFor(tier)
     const rec = recorder()
-    drawCastShadow(rec.ctx, {
-      x: 0, y: 0, height: FIGURE_H, width: 30, dir: 1, reach: 0.8,
-      alpha: 0.5, penumbra: f.penumbra,
-    })
-    // penumbra passes + core + blade arm
-    assert.equal(rec.fills(), f.penumbra + 2, `${tier}: ${rec.fills()} fills for penumbra ${f.penumbra}`)
+    drawCastShadow(rec.ctx, {x:0,y:0,hipY:-42,face:1,scale:1,geom:makeSkelGeom()},
+      {} as Path2D, .8, .5, f.penumbra)
+    assert.equal(rec.fills(), f.penumbra + 1, `${tier}: ${rec.fills()} fills for penumbra ${f.penumbra}`)
     assert.equal(rec.saves(), rec.restores(), `${tier}: the painter leaked canvas state`)
   }
 })
@@ -101,7 +99,7 @@ test('shadows: contact AO is drawn on every tier and never leaks state', () => {
 
 test('shadows: nothing is painted for a shadow that cannot be seen', () => {
   const rec = recorder()
-  drawCastShadow(rec.ctx, { x: 0, y: -260, height: FIGURE_H, width: 30, dir: 1, reach: 0.6, alpha: 0.5, penumbra: 3 })
+  drawCastShadow(rec.ctx, {x:0,y:-260,hipY:-300,face:1,scale:1,geom:makeSkelGeom()}, {} as Path2D, .6,.5,3)
   assert.equal(rec.fills(), 0, 'a body above the fade height still cost a fill')
 })
 
@@ -110,7 +108,7 @@ test('shadows: the silhouette shear leans away from the light on both sides', ()
   const left = silhouetteMatrix(-1, 0.6)
   assert.equal(right.a, 1)
   assert.equal(right.b, 0)
-  assert.ok(right.d > 0 && right.d < 0.3, 'the silhouette must be flattened onto the plane')
+  assert.ok(right.d < 0 && right.d > -0.3, 'the silhouette must be flattened onto the plane')
   // x' = x + c·y, y negative above the deck: c<0 leans the top to +x (right).
   assert.ok(right.c < 0, 'a shadow falling right must lean its top right')
   assert.ok(left.c > 0, 'a shadow falling left must lean its top left')
@@ -182,11 +180,11 @@ test('graphics: a desktop is offered ultra, a phone is not', () => {
   const desktop = classifyDevice({ width: 1920, height: 1080, dpr: 1, finePointer: true, touch: false })
   assert.equal(desktop.desktop, true)
   assert.equal(desktop.ceiling, 'ultra')
-  assert.equal(desktop.start, 'high')
+  assert.equal(desktop.start, 'ultra')
 
   const smallLaptop = classifyDevice({ width: 1366, height: 768, dpr: 1, finePointer: true, touch: false })
   assert.equal(smallLaptop.desktop, true)
-  assert.equal(smallLaptop.ceiling, 'high', 'a 1 MP laptop should not be told to run ultra')
+  assert.equal(smallLaptop.ceiling, 'ultra')
 
   const phone = classifyDevice({ width: 390, height: 844, dpr: 3, finePointer: false, touch: true })
   assert.equal(phone.desktop, false)

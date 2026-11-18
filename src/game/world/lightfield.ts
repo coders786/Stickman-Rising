@@ -1,37 +1,5 @@
-/** STICKMAN RISING — src/game/world/lightfield.ts
- * A LIGHT FIELD, NOT A LIGHT BULB.
- * ----------------------------------------------------------------------------
- * Before this file the stage had "the practicals": two hard-coded x positions
- * and a linear `1 - d/300` used in exactly one place (the player's rim). The
- * consequence is easy to see and hard to name: you could stand in the stairwell
- * light and the light did not touch you — no pool on the deck, no warm face, no
- * shadow thrown by the door instead of by the moon. A light that only rim-lights
- * one sprite is a filter, not a light.
- *
- * So the stage now owns a FIELD: a small array of point sources, each with a
- * position, a radius, a colour kind, a gain and a flicker. Everything that wants
- * to know "how lit is this spot" asks `sampleLight()` and gets one answer:
- *
- *   · the deck pools (background.drawLightPools),
- *   · the second cast shadow (renderer.shade → bg.practicalShadow),
- *   · the figure wash + rim (background.drawFigureLighting),
- *   · the motes' source (background.drawMotes),
- *   · the roof lamp the procedural rooftop props generate (world/roofprops.ts).
- *
- * ONE FALL-OFF, STATED ONCE. `falloff()` is a smoothstep squared: 1 at the
- * source, 0 exactly at the radius, C¹ at both ends. The old linear ramp has a
- * corner at the radius — the eye reads that corner as a ring, and a ring is the
- * single most "programmer art" artifact in 2-D lighting. Smoothstep also fixes
- * the second problem: a linear ramp puts too much energy far from the source, so
- * two nearby lights sum to a washed-out blob. This curve keeps energy where the
- * light is.
- *
- * NO CLOCK, NO RANDOM, NO ALLOCATION IN THE SAMPLE PATH. `sampleLight` takes `t`
- * and returns into a caller-owned object, because it runs per figure per frame.
- * Flicker is a deterministic function of `t` and the source's phase — a failing
- * tube that fails the same way on every replay is a character, not noise.
- * ==========================================================================*/
-
+import { FLOOD, SIGN_FACE, POINT, type LocalShape } from '../lighting/emitters'
+/** Stage emitter definitions. Transport and visibility belong to lighting/ribbons. */
 /** Which practical a source is. `warm` is the stairwell head-house, `cool` the
  *  failing streetlight, `bulb` a bare bulb on a cable, `neon` a sign, `moon`
  *  reserved for the key (the moon's own light is not in the field: it is a
@@ -40,6 +8,7 @@ export type LightKind = 'warm' | 'cool' | 'bulb' | 'neon' | 'city'
 
 export interface PointLight {
   readonly id: string
+  shape?: LocalShape // legacy and ambient sources default to point
   /** World x of the emitter. */
   x: number
   /** World y of the emitter: the deck is y = 0, so emitters hang ABOVE it. */
@@ -57,29 +26,14 @@ export interface PointLight {
   phase: number
 }
 
-export interface LightSample {
-  /** Σ warm-family weight at the point (0 … ~1.6 when two overlap). */
-  warm: number
-  /** Σ cool-family weight. */
-  cool: number
-  /** Σ neon-family weight (signs — colour, deliberately weak). */
-  neon: number
-  /** Σ city-bounce weight: the light coming up off the street below the roof.
-   *  Always present, never enough to fight a practical. */
-  city: number
-  /** The strongest single source, for direction and ink. `null` = unlit. */
-  best: PointLight | null
-  /** That source's weight at the point. */
-  bestW: number
-  /** Which way a shadow falls from the strongest source: away from it. */
-  dir: -1 | 1
-}
-
 /** The two stage practicals, as world x. Exported because they are not
  *  background.ts's private business: the rooftop props must not be placed on top
  *  of them, and the tests assert the roof lamp is somewhere else. */
-export const PRACTICAL_DOOR_X = 1755
+export const SIGN_Y = -98
+export const PRACTICAL_SIGN_X = 1755
 export const PRACTICAL_LAMP_X = 830
+export const BEACON_X = 1545
+export const BEACON_Y = -64
 
 /** A practical's shadow is a COLOURED absence — the light it blocks is coloured.
  *  Warm blocked is a brown shadow, cool blocked is a blue one. These are the
@@ -98,8 +52,8 @@ export const LIGHT_INK: Readonly<Record<LightKind, string>> = {
 /** Body-wash tint per kind: what a lit surface picks up. Kept dim on purpose —
  *  an additive wash that is visible as a colour is a filter, not light. */
 export const LIGHT_TINT: Readonly<Record<LightKind, readonly [number, number, number]>> = {
-  warm: [255, 168, 92],
-  cool: [126, 190, 255],
+  warm: [255, 149, 62],
+  cool: [66, 205, 255],
   bulb: [255, 214, 150],
   neon: [196, 120, 255],
   // sodium street lighting and window spill, seen from a roof: amber, slightly
@@ -144,52 +98,7 @@ export function liveGain(l: PointLight, t: number): number {
   return Math.max(0, l.gain * (1 - l.flicker * (0.55 * a + 0.45 * b)))
 }
 
-/** THE QUERY. Fill `out` (reused by callers) and return it. */
-export function sampleLight(
-  lights: readonly PointLight[],
-  x: number,
-  y: number,
-  t: number,
-  out: LightSample,
-): LightSample {
-  out.warm = 0
-  out.cool = 0
-  out.neon = 0
-  out.city = 0
-  out.best = null
-  out.bestW = 0
-  out.dir = 1
-  for (let i = 0; i < lights.length; i++) {
-    const l = lights[i]
-    const dx = x - l.x
-    // A source hanging 60 px above the deck lights the deck under it, so the
-    // vertical term is deliberately soft: half the horizontal weight, not none.
-    const dy = (y - l.y) * 0.5
-    const d = Math.sqrt(dx * dx + dy * dy)
-    const f = falloff(d, l.radius)
-    if (f <= 0) continue
-    const w = f * liveGain(l, t)
-    if (w <= 0) continue
-    if (l.kind === 'warm' || l.kind === 'bulb') out.warm += w
-    else if (l.kind === 'cool') out.cool += w
-    else if (l.kind === 'city') out.city += w
-    else out.neon += w
-    if (w > out.bestW) {
-      out.bestW = w
-      out.best = l
-      out.dir = dx >= 0 ? 1 : -1
-    }
-  }
-  return out
-}
-
-/** A fresh sample object. Callers that sample per frame keep ONE of these. */
-export function newSample(): LightSample {
-  return { warm: 0, cool: 0, neon: 0, city: 0, best: null, bestW: 0, dir: 1 }
-}
-
-/** THE STAGE'S FIXED SOURCES. Two practicals, always, on every tier: the
- *  stairwell and the streetlight are the place, not a fidelity feature. The
+/** Three local fixtures on every tier: warning sign, streetlight and beacon. The
  *  profile decides how strong and how steady each one is. */
 export function makeStageLights(profile: {
   light: { warm: number; cool: number; flicker: number }
@@ -200,32 +109,33 @@ export function makeStageLights(profile: {
   const flick = K ? K.flicker : 0
   const out: PointLight[] = [
     {
-      // The stairwell door head-house: a warm, steady interior spilling out.
-      id: 'stage:door',
-      x: PRACTICAL_DOOR_X,
-      y: -150,
+      // Amber advisory display on the rear maintenance shoulder.
+      id: 'stage:warning-sign', shape: SIGN_FACE,
+      x: PRACTICAL_SIGN_X,
+      y: SIGN_Y,
       kind: 'warm',
       radius: 330,
       gain: 0.72 + 0.5 * warm,
-      flicker: flick * 0.12,      // a doorway barely flickers: the room behind it is big
+      flicker: 0, // regulated traffic display, not a blinking warning
       flickerHz: 0.9,
       phase: 0.37,
     },
     {
       // The broken streetlight: cool, weak, and failing at its own rate.
-      id: 'stage:lamp',
+      id: 'stage:lamp', shape: FLOOD,
       x: PRACTICAL_LAMP_X,
-      y: -250,
+      y: -256,
       kind: 'cool',
       // A streetlight is dim at the head and generous on the deck — its radius
       // has to reach the ground it is pointing at, or the practical reads as a
       // blue dot on a pole instead of a light you can stand in.
       radius: 340,
       gain: 0.75 + 0.5 * cool,
-      flicker: 0.25 + 0.6 * flick,
-      flickerHz: 2.7,
+      flicker: 0.09 + 0.10 * flick,
+      flickerHz: 0.85,
       phase: 1.91 + (seed % 97) * 0.01,   // per-run phase: same tube, different night
     },
+    {id:'stage:beacon',shape:POINT,kind:'neon',x:BEACON_X,y:BEACON_Y,radius:284,gain:1.03,flicker:0,flickerHz:0,phase:0},
   ]
   /* CITY BOUNCE — THE ROOF IS NOT LIT ONLY BY ITS OWN TWO LAMPS.
    *

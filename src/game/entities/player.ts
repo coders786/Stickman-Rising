@@ -1,3 +1,4 @@
+import { ROAD, floorTOI } from '../stage/road-section'
 import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_STILL,DASH_STAMINA_REGEN_SPRINT,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
 import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVelocity,airDragCoefficient} from '../physics/motion-laws'
 import {PLAYER_MASS,brakeVelocity,dragVelocity,attackDriveVelocity,landingLoad,type LandingLoad} from '../physics/player-motor'
@@ -29,7 +30,8 @@ import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch 
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import { emitterFills, smearPlan } from '../render/look'
+import type { SurfaceLight } from '../lighting/ribbons'
+import { smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
   AIR_JUMP_CLIP, BACKPEDAL_CLIP, BRAKE_CLIP, CHARGE_CLIP, COMBAT_IDLE_CLIP, COMBAT_STEP_CLIP,
@@ -461,6 +463,7 @@ interface AbilityState {
 }
 
 export class Player {
+  readonly scale = SCALE
   x = 400
   y = 0
   /** render interpolation: sim position one step ago (see Game.frame) */
@@ -1104,12 +1107,13 @@ export class Player {
     }
     const dashTravel=this.dashDisplacement as {x:number;y:number}|null
     this.x += dashTravel?.x ?? this.vx * dt
+    const previousY=this.y
     this.y += dashTravel?.y ?? this.vy * dt
 
     // ground
     const wasAir = !this.grounded
-    if (this.y >= 0) {
-      this.y = 0
+    if (floorTOI(previousY,this.y) <= 1) {
+      this.y = ROAD.lane
       if (this.vy > 140) {
         this.landSpring = clamp(this.vy / 700, 0, 1)
         if (wasAir) this.onLand(w)
@@ -3361,18 +3365,16 @@ export class Player {
     const metal = plain ? '#aeb5b1' : colors.glow
     const px = (this.x + sourceX) / 2
     const py = this.y - 55
-    if (perfect) w.fx.impactFrame(px, py, metal)
+    const accent = perfect && w.fx.impactFrame(px, py, metal, 'perfectParry')
     w.fx.impact(px, py, Math.atan2(0, sourceX - this.x), perfect && !plain, metal, plain ? '#d1d4d1' : '#ffffff')
     // Physical parries throw brief steel filings; energy rings belong only to
     // supernatural weapons. Perfect timing gets denser sparks, not neon.
     if (plain) w.fx.burst(px, py, perfect ? 7 : 3, '#b5bbb7', perfect ? 210 : 120, .24, 'spark')
     else w.fx.shockwave(px, py, perfect ? 90 : 52, colors.glow, perfect ? 0.3 : 0.18, perfect ? 5 : 3)
-    if (perfect) w.fx.screenFlash(plain ? '#d5d8d5' : '#ffffff', plain ? .1 : .22, plain ? 2 : 6)
     w.audio.play(perfect ? 'parryPerfect' : 'parry')
-    w.addHitstop(perfect ? 0.11 : 0.045, perfect ? 0.1 : 0)
+    w.addHitstop(perfect ? 0.11 : 0.045, accent ? 0.05 : 0)
     if (perfect) w.addSlowmo(0.25, 0.22)
     w.cam.addTrauma(perfect ? 0.3 : 0.1)
-    if (perfect) w.cam.zoomPulse(0.12)
     this.meter = Math.min(100, this.meter + (perfect ? 10 : 3))
     this.energy = Math.min(this.maxEnergy, this.energy + (perfect ? 12 : 4))
     this.riposteT = perfect ? 0.95 : 0
@@ -3525,7 +3527,7 @@ export class Player {
     this.playAnimation(HURT_CLIP, { blend: 0.05 })
     w.audio.play('hurt', { volume: 0.8, intensity: heavy ? 1 : 0.5 })
     w.fx.burst(this.x, this.y - 50, 10, '#ff3b57', 300, 0.5, 'spark')
-    w.fx.screenFlash('#ff2a4a', 0.2, 4)
+    if (heavy || this.hp <= 0) w.fx.screenFlash('#ff2a4a', 0.12, 4)
     w.cam.addTrauma(heavy ? 0.45 : 0.3)
     w.addHitstop(0.06)
     if (this.hp <= 0) {
@@ -4011,13 +4013,9 @@ export class Player {
       // Kicks plant the leg opposite the striking limb; punches plant the
       // lowest authored foot. This gives every grounded attack an explicit
       // support body instead of letting both feet float through FK.
-      const support=this.grounded?(dashSupport
-        ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR)
-        : kicking
-          ? (this.action?.def.strikeHand==='left'?g.ankleR:g.ankleL)
-          : this.state==='attack'||this.state==='charge'
-            ? (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR)
-            : null):null
+      const support=kicking&&!dashSupport
+        ? (this.action?.def.strikeHand==='left'?g.ankleR:g.ankleL)
+        : (g.ankleL.y>g.ankleR.y?g.ankleL:g.ankleR)
       for (const [hipPt, knee, ankle, toe] of legs) {
         const ankleWy = this.hipY + SCALE * ankle.y
         const toeWy = this.hipY + SCALE * toe.y
@@ -4938,7 +4936,7 @@ export class Player {
     ctx.restore()
   }
 
-  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false): void {
+  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false, light?: SurfaceLight): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted' && this.state !== 'dash'
       ? 0.55 + 0.25 * Math.sin(time * 40)
@@ -5041,9 +5039,9 @@ export class Player {
       // MOONLIGHT RIM — the cool sky key carves the black ronin out of the
       // night; lightning strobes lift it (strobeK rides the key light, set
       // by the renderer each frame).
-      rimColor:'#a5d2f2',rimAlpha:0.85+this.strobeK*0.15,
+      rimColor:'#a5d2f2',rimAlpha:0.85*(light?.keyGain ?? 1)+this.strobeK*0.15,
       // LIGHT TRANSPORT — colored fill from practicals near the ronin
-      sideFills: emitterFills(this.x, this.y),
+      light,
       flipX: this.face, unit: SCALE,
       alpha,
       // Null-black face/body stays black through hurt and impact frames.

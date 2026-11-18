@@ -405,10 +405,7 @@ export interface FighterDrawOpts {
   flashColor?: string
   simple?: boolean
   edgeLight?: { color: string; a: number }
-  /** colored fill from a nearby practical light (look.emitterFill) */
-  /** colored fills from nearby practicals (look.emitterFills) — one tap
-   *  per source so light lands on the side facing EACH emitter */
-  sideFills?: { color: string; a: number; dx: number }[]
+  light?: import('../lighting/ribbons').SurfaceLight
   /** face sign + context scale of the caller's transform — world-space tap
    *  offsets must be un-flipped/un-scaled or lighting lands on the wrong
    *  side of a left-facing figure */

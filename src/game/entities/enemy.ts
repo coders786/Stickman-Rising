@@ -1,3 +1,4 @@
+import { ROAD, floorTOI, bodySide } from '../stage/road-section'
 /** STICKMAN RISING — enemies: 7 classes + boss mech.
  *
  * AI: orbit/approach with implicit attack tokens (max 3 engaged), telegraphed
@@ -9,7 +10,8 @@
 import { makePose, Pose } from '../anim/pose'
 import { makeSkelGeom, solveSkeleton, SkelGeom, drawStick, StickStyle } from '../anim/skeleton'
 import { ENEMY_GAIT, GaitPlanner, LegIKOut, solveLegIK, toeFromPitch } from '../anim/legik'
-import { emitterFills, smearPlan } from '../render/look'
+import type { SurfaceLight } from '../lighting/ribbons'
+import { smearPlan } from '../render/look'
 import { WorldRef } from '../core/types'
 import { AttackRuntimeInfo } from '../combat/attacks'
 import { clamp, clamp01, damp, rand, rgba } from '../core/utils'
@@ -418,15 +420,6 @@ export class Enemy {
         this.flailT += dt * 14
         this.spinT += dt * 3.2
         this.vy += 1350 * dt // juggle gravity (heavier than normal)
-        if (this.vy > 0 && this.y >= -4) {
-          this.state = 'down'
-          this.stateT = 0
-          this.y = 0
-          this.vy = 0
-          this.launched = false
-          w.fx.dust(this.x, 0, 6)
-          w.audio.play('land', { volume: 0.4, pitch: 0.7 })
-        }
         break
       }
       case 'down': {
@@ -458,8 +451,16 @@ export class Enemy {
       }
     }
     if (this.kind === 'drone' && this.state !== 'launched') this.vy = 0
+    const oldX=this.x,oldY=this.y
     this.x += this.vx * dt
     this.y += this.vy * dt
+    if ((this.kind!=='drone'||this.state==='launched') && floorTOI(oldY,this.y)<=1) {
+      this.y=ROAD.lane;this.vy=0
+      if(this.state==='launched'){
+        this.state='down';this.stateT=0;this.launched=false
+        w.fx.dust(this.x,ROAD.lane,6);w.audio.play('land',{volume:.4,pitch:.7})
+      }
+    }
     // ---- BODY SEPARATION ------------------------------------------------
     // A strike lunges at 340px/s and nothing stopped it, so a grunt would
     // end up standing INSIDE the player (measured: 2-17px apart). Every
@@ -470,6 +471,8 @@ export class Enemy {
     // (the player's own half-width plus this one's) and let the lunge stop
     // there instead of carrying through.
     if (this.kind !== 'drone' && this.state !== 'launched' && this.state !== 'dive') {
+      const hitX=bodySide(oldX,this.x,oldY,this.y,px,py,30*this.scale,88*this.scale)
+      if(hitX!==null){this.x=hitX;this.vx=0}
       const pdx = this.x - px
       const FLOOR = 30 * this.scale
       // Horizontal separation is valid only while the two visible body
@@ -486,12 +489,6 @@ export class Enemy {
         // the player is the anchor: push the lighter body out, not them
         this.x = px + dir * FLOOR
         if (this.vx * dir < 0) this.vx = 0
-      }
-    }
-    if (this.kind !== 'drone' && this.state !== 'launched') {
-      if (this.y > 0) {
-        this.y = 0
-        this.vy = 0
       }
     }
     this.x = clamp(this.x, w.arenaMinX + 16, w.arenaMaxX - 16)
@@ -1032,7 +1029,7 @@ export class Enemy {
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
 
-  draw(ctx: CanvasRenderingContext2D, time: number): void {
+  draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight): void {
     if (this.dead || this.spawning) return
     const s = this.scale
     const cfg = this.cfg
@@ -1057,7 +1054,7 @@ export class Enemy {
       time,
       flash: this.flashT * 0.8,
       flashColor: '#ffffff',
-      sideFills: emitterFills(this.x, this.y),
+      light,
       flipX: this.face, unit: s,
     })
     this.drawWeapon(ctx, time)

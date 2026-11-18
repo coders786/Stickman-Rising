@@ -33,7 +33,6 @@ import type { Player } from '../entities/player'
 import { MOOD_PALETTES, type MoodPalette } from './mood'
 import { rgbaConst } from '../render/color'
 import { SurfaceGen } from '../render/ledger'
-import { shadowDirection, shadowReach } from './light'
 import { silhouetteMatrix } from '../render/shadows'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
@@ -694,35 +693,30 @@ export class PropField {
    *  two blits per prop. */
   drawShadows(
     ctx: CanvasRenderingContext2D,
-    moonX: number,
-    elevation: number,
-    zoom: number,
-    frameW: number,
+    dir: number,
+    reach: number,
     viewL: number,
     viewR: number,
   ): void {
     if (!this.built) return
-    const inv = 1 / Math.max(1, frameW)
+    const m = silhouetteMatrix(dir, reach)
     for (const p of this.props) {
       if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
       const mask = this.masks[p.kind]
       if (!mask || mask.width <= 0 || mask.height <= 0) continue
-      const dir = shadowDirection(p.x, moonX)
-      // Distance in FRAMES, same normalisation the fighter shadows use.
-      const reach = shadowReach(elevation, Math.abs(p.x - moonX) * zoom * inv)
-      const m = silhouetteMatrix(dir, reach)
       ctx.save()
       ctx.translate(p.x, 0)
       // The body plate sits on the deck; the mask is drawn upward from there and
       // the matrix lays it down.
       ctx.transform(m.a, m.b, m.c, m.d, 0, 0)
-      ctx.globalAlpha = 0.30
+      const fade = Math.min(1, (this.clock - p.born) / 0.45)
+      ctx.globalAlpha = 0.30 * fade
       // 9-arg form: the BODY of the sprite only (the sprite canvas also carries
       // the baked reflection strip below the base — that must not be projected).
       ctx.drawImage(mask, 0, 0, PW, PH, -PW / 2, -PH, PW, PH)
       // Penumbra pass: 8 % larger, half the alpha. Two blits read as a soft edge.
-      ctx.globalAlpha = 0.13
-      ctx.drawImage(mask, 0, 0, PW, PH, -PW * 0.54, -PH * 1.04, PW * 1.08, PH * 1.08)
+      ctx.globalAlpha = 0.13 * fade
+      ctx.drawImage(mask, 0, 0, PW, PH, -PW * 0.54, -PH * 1.08, PW * 1.08, PH * 1.08)
       ctx.restore()
     }
   }

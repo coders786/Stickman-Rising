@@ -47,7 +47,7 @@ test('the ray budget is a hard ceiling, not an estimate', () => {
   const taps = rayPlan(many, 1, 1280, 720)
   assert.ok(taps.length <= RAY_BLITS, `expected ≤ ${RAY_BLITS} taps, got ${taps.length}`)
   assert.ok(taps.length > 0)
-  assert.equal(BLOOM_BLITS, 5, 'capture + copy + square + two additive scales')
+  assert.equal(BLOOM_BLITS, 6, 'capture + copy + square + downsample + two additive scales')
 })
 
 test('rays march outward from the centre, and dim with each tap', () => {

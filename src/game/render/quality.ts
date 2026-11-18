@@ -44,7 +44,7 @@ export const DEFAULT_LADDER: LadderConfig = {
   // to be felt as mush. Both numbers are provisional (labelled as targets in
   // 12 §7) and are re-measured on device.
   shedMs: 22.5,
-  raiseMs: 15.5,
+  raiseMs: 17.5, // a healthy vsynced 60 Hz window (16.7 ms) can recover
   windowSec: 4,
   dwellSec: 12,
   floor: 'low',
@@ -102,7 +102,7 @@ export class QualityLadder {
   /** Feed one frame's duration. Returns the NEW tier if a step happened this
    *  call, else null. Allocation-free (the event object is only built on a
    *  transition, which is at most once per window). */
-  frame(ms: number, dt: number): Tier | null {
+  frame(ms: number, dt: number, goalHz=60): Tier | null {
     if (!(ms > 0) || !(dt > 0)) return null
     // Ignore tab-restore spikes: a 2 s gap is not a frame, it is the OS.
     const sample = Math.min(ms, 100)
@@ -119,7 +119,7 @@ export class QualityLadder {
     this.head = 0
     this.count = 0
     const idx = this.tierIndex
-    if (p95 > this.cfg.shedMs && idx < TIERS.length - 1) {
+    if (p95 > (goalHz>60 ? Math.min(11,1250/goalHz) : this.cfg.shedMs) && idx < TIERS.length - 1) {
       const floorIdx = TIERS.indexOf(this.cfg.floor)
       if (idx + 1 <= floorIdx) {
         this.tier = TIERS[idx + 1]
@@ -131,7 +131,7 @@ export class QualityLadder {
       this.record('shed', p95, 'floor')
       return null
     }
-    if (p95 < this.cfg.raiseMs && idx > 0 && this.sinceChange >= this.cfg.dwellSec) {
+    if (p95 < this.cfg.raiseMs * 60/goalHz && idx > 0 && this.sinceChange >= this.cfg.dwellSec) {
       const ceilIdx = TIERS.indexOf(this.ceiling)
       if (idx - 1 >= ceilIdx) {
         this.tier = TIERS[idx - 1]
@@ -164,5 +164,26 @@ export class QualityLadder {
   /** Debug line — one allocation, only when the overlay is visible. */
   toString(): string {
     return `ladder ${this.tier} (ceil ${this.ceiling}) shed ${this.sheds} raise ${this.raises}`
+  }
+}
+
+/** rAF is display-paced. Don't ask a 60 Hz monitor to shed graphics for
+ * missing a 120 Hz deadline. Require repeated short intervals, not a lone
+ * timer anomaly. Age evidence out after moving to a slower display. */
+export class DesktopCadence {
+  private evidence=0
+  private hold=0
+  target=60
+  observe(ms:number):number {
+    if(!(ms>0))return this.target
+    if(ms>2 && ms<=10.9){
+      this.evidence=Math.min(24,this.evidence+1)
+      if(this.evidence>=16){this.target=ms<=8.9?120:96;this.hold=12000}
+    }else{
+      this.evidence=Math.max(0,this.evidence-1)
+      this.hold-=ms
+      if(this.hold<=0)this.target=60
+    }
+    return this.target
   }
 }
