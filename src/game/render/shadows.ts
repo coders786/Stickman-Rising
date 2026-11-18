@@ -116,6 +116,17 @@ export function silhouetteMatrix(dir: number, reach: number): { a: number; b: nu
   }
 }
 
+/** THE PENUMBRA CEILING.
+ *
+ *  Each pass is one more fill of the same path at a wider scale, so this number
+ *  is literally `drawCastShadow`'s fill budget. It was 3 while `high` was the top
+ *  tier; ultra now spends the fourth pass, because ultra is where a shadow is
+ *  allowed a real gradient instead of three visible steps. The tier table must
+ *  never ask for more than this — `tests/shadows.test.ts` asserts
+ *  `fills === penumbra + 2` for every tier, so an over-ask fails the build
+ *  instead of silently flattening into the cap. */
+export const PENUMBRA_CAP = 4
+
 export interface CastShadowOpts {
   x: number
   /** Feet position (world y). The shadow is drawn on the deck at `y`. */
@@ -126,7 +137,7 @@ export interface CastShadowOpts {
   dir: number
   reach: number
   alpha: number
-  /** Extra soft passes. 0 = crisp, 3 = very soft (ultra). */
+  /** Extra soft passes. 0 = crisp, 4 = very soft (ultra, see PENUMBRA_CAP). */
   penumbra: number
   /** rgb triple ("4,7,11") — a practical's shadow is tinted by the practical. */
   ink?: string
@@ -154,7 +165,7 @@ export function drawCastShadow(ctx: CanvasRenderingContext2D, o: CastShadowOpts)
   // PENUMBRA FIRST, widest and faintest, so the core lands on top of it. Each
   // pass is the same geometry scaled about the base point: the union of the
   // alphas is a soft gradient without a single blur.
-  const passes = Math.max(0, Math.min(3, Math.floor(o.penumbra)))
+  const passes = Math.max(0, Math.min(PENUMBRA_CAP, Math.floor(o.penumbra)))
   for (let p = passes; p >= 1; p--) {
     const grow = 1 + p * 0.22
     ctx.globalAlpha = (a * 0.5) / (passes + 1)

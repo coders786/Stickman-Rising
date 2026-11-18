@@ -330,6 +330,89 @@ white blade-light in the dark.
 
 ---
 
+## 2.7 · Run 5 — the ULTRA stack: ultra stops being "high with bigger numbers"
+
+Up to run 4 the tiers differed by *dial values*: more penumbra passes, a finer
+reflection divisor, a higher DPR cap. That is not a different picture, it is the
+same picture at higher resolution. Run 5 gives ultra four things no other tier
+has, and each one is gated by a flag on the tier table
+(`src/game/render/graphics.ts`) rather than by an `if (tier === 'ultra')` buried
+in a pass:
+
+| flag | tiers | what it draws |
+|---|---|---|
+| `bloom` | ultra | the frame, downscaled 1/6, squared, added back at two scales — 5 blits |
+| `godRays` | ultra | the same squared buffer smeared radially away from each practical — ≤ 8 taps |
+| `keyTop` | high, ultra | a *top* light term on every figure: the key comes from above, not only from the side |
+| `depthHaze` | ultra | one baked atmosphere band between the roof props and the fighters |
+
+### 2.7.1 · Bloom without a shader, and the two ways it goes wrong
+
+A downscale **is** a blur. Capture the frame at 1/6, blit it back additively,
+twice at two scales: the tight pass carries the hot cores, the wide pass is the
+skirt. That is the whole trick, and it is 5 `drawImage` calls.
+
+The two failure modes, both encountered here:
+
+1. **The wash.** Blitting a plain downscale back raises the *whole* frame
+   roughly uniformly — a 240×150 buffer of a night scene is mid-grey, so "bloom"
+   turns into "fog". Measured on a real stage render: mean luminance 33.8 → 52.7,
+   a 56 % lift on a frame whose darks are supposed to stay dark.
+2. **The white-out.** Additive passes *sum*. Eight taps at 0.22 add 1.76 frames.
+   Measured: 33.8 → 92.4. The picture was gone.
+
+The fix for (1) is two extra blits: **square the downscale** before using it.
+Value² is a crude threshold that no canvas API gives us directly — 0.15 → 0.02
+(gone), 0.85 → 0.72 (kept) — so the added light lands on the sources instead of
+on the air. The fix for (2) is an energy budget written down as constants
+(`RAY_GAIN`, `RAY_CLAMP`, `BLOOM_TIGHT`, `BLOOM_WIDE`) with a test that fails if
+the total ever exceeds 0.045 of a frame for the rays.
+
+Final measured cost on the ultra stage frame (`node --import tsx
+.qa/verify-ultra.mts`): mean 33.79 → 38.62, p10 7 → 11, p50 32 → 36, p90 64 → 70,
+doorway crop 49.97 → 56.22. The brights lift, the darks stay dark, and the
+two-up crop `.qa/post-ultra.png` shows the halo sitting in the air around the
+door.
+
+### 2.7.2 · The key from above
+
+Every light term up to run 4 was a **side** light: a wash across the body, a rim
+on one edge, a pool under the feet. A figure lit only that way reads as a
+cut-out standing in a spotlight, because nothing in the frame tells the eye the
+key is overhead. `keyTop` adds one squash blit from above at ≤ 0.14 alpha — the
+cheapest third dimension the renderer has — and it is on high as well as ultra,
+because it costs almost nothing and fixes the same problem on both.
+
+### 2.7.3 · Depth, culling and the horde
+
+- **`depthHaze`**: one baked band (a vertical gradient of the sky's own colour)
+  drawn between the props and the fighters. The city bands already had fog; the
+  mid-ground had none, so props read as pasted onto the skyline.
+- **Culling**: every body is skipped by one helper that compares against
+  `cam.x + cam.offX` with a 90 px margin. The old inline test used `cam.x` alone,
+  so during screen shake and the slow-push cutscenes bodies appeared a frame late
+  or vanished a frame early. The count is reported in the debug line as
+  `cull drawn/total`, because culling you cannot measure is culling you cannot
+  claim.
+- **Horde AI**: `src/game/combat/horde.ts`. Enemies within 900 px of the player
+  tick every step; everything beyond ticks one step in three with `dt × 3`, so
+  average speed, cadence and timers are unchanged and only the sampling is
+  coarser. The plan is a pure function of (positions, player x, step counter), so
+  a replay is still a replay and the frame-rate-independence tests still pass. A
+  uniform 1-D grid (`HordeGrid`) answers radius queries for area sweeps in
+  O(cell) instead of O(horde).
+
+### 2.7.4 · Worst case for the stack
+
+Ultra pays 13 full-frame blits per frame (5 bloom, 8 rays) plus two pinned
+buffers (240×150 and 180×113 at 1440×900). Everything else on ultra is unchanged
+from run 4 except the penumbra cap, which moved 3 → 4 so that `penumbra: 4` on
+ultra is a real fourth pass rather than a number the renderer silently clamped.
+`tests/shadows.test.ts` still asserts `fills === penumbra + 2` per tier, so an
+over-ask fails the build.
+
+---
+
 ## 3 · What this does NOT claim
 
 - **Not "god level" as a guarantee.** "God level" is a taste judgement and the
@@ -352,3 +435,5 @@ white blade-light in the dark.
 | 23-B | No ground reflection of the shafts | the mirror band already contains them (it copies the frame) — a *separate* shaft reflection would double the cost for little gain |
 | 23-C | Motes do not react to wind | one multiply on the sway if the weather front's gust should move them |
 | 23-D | Device frame-time validation | needs real phones (T6.3) |
+| 23-E | God rays have no occlusion mask | a true shaft pass masks by depth; Canvas2D has no per-pixel readback we can afford, so the smear is occlusion-free and the alpha is kept tiny (≤ 0.010 per tap) to stop it becoming a veil |
+| 23-F | Bloom uses a square, not a luminance threshold | value² is a stand-in for a threshold. A real one needs a pixel readback (or WebGL); the squared downscale is the cheap honest approximation |

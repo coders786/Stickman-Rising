@@ -97,6 +97,9 @@ export interface BackgroundRenderer {
   /** Dust motes in the shafts; one path, one fill (ultra). */
   drawMotes?(ctx: CanvasRenderingContext2D, t: number): void
   drawPlayerLight?(ctx: CanvasRenderingContext2D, px: number, py: number, face?: number): void
+  /** Screen-space positions + weights of the sources the god-ray pass radiates
+   *  from (the moon and every lit practical on screen). */
+  raySources?(w: number, h: number, cam: BgCam): Array<[number, number, number]>
   /** The full figure-light pass (wash + rim + deck pool) from the light field. */
   drawFigureLighting?(ctx: CanvasRenderingContext2D, px: number, py: number, h?: number, face?: number): void
   /** One-blit wash for non-player figures standing in a practical. */
@@ -969,6 +972,27 @@ function buildCityGlow(pal: MoodPalette): HTMLCanvasElement {
   return c
 }
 
+/** ATMOSPHERIC DEPTH — the veil between the backdrop and the fight.
+ *
+ *  Real air is visible: the further something is, the more of the sky's colour
+ *  sits in front of it. The city bands get this from their baked fog; the
+ *  mid-ground (roof props, the back edge of the deck) had none, so props read as
+ *  pasted on the skyline. One gradient, one blit, drawn between the props and
+ *  the fighters — ultra only, because it is exactly the kind of thin layer a
+ *  lower tier cannot afford and does not need. */
+function buildHazeBand(w: number): HTMLCanvasElement {
+  const W = Math.max(64, Math.ceil(w / 2))
+  const H = 120
+  const { c, g } = makeCanvas(W, H)
+  const gr = g.createLinearGradient(0, H, 0, 0)
+  gr.addColorStop(0, 'rgba(96,124,152,0.16)')
+  gr.addColorStop(0.45, 'rgba(88,116,146,0.07)')
+  gr.addColorStop(1, 'rgba(80,108,138,0)')
+  g.fillStyle = gr
+  g.fillRect(0, 0, W, H)
+  return c
+}
+
 function buildDeckPool(): HTMLCanvasElement {
   const { c, g } = makeCanvas(240, 64);
   g.globalCompositeOperation = 'lighter';
@@ -1401,6 +1425,10 @@ export class CyberBackground {
   private washCool: HTMLCanvasElement | null = null
   private washBulb: HTMLCanvasElement | null = null
   private washCity: HTMLCanvasElement | null = null
+  /** the key's top light: what a figure picks up from ABOVE (ultra) */
+  private washTop: HTMLCanvasElement | null = null
+  /** atmospheric depth band over the mid-ground (ultra) */
+  private hazeBand: HTMLCanvasElement | null = null
   /** city light pollution rising over the parapet (one baked plate) */
   private cityGlow: HTMLCanvasElement | null = null
   /** The cumulus bank (world/clouds.ts) — null on a clear run. */
@@ -1875,6 +1903,36 @@ export class CyberBackground {
     return sampleLight(this.lights, x, y, this.t, this.sample)
   }
 
+  /** WHERE THE RAYS COME FROM, in screen space. The moon (the key) plus every
+   *  practical that is on screen and currently lit, each with its live weight —
+   *  a failing tube's rays dim with it, which is the sort of detail that makes a
+   *  post effect look like it belongs to the scene instead of to the shader. */
+  raySources(w: number, h: number, cam: BgCam): Array<[number, number, number]> {
+    const out: Array<[number, number, number]> = []
+    const zoom = Math.max(0.2, Number.isFinite(cam.zoom) ? cam.zoom : 1)
+    const cx = Number.isFinite(cam.x) ? cam.x : 0
+    const cy = Number.isFinite(cam.y) ? cam.y : 0
+    const toScreen = (wx: number, wy: number): [number, number] => [
+      w * 0.5 + (wx - cx) * zoom,
+      h * 0.5 + (wy - cy) * zoom,
+    ]
+    if (Number.isFinite(this.moonX)) {
+      const [mx, my] = toScreen(this.moonX, this.moonY)
+      if (mx > -w * 0.2 && mx < w * 1.2) out.push([mx, my, 0.85])
+    }
+    for (let i = 0; i < this.lights.length; i++) {
+      const l = this.lights[i]
+      if (l.id.startsWith('city:')) continue          // ambient: no single point
+      const g = liveGain(l, this.t)
+      if (g < 0.08) continue
+      const [lx, ly] = toScreen(l.x, l.y)
+      if (lx < -w * 0.1 || lx > w * 1.1) continue
+      out.push([lx, ly, Math.min(1, g)])
+      if (out.length >= 4) break
+    }
+    return out
+  }
+
   /** How many sources the field has right now (debug overlay + tests). */
   lightCount(): number { return this.lights.length }
 
@@ -1993,6 +2051,14 @@ export class CyberBackground {
       }
       ctx.drawImage(rim, px - 48, py - h * 1.61, 96, h * 1.61)
       ctx.restore()
+      /* THE KEY FROM ABOVE (ultra). Every other term in this pass is a SIDE
+       * light; without a top term a figure lit only by practicals looks like a
+       * cut-out standing in a spotlight. One squash blit from above reads as a
+       * third dimension — this is the cheapest "3-D" light in the game. */
+      if (F.keyTop && this.washTop) {
+        ctx.globalAlpha = Math.min(0.14, 0.10 * Math.max(0.35, this.profile ? this.profile.light.warm : 0.6))
+        ctx.drawImage(this.washTop, px - 30, py - h * 0.98, 60, h * 0.72)
+      }
       ctx.globalAlpha = Math.min(0.42, 0.26 * a)
       ctx.drawImage(this.deckPool, px - 120, py - 14, 240, 64)
       ctx.globalAlpha = 1
@@ -2195,6 +2261,14 @@ export class CyberBackground {
       ctx.globalAlpha = 1
       ctx.restore()
     }
+    /* the veil sits IN FRONT of the props and BEHIND the fighters, so the
+     * crowd is in the same air as the city it stands over */
+    if (RF.depthHaze && hasPixels(this.hazeBand)) {
+      const wide = halfW * 2.2
+      ctx.globalAlpha = 0.9
+      ctx.drawImage(this.hazeBand, cam.x - wide * 0.5, -120, wide, 120)
+      ctx.globalAlpha = 1
+    }
     if (RF.roofProps > 0 && this.roof.props.length > 0) {
       const props = this.roof.props.length > RF.roofProps ? this.roof.props.slice(0, RF.roofProps) : this.roof.props
       drawRoofProps(ctx, props, t, viewL, viewR, true)
@@ -2330,6 +2404,8 @@ export class CyberBackground {
     this.washBulb = buildWash(`${LIGHT_TINT.bulb[0]},${LIGHT_TINT.bulb[1]},${LIGHT_TINT.bulb[2]}`)
     this.washCity = buildWash(`${LIGHT_TINT.city[0]},${LIGHT_TINT.city[1]},${LIGHT_TINT.city[2]}`)
     this.cityGlow = buildCityGlow(this.mood)
+    this.washTop = buildWash(`${this.mood.highlight}`)
+    this.hazeBand = buildHazeBand(this.vw)
     // Shafts are baked from the palette, so the cone is the same colour as the
     // pool it belongs to — a warm door does not cast a green shaft.
     this.shaftWarm = buildShaft(this.mood.highlight, 54, 210, 420);

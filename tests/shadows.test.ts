@@ -149,7 +149,10 @@ test('graphics: the ladder is monotone — a better tier never spends less', () 
   // Ultra is a real tier, not a label: it is the only one with prop shadows and
   // the widest DPR cap.
   assert.equal(GRAPHICS.ultra.shadows, 'cast+props')
-  assert.equal(GRAPHICS.ultra.dprCap, 2)
+  // Ultra supersamples past 2× now (2.25): a desktop card has the headroom, and
+  // a 4-pass penumbra reads as smooth only when the shadow itself is drawn above
+  // the display's pixel density. Still a CAP, still a ceiling the tier table owns.
+  assert.equal(GRAPHICS.ultra.dprCap, 2.25)
   assert.ok(GRAPHICS.ultra.penumbra > GRAPHICS.low.penumbra)
 })
 

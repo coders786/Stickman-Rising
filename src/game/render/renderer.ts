@@ -1,8 +1,14 @@
-/** STICKMAN RISING — render pipeline (stripped): sky → world (arena,
- * entities, FX) → weather → flash → HUD. No shaders, no WebGL, no light
- * transport, no reflections, no full-screen post passes — every one of
- * those engines is gone in the 120 fps pass. What remains is plain
- * Canvas2D blits so the frame budget belongs to the simulation.
+/** STICKMAN RISING — render pipeline.
+ *
+ *   sky → world (arena, props, entities, FX) → reflection → weather → flash
+ *        → [ULTRA: god rays, bloom] → HUD
+ *
+ * Still no shaders and no WebGL: every pass is Canvas2D blits, because the frame
+ * budget belongs to the simulation. But the old header claimed there were no
+ * full-screen passes at all, and that stopped being true when ultra got its own
+ * stack (render/post.ts): two downscale-and-add passes, 10 blits total, off on
+ * every other tier. The tier table owns whether they run, `post.ts` owns what
+ * they cost, and `tests/ultra-stack.test.ts` owns the receipt.
  */
 
 import { shadowDirection, shadowReach } from '../world/light'
@@ -16,6 +22,7 @@ import { ProjectilePool } from '../entities/projectiles'
 import type { BackgroundRenderer } from '../world/background'
 import type { PropField } from '../world/props'
 import { HUD, HudState } from './hud'
+import { PostStack } from './post'
 import { GameSettings } from '../core/types'
 
 export interface RenderWorld {
@@ -34,6 +41,12 @@ export interface RenderWorld {
 export class Renderer {
   private quality: GameSettings['quality'] = 'high'
   /** The tier's feature set, resolved once per change (render/graphics.ts). */
+  /** FRUSTUM CULL RECEIPT — how many bodies this frame drew vs skipped.
+   *  Culling that is not counted is culling you cannot prove. */
+  private cullDrawn = 0
+  private cullSkipped = 0
+  /** ULTRA's screen-space stack (bloom + god rays). One instance, one buffer. */
+  private post = new PostStack()
   private features: GraphicsFeatures = featuresFor('high')
 
   setQuality(q: GameSettings['quality']): void {
@@ -44,7 +57,9 @@ export class Renderer {
   /** What the frame is actually spending, for the debug readout. */
   graphicsSummary(): string {
     const f = this.features
-    return `${f.shadows}${f.penumbra ? `+${f.penumbra}` : ''}${f.shafts ? ' shafts' : ''}${f.dust ? ' motes' : ''} refl ${f.reflection || 'off'} dpr ${f.dprCap}`
+    const stack = f.bloom || f.godRays ? ` ${this.post.summary()}` : ''
+    const cull = ` cull ${this.cullDrawn}/${this.cullDrawn + this.cullSkipped}`
+    return `${f.shadows}${f.penumbra ? `+${f.penumbra}` : ''}${f.shafts ? ' shafts' : ''}${f.dust ? ' motes' : ''} refl ${f.reflection || 'off'} dpr ${f.dprCap}${stack}${cull}`
   }
 
   /** GROUNDING, REBUILT (render/shadows.ts).
@@ -131,6 +146,20 @@ export class Renderer {
 
     const viewL = cam.x + cam.offX - viewHalfW
     const viewR = cam.x + cam.offX + viewHalfW
+    this.cullDrawn = 0
+    this.cullSkipped = 0
+    /* ONE view test for every culled body. The old inline test compared against
+     * cam.x alone and ignored cam.offX — so during screen shake and the
+     * slow-push cutscenes, bodies at the edge appeared a frame late or vanished
+     * a frame early. A single helper means the shake, the cull and the props all
+     * agree on where the picture is. The margin keeps a full figure off-screen
+     * before it is skipped (a figure is 118 px tall and ~60 px wide). */
+    const CULL_MARGIN = 90
+    const visible = (x: number): boolean => {
+      if (x >= viewL - CULL_MARGIN && x <= viewR + CULL_MARGIN) return true
+      this.cullSkipped++
+      return false
+    }
 
     // PROP SHADOWS FIRST — the outline of every prop laid flat on the deck, away
     // from the moon. Under the props, under the fighters, ultra only.
@@ -146,7 +175,7 @@ export class Renderer {
     this.shade(ctx, bg, player.x, player.y, 32, FIGURE_H, dirAt(player.x), reachAt(player.x))
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
-      if (Math.abs(e.x - cam.x) > viewHalfW) continue
+      if (!visible(e.x)) continue
       this.shade(ctx, bg, e.x, e.y, 30, FIGURE_H * 0.95, dirAt(e.x), reachAt(e.x))
     }
 
@@ -155,7 +184,8 @@ export class Renderer {
 
     // enemies
     for (const e of enemies) {
-      if (Math.abs(e.x - cam.x) > viewHalfW) continue
+      if (!visible(e.x)) continue
+      this.cullDrawn++
       e.draw(ctx, time)
     }
 
@@ -175,7 +205,7 @@ export class Renderer {
     if (bg.drawFigureWash) {
       for (const e of enemies) {
         if (e.dead || e.spawning) continue
-        if (Math.abs(e.x - cam.x) > viewHalfW) continue
+        if (e.x < viewL - CULL_MARGIN || e.x > viewR + CULL_MARGIN) continue
         bg.drawFigureWash(ctx, e.x, e.y, FIGURE_H * 0.95)
       }
     }
@@ -216,6 +246,16 @@ export class Renderer {
 
     // 4. screen flash (hit/impact feedback)
     fx.drawFlash(ctx, w, h)
+
+    /* 4.5 — THE ULTRA STACK. Order matters: the rays are the air around the
+     * sources, the bloom is the sources themselves spilling. Doing bloom first
+     * would make the rays smear a glow instead of a scene. */
+    if (this.features.godRays) {
+      this.post.godRays(ctx, w, h, bg.raySources?.(w, h, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }) ?? [], 0.2)
+    }
+    if (this.features.bloom) {
+      this.post.bloom(ctx, w, h, 1)
+    }
 
     // 5. HUD
     hud.draw(ctx, w, h, hudState, dt)

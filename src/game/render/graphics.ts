@@ -63,6 +63,24 @@ export interface GraphicsFeatures {
   buildingAnims: number
   /** Additive deck pools under the practicals, beyond the player-keyed one. */
   lightPools: number
+
+  /* ------------------------- the ULTRA stack ------------------------- *
+   * These four exist ONLY on ultra, and they are what makes ultra a
+   * different picture rather than a slightly cleaner one. Each is a
+   * screen-space pass with a fixed blit budget (see render/post.ts). */
+
+  /** Screen-space bloom: one downscale of the frame, squared (a cheap luminance
+   *  cut-off) and added back at two scales. 5 blits, ultra only. */
+  bloom: boolean
+  /** Radiated god rays from the practicals: an 8-tap additive smear. 8 blits. */
+  /** Radial smear of that same squared buffer away from each practical: at most
+   *  8 additive taps, ultra only. */
+  godRays: boolean
+  /** Directional top-light on a figure (the key from above), not just a side rim. */
+  keyTop: boolean
+  /** Atmospheric depth on the fighters: haze thickens with distance from the
+   *  camera's focus line, so the horde reads as a crowd in air, not a row. */
+  depthHaze: boolean
 }
 
 /** THE TABLE. Reading it column by column is reading the budget. */
@@ -83,6 +101,10 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     roofProps: 0,
     buildingAnims: 0,
     lightPools: 0,
+    bloom: false,
+    godRays: false,
+    keyTop: false,
+    depthHaze: false,
   },
   medium: {
     shadows: 'contact',
@@ -100,6 +122,10 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     roofProps: 6,
     buildingAnims: 2,
     lightPools: 1,
+    bloom: false,
+    godRays: false,
+    keyTop: false,
+    depthHaze: false,
   },
   high: {
     shadows: 'cast',
@@ -117,23 +143,31 @@ export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
     roofProps: 12,
     buildingAnims: 4,
     lightPools: 2,
+    bloom: false,
+    godRays: false,
+    keyTop: true,
+    depthHaze: false,
   },
   ultra: {
     shadows: 'cast+props',
-    penumbra: 3,
+    penumbra: 4,
     shafts: true,
     dust: true,
-    reflection: 4,
-    reflectionSlices: 4,
-    dprCap: 2,
+    reflection: 3,
+    reflectionSlices: 5,
+    dprCap: 2.25,
     glitter: true,
     gradeTint: true,
     rim: true,
     practicalShadow: true,
     propRim: true,
     roofProps: 22,
-    buildingAnims: 6,
-    lightPools: 4,
+    buildingAnims: 8,
+    lightPools: 6,
+    bloom: true,
+    godRays: true,
+    keyTop: true,
+    depthHaze: true,
   },
 } as const
 

@@ -16,10 +16,13 @@ no-dead-knobs registry), `render/ledger.ts`, `render/quality.ts` (p95 ladder),
 `anim/natural.ts` (M4.5 core, plus the tail-pinned chain), `scripts/bench-render.mjs`,
 `scripts/lint-boundaries.mjs`, and `npm run gate`.
 
-Tests: **386/391** (5 known fails, all filed). Every profile axis now has a named
+Tests: **397/402** (5 known fails, all filed). Every profile axis now has a named
 renderer consumer and `tests/profile-consumption.test.ts` fails if one loses it
 (O-08 closed). Run identity is visible in-play and on the results card (O-09), and
-the contact shadow is projected away from the moon (O-10). See
+the contact shadow is projected away from the moon (O-10). Ultra is no longer
+"high with bigger dials": `render/post.ts` gives it bloom and god rays, `keyTop`
+and `depthHaze` add the key-from-above and the mid-ground air, `combat/horde.ts`
+schedules the horde's AI by proximity, and every culled body is counted. See
 `22-BUG-BOUNTY.md` §0–§4 for the verification stack and the re-test protocol.
 
 ---

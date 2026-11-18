@@ -30,6 +30,7 @@ import { Renderer, RenderWorld } from './render/renderer'
 import { QualityLadder, type Tier } from './render/quality'
 import { featuresFor } from './render/graphics'
 import { LIGHT_HEX } from './world/lightfield'
+import { FAR_DIVISOR, HordeGrid, planTicks, type TickPlan } from './combat/horde'
 import { FrameLog } from './render/frameLog'
 import type { EnvironmentProfile } from './world/profile'
 import { Inspect, InspectMode } from './debug/inspect'
@@ -159,6 +160,14 @@ export class Game {
   settings: GameSettings = { ...DEFAULT_SETTINGS }
   unlocked: SwordId[] = ['katana']
   private lifetimeKills = 0
+  /** HORDE SCHEDULER (combat/horde.ts): a fixed-step counter and one reused
+   *  plan. Far enemies tick 1-in-FAR_DIVISOR with dt×FAR_DIVISOR, so their
+   *  average behaviour is unchanged and the horde's CPU is not linear in its
+   *  off-screen population. */
+  private hordeTick = 0
+  private hordePlan: TickPlan = { near: [], far: [], saved: 0 }
+  private hordeGrid = new HordeGrid(220)
+  private hordeQuery: number[] = []
   private loadout: SwordId[] = ['katana']
 
   input = new Input()
@@ -1057,8 +1066,18 @@ export class Game {
       }
       this.player.update(dt, this.worldRef)
       this.props.update(dt, this.worldRef, this.propHooks, this.player)
-      for (const e of this.enemies) {
-        e.update(dt, this.worldRef)
+      /* THE HORDE, SCHEDULED. Near enemies at full rate; far ones at 1/3 rate
+       * with 3× dt (same average, coarser sampling). `hordeTick` counts STEPS,
+       * not frames, so the schedule is a pure function of the simulation. */
+      this.hordeTick++
+      const plan = planTicks(this.enemies, this.player.x, this.hordeTick, this.hordePlan)
+      for (let i = 0; i < plan.near.length; i++) {
+        const e = this.enemies[plan.near[i]]
+        if (e) e.update(dt, this.worldRef)
+      }
+      for (let i = 0; i < plan.far.length; i++) {
+        const e = this.enemies[plan.far[i]]
+        if (e) e.update(dt * FAR_DIVISOR, this.worldRef)
       }
       // purge dead
       for (let i = this.enemies.length - 1; i >= 0; i--) {
