@@ -1,43 +1,10 @@
-/** STICKMAN RISING — src/game/render/post.ts
- * THE ULTRA POST STACK: bloom + god rays, in Canvas2D, on a counted budget.
- * ----------------------------------------------------------------------------
- * "AAA graphics" on a 2-D canvas is not a shader. It is knowing which two things
- * the eye reads as expensive and paying for exactly those:
- *
- *   1. BLOOM — a real light spills into the air around its edges. Without the
- *      spill an additive highlight looks glued on: it ends where its pixels end.
- *
- *   2. GOD RAYS — the same spill, but smeared radially away from a source, which
- *      is what makes a lamp read as hanging in AIR instead of being a sticker on
- *      the sky.
- *
- * THE CHEAP PART: downscale, then blit the downscale back additively. The
- * downscale IS the blur. That is the whole trick and it has been the trick since
- * 2-D games first had glow.
- *
- * THE PART THAT GOES WRONG, MEASURED. Blitting the plain downscale back raises
- * the WHOLE frame roughly uniformly — a 240×150 buffer of a night scene is a
- * mid-grey, so "bloom" becomes "fog". The first version of this file did exactly
- * that and measured mean luminance 33.8 → 52.7 on a real stage render: a 56 %
- * lift of a picture whose darks are supposed to stay dark.
- *
- * THE FIX, ALSO CHEAP: SQUARE the downscale before using it. Value² is a crude
- * threshold — 0.15 → 0.02 (gone), 0.85 → 0.72 (kept). Two extra blits per
- * buffer buy a falloff that concentrates the added light on the sources instead
- * of on the air, which is the difference between a glow and a wash. After
- * squaring, the same frame lifts by a few percent overall and by a third right
- * where the lamps are.
- *
- * AND THE BUDGET. A full-frame read is the most expensive thing a 2-D renderer
- * can ask for, so: ultra only, 1/6 and 1/8 scale, ONE shared buffer pair, and
- * hard constant ceilings on the blit counts (`BLOOM_BLITS`, `RAY_BLITS`) that
- * `tests/ultra-stack.test.ts` asserts and `.qa/verify-ultra.mts` measures.
- * ==========================================================================*/
-
+/** Ultra screen lighting. One capture in backing pixels, squared at 1/8 CSS
+ * resolution. Bloom is registered to the source at both scales. Rays scatter
+ * only a feathered patch around each emitter, never a translated whole frame. */
 import { gameLedger, hasPixels } from './ledger'
 
-/** Blits the bloom pass may issue: capture + copy + square + 2 additive scales. */
-export const BLOOM_BLITS = 5
+/** Blits the bloom pass may issue: capture + copy + square + downsample + 2 additive scales. */
+export const BLOOM_BLITS = 6
 /** Additive taps the ray pass may issue (on top of its own capture+square). */
 export const RAY_BLITS = 8
 
@@ -47,13 +14,8 @@ const RAY_REACH = 0.22
 const RAY_GAIN = 0.012
 /** Each subsequent tap is this × the last. */
 const RAY_DECAY = 0.62
-/*  MEASURED, then dialled. The eight taps each re-add the WHOLE frame (that is
- *  what an occlusion-free smear is), so the ray budget is unforgiving: at 0.075
- *  the pass lifted a real stage frame 33.8 → 41.5 on its own, most of it the
- *  bright city sky arriving back over the darks. 0.026 is where the shafts are
- *  visible around the practicals and the frame has moved ~2.5 luminance. */
 /** Per-tap ceiling, so one bright source can never own the whole budget. */
-const RAY_CLAMP = 0.010
+const RAY_CLAMP = 0.01
 /** The two additive bloom scales (tight carry + wide skirt). */
 const BLOOM_TIGHT = 0.15
 const BLOOM_WIDE = 0.042
@@ -69,16 +31,18 @@ export function rayPlan(
   strength: number,
   w: number,
   h: number,
-): Array<{ dx: number; dy: number; alpha: number }> {
-  const out: Array<{ dx: number; dy: number; alpha: number }> = []
+): Array<{ lx: number; ly: number; dx: number; dy: number; alpha: number }> {
+  const out: Array<{ lx: number; ly: number; dx: number; dy: number; alpha: number }> = []
   if (strength <= 0.001 || w < 32 || h < 32) return out
   const reach = Math.min(w, h) * RAY_REACH
   for (const [lx, ly, weight] of lights) {
-    if (weight <= 0.02) continue
+    if (weight <= 0.02 || lx < -120 || lx > w + 120 || ly < -120 || ly > h + 120) continue
     let alpha = RAY_GAIN * weight * strength
     for (let i = 1; i <= 4 && out.length < RAY_BLITS; i++) {
       const t = (i / 4) * reach
       out.push({
+        lx,
+        ly,
         dx: ((lx - w * 0.5) / Math.max(1, w * 0.5)) * t,
         dy: ((ly - h * 0.5) / Math.max(1, h * 0.5)) * t,
         alpha: Math.min(RAY_CLAMP, alpha),
@@ -97,52 +61,104 @@ export class PostStack {
   private sq: HTMLCanvasElement | null = null
   private bufW = 0
   private bufH = 0
-  private bloomPending = false
-  private rayPending = false
+  private patch: HTMLCanvasElement | null = null
+  private feather: CanvasGradient | null = null
 
   /** Blits issued last frame — this pass's receipt, shown in the debug overlay. */
   lastBloomBlits = 0
   lastRayBlits = 0
+  lastLensBlits = 0
 
-  /** BLOOM. `src` is the frame itself; the downscale reads it. */
-  bloom(ctx: CanvasRenderingContext2D, w: number, h: number, strength: number): void {
-    if (w < 32 || h < 32 || strength <= 0.001) return
-    const sq = this.captureSquared(ctx, w, h, 6)
-    if (!sq) return
-    ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
-    // A tight pass (the hot cores) and a wide pass (the skirt that spills past
-    // them). Same buffer, two scales — that pairing is what reads as light
-    // rather than as a single blurry halo.
-    ctx.globalAlpha = Math.min(0.22, BLOOM_TIGHT * strength)
-    ctx.drawImage(sq, 0, 0, this.bufW, this.bufH, -w * 0.012, -h * 0.012, w * 1.024, h * 1.024)
-    ctx.globalAlpha = Math.min(0.09, BLOOM_WIDE * strength)
-    ctx.drawImage(sq, 0, 0, this.bufW, this.bufH, -w * 0.03, -h * 0.03, w * 1.06, h * 1.06)
-    ctx.restore()
-    this.lastBloomBlits = BLOOM_BLITS
-  }
-
-  /** GOD RAYS — additive taps marching away from each source's screen position. */
-  godRays(
+  /** One capture for both effects. Zero strengths omit the respective pass. */
+  compose(
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
     lights: ReadonlyArray<readonly [number, number, number]>,
-    strength: number,
+    rays: number,
+    bloom: number,
   ): void {
-    if (lights.length === 0 || strength <= 0.001) return
-    if (w < 32 || h < 32) return
+    this.lastBloomBlits = this.lastRayBlits = this.lastLensBlits = 0
+    if (w < 32 || h < 32 || (bloom <= 0.001 && (!lights.length || rays <= 0.001))) return
     const sq = this.captureSquared(ctx, w, h, 8)
-    if (!sq) return
-    const taps = rayPlan(lights, strength, w, h)
+    if (!sq || !this.buf) return
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
-    for (const tap of taps) {
-      ctx.globalAlpha = Math.min(RAY_CLAMP, tap.alpha)
-      ctx.drawImage(sq, 0, 0, this.bufW, this.bufH, tap.dx, tap.dy, w, h)
+    const taps = rayPlan(lights, rays, w, h)
+    if (taps.length) {
+      // A cropped source footprint with a soft border. A bright sword at the
+      // opposite edge of the screen must not radiate from this lamp.
+      const n = 32,
+        size = Math.min(240, w * 0.35, h * 0.45)
+      if (!this.patch || !hasPixels(this.patch)) {
+        this.patch = gameLedger.acquire('post:source', n, n, 'post', true) as HTMLCanvasElement
+        this.feather = null
+      }
+      const g = this.patch.getContext('2d')
+      if (g && hasPixels(this.patch)) {
+        if (!this.feather) {
+          this.feather = g.createRadialGradient(n / 2, n / 2, 1, n / 2, n / 2, n / 2)
+          this.feather.addColorStop(0, '#fff')
+          this.feather.addColorStop(1, 'rgba(255,255,255,0)')
+        }
+        let lastX = NaN,
+          lastY = NaN
+        for (const tap of taps) {
+          const x = tap.lx - size / 2,
+            y = tap.ly - size / 2
+          if (x !== lastX || y !== lastY) {
+            g.globalCompositeOperation = 'source-over'
+            g.clearRect(0, 0, n, n)
+            g.drawImage(
+              sq,
+              (x * this.bufW) / w,
+              (y * this.bufH) / h,
+              (size * this.bufW) / w,
+              (size * this.bufH) / h,
+              0,
+              0,
+              n,
+              n,
+            )
+            g.globalCompositeOperation = 'destination-in'
+            g.fillStyle = this.feather
+            g.fillRect(0, 0, n, n)
+            // Anamorphic highlight: stretch only the masked bright core into a
+            // fine horizontal glint. One small blit per sampled emitter, at
+            // most two per frame; no extra capture or full-screen filter.
+            const width = size * 0.8, height = size * 0.035
+            ctx.globalAlpha = Math.min(0.13, tap.alpha * 48)
+            ctx.drawImage(this.patch, tap.lx - width / 2, tap.ly - height / 2, width, height)
+            this.lastLensBlits++
+            lastX = x
+            lastY = y
+          }
+          ctx.globalAlpha = tap.alpha
+          ctx.drawImage(this.patch, x + tap.dx, y + tap.dy, size, size)
+          this.lastRayBlits++
+        }
+      }
+    }
+    if (bloom > 0.001) {
+      // Broaden the footprint by downsampling, not scaling about the viewport
+      // centre (which produces displaced copies of highlights near the edges).
+      const cw = Math.max(2, Math.floor(this.bufW / 3)),
+        ch = Math.max(2, Math.floor(this.bufH / 3))
+      const g = this.buf.getContext('2d')!
+      g.clearRect(0, 0, cw, ch)
+      g.drawImage(sq, 0, 0, cw, ch)
+      const tight = Math.min(0.22, BLOOM_TIGHT * bloom)
+      const mix = sq.getContext('2d')!
+      mix.save()
+      mix.globalCompositeOperation = 'lighter'
+      mix.globalAlpha = Math.min(0.09, BLOOM_WIDE * bloom) / tight
+      mix.drawImage(this.buf, 0, 0, cw, ch, 0, 0, this.bufW, this.bufH)
+      mix.restore()
+      ctx.globalAlpha = tight
+      ctx.drawImage(sq, 0, 0, w, h)
+      this.lastBloomBlits = BLOOM_BLITS
     }
     ctx.restore()
-    this.lastRayBlits = taps.length
   }
 
   /** Capture the frame at 1/`div` scale and square it (a cheap luminance
@@ -164,7 +180,7 @@ export class PostStack {
     g.globalCompositeOperation = 'source-over'
     g.globalAlpha = 1
     g.clearRect(0, 0, bw, bh)
-    g.drawImage(ctx.canvas, 0, 0, w, h, 0, 0, bw, bh)
+    g.drawImage(ctx.canvas, 0, 0, bw, bh)
     h2.globalCompositeOperation = 'source-over'
     h2.globalAlpha = 1
     h2.clearRect(0, 0, bw, bh)
@@ -194,7 +210,7 @@ export class PostStack {
   /** One line for the debug overlay. */
   summary(): string {
     if (this.lastBloomBlits === 0 && this.lastRayBlits === 0) return 'post off'
-    return `post b${this.lastBloomBlits} r${this.lastRayBlits}`
+    return `post b${this.lastBloomBlits} r${this.lastRayBlits} lens${this.lastLensBlits}`
   }
 
   /** For the tests / QA: the live buffer size, or null when nothing is allocated. */

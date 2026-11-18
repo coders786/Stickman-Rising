@@ -1,40 +1,6 @@
-/** STICKMAN RISING — src/game/render/shadows.ts
- * THE SHADOW SYSTEM: a body, not a puddle.
- * ----------------------------------------------------------------------------
- * The old grounding was one ellipse under each figure, two fills, pushed away
- * from the moon. It was *correct* (the direction answered the key light) and it
- * still looked cheap, for a reason that is worth writing down: **an ellipse is
- * not a shadow, it is a stain.** A shadow is the silhouette of a body projected
- * onto the plane it stands on — it is long when the light is low, it is shaped
- * like the thing that cast it, and its edge is soft in proportion to how far the
- * light is from a point. Nothing about an ellipse says any of that, so the eye
- * reads it as decal and the scene stays flat no matter how good the sky is.
- *
- * WHAT REPLACES IT
- *
- *  1. **A projected body.** A tapered polygon from the feet along the light
- *     direction, long by `shadowLength`, with a head lobe at the tip and a blade
- *     sliver for the arm. Three lobes, one path, one fill per pass.
- *  2. **A penumbra stack.** The same path is filled under itself at growing
- *     scale and falling alpha. Three cheap fills read as a soft edge — which is
- *     the difference between "vector art" and "photograph". `ctx.filter: blur()`
- *     would be the other way and costs 3–8 ms on mobile software raster; this
- *     costs three fills.
- *  3. **A second light.** The practicals (streetlight, stairwell) are light
- *     sources, so figures standing in their reach cast a SECOND, tinted shadow in
- *     the practical's own direction. Two shadows from two lights is the cheapest
- *     honest way to say "multiple sources" — and it makes the door and the lamp
- *     feel like they emit rather than glow.
- *  4. **True silhouettes for props.** A prop is a static sprite, so its shadow
- *     can be its actual outline: a silhouette mask baked once, blitted through a
- *     shear matrix that lands it flat on the deck. One drawImage per prop.
- *
- * COST, PER FIGURE, PER TIER (`render/graphics.ts`): contact = 1 fill; cast = up
- * to (penumbra + 2) fills; practical second shadow adds (penumbra + 2) more and
- * is high/ultra only. The heaviest tier is ~10 path fills for the player and ~6
- * per visible enemy, which is still cheaper than one `shadowBlur`.
- * ==========================================================================*/
-
+/** Project one low-detail outline of the solved pose onto the roof. A figure
+ * builds its path once; the key, practical and bounded penumbra reuse it. */
+import type { SkelGeom } from '../anim/skeleton'
 import type { ShadowMode } from './graphics'
 
 /** Nominal figure height in world px (the stickman is ~112–124 depending on
@@ -52,7 +18,7 @@ export interface ShadowTuning {
 
 export const SHADOW_TUNING: ShadowTuning = {
   /** Straight under the key: a short blob, barely wider than the feet. */
-  minLength: 0.30,
+  minLength: 0.3,
   /** At the far edge of the frame: over twice the body's height. */
   maxLength: 2.05,
   /** The response is CONVEX: the first half of the reach range buys little
@@ -112,106 +78,104 @@ export function silhouetteMatrix(dir: number, reach: number): { a: number; b: nu
     c: -(dir >= 0 ? shear : -shear),
     // d < 1 flattens the silhouette onto the plane. It is not 0: a shadow on a
     // real roof has a little thickness where the surface is not perfectly flat.
-    d: 0.14,
+    d: -0.14, // the source rises into -y; its projection lands on the deck in +y
   }
 }
 
-/** THE PENUMBRA CEILING.
- *
- *  Each pass is one more fill of the same path at a wider scale, so this number
- *  is literally `drawCastShadow`'s fill budget. It was 3 while `high` was the top
- *  tier; ultra now spends the fourth pass, because ultra is where a shadow is
- *  allowed a real gradient instead of three visible steps. The tier table must
- *  never ask for more than this — `tests/shadows.test.ts` asserts
- *  `fills === penumbra + 2` for every tier, so an over-ask fails the build
- *  instead of silently flattening into the cap. */
 export const PENUMBRA_CAP = 4
 
-export interface CastShadowOpts {
-  x: number
-  /** Feet position (world y). The shadow is drawn on the deck at `y`. */
-  y: number
-  height: number
-  width: number
-  /** +1 the shadow falls to the right, −1 to the left. */
-  dir: number
-  reach: number
-  alpha: number
-  /** Extra soft passes. 0 = crisp, 4 = very soft (ultra, see PENUMBRA_CAP). */
-  penumbra: number
-  /** rgb triple ("4,7,11") — a practical's shadow is tinted by the practical. */
-  ink?: string
-  /** Superellipse squeeze: a shorter, fatter shadow for an airborne figure. */
-  airborne?: boolean
-}
+type Point = { x: number; y: number }
+type Pose = Pick<
+  SkelGeom,
+  | 'hip'
+  | 'chest'
+  | 'headC'
+  | 'shoulderR'
+  | 'shoulderL'
+  | 'elbL'
+  | 'elbR'
+  | 'handL'
+  | 'handR'
+  | 'kneeR'
+  | 'kneeL'
+  | 'ankleR'
+  | 'ankleL'
+  | 'toeR'
+  | 'toeL'
+>
 
-/** Draw one projected body shadow. Pure Canvas2D, no state leaks: the caller's
- *  transform and alpha are restored. */
-export function drawCastShadow(ctx: CanvasRenderingContext2D, o: CastShadowOpts): void {
-  const ink = o.ink ?? '3,6,10'
-  const len = shadowLength(o.height, o.reach)
-  const dir = o.dir >= 0 ? 1 : -1
-  const slide = airborneOffset(o.y, dir, o.reach)
-  const w = Math.max(6, o.width)
-  const a = shadowAlpha(o.alpha, o.y)
-  if (a <= 0.005 || len <= 1) return
-  const bx = o.x + slide // base of the shadow (under the feet, slid when airborne)
-  const tipX = bx + dir * len
-  const baseHalf = w * 0.26
-  const tipHalf = w * 0.15
-  const headR = Math.max(3, o.height * 0.085)
-
-  ctx.save()
-  // PENUMBRA FIRST, widest and faintest, so the core lands on top of it. Each
-  // pass is the same geometry scaled about the base point: the union of the
-  // alphas is a soft gradient without a single blur.
-  const passes = Math.max(0, Math.min(PENUMBRA_CAP, Math.floor(o.penumbra)))
-  for (let p = passes; p >= 1; p--) {
-    const grow = 1 + p * 0.22
-    ctx.globalAlpha = (a * 0.5) / (passes + 1)
-    ctx.fillStyle = `rgb(${ink})`
-    ctx.beginPath()
-    bodyPath(ctx, bx, o.y, dir, len * grow, baseHalf * grow, tipHalf * grow, headR * grow)
-    ctx.fill()
+export function shadowOutline(g: Pose): Path2D {
+  const path = new Path2D()
+  // Same winding for every tapered capsule so overlaps form one silhouette,
+  // not a stack of translucent joints. No weapon is invented for unarmed poses.
+  const link = (a: Point, b: Point, r: number, end: number) => {
+    const dx = b.x - a.x,
+      dy = b.y - a.y,
+      len = Math.hypot(dx, dy)
+    if (len < 0.01) return
+    const nx = -dy / len,
+      ny = dx / len
+    path.moveTo(a.x + nx * r, a.y + ny * r)
+    path.lineTo(a.x - nx * r, a.y - ny * r)
+    path.lineTo(b.x - nx * end, b.y - ny * end)
+    path.lineTo(b.x + nx * end, b.y + ny * end)
+    path.closePath()
   }
-  // CORE
-  ctx.globalAlpha = a * 0.62
-  ctx.fillStyle = `rgb(${ink})`
-  ctx.beginPath()
-  bodyPath(ctx, bx, o.y, dir, len, baseHalf, tipHalf, headR)
-  ctx.fill()
-  // BLADE ARM — a thin sliver angled forward from the shoulder line. Only on the
-  // core: a soft blade reads as a smudge.
-  ctx.globalAlpha = a * 0.34
-  ctx.beginPath()
-  ctx.ellipse(bx + dir * len * 0.42, o.y + 1.5, len * 0.26, Math.max(1.6, w * 0.075), dir * 0.16, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.restore()
+  link(g.hip, g.chest, 5, 9)
+  link(g.chest, g.headC, 4, 3)
+  for (const side of ['L', 'R'] as const) {
+    link(g.hip, g[`knee${side}`], 4, 3)
+    link(g[`knee${side}`], g[`ankle${side}`], 3, 2)
+    link(g[`ankle${side}`], g[`toe${side}`], 2, 1.5)
+    link(g[`shoulder${side}`], g[`elb${side}`], 3.5, 2.6)
+    link(g[`elb${side}`], g[`hand${side}`], 2.6, 2)
+  }
+  path.moveTo(g.headC.x + 7, g.headC.y)
+  path.arc(g.headC.x, g.headC.y, 7, 0, Math.PI * 2)
+  return path
 }
 
-/** The tapered body polygon + head lobe, as one path. */
-function bodyPath(
+export interface ShadowActor {
+  x: number
+  y: number
+  hipY: number
+  face: number
+  scale: number
+  geom: Pose
+}
+export function drawCastShadow(
   ctx: CanvasRenderingContext2D,
-  bx: number,
-  by: number,
-  dir: number,
-  len: number,
-  baseHalf: number,
-  tipHalf: number,
-  headR: number,
+  actor: ShadowActor,
+  path: Path2D,
+  slope: number,
+  alpha: number,
+  penumbra: number,
+  ink = '3,6,10',
 ): void {
-  const tipX = bx + dir * len
-  // Slight curve along the spine: a body is not a cone, it narrows at the waist
-  // and widens again at the shoulders. Two quadratics carry that, and it is the
-  // detail that stops the silhouette reading as a traffic cone.
-  ctx.moveTo(bx - baseHalf, by + 1)
-  ctx.quadraticCurveTo(bx + dir * len * 0.35, by - baseHalf * 0.42, tipX - tipHalf, by - 1)
-  ctx.lineTo(tipX + tipHalf, by - 1)
-  ctx.quadraticCurveTo(bx + dir * len * 0.35, by + baseHalf * 0.5, bx + baseHalf, by + 1)
-  ctx.closePath()
-  // head: the far end of the projection, sitting just past the shoulders
-  ctx.moveTo(tipX + headR, by)
-  ctx.ellipse(tipX, by, headR, headR * 0.46, 0, 0, Math.PI * 2)
+  const a = shadowAlpha(alpha, actor.y)
+  if (a < 0.005) return
+  const passes = Math.min(PENUMBRA_CAP, Math.max(0, Math.floor(penumbra)))
+  ctx.save()
+  ctx.fillStyle = `rgb(${ink})`
+  for (let i = passes; i >= 0; i--) {
+    // Divergent rays widen the tip, not the feet. Negative world height
+    // projects down-screen onto the deck even when both feet leave it.
+    const shear = -slope + (i === 0 ? 0 : (i % 2 ? -1 : 1) * Math.ceil(i / 2) * 0.03)
+    const depth = -0.095 - i * 0.006
+    ctx.save()
+    ctx.transform(
+      actor.face * actor.scale,
+      0,
+      shear * actor.scale,
+      depth * actor.scale,
+      actor.x + shear * actor.hipY,
+      2 + depth * actor.hipY,
+    )
+    ctx.globalAlpha *= i ? (a * 0.36) / passes : a * 0.72
+    ctx.fill(path)
+    ctx.restore()
+  }
+  ctx.restore()
 }
 
 /** Contact ambient occlusion: the soft dark the body makes where it meets the
@@ -224,7 +188,7 @@ export function drawContactAO(
   alpha: number,
   passes = 1,
 ): void {
-  const a = shadowAlpha(alpha, y)
+  const a = alpha * Math.max(0, 1 - Math.abs(y) / 45) ** 2
   if (a <= 0.01) return
   ctx.save()
   ctx.fillStyle = 'rgb(3,6,10)'
@@ -232,7 +196,7 @@ export function drawContactAO(
     const grow = 1 + p * 0.55
     ctx.globalAlpha = (a * 0.5) / (passes + 1)
     ctx.beginPath()
-    ctx.ellipse(x, y + 1.5, width * 0.52 * grow, width * 0.16 * grow, 0, 0, Math.PI * 2)
+    ctx.ellipse(x, 1.5, width * 0.52 * grow, width * 0.16 * grow, 0, 0, Math.PI * 2)
     ctx.fill()
   }
   ctx.restore()

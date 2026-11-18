@@ -70,7 +70,7 @@ export interface GraphicsFeatures {
    * screen-space pass with a fixed blit budget (see render/post.ts). */
 
   /** Screen-space bloom: one downscale of the frame, squared (a cheap luminance
-   *  cut-off) and added back at two scales. 5 blits, ultra only. */
+   *  cut-off) and added back at two scales. 6 blits, ultra only. */
   bloom: boolean
   /** Radiated god rays from the practicals: an 8-tap additive smear. 8 blits. */
   /** Radial smear of that same squared buffer away from each practical: at most
@@ -208,20 +208,8 @@ export interface DeviceClass {
   ceiling: Tier
 }
 
-/**
- * Classify from facts the browser will actually tell us.
- *
- * We do NOT sniff the GPU string: 14 §2 measured that renderer strings are
- * blocked, spoofed or missing often enough that a tier chosen from them is a
- * coin flip. `pointer: fine` + no touch + a large viewport is a *behavioural*
- * fact, and it is the one that correlates with "there is a discrete GPU and a
- * wall socket here".
- *
- * The thresholds are provisional and labelled: 2.3 MP is a 1440×900 CSS viewport
- * at DPR 1.3. The governor can still shed from `start` — this only decides where
- * the player begins, which is the first impression and therefore the thing the
- * "it looks cheap" complaint was actually about.
- */
+/** First-run policy, not a GPU benchmark. A pointer desktop starts on Ultra
+ * even in a small window. Saved settings and the frame-time governor still win. */
 export function classifyDevice(v: {
   width: number
   height: number
@@ -234,13 +222,9 @@ export function classifyDevice(v: {
   const dpr = Number.isFinite(v.dpr) && v.dpr > 0 ? v.dpr : 1
   const megapixels = (w * h * dpr * dpr) / 1e6
   const desktop = v.finePointer && !v.touch
-  // A big, pointer-driven screen is the only place `ultra` is offered. It is
-  // still a choice: the governor sheds out of it in one window if the frame
-  // budget says the GPU disagrees with the viewport.
-  // 1080p at DPR 1 is 2.07 MP and is the canonical desktop: the bar has to sit
-  // below it or the machine the feature is FOR never gets offered it.
-  if (desktop && megapixels >= 1.9) return { desktop, megapixels, start: 'high', ceiling: 'ultra' }
-  if (desktop) return { desktop, megapixels, start: 'medium', ceiling: 'high' }
+  if (desktop && Number.isFinite(v.width * v.height) && v.width > 0 && v.height > 0) {
+    return { desktop, megapixels, start: 'ultra', ceiling: 'ultra' }
+  }
   // Touch devices: phones and tablets. `high` is offered on big tablets only.
   if (megapixels >= 3.2) return { desktop, megapixels, start: 'medium', ceiling: 'high' }
   return { desktop, megapixels, start: 'low', ceiling: 'medium' }

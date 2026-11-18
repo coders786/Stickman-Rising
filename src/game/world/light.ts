@@ -37,6 +37,7 @@
 import type { EnvironmentProfile } from './profile'
 
 export interface KeyLight {
+  type: 'directional'
   /** −1 = the light comes from the far left … +1 = far right. */
   azimuth: number
   /** 0 = on the horizon … 1 = at the zenith. The stage composes the moon high,
@@ -60,6 +61,7 @@ function clamp(v: number, lo: number, hi: number): number {
 /** The whole model. Pure, allocation-free, and cheap enough for a draw path. */
 export function keyLightFor(p: EnvironmentProfile): KeyLight {
   return {
+    type: 'directional',
     // tilt ∈ [−34, 34] — ±34° is the authored limit of the crescent's lean, and
     // it doubles as the authored limit of the key's swing.
     azimuth: clamp(p.moon.tilt / 34, -1, 1),
@@ -120,7 +122,13 @@ export function rimDirection(moonX: number, frameW: number): -1 | 1 {
  *  mirror band). A low, warm moon smears more; a high, cold one sparkles harder.
  *  Range ≈ 0.7–1.3, deliberately narrow — a reflection that pumps reads as a
  *  bug, not as light. */
-export function reflectionGain(light: KeyLight): number {
+export function reflectionGain(light: Pick<KeyLight,'warmth'|'elevation'|'azimuth'>): number {
   const low = 1 - light.elevation // 0.22 at the authored height
   return 0.78 + 0.5 * low + 0.22 * (1 - light.warmth) + 0.12
+}
+
+/** Parallel moon rays: moving the camera cannot move a world-space shadow. */
+export function directionalProjection(light:Pick<KeyLight,'azimuth'|'elevation'>){
+  const horizontal=.64+.25*light.azimuth
+  return {dir:-1 as const,reach:shadowReach(light.elevation,horizontal),keyX:horizontal}
 }

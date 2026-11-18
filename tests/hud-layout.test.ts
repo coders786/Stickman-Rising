@@ -32,3 +32,24 @@ test('HUD distinguishes power charging, exhaustion and regeneration',()=>{
  draw({dashCharge:.5});draw({dashCharge:1});draw({stamina:20});draw({stamina:80});draw({stamina:300,staminaCooldown:.5})
  for(const label of ['CHARGING 50%','RELEASE: POWER','EXHAUSTED','POWER LOW','RECOVERING'])assert.ok(texts.includes(label),label)
 })
+
+test('a fully visible wave title stays on the same pixels between ticks',()=>{
+ const w=650,h=360,c=createCanvas(w,h),ctx=c.getContext('2d'),hud=new HUD()
+ const state={...base,combo:{...base.combo,hits:0},banner:{title:'WAVE 02',sub:'ROOFTOP',t:1,dur:3,color:'#ff3344'}}
+ const render=()=>{ctx.clearRect(0,0,w,h);hud.draw(ctx as unknown as CanvasRenderingContext2D,w,h,state,1/60);return ctx.getImageData(12,214,350,20).data}
+ const a=render();state.banner.t+=1/60;const b=render();assert.ok(a.some(n=>n>0));assert.deepEqual(a,b)
+})
+
+test('a recent hit leaves a visible delayed-health segment, not an erased track',()=>{
+ const ctx=createCanvas(800,400).getContext('2d');new HUD().draw(ctx as unknown as CanvasRenderingContext2D,800,400,{...base,hp:50},1/60)
+ const rgb=(x:number)=>Array.from(ctx.getImageData(x,36,1,1).data).slice(0,3)
+ assert.deepEqual(rgb(120),[255,80,100]);assert.deepEqual(rgb(250),[245,181,189])
+})
+
+test('wide touch HUD reserves pause space and uses the actual touch action names',()=>{
+ const ctx=createCanvas(1024,600).getContext('2d'),text=new Map<string,number>()
+ ctx.fillText=(s,x)=>{text.set(s,x)}
+ new HUD().draw(ctx as unknown as CanvasRenderingContext2D,1024,600,{...base,touch:true,runTime:1,wave:1,executePrompt:{x:180,y:230}},1/60)
+ assert.ok(text.get('123')!<=1024-64);for(const label of ['SPEC READY','ULT READY','TAP EXEC'])assert.ok(text.has(label),label)
+ assert.ok(![...text.keys()].some(s=>s.includes('A/D MOVE')||s.includes('[U]')))
+})

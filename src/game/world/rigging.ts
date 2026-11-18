@@ -122,6 +122,7 @@ export class Rigging {
       gravity: 520,
       follow: 0.9,
     })
+    c.spanSag = s.sag
     c.tailPinned = true
     c.rootX = s.ax; c.rootY = s.ay
     c.tailX = s.bx; c.tailY = s.by

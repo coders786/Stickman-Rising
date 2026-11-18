@@ -1,37 +1,8 @@
-/** STICKMAN RISING — src/game/world/roofprops.ts
- * THE ROOF IS A PLACE SOMEBODY USES.
- * ----------------------------------------------------------------------------
- * The stage is one rooftop: a lip, a facade, a streetlight and a stairwell. What
- * it never had is the thing that makes a roof read as a roof — STUFF on it. A
- * condenser unit bolted to the deck, a water tank on legs, a crate somebody left,
- * a vent that breathes, a dish pointed at something, a coil of cable, a bulb on a
- * cable over the door. Without them the deck is a street that happens to be high
- * up, and every fight happens in a place rather than on a roof.
- *
- * Two constraints shaped this file:
- *
- * 1. IT MAY NOT COST A BAKE. The arena is one pre-baked tile (LIP + FACADE,
- *    2900 px wide). Adding props to that tile would force a re-bake when the
- *    count changes with the tier — and the count DOES change with the tier. So
- *    props are live: a couple of dozen fills, culled to the view, drawn in world
- *    space between the rigging and the fighters.
- *
- * 2. THEY MUST NOT BLOCK THE FIGHT. Every prop is ≤ 54 px tall and sits on the
- *    back edge of the deck, so a fighter's head (118 px) always clears it and a
- *    swing never disappears behind a water tank. They are scenery, not cover.
- *
- * THE LAMP IS THE POINT. One of the props can be a caged bulb on a stand, and a
- * bulb is not scenery — it is a light. It returns a real `PointLight` into the
- * stage's field (world/lightfield.ts), so a run can spawn its own practical
- * somewhere the two authored ones are not, and the player's proximity lighting,
- * the deck pool and the second cast shadow all follow it for free. That is what
- * "per-run buildings and props" should mean: the run changes where the light is.
- * ==========================================================================*/
-
+/** Seeded maintenance-shoulder furniture. Solid housings also feed the light field. */
 import { h01 } from './buildings'
-import { PRACTICAL_DOOR_X, PRACTICAL_LAMP_X, type PointLight } from './lightfield'
+import { PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, BEACON_X, type PointLight } from './lightfield'
 
-export type RoofPropKind = 'ac' | 'tank' | 'crate' | 'planter' | 'vent' | 'dish' | 'antenna' | 'line' | 'coil' | 'bulb'
+export type RoofPropKind = 'barrier' | 'cabinet' | 'marker' | 'bulb'
 
 export interface RoofProp {
   kind: RoofPropKind
@@ -51,20 +22,8 @@ export interface RoofPropSet {
   lights: PointLight[]
 }
 
-/** The kinds, by likelihood. Weighted so the roof looks like a working building:
- *  condensers and vents are common, a satellite dish is not, and exactly one
- *  bulb exists per run at most. */
 const KIND_TABLE: ReadonlyArray<readonly [RoofPropKind, number]> = [
-  ['ac', 0.20],
-  ['vent', 0.16],
-  ['crate', 0.14],
-  ['tank', 0.12],
-  ['planter', 0.11],
-  ['line', 0.09],
-  ['coil', 0.07],
-  ['dish', 0.05],
-  ['antenna', 0.04],
-  ['bulb', 0.02],
+  ['barrier', .33], ['cabinet', .17], ['marker', .47], ['bulb', .03],
 ]
 
 function pickKind(r: number): RoofPropKind {
@@ -73,21 +32,15 @@ function pickKind(r: number): RoofPropKind {
     acc += p
     if (r <= acc) return k
   }
-  return 'crate'
+  return 'marker'
 }
 
 /** Size per kind. Height is capped by the "must not block the fight" rule. */
 function sizeFor(kind: RoofPropKind, r: number): { w: number; h: number } {
   switch (kind) {
-    case 'ac': return { w: 30 + r * 18, h: 20 + r * 6 }
-    case 'tank': return { w: 26 + r * 10, h: 40 + r * 10 }
-    case 'crate': return { w: 16 + r * 10, h: 14 + r * 8 }
-    case 'planter': return { w: 18 + r * 12, h: 16 + r * 8 }
-    case 'vent': return { w: 8 + r * 6, h: 22 + r * 14 }
-    case 'dish': return { w: 14 + r * 8, h: 18 + r * 10 }
-    case 'antenna': return { w: 3, h: 48 + r * 6 }
-    case 'line': return { w: 44 + r * 30, h: 30 }
-    case 'coil': return { w: 16 + r * 8, h: 12 + r * 6 }
+    case 'barrier': return {w:38+18*r,h:17+3*r}
+    case 'cabinet': return {w:15+8*r,h:23+7*r}
+    case 'marker': return {w:6,h:14+8*r}
     case 'bulb': return { w: 6, h: 46 }
   }
 }
@@ -123,7 +76,8 @@ export function makeRoofProps(
     const jitter = (h01(i, 17, seed) - 0.5) * (span / n) * 0.9
     let x = slot + jitter
     if (Math.abs(x - PRACTICAL_LAMP_X) < 110) x += x < PRACTICAL_LAMP_X ? -130 : 130
-    if (Math.abs(x - PRACTICAL_DOOR_X) < 110) x += x < PRACTICAL_DOOR_X ? -130 : 130
+    if (Math.abs(x - PRACTICAL_SIGN_X) < 110) x += x < PRACTICAL_SIGN_X ? -130 : 130
+    if (Math.abs(x-BEACON_X)<40) x=BEACON_X-45
     if (x < x0 + 12 || x > x1 - 12) continue
     let clash = false
     for (const p of props) {
@@ -131,7 +85,7 @@ export function makeRoofProps(
     }
     if (clash) continue
     let kind = pickKind(h01(i, 31, seed))
-    if (kind === 'bulb' && bulbs >= 1) kind = 'crate'
+    if (kind === 'bulb' && bulbs >= 1) kind = 'marker'
     const size = sizeFor(kind, h01(i, 43, seed))
     const lit = kind === 'bulb'
     if (lit) bulbs++
@@ -200,10 +154,10 @@ const BULB_GLOW = '255,214,160'
 export function drawRoofProps(
   ctx: CanvasRenderingContext2D,
   props: readonly RoofProp[],
-  t: number,
   viewL: number,
   viewR: number,
   shadow: boolean,
+  bulbGain: number,
 ): number {
   let drawn = 0
   ctx.save()
@@ -211,7 +165,6 @@ export function drawRoofProps(
     if (p.x + p.w < viewL - 40 || p.x - p.w > viewR + 40) continue
     const bx = p.x - p.w * 0.5
     const by = p.y - p.h
-    const sway = Math.sin(t * 1.4 + p.phase * 6.283)
     if (shadow) {
       // contact chip + the city's bounce spilling around the base: the object
       // blocks the light from below, so it is darkest exactly where it meets the
@@ -228,169 +181,34 @@ export function drawRoofProps(
       ctx.fill()
     }
     switch (p.kind) {
-      case 'ac': {
-        ctx.fillStyle = INK_BODY
-        ctx.fillRect(bx, by, p.w, p.h)
-        ctx.fillStyle = MOON_EDGE
-        ctx.fillRect(bx, by, p.w, 1)             // moon catch on the top edge
-        ctx.fillStyle = INK_DARK
-        // The fan grille: three bars, and a blade that actually rotates.
-        ctx.fillRect(bx + 3, by + 3, p.w - 6, p.h - 8)
-        const cx = p.x
-        const cy = by + p.h * 0.5 - 1
-        const r = Math.min(p.w, p.h) * 0.26
-        ctx.fillStyle = 'rgba(140,180,210,0.30)'
-        ctx.beginPath()
-        ctx.arc(cx, cy, r, 0, Math.PI * 2)
-        ctx.fill()
-        const rot = t * 6 + p.phase * 6.283
-        ctx.strokeStyle = 'rgba(10,18,26,0.85)'
-        ctx.lineWidth = 1.4
-        ctx.beginPath()
-        for (let b = 0; b < 3; b++) {
-          const a = rot + (b * Math.PI * 2) / 3
-          ctx.moveTo(cx, cy)
-          ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r)
-        }
-        ctx.stroke()
-        break
+      case 'barrier': {
+        ctx.fillStyle='#38434c';ctx.beginPath();ctx.moveTo(bx,p.y);ctx.lineTo(bx+4,by+6);ctx.lineTo(bx+5,by);ctx.lineTo(bx+p.w-5,by);ctx.lineTo(bx+p.w,p.y);ctx.fill()
+        ctx.fillStyle=MOON_EDGE;ctx.fillRect(bx+5,by,p.w-10,1)
+        ctx.fillStyle='#9a8154';ctx.fillRect(bx+8,by+4,7,2);break
       }
-      case 'tank': {
-        ctx.fillStyle = INK_BODY
-        // Legs first, then the drum: a tank on legs reads at any size.
-        ctx.fillRect(bx + 3, by + p.h * 0.55, 2, p.h * 0.45)
-        ctx.fillRect(bx + p.w - 5, by + p.h * 0.55, 2, p.h * 0.45)
-        ctx.fillRect(bx, by, p.w, p.h * 0.6)
-        ctx.fillStyle = MOON_EDGE
-        ctx.fillRect(bx, by, p.w, 1)
-        ctx.fillRect(bx + p.w - 1, by, 1, p.h * 0.6)
-        ctx.fillStyle = INK_DARK
-        ctx.fillRect(bx, by + p.h * 0.22, p.w, 1)   // the band around the drum
-        break
+      case 'cabinet': {
+        ctx.fillStyle='#28333e';ctx.fillRect(bx,by,p.w,p.h)
+        ctx.fillStyle=MOON_EDGE;ctx.fillRect(bx,by,p.w,1)
+        ctx.fillStyle=INK_DARK;for(let i=0;i<3;i++)ctx.fillRect(bx+4,by+4+2*i,p.w-8,1);break
       }
-      case 'crate': {
-        ctx.fillStyle = INK_BODY
-        ctx.fillRect(bx, by, p.w, p.h)
-        ctx.fillStyle = MOON_EDGE
-        ctx.fillRect(bx, by, p.w, 1)
-        ctx.strokeStyle = 'rgba(120,150,175,0.16)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(bx + 1, by + p.h - 1)
-        ctx.lineTo(bx + p.w - 1, by + 1)
-        ctx.stroke()
-        // One crate is usually a stack of two.
-        if (p.w > 20) {
-          ctx.fillStyle = INK_DARK
-          ctx.fillRect(bx + 3, by - 7, p.w * 0.55, 7)
-        }
-        break
-      }
-      case 'planter': {
-        ctx.fillStyle = INK_DARK
-        ctx.fillRect(bx, by + p.h * 0.45, p.w, p.h * 0.55)
-        ctx.strokeStyle = 'rgba(96,150,120,0.42)'
-        ctx.lineWidth = 1.2
-        ctx.beginPath()
-        for (let s = 0; s < 3; s++) {
-          const sx = bx + 4 + s * (p.w - 8) / 2
-          ctx.moveTo(sx, by + p.h * 0.5)
-          ctx.quadraticCurveTo(sx + sway * 2, by + p.h * 0.1, sx + sway * 3.4, by - 2 - s)
-        }
-        ctx.stroke()
-        break
-      }
-      case 'vent': {
-        ctx.fillStyle = INK_BODY
-        ctx.fillRect(bx + p.w * 0.25, by + p.h * 0.3, p.w * 0.5, p.h * 0.7)
-        ctx.fillRect(bx, by + p.h * 0.24, p.w, 2)     // the cowl
-        // The steam is the whole reason this prop exists.
-        ctx.globalCompositeOperation = 'lighter'
-        ctx.fillStyle = 'rgb(200,218,232)'
-        for (let s = 0; s < 3; s++) {
-          const u = ((t * 13 + p.phase * 70 + s * 19) % 54) / 54
-          const a = 0.12 * (1 - u) * (1 - u)
-          if (a < 0.012) continue
-          ctx.globalAlpha = a
-          ctx.beginPath()
-          ctx.arc(p.x + Math.sin(u * 5 + s) * 3, by + p.h * 0.2 - u * 34, 2 + u * 5, 0, Math.PI * 2)
-          ctx.fill()
-        }
-        ctx.globalAlpha = 1
-        ctx.globalCompositeOperation = 'source-over'
-        break
-      }
-      case 'dish': {
-        ctx.fillStyle = INK_DARK
-        ctx.fillRect(p.x - 1, by + p.h * 0.45, 2, p.h * 0.55)   // mast
-        const rot = sway * 0.5 + p.phase * 2
-        ctx.strokeStyle = 'rgba(165,195,220,0.45)'
-        ctx.lineWidth = 1.6
-        ctx.beginPath()
-        ctx.arc(p.x, by + p.h * 0.35, p.w * 0.5, Math.PI * (0.1 + rot * 0.1), Math.PI * (1.1 + rot * 0.1))
-        ctx.stroke()
-        break
-      }
-      case 'antenna': {
-        ctx.fillStyle = INK_DARK
-        ctx.fillRect(p.x - 1, by, 2, p.h)
-        ctx.fillRect(p.x - 5, by + p.h * 0.2, 10, 1)
-        ctx.fillRect(p.x - 3.5, by + p.h * 0.45, 7, 1)
-        // Its beacon is the same red language as the skyline's.
-        ctx.globalAlpha = 0.25 + 0.7 * Math.max(0, Math.sin(t * 1.6 + p.phase * 6.283))
-        ctx.fillStyle = 'rgb(255,86,64)'
-        ctx.fillRect(p.x - 1, by - 1, 2, 2)
-        ctx.globalAlpha = 1
-        break
-      }
-      case 'line': {
-        ctx.strokeStyle = 'rgba(150,185,215,0.30)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        // Two posts and the sag between them.
-        ctx.moveTo(bx, p.y)
-        ctx.lineTo(bx, by)
-        ctx.moveTo(bx + p.w, p.y)
-        ctx.lineTo(bx + p.w, by)
-        ctx.moveTo(bx, by + 1)
-        ctx.quadraticCurveTo(p.x, by + 8 + sway * 1.5, bx + p.w, by + 1)
-        ctx.stroke()
-        break
-      }
-      case 'coil': {
-        ctx.fillStyle = INK_BODY
-        ctx.beginPath()
-        ctx.ellipse(p.x, p.y - p.h * 0.5, p.w * 0.5, p.h * 0.5, 0, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(120,150,175,0.20)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.arc(p.x, p.y - p.h * 0.5, p.w * 0.28, 0, Math.PI * 2)
-        ctx.stroke()
-        break
+      case 'marker': {
+        ctx.fillStyle='#454c51';ctx.fillRect(bx+1,by,4,p.h)
+        ctx.fillStyle='#ceb581';ctx.fillRect(bx+1,by+3,4,4);break
       }
       case 'bulb': {
-        // A stand, a cable, and a bulb that is the run's own practical.
-        ctx.fillStyle = INK_DARK
-        ctx.fillRect(p.x - 1, by, 2, p.h)
-        ctx.fillRect(p.x - 6, by + 4, 12, 1.5)
-        const bob = Math.sin(t * 1.1 + p.phase * 6.283) * 1.2
-        ctx.strokeStyle = 'rgba(150,185,215,0.35)'
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(p.x + 5, by + 4)
-        ctx.lineTo(p.x + 8 + bob, by + 12)
-        ctx.stroke()
-        ctx.globalCompositeOperation = 'lighter'
-        const glow = 0.55 + 0.45 * Math.sin(t * 1.7 + p.phase * 6.283)
-        ctx.globalAlpha = 0.35 + 0.3 * glow
+        // Battery work lamp: the LED and the field share a fixed socket
+        // and the same evaluated gain. No second oscillator in the sprite.
+        ctx.fillStyle=INK_DARK;ctx.fillRect(p.x-1,by+6,2,p.h-6)
+        ctx.fillStyle=MOON_EDGE;ctx.fillRect(p.x-4,by+3,8,7)
+        ctx.globalCompositeOperation='lighter'
+        ctx.globalAlpha=Math.min(1,bulbGain)
         ctx.fillStyle = `rgb(${BULB_GLOW})`
         ctx.beginPath()
-        ctx.arc(p.x + 8 + bob, by + 13, 3.2, 0, Math.PI * 2)
+        ctx.arc(p.x, by + 6, 3.2, 0, Math.PI * 2)
         ctx.fill()
-        ctx.globalAlpha = 0.10 + 0.06 * glow
+        ctx.globalAlpha = 0.17 * bulbGain
         ctx.beginPath()
-        ctx.arc(p.x + 8 + bob, by + 13, 13, 0, Math.PI * 2)
+        ctx.arc(p.x, by + 6, 13, 0, Math.PI * 2)
         ctx.fill()
         ctx.globalAlpha = 1
         ctx.globalCompositeOperation = 'source-over'
@@ -400,7 +218,7 @@ export function drawRoofProps(
     // THE UNDERSIDE — a warm line where the city's light grazes the object.
     // Only for things that actually stand on legs or a plinth: a bulb's cable
     // does not catch light from below, a condenser's skirt does.
-    if (p.kind === 'ac' || p.kind === 'tank' || p.kind === 'crate' || p.kind === 'coil' || p.kind === 'planter') {
+    if (p.kind==='barrier'||p.kind==='cabinet') {
       ctx.fillStyle = CITY_EDGE
       ctx.fillRect(bx, p.y - 1.5, p.w, 1.5)
     }

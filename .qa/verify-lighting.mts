@@ -3,8 +3,8 @@
  * ----------------------------------------------------------------------------
  * `npm run gate` proves the light field, the city records and the roof props are
  * mathematically right. It cannot prove they COMPOSE — that the pool lands under
- * the source, that the roof props sit on the deck line, that a figure in the
- * doorway picks up the warm one.
+ * the source, or that the roof props sit on the deck line. Use
+ * capture-fighters.mts for the full actor/material/shadow pipeline.
  *
  * So this script renders the real `CyberBackground` through `@napi-rs/canvas`
  * (a native canvas, not a stub), with the same transform `Renderer.draw` applies
@@ -14,7 +14,7 @@
  *   /tmp/door-<tier>-<mode>.png    a crop around the stairwell door
  *
  * Modes exist to answer "which pass is that?" without editing the engine:
- *   MODE=all (default) · MODE=nofig (no figure lighting) · MODE=nopool (no pools)
+ *   MODE=all (default) · MODE=nofig (no reference figures) · MODE=nopool (no pools)
  *
  * Usage: node --import tsx .qa/verify-lighting.mts
  */
@@ -51,7 +51,7 @@ for (const tier of ['ultra', 'high', 'medium', 'low'] as const) {
   ctx.scale(cam.zoom, cam.zoom)
   ctx.translate(-cam.x, -cam.y)
   bg.drawArena(ctx)
-  for (const fx of [DOOR, 1180, LAMP]) {
+  for (const fx of MODE === 'nofig' ? [] : [DOOR, 1180, LAMP]) {
     ctx.strokeStyle = '#cfe4f6'
     ctx.lineWidth = 5
     ctx.beginPath()
@@ -62,7 +62,6 @@ for (const tier of ['ultra', 'high', 'medium', 'low'] as const) {
     ctx.moveTo(fx, -30); ctx.lineTo(fx - 17, 0)
     ctx.moveTo(fx, -30); ctx.lineTo(fx + 17, 0)
     ctx.stroke()
-    if (MODE !== 'nofig') bg.drawFigureLighting?.(ctx, fx, 0, 118, 1)
   }
   ctx.restore()
   writeFileSync(`/tmp/stage-${tier}-${MODE}.png`, out.toBuffer('image/png'))

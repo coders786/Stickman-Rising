@@ -227,3 +227,11 @@ test('frame log is bounded (no unbounded buffer)', () => {
   for (let i = 0; i < 10_000; i++) f.sample(8 + (i % 3))
   assert.equal(f.snapshot().samples, 64)
 })
+
+test('a desktop that sheds Ultra can earn it back on a vsynced 60 Hz display', () => {
+  const l = new QualityLadder('ultra')
+  simulate(l, 40, 4.2)
+  assert.equal(l.current, 'high')
+  simulate(l, 1000/60, 18)
+  assert.equal(l.current, 'ultra')
+})

@@ -61,7 +61,6 @@ function frame(tier: 'ultra' | 'high'): { out: ReturnType<typeof createCanvas>; 
     ctx.moveTo(fx, -30); ctx.lineTo(fx - 17, 0)
     ctx.moveTo(fx, -30); ctx.lineTo(fx + 17, 0)
     ctx.stroke()
-    bg.drawFigureLighting?.(ctx, fx, 0, 118, 1)
   }
   ctx.restore()
   return { out, ctx, bg }
@@ -113,9 +112,10 @@ const report: Record<string, unknown> = {}
   const sources = bg.raySources(W, H, cam)
   const beforeP = [p10(out), p50(out), p90(out)]
   // god rays first, then bloom — the order Renderer.draw uses
-  post.godRays(ctx, W, H, sources, 0.2)
+  post.compose(ctx, W, H, sources, 0.2, 0)
+  const rayBlits = post.lastRayBlits
   const afterRays = meanLum(out, 0, 0, W, H)
-  post.bloom(ctx, W, H, 1)
+  post.compose(ctx, W, H, [], 0, 1)
   const after = meanLum(out, 0, 0, W, H)
   const afterDoor = meanLum(out, W / 2 + (DOOR - cam.x) - 150, 250, 300, 420)
   const afterP = [p10(out), p50(out), p90(out)]
@@ -137,7 +137,7 @@ const report: Record<string, unknown> = {}
   report.ultra = {
     flags: { bloom: f.bloom, godRays: f.godRays, depthHaze: f.depthHaze, keyTop: f.keyTop },
     rays: sources.length,
-    rayBlits: post.lastRayBlits,
+    rayBlits,
     bloomBlits: post.lastBloomBlits,
     lumBefore: +before.toFixed(2),
     lumAfterRays: +afterRays.toFixed(2),
@@ -157,8 +157,8 @@ const report: Record<string, unknown> = {}
   const f = featuresFor('high')
   const before = meanLum(out, 0, 0, W, H)
   const post = new PostStack()
-  if (f.godRays) post.godRays(ctx, W, H, bg.raySources(W, H, cam), 0.9)
-  if (f.bloom) post.bloom(ctx, W, H, 1)
+  if (f.godRays) post.compose(ctx, W, H, bg.raySources(W, H, cam), 0.9, 0)
+  if (f.bloom) post.compose(ctx, W, H, [], 0, 1)
   const after = meanLum(out, 0, 0, W, H)
   report.high = { flags: { bloom: f.bloom, godRays: f.godRays }, lumBefore: +before.toFixed(2), lumAfter: +after.toFixed(2), summary: post.summary() }
 }

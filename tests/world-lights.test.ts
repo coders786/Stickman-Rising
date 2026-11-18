@@ -16,13 +16,20 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
 import {
-  PRACTICAL_DOOR_X, PRACTICAL_LAMP_X, LIGHT_HEX, LIGHT_INK, falloff, liveGain,
-  makeStageLights, newSample, sampleLight, type PointLight,
+  PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, LIGHT_HEX, LIGHT_INK, falloff, liveGain,
+  makeStageLights, type PointLight,
 } from '../src/game/world/lightfield'
+import { RibbonField, newProbe } from '../src/game/lighting/ribbons'
 import { FX } from '../src/game/fx/fx'
 import { animsForBuilding, drawBuildingAnims, h01, type BuildingAnim } from '../src/game/world/buildings'
 import { drawRoofProps, makeRoofProps } from '../src/game/world/roofprops'
 import { featuresFor, type Tier } from '../src/game/render/graphics'
+
+function sampleLight(lights: PointLight[], x:number, y:number, t:number) {
+  const field = new RibbonField(lights, [])
+  field.tick(t)
+  return field.sample(x,y,newProbe())
+}
 
 /* ------------------------------------------------------------------ stubs -- */
 
@@ -102,14 +109,14 @@ test('light field: a failing source is a pure function of time and only ever DIM
 
 /* ---------------------------------------------------------------- sample -- */
 
-test('light field: the stage has exactly two authored practicals, warm and cool', () => {
+test('light field: the stage has a point, a spot and a rectangular practical', () => {
   const lights = makeStageLights({ light: { warm: 1, cool: 1, flicker: 0.4 } }, 1234)
   // two authored practicals + the city bounce (which is not a practical)
-  assert.equal(lights.filter((l) => l.kind !== 'city').length, 2)
+  assert.deepEqual(lights.filter(l=>l.kind!=='city').map(l=>l.shape?.type).sort(), ['point','rect','spot'])
   const warm = lights.find((l) => l.kind === 'warm')
   const cool = lights.find((l) => l.kind === 'cool')
   assert.ok(warm && cool, 'the field lost a practical')
-  assert.equal(warm.x, PRACTICAL_DOOR_X)
+  assert.equal(warm.x, PRACTICAL_SIGN_X)
   assert.equal(cool.x, PRACTICAL_LAMP_X)
   // A failing streetlight must actually fail more than a doorway does: the
   // doorway is a lit room behind a door, the tube is a tube.
@@ -126,8 +133,8 @@ test('light field: the same seed gives the same night, a new seed a new phase', 
 
 test('light field: a sample stands in the warm spill at the door and the cool one at the lamp', () => {
   const lights = makeStageLights(null, 42)
-  const atDoor = sampleLight(lights, PRACTICAL_DOOR_X, 0, 0.4, newSample())
-  const atLamp = sampleLight(lights, PRACTICAL_LAMP_X, 0, 0.4, newSample())
+  const atDoor = sampleLight(lights, PRACTICAL_SIGN_X, 0, 0.4)
+  const atLamp = sampleLight(lights, PRACTICAL_LAMP_X, 0, 0.4)
   assert.ok(atDoor.warm > 0.5, `the door does not light its own doorway (${atDoor.warm})`)
   assert.ok(atDoor.warm > atDoor.cool * 4, 'the warm and cool families are confused at the door')
   assert.ok(atLamp.cool > 0.2, 'the streetlight does not light under itself')
@@ -136,8 +143,8 @@ test('light field: a sample stands in the warm spill at the door and the cool on
 
 test('light field: the strongest source names the shadow direction, away from itself', () => {
   const lights = makeStageLights(null, 42)
-  const right = sampleLight(lights, PRACTICAL_DOOR_X + 60, 0, 0, newSample())
-  const left = sampleLight(lights, PRACTICAL_DOOR_X - 60, 0, 0, newSample())
+  const right = sampleLight(lights, PRACTICAL_SIGN_X + 60, 0, 0)
+  const left = sampleLight(lights, PRACTICAL_SIGN_X - 60, 0, 0)
   assert.equal(right.best?.kind, 'warm')
   assert.equal(right.dir, 1, 'standing right of the door, the shadow falls further right')
   assert.equal(left.dir, -1, 'standing left of the door, the shadow falls further left')
@@ -145,7 +152,7 @@ test('light field: the strongest source names the shadow direction, away from it
 
 test('light field: outside every radius the sample is empty and honest about it', () => {
   const lights = makeStageLights(null, 42)
-  const far = sampleLight(lights, PRACTICAL_DOOR_X + 5000, 0, 0, newSample())
+  const far = sampleLight(lights, PRACTICAL_SIGN_X + 5000, 0, 0)
   assert.equal(far.best, null)
   assert.equal(far.warm, 0)
   assert.equal(far.cool, 0)
@@ -157,8 +164,8 @@ test('light field: two lights sum, and the sum can exceed either alone', () => {
     { ...steady, id: 'a', x: 0, kind: 'warm' },
     { ...steady, id: 'b', x: 40, kind: 'warm' },
   ]
-  const one = sampleLight([pair[0]], 20, 0, 0, newSample())
-  const two = sampleLight(pair, 20, 0, 0, newSample())
+  const one = sampleLight([pair[0]], 20, 0, 0)
+  const two = sampleLight(pair, 20, 0, 0)
   assert.ok(two.warm > one.warm, 'the second light added nothing')
   assert.ok(two.warm > 0.9, `the overlap is too weak to read as two lights (${two.warm})`)
 })
@@ -251,7 +258,7 @@ test('roof: nothing is placed on top of a stage practical', () => {
     const { props } = makeRoofProps(seed, { count: 22, x0: -70, x1: 2670 })
     for (const p of props) {
       assert.ok(Math.abs(p.x - PRACTICAL_LAMP_X) >= 100, `a ${p.kind} sits inside the streetlight (seed ${seed})`)
-      assert.ok(Math.abs(p.x - PRACTICAL_DOOR_X) >= 100, `a ${p.kind} sits in the stairwell door (seed ${seed})`)
+      assert.ok(Math.abs(p.x - PRACTICAL_SIGN_X) >= 100, `a ${p.kind} sits in the stairwell door (seed ${seed})`)
     }
   }
 })
@@ -286,9 +293,9 @@ test('roof: at most one bulb, and the bulb is a real light in the field', () => 
 test('roof: the draw culls to the view and reports what it drew', () => {
   const { props } = makeRoofProps(606, { count: 22, x0: -70, x1: 2670 })
   const stub = stubCtx()
-  const all = drawRoofProps(stub.ctx, props, 3.2, -1000, 4000, true)
+  const all = drawRoofProps(stub.ctx, props, -1000, 4000, true, .7)
   assert.equal(all, props.length)
-  const none = drawRoofProps(stub.ctx, props, 3.2, 9000, 9500, true)
+  const none = drawRoofProps(stub.ctx, props, 9000, 9500, true, .7)
   assert.equal(none, 0, 'props were drawn outside the frustum')
 })
 
@@ -310,22 +317,19 @@ test('tiers: the new dials are monotone and low is genuinely bare', () => {
 
 test('wiring: the field is sampled, not just tabulated', () => {
   const bg = readFileSync('src/game/world/background.ts', 'utf8')
-  assert.match(bg, /sampleLight\(/, 'background never samples the field')
+  assert.match(bg, /this\.lighting\(\)\.sample\(/, 'background never samples the field')
   assert.match(bg, /makeStageLights\(/, 'the stage lights are not built from the profile')
-  assert.match(bg, /this\.lights = .*concat\(this\.roof\.lights\)/, 'the roof bulb is not in the field')
-  assert.match(bg, /practicalShadow[\s\S]{0,900}LIGHT_INK\[s\.best\.kind\]/, 'the second shadow ignores the source kind')
+  assert.match(bg, /makeStageLights\(this.profile, this.runSeed\).concat\(bulbs\)/, 'the roof bulb is not in the field')
   assert.match(bg, /drawLightPools\(ctx: CanvasRenderingContext2D\)/, 'no deck pools')
-  assert.match(bg, /drawFigureLighting\(ctx: CanvasRenderingContext2D/, 'no figure lighting pass')
-  assert.match(bg, /drawImage\(wash, px - 34/, 'the body wash is never blitted')
   for (const band of ['deep', 'far', 'mid', 'near']) {
     assert.match(bg, new RegExp(`collectAnims\\('${band}'`), `the ${band} band emits no city life`)
     assert.match(bg, new RegExp(`drawBandAnims\\(ctx, '${band}'`), `the ${band} band never draws its city life`)
   }
-  assert.match(bg, /drawRoofProps\(ctx, props, t, viewL, viewR, true\)/, 'the roof props are never drawn')
+  assert.match(bg, /drawRoofProps\(ctx, this\.roof\.props, viewL, viewR/, 'the roof props are never drawn')
   assert.match(bg, /this\.drawLightPools\(ctx\)/, 'the pools are built but never called')
 
   const r = readFileSync('src/game/render/renderer.ts', 'utf8')
-  assert.match(r, /bg\.drawFigureWash\(ctx, e\.x, e\.y/, 'enemies stand in the light and stay unlit')
+  assert.match(r, /e\.draw\(ctx, time, lighting\(e\)\)/, 'enemies stand in the light and stay unlit')
 })
 
 
@@ -335,10 +339,10 @@ test('city bounce: the roof is lit by the city even with no practicals in reach'
   const lights = makeStageLights(null, 4242)
   const city = lights.filter((l) => l.kind === 'city')
   assert.equal(city.length, 3, 'the roof has no city light')
-  const s = sampleLight(lights, 1276, 0, 0, newSample())
+  const s = sampleLight(lights, 1276, 0, 0)
   assert.ok(s.city > 0.08, `the middle of the deck has no city light (${s.city.toFixed(3)})`)
   // ...and it can never out-shout a practical you are standing in.
-  const atDoor = sampleLight(lights, PRACTICAL_DOOR_X, 0, 0, newSample())
+  const atDoor = sampleLight(lights, PRACTICAL_SIGN_X, 0, 0)
   assert.ok(atDoor.warm > s.city * 3, 'the city bounce is competing with the stairwell')
 })
 
@@ -357,8 +361,9 @@ test('city bounce: it is dim, wide and per-run', () => {
 })
 
 test('city bounce: it never casts a crisp second shadow', () => {
-  const bg = readFileSync('src/game/world/background.ts', 'utf8')
-  assert.match(bg, /best\.kind === 'city' \? 0\.45 : 1/, 'a city bounce casts a hard shadow, which is a lie about where the light is')
+  const p=sampleLight([{...steady,kind:'city'}],0,0,0)
+  assert.ok(p.city>0); assert.equal(p.caster,null)
+
 })
 
 /* --------------------------------------------- colour formats (the bug) -- */
@@ -412,12 +417,11 @@ test('hit light: the game wires the field into FX, once per background', () => {
 
 /* ------------------------------------------- the inn + the roof (run 4b) -- */
 
-test('the inn is baked as a lit room, not a glowing rectangle', () => {
-  const bg = readFileSync('src/game/world/background.ts', 'utf8')
-  assert.match(bg, /THE FLOOR BOUNCE/, 'the doorway has no floor bounce — it is a flat panel')
-  assert.match(bg, /THE OPEN LEAF/, 'the doorway has no open leaf')
-  assert.match(bg, /THE JAMBS/, 'the doorway has no jambs')
-  assert.match(bg, /THE CEILING SHADOW/, 'the room has no ceiling falloff')
+test('the roadside advisory has a steady rectangular emitter and open space under the board', () => {
+  const lamp=makeStageLights(null,1).find(l=>l.id==='stage:warning-sign')!
+  assert.equal(lamp.shape?.type,'rect');assert.equal(liveGain(lamp,0),liveGain(lamp,10))
+  const field=new RibbonField([lamp],[])
+  assert.ok(field.sample(lamp.x,0,newProbe()).warm>.5)
 })
 
 test('the roof sits in the city glow, gated by the tier', () => {

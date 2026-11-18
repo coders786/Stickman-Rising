@@ -92,8 +92,10 @@ export class SkyVaultCache {
       renderSky(ctx)
       return
     }
-    const iw = ctx.canvas?.width || Math.max(1, w | 0)
-    const ih = ctx.canvas?.height || Math.max(1, h | 0)
+    // Distant, defocused art does not need retina supersampling. Keep the
+    // action plane native; a DPR-2 screen otherwise bakes four sky pixels per CSS pixel.
+    const destW=ctx.canvas?.width || Math.max(1,w|0),destH=ctx.canvas?.height || Math.max(1,h|0)
+    const iw=Math.min(destW,Math.max(1,Math.ceil(w))),ih=Math.min(destH,Math.max(1,Math.ceil(h)))
     if (!this.plate || this.pw !== iw || this.ph !== ih) {
       const c = document.createElement('canvas')
       c.width = iw
@@ -144,7 +146,7 @@ export class SkyVaultCache {
     }
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.drawImage(this.plate, 0, 0)
+    ctx.drawImage(this.plate, 0, 0, destW, destH)
     ctx.restore()
   }
 }

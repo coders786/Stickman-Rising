@@ -48,7 +48,9 @@ export interface HudState {
   executePrompt: { x: number; y: number } | null
   ultReady: boolean
   abilityReady: boolean
+  perfLabel?: string
   fps: number
+  touch?: boolean
   showFps: boolean
   /** particle system level (0 OFF / 1 LOW / 2 FULL) — B toggles in-game */
   particleLevel: number
@@ -81,7 +83,6 @@ export class HUD {
   private comboPop = 0
   private rankFlash = 0
   private lastHits = 0
-  private bannerShake = 0
   private lowHpPulse = 0
 
   /* low-HP red vignette: baked plate (see drawLowHpVignette) */
@@ -113,22 +114,25 @@ export class HUD {
     this.rankFlash = Math.max(0, s.combo.rankUpT)
     this.lowHpPulse += dt
 
+    this.drawLowHpVignette(ctx, w, h, s)
     this.drawVitals(ctx, w, s)
     this.drawScore(ctx, w, s)
     this.drawCombo(ctx, w, h, s)
     this.drawBossBar(ctx, w, s)
-    this.drawBanner(ctx, w, s, dt)
+    this.drawBanner(ctx, w, h, s)
     this.drawPrompts(ctx, s)
     this.drawHints(ctx, w, h, s)
     this.drawPropLegend(ctx, w, h, s)
-    this.drawLowHpVignette(ctx, w, h, s)
     if (s.showFps) {
       ctx.save()
       ctx.font = `12px ${MONO}`
       ctx.fillStyle = 'rgba(180,200,210,0.8)'
       ctx.textAlign = 'right'
       const fxLabel = (['OFF', 'LOW', 'FULL'] as const)[s.particleLevel] ?? 'FULL'
-      ctx.fillText(`${Math.round(s.fps)} FPS · FX ${fxLabel} [B]`, w - 14, h - 14)
+      const x=w-(s.touch || w<850 ? 64 : 16)
+      const available=x-(12+this.panelWidth(w)+8)
+      ctx.fillText(`${Math.round(s.fps)} FPS`,x,w<850?121:65,available)
+      if(w>=850 && s.perfLabel) ctx.fillText(`${s.perfLabel} · FX ${fxLabel}`,x,81,available)
       ctx.restore()
     }
   }
@@ -160,7 +164,7 @@ export class HUD {
     }
     text('HEALTH',`${Math.ceil(s.hp)} / ${s.maxHp}`,y+16,'#ffc4c9')
     bar(y+21,8,clamp01(this.hpDisplay/s.maxHp),'#f5b5bd')
-    bar(y+21,8,hp,'#ff5064')
+    ctx.fillStyle='#ff5064';ctx.fillRect(bx,y+21,bw*hp,8)
     text('ENERGY',`${Math.floor(s.energy)} / ${s.maxEnergy}`,y+44,'#80e8ef')
     bar(y+49,6,energy,'#39dbe7')
     text('STAMINA',`${Math.floor(s.stamina)} / ${s.maxStamina}`,y+71,canDash?'#b8ffcf':'#ff9890')
@@ -191,19 +195,19 @@ export class HUD {
     ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(207,218,228,.9)'
     ctx.fillText(compact?'ULT':'ULTIMATE',bx,y+123,bw*.35)
     ctx.textAlign='right';ctx.fillStyle=s.ultReady?'#ff80bd':'#cda0b8'
-    ctx.fillText(s.ultReady?'READY [I]':`${Math.floor(s.meter)}%`,bx+bw,y+123,bw*.6)
+    ctx.fillText(s.ultReady?(s.touch?'ULT READY':'READY [I]'):`${Math.floor(s.meter)}%`,bx+bw,y+123,bw*.6)
     bar(y+127,4,ult,s.ultReady?'#ff5ab2':'#b73e7c')
     ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(188,214,220,.95)'
     const equip=compact?(s.swordName.includes('SHEATHED')?'EMPTY HAND':'SWORD DRAWN'):s.swordName
     ctx.fillText(equip,bx,y+145,bw*.53)
     ctx.textAlign='right';ctx.fillStyle=s.abilityReady?'#7fe5ed':'#82949d'
-    ctx.fillText(s.abilityReady?'[U] READY':`[U] ${s.abilityCost} EN`,bx+bw,y+145,bw*.47)
+    ctx.fillText(s.abilityReady?(s.touch?'SPEC READY':'[U] READY'):`${s.touch?'SPEC':'[U]'} ${s.abilityCost} EN`,bx+bw,y+145,bw*.47)
     ctx.restore()
   }
 
   private drawScore(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
     // Reserve the upper-right 48px for the touch pause button on narrow screens.
-    const compact=w<850,x=w-(compact?64:16),available=Math.max(45,x-(12+this.panelWidth(w)+8))
+    const compact=w<850,x=w-(compact||s.touch?64:16),available=Math.max(45,x-(12+this.panelWidth(w)+8))
     ctx.save();ctx.textAlign='right';ctx.fillStyle='#f0f7fa';ctx.font=`900 ${compact?16:20}px ${FONT}`
     ctx.fillText(fmt(s.score),x,29,available)
     ctx.font=`10px ${MONO}`;ctx.fillStyle='rgba(200,219,225,.9)'
@@ -329,34 +333,37 @@ export class HUD {
     ctx.restore()
   }
 
-  private drawBanner(ctx: CanvasRenderingContext2D, w: number, s: HudState, dt: number): void {
+  private drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
     const b = s.banner
     if (!b) return
-    this.bannerShake += dt * 40
-    const t = b.t / b.dur
     const appear = clamp01(b.t / 0.25)
     const fade = 1 - clamp01((b.t - b.dur + 0.5) / 0.5)
     const a = appear * fade
     if (a <= 0) return
-    const cy = h_centerY(w)
-    const jx = Math.sin(this.bannerShake) * 1.5 * (1 - t)
+    // Routine wave notices belong to the HUD, not over the combat lane.
+    // Keep boss warnings and cinematic announcements separate.
+    if (b.title.startsWith('WAVE ')) {
+      const x=12, y=s.boss ? 214 : 171, width=this.panelWidth(w)
+      ctx.save();ctx.globalAlpha=a;ctx.textAlign='left'
+      ctx.fillStyle='rgba(5,11,18,.88)';ctx.fillRect(x,y,width,20)
+      ctx.fillStyle=b.color;ctx.fillRect(x,y,3,20)
+      ctx.font=`bold 10px ${MONO}`;ctx.fillStyle='#f4f9fc'
+      ctx.fillText(`${b.title}  /  ${b.sub}`,x+8,y+14,width-16)
+      ctx.restore();return
+    }
+    const cy = Math.min(h-46,w<850 ? 248 : 120)
 
     ctx.save()
     ctx.globalAlpha = a
     ctx.textAlign = 'center'
-    ctx.translate(w / 2 + jx, cy)
-    // title with chromatic glitch
-    ctx.font = `900 44px ${FONT}`
-    ctx.fillStyle = rgba(b.color, 0.35)
-    ctx.fillText(b.title, -3, 0)
-    ctx.fillStyle = rgba(b.color, 0.35)
-    ctx.fillText(b.title, 3, 1)
+    ctx.translate(Math.round(w / 2), cy)
+    ctx.font = `900 ${w<650?28:44}px ${FONT}`
     ctx.fillStyle = '#f4f9fc'
-    ctx.fillText(b.title, 0, 0)
+    ctx.fillText(b.title, 0, 0, w-24)
     if (b.sub) {
       ctx.font = `900 15px ${FONT}`
       ctx.fillStyle = 'rgba(210,225,235,0.9)'
-      ctx.fillText(b.sub, 0, 28)
+      ctx.fillText(b.sub, 0, 28,w-24)
     }
     // underline slash
     ctx.strokeStyle = rgba(b.color, 0.9)
@@ -379,13 +386,13 @@ export class HUD {
     ctx.fillStyle = rgba('#ff2a4a', pulse)
     ctx.strokeStyle = 'rgba(4,6,10,0.9)'
     ctx.lineWidth = 4
-    ctx.strokeText('E — EXECUTE', p.x, p.y)
-    ctx.fillText('E — EXECUTE', p.x, p.y)
+    ctx.strokeText(s.touch?'TAP EXEC':'E — EXECUTE', Math.round(p.x), Math.round(p.y))
+    ctx.fillText(s.touch?'TAP EXEC':'E — EXECUTE', Math.round(p.x), Math.round(p.y))
     ctx.restore()
   }
 
   private drawHints(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    if (s.runTime > 14 || s.wave > 2 || w < 650) return
+    if (s.touch || s.runTime > 14 || s.wave > 2 || w < 650) return
     const a = clamp01((14 - s.runTime) / 3) * 0.75
     ctx.save()
     ctx.globalAlpha = a
@@ -412,7 +419,7 @@ export class HUD {
    *  per frame) so the six destructible props are self-explanatory. No live
    *  text layout on the 120 Hz path. */
   private drawPropLegend(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    if (typeof document === 'undefined' || w < 650) return
+    if (typeof document === 'undefined' || s.touch || w < 676) return
     const a = clamp01((26 - s.runTime) / 4) * 0.82
     if (a <= 0.01) return
     if (!this.propLegend) {
@@ -421,6 +428,7 @@ export class HUD {
       const c = gameLedger.acquire('hud:legend', 660, 22, 'hud', true) as unknown as HTMLCanvasElement
       const g = c.getContext('2d')
       if (!g) return
+      g.clearRect(0,0,660,22)
       // dark plate + accent hairline: a light figure on a dark ground
       g.fillStyle = 'rgba(3,7,12,0.78)'
       g.fillRect(0, 0, 660, 22)
@@ -463,7 +471,7 @@ export class HUD {
     }
     ctx.save()
     ctx.globalAlpha = a
-    ctx.drawImage(this.propLegend, Math.max(8, (w - 660) * 0.5), h - 38)
+    ctx.drawImage(this.propLegend, Math.max(8, (w - 660) * 0.5), h - 52)
     ctx.restore()
   }
 
@@ -482,6 +490,7 @@ export class HUD {
       const c = gameLedger.acquire('hud:lowhp', Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)), 'hud', true) as unknown as HTMLCanvasElement
       const g = c.getContext('2d')
       if (g) {
+        g.clearRect(0,0,w,h)
         const rg = g.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)
         rg.addColorStop(0, 'rgba(200,10,40,0)')
         rg.addColorStop(1, 'rgba(200,14,40,1)')
@@ -498,10 +507,4 @@ export class HUD {
     ctx.drawImage(this.lowHpPlate, 0, 0, w, h)
     ctx.restore()
   }
-}
-
-function h_centerY(w: number): number {
-  // banner sits at a pleasant height regardless of width
-  void w
-  return w<850?240:120
 }

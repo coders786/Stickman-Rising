@@ -1,3 +1,4 @@
+import { volumeBrush } from '../lighting/volume'
 /** STICKMAN RISING — skeleton solver + articulated stickman renderer.
  *
  * Solves joint positions from a Pose, then renders a layered, readable,
@@ -7,7 +8,8 @@
 
 import { Pose } from './pose'
 import { clamp01, rgba } from '../core/utils'
-import { rimPlan } from '../render/look'
+import { material } from '../lighting/material'
+import type { SurfaceLight } from '../lighting/ribbons'
 
 export interface Vec2 {
   x: number
@@ -290,11 +292,7 @@ export interface DrawOpts {
   /** BLADE-CAST LIGHT: additive rim pass on the sword-side silhouette —
    * the swinging/charging edge illuminates the body that carries it */
   edgeLight?: { color: string; a: number }
-  /** colored fills from nearby practicals (look.emitterFills) — one tap
-   *  per source so light lands on the side facing EACH emitter */
-  sideFills?: { color: string; a: number; dx: number }[]
-  /** legacy single-fill alias */
-  sideFill?: { color: string; a: number; dx: number }
+  light?: SurfaceLight
   /** face sign + context scale of the caller's transform (see rig3d) */
   flipX?: number
   unit?: number
@@ -343,8 +341,6 @@ function fillFoot(
  * Draws the stickman. The ctx is expected to be pre-translated to the hip
  * position, flipped horizontally for facing, and scaled — geom is local space.
  */
-const washCaches = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>()
-
 export function drawStick(
   ctx: CanvasRenderingContext2D,
   g: SkelGeom,
@@ -361,65 +357,6 @@ export function drawStick(
   ctx.globalAlpha *= alpha
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-
-  // LIGHT TRANSPORT (universal look) — the body TAKES the key and the
-  // practicals as directional gradient washes (real-time 2D lighting), and
-  // thin rim taps carve the light-facing edge. Tap offsets are un-flipped
-  // and un-scaled (fx/u) so the light lands on the correct side even when
-  // the caller's context is mirrored for facing.
-  if (!ghost) {
-    const fx = opts.flipX ?? 1, u = opts.unit ?? 1
-    const tap = (dx: number, dy: number) => ctx.translate(dx * fx / u, dy / u)
-    const hexA = (hex: string, a: number): string => {
-      const m = /^#([0-9a-f]{6})$/i.exec(hex)
-      const n = parseInt(m ? m[1] : '8899aa', 16)
-      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a)).toFixed(3)})`
-    }
-    // cached gradient per (ctx, color, direction); live intensity rides
-    // ghostAlpha — identical products, zero per-frame allocations
-    const washCache = washCaches.get(ctx) ?? (() => { const m = new Map<string, CanvasGradient>(); washCaches.set(ctx, m); return m })()
-    const wash = (dirWorld: number, col: string, peak: number) => {
-      if (peak <= 0.012) return
-      const d = Math.sign(dirWorld || 1) < 0 ? -1 : 1
-      const key = col + (d < 0 ? '|L' : '|R')
-      let gr = washCache.get(key)
-      if (!gr) {
-        gr = ctx.createLinearGradient(-95 * d, 0, 95 * d, 0)
-        gr.addColorStop(0, hexA(col, 0))
-        gr.addColorStop(0.58, hexA(col, 0.36))
-        gr.addColorStop(1, hexA(col, 1))
-        washCache.set(key, gr)
-      }
-      ctx.save()
-      drawStick(ctx, g, style, { time: t, ghost: gr, ghostAlpha: peak, simple: true })
-      ctx.restore()
-    }
-    const rim = rimPlan()
-    // key form wash + one wash per practical (light on the side facing it)
-    wash(rim.keyDX, rim.keyColor, rim.keyA * 0.34)
-    for (const sf of [...(opts.sideFills ?? []), ...(opts.sideFill ? [opts.sideFill] : [])]) {
-      wash(sf.dx, sf.color, Math.min(0.85, sf.a) * 0.85)
-    }
-    // edge accents (thin)
-    if (rim.wrapA > 0.015) {
-      ctx.save()
-      tap(rim.wrapDX, rim.wrapDY)
-      drawStick(ctx, g, style, {
-        time: t, ghost: rim.keyColor,
-        ghostAlpha: Math.min(0.9, rim.wrapA * 0.7), simple: true,
-      })
-      ctx.restore()
-    }
-    if (rim.keyA > 0.015) {
-      ctx.save()
-      tap(rim.keyDX * 1.25, rim.keyDY * 1.25)
-      drawStick(ctx, g, style, {
-        time: t, ghost: rim.keyColor,
-        ghostAlpha: Math.min(0.9, rim.keyA * 0.5), simple: true,
-      })
-      ctx.restore()
-    }
-  }
 
   if (ghost) {
     // ---- afterimage pass: flat, cheap, gorgeous ----
@@ -487,15 +424,18 @@ export function drawStick(
     ctx.stroke()
   }
 
+  const body = material(ctx, style.body, opts.light, opts.flipX ?? 1)
+  const dark = material(ctx, style.dark, opts.light, opts.flipX ?? 1)
   // ---- 2. back limbs ----
-  ctx.strokeStyle = style.dark
+  ctx.strokeStyle = dark
   ctx.lineWidth = lineW
   limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-  ctx.strokeStyle = rgba(style.dark, 0.82)
+  ctx.strokeStyle = dark
   limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
 
   // ---- 3. torso (thicker, armored core) ----
-  ctx.strokeStyle = style.body
+  const tilt=Math.atan2(g.chest.x-g.hip.x,g.hip.y-g.chest.y)
+  ctx.strokeStyle = volumeBrush(ctx,style.body,opts.light,opts.flipX??1,(g.chest.x+g.hip.x)/2,(g.hip.y+g.chest.y)/2,lineW*.87,32,tilt,true,body)
   ctx.lineWidth = lineW * 1.42
   ctx.beginPath()
   ctx.moveTo(g.hip.x, g.hip.y)
@@ -504,13 +444,13 @@ export function drawStick(
   ctx.stroke()
 
   // ---- 4. front limbs ----
-  ctx.strokeStyle = style.body
+  ctx.strokeStyle = body
   ctx.lineWidth = lineW
   limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
   limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
 
   // ---- 5. feet ----
-  ctx.strokeStyle = style.body
+  ctx.strokeStyle = body
   ctx.lineWidth = lineW * 0.72
   ctx.beginPath()
   ctx.moveTo(g.ankleR.x, g.ankleR.y)
@@ -527,7 +467,7 @@ export function drawStick(
     ctx.arc(j.x, j.y, jr + 1.2, 0, Math.PI * 2)
     ctx.fill()
   }
-  ctx.fillStyle = style.dark
+  ctx.fillStyle = dark
   for (const j of [g.kneeL, g.kneeR, g.elbL, g.elbR]) {
     ctx.beginPath()
     ctx.arc(j.x, j.y, jr, 0, Math.PI * 2)
@@ -567,7 +507,7 @@ export function drawStick(
   ctx.beginPath()
   ctx.arc(g.headC.x, g.headC.y, hr + 1.4, 0, Math.PI * 2)
   ctx.fill()
-  ctx.fillStyle = style.dark
+  ctx.fillStyle = volumeBrush(ctx,style.dark,opts.light,opts.flipX??1,g.headC.x,g.headC.y,hr,hr,0,false,dark)
   ctx.beginPath()
   ctx.arc(g.headC.x, g.headC.y, hr, 0, Math.PI * 2)
   ctx.fill()

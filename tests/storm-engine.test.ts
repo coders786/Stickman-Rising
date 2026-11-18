@@ -35,3 +35,12 @@ test('natural lightning reaches full intensity without a test-only trigger',()=>
  const s=new StormEngine('low');s.resize(800,500);s.update(.88)
  assert.ok(s.intensity>.5)
 })
+
+test('lightning decays once and the rain pass cannot flash the whole frame',()=>{
+ const s=new StormEngine('ultra');s.resize(800,500);s.update(.88)
+ const g=createCanvas(800,500).getContext('2d');let flashes=0
+ const fill=g.fillRect.bind(g);g.fillRect=(x,y,w,h)=>{if(x===0&&y===0&&w===800&&h===500)flashes++;fill(x,y,w,h)}
+ let prev=s.intensity
+ for(let i=0;i<30;i++){s.drawRain(g as unknown as CanvasRenderingContext2D);s.update(1/60);assert.ok(s.intensity<=prev);prev=s.intensity}
+ assert.equal(flashes,0)
+})

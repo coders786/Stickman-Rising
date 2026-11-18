@@ -77,10 +77,9 @@ export class StormEngine{
  get wind(){return .38+.12*Math.sin(this.t*.7)}
  get intensity(){
   const a=this.strikeAge
-  if(a<.055)return 1
-  if(a<.115)return .045
-  if(a<.19)return .8
-  return a<1.1?.6*Math.exp(-(a-.19)*6):0
+  // One release envelope. The old hard-coded dark notch followed by a
+  // second white peak looked like two exposure controllers fighting.
+  return a<1.1?Math.max(0,Math.exp(-6*a)-Math.exp(-6.6)):0
  }
  get azimuthValue(){return this.azimuth}
  get boltActive(){return this.strikeAge<.23}
@@ -189,7 +188,7 @@ export class StormEngine{
     ctx.fillRect(x-1,y-1.2*z,2,2.4*z)
    }
   }
-  if(this.intensity>.01){ctx.globalAlpha=this.intensity*.22;ctx.fillStyle='#cfe0ff';ctx.fillRect(0,0,w,h)}
+  // Rain owns droplets only. The weather compositor applies the one scene flash.
   ctx.restore()
  }
 }

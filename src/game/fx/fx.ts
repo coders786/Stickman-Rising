@@ -112,12 +112,9 @@ interface Debris {
   age: number; life: number
 }
 
-/** MANGA IMPACT FRAME: a 2-4 frame monochrome inversion beat — hard white
- * flash + black radial spikes punching out of the impact point + a thin
- * accent ring. The classic anime "kill frame" (Berserk / Afro Samurai
- * language) reserved for heavy connects, parries, and executions. */
+/** Authored punctuation, never inferred from particle count or raw damage. */
+export type ImpactBeat = 'guardBreak' | 'perfectParry' | 'execution' | 'bossDefeat'
 interface ImpactFrame {
-  active: boolean
   x: number; y: number
   age: number; life: number
   color: string
@@ -240,7 +237,15 @@ export class FX {
   private txtFree: DmgText[] = []
   private debris: Debris[] = []
   private dFree: Debris[] = []
-  private impactFrames: ImpactFrame[] = []
+  private beat: ImpactFrame | null = null
+  private beatRest = 0
+  private screenStrength = 1
+  private focusMasks = new WeakMap<CanvasRenderingContext2D, CanvasGradient>()
+
+  setScreenStrength(value: number): void {
+    this.screenStrength = clamp01(value)
+    if (!this.screenStrength) { this.beat = null; this.flashAlpha = 0 }
+  }
   /** HDR velocity streaks (dash) */
   private lines: MotionLine[] = []
   private lFree: MotionLine[] = []
@@ -305,8 +310,8 @@ export class FX {
     this.smears.length = 0
     for (const f of this.flashes) { f.active = false; this.flFree.push(f) }
     this.flashes.length = 0
-    for (const i of this.impactFrames) i.active = false
-    this.impactFrames.length = 0
+    this.beat = null
+    this.beatRest = 0
     // lightning bolts die with the world (pool slots recycle in update)
     this.lightning.clear()
     this.flashAlpha = 0
@@ -684,7 +689,7 @@ export class FX {
 
   screenFlash(color: string, alpha: number, decay = 3): void {
     this.flashColor = color
-    this.flashAlpha = Math.max(this.flashAlpha, alpha)
+    this.flashAlpha = Math.max(this.flashAlpha, Math.min(0.16, alpha) * this.screenStrength)
     this.flashDecay = decay
   }
 
@@ -693,14 +698,13 @@ export class FX {
     this.caIntensity = Math.max(this.caIntensity, Math.min(1, intensity))
   }
 
-  /** the anime impact frame: white inversion + black radial spikes */
-  impactFrame(x: number, y: number, color: string): void {
-    if (this.impactFrames.length > 3) return
-    this.impactFrames.push({
-      active: true, x, y, age: 0, life: 0.11, color, seed: rand(TAU),
-    })
-    this.screenFlash('#ffffff', 0.85, 9)
-    this.chroma(0.7)
+  /** A second contact in the same cleave/combo cannot restart or queue a pulse. */
+  impactFrame(x: number, y: number, color: string, kind: ImpactBeat): boolean {
+    if (!this.screenStrength || this.beatRest > 0) return false
+    const finale = kind === 'execution' || kind === 'bossDefeat'
+    this.beat = { x, y, color, age: 0, life: finale ? 0.20 : 0.16, seed: rand(TAU) }
+    this.beatRest = finale ? 2.4 : 1.6
+    return true
   }
 
   /* ---------------- afterimages ---------------- */
@@ -842,7 +846,7 @@ export class FX {
    * duplicating objects on every recycle — after ~6 dashes the
    * afterimages array crossed its >40 cap and ALL dash ghosts silently
    * died; particles hit MAX_PARTICLES the same way mid-run. */
-  update(dt: number): void {
+  update(dt: number, realDt = dt): void {
     // ray-traced lightning (restrike timers + lifetimes)
     this.lightning.update(dt)
     // particles
@@ -953,21 +957,18 @@ export class FX {
     }
     // flash
     if (this.flashAlpha > 0) {
-      this.flashAlpha -= this.flashDecay * dt
+      this.flashAlpha -= this.flashDecay * realDt
       if (this.flashAlpha < 0) this.flashAlpha = 0
     }
     // chromatic strain decay
     if (this.caIntensity > 0) {
       this.caIntensity = Math.max(0, this.caIntensity - dt * 3.4)
     }
-    // impact frames
-    for (let i = this.impactFrames.length - 1; i >= 0; i--) {
-      const f = this.impactFrames[i]
-      f.age += dt
-      if (f.age >= f.life) {
-        f.active = false
-        this.impactFrames.splice(i, 1)
-      }
+    // Presentation uses real seconds: hitstop must not hold a screen effect.
+    this.beatRest = Math.max(0, this.beatRest - realDt)
+    if (this.beat) {
+      this.beat.age += realDt
+      if (this.beat.age >= this.beat.life) this.beat = null
     }
     // point impact flashes
     for (let i = this.flashes.length - 1; i >= 0; i--) {
@@ -1392,46 +1393,53 @@ export class FX {
     ctx.restore()
   }
 
-  /** MANGA IMPACT FRAME pass — draw AFTER the additive layer so the black
-   * spikes punch through the glow: white core → black wedges → accent ring.
-   * Called by the renderer in world space. */
+  /** Short tapered ink marks at contact. No full-screen inversion or white disc. */
   drawImpactFrames(ctx: CanvasRenderingContext2D): void {
-    for (const f of this.impactFrames) {
-      if (!f.active) continue
-      const k = 1 - f.age / f.life
-      // white inversion core
-      ctx.save()
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = rgba('#ffffff', 0.9 * k)
-      ctx.beginPath()
-      ctx.arc(f.x, f.y, 34 + (1 - k) * 26, 0, TAU)
-      ctx.fill()
-      ctx.restore()
-      // black radial spikes — alternating long/short, jittered by seed
-      ctx.save()
-      ctx.fillStyle = rgba('#04060a', 0.96 * k)
-      const spikes = 13
-      for (let i = 0; i < spikes; i++) {
-        const base = f.seed + (i / spikes) * TAU
-        const long = i % 2 === 0
-        const r0 = 26 * k + 8
-        const r1 = (long ? 250 : 140) * (0.55 + 0.45 * k)
-        const halfW = (long ? 0.055 : 0.03) * (0.6 + 0.4 * k)
-        ctx.beginPath()
-        ctx.moveTo(f.x + Math.cos(base - halfW) * r0, f.y + Math.sin(base - halfW) * r0)
-        ctx.lineTo(f.x + Math.cos(base) * r1, f.y + Math.sin(base) * r1)
-        ctx.lineTo(f.x + Math.cos(base + halfW) * r0, f.y + Math.sin(base + halfW) * r0)
-        ctx.closePath()
-        ctx.fill()
-      }
-      // thin accent ring at the shock front
-      ctx.strokeStyle = rgba(f.color, 0.85 * k)
-      ctx.lineWidth = 2.6
-      ctx.beginPath()
-      ctx.arc(f.x, f.y, 46 + (1 - k) * 90, 0, TAU)
-      ctx.stroke()
-      ctx.restore()
+    const f = this.beat
+    if (!f) return
+    const t = f.age / f.life, k = (1 - t) ** 2
+    ctx.save()
+    ctx.translate(f.x, f.y)
+    ctx.rotate(f.seed)
+    ctx.globalAlpha *= k * this.screenStrength * 0.72
+    ctx.fillStyle = f.color
+    ctx.beginPath()
+    for (let i = 0; i < 6; i++) {
+      const a = i * TAU / 6, x = Math.cos(a), y = Math.sin(a)
+      const inner = 11 + 14 * t, outer = inner + (i % 2 ? 12 : 25) * (1 - t)
+      ctx.moveTo(x * inner - y, y * inner + x)
+      ctx.lineTo(x * outer, y * outer)
+      ctx.lineTo(x * inner + y, y * inner - x)
+      ctx.closePath()
     }
+    ctx.fill()
+    ctx.restore()
+  }
+
+  /** Dim only the periphery for one beat. World contact follows the live camera;
+   * HUD and the centre of the fight keep their original contrast. */
+  drawImpactFocus(ctx: CanvasRenderingContext2D, w: number, h: number,
+    cam: {x:number; y:number; offX:number; offY:number; rot:number; zoom:number}): void {
+    const f = this.beat
+    if (!f) return
+    const dx = (f.x - cam.x - cam.offX) * cam.zoom, dy = (f.y - cam.y - cam.offY) * cam.zoom
+    const c = Math.cos(cam.rot), s = Math.sin(cam.rot)
+    const x = w/2 + c*dx - s*dy, y = h/2 + s*dx + c*dy
+    if (x < 0 || x > w || y < 0 || y > h) return
+    let mask = this.focusMasks.get(ctx)
+    const r = Math.max(1, Math.min(w,h)*0.85)
+    ctx.save()
+    ctx.translate(x,y); ctx.scale(r,r)
+    if (!mask) {
+      mask = ctx.createRadialGradient(0,0,0.14,0,0,1)
+      mask.addColorStop(0,'rgba(5,9,18,0)'); mask.addColorStop(1,'#050912')
+      this.focusMasks.set(ctx,mask)
+    }
+    const t = f.age / f.life
+    ctx.globalAlpha *= this.screenStrength * 0.21 * Math.sin(Math.PI*t) ** 2
+    ctx.fillStyle = mask
+    ctx.fillRect(-x/r,-y/r,w/r,h/r)
+    ctx.restore()
   }
 }
 

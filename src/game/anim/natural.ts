@@ -125,6 +125,7 @@ export class SpringChain {
   /** When true the LAST point is held at (tailX, tailY) as well as the root:
    *  this is what turns a hanging rope into a CABLE between two anchors, which
    *  is the difference between a scabbard and the aerial rigging of a rooftop. */
+  spanSag = 0 // rest curvature for a two-anchor span, not a hanging chain
   tailPinned = false
   tailX = 0
   tailY = 0
@@ -195,8 +196,10 @@ export class SpringChain {
     const n = this.points
     for (let i = 1; i < n; i++) {
       const idx = i * 2
-      const rx = this.rootX + this.dirX * link * i
-      const ry = this.rootY + this.dirY * link * i
+      const u = i / (n - 1)
+      const rx = this.rootX + (this.tailPinned ? (this.tailX-this.rootX)*u : this.dirX*link*i)
+      const ry = this.rootY + (this.tailPinned
+        ? (this.tailY-this.rootY)*u + 4*u*(1-u)*this.spanSag : this.dirY*link*i)
       const f = follow
       let ax = -k * (this.p[idx] - rx) - c * this.v[idx]
       let ay = -k * (this.p[idx + 1] - ry) - c * this.v[idx + 1] + gravity

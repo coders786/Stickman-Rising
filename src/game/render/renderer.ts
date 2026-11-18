@@ -1,3 +1,4 @@
+import { ROAD } from '../stage/road-section'
 /** STICKMAN RISING — render pipeline.
  *
  *   sky → world (arena, props, entities, FX) → reflection → weather → flash
@@ -6,14 +7,16 @@
  * Still no shaders and no WebGL: every pass is Canvas2D blits, because the frame
  * budget belongs to the simulation. But the old header claimed there were no
  * full-screen passes at all, and that stopped being true when ultra got its own
- * stack (render/post.ts): two downscale-and-add passes, 10 blits total, off on
+ * stack (render/post.ts): one shared low-resolution capture, off on
  * every other tier. The tier table owns whether they run, `post.ts` owns what
  * they cost, and `tests/ultra-stack.test.ts` owns the receipt.
  */
 
-import { shadowDirection, shadowReach } from '../world/light'
+import { newProbe, type Probe } from '../lighting/ribbons'
+import { LIGHT_INK } from '../world/lightfield'
+import { directionalProjection } from '../world/light'
 import { featuresFor, type GraphicsFeatures, type Tier } from './graphics'
-import { FIGURE_H, drawCastShadow, drawContactAO, usesCastShadow, usesPropShadows } from './shadows'
+import { shadowLength, shadowOutline, type ShadowActor, drawCastShadow, drawContactAO, usesCastShadow, usesPropShadows } from './shadows'
 import { Camera } from '../core/camera'
 import { FX } from '../fx/fx'
 import { Enemy } from '../entities/enemy'
@@ -34,6 +37,7 @@ export interface RenderWorld {
   projectiles: ProjectilePool
   props: PropField
   hud: HUD
+  hudCtx?: CanvasRenderingContext2D | null
   hudState: HudState
   time: number
 }
@@ -46,6 +50,9 @@ export class Renderer {
   private cullDrawn = 0
   private cullSkipped = 0
   /** ULTRA's screen-space stack (bloom + god rays). One instance, one buffer. */
+  private probes = new WeakMap<ShadowActor, Probe>()
+  private forward = false
+  setDesktopLighting(enabled:boolean):void { this.forward=enabled }
   private post = new PostStack()
   private features: GraphicsFeatures = featuresFor('high')
 
@@ -57,7 +64,7 @@ export class Renderer {
   /** What the frame is actually spending, for the debug readout. */
   graphicsSummary(): string {
     const f = this.features
-    const stack = f.bloom || f.godRays ? ` ${this.post.summary()}` : ''
+    const stack = this.forward && f.bloom ? ' forward optics' : f.bloom || f.godRays ? ` ${this.post.summary()}` : ''
     const cull = ` cull ${this.cullDrawn}/${this.cullDrawn + this.cullSkipped}`
     return `${f.shadows}${f.penumbra ? `+${f.penumbra}` : ''}${f.shafts ? ' shafts' : ''}${f.dust ? ' motes' : ''} refl ${f.reflection || 'off'} dpr ${f.dprCap}${stack}${cull}`
   }
@@ -78,34 +85,54 @@ export class Renderer {
   private shade(
     ctx: CanvasRenderingContext2D,
     bg: BackgroundRenderer,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
+    actor: ShadowActor,
     dir: number,
     reach: number,
+    keyGain: number,
+    keyX: number,
+    hero=false,
   ): void {
     const F = this.features
-    drawContactAO(ctx, x, y, width, 0.44, Math.min(1, F.penumbra))
-    if (!usesCastShadow(F.shadows)) return
-    drawCastShadow(ctx, { x, y, height, width, dir, reach, alpha: 0.46, penumbra: F.penumbra })
-    if (!F.practicalShadow) return
-    const ps = bg.practicalShadow?.(x)
-    if (!ps || ps.strength <= 0.04) return
-    drawCastShadow(ctx, {
-      x,
-      y,
-      height: height * 0.94,
-      width: width * 0.92,
-      dir: ps.dir,
-      // A practical is close to the body it lights, so its shadow is SHORT. That
-      // contrast — a long cold moon shadow and a short warm one — is what the eye
-      // reads as two lights.
-      reach: 0.22 + 0.4 * ps.strength,
-      alpha: 0.34 * ps.strength,
-      penumbra: Math.min(2, F.penumbra),
-      ink: ps.ink,
-    })
+    const { x, y, scale } = actor
+    const height = actor.hipY - 18 * scale
+    let probe = this.probes.get(actor)
+    if (F.rim && bg.lightAt) {
+      if (!probe) { probe = newProbe(); this.probes.set(actor,probe) }
+      bg.lightAt(x,height,probe)
+      probe.keyX=keyX;probe.keyGain=keyGain;probe.volume=F.keyTop
+      if (!F.keyTop) probe.dy=0
+    }
+    drawContactAO(ctx, x, y, 24 * scale, .44, Math.min(1,F.penumbra))
+    // Each shoe closes its own light gap. A swing foot or airborne body
+    // contributes progressively less; the pelvis blob alone misses wide stances.
+    if(Math.abs(y)<24){
+      const shoe=(ankle:typeof actor.geom.ankleL)=>drawContactAO(ctx,x+actor.face*scale*ankle.x,
+        actor.hipY+scale*(ankle.y+3.4),13*scale,.83,0)
+      shoe(actor.geom.ankleL);shoe(actor.geom.ankleR)
+    }
+    if (!usesCastShadow(F.shadows) || Math.abs(y) >= 200) return
+    const path = shadowOutline(actor.geom)
+    // A wet-deck virtual image: reflect the already posed outline about y=0.
+    // No copy of the browser's swapchain or second character solve. The city,
+    // lamps and destructibles already supply their own reflected art.
+    if(this.forward && F.reflection){
+      ctx.save()
+      ctx.beginPath();ctx.rect(x-120*scale,0,240*scale,ROAD.front);ctx.clip()
+      ctx.transform(actor.face*scale,0,0,-.62*scale,x,-.62*actor.hipY)
+      // Map the fade to the receiver, not the fighter: a jumping fighter's
+      // virtual image moves deeper into the rough water and loses contrast.
+      const contact=-actor.hipY/scale,far=contact-ROAD.front/(.62*scale)
+      const tint=hero?'13,23,34':'130,148,161'
+      const wet=ctx.createLinearGradient(0,contact,0,far)
+      wet.addColorStop(0,`rgba(${tint},.22)`);wet.addColorStop(1,`rgba(${tint},0)`)
+      ctx.fillStyle=wet;ctx.fill(path);ctx.restore()
+    }
+    drawCastShadow(ctx, actor, path, dir * shadowLength(1,reach), .46, F.penumbra)
+    if (F.practicalShadow && probe?.caster && probe.castW > .04) {
+      const l=probe.caster
+      const slope=Math.max(-1.8,Math.min(1.8,(x-l.x)/Math.max(24,height-l.y)))
+      drawCastShadow(ctx, actor, path, slope, .34*Math.min(1,probe.castW), Math.min(2,F.penumbra), LIGHT_INK[l.kind])
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D, world: RenderWorld, w: number, h: number, dt: number): void {
@@ -125,24 +152,11 @@ export class Renderer {
 
     const viewHalfW = w / (2 * cam.zoom) + 240
 
-    // The moon's world x, for the contact shadows. Screen space -> world space
-    // through the same camera the ctx is carrying, so the two cannot drift.
-    const moonSX = bg.moonScreenX?.()
-    const hasKey = Number.isFinite(moonSX)
-    const moonW = hasKey ? cam.x + cam.offX + ((moonSX as number) - w / 2) / cam.zoom : Infinity
     const key = bg.lightState?.()
-    // Distance to the key measured in FRAMES, not pixels: the same body casts the
-    // same shadow relative to the picture on a 320 px phone and a 2560 px
-    // monitor. `shadowReach` owns the shape of the response.
-    const reachAt = (x: number): number => {
-      if (!hasKey || !key) return 1
-      const frames = Math.abs(x - moonW) * cam.zoom / Math.max(1, w)
-      return shadowReach(key.elevation, frames)
-    }
-    const dirAt = (x: number): -1 | 1 => (hasKey ? shadowDirection(x, moonW) : -1)
+    const moon=directionalProjection(key??{azimuth:0,elevation:.78})
 
     // arena floor + stage props
-    bg.drawArena(ctx)
+    bg.drawArena(ctx,this.forward && this.features.bloom)
 
     const viewL = cam.x + cam.offX - viewHalfW
     const viewR = cam.x + cam.offX + viewHalfW
@@ -163,8 +177,8 @@ export class Renderer {
 
     // PROP SHADOWS FIRST — the outline of every prop laid flat on the deck, away
     // from the moon. Under the props, under the fighters, ultra only.
-    if (usesPropShadows(this.features.shadows) && hasKey && key) {
-      props.drawShadows(ctx, moonW, key.elevation, cam.zoom, w, viewL, viewR)
+    if (usesPropShadows(this.features.shadows) && key) {
+      props.drawShadows(ctx, moon.dir, moon.reach, viewL, viewR)
     }
 
     // DESTRUCTIBLE PROPS — one baked sprite each (body + flipped reflection
@@ -172,21 +186,24 @@ export class Renderer {
     props.draw(ctx, viewL, viewR)
 
     // grounding first, so every figure stands ON its shadow
-    this.shade(ctx, bg, player.x, player.y, 32, FIGURE_H, dirAt(player.x), reachAt(player.x))
+    const keyGain = bg.getProfile?.()?.light.key ?? 1
+    this.shade(ctx, bg, player, moon.dir, moon.reach, keyGain,moon.keyX,true)
     for (const e of enemies) {
       if (e.dead || e.spawning) continue
       if (!visible(e.x)) continue
-      this.shade(ctx, bg, e.x, e.y, 30, FIGURE_H * 0.95, dirAt(e.x), reachAt(e.x))
+      this.shade(ctx, bg, e, moon.dir, moon.reach, keyGain,moon.keyX)
     }
 
     // ground decals + debris
     fx.drawUnder(ctx)
 
+    const lighting = (actor: ShadowActor) => this.features.rim ? this.probes.get(actor) : undefined
+
     // enemies
     for (const e of enemies) {
-      if (!visible(e.x)) continue
+      if (e.dead || e.spawning || !visible(e.x)) continue
       this.cullDrawn++
-      e.draw(ctx, time)
+      e.draw(ctx, time, lighting(e))
     }
 
     // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
@@ -197,22 +214,7 @@ export class Renderer {
     player.drawStrikeSmear(ctx)
 
     // player
-    player.draw(ctx, time)
-
-    // ENEMIES PICK UP THE SAME LIGHT — one squash blit each, no rim, no pool.
-    // A doorway that lights the hero and not the thing he is fighting says the
-    // light is a HUD effect; this is the cheapest way to say it is a place.
-    if (bg.drawFigureWash) {
-      for (const e of enemies) {
-        if (e.dead || e.spawning) continue
-        if (e.x < viewL - CULL_MARGIN || e.x > viewR + CULL_MARGIN) continue
-        bg.drawFigureWash(ctx, e.x, e.y, FIGURE_H * 0.95)
-      }
-    }
-
-    // V3 REACTIVE LIGHT — the player's key/rim light + wet deck pool, keyed to
-    // whichever practical they are standing in (≤2 additive blits)
-    bg.drawPlayerLight?.(ctx, player.x, player.y, player.face)
+    player.draw(ctx, time, false, lighting(player))
 
     // DUST IN THE SHAFTS — air you can see (ultra). Drawn after the players so the
     // motes sit in front of the light rather than behind the fighter.
@@ -238,26 +240,27 @@ export class Renderer {
     // NOTE: the world camera (offset applied), not the parallax sky cam — the
     // deck line is a world y, so using the sky cam would misalign the band.
     if (this.features.reflection > 0) {
-      bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality)
+      bg.drawReflections?.(ctx, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }, this.quality,this.forward && this.features.keyTop)
     }
 
+    /* 4.5 — THE ULTRA STACK. Order matters: the rays are the air around the
+     * sources, the bloom is the sources themselves spilling. Doing bloom first
+     * would make the rays smear a glow instead of a scene. */
+    if (!this.forward && (this.features.godRays || this.features.bloom)) {
+      const lights = this.features.godRays ? bg.raySources?.(w,h,{x:cam.x+cam.offX,y:cam.y+cam.offY,zoom:cam.zoom,rot:cam.rot}) : undefined
+      this.post.compose(ctx,w,h,lights ?? [],.2,this.features.bloom ? 1 : 0)
+    }
+
+    // Screen overlays come AFTER optical capture: a flash is not an emitter.
     // 3. weather (screen space)
     bg.drawWeather(ctx, { x: cam.x + cam.offX * 0.4, y: cam.y + cam.offY * 0.4, zoom: cam.zoom })
 
     // 4. screen flash (hit/impact feedback)
     fx.drawFlash(ctx, w, h)
 
-    /* 4.5 — THE ULTRA STACK. Order matters: the rays are the air around the
-     * sources, the bloom is the sources themselves spilling. Doing bloom first
-     * would make the rays smear a glow instead of a scene. */
-    if (this.features.godRays) {
-      this.post.godRays(ctx, w, h, bg.raySources?.(w, h, { x: cam.x + cam.offX, y: cam.y + cam.offY, zoom: cam.zoom }) ?? [], 0.2)
-    }
-    if (this.features.bloom) {
-      this.post.bloom(ctx, w, h, 1)
-    }
+    fx.drawImpactFocus(ctx, w, h, cam)
 
     // 5. HUD
-    hud.draw(ctx, w, h, hudState, dt)
+    hud.draw(world.hudCtx ?? ctx, w, h, hudState, dt)
   }
 }
