@@ -3,9 +3,12 @@
  *  list and set active=true WITHOUT pushing back into the live array —
  *  the object ended up in neither list (the acquire/expire/reacquire probe
  *  witness: live 0 / free 0 / object active). */
-import { test } from 'node:test'
+import { beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { FX } from '../src/game/fx/fx'
+import { setParticleLevel } from '../src/game/fx/particles1d'
+
+beforeEach(() => setParticleLevel(2))
 
 type PoolView<T> = { live: T[]; free: T[]; active: boolean; age: number; life: number }
 

@@ -4936,7 +4936,7 @@ export class Player {
     ctx.restore()
   }
 
-  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false, light?: SurfaceLight): void {
+  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false, light?: SurfaceLight, cloth?: string): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted' && this.state !== 'dash'
       ? 0.55 + 0.25 * Math.sin(time * 40)
@@ -5034,6 +5034,7 @@ export class Player {
     }
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
+      cloth,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
       hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
       // MOONLIGHT RIM — the cool sky key carves the black ronin out of the

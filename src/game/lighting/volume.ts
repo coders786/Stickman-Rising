@@ -60,6 +60,7 @@ export function volumeBrush(
   tube: boolean,
   fallback: string | CanvasGradient,
   localRotation = 0,
+  matte = base === '#000000',
 ): string | CanvasGradient | CanvasPattern {
   if (!light?.volume || typeof document === 'undefined') return fallback
   // Convert world light to receiver-local axes, including the actor's flip.
@@ -72,7 +73,7 @@ export function volumeBrush(
   const r = bin(light.r + 0.3 * light.keyGain),
     g = bin(light.g + 0.39 * light.keyGain),
     b = bin(light.b + 0.53 * light.keyGain)
-  const key = `${dir}:${+tube}:${base}:${r},${g},${b}`
+  const key = `${dir}:${+tube}:${base}:${+matte}:${r},${g},${b}`
   let cache = brushes.get(ctx)
   if (!cache) {
     cache = new Map()
@@ -90,7 +91,6 @@ export function volumeBrush(
     }
     const { canvas: tile, g: tc, img } = scratch
     const mat = parseInt(base.slice(1), 16),
-      matte = mat === 0,
       terms = lobe(dir, tube, matte)
     const albedo = [mat >> 16, (mat >> 8) & 255, mat & 255],
       energy = [r / 16, g / 16, b / 16]

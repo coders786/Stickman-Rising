@@ -37,7 +37,7 @@ test('ultra is strictly richer than high — extra PASSES, not just bigger numbe
   assert.equal(high.depthHaze, false)
   // and the shared flags stay monotonic
   assert.ok(ultra.penumbra >= high.penumbra)
-  assert.ok(ultra.reflectionSlices >= high.reflectionSlices)
+  assert.ok(ultra.reflection < high.reflection)
   assert.equal(ultra.keyTop, true)
 })
 

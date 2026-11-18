@@ -16,10 +16,13 @@ const DISTRICT_W = 1024,
   OVERLAP = 42,
   REPEAT_H = 192,
   REPEAT_TOP = DISTRICT_H - REPEAT_H
+const DEFAULT_ASPHALT = [.72, .89, 1] as const
 export class Viaduct {
   private readonly district: HTMLCanvasElement
   private readonly pierLight: HTMLCanvasElement
   private readonly span: HTMLCanvasElement
+  private readonly water: HTMLCanvasElement
+  private readonly specular: HTMLCanvasElement
   private readonly patches: Float32Array
   constructor(
     seed: number,
@@ -27,6 +30,7 @@ export class Viaduct {
     width: number,
     pal: MoodPalette,
     make: Factory,
+    private readonly asphalt: readonly [number, number, number] = DEFAULT_ASPHALT,
   ) {
     const rng = mulberry32(seed ^ 0x41e57),
       n = Math.ceil(width / 96) + 2
@@ -57,6 +61,28 @@ export class Viaduct {
     lg.fillStyle = '#44372d'
     lg.fillRect(40, 2, 20, 2)
     this.paintSpan(span.g, width, pal, rng, seed)
+    const mask = make(Math.ceil(width / 4), 26)
+    const spec = make(mask.c.width, mask.c.height)
+    this.water = mask.c
+    this.specular = spec.c
+    const alpha = mask.g.createImageData(mask.c.width, mask.c.height)
+    const gloss = spec.g.createImageData(mask.c.width, mask.c.height)
+    for (let y = 0; y < mask.c.height; y++) {
+      const v = y / (mask.c.height - 1)
+      const depth = Math.max(0, 2 * v - 1)
+      // Soft toe and tail: no bright straight line along the contact rail.
+      const envelope = Math.min(1, 9 * depth) * (1 - depth) ** 1.6
+      for (let x = 0; x < mask.c.width; x++) {
+        const worldX = x * width / mask.c.width + x0
+        const wet = this.wetness(worldX, v)
+        const i = (y * mask.c.width + x) * 4
+        alpha.data[i + 3] = Math.round(255 * envelope * (0.33 + 0.67 * wet))
+        const glint = Math.max(0, wet - 0.32) * Math.sin((x + 0.36 * y) * 0.34) ** 4
+        gloss.data.set([115, 152, 179, Math.round(66 * glint)], i)
+      }
+    }
+    mask.g.putImageData(alpha, 0, 0)
+    spec.g.putImageData(gloss, 0, 0)
   }
   /** Broad, coherent puddles. Same roughness for the asphalt bake and the
    * local-light specular bake, not independent noise crawling each frame. */
@@ -71,7 +97,7 @@ export class Viaduct {
     const patch = this.patches[i] + t * (this.patches[i + 1] - this.patches[i])
     return Math.max(
       0.06,
-      Math.min(0.95, patch * (0.77 + 0.23 * Math.cos(v * 13 + u)) + 0.13),
+      Math.min(0.95, patch ** 2 * (0.54 + 0.46 * Math.cos(v * 14 + u) ** 2) + 0.08),
     )
   }
   private paintDistrict(
@@ -91,7 +117,19 @@ export class Viaduct {
       g.fillRect(x + w * 0.69, top, w * 0.31, DISTRICT_H - top)
       g.fillStyle = 'rgba(149,184,205,.26)'
       g.fillRect(x, top, w, 1)
-      const pitch = [12, 16, 24][Math.floor(r() * 3)]
+      const family = Math.floor(r() * 3)
+      const pitch = [12, 16, 24][family]
+      // Service crown, mullioned slab, and terraced mechanical level.
+      g.fillStyle = `rgb(${tone},${tone + 8},${tone + 16})`
+      if (family === 0) {
+        g.fillRect(x + w * .18, top - 4, w * .51, 6)
+        g.fillRect(x + w * .26, top - 6, 2, 6)
+      } else if (family === 1) {
+        for (let ix = x + 12; ix < x + w - 4; ix += 15) g.fillRect(ix, top, 1, DISTRICT_H - top)
+      } else {
+        g.fillRect(x + w * .36, top - 5, w * .32, 7)
+        g.fillRect(x + w * .44, top - 8, w * .14, 4)
+      }
       for (let y = top + 6; y < DISTRICT_H; y += pitch) {
         g.fillStyle = 'rgba(6,14,23,.35)'
         g.fillRect(x, y + 4, w, 2)
@@ -103,7 +141,7 @@ export class Viaduct {
               : k > 0.48
                 ? `rgba(${p.pop2},.22)`
                 : 'rgba(80,109,127,.25)'
-          g.fillRect(xx, y, 5, 2)
+          g.fillRect(xx, y, family === 2 ? 7 : 4, family === 1 ? 3 : 2)
         }
       }
       x += w
@@ -200,9 +238,9 @@ export class Viaduct {
             Math.exp((-d * d) / (breadth * breadth) - y / 52)
         const bounce = 1 / (1 + (d / 36) ** 2 + (y / 14) ** 2)
         const e = 47 * bounce + 108 * shine
-        img.data[k] = value * 0.72 + e * (ice ? 0.15 : 1)
-        img.data[k + 1] = value * 0.89 + 2 + e * (ice ? 0.82 : 0.52)
-        img.data[k + 2] = value + 11 + e * (ice ? 1 : 0.16)
+        img.data[k] = value * this.asphalt[0] + e * (ice ? 0.15 : 1)
+        img.data[k + 1] = value * this.asphalt[1] + 2 + e * (ice ? 0.82 : 0.52)
+        img.data[k + 2] = value * this.asphalt[2] + 11 + e * (ice ? 1 : 0.16)
         img.data[k + 3] = 255
       }
     }
@@ -219,7 +257,7 @@ export class Viaduct {
       g.fillRect(x, y, ww, hh)
     }
     // Crash rail in elevation, with an open slot onto the district behind it.
-    rect(0, RAIL_TOP, w, 2, '#687780')
+    rect(0, RAIL_TOP, w, 2, this.asphalt === DEFAULT_ASPHALT ? '#687780' : '#515e68')
     rect(0, RAIL_TOP + 2, w, 3, '#28343e')
     rect(0, RAIL_TOP + 11, w, 3, '#34414b')
     for (let x = 7; x < w; x += 67) {
@@ -234,8 +272,8 @@ export class Viaduct {
     for (let x = 0; x < w; x += 51) {
       rect(x, ROAD.sidewalk, 1, 10, '#212c37')
     }
-    rect(0, -47, w, 1, 'rgba(211,186,129,.53)')
-    rect(0, 46, w, 1.7, 'rgba(205,209,205,.51)')
+    rect(0, -47, w, 1, 'rgba(211,186,129,.26)')
+    for (let x = 14; x < w; x += 91) rect(x, 46, 64, 1.3, 'rgba(205,209,205,.30)')
     for (const [i, cx] of guides.entries()) {
       const ice = i % 3 !== 1,
         half = ice ? 22 : 13,
@@ -332,6 +370,28 @@ export class Viaduct {
       rect(x - 11, 99, 4, 37, '#33434f')
     }
   }
+  get left(): number { return this.x0 }
+  get right(): number { return this.x0 + this.span.width }
+
+  drawWetSurface(ctx: CanvasRenderingContext2D, wet: number): void {
+    ctx.save()
+    ctx.globalAlpha = Math.min(1, wet * .75)
+    ctx.drawImage(this.specular, this.left, ROAD.rear, this.right - this.left, ROAD.front - ROAD.rear)
+    ctx.restore()
+  }
+
+  /** Draw the mask upside down: captured pixels are flipped on presentation.
+   * The mask destination uses the same horizontal projection as the capture. */
+  maskReflection(ctx: CanvasRenderingContext2D, x: number, width: number, h: number): void {
+    ctx.save()
+    ctx.globalCompositeOperation = 'destination-in'
+    ctx.translate(0, h)
+    ctx.scale(1, -1)
+    const half = this.water.height / 2
+    ctx.drawImage(this.water, 0, half, this.water.width, half, x, 0, width, h)
+    ctx.restore()
+  }
+
   drawRoad(ctx: CanvasRenderingContext2D, l: number, r: number) {
     // Extend pier shafts to the bottom of the view without a tall empty atlas.
     for (let i = Math.max(0, Math.floor((l - this.x0 - 75) / 380)); ; i++) {

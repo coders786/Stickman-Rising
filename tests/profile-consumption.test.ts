@@ -102,7 +102,7 @@ test('the O-08 sweep is wired into the draw path, not just written', () => {
   assert.match(bg, /this\.wx\?\.update\(d, this\.storm\.intensity\)/, 'the weather front is never advanced')
   assert.match(bg, /this\.storm\.setRainScale\(this\.wxRainBase \* s\.rain\)/, 'the front does not reach the rain')
   assert.match(bg, /this\.rig\?\.windState\.setGust\(s\.gust\)/, 'the front does not reach the wind')
-  assert.match(bg, /if \(this\.wxTint && this\.q !== 'low'\)/, 'the weather tint is not drawn (or is not tier-gated)')
+  assert.match(bg, /if \(!this\.art\.clean && this\.wxTint && this\.q !== 'low'\)/, 'the weather tint is not drawn (or is not tier-gated)')
   // ONE KEY LIGHT: the model is built, and every lit consumer reads it.
   assert.match(bg, /this\.light = keyLightFor\(this\.profile\)/, 'the key light model is never built')
   assert.match(bg, /this\.moonX = moonCentreX\(this\.light/, 'the moon is not placed by the key light')

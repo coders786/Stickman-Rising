@@ -1,3 +1,4 @@
+import { FLOOD, emission } from '../lighting/emitters'
 /** Persistent storm simulation. Owned by Game, never by disposable city art.
  * World-space rain/splashes; real visual clock; quality changes draw budgets,
  * never weather existence or strike scheduling. Rendering cannot advance time.
@@ -5,6 +6,7 @@
  * wind vector with per-impact variety (never a runway grid); rain is depth-
  * layered — thin/dark/slow far, large/translucent near.
  */
+import { ROAD } from '../stage/road-section'
 import { SPLASH } from '../render/look'
 export type StormQuality='low'|'medium'|'high'|'ultra'
 export interface StormView{x:number;y:number;zoom:number}
@@ -12,6 +14,7 @@ const CAP=288,SPLASHES=64
 const budgets={low:96,medium:180,high:288,ultra:288} as const
 export class StormEngine{
  private seed=0x7a32d19
+ private lightningSeed=0xc315c72b
  private t=0
  private nextStrike=.85
  private strikeAge=99
@@ -20,6 +23,7 @@ export class StormEngine{
  private width=1280
  private height=720
  private view:StormView={x:1300,y:-150,zoom:1}
+ private sharp=false
  private quality:StormQuality
  /** per-scene rain visibility dial (1 = storm scene, <1 = light rain moods) */
  rainScale=1
@@ -48,6 +52,13 @@ export class StormEngine{
   }
  }
  private random(){this.seed^=this.seed<<13;this.seed^=this.seed>>>17;this.seed^=this.seed<<5;return(this.seed>>>0)/4294967296}
+ private lightningRandom(){
+  this.lightningSeed^=this.lightningSeed<<13
+  this.lightningSeed^=this.lightningSeed>>>17
+  this.lightningSeed^=this.lightningSeed<<5
+  return (this.lightningSeed>>>0)/4294967296
+ }
+ setSharpRain(enabled:boolean){this.sharp=enabled}
  setQuality(q:StormQuality){this.quality=q}
  /** THE RUN'S WEATHER (world/profile.ts `weather.*`).
   *
@@ -94,14 +105,14 @@ export class StormEngine{
  private step(dt:number){
   this.t+=dt;this.strikeAge+=dt;this.nextStrike-=dt
   if(this.nextStrike<=0){
-   this.strikeAge=0;this.nextStrike=(4+this.random()*3)/(this.stormBias*this.strikeCadence);this.strikes++;this.azimuth=this.random()*1.6-.8
-   for(let i=0;i<21;i++){this.bolt[i*2]=(this.random()-.5)*.12;this.bolt[i*2+1]=i/20}
+   this.strikeAge=0;this.nextStrike=(4+this.lightningRandom()*3)/(this.stormBias*this.strikeCadence);this.strikes++;this.azimuth=this.lightningRandom()*1.6-.8
+   for(let i=0;i<21;i++){this.bolt[i*2]=(this.lightningRandom()-.5)*.12;this.bolt[i*2+1]=i/20}
    // fork branches peel off the main channel at random heights
    for(let f=0;f<3;f++){
-    const j=3+((this.random()*15)|0)
+    const j=3+((this.lightningRandom()*15)|0)
     const fx=this.bolt[j*2],fy=this.bolt[j*2+1]
-    const dir=this.random()<.5?-1:1
-    const seg=.05+this.random()*.11
+    const dir=this.lightningRandom()<.5?-1:1
+    const seg=.05+this.lightningRandom()*.11
     this.forks[f*4]=fx;this.forks[f*4+1]=fy
     this.forks[f*4+2]=fx+dir*seg;this.forks[f*4+3]=fy+seg*.85
    }
@@ -110,7 +121,8 @@ export class StormEngine{
   const z=this.view.zoom,span=this.width/z+180,top=Math.min(-180,this.view.y-this.height/(2*z)-80)
   for(let i=0;i<SPLASHES;i++)this.splashAge[i]+=dt
   for(let i=0;i<CAP;i++){
-   this.x[i]+=this.velocity[i]*this.wind*dt;this.y[i]+=this.velocity[i]*dt
+   const distance=this.velocity[i]*dt*(this.sharp ? 1.22 : 1)
+   this.x[i]+=distance*this.wind;this.y[i]+=distance
    if(this.y[i]>=0){
     if(i<budgets[this.quality]){
      this.splashX[this.splashHead]=this.x[i];this.splashAge[this.splashHead]=0
@@ -127,7 +139,7 @@ export class StormEngine{
    if(this.y[i]>this.view.y+this.height/(2*z)+200&&top<-400)this.y[i]=top+this.random()*300
   }
  }
- drawRain(ctx:CanvasRenderingContext2D){
+ drawRain(ctx:CanvasRenderingContext2D, amber?: {x:number;y:number;color:string;gain:number}){
   const {x:cx,y:cy,zoom:z}=this.view,w=this.width,h=this.height,ground=h*.5-cy*z
   ctx.save();ctx.beginPath();ctx.rect(0,0,w,Math.max(0,Math.min(h,ground)));ctx.clip()
   ctx.lineCap='round'
@@ -139,8 +151,8 @@ export class StormEngine{
   // larger but MORE transparent so it never clutters the playable foreground.
   const hA=[.11,.15,.17],hC=['#22323f','#2c4152','#3a5062'],hW=[1.1,1.7,3.0]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(hA[band]+this.intensity*.1)*(1+band*.35)*this.rainScale
-   ctx.strokeStyle=hC[band];ctx.lineWidth=hW[band]
+   ctx.globalAlpha=(this.sharp ? .56 : 1)*(hA[band]+this.intensity*.1)*(1+band*.35)*this.rainScale
+   ctx.strokeStyle=hC[band];ctx.lineWidth=hW[band]*(this.sharp ? .64 : 1)
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
@@ -152,8 +164,8 @@ export class StormEngine{
   ctx.globalCompositeOperation='lighter'
   const cA=[.24,.32,.3],cC=['#5c7d96','#7fa6c2','#a8c8dd'],cW=[.7,1.0,1.6]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(cA[band])*(1+this.intensity*.8)*this.rainScale
-   ctx.strokeStyle=cC[band];ctx.lineWidth=cW[band]
+   ctx.globalAlpha=(this.sharp ? .66 : 1)*cA[band]*(1+this.intensity*.8)*this.rainScale
+   ctx.strokeStyle=cC[band];ctx.lineWidth=cW[band]*(this.sharp ? .72 : 1)
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
     const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
@@ -162,33 +174,46 @@ export class StormEngine{
    }
    ctx.stroke()
   }
+  // A single extra path, no new drops or per-drop gradients. Use the same
+  // emitter cone as the asphalt and keep unlit air quieter than stock rain.
+  if(this.sharp && amber){
+   ctx.globalAlpha=Math.min(.24,.19*amber.gain)*this.rainScale
+   ctx.strokeStyle=`rgb(${amber.color})`;ctx.lineWidth=.9;ctx.beginPath()
+   for(let i=0;i<n;i++){
+    const dy=this.y[i]-amber.y,dx=this.x[i]-amber.x
+    if(dy<10||dy>270||Math.abs(dx)>220||emission(FLOOD,dx,dy,18)<.48)continue
+    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
+   }
+   ctx.stroke()
+  }
   ctx.globalCompositeOperation='source-over'
   ctx.restore()
-  // SPLASHES — per-impact variety: seeded size/tilt/jitter, rings ride the
-  // wind vector. Not every impact pops a ring, so the roof never reads as a
-  // grid of identical runway lights.
-  ctx.save();ctx.strokeStyle='#b8ddec';ctx.lineWidth=1
+ }
+
+ /** Deck impacts use the world transform and sit behind fighters. */
+ drawSplashes(ctx:CanvasRenderingContext2D,left:number,right:number,wetness?:(x:number,v:number)=>number){
+  ctx.save();ctx.beginPath();ctx.rect(left,ROAD.rear,right-left,ROAD.front-ROAD.rear);ctx.clip()
+  ctx.strokeStyle='#b8ddec';ctx.lineWidth=.85
   const windTilt=this.wind*SPLASH.tiltGain
+  let rippleBudget = 5
   for(let i=0;i<SPLASHES;i++){
-   const age=this.splashAge[i];if(age>=.4)continue
-   const sd=this.splashSeed[i]
-   if(sd<.24)continue
-   const u=age/.4,x=w*.5+(this.splashX[i]-cx)*z,y=ground+(3+(sd-.5)*8)*z
-   const r=(2+u*10)*z*(.65+sd*.8)
-   ctx.globalAlpha=(1-u)*(SPLASH.baseAlpha+.26*this.intensity)*(.65+sd*.7)
-   const tilt=windTilt+(sd-.5)*.2
-   ctx.beginPath();ctx.ellipse(x,y,r,r*SPLASH.squash,tilt,0,Math.PI*2);ctx.stroke()
-   if(u<.35&&sd>.42){ // crown ticks lean with the wind vector
-    const lean=windTilt*10*z
-    ctx.beginPath();ctx.moveTo(x-3*z,y);ctx.lineTo(x-5*z+lean,y-6*z*(1-u));ctx.moveTo(x+3*z,y);ctx.lineTo(x+5*z+lean,y-6*z*(1-u));ctx.stroke()}
-   // impact sparkle where the drop met the roof film
-   if(u<.18){
-    ctx.globalAlpha=(1-u/.18)*.42
-    ctx.fillStyle='#cfe9f8'
-    ctx.fillRect(x-1,y-1.2*z,2,2.4*z)
+   const age=this.splashAge[i],sd=this.splashSeed[i],x=this.splashX[i]
+   if(age>=.32||sd<.38||x<left||x>right)continue
+   // Use an independent depth sample: rejecting faint drops must not also
+   // reject an entire depth band. The collision rail is not a rain surface.
+   const depth=(sd*73.731)%1
+   const y=ROAD.rear+9+depth*(ROAD.front-ROAD.rear-18)
+   const u=age/.32,r=(1.5+u*6)*(.65+sd*.65)
+   ctx.globalAlpha=(1-u)*(SPLASH.baseAlpha*.55+.09*this.intensity)*this.rainScale
+   ctx.beginPath();ctx.ellipse(x,y,r,r*SPLASH.squash,windTilt,0,Math.PI*2);ctx.stroke()
+   const v=(y-ROAD.rear)/(ROAD.front-ROAD.rear)
+   if(this.sharp && rippleBudget>0 && u>.3 && (wetness?.(x,v) ?? 0)>.54){
+    rippleBudget--
+    ctx.globalAlpha*=.38
+    ctx.beginPath();ctx.ellipse(x,y,r*1.28,r*SPLASH.squash*1.28,windTilt,0,Math.PI*2);ctx.stroke()
    }
   }
-  // Rain owns droplets only. The weather compositor applies the one scene flash.
   ctx.restore()
  }
 }

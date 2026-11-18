@@ -85,3 +85,24 @@ test('a tall camera never reintroduces rooftop fog at the lower-city texture joi
  function blue(y:number){const a=g.getImageData(0,y,1024,8).data;let sum=0;for(let i=2;i<a.length;i+=4)sum+=a[i];return sum/(1024*8)}
  assert.ok(Math.abs(blue(312)-blue(320))<2)
 })
+
+test('the Ultra reflection mask is world-local, with a soft lane and girder edge', () => {
+  const make = (w: number, h: number) => {
+    const c = createCanvas(w, h)
+    return { c, g: c.getContext('2d') } as never
+  }
+  const render = (seed: number) => {
+    const road = new Viaduct(seed, 0, 800, moodForSeed(seed), make)
+    const g = createCanvas(800, 52).getContext('2d')
+    g.fillRect(0, 0, 800, 52)
+    road.maskReflection(g as never, 0, 800, 52)
+    return g
+  }
+  const g = render(543)
+  const alpha = (x: number, y: number) => g.getImageData(x, y, 1, 1).data[3]
+  assert.ok(alpha(400, 0) < alpha(400, 37), 'front edge should feather')
+  assert.ok(alpha(400, 51) < alpha(400, 37), 'lane contact should feather')
+  const row = (canvas: typeof g) => canvas.getImageData(0, 37, 800, 1).data
+  assert.deepEqual(row(g), row(render(543)))
+  assert.notDeepEqual(row(g), row(render(24)))
+})

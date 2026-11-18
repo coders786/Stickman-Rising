@@ -102,7 +102,7 @@ export function liveGain(l: PointLight, t: number): number {
  *  profile decides how strong and how steady each one is. */
 export function makeStageLights(profile: {
   light: { warm: number; cool: number; flicker: number }
-} | null, seed: number): PointLight[] {
+} | null, seed: number, amberSpecimen = false): PointLight[] {
   const K = profile ? profile.light : null
   const warm = K ? K.warm : 1
   const cool = K ? K.cool : 1
@@ -125,13 +125,13 @@ export function makeStageLights(profile: {
       id: 'stage:lamp', shape: FLOOD,
       x: PRACTICAL_LAMP_X,
       y: -256,
-      kind: 'cool',
+      kind: amberSpecimen ? 'warm' : 'cool',
       // A streetlight is dim at the head and generous on the deck — its radius
       // has to reach the ground it is pointing at, or the practical reads as a
       // blue dot on a pole instead of a light you can stand in.
       radius: 340,
       gain: 0.75 + 0.5 * cool,
-      flicker: 0.09 + 0.10 * flick,
+      flicker: amberSpecimen ? 0 : 0.09 + 0.10 * flick,
       flickerHz: 0.85,
       phase: 1.91 + (seed % 97) * 0.01,   // per-run phase: same tube, different night
     },

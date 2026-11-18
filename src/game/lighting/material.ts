@@ -12,6 +12,7 @@ export function material(
   base: string,
   l: SurfaceLight | undefined,
   face: number,
+  matte = base === '#000000',
 ): string | CanvasGradient {
   if (!l) return base
   const dx = (l.dx + l.keyX * 0.25) * face,
@@ -23,7 +24,7 @@ export function material(
   const r = bin(l.r + 0.21 * l.keyGain),
     g = bin(l.g + 0.29 * l.keyGain),
     b = bin(l.b + 0.4 * l.keyGain)
-  const key = `${base}:${x}:${y}:${r}:${g}:${b}`
+  const key = `${base}:${+matte}:${x}:${y}:${r}:${g}:${b}`
   let cache = brushes.get(ctx)
   if (!cache) {
     cache = new Map()
@@ -31,8 +32,7 @@ export function material(
   }
   const hit = cache.get(key)
   if (hit) return hit
-  const mat = parseInt(base.slice(1), 16),
-    matte = mat === 0
+  const mat = parseInt(base.slice(1), 16)
   const gradient = ctx.createLinearGradient(
     -x * 4,
     -18 - y * 6,
