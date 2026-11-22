@@ -1,3 +1,4 @@
+import { BRIDGE_LIGHT, type BridgeFrame } from '../render/bridge-frame'
 /** STICKMAN RISING — THE RAY-TRACED LIGHTNING ENGINE.
  *
  * A bolt is a RAY traced through the gameplay plane with real reflection
@@ -157,7 +158,8 @@ export class LightningSystem {
     let dx = dirX / dl
     let dy = dirY / dl
     let energy = opts.energy ?? 1
-    const bounceBudget = opts.bounces ?? 3
+    const requestedBounces = opts.bounces ?? 3
+    const bounceBudget = Number.isFinite(requestedBounces) ? Math.max(0, Math.floor(requestedBounces)) : 3
     let dmg = opts.dmg ?? 0
     const maxLen = opts.maxLen ?? 460
     let travelled = 0
@@ -167,7 +169,7 @@ export class LightningSystem {
     let cy = y
     let firstLeg = true
 
-    while (travelled < maxLen && energy > 0.16 && bounces <= bounceBudget) {
+    while (travelled < maxLen && energy > 0.16) {
       // ---- find the nearest reflector intersection along the ray ----
       let tBest = Infinity
       let hitE: RayReflector | null = null
@@ -211,6 +213,12 @@ export class LightningSystem {
         // color — light ON geometry, not just through it (fresh hits burn
         // hard, ~0.5s afterglow tail)
         markLit(hitE, opts.color, 0.55 + energy * 0.35)
+        // The budget counts reflections, not contacts: the terminal reflector
+        // is still hit, but is not mirrored once all requested bounces are used.
+        if (bounces >= bounceBudget) {
+          travelled += tBest
+          break
+        }
         // normal at hit
         const ccx = hitE.x
         const ccy = hitE.y - BAND_OY * hitE.scale
@@ -492,13 +500,35 @@ export class LightningSystem {
         b.restrikeAt = b.age + rand(0.055, 0.09)
         const branchy = b.branches.length > 0
         b.branches.length = 0
+        // Keep the collision skeleton and contacts pinned, but re-seed its
+        // visible jag. Otherwise rebuilding repeats the same lit segments.
+        b.seed = (b.seed + 61.17) % 233280
         this.buildGeometry(b, branchy)
+      }
+    }
+  }
+
+  /** HDR strands follow the actual restrike polyline, never a straight
+   * chord through it. Reserve at most four spans across visible channels. */
+  bridgeEmitters(frame: BridgeFrame): void {
+    let count = 0
+    for (const b of this.bolts) {
+      if (!b.active || b.age > .20) continue
+      for (const leg of b.legs) {
+        if (leg.length < 4) continue
+        const k = Math.max(0, ((leg.length >> 2) - 1) * 2)
+        for (const i of [0, k]) {
+          const old = frame.count
+          frame.light(BRIDGE_LIGHT.impulse, leg[i], leg[i + 1], 179, b.color, 3.4 * (1 - b.age / .21), 2.8, leg[i + 2], leg[i + 3])
+          if (frame.count > old && ++count >= 4) return
+        }
       }
     }
   }
 
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     ctx.save()
+    const baseAlpha = ctx.globalAlpha
     ctx.globalCompositeOperation = 'lighter'
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -559,19 +589,20 @@ export class LightningSystem {
         const ny = b.nodes[i + 1]
         const ne = b.nodes[i + 2]
         const r = (5 + 13 * ne) * (0.7 + 0.3 * k)
-        const g = ctx.createRadialGradient(nx, ny, 0, nx, ny, r)
-        g.addColorStop(0, rgba('#ffffff', 0.9 * k))
-        g.addColorStop(0.35, rgba(b.color, 0.55 * k))
-        g.addColorStop(1, rgba(b.color, 0))
-        ctx.fillStyle = g
-        ctx.beginPath()
-        ctx.arc(nx, ny, r, 0, TAU)
-        ctx.fill()
+        // A compact layered contact mark avoids allocating a CanvasGradient
+        // for every node on every live-bolt frame.
+        ctx.fillStyle = b.color
+        ctx.globalAlpha = baseAlpha * .075 * k
+        ctx.beginPath(); ctx.arc(nx, ny, r, 0, TAU); ctx.fill()
+        ctx.globalAlpha = baseAlpha * .16 * k
+        ctx.beginPath(); ctx.arc(nx, ny, r * .58, 0, TAU); ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.globalAlpha = baseAlpha * .42 * k
+        ctx.beginPath(); ctx.arc(nx, ny, r * .19, 0, TAU); ctx.fill()
         // hot core dot
-        ctx.fillStyle = rgba('#ffffff', 0.95 * k)
-        ctx.beginPath()
-        ctx.arc(nx, ny, 1.6 + 1.4 * ne, 0, TAU)
-        ctx.fill()
+        ctx.globalAlpha = baseAlpha * .95 * k
+        ctx.beginPath(); ctx.arc(nx, ny, 1.6 + 1.4 * ne, 0, TAU); ctx.fill()
+        ctx.globalAlpha = baseAlpha
       }
     }
     ctx.restore()

@@ -30,9 +30,10 @@ test('landing load uses incoming normal momentum and bounded visual pressure',()
 import {Game} from '../src/game/game'
 import {quadraticDragVelocity,airDragCoefficient} from '../src/game/physics/motion-laws'
 import {ATTACKS} from '../src/game/combat/attacks'
+import {BRIDGE_ART} from '../src/game/world/art-grade'
 import type {WorldRef} from '../src/game/core/types'
-function setup(){
- const g=new Game(),p=g.player,w=(g as unknown as {worldRef:WorldRef}).worldRef
+function setup(finite = false){
+ const g=finite ? new Game(BRIDGE_ART) : new Game(),p=g.player,w=(g as unknown as {worldRef:WorldRef}).worldRef
  p.reset(0);p.swordDrawn=true;w.arenaMinX=-10000;w.arenaMaxX=10000
  return{g,p,w}
 }
@@ -56,14 +57,28 @@ test('locomotion coast follows ground friction plus quadratic air drag',()=>{
  for(let i=0;i<120;i++){v=brakeVelocity(quadraticDragVelocity(v,airDragCoefficient(0),1/60),2800,1/60);x+=v/60}
  assert.ok(Math.abs(p.x-x)<1e-8);assert.equal(p.vx,0)
 })
-test('landing captures incoming load once, preserves tangent carry, and resets cleanly',()=>{
+test('a hard Bridge landing captures incoming load once, retains momentum and resets cleanly',()=>{
  const {g,p,w}=setup();p.y=-1;p.grounded=false;p.vy=700;p.vx=350
  p.update(1/120,w);g.input.endFrame(1/120)
- assert.equal(p.grounded,true);assert.equal(p.vy,0);assert.ok(p.vx>340)
+ assert.equal(p.grounded,true);assert.equal(p.vy,0);assert.ok(p.vx > 280 && p.vx < 300, `hard landing softens carry, got ${p.vx}`)
  assert.ok(p.landingLoad.impulse>70*700)
  const load=p.landingLoad
  p.update(1/120,w);assert.equal(p.landingLoad,load,'ground support must not retrigger impact')
  p.reset(0);assert.equal(p.landingLoad.impulse,0)
+})
+
+test('finite diagnostic landings preserve the airborne tangent velocity', () => {
+ for (const sign of [-1,1]) {
+  const {g,p,w}=setup(true),dt=1/120
+  p.y=-1;p.grounded=false;p.vy=700;p.vx=sign*350
+  p.update(dt,w);g.input.endFrame(dt)
+  assert.ok(p.grounded && p.y===0 && p.vy===0)
+  const airborne=setup(true)
+  airborne.p.y=-100;airborne.p.grounded=false;airborne.p.vy=700;airborne.p.vx=sign*350
+  airborne.p.update(dt,airborne.w)
+  assert.ok(!airborne.p.grounded)
+  assert.equal(p.vx,airborne.p.vx,'diagnostic ground contact must not brake the tangent')
+ }
 })
 
 test('parry opens defense immediately but catches momentum over finite support time',()=>{

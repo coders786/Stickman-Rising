@@ -1,6 +1,6 @@
 /** Object-space normal tiles. A tile shades an entire brush; stamping it in
  * the existing path changes neither the silhouette nor the draw count. */
-import { gameLedger, hasPixels } from '../render/ledger'
+import { SurfaceScope, hasPixels } from '../render/ledger'
 import type { SurfaceLight } from './ribbons'
 
 const N = 32,
@@ -39,14 +39,19 @@ function lobe(dir: number, tube: boolean, matte: boolean): Uint8Array {
   lobes.set(key, data)
   return data
 }
-const brushes = new WeakMap<
-  CanvasRenderingContext2D,
-  Map<string, CanvasPattern>
->()
-const staging = new WeakMap<
-  CanvasRenderingContext2D,
-  { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D; img: ImageData }
->()
+interface VolumeCache {
+  surfaces: SurfaceScope
+  patterns: Map<string, CanvasPattern>
+  staging?: { canvas: HTMLCanvasElement; g: CanvasRenderingContext2D; img: ImageData }
+}
+const caches = new WeakMap<CanvasRenderingContext2D, VolumeCache>()
+
+/** A game can unmount while another context is using its own brush cache. */
+export function disposeVolumeBrushes(ctx: CanvasRenderingContext2D): void {
+  caches.get(ctx)?.surfaces.releaseAll()
+  caches.delete(ctx)
+}
+
 export function volumeBrush(
   ctx: CanvasRenderingContext2D,
   base: string,
@@ -74,20 +79,19 @@ export function volumeBrush(
     g = bin(light.g + 0.39 * light.keyGain),
     b = bin(light.b + 0.53 * light.keyGain)
   const key = `${dir}:${+tube}:${base}:${+matte}:${r},${g},${b}`
-  let cache = brushes.get(ctx)
+  let cache = caches.get(ctx)
   if (!cache) {
-    cache = new Map()
-    brushes.set(ctx, cache)
+    cache = { surfaces: new SurfaceScope('material'), patterns: new Map() }
+    caches.set(ctx, cache)
   }
-  let pattern = cache.get(key)
+  let pattern = cache.patterns.get(key)
   if (!pattern) {
-    let scratch = staging.get(ctx)
+    let scratch = cache.staging
     if (!scratch || !hasPixels(scratch.canvas)) {
-      const canvas = gameLedger.acquire('material:normal-staging', N, N, 'lighting', true) as HTMLCanvasElement
+      const canvas = cache.surfaces.acquire('normal-staging', N, N, 'lighting')
       const g = canvas.getContext('2d')
-      if (!g) return fallback
-      scratch = { canvas, g, img: g.createImageData(N, N) }
-      staging.set(ctx, scratch)
+      if (!g) { cache.surfaces.release('normal-staging'); return fallback }
+      scratch = cache.staging = { canvas, g, img: g.createImageData(N, N) }
     }
     const { canvas: tile, g: tc, img } = scratch
     const mat = parseInt(base.slice(1), 16),
@@ -108,8 +112,8 @@ export function volumeBrush(
     tc.putImageData(img, 0, 0)
     pattern = ctx.createPattern(tile, 'repeat') ?? undefined
     if (!pattern) return fallback
-    if (cache.size >= 128) cache.delete(cache.keys().next().value!)
-    cache.set(key, pattern)
+    if (cache.patterns.size >= 128) cache.patterns.delete(cache.patterns.keys().next().value!)
+    cache.patterns.set(key, pattern)
   }
   const cs = Math.cos(angle),
     sn = Math.sin(angle),

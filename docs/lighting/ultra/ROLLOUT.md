@@ -1,6 +1,6 @@
 # Deep Noir bridge rollout
 
-[Current production-render still](deep-noir-live.webp). This is the shipping scene art, not the older clean amber experiment. Scene art stays stable when quality sheds: changing tier changes draw budgets, not the grade or skyline seed.
+[Rollout production-render still](deep-noir-live.webp). This is the Deep Noir scene art, not the older clean amber experiment. The [lighting stability follow-up](../road-and-sign-stability.md#the-warm-bridge-is-base-lighting) keeps the warm atmosphere and road sheen in the base scene. Changing tier changes draw budgets, not the grade or skyline seed.
 
 ## What changed after review
 

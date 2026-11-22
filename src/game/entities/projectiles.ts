@@ -2,6 +2,7 @@
  * missiles, plasma orbs, and the player's inferno fire wave.
  */
 
+import { BRIDGE_LIGHT, type BridgeFrame } from '../render/bridge-frame'
 import { WorldRef } from '../core/types'
 import { rand, rgba, TAU } from '../core/utils'
 
@@ -92,6 +93,7 @@ export class Projectile {
     this.y += this.vy * dt
     const x1 = this.x
     const y1 = this.y
+    if (w.projectileBlocked?.(x0, x1)) return false
 
     // trails / element particles
     this.trailT -= dt
@@ -386,6 +388,21 @@ export class ProjectilePool {
       if (!pr.active) continue
       pr.x = pr.px
       pr.y = pr.py
+    }
+  }
+
+  bridgeEmitters(frame: BridgeFrame): void {
+    let n = 0
+    for (const pr of this.list) {
+      if (!pr.active) continue
+      let lit = false
+      if (pr.kind === 'orb') lit = frame.light(BRIDGE_LIGHT.impulse, pr.x, pr.y, 168, '#35f2ff', 3.05, 8.4, pr.x, pr.y, 0, 24)
+      else if (pr.kind === 'firewave') lit = frame.light(BRIDGE_LIGHT.impulse, pr.x - 21, -18, 134, '#ff8a37', 2.20, 13, pr.x + 21, -29, 0, 12)
+      else if (pr.kind === 'missile') {
+        const v = 12 / Math.max(1, Math.hypot(pr.vx, pr.vy))
+        lit = frame.light(BRIDGE_LIGHT.impulse, pr.x - pr.vx * v, pr.y - pr.vy * v, 94, '#ffb05f', 1.09, 4)
+      }
+      if (lit && ++n >= 2) break
     }
   }
 

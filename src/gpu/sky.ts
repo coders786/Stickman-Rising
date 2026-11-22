@@ -22,7 +22,7 @@
  * honest and tiny.
  * ==========================================================================*/
 
-import { bakeOnce } from './context'
+import { bakeOnce, bakeOnceDeferred, makeBakeTarget, type BakeTarget } from './context'
 import type { EnvironmentProfile } from '../game/world/profile'
 import type { MoodPalette } from '../game/world/mood'
 
@@ -226,25 +226,39 @@ export function starUniforms(p: EnvironmentProfile): Array<[string, number]> {
 
 /* ------------------------------ baking ------------------------------ */
 
-/** Bake the stylized moon at `size` px square. Falls back to Canvas2D when
- *  WebGL2 is unavailable or the shader fails; the timing is reported either
- *  way so P8's ≤40 ms budget is measurable in the field. */
-export function bakeMoonPlate(p: EnvironmentProfile, mood: MoodPalette, size = 512): Plate {
+/** Bake the stylized moon at `size` px square. The title uses Canvas 2D
+ * directly; tools can still request synchronous shader output. */
+export function bakeMoonPlate(p: EnvironmentProfile, mood: MoodPalette, size = 512, target?: BakeTarget, canvasOnly = false): Plate {
   const t0 = now()
   const out: { error?: string } = {}
-  const r = bakeOnce(size, size, MOON_FRAG, moonUniforms(p, mood), out)
-  if (r) return { canvas: r.canvas, ms: r.ms, source: 'gpu' }
-  const canvas = cpuMoon(p, mood, size)
-  return { canvas, ms: now() - t0, source: 'cpu', note: out.error ?? 'gpu unavailable' }
+  const r = canvasOnly ? null : bakeOnce(size, size, MOON_FRAG, moonUniforms(p, mood), out, target)
+  if (r) return r
+  const canvas = cpuMoon(p, mood, size, target)
+  return { canvas, ms: now() - t0, source: 'cpu', note: canvasOnly ? 'Canvas 2D title' : out.error ?? 'gpu unavailable' }
 }
 
-export function bakeStarPlate(p: EnvironmentProfile, w: number, h: number): Plate {
+export function bakeStarPlate(p: EnvironmentProfile, w: number, h: number, target?: BakeTarget, canvasOnly = false): Plate {
   const t0 = now()
   const out: { error?: string } = {}
-  const r = bakeOnce(w, h, STARS_FRAG, starUniforms(p), out)
-  if (r) return { canvas: r.canvas, ms: r.ms, source: 'gpu' }
-  const canvas = cpuStars(p, w, h)
-  return { canvas, ms: now() - t0, source: 'cpu', note: out.error ?? 'gpu unavailable' }
+  const r = canvasOnly ? null : bakeOnce(w, h, STARS_FRAG, starUniforms(p), out, target)
+  if (r) return r
+  const canvas = cpuStars(p, w, h, target)
+  return { canvas, ms: now() - t0, source: 'cpu', note: canvasOnly ? 'Canvas 2D title' : out.error ?? 'gpu unavailable' }
+}
+
+/** Engage/Retry use the original art recipes, with one deadline for both
+ * plates. If the moon couldn't use GL, don't try another context for stars. */
+export async function bakeSkyPlateDeferred(kind: 'moon' | 'stars', p: EnvironmentProfile, signal: AbortSignal, target: BakeTarget, deadline: number, tryGpu = true): Promise<Plate | null> {
+  if (signal.aborted) return null
+  const t0 = now(), moon = kind === 'moon'
+  const out: { error?: string } = {}
+  const r = !tryGpu ? null : moon
+    ? await bakeOnceDeferred(512, 512, MOON_FRAG, moonUniforms(p, p.mood), signal, out, target, deadline)
+    : await bakeOnceDeferred(1024, 320, STARS_FRAG, starUniforms(p), signal, out, target, deadline)
+  if (signal.aborted) return null
+  if (r) return r
+  const canvas = moon ? cpuMoon(p, p.mood, 512, target) : cpuStars(p, 1024, 320, target)
+  return { canvas, ms: now() - t0, source: 'cpu', note: out.error ?? 'Canvas 2D sky' }
 }
 
 /* --------------------------- CPU fallbacks --------------------------- */
@@ -267,10 +281,8 @@ function mulberry(seed: number): () => number {
 /** Canvas2D moon with the same *composition* as the shader: disc, lit limb,
  *  terminator, craters, limb darkening, two-layer halo. Slower and less fine,
  *  but never absent. */
-export function cpuMoon(p: EnvironmentProfile, mood: MoodPalette, S = 512): HTMLCanvasElement {
-  const c = document.createElement('canvas')
-  c.width = S
-  c.height = S
+export function cpuMoon(p: EnvironmentProfile, mood: MoodPalette, S = 512, target: BakeTarget = makeBakeTarget): HTMLCanvasElement {
+  const c = target(S, S)
   const g = c.getContext('2d')
   if (!g) return c
   const C = S / 2
@@ -370,10 +382,8 @@ export function cpuMoon(p: EnvironmentProfile, mood: MoodPalette, S = 512): HTML
 }
 
 /** Canvas2D star field: same two-layer power-law grid idea, drawn as arcs. */
-export function cpuStars(p: EnvironmentProfile, w: number, h: number): HTMLCanvasElement {
-  const c = document.createElement('canvas')
-  c.width = w
-  c.height = h
+export function cpuStars(p: EnvironmentProfile, w: number, h: number, target: BakeTarget = makeBakeTarget): HTMLCanvasElement {
+  const c = target(w, h)
   const g = c.getContext('2d')
   if (!g) return c
   const rng = mulberry(p.seed ^ 0x5701a5)

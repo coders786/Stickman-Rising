@@ -5,27 +5,26 @@
  *  witness: live 0 / free 0 / object active). */
 import { beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { FX } from '../src/game/fx/fx'
+import { createCanvas } from '@napi-rs/canvas'
+import type { FighterGeom } from '../src/game/anim/rig3d'
+import { CH, makePose } from '../src/game/anim/pose'
+import { BRIDGE_SHOCKWAVE_LIMIT, BRIDGE_SPARK_LIMIT, FX } from '../src/game/fx/fx'
 import { setParticleLevel } from '../src/game/fx/particles1d'
+import { gameLedger } from '../src/game/render/ledger'
 
 beforeEach(() => setParticleLevel(2))
-
-type PoolView<T> = { live: T[]; free: T[]; active: boolean; age: number; life: number }
-
-function view(fx: FX, name: 'particles' | 'rings' | 'trails'): PoolView<{ active: boolean; age: number; life: number }>[] {
-  const any = fx as unknown as Record<string, unknown[]>
-  const live = any[name] as { active: boolean; age: number; life: number }[]
-  const freeKey = { particles: 'pFree', rings: 'rFree', trails: 'tFree' }[name]
-  const free = any[freeKey] as { active: boolean; age: number; life: number }[]
-  return live.map((o) => ({ live, free, active: o.active, age: o.age, life: o.life })) as never
-}
 
 function lists(fx: FX, name: 'particles' | 'rings' | 'trails') {
   const any = fx as unknown as Record<string, unknown[]>
   const freeKey = { particles: 'pFree', rings: 'rFree', trails: 'tFree' }[name]
+  const free = () => name === 'particles' ? [...any[freeKey], ...any.sparkFree] : any[freeKey]
   return {
     live: any[name] as { active: boolean; age: number; life: number }[],
-    free: any[freeKey] as { active: boolean; age: number; life: number }[],
+    free: {
+      get length() { return free().length },
+      includes(value: unknown) { return free().includes(value) },
+      *[Symbol.iterator]() { yield* free() as { active: boolean; age: number; life: number }[] },
+    },
   }
 }
 
@@ -48,24 +47,24 @@ test('a recycled particle re-enters the live set and expires normally', () => {
   fx.sparks(0, 0, 0, 1, 3, '#fff', 100, 0.05)
   const { live, free } = lists(fx, 'particles')
   assert.equal(live.length, 3)
-  assert.equal(free.length, 0)
+  assert.equal(free.length, BRIDGE_SPARK_LIMIT - 3)
 
   // expire them all
   fx.update(1)
   assert.equal(live.length, 0, 'expired particles are spliced out of live')
-  assert.equal(free.length, 3, 'expired particles return to free exactly once')
+  assert.equal(free.length, BRIDGE_SPARK_LIMIT, 'expired particles return to free exactly once')
   assertPoolLaw(fx, 'particles', 'after expiry')
 
   // reacquire — THE witness: old code left live 0 / free 0 / object active
   fx.sparks(0, 0, 0, 1, 3, '#fff', 100, 0.05)
   assert.equal(live.length, 3, 'recycled particles must be registered live again')
-  assert.equal(free.length, 0, 'recycled particles leave the free list')
+  assert.equal(free.length, BRIDGE_SPARK_LIMIT - 3, 'recycled particles leave the free list')
   assertPoolLaw(fx, 'particles', 'after reacquire')
 
   // and they age out again — no orphan is stranded
   fx.update(1)
   assert.equal(live.length, 0)
-  assert.equal(free.length, 3)
+  assert.equal(free.length, BRIDGE_SPARK_LIMIT)
   assertPoolLaw(fx, 'particles', 'second expiry')
 })
 
@@ -76,11 +75,11 @@ test('multiple expire/reacquire cycles keep live∩free empty and counts stable'
     fx.burst(10, 10, 4, '#fff', 120, 0.02)
     const { live, free } = lists(fx, 'particles')
     assert.equal(live.length, 8, `cycle ${cycle}: spawned particles are live`)
-    assert.equal(free.length, 0, `cycle ${cycle}: free list drained`)
+    assert.equal(free.length, BRIDGE_SPARK_LIMIT - 4, `cycle ${cycle}: free list drained`)
     assertPoolLaw(fx, 'particles', `cycle ${cycle} spawn`)
     fx.update(1) // expire everything
     assert.equal(live.length, 0, `cycle ${cycle}: live emptied`)
-    assert.equal(free.length, 8, `cycle ${cycle}: all eight freed once`)
+    assert.equal(free.length, BRIDGE_SPARK_LIMIT + 4, `cycle ${cycle}: all eight freed once`)
     assertPoolLaw(fx, 'particles', `cycle ${cycle} expiry`)
   }
 })
@@ -92,14 +91,14 @@ test('recycled rings rejoin the live set (dissolve/shockwave path)', () => {
   assert.equal(r0.live.length, 1)
   fx.update(1)
   assert.equal(r0.live.length, 0)
-  assert.equal(r0.free.length, 1)
+  assert.equal(r0.free.length, BRIDGE_SHOCKWAVE_LIMIT)
   fx.shockwave(0, 0, 100, '#fff', 0.01, 4)
   assert.equal(r0.live.length, 1, 'recycled ring must be live again')
-  assert.equal(r0.free.length, 0)
+  assert.equal(r0.free.length, BRIDGE_SHOCKWAVE_LIMIT - 1)
   assertPoolLaw(fx, 'rings', 'ring reacquire')
   fx.update(1)
   assert.equal(r0.live.length, 0)
-  assert.equal(r0.free.length, 1)
+  assert.equal(r0.free.length, BRIDGE_SHOCKWAVE_LIMIT)
 })
 
 test('recycled slash trails rejoin the live set (startTrail path)', () => {
@@ -131,9 +130,98 @@ test('clear() then respawn keeps the pool law across a new run', () => {
   fx.sparks(0, 0, 0, 1, 5, '#fff', 100, 0.5)
   fx.shockwave(0, 0, 80, '#fff', 0.5, 3)
   assert.ok(p.live.length >= 5, 'respawned particles are live again')
-  assert.equal(p.free.length, 0, 'free list fully drained by respawn')
+  assert.equal(p.free.length, BRIDGE_SPARK_LIMIT - 15, 'both pools restored their pre-clear occupancy')
   assert.equal(r.live.length, 1, 'respawned ring is live')
-  assert.equal(r.free.length, 0)
+  assert.equal(r.free.length, BRIDGE_SHOCKWAVE_LIMIT - 1)
   assertPoolLaw(fx, 'particles', 'post-clear particles')
   assertPoolLaw(fx, 'rings', 'post-clear rings')
+})
+
+test('dash and additive echoes solve their own saved pose once and re-solve recycled slots', () => {
+  const fx = new FX()
+  const { afterimages: live, aFree: free } = fx as unknown as {
+    afterimages: { pose: Float32Array; needsSolve: boolean; geom: FighterGeom | null }[]
+    aFree: { pose: Float32Array; needsSolve: boolean; geom: FighterGeom | null }[]
+  }
+  const pose = makePose()
+  const g = createCanvas(320, 220).getContext('2d')
+  const ctx = g as unknown as CanvasRenderingContext2D
+  const paint = () => {
+    g.clearRect(0, 0, 320, 220)
+    fx.drawSilhouettes(ctx)
+    fx.drawAdditive(ctx, 0)
+    return Buffer.from(g.getImageData(0, 0, 320, 220).data)
+  }
+  const firstRoll = pose[CH.rootRot]
+  fx.shadowGhost(pose, 100, 132, 1, 1, '#a5d2f2')
+  pose[CH.rootRot] = 0.6
+  fx.afterimage(pose, 180, 132, -1, '#a5d2f2')
+  assert.equal(live[0].pose[CH.rootRot], firstRoll)
+  assert.ok(live.every(ghost => ghost.needsSolve && !ghost.geom))
+  const first = paint()
+  assert.ok(first.some(v => v !== 0))
+  const [dash, additive] = live, dashGeom = dash.geom, additiveGeom = additive.geom
+  assert.ok(dashGeom && additiveGeom && dashGeom !== additiveGeom)
+  assert.ok(live.every(ghost => !ghost.needsSolve))
+  pose[CH.rootRot] = -0.42
+  assert.deepEqual(paint(), first, 'live pose changed a captured ghost')
+  fx.clear()
+  assert.equal(live.length, 0)
+  assert.equal(free.length, 2)
+  const oldHead = additiveGeom.headC.x
+  fx.shadowGhost(pose, 180, 132, -1, -1, '#a5d2f2')
+  assert.equal(live[0], additive)
+  assert.ok(live[0].needsSolve, 'reused slot was not invalidated')
+  paint()
+  assert.equal(live[0].geom, additiveGeom, 'recycle allocated a new rig')
+  assert.notEqual(additiveGeom.headC.x, oldHead)
+  assert.equal(dash.geom, dashGeom, 'one slot borrowed another slot’s geometry')
+})
+
+
+test('flash plates survive run resets and release only their FX owner', () => {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, 'document')
+  Object.defineProperty(globalThis, 'document', {
+    configurable: true, value: { createElement: () => createCanvas(1, 1) },
+  })
+  const a = new FX(), b = new FX()
+  const ctx = createCanvas(100, 100).getContext('2d') as unknown as CanvasRenderingContext2D
+  const entries = () => gameLedger.list().filter(e => e.tag === 'fx').map(e => e.key).sort()
+  try {
+    a.impact(50, 50, 0, false, '#ffffff', '#ffffff')
+    a.drawAdditive(ctx, 0)
+    const onlyA = entries()
+    assert.equal(onlyA.length, 2)
+    b.impact(50, 50, 0, false, '#ffffff', '#ffffff')
+    b.drawAdditive(ctx, 0)
+    assert.equal(entries().length, 4)
+    a.clear()
+    assert.equal(entries().length, 4, 'normal retry keeps the small reusable cache')
+    a.dispose()
+    assert.equal(entries().length, 2)
+    assert.ok(entries().every(key => !onlyA.includes(key)))
+    const before = gameLedger.stats().acquired
+    b.drawAdditive(ctx, 0)
+    assert.equal(gameLedger.stats().acquired, before, 'other owner can still blit the warm plates')
+  } finally {
+    a.dispose()
+    b.dispose()
+    if (prev) Object.defineProperty(globalThis, 'document', prev)
+    else Reflect.deleteProperty(globalThis, 'document')
+  }
+  assert.equal(entries().length, 0)
+})
+
+
+test('typed spark and shockwave backing is bounded even under burst saturation', () => {
+  const fx = new FX()
+  fx.sparks(0, 0, 0, 1, 800, '#fff', 100, .14)
+  for (let i = 0; i < 24; i++) fx.shockwave(0, 0, 30, '#fff', .12)
+  const p = lists(fx, 'particles'), r = lists(fx, 'rings')
+  assert.equal(r.live.length, BRIDGE_SHOCKWAVE_LIMIT)
+  assert.equal(p.live.filter(p => 'type' in p && p.type === 'spark').length, BRIDGE_SPARK_LIMIT)
+  const sparks = new Set(p.live.filter(p => 'type' in p && p.type === 'spark'))
+  fx.update(1); assert.equal(p.live.length + r.live.length, 0)
+  fx.sparks(0, 0, 0, 1, 800, '#fff', 100, .14)
+  assert.ok(p.live.every(p => sparks.has(p)))
 })

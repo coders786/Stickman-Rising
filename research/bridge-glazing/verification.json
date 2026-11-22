@@ -1,0 +1,2692 @@
+{
+  "build": "2VxdRlnYfOeQSPeViWx3M",
+  "control": "N_lHn8gHuSyjeD_GfBcku",
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "atlas": {
+    "bytes": 269248,
+    "sha256": "18a9da1fcdfec3bdfa823463a74a01f6ab3678e6b22391839898cbfd9aef82c2",
+    "width": 896,
+    "height": 1440,
+    "byteIdenticalRebake": true
+  },
+  "composedStorefronts": {
+    "master": {
+      "path": "master-webgl2",
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "portrait": false,
+      "denyAtlas": false,
+      "denyWorker": false,
+      "slab": {
+        "error": 0,
+        "bytes": [
+          75,
+          91,
+          108,
+          255,
+          71,
+          78,
+          89,
+          255,
+          65,
+          62,
+          64,
+          255,
+          58,
+          46,
+          38,
+          255,
+          57,
+          42,
+          32,
+          255,
+          58,
+          46,
+          38,
+          255,
+          65,
+          62,
+          64,
+          255,
+          71,
+          78,
+          89,
+          255,
+          75,
+          91,
+          108,
+          255
+        ],
+        "width": 9,
+        "uv": 6500,
+        "distance": 550,
+        "room": [
+          128,
+          102,
+          76,
+          255
+        ],
+        "reflected": [
+          66,
+          99,
+          132,
+          255
+        ],
+        "reference": [
+          {
+            "angle": -79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          },
+          {
+            "angle": -75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": -69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": -52.70933308003392,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 0,
+            "r": 0.0797567520718008,
+            "t": 0.8953856282378037,
+            "rgb": [
+              57,
+              42,
+              32
+            ]
+          },
+          {
+            "angle": 52.709333080033936,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": 75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": 79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          }
+        ]
+      },
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              408,
+              261,
+              418,
+              173
+            ],
+            "changed": 46067,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 18,
+            "lightened": 12609,
+            "darkened": 6125,
+            "totalDelta": 267120,
+            "paneCounts": [
+              8722,
+              13782,
+              13649,
+              9914
+            ],
+            "any": 50078,
+            "allPanes": [
+              8979,
+              15058,
+              15065,
+              10976
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.09411764331161976,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 7641440,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 21935,
+              "sum": 130372,
+              "peak": 24
+            },
+            "opened": {
+              "count": 27484,
+              "sum": 929446,
+              "peak": 58
+            },
+            "storm": {
+              "count": 27484,
+              "sum": 215350,
+              "peak": 13
+            },
+            "hero": {
+              "count": 1250,
+              "sum": 14643,
+              "peak": 30
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null,
+            "seed": 42
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              409,
+              243,
+              359,
+              180
+            ],
+            "changed": 44874,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 53,
+            "lightened": 4700,
+            "darkened": 19893,
+            "totalDelta": 279507,
+            "paneCounts": [
+              10587,
+              12199,
+              13687,
+              8401
+            ],
+            "any": 48367,
+            "allPanes": [
+              10947,
+              12724,
+              14821,
+              9875
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.35064040683209896,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 7641440,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 23732,
+              "sum": 186222,
+              "peak": 79
+            },
+            "opened": {
+              "count": 29935,
+              "sum": 851965,
+              "peak": 60
+            },
+            "storm": {
+              "count": 29889,
+              "sum": 214683,
+              "peak": 14
+            },
+            "hero": {
+              "count": 1414,
+              "sum": 22592,
+              "peak": 36
+            },
+            "lamps": {
+              "count": 318,
+              "sum": 24985,
+              "peak": 130
+            },
+            "lampView": -112,
+            "seed": 42
+          },
+          "softwareBrowserTimings": [
+            {
+              "enabled": false,
+              "submitMs": 22,
+              "drainedMs": 22.100000008940697
+            },
+            {
+              "enabled": true,
+              "submitMs": 21.5,
+              "drainedMs": 21.5
+            },
+            {
+              "enabled": true,
+              "submitMs": 28.899999991059303,
+              "drainedMs": 29
+            },
+            {
+              "enabled": false,
+              "submitMs": 27.5,
+              "drainedMs": 27.799999997019768
+            },
+            {
+              "enabled": false,
+              "submitMs": 32.5,
+              "drainedMs": 32.900000005960464
+            },
+            {
+              "enabled": true,
+              "submitMs": 29.899999991059303,
+              "drainedMs": 30.5
+            },
+            {
+              "enabled": true,
+              "submitMs": 30.899999991059303,
+              "drainedMs": 31.5
+            },
+            {
+              "enabled": false,
+              "submitMs": 28.5,
+              "drainedMs": 29
+            }
+          ]
+        },
+        "catwalk": {
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0.02
+          },
+          "proof": {
+            "rect": [
+              499,
+              261,
+              332,
+              165
+            ],
+            "changed": 28725,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 473,
+            "peak": 35,
+            "lightened": 3332,
+            "darkened": 15719,
+            "totalDelta": 151574,
+            "paneCounts": [
+              7352,
+              7054,
+              8339,
+              5980
+            ],
+            "any": 36592,
+            "allPanes": [
+              9017,
+              9055,
+              9848,
+              8672
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 1,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.27313604950904846,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 7641440,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 23362,
+              "sum": 160589,
+              "peak": 34
+            },
+            "opened": {
+              "count": 28066,
+              "sum": 861202,
+              "peak": 58
+            },
+            "storm": {
+              "count": 27571,
+              "sum": 210828,
+              "peak": 14
+            },
+            "hero": {
+              "count": 1360,
+              "sum": 31756,
+              "peak": 36
+            },
+            "lamps": {
+              "count": 600,
+              "sum": 25975,
+              "peak": 70
+            },
+            "lampView": -112,
+            "seed": 42
+          }
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "portrait": false,
+      "denyAtlas": false,
+      "denyWorker": false,
+      "slab": {
+        "error": 0,
+        "bytes": [
+          76,
+          91,
+          109,
+          255,
+          71,
+          78,
+          89,
+          255,
+          64,
+          62,
+          63,
+          255,
+          59,
+          46,
+          39,
+          255,
+          57,
+          42,
+          32,
+          255,
+          59,
+          46,
+          39,
+          255,
+          64,
+          62,
+          63,
+          255,
+          71,
+          79,
+          89,
+          255,
+          75,
+          90,
+          108,
+          255
+        ],
+        "width": 9,
+        "uv": 6500,
+        "distance": 550,
+        "room": [
+          128,
+          102,
+          76,
+          255
+        ],
+        "reflected": [
+          66,
+          99,
+          132,
+          255
+        ],
+        "reference": [
+          {
+            "angle": -79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          },
+          {
+            "angle": -75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": -69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": -52.70933308003392,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 0,
+            "r": 0.0797567520718008,
+            "t": 0.8953856282378037,
+            "rgb": [
+              57,
+              42,
+              32
+            ]
+          },
+          {
+            "angle": 52.709333080033936,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": 75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": 79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          }
+        ]
+      },
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              324,
+              207,
+              339,
+              143
+            ],
+            "changed": 30906,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 21,
+            "lightened": 14406,
+            "darkened": 3889,
+            "totalDelta": 185379,
+            "paneCounts": [
+              5716,
+              9305,
+              9213,
+              6672
+            ],
+            "any": 31006,
+            "allPanes": [
+              5750,
+              9313,
+              9247,
+              6696
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.09411764331161976,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 21935,
+              "sum": 130372,
+              "peak": 24
+            },
+            "opened": {
+              "count": 27484,
+              "sum": 929446,
+              "peak": 58
+            },
+            "storm": {
+              "count": 27484,
+              "sum": 215350,
+              "peak": 13
+            },
+            "hero": {
+              "count": 1250,
+              "sum": 14643,
+              "peak": 30
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null,
+            "seed": 42
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              326,
+              193,
+              290,
+              147
+            ],
+            "changed": 30002,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 54,
+            "lightened": 5749,
+            "darkened": 12181,
+            "totalDelta": 188168,
+            "paneCounts": [
+              6892,
+              7923,
+              9167,
+              6020
+            ],
+            "any": 30276,
+            "allPanes": [
+              6940,
+              7994,
+              9254,
+              6088
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.35064040683209896,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 23732,
+              "sum": 186222,
+              "peak": 79
+            },
+            "opened": {
+              "count": 29935,
+              "sum": 851965,
+              "peak": 60
+            },
+            "storm": {
+              "count": 29889,
+              "sum": 214683,
+              "peak": 14
+            },
+            "hero": {
+              "count": 1414,
+              "sum": 22592,
+              "peak": 36
+            },
+            "lamps": {
+              "count": 318,
+              "sum": 24985,
+              "peak": 130
+            },
+            "lampView": -112,
+            "seed": 42
+          },
+          "softwareBrowserTimings": [
+            {
+              "enabled": false,
+              "submitMs": 17.899999991059303,
+              "drainedMs": 17.899999991059303
+            },
+            {
+              "enabled": true,
+              "submitMs": 17.30000001192093,
+              "drainedMs": 17.30000001192093
+            },
+            {
+              "enabled": true,
+              "submitMs": 34.5,
+              "drainedMs": 34.5
+            },
+            {
+              "enabled": false,
+              "submitMs": 16.900000005960464,
+              "drainedMs": 16.900000005960464
+            },
+            {
+              "enabled": false,
+              "submitMs": 18.099999994039536,
+              "drainedMs": 18.19999998807907
+            },
+            {
+              "enabled": true,
+              "submitMs": 16.400000005960464,
+              "drainedMs": 16.5
+            },
+            {
+              "enabled": true,
+              "submitMs": 16.600000008940697,
+              "drainedMs": 16.600000008940697
+            },
+            {
+              "enabled": false,
+              "submitMs": 15.899999991059303,
+              "drainedMs": 15.899999991059303
+            }
+          ]
+        },
+        "catwalk": {
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0.02
+          },
+          "proof": {
+            "rect": [
+              397,
+              207,
+              269,
+              136
+            ],
+            "changed": 20700,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 309,
+            "peak": 37,
+            "lightened": 3295,
+            "darkened": 9777,
+            "totalDelta": 109267,
+            "paneCounts": [
+              5187,
+              5083,
+              5784,
+              4646
+            ],
+            "any": 22177,
+            "allPanes": [
+              5479,
+              5521,
+              6143,
+              5034
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 1,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.27313604950904846,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 23362,
+              "sum": 160589,
+              "peak": 34
+            },
+            "opened": {
+              "count": 28066,
+              "sum": 861202,
+              "peak": 58
+            },
+            "storm": {
+              "count": 27571,
+              "sum": 210828,
+              "peak": 14
+            },
+            "hero": {
+              "count": 1360,
+              "sum": 31756,
+              "peak": 36
+            },
+            "lamps": {
+              "count": 600,
+              "sum": 25975,
+              "peak": 70
+            },
+            "lampView": -112,
+            "seed": 42
+          }
+        }
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "portrait": false,
+      "denyAtlas": false,
+      "denyWorker": false,
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              374,
+              240,
+              387,
+              160
+            ],
+            "changed": 36723,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 15,
+            "lightened": 3066,
+            "darkened": 7417,
+            "totalDelta": 181600,
+            "paneCounts": [
+              6926,
+              11502,
+              10506,
+              7789
+            ],
+            "any": 41493,
+            "allPanes": [
+              7403,
+              12601,
+              12444,
+              9045
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.09411764331161976,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 6309,
+              "sum": 28585,
+              "peak": 5
+            },
+            "opened": {
+              "count": 24577,
+              "sum": 112374,
+              "peak": 7
+            },
+            "storm": {
+              "count": 4109,
+              "sum": 28289,
+              "peak": 2
+            },
+            "hero": {
+              "count": 1085,
+              "sum": 5904,
+              "peak": 8
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null,
+            "seed": 42
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              376,
+              223,
+              331,
+              167
+            ],
+            "changed": 36884,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 21,
+            "lightened": 354,
+            "darkened": 21609,
+            "totalDelta": 330499,
+            "paneCounts": [
+              8435,
+              10052,
+              11339,
+              7058
+            ],
+            "any": 40147,
+            "allPanes": [
+              9076,
+              10574,
+              12327,
+              8170
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.35064040683209896,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 7342,
+              "sum": 32093,
+              "peak": 9
+            },
+            "opened": {
+              "count": 23625,
+              "sum": 95054,
+              "peak": 7
+            },
+            "storm": {
+              "count": 3766,
+              "sum": 27034,
+              "peak": 2
+            },
+            "hero": {
+              "count": 1135,
+              "sum": 7112,
+              "peak": 10
+            },
+            "lamps": {
+              "count": 246,
+              "sum": 2338,
+              "peak": 15
+            },
+            "lampView": -112,
+            "seed": 42
+          },
+          "softwareBrowserTimings": [
+            {
+              "enabled": false,
+              "submitMs": 1.8999999910593033,
+              "drainedMs": 1.8999999910593033
+            },
+            {
+              "enabled": true,
+              "submitMs": 2.4000000059604645,
+              "drainedMs": 2.4000000059604645
+            },
+            {
+              "enabled": true,
+              "submitMs": 2.0999999940395355,
+              "drainedMs": 2.0999999940395355
+            },
+            {
+              "enabled": false,
+              "submitMs": 0.9000000059604645,
+              "drainedMs": 0.9000000059604645
+            },
+            {
+              "enabled": false,
+              "submitMs": 0.9000000059604645,
+              "drainedMs": 0.9000000059604645
+            },
+            {
+              "enabled": true,
+              "submitMs": 1.8999999910593033,
+              "drainedMs": 1.8999999910593033
+            },
+            {
+              "enabled": true,
+              "submitMs": 1.9000000059604645,
+              "drainedMs": 1.9000000059604645
+            },
+            {
+              "enabled": false,
+              "submitMs": 1,
+              "drainedMs": 1
+            }
+          ]
+        },
+        "catwalk": {
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0.02
+          },
+          "proof": {
+            "rect": [
+              458,
+              239,
+              306,
+              153
+            ],
+            "changed": 21490,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 416,
+            "peak": 16,
+            "lightened": 1005,
+            "darkened": 14668,
+            "totalDelta": 140021,
+            "paneCounts": [
+              5753,
+              5249,
+              6217,
+              4271
+            ],
+            "any": 30544,
+            "allPanes": [
+              7428,
+              7610,
+              8288,
+              7218
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 1,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.27313604950904846,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 5517,
+              "sum": 22636,
+              "peak": 5
+            },
+            "opened": {
+              "count": 17203,
+              "sum": 73036,
+              "peak": 7
+            },
+            "storm": {
+              "count": 2794,
+              "sum": 19852,
+              "peak": 2
+            },
+            "hero": {
+              "count": 828,
+              "sum": 6402,
+              "peak": 9
+            },
+            "lamps": {
+              "count": 341,
+              "sum": 2184,
+              "peak": 9
+            },
+            "lampView": -112,
+            "seed": 42
+          }
+        }
+      }
+    },
+    "portrait": {
+      "path": "mobile-webgl2",
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "portrait": true,
+      "denyAtlas": false,
+      "denyWorker": false,
+      "slab": {
+        "error": 0,
+        "bytes": [
+          76,
+          91,
+          109,
+          255,
+          71,
+          78,
+          89,
+          255,
+          64,
+          62,
+          63,
+          255,
+          59,
+          46,
+          39,
+          255,
+          57,
+          42,
+          32,
+          255,
+          59,
+          46,
+          39,
+          255,
+          64,
+          62,
+          63,
+          255,
+          71,
+          79,
+          89,
+          255,
+          75,
+          90,
+          108,
+          255
+        ],
+        "width": 9,
+        "uv": 6500,
+        "distance": 550,
+        "room": [
+          128,
+          102,
+          76,
+          255
+        ],
+        "reflected": [
+          66,
+          99,
+          132,
+          255
+        ],
+        "reference": [
+          {
+            "angle": -79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          },
+          {
+            "angle": -75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": -69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": -52.70933308003392,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 0,
+            "r": 0.0797567520718008,
+            "t": 0.8953856282378037,
+            "rgb": [
+              57,
+              42,
+              32
+            ]
+          },
+          {
+            "angle": 52.709333080033936,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": 75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": 79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          }
+        ]
+      },
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -85,
+            "zoom": 1.5629629629629629,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              0,
+              248,
+              400,
+              190
+            ],
+            "changed": 52713,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 19,
+            "lightened": 18240,
+            "darkened": 8468,
+            "totalDelta": 282485,
+            "paneCounts": [
+              8546,
+              17958,
+              17442,
+              8767
+            ],
+            "any": 52909,
+            "allPanes": [
+              8584,
+              17985,
+              17550,
+              8790
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.09411764331161976,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 2844160,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 20775,
+              "sum": 115191,
+              "peak": 24
+            },
+            "opened": {
+              "count": 27484,
+              "sum": 839778,
+              "peak": 58
+            },
+            "storm": {
+              "count": 27484,
+              "sum": 195482,
+              "peak": 13
+            },
+            "hero": {
+              "count": 1187,
+              "sum": 15300,
+              "peak": 30
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null,
+            "seed": 42
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -85,
+            "zoom": 1.5629629629629629,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              0,
+              228,
+              368,
+              197
+            ],
+            "changed": 53505,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 51,
+            "lightened": 5647,
+            "darkened": 26456,
+            "totalDelta": 320870,
+            "paneCounts": [
+              10175,
+              14868,
+              17245,
+              11217
+            ],
+            "any": 54173,
+            "allPanes": [
+              10288,
+              14993,
+              17430,
+              11462
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.31619525514543056,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 2844160,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 19649,
+              "sum": 140428,
+              "peak": 81
+            },
+            "opened": {
+              "count": 29922,
+              "sum": 731369,
+              "peak": 57
+            },
+            "storm": {
+              "count": 29840,
+              "sum": 187104,
+              "peak": 14
+            },
+            "hero": {
+              "count": 1271,
+              "sum": 20241,
+              "peak": 33
+            },
+            "lamps": {
+              "count": 335,
+              "sum": 25711,
+              "peak": 132
+            },
+            "lampView": -85,
+            "seed": 42
+          }
+        }
+      }
+    },
+    "optimizedDeniedAtlas": {
+      "path": "mobile-webgl2",
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "portrait": false,
+      "denyAtlas": true,
+      "denyWorker": false,
+      "slab": {
+        "error": 0,
+        "bytes": [
+          76,
+          91,
+          109,
+          255,
+          71,
+          78,
+          89,
+          255,
+          64,
+          62,
+          63,
+          255,
+          59,
+          46,
+          39,
+          255,
+          57,
+          42,
+          32,
+          255,
+          59,
+          46,
+          39,
+          255,
+          64,
+          62,
+          63,
+          255,
+          71,
+          79,
+          89,
+          255,
+          75,
+          90,
+          108,
+          255
+        ],
+        "width": 9,
+        "uv": 6500,
+        "distance": 550,
+        "room": [
+          128,
+          102,
+          76,
+          255
+        ],
+        "reflected": [
+          66,
+          99,
+          132,
+          255
+        ],
+        "reference": [
+          {
+            "angle": -79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          },
+          {
+            "angle": -75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": -69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": -52.70933308003392,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 0,
+            "r": 0.0797567520718008,
+            "t": 0.8953856282378037,
+            "rgb": [
+              57,
+              42,
+              32
+            ]
+          },
+          {
+            "angle": 52.709333080033936,
+            "r": 0.11471531542461741,
+            "t": 0.8562078675149192,
+            "rgb": [
+              58,
+              46,
+              38
+            ]
+          },
+          {
+            "angle": 69.15470635246011,
+            "r": 0.2543509040240149,
+            "t": 0.7144222035935281,
+            "rgb": [
+              65,
+              62,
+              64
+            ]
+          },
+          {
+            "angle": 75.75653942645218,
+            "r": 0.3962908398699818,
+            "t": 0.5719700971890782,
+            "rgb": [
+              71,
+              78,
+              89
+            ]
+          },
+          {
+            "angle": 79.22076538618113,
+            "r": 0.5041226799241497,
+            "t": 0.4640872546051252,
+            "rgb": [
+              75,
+              91,
+              108
+            ]
+          }
+        ]
+      },
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              324,
+              207,
+              339,
+              143
+            ],
+            "changed": 28222,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 9,
+            "lightened": 2209,
+            "darkened": 16874,
+            "totalDelta": 141643,
+            "paneCounts": [
+              4994,
+              8845,
+              8508,
+              5875
+            ],
+            "any": 28878,
+            "allPanes": [
+              5044,
+              9017,
+              8678,
+              6139
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.09411764331161976,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 9399,
+              "sum": 87994,
+              "peak": 36
+            },
+            "opened": {
+              "count": 16978,
+              "sum": 455895,
+              "peak": 43
+            },
+            "storm": {
+              "count": 16639,
+              "sum": 95651,
+              "peak": 9
+            },
+            "hero": {
+              "count": 1246,
+              "sum": 11908,
+              "peak": 30
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null,
+            "seed": 42
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              326,
+              193,
+              290,
+              147
+            ],
+            "changed": 27035,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 56,
+            "lightened": 1436,
+            "darkened": 18814,
+            "totalDelta": 152486,
+            "paneCounts": [
+              6146,
+              7119,
+              8378,
+              5392
+            ],
+            "any": 27874,
+            "allPanes": [
+              6356,
+              7350,
+              8557,
+              5611
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.35064040683209896,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 10027,
+              "sum": 105883,
+              "peak": 80
+            },
+            "opened": {
+              "count": 18441,
+              "sum": 421493,
+              "peak": 43
+            },
+            "storm": {
+              "count": 18048,
+              "sum": 98069,
+              "peak": 10
+            },
+            "hero": {
+              "count": 1409,
+              "sum": 18633,
+              "peak": 32
+            },
+            "lamps": {
+              "count": 318,
+              "sum": 25118,
+              "peak": 130
+            },
+            "lampView": -112,
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0.02
+          },
+          "proof": {
+            "rect": [
+              397,
+              207,
+              269,
+              136
+            ],
+            "changed": 19985,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 309,
+            "peak": 37,
+            "lightened": 1511,
+            "darkened": 13938,
+            "totalDelta": 111373,
+            "paneCounts": [
+              4929,
+              4966,
+              5403,
+              4687
+            ],
+            "any": 20812,
+            "allPanes": [
+              5167,
+              5125,
+              5587,
+              4933
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 1,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.27313604950904846,
+            "fieldBytes": 143360
+          },
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "sourceUploadBytes": 4945280,
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 10846,
+              "sum": 112375,
+              "peak": 36
+            },
+            "opened": {
+              "count": 16871,
+              "sum": 416163,
+              "peak": 43
+            },
+            "storm": {
+              "count": 16244,
+              "sum": 96719,
+              "peak": 13
+            },
+            "hero": {
+              "count": 1346,
+              "sum": 19054,
+              "peak": 36
+            },
+            "lamps": {
+              "count": 600,
+              "sum": 26683,
+              "peak": 72
+            },
+            "lampView": -112,
+            "seed": 42
+          }
+        }
+      }
+    },
+    "canvasDeniedAtlasAndWorker": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "portrait": false,
+      "denyAtlas": true,
+      "denyWorker": true,
+      "windows": {
+        "metro": {
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              374,
+              240,
+              387,
+              160
+            ],
+            "changed": 24034,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 12,
+            "lightened": 0,
+            "darkened": 16852,
+            "totalDelta": 131247,
+            "paneCounts": [
+              4850,
+              7135,
+              8080,
+              3969
+            ],
+            "any": 41203,
+            "allPanes": [
+              7397,
+              12508,
+              12355,
+              8943
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 0,
+            "actors": 1,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.7559999823570251,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 7825,
+              "sum": 25475,
+              "peak": 5
+            },
+            "storm": {
+              "count": 2395,
+              "sum": 17082,
+              "peak": 2
+            },
+            "hero": {
+              "count": 1084,
+              "sum": 4992,
+              "peak": 8
+            },
+            "lamps": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "lampView": null
+          }
+        },
+        "market": {
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0
+          },
+          "proof": {
+            "rect": [
+              376,
+              223,
+              331,
+              167
+            ],
+            "changed": 29305,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 0,
+            "peak": 14,
+            "lightened": 306,
+            "darkened": 18248,
+            "totalDelta": 162631,
+            "paneCounts": [
+              6277,
+              7493,
+              9513,
+              6022
+            ],
+            "any": 39939,
+            "allPanes": [
+              9055,
+              10462,
+              12318,
+              8104
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.7559999823570251,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 7361,
+              "sum": 24916,
+              "peak": 9
+            },
+            "storm": {
+              "count": 1425,
+              "sum": 15655,
+              "peak": 2
+            },
+            "hero": {
+              "count": 1121,
+              "sum": 6733,
+              "peak": 9
+            },
+            "lamps": {
+              "count": 248,
+              "sum": 2382,
+              "peak": 15
+            },
+            "lampView": -112
+          }
+        },
+        "catwalk": {
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295,
+            "roll": 0.02
+          },
+          "proof": {
+            "rect": [
+              458,
+              239,
+              306,
+              153
+            ],
+            "changed": 15587,
+            "leak": 0,
+            "dividers": 0,
+            "occluder": 0,
+            "occluderWitness": 416,
+            "peak": 11,
+            "lightened": 517,
+            "darkened": 7838,
+            "totalDelta": 71551,
+            "paneCounts": [
+              4138,
+              3988,
+              3875,
+              3586
+            ],
+            "any": 30253,
+            "allPanes": [
+              7336,
+              7455,
+              8233,
+              7222
+            ]
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 1,
+            "sources": 2,
+            "actors": 1,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.7559999823570251,
+            "fieldBytes": 143360
+          },
+          "isolatedDeltas": {
+            "wetOnly": {
+              "count": 0,
+              "sum": 0,
+              "peak": 0
+            },
+            "pan": {
+              "count": 6300,
+              "sum": 21061,
+              "peak": 5
+            },
+            "storm": {
+              "count": 1147,
+              "sum": 11007,
+              "peak": 2
+            },
+            "hero": {
+              "count": 815,
+              "sum": 5002,
+              "peak": 9
+            },
+            "lamps": {
+              "count": 345,
+              "sum": 2198,
+              "peak": 9
+            },
+            "lampView": -112
+          }
+        }
+      }
+    }
+  },
+  "preservedVisuals": {
+    "master": {
+      "skyChangedPixels": {
+        "frozenPan": 0,
+        "afterWeatherClock": 5281
+      },
+      "roninRGBZeroCore": {
+        "metro": {
+          "head": {
+            "rect": [
+              620,
+              298,
+              627,
+              305
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              616,
+              343,
+              621,
+              348
+            ],
+            "pixels": 25,
+            "black": 25,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              585,
+              423,
+              588,
+              426
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              635,
+              422,
+              638,
+              425
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "strike": {
+          "head": {
+            "rect": [
+              556,
+              402,
+              563,
+              409
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              540,
+              440,
+              545,
+              445
+            ],
+            "pixels": 25,
+            "black": 23,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              506,
+              512,
+              509,
+              515
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              547,
+              513,
+              550,
+              516
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "optimized": {
+      "skyChangedPixels": {
+        "frozenPan": 0,
+        "afterWeatherClock": 1763
+      },
+      "roninRGBZeroCore": {
+        "metro": {
+          "head": {
+            "rect": [
+              620,
+              298,
+              627,
+              305
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              616,
+              343,
+              621,
+              348
+            ],
+            "pixels": 25,
+            "black": 25,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              585,
+              423,
+              588,
+              426
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              635,
+              422,
+              638,
+              425
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "strike": {
+          "head": {
+            "rect": [
+              556,
+              402,
+              563,
+              409
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              540,
+              440,
+              545,
+              445
+            ],
+            "pixels": 25,
+            "black": 24,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              506,
+              512,
+              509,
+              515
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              547,
+              513,
+              550,
+              516
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    },
+    "canvas": {
+      "skyChangedPixels": {
+        "frozenPan": 0,
+        "afterWeatherClock": 204298
+      },
+      "roninRGBZeroCore": {
+        "metro": {
+          "head": {
+            "rect": [
+              620,
+              298,
+              627,
+              305
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              616,
+              343,
+              621,
+              348
+            ],
+            "pixels": 25,
+            "black": 25,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              585,
+              423,
+              588,
+              426
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              635,
+              422,
+              638,
+              425
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "strike": {
+          "head": {
+            "rect": [
+              556,
+              402,
+              563,
+              409
+            ],
+            "pixels": 49,
+            "black": 49,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "torso": {
+            "rect": [
+              540,
+              440,
+              545,
+              445
+            ],
+            "pixels": 25,
+            "black": 25,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "leftShin": {
+            "rect": [
+              506,
+              512,
+              509,
+              515
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          },
+          "rightShin": {
+            "rect": [
+              547,
+              513,
+              550,
+              516
+            ],
+            "pixels": 9,
+            "black": 9,
+            "medianRgb": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    }
+  }
+}

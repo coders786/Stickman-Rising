@@ -1,0 +1,724 @@
+{
+  "build": "3ctXwCAlmbXOPGLYd_L1A",
+  "controlBuild": "U71WbVeKFjDbpEJQG7yEn",
+  "stage": {
+    "build": "3ctXwCAlmbXOPGLYd_L1A",
+    "port": 3001,
+    "sameStagedRoot": false,
+    "rootSha256": "e81704c1b7c1e94fc3c103854afea5cc3c1b9d09f09710143c1edd38ba030336",
+    "hostOriginAccepted": true,
+    "iframeHeadersClear": true,
+    "immutableLinks": 13,
+    "assets": {
+      "deck-pier.webp": {
+        "bytes": 4086,
+        "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+      },
+      "survey-mirror.webp": {
+        "bytes": 78020,
+        "sha256": "a9974ffa948666d99e42795f8a746aba53f7f2a9350a05b95fd3a8e6c7033a46"
+      },
+      "sky-basis-v4.rgba.br": {
+        "bytes": 394238,
+        "sha256": "deac3fa8d03d5927a595b1195b8cbdb5d7329ae88d6172c0b1822737ed5bac01"
+      }
+    },
+    "scoresApi": true
+  },
+  "live": {
+    "build": "3ctXwCAlmbXOPGLYd_L1A",
+    "port": 3000,
+    "sameStagedRoot": true,
+    "rootSha256": "e81704c1b7c1e94fc3c103854afea5cc3c1b9d09f09710143c1edd38ba030336",
+    "hostOriginAccepted": true,
+    "iframeHeadersClear": true,
+    "immutableLinks": 13,
+    "assets": {
+      "deck-pier.webp": {
+        "bytes": 4086,
+        "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+      },
+      "survey-mirror.webp": {
+        "bytes": 78020,
+        "sha256": "a9974ffa948666d99e42795f8a746aba53f7f2a9350a05b95fd3a8e6c7033a46"
+      },
+      "sky-basis-v4.rgba.br": {
+        "bytes": 394238,
+        "sha256": "deac3fa8d03d5927a595b1195b8cbdb5d7329ae88d6172c0b1822737ed5bac01"
+      }
+    },
+    "scoresApi": true
+  },
+  "bridgeTests": {
+    "pass": 210,
+    "total": 210
+  },
+  "fullSuite": {
+    "pass": 594,
+    "total": 599,
+    "inheritedFailures": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ]
+  },
+  "offlineShaderPrograms": 17,
+  "visualFixtures": {
+    "final-stream-master": true,
+    "final-stream-optimized": true,
+    "final-stream-denied": true,
+    "final-mirrors-master": true,
+    "final-mirrors-canvas": true,
+    "final-receivers-canvas": true,
+    "final-receivers-optimized": true,
+    "final-receivers-master": true,
+    "final-rail-canvas": true,
+    "final-rail-master": true,
+    "final-rail-touch": true,
+    "final-coverage-denied": true,
+    "final-coverage-gl": true,
+    "final-interlude-gl": true,
+    "final-interlude-touch": true,
+    "final-interlude-short": true,
+    "final-interlude-reduced": true,
+    "fallback-final": true,
+    "served-embed": true,
+    "served-interlude": true,
+    "served-desktop": true,
+    "served-touch": true
+  },
+  "rail": {
+    "rail-baseline": {
+      "path": "mobile-canvas",
+      "panWorld": 84,
+      "mastCssDelta": -21.56,
+      "deckCssJumpDelta": 28.93,
+      "railCssJumpDelta": 2.56,
+      "footingCssJumpDelta": 2.56,
+      "resourcesAfterTeardown": 0
+    },
+    "final-rail-canvas": {
+      "path": "mobile-canvas",
+      "panWorld": 84,
+      "mastCssDelta": -94.89,
+      "deckCssJumpDelta": 28.93,
+      "railCssJumpDelta": 28.93,
+      "footingCssJumpDelta": 28.93,
+      "resourcesAfterTeardown": 0
+    },
+    "final-rail-master": {
+      "path": "master-webgl2",
+      "panWorld": 84,
+      "mastCssDelta": -94.89,
+      "deckCssJumpDelta": 28.93,
+      "railCssJumpDelta": 28.93,
+      "footingCssJumpDelta": 28.93,
+      "resourcesAfterTeardown": 0
+    },
+    "final-rail-touch": {
+      "path": "mobile-webgl2",
+      "panWorld": 84,
+      "mastCssDelta": -131.29,
+      "deckCssJumpDelta": 40.03,
+      "railCssJumpDelta": 40.03,
+      "footingCssJumpDelta": 40.03,
+      "resourcesAfterTeardown": 0
+    }
+  },
+  "liveTransport": {
+    "master": {
+      "sameSeed": {
+        "previous": 6,
+        "active": 11,
+        "origin": -640,
+        "stale": 2,
+        "keptWorker": true
+      },
+      "swap": {
+        "id": 14,
+        "seed": 43,
+        "previousOrigin": 11072,
+        "origin": -640,
+        "visualBand": 1
+      },
+      "read": {
+        "shadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "expectedShadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "grid": [
+          [
+            46,
+            166,
+            24,
+            22
+          ],
+          [
+            46,
+            166,
+            24,
+            22
+          ]
+        ],
+        "levels": [
+          [
+            [
+              126,
+              45,
+              8
+            ],
+            [
+              126,
+              45,
+              8
+            ]
+          ],
+          [
+            [
+              122,
+              43,
+              7
+            ],
+            [
+              122,
+              43,
+              7
+            ]
+          ],
+          [
+            [
+              114,
+              40,
+              7
+            ],
+            [
+              114,
+              40,
+              7
+            ]
+          ]
+        ],
+        "maxError": 0,
+        "glError": 0
+      },
+      "fx": {
+        "base": 0.008051708241871423,
+        "blocked": 0.008051708241871423,
+        "open": 0.009063562543051582,
+        "samples": 56,
+        "maxLeak": 0,
+        "changed": 22,
+        "admitted": 1,
+        "traced": true,
+        "firstGain": 0.9444444444444444,
+        "decay": 0.34446975745269975,
+        "ended": 0,
+        "glError": 0
+      },
+      "recovery": {
+        "loss": "mobile-canvas",
+        "restored": "master-webgl2",
+        "seed": 43
+      }
+    },
+    "optimized": {
+      "sameSeed": {
+        "previous": 6,
+        "active": 11,
+        "origin": -512,
+        "stale": 2,
+        "keptWorker": true
+      },
+      "swap": {
+        "id": 14,
+        "seed": 43,
+        "previousOrigin": 11264,
+        "origin": -512,
+        "visualBand": 1
+      },
+      "read": {
+        "shadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "expectedShadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "grid": [
+          [
+            42,
+            146,
+            116,
+            42
+          ],
+          [
+            42,
+            146,
+            116,
+            42
+          ]
+        ],
+        "levels": [
+          [
+            [
+              126,
+              45,
+              8
+            ],
+            [
+              126,
+              45,
+              8
+            ]
+          ],
+          [
+            [
+              122,
+              43,
+              7
+            ],
+            [
+              122,
+              43,
+              7
+            ]
+          ],
+          [
+            [
+              114,
+              40,
+              7
+            ],
+            [
+              114,
+              40,
+              7
+            ]
+          ]
+        ],
+        "maxError": 0,
+        "glError": 0
+      },
+      "fx": {
+        "base": 0.007468683473389354,
+        "blocked": 0.007468683473389354,
+        "open": 0.008492450980392151,
+        "samples": 56,
+        "maxLeak": 0,
+        "changed": 34,
+        "admitted": 1,
+        "traced": true,
+        "firstGain": 0.9444444444444444,
+        "decay": 0.34446975745269975,
+        "ended": 0,
+        "glError": 0
+      },
+      "recovery": {
+        "loss": "mobile-canvas",
+        "restored": "mobile-webgl2",
+        "seed": 43
+      }
+    }
+  },
+  "bytes": {
+    "activeSceneryAndLoading": {
+      "prior": 739285,
+      "update": 589756
+    },
+    "publicBridgeIncludingUnchangedPackedTextures": {
+      "prior": 5628028,
+      "update": 3640157
+    },
+    "files": {
+      "l1.webp": {
+        "prior": 61546,
+        "update": 38162
+      },
+      "l2.webp": {
+        "prior": 85254,
+        "update": 49280
+      },
+      "metro-street.webp": {
+        "prior": 36002,
+        "update": 19810
+      },
+      "props-v2.webp": {
+        "prior": 5910,
+        "update": 5910
+      },
+      "stratum-a.webp": {
+        "prior": 246,
+        "update": 250
+      },
+      "survey-mirror.webp": {
+        "prior": 78492,
+        "update": 78020
+      },
+      "night-descent.webp": {
+        "prior": 81398,
+        "update": 0
+      },
+      "deck-pier.webp": {
+        "prior": 0,
+        "update": 4086
+      },
+      "sky-basis-v3.rgba.br": {
+        "prior": 390437,
+        "update": 0
+      },
+      "sky-basis-v4.rgba.br": {
+        "prior": 0,
+        "update": 394238
+      }
+    }
+  },
+  "artBake": {
+    "node": "v22.22.3",
+    "timings": [
+      {
+        "i": 0,
+        "webp": 3223,
+        "sky": 8614.1
+      },
+      {
+        "i": 1,
+        "webp": 1585.2,
+        "sky": 6822.9
+      },
+      {
+        "i": 1,
+        "webp": 1560.3,
+        "sky": 8376.7
+      },
+      {
+        "i": 0,
+        "webp": 3320.8,
+        "sky": 7175.4
+      },
+      {
+        "i": 0,
+        "webp": 3024.5,
+        "sky": 7954.3
+      },
+      {
+        "i": 1,
+        "webp": 1408.1,
+        "sky": 7434.6
+      }
+    ],
+    "identicalNonCityOpticalBytes": 1036288,
+    "decodedSkyBytes": 1169408,
+    "plates": {
+      "l1": {
+        "visibleMean": 1.533,
+        "alphaMismatches": 0,
+        "before": 61546,
+        "after": 38162
+      },
+      "l2": {
+        "visibleMean": 1.609,
+        "alphaMismatches": 0,
+        "before": 83026,
+        "after": 49280
+      },
+      "metro-street": {
+        "visibleMean": 0,
+        "alphaMismatches": 0,
+        "before": 20798,
+        "after": 19810
+      },
+      "props-v2": {
+        "visibleMean": 0,
+        "alphaMismatches": 0,
+        "before": 5910,
+        "after": 5910
+      },
+      "survey-mirror": {
+        "visibleMean": 0,
+        "alphaMismatches": 0,
+        "before": 77918,
+        "after": 78020
+      },
+      "stratum-a": {
+        "visibleMean": 0,
+        "alphaMismatches": 0,
+        "before": 246,
+        "after": 250
+      }
+    }
+  },
+  "opticalBake": {
+    "node": "v22.22.3",
+    "seed": 42,
+    "archive": {
+      "tiles": 24,
+      "raw": 12779520,
+      "packed": 3183740,
+      "sameBytes": true,
+      "copyElidedPerTile": 532480
+    },
+    "window": {
+      "rawBytes": 1593856,
+      "sha256": "12df416b1fac7b9f34c4b4ad074ac27f5ad43486461e26be937ff0521feec78e",
+      "sameBytes": true,
+      "revisitMatches": [
+        false,
+        true
+      ]
+    },
+    "before": {
+      "pack": [
+        71.8368760000003,
+        72.03317100000004,
+        67.57456699999966,
+        81.31322899999941,
+        67.1273229999988,
+        92.53141499999947,
+        70.05387899999914,
+        65.76087999999982,
+        63.9694240000008,
+        65.92401099999915
+      ],
+      "cold": [
+        61.25663800000075,
+        69.72413099999994,
+        61.44627700000001,
+        83.8881539999993,
+        63.9178490000013,
+        71.3057170000011,
+        63.517281999998886,
+        67.46321399999943,
+        67.60380199999963,
+        66.81761299999926
+      ],
+      "revisit": [
+        26.708784000000378,
+        26.0842219999995,
+        27.06454599999961,
+        26.88548400000036,
+        30.906944000000294,
+        33.396990999999616,
+        29.11630900000091,
+        26.289012000001094,
+        27.04735299999993,
+        26.98038599999927
+      ]
+    },
+    "after": {
+      "pack": [
+        61.9922030000007,
+        61.77865399999973,
+        60.992873000000145,
+        65.75043000000005,
+        64.53898200000003,
+        63.19600100000025,
+        62.121971999999005,
+        62.8524929999985,
+        66.61256199999843,
+        63.982975999999326
+      ],
+      "cold": [
+        70.69965400000001,
+        62.331820000000334,
+        68.6940110000005,
+        68.9112780000005,
+        65.4600219999993,
+        70.66508799999974,
+        65.16254800000024,
+        62.13864199999989,
+        81.1214,
+        67.1226170000009
+      ],
+      "revisit": [
+        25.729381999999532,
+        26.492747999999665,
+        27.81073800000013,
+        31.57124400000066,
+        40.616735999999946,
+        27.39365899999939,
+        26.345563999999285,
+        26.910498999999618,
+        26.403195999999298,
+        28.13028800000029
+      ]
+    },
+    "stats": [
+      {
+        "pack": {
+          "n": 10,
+          "p50": 67.575,
+          "p95": 92.531
+        },
+        "cold": {
+          "n": 10,
+          "p50": 66.818,
+          "p95": 83.888
+        },
+        "revisit": {
+          "n": 10,
+          "p50": 26.98,
+          "p95": 33.397
+        }
+      },
+      {
+        "pack": {
+          "n": 10,
+          "p50": 62.852,
+          "p95": 66.613
+        },
+        "cold": {
+          "n": 10,
+          "p50": 67.123,
+          "p95": 81.121
+        },
+        "revisit": {
+          "n": 10,
+          "p50": 26.91,
+          "p95": 40.617
+        }
+      }
+    ],
+    "checksum": 38254944
+  },
+  "underDeck": {
+    "before": {
+      "w": 984,
+      "h": 610,
+      "cam": {
+        "x": 3088,
+        "y": -108,
+        "zoom": 1.12,
+        "rot": 0
+      },
+      "art": true,
+      "a": {
+        "drawImage": 6,
+        "fillRect": 45,
+        "createLinearGradient": 0,
+        "beginPath": 0,
+        "stroke": 0,
+        "fill": 0
+      },
+      "b": {
+        "drawImage": 6,
+        "fillRect": 50,
+        "createLinearGradient": 0,
+        "beginPath": 0,
+        "stroke": 0,
+        "fill": 0
+      },
+      "changed": 1631
+    },
+    "after": {
+      "w": 984,
+      "h": 610,
+      "cam": {
+        "x": 3088,
+        "y": -108,
+        "zoom": 1.12,
+        "rot": 0
+      },
+      "art": true,
+      "a": {
+        "drawImage": 2,
+        "fillRect": 0,
+        "createLinearGradient": 0,
+        "beginPath": 0,
+        "stroke": 0,
+        "fill": 0
+      },
+      "b": {
+        "drawImage": 2,
+        "fillRect": 0,
+        "createLinearGradient": 0,
+        "beginPath": 0,
+        "stroke": 0,
+        "fill": 0
+      },
+      "changed": 0
+    }
+  },
+  "startup": {
+    "prior": {
+      "desktop": {
+        "ENGAGE": {
+          "submitMs": 58.7,
+          "richMs": 441,
+          "simMs": 290.8,
+          "jumpMs": 158.6
+        },
+        "RETRY": {
+          "submitMs": 22.7,
+          "richMs": 280.1,
+          "simMs": 223.5,
+          "jumpMs": 56
+        }
+      },
+      "touch": {
+        "ENGAGE": {
+          "submitMs": 63.5,
+          "richMs": 461.3,
+          "simMs": 268.7,
+          "jumpMs": 461.4
+        },
+        "RETRY": {
+          "submitMs": 34.3,
+          "richMs": 280.6,
+          "simMs": 232.1,
+          "jumpMs": 204.9
+        }
+      }
+    },
+    "update": {
+      "desktop": {
+        "ENGAGE": {
+          "submitMs": 62.6,
+          "richMs": 505.6,
+          "simMs": 300.3,
+          "jumpMs": 180.1
+        },
+        "RETRY": {
+          "submitMs": 41.5,
+          "richMs": 289,
+          "simMs": 246.4,
+          "jumpMs": 117.9
+        }
+      },
+      "touch": {
+        "ENGAGE": {
+          "submitMs": 84.7,
+          "richMs": 479.1,
+          "simMs": 288,
+          "jumpMs": 258.9
+        },
+        "RETRY": {
+          "submitMs": 52.7,
+          "richMs": 261.3,
+          "simMs": 244.3,
+          "jumpMs": 230.2
+        }
+      }
+    }
+  },
+  "caveats": [
+    "The loading tests delay a real submit only to inspect the cuts. No minimum delay in the app.",
+    "CPU-compositor/SwiftShader and emulated touch are not on-device FPS or physical scanout.",
+    "Startup gesture timings are local, at the bundled browser, not through the public proxy.",
+    "Legacy Metro warm torso fixture also fails on Night Crossing. Direct receivers use the current independent ablations."
+  ]
+}

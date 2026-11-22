@@ -1,0 +1,918 @@
+{
+  "release": "q5ow9bqkzdDkIGZu13tQ5",
+  "seededRun": 42,
+  "skyAtlas": {
+    "url": "/bridge/sky-basis-v2.bin",
+    "bytes": 1169408,
+    "sha256": "d8eb31892ab3a3624d566e85a3f074aa5ab2d4fe288ff972090e984ab0ffb36e"
+  },
+  "browserDriver": "SwiftShader (virtual adapter; no device frame-rate claim)",
+  "modes": {
+    "hdr": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "loads": [
+        200
+      ],
+      "path": "master-webgl2",
+      "view": [
+        820,
+        520
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.6354395151138306,
+          "moonTransmission": 0.967445594409197,
+          "centerTransmission": 0.9556553075128372,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.19714273512363434,
+          "moonTransmission": 0.3001464025582669,
+          "centerTransmission": 0.23878663553913965,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.19714273512363434,
+          "moonTransmission": 0.3001464025582669,
+          "centerTransmission": 0.23878663553913965,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.5219510793685913,
+          "moonTransmission": 0.7946614640716481,
+          "centerTransmission": 0.775923062392805,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.578387380875443,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979089961957,
+        "centerTransmission": 0.9823129271682507,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          266.5248100339437,
+          114.80966382125393
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 427.20000000000005,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 129.55555555555554,
+        "bottom": 139.55555555555554
+      },
+      "partial": {
+        "moonVis": 0.3339454233646393,
+        "moonTransmission": 0.5084261193138543,
+        "centerTransmission": 0.8447569423294475,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          266.5248100339437,
+          114.80966382125393
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 427.20000000000005,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 25.333333333333332,
+        "bottom": 139.40740740740742
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.0010299907987640381,
+        "centerTransmission": 0.0010296920716266092,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          266.5248100339437,
+          114.80966382125393
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 427.20000000000005,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 24,
+        "bottom": 16.62962962962963
+      },
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 17286
+      },
+      "driver": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "rgbError": 0.000025577843189239502,
+        "alphaError": 0.00020362326858558433,
+        "brightestMist": 0.689453125,
+        "fluxError": 0.0012287988828835195,
+        "returnError": 0,
+        "glError": 0
+      },
+      "submits": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    },
+    "optimized": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "loads": [
+        200
+      ],
+      "path": "mobile-webgl2",
+      "view": [
+        400,
+        844
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.6328850388526917,
+          "moonTransmission": 0.9635564484219838,
+          "centerTransmission": 0.9531910009597041,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.26609548926353455,
+          "moonTransmission": 0.4051257672261801,
+          "centerTransmission": 0.32676963866575476,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.26609548926353455,
+          "moonTransmission": 0.4051257672261801,
+          "centerTransmission": 0.32676963866575476,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.6129617094993591,
+          "moonTransmission": 0.9332235204089918,
+          "centerTransmission": 0.9018211087510184,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.5325250223254355,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979109768694,
+        "centerTransmission": 0.9823129291708182,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 176.14814814814815,
+        "bottom": 195.7037037037037
+      },
+      "partial": {
+        "moonVis": 0.33394110202789307,
+        "moonTransmission": 0.5084195413614955,
+        "centerTransmission": 0.8447385295143993,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 27.814814814814813,
+        "bottom": 195.7037037037037
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.001029990800840244,
+        "centerTransmission": 0.001029692073725765,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 27.814814814814813,
+        "bottom": 28.333333333333332
+      },
+      "fog": {
+        "dryCount": 6448,
+        "dryMax": 0,
+        "skyChanged": 51212
+      },
+      "driver": {
+        "size": [
+          96,
+          96
+        ],
+        "format": "RGBA8",
+        "rgbError": 0.0009630321725337954,
+        "alphaError": 0.0018630218536599963,
+        "brightestMist": 0.6431372549019608,
+        "fluxError": 0.0013442161169556766,
+        "returnError": 0,
+        "glError": 0
+      },
+      "submits": [
+        [
+          true,
+          true
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          false,
+          true
+        ]
+      ],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    },
+    "canvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "loads": [
+        200
+      ],
+      "path": "mobile-canvas",
+      "view": [
+        400,
+        844
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.6328850388526917,
+          "moonTransmission": 0.9635564484219838,
+          "centerTransmission": 0.9531910009597041,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.26609548926353455,
+          "moonTransmission": 0.4051257672261801,
+          "centerTransmission": 0.32676963866575476,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.26609548926353455,
+          "moonTransmission": 0.4051257672261801,
+          "centerTransmission": 0.32676963866575476,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.6129617094993591,
+          "moonTransmission": 0.9332235204089918,
+          "centerTransmission": 0.9018211087510184,
+          "phaseEnergy": 0.6568219364872221,
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.5325250223254355,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979109768694,
+        "centerTransmission": 0.9823129291708182,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 174.92592592592592,
+        "bottom": 197.33333333333334
+      },
+      "partial": {
+        "moonVis": 0.33394110202789307,
+        "moonTransmission": 0.5084195413614955,
+        "centerTransmission": 0.8447385295143993,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 31.333333333333332,
+        "bottom": 197.33333333333334
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.001029990800840244,
+        "centerTransmission": 0.001029692073725765,
+        "phaseEnergy": 0.6568219364872221,
+        "moonCss": [
+          124.36,
+          147.0475241777748
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 589.2,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 31.333333333333332,
+        "bottom": 32.81481481481482
+      },
+      "fog": {
+        "dryCount": 10074,
+        "dryMax": 0,
+        "skyChanged": 58775
+      },
+      "driver": null,
+      "submits": [],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    }
+  },
+  "missingAtlas": {
+    "denied": true,
+    "high": 62500,
+    "phase": 0.6568219364872221,
+    "teardown": 0
+  },
+  "settings": {
+    "portrait": {
+      "compact": {
+        "start": [
+          286,
+          40,
+          88,
+          44
+        ],
+        "end": [
+          286,
+          40,
+          88,
+          44
+        ],
+        "contentScrolls": true,
+        "scrollTop": 323,
+        "viewportScroll": 0,
+        "sliders": [
+          [
+            "Shake intensity",
+            "100%"
+          ],
+          [
+            "Sound effects volume",
+            "80%"
+          ],
+          [
+            "Music volume",
+            "55%"
+          ]
+        ]
+      },
+      "adaptive": {
+        "min": 0.75,
+        "final": 1.25,
+        "steps": [
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.15,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.05,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.95,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.85,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.75,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.85,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.95,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.05,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.15,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.25,
+            "shadow": "cast+props",
+            "stableHud": true
+          }
+        ],
+        "sameRun": true
+      },
+      "locked": {
+        "min": 1.25,
+        "final": 1.25,
+        "steps": [],
+        "sameRun": true
+      },
+      "renderer": "Last frame: Canvas 2D · 1.25× rendered",
+      "persisted": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true,
+        "volume": 0.4
+      }
+    },
+    "desktop": {
+      "compact": {
+        "start": [
+          1044.8125,
+          40,
+          88,
+          44
+        ],
+        "end": [
+          1044.8125,
+          40,
+          88,
+          44
+        ],
+        "contentScrolls": true,
+        "scrollTop": 281,
+        "viewportScroll": 0,
+        "sliders": [
+          [
+            "Shake intensity",
+            "100%"
+          ],
+          [
+            "Sound effects volume",
+            "80%"
+          ],
+          [
+            "Music volume",
+            "55%"
+          ]
+        ]
+      },
+      "adaptive": {
+        "min": 0.75,
+        "final": 1.25,
+        "steps": [
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.15,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.05,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.95,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.85,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.75,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.85,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 0.95,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.05,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.15,
+            "shadow": "cast+props",
+            "stableHud": true
+          },
+          {
+            "type": "quality",
+            "active": "ultra",
+            "scale": 1.25,
+            "shadow": "cast+props",
+            "stableHud": true
+          }
+        ],
+        "sameRun": true
+      },
+      "locked": {
+        "min": 1.25,
+        "final": 1.25,
+        "steps": [],
+        "sameRun": true
+      },
+      "renderer": "Last frame: Canvas 2D · 1.25× rendered",
+      "persisted": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true,
+        "volume": 0.5
+      }
+    }
+  },
+  "frames": {
+    "hdr-clear": {
+      "file": "hdr-clear.webp",
+      "width": 1025,
+      "height": 650,
+      "bytes": 36184,
+      "sha256": "6e708760a38ee0f6c11402f4a64128f3420a096f4edae2de931f7edde2d23b2e"
+    },
+    "hdr-broken-cloud": {
+      "file": "hdr-broken-cloud.webp",
+      "width": 1025,
+      "height": 650,
+      "bytes": 35648,
+      "sha256": "5964b9f1d951031b9ec5cc842c295a7aa08d3b7b1dbb765e7b652a88ba7fe58c"
+    },
+    "hdr-haze": {
+      "file": "hdr-haze.webp",
+      "width": 1025,
+      "height": 650,
+      "bytes": 36518,
+      "sha256": "5c40fbeaddaba172b52f82ca49e912ef122ca302b53226faa0e1a3bfa068e984"
+    },
+    "optimized-flash": {
+      "file": "optimized-flash.webp",
+      "width": 400,
+      "height": 844,
+      "bytes": 23362,
+      "sha256": "c9a71b04169ca32ed17ebfcd16a78bcc08fe4c12b79e785c9fb03432416c4164"
+    },
+    "canvas-haze": {
+      "file": "canvas-haze.webp",
+      "width": 500,
+      "height": 1055,
+      "bytes": 24004,
+      "sha256": "a4d8042f2e62073ec6fbc9fd1d55a959b93a5a541e2858bea60921cf46990553"
+    },
+    "canvas-missing-atlas": {
+      "file": "canvas-missing-atlas.webp",
+      "width": 500,
+      "height": 1055,
+      "bytes": 23182,
+      "sha256": "90e56cc3639135ab17b49fb31a99bc312877e5506d0eedbfb3ec894a8456bb32"
+    },
+    "portrait-presets": {
+      "file": "portrait-presets.webp",
+      "width": 800,
+      "height": 1688,
+      "bytes": 60244,
+      "sha256": "49a91ebd314fcb2408d4110185c975e89f06a27a1c1d7c44c522cd10753c4e79"
+    }
+  },
+  "regression": {
+    "productionBuild": "pass",
+    "focused": {
+      "pass": 179,
+      "total": 179
+    },
+    "full": {
+      "pass": 563,
+      "total": 568,
+      "inheritedCombatOrAnimationFailures": 5
+    },
+    "offlineES300Links": 17
+  }
+}

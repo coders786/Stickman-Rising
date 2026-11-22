@@ -1,3 +1,4 @@
+import { newRibbon, RIBBON_LIFETIME } from '../fx/ribbon'
 import { ROAD, floorTOI } from '../stage/road-section'
 import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_STILL,DASH_STAMINA_REGEN_SPRINT,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
 import {tractionAcceleration,contactVelocity,SUPPORT_GRAVITY,quadraticDragVelocity,airDragCoefficient} from '../physics/motion-laws'
@@ -25,12 +26,10 @@ import { SwordArcSolver } from '../anim/armarc'
 import { makePose, Pose, CH } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
 import { FighterGeom, drawFighter3D, FOCUS, ikArm3D, makeFighterGeom, solveFighter3D } from '../anim/rig3d'
-import { silhouette } from '../anim/humanoid'
 import { FootPlan, GaitPlanner, LegIKOut, PLAYER_GAIT, solveLegIK, toeFromPitch } from '../anim/legik'
 import { AnatomicalMotion } from '../anim/motion-constraints'
 import { applyJointLimits } from '../anim/limits'
 import { PaveState, applyPave, updatePaveSpin, type JumpStyle } from '../anim/pave'
-import type { SurfaceLight } from '../lighting/ribbons'
 import { smearPlan } from '../render/look'
 import { reflectOffSegment } from '../fx/lightning'
 import {
@@ -466,6 +465,10 @@ export class Player {
   readonly scale = SCALE
   x = 400
   y = 0
+  floorY = 0
+  private takeoffFloor = 0
+  private dropThroughT = 0
+  dashSequence = 0
   /** render interpolation: sim position one step ago (see Game.frame) */
   px = NaN
   py = NaN
@@ -475,6 +478,7 @@ export class Player {
   grounded = true
 
   hp = 100
+  shield = 0
   maxHp = 100
   energy = 100
   maxEnergy = 100
@@ -533,7 +537,7 @@ export class Player {
   private turnDir = 1
   /** POST-ATTACK MOMENTUM: the body preserves the last swing's rotational
    * momentum into locomotion (follow-through + recovery), decaying */
-  private emptyTrail:Trail={active:false,pts:new Float32Array(4),head:0,count:0,N:1,age:0,life:0,color:'#000',color2:'#000',width:0,emitting:false}
+  private emptyTrail = newRibbon(1)
   private postAttackT = 0
   private postArmVel = 0
   /** smoothed acceleration → anticipatory lean (previous-frame awareness) */
@@ -804,6 +808,9 @@ export class Player {
   reset(x: number): void {
     this.dashChargeT=0;this.dashChargeReady=false;this.dashChargeX=1;this.dashPower=false;this.dashPendingCharge=false;this.dashPendingJump=false;this.dashRecoverT=0;this.dashFinishT=0
     this.dashBody=null;this.dashDisplacement=null;this.dashMotionActive=false;this.dashBoostFxFired=false;this.dashSink=0;this.dashSkim=0;this.dashLift=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
+    for (const [i, n] of this.scarfSimNodes.entries()) {
+      n.x = n.ox = -4 * i; n.y = n.oy = -30 + i * 2.8
+    }
     this.motion.reset()
     this.x = x
     this.y = 0
@@ -820,6 +827,8 @@ export class Player {
     this.sprintExposure.reset()
     this.contextClip='';this.landingRecoveryT=0;this.landingImpact=0;this.landingLoad=landingLoad(0);this.landSpring=0;this.landSpringDecay=5;this.parryBraceT=0;this.stopEntrySpeed=0
     this.hp = this.maxHp
+    this.shield = 0
+    this.floorY = this.takeoffFloor = this.dropThroughT = this.dashSequence = 0
     this.energy = this.maxEnergy
     this.stamina = this.maxStamina;this.staminaRegenDelay=0
     this.meter = 0
@@ -885,7 +894,14 @@ export class Player {
     this.jumpStyle = 'standard'
     this.standstillT = 0
     this.isFlourishActive = false
-    this.playAnimation(IDLE_CLIP, { blend: 0.05 })
+    // Engage and Retry must be able to draw a fully posed fighter before
+    // opening input or advancing a simulation tick.
+    this.animator.reset(equipmentClip(IDLE_CLIP, false))
+    this.pose.set(this.animator.pose)
+    this.solvePose()
+    this.updateFootLock(0, true)
+    this.applyGroundIK(0)
+    this.animator.captureDisplayPose(this.pose)
   }
 
   setSword(id: SwordId, tier: 0 | 1 | 2 = 0): void {
@@ -1112,8 +1128,15 @@ export class Player {
 
     // ground
     const wasAir = !this.grounded
-    if (floorTOI(previousY,this.y) <= 1) {
-      this.y = ROAD.lane
+    const platform = w.platformAt?.(this.x)
+    this.dropThroughT = Math.max(0, this.dropThroughT - dt)
+    this.floorY = platform && this.dropThroughT === 0 && previousY <= platform.y + .01 ? platform.y : ROAD.lane
+    if (w.platformAt && this.y < this.takeoffFloor - 290) {
+      this.y = this.takeoffFloor - 290
+      this.vy = Math.max(0, this.vy)
+    }
+    if (floorTOI(previousY, this.y, this.floorY) <= 1) {
+      this.y = this.takeoffFloor = this.floorY
       if (this.vy > 140) {
         this.landSpring = clamp(this.vy / 700, 0, 1)
         if (wasAir) this.onLand(w)
@@ -1183,8 +1206,17 @@ export class Player {
     this.updatePose(dt, w)
     this.animator.captureDisplayPose(this.pose,dt)
     this.updateBladeWorld()
+    // The just-solved blade is the newest visible ribbon sample. Combat
+    // windows still use the authored sweep and are not retimed by FX.
+    const ribbon = this.action
+    if (this.swordDrawn && ribbon?.trail.emitting && !ribbon.def.strikeHand) {
+      if (ribbon.animT >= ribbon.def.trail.start && ribbon.animT <= ribbon.def.trail.end) {
+        const b = this.blade
+        w.fx.pushTrail(ribbon.trail, b.bx, b.by, b.tx, b.ty)
+      } else if (ribbon.animT > ribbon.def.trail.end) w.fx.endTrail(ribbon.trail)
+    }
     this.updateSwingScale(dt)
-    this.updateScarf(dt, w.time)
+    this.updateScarf(dt, w.time, w.bridgeWind?.(this.x, w.time))
   }
 
   /* ================================================================== */
@@ -1441,14 +1473,27 @@ export class Player {
     applyJointLimits(this.pose,(this.state==='dash'||(this.state==='attack'&&this.dashPower&&this.dashMotionActive&&this.action?.def.kind==='dash'))&&this.dashDx*this.face>.5?1.58:1.1)
 
     // ---- solve: project the pose; never write it back ----
-    solveFighter3D(
-      this.pose, PLAYER_SPEC, this.geom,
-      PLAYER_SPEC.blade * this.sword.stats.range * 1.06,
-      this.swingScale,
-    )
+    this.solvePose()
     this.applyDrawContact()
     this.updateFootLock(dt)         // weight: hips sit on the planted foot
     this.applyGroundIK(dt)          // leg IK: feet exactly where feet go
+  }
+
+  private solvePose(): void {
+    solveFighter3D(this.pose, PLAYER_SPEC, this.geom, PLAYER_SPEC.blade * this.sword.stats.range * 1.06, this.swingScale)
+  }
+
+  bridgeCastWeapon() {
+    const { grip, tip, hip } = this.geom
+    return this.swordDrawn ? [grip, tip] as const : [{ x: hip.x + 12, y: hip.y + 5 }, { x: hip.x - 63, y: hip.y + 25 }] as const
+  }
+
+  ribbonAnchor() {
+    const trail = this.action?.trail
+    if (!trail?.emitting || !trail.count || !this.swordDrawn) return undefined
+    const g = this.geom, direction = this.face * SCALE, y = this.hipY
+    return { trail, bx: this.x + direction * g.grip.x, by: y + SCALE * g.grip.y,
+      tx: this.x + direction * g.tip.x, ty: y + SCALE * g.tip.y }
   }
 
   private drawSocket(){
@@ -1493,9 +1538,11 @@ export class Player {
     this.landSpringDecay=this.landSpring/this.landingLoad.absorptionTime
     if(this.state==='move')this.landingRecoveryT=Math.abs(this.vx)>250?.08:this.landingImpact>700?.20:.12
     w.audio.play('land', { volume: .25+.4*this.landingLoad.pressure })
-    w.fx.dust(this.x, 0, Math.round(4+6*this.landingLoad.pressure))
+    w.fx.dust(this.x, this.floorY, Math.round(4+6*this.landingLoad.pressure))
+    w.wetFootfall?.(this.x, this.floorY, .4 + this.landingLoad.pressure * .6, this.vx, true)
     // re-seed the gait anchors under the landing position — the squash
     // parks both feet flat through the absorb, then stepping resumes
+    if (w.platformAt && (this.state === 'hurt' || this.landingImpact > 550)) this.vx *= this.state === 'hurt' ? .54 : .84
     this.gait.reseed(this.x, this.face)
     // slam impact while attacking
     const a = this.action
@@ -1995,6 +2042,13 @@ export class Player {
 
   private doJump(w: WorldRef): void {
     w.input.takeBuffered('jump')
+    if (this.grounded && this.floorY < 0 && w.input.axisY() > .5) {
+      this.dropThroughT = .25
+      this.grounded = false
+      this.vy = 90
+      this.jumpsUsed = 1
+      return
+    }
     this.jumpsUsed++
     const first = this.jumpsUsed === 1
     const wasGrounded = this.grounded
@@ -2014,7 +2068,7 @@ export class Player {
         this.playAnimation(JUMP_CLIP, { blend: 0.05 })
       }
       w.audio.play('jump', { volume: 0.4 })
-      w.fx.dust(this.x, 0, 4)
+      w.fx.dust(this.x, this.floorY, 4)
       // Two short shoe arcs expose takeoff direction without an energy aura.
       const dir=Math.sign(this.vx)||this.face
       w.fx.motionLine(this.x-dir*7,this.y-4,dir*.55,-.84,30,.14,'#777d79')
@@ -2372,7 +2426,7 @@ export class Player {
     this.dashHandoff = false
     // Entry preserves incoming momentum. The motor must earn a reversal.
     this.dashBody=new DashBody(cfg,this.vx,this.vy,dx,dy,this.grounded)
-    this.dashFinishT=0;this.dashMotionActive=true;this.dashBoostFxFired=false;this.dashSink=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
+    this.dashSequence++;this.dashFinishT=0;this.dashMotionActive=true;this.dashBoostFxFired=false;this.dashSink=0;this.dashWakeTimer=0;this.dashWakeCount=0;this.dashCatchFxFired=false
 
     // ---- clip + presentation per variant (entry blend is momentum-
     // matched: carry blends longer because the run already matches) ----
@@ -2655,7 +2709,7 @@ export class Player {
     if (a.trail.emitting) {
       a.trail.emitting = false
       a.trail.age = 0
-      a.trail.life = 0.22
+      a.trail.life = RIBBON_LIFETIME
     }
     this.action = null
   }
@@ -2674,6 +2728,7 @@ export class Player {
     // Preserve current motion through the shared inertial transition.
     // Empty-hand arm residuals clear before the damage window begins.
     const wasAttack = this.state === 'attack'
+    this.dropAction()
     // requirement checks
     if (def.requires === 'ground' && !this.grounded) def = ATTACKS.a1
     if (def.requires === 'air' && this.grounded) def = ATTACKS.l1
@@ -2736,8 +2791,8 @@ export class Player {
     if (def.id === 'powerSlash') this.armorT = 0.62
     if (def.id === 'powerPunch' || def.id === 'powerKick') this.armorT = 0.62
 
-    // Plain carbon steel never enters the additive energy-trail pool. Its
-    // motion is communicated by the physical blade and body choreography.
+    // Carbon steel uses the same pinned geometry, but a narrow neutral edge
+    // instead of the supernatural swords' broad luminous bands.
     const trail = def.strikeHand
       ? this.emptyTrail
       : this.sword.mundane
@@ -3097,13 +3152,6 @@ export class Player {
     if (!def.strikeHand && !a.overshootDone && animT > h.end && this.armVel !== 0) {
       a.overshootDone = true
       this.bladeLagVel += Math.sign(this.armVel) * 2.4
-    }
-
-    // trail emission
-    if (!def.strikeHand && animT >= def.trail.start && animT <= def.trail.end) {
-      w.fx.pushTrail(a.trail, this.blade.bx, this.blade.by, this.blade.tx, this.blade.ty)
-    } else if (animT > def.trail.end && a.trail.emitting) {
-      w.fx.endTrail(a.trail)
     }
 
     // Normal combo / parry / jump windows; dash cancels are handled before this update.
@@ -3490,6 +3538,13 @@ export class Player {
 
   takeDamage(w: WorldRef, dmg: number, dir: number, heavy: boolean): boolean {
     if (this.iframes > 0 || this.state === 'dash' || this.state === 'dead' || this.state === 'scripted') return false
+    if (this.shield > 0) {
+      const absorbed = Math.min(this.shield, dmg)
+      this.shield -= absorbed
+      dmg -= absorbed
+      w.fx.burst(this.x, this.y - 54, 6, '#9edafb', 150, .27, 'spark')
+      if (dmg <= 0) { this.iframes = .24; return true }
+    }
     // HYPER-ARMOR (charged release): the swing is uninterruptible — damage
     // bleeds at 35%, no knockback, no hurt state. The commitment reads as
     // power instead of a liability.
@@ -3868,6 +3923,7 @@ export class Player {
     // footfall feedback: a whisper of dust at real heel strikes (run+ only)
     if (this.gait.footfall && speed > 230) {
       w.fx.dust(this.gait.footfallX, 0, 2)
+      w.wetFootfall?.(this.gait.footfallX, this.floorY, .47 + Math.min(1, speed / 480) * .42, this.vx)
     }
   }
 
@@ -3893,7 +3949,7 @@ export class Player {
    *      neither stand on locked knees nor sink into a squat while
    *      locomoting. (Deep authored crouches — dash/land squats — go
    *      through the FK pin branch, which is untouched.) */
-  private updateFootLock(dt: number): void {
+  private updateFootLock(dt: number, snap = false): void {
     const g = this.geom
     const rootY = this.pose[CH.rootY]
     let target: number
@@ -3949,7 +4005,7 @@ export class Player {
     // critically-damped tracking (k=24): follows a 0.3s stride with ~2px
     // residual, and because the target itself is now bounded, the spring
     // can never be flung by a degenerate bound again
-    this.footLock = damp(this.footLock, target, 24, dt)
+    this.footLock = snap ? target : damp(this.footLock, target, 24, dt)
     if(this.grounded&&(this.state==='dash'||this.dashMotionActive||this.state==='dashCharge'||this.dashRecoverT>0||(this.state==='move'&&this.dashFinishT>0))){
       const hip=g.ankleL.y>g.ankleR.y?g.hipPtL:g.hipPtR
       // The support leg must be able to reach the floor during low drive.
@@ -3985,7 +4041,7 @@ export class Player {
       for (const [fp, hipPt, knee, ankle, toe] of legs) {
         // world target → local (facing) space
         const tx = (fp.x - this.x) / (this.face * SCALE)
-        const ty = (fp.y - this.hipY) / SCALE
+        const ty = (this.floorY + fp.y - this.hipY) / SCALE
         // Blend the TARGET, then solve. Blending solved knee positions
         // shortened the femur/shin during every gait transition.
         solveLegIK(hipPt.x, hipPt.y, ankle.x + (tx - ankle.x) * w,
@@ -3994,7 +4050,7 @@ export class Player {
         ankle.x = this.ikOut.ax; ankle.y = this.ikOut.ay
         toeFromPitch(ankle.x, ankle.y, fp.pitch, PLAYER_SPEC.foot, this.toeScratch)
         // the floor is solid: a plantarflexed toe-off toe never digs below it
-        const groundLy = (-1.2 - this.hipY) / SCALE
+        const groundLy = (this.floorY - 1.2 - this.hipY) / SCALE
         if (this.toeScratch.y > groundLy) this.toeScratch.y = groundLy
         toe.x += (this.toeScratch.x - toe.x) * w
         toe.y += (this.toeScratch.y - toe.y) * w
@@ -4021,14 +4077,14 @@ export class Player {
         const toeWy = this.hipY + SCALE * toe.y
         const extended = ankle.y > legLen * 0.52
         // capture band: sole within ~12px of the line, or already below it
-        const nearGround = ankleWy > -12 && toeWy < 6
+        const nearGround = ankleWy > this.floorY - 12 && toeWy < this.floorY + 6
         if ((extended && nearGround)||ankle===support||this.dashSkim>.05) {
           // snap: keep the authored stance x, pin the sole exactly
           // Stagger the two feet slightly during the power skim; both remain
           // close to the roof, but they do not move as one rigid shape.
           const skimWave=this.dashBody?Math.sin(this.dashBody.progress*Math.PI*3)*.13:0
           const skim=this.dashSkim*(1+(ankle===g.ankleL?skimWave:-skimWave))
-          const ty = (-Player.SOLE_W - skim - this.hipY) / SCALE
+          const ty = (this.floorY - Player.SOLE_W - skim - this.hipY) / SCALE
           const forced=ankle===support||this.dashSkim>.05
           const maxDx=Math.sqrt(Math.max(0,(legLen*.98)**2-(ty-hipPt.y)**2))
           const tx=forced?hipPt.x+clamp(ankle.x-hipPt.x,-maxDx,maxDx):ankle.x
@@ -4043,10 +4099,10 @@ export class Player {
           if (iw > 0.5&&this.dashSkim<.5) this.snapContacts.push(this.x + this.face * SCALE * ankle.x)
         } else {
           // floor clamp — the ground is solid: toes never render below it
-          const groundLy = (-1.2 - this.hipY) / SCALE
+          const groundLy = (this.floorY - 1.2 - this.hipY) / SCALE
           if (toe.y > groundLy) toe.y = groundLy
-          if (extended && ankle.y > (-Player.SOLE_W + 2 - this.hipY) / SCALE) {
-            ankle.y = (-Player.SOLE_W + 2 - this.hipY) / SCALE
+          if (extended && ankle.y > (this.floorY - Player.SOLE_W + 2 - this.hipY) / SCALE) {
+            ankle.y = (this.floorY - Player.SOLE_W + 2 - this.hipY) / SCALE
           }
         }
       }
@@ -4781,12 +4837,15 @@ export class Player {
 
   /* strobe rim strength — the lighting engine that drove it is gone in the
    * 120 fps strip; the field stays so rim tint code can reference it. */
-  strobeK = 0
   /** contact-AO anchors from the plant-snap pass (non-gait stances:
    * attacks, dashes, brake, land — filled each frame by applyGroundIK) */
   private snapContacts: number[] = []
 
-  private updateScarf(dt: number, time: number): void {
+  /** Read-only after the fixed-step cloth solve. The reflector uses the
+   * exact same local nodes as the fighter painter. */
+  bridgeScarfNodes(): ReadonlyArray<{ x: number; y: number }> { return this.scarfSimNodes }
+
+  private updateScarf(dt: number, time: number, gust = 0): void {
     const collarX = (this.geom.chest.x + this.geom.neckTop.x) * 0.5
     const collarY = (this.geom.chest.y + this.geom.neckTop.y) * 0.5
     const nodes = this.scarfSimNodes
@@ -4798,7 +4857,7 @@ export class Player {
     // Movement response in character-local space
     const relVx = -(this.vx / SCALE) * this.face
     const relVy = -(this.vy / SCALE)
-    const wind = Math.sin(time * 6.5) * 0.4
+    const wind = Math.sin(time * 6.5) * 0.4 + .37 * gust * this.face
 
     for (let i = 1; i < nodes.length; i++) {
       const n = nodes[i]
@@ -4936,7 +4995,7 @@ export class Player {
     ctx.restore()
   }
 
-  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false, light?: SurfaceLight, cloth?: string): void {
+  draw(ctx: CanvasRenderingContext2D, time: number, reflection=false, tailNodes = 0): void {
     if (this.state === 'dead' && this.deadT > 2.6) return
     const alpha = this.iframes > 0 && this.state !== 'scripted' && this.state !== 'dash'
       ? 0.55 + 0.25 * Math.sin(time * 40)
@@ -4944,6 +5003,7 @@ export class Player {
     ctx.save()
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * SCALE, SCALE)
+    let sayaAngle = 0
     // saya (scabbard) at the left hip, angled back-down through the obi like
     // a real katana — sized to sheathe the blade (blade 52): the iai
     // draw-cuts (l1 / riposte) pull the steel from exactly here.
@@ -4956,7 +5016,7 @@ export class Player {
       // as a floating rod whenever the fighter committed forward
       const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
       const detail=this.sheathAct?.mode==='draw'?this.drawSocket():null
-      const ang = detail?.ang??Math.min(0.24+pelvisPitch*.6+this.sayaLag,this.state==='dash'&&this.grounded?.5:2)
+      const ang = sayaAngle = detail?.ang??Math.min(0.24+pelvisPitch*.6+this.sayaLag,this.state==='dash'&&this.grounded?.5:2)
       const mouthX=detail?.x??hp.x+3,mouthY=detail?.y??hp.y+1
       const tipX = mouthX - Math.cos(ang) * sayLen
       const tipY = mouthY + Math.sin(ang) * sayLen
@@ -4969,7 +5029,7 @@ export class Player {
       ctx.lineTo(tipX, tipY)
       ctx.stroke()
       // rim highlight along the top edge — sells it as a scabbard
-      ctx.strokeStyle = this.sword.mundane ? '#55483d' : '#465a7a'
+      ctx.strokeStyle = this.sword.mundane ? '#64584b' : '#4a6376'
       ctx.lineWidth = this.sword.mundane ? .7 : 1.6
       ctx.beginPath()
       ctx.moveTo(mouthX-.6, mouthY-2.2)
@@ -4988,14 +5048,15 @@ export class Player {
       // bright tsuba at the mouth: two equal rings flipped the katana's
       // read at a glance (VLM: "the far back ring could be misread as the
       // pommel") — the forward hilt owns the bright metal.
-      ctx.fillStyle = this.sword.mundane ? '#27211c' : '#0d1219'
+      ctx.fillStyle = this.sword.mundane ? '#27211c' : '#27333e'
       ctx.beginPath()
-      ctx.arc(tipX, tipY, this.sword.mundane ? 1.65 : 3.1, 0, Math.PI * 2)
+      ctx.arc(tipX, tipY, this.sword.mundane ? 1.65 : 2.25, 0, Math.PI * 2)
       ctx.fill()
       if (!this.sword.mundane) {
-        ctx.strokeStyle = rgba(this.sword.colors.accent, 0.32)
+        ctx.strokeStyle = rgba(this.sword.colors.accent, 0.33)
+        ctx.lineWidth = .7
         ctx.beginPath()
-        ctx.arc(tipX, tipY, 3.1, 0, Math.PI * 2)
+        ctx.arc(tipX, tipY, 2.25, ang - Math.PI * .94, ang - Math.PI * .47)
         ctx.stroke()
       }
       // SHEATHED tsuka stub: moved to a FRONT pass (after the body) — the
@@ -5027,88 +5088,41 @@ export class Player {
         ctx.translate(-dirS * smS.dist * i * this.face / SCALE, 0)
         drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
           time, ghost: '#0b101c', ghostAlpha: smS.a * (1 - (i - 1) * 0.3), alpha: 1,
-          flipX: this.face, unit: SCALE,
         })
         ctx.restore()
       }
     }
     drawFighter3D(ctx, this.geom, PLAYER_STYLE, {
       time,
-      cloth,
       motionEnergy:Math.min(1,Math.abs(this.vx)/480),
       hands:this.sprintExposure.active?this.sprintExposure.hands:this.contextMotion.hands(handGestures(currentClip?.name??'idle',handPhase,this.swordDrawn||this.sheathW>.1),this.motionContext),
-      // MOONLIGHT RIM — the cool sky key carves the black ronin out of the
-      // night; lightning strobes lift it (strobeK rides the key light, set
-      // by the renderer each frame).
-      rimColor:'#a5d2f2',rimAlpha:0.85*(light?.keyGain ?? 1)+this.strobeK*0.15,
-      // LIGHT TRANSPORT — colored fill from practicals near the ronin
-      light,
-      flipX: this.face, unit: SCALE,
       alpha,
-      // Null-black face/body stays black through hurt and impact frames.
-      flash: 0, // null-black body; impacts remain in weapon/scene FX
-      flashColor: this.impactFlashT > this.flashT * 0.85 ? '#eafcff' : '#ff3b57',
-      // Shared renderer accepts weapon lighting; the matte surface ignores it.
-      edgeLight: {
-        color: this.sword.colors.glow,
-        // Rim = light cast by the swinging/glinting steel onto the body —
-        // a reflection, not a body aura.
-        a: clamp01(this.swingGlow * 0.55 + this.bladeChargeRatio * 0.35 + this.bladeZ * 0.25) * alpha,
-      },
-      scarfNodes: this.scarfSimNodes,
+      scarfNodes: tailNodes ? this.scarfSimNodes : undefined,
+      scarfCount: tailNodes,
     })
     // ---- SHEATHED TSUKA — FRONT PASS (the readable hilt): the grip
     // continues the saya axis out of the mouth, tsuba seated at the
     // opening, kashira cap at the far end where the resting fist welds
-    // (the sheath IK layer targets exactly that point). Brighter tones
-    // + accent rings than the saya body so the hilt READS against the
-    // dark scene and the black body — "hand resting on the sheathed
-    // katana" is the single most-held pose in the game; it cannot be a
-    // whisper-dark stroke.
+    // (the sheath IK layer targets exactly that point). Use faceted metal
+    // and one readable wrap rather than bright outline rings.
     if (!this.swordDrawn && !drawing) {
-      const hp = this.geom.hip
-      const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
-      const ang = Math.min(0.24+pelvisPitch*.6,this.state==='dash'&&this.grounded?.5:2)
-      const mx = hp.x + 3
-      const my = hp.y + 1
+      const hp = this.geom.hip, mx = hp.x + 3, my = hp.y + 1
+      // One axis through the lacquer mouth, guard, wrap and end cap.
+      // Edge-on metal catches a thin highlight rather than three bright
+      // circles that look like exposed pose rigging at preview scale.
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(-sayaAngle)
       const tl = PLAYER_SPEC.blade * 0.28
-      const kx = mx + Math.cos(ang) * tl
-      const ky = my - Math.sin(ang) * tl
-      // grip body
-      ctx.strokeStyle = '#1d2735'
-      ctx.lineWidth = 3.8
-      ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(mx, my)
-      ctx.lineTo(kx, ky)
+      ctx.fillStyle = '#201f23'; ctx.beginPath(); ctx.roundRect(-3, -1.85, tl + 4, 3.7, 1.25); ctx.fill()
+      ctx.fillStyle = '#596570'; ctx.fillRect(1.8, -1.47, tl - 2.7, .7)
+      ctx.strokeStyle = '#706962'; ctx.lineWidth = .74; ctx.beginPath()
+      for (let t = 3.5; t < tl - 1; t += 2.35) { ctx.moveTo(t - .6, 1.45); ctx.lineTo(t + .55, -1.35) }
       ctx.stroke()
-      // wrap glint along the top edge (ito wrap catching the key light)
-      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.8)
-      ctx.lineWidth = 1.4
-      ctx.beginPath()
-      ctx.moveTo(mx + Math.cos(ang) * 2.5, my - Math.sin(ang) * 2.5 - 1.4)
-      ctx.lineTo(kx - Math.cos(ang) * 1.5, ky - Math.sin(ang) * 1.5 - 1.4)
-      ctx.stroke()
-      // kashira (pommel cap) — the fist welds HERE
-      ctx.fillStyle = '#2a3949'
-      ctx.beginPath()
-      ctx.arc(kx, ky, 2.6, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.85)
-      ctx.lineWidth = 1.1
-      ctx.beginPath()
-      ctx.arc(kx, ky, 2.6, 0, Math.PI * 2)
-      ctx.stroke()
-      // tsuba (guard) seated at the mouth
-      ctx.fillStyle = '#3b5069'
-      ctx.beginPath()
-      ctx.arc(mx, my, 3.1, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.strokeStyle = rgba(this.sword.colors.accent, 0.8)
-      ctx.lineWidth = 1.3
-      ctx.beginPath()
-      ctx.arc(mx, my, 3.1, 0, Math.PI * 2)
-      ctx.stroke()
+      ctx.fillStyle = '#404d56'; ctx.fillRect(tl - 1, -1.9, 2.2, 3.8)
+      ctx.fillStyle = '#71818a'; ctx.fillRect(tl + .5, -1.55, .65, 2.7)
+      ctx.fillStyle = '#2f3841'; ctx.beginPath(); ctx.ellipse(0, 0, 1.5, 3.5, 0, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = '#a29d8d'; ctx.lineWidth = .7; ctx.beginPath()
+      ctx.moveTo(.5, -2.9); ctx.quadraticCurveTo(1.55, -1.7, 1.42, .35); ctx.stroke()
+      ctx.restore()
     }
     // THE 3D BLADE: projected metrics from the rig — grip, projected angle
     // (after yaw + perspective), projected length, tip depth. Visual blade
@@ -5155,8 +5169,8 @@ export class Player {
       // Fingers wrap in FRONT of the tsuka. Rendering steel over the palm
       // made a correctly positioned grip look like a floating sword.
       if(d.grip>.95){
-        ctx.save();ctx.translate(g.handR.x,g.handR.y)
-        ctx.rotate(Math.atan2(g.handR.y-g.elbR.y,g.handR.x-g.elbR.x))
+        const angle=Math.atan2(g.handR.y-g.elbR.y,g.handR.x-g.elbR.x)
+        ctx.save();ctx.translate(g.handR.x,g.handR.y);ctx.rotate(angle)
         drawArticulatedHand(ctx,'#000000',d.rightOpen);ctx.restore()
       }
     }
@@ -5230,12 +5244,17 @@ export class Player {
       const r = 72 + lightI * 74 + this.bladeZ * 30
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
-      const grad = ctx.createRadialGradient(mx, my, 6, mx, my, r)
-      grad.addColorStop(0, rgba(this.sword.colors.glow, 0.16 * lightI))
-      grad.addColorStop(0.55, rgba(this.sword.colors.trail, 0.07 * lightI))
-      grad.addColorStop(1, rgba(this.sword.colors.trail, 0))
-      ctx.fillStyle = grad
-      ctx.fillRect(mx - r, my - r, r * 2, r * 2)
+      // Soft, bounded glow from nested translucent discs. The active blade
+      // light is also carried by the shared world-light packet; do not allocate
+      // a CanvasGradient on every sword-draw frame.
+      ctx.fillStyle = this.sword.colors.trail
+      ctx.globalAlpha = .018 * lightI
+      ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.fill()
+      ctx.globalAlpha = .034 * lightI
+      ctx.beginPath(); ctx.arc(mx, my, r * .58, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = this.sword.colors.glow
+      ctx.globalAlpha = .052 * lightI
+      ctx.beginPath(); ctx.arc(mx, my, Math.max(6, r * .24), 0, Math.PI * 2); ctx.fill()
       ctx.restore()
     }
 

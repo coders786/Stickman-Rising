@@ -1,3 +1,4 @@
+import type { BridgeRoute } from '../stage/route'
 /** STICKMAN RISING — src/game/world/props.ts
  * PROCEDURAL, DESTRUCTIBLE, PURPOSEFUL STAGE PROPS
  * ----------------------------------------------------------------------------
@@ -17,8 +18,8 @@
  *       shock    → chain-lightning stun on every nearby enemy
  *       smoke    → marks nearby enemies VULNERABLE (double damage) + stuns
  *       supply   → score + a live combo hit (multiplier)
- *   · sprites are made ONLY from code: one compact draw routine per template,
- *     no pixel art, no assets, no external image files.
+ *   · sprites are authored in code. Bridge ships those cells in a lossless
+ *     atlas; finite stages and asset denial can draw the same templates.
  *   · reflections are the cheap hardware technique: a vertically FLIPPED
  *     copy of the sprite with a baked vertical alpha fade, composited INTO the
  *     same canvas. One drawImage per visible prop — no live mirror, no shader,
@@ -32,8 +33,14 @@ import type { AttackRuntimeInfo } from '../combat/attacks'
 import type { Player } from '../entities/player'
 import { MOOD_PALETTES, type MoodPalette } from './mood'
 import { rgbaConst } from '../render/color'
-import { SurfaceGen } from '../render/ledger'
+import { hasPixels, SurfaceScope, type SurfaceGen } from '../render/ledger'
+import { newReceiverLight } from '../../graphics/sacr/SACRLocalLight'
+import { newFixtureLobes, localLightBrush } from '../lighting/receiver'
+import type { BridgeFrame } from '../render/bridge-frame'
 import { silhouetteMatrix } from '../render/shadows'
+import { bridgePlate } from '../stage/bridge-webp'
+import { BRIDGE_PROP_H, BRIDGE_PROP_W, PROP_CELL, hitsRouteProp, paintRoutePropBody, paintRoutePropDamage,
+  propCellX, propVariant, routePropShape, traceRouteProp } from '../stage/bridge-prop-art'
 
 export type PropKind = 'fuel' | 'med' | 'steam' | 'shock' | 'smoke' | 'supply'
 
@@ -77,6 +84,7 @@ const PR = 38
 export interface StageProp {
   id: number
   kind: PropKind
+  variant?: number // seed-owned Bridge socket; finite props keep their old kit
   x: number
   hp: number
   dead: boolean
@@ -98,6 +106,10 @@ const CAP_LATE = 3
 const CAP_RAMP_AT = 50                       // seconds
 const GAP_PROP = 240                         // min world gap between props
 const GAP_PLAYER = 220                       // never spawn on top of the player
+/** Bounded deterministic candidate sampling; fallback placement is unconditional. */
+export const PROP_SPAWN_SEARCH_LIMIT = 8
+/** Maximum concurrent ambient props across the densest authored profile. */
+export const PROP_POOL_LIMIT = 6
 const X_MIN = 140, X_MAX = 2700
 const DOOR_CLEAR = 170, LAMP_CLEAR = 110
 const WEIGHT: Record<PropKind, number> = {
@@ -117,78 +129,31 @@ function rng32(seed: number): () => number {
   }
 }
 
-/** The sprites are permanent for the session (one per kind per palette), so they
- *  are PINNED: accounted in the ledger's bytes, never chosen by the LRU sweep. */
-const propGen = new SurfaceGen('prop:')
-/** Composites that exist for the duration of one bake — the flipped reflection
- *  strip, the shadow plate. These are `acquire`d unpinned and released the
- *  moment the sprite that needed them is finished. */
-const scratchGen = new SurfaceGen('propscratch:')
-
-function canvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
-  return propGen.next(w, h, 'prop')
-}
-
-function scratch(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
-  return scratchGen.next(w, h, 'scratch')
-}
-
 /* ------------------------- code-generated sprites ------------------------ */
 
-/** ONE template = one sprite. Common 3D bake (shadow face, moon rim, contact
- *  AO, emissive halo, label) + ~8 lines of kind-specific silhouette. */
-/** The SILHOUETTE of a prop — the same art with every pixel turned black, alpha
- *  preserved. Cheap to derive at bake time (`source-in` over the finished
- *  sprite), and it is what lets a prop cast its actual outline instead of a
- *  generic blob. Stored beside the sprite; released with the same generation. */
-function silhouetteOf(src: HTMLCanvasElement): HTMLCanvasElement {
-  const { c, g } = propGen.next(src.width, src.height, 'silhouette')
+/** Baked mask of the physical body only. Labels, ground rings and emissive
+ * halos are not occluders. The fade is authored in height so it follows the
+ * tip of the shadow under any directional shear. */
+function silhouetteOf(src: HTMLCanvasElement, propGen: SurfaceGen): HTMLCanvasElement {
+  const { c, g } = propGen.next(PW, PH, 'silhouette')
   g.drawImage(src, 0, 0)
+  g.fillStyle = '#03060a'
+  g.fillRect(PW * .5 - 26, PH - 12, 52, 12)
   g.globalCompositeOperation = 'source-in'
-  g.fillStyle = '#000'
-  g.fillRect(0, 0, c.width, c.height)
+  const ramp = g.createLinearGradient(0, PH, 0, 0)
+  ramp.addColorStop(0, '#03060a')
+  ramp.addColorStop(.4, 'rgba(3,6,10,.69)')
+  ramp.addColorStop(1, 'rgba(3,6,10,.08)')
+  g.fillStyle = ramp
+  g.fillRect(0, 0, PW, PH)
   g.globalCompositeOperation = 'source-over'
   return c
 }
 
-function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
-  // One generation of scratch per bake: the previous sprite's composites are
-  // released before this one starts (they are pure intermediate results).
-  scratchGen.begin();
-  const d = PROP_DEFS[kind]
-  const { c, g } = canvas(PW, PH + PR)
-  const mid = PW * 0.5
-
-  // ground contact + plinth (baked AO, world y=0 is the bottom of PH)
-  g.fillStyle = 'rgba(0,0,0,0.42)'
-  g.beginPath(); g.ellipse(mid, PH - 2, 27, 5, 0, 0, Math.PI * 2); g.fill()
-  g.fillStyle = '#080d12'
-  g.fillRect(mid - 26, PH - 12, 52, 10)
-  g.fillStyle = `rgba(${d.glow},0.5)`
-  g.fillRect(mid - 26, PH - 12, 52, 1.4)
-
-  // ISOLATION HALO — one big saturated pool of colour behind the object:
-  // the single most attention-grabbing cue in the frame (peak shift).
-  const hg = g.createRadialGradient(mid, PH - 44, 2, mid, PH - 44, 52)
-  hg.addColorStop(0, `rgba(${d.glow},0.34)`)
-  hg.addColorStop(0.55, `rgba(${pal.pop},0.13)`)
-  hg.addColorStop(1, `rgba(${pal.pop},0)`)
-  g.fillStyle = hg
-  g.fillRect(0, PH - 96, PW, 98)
-  // COMIC BURST — exaggerated rays (supernormal energy, teen register)
-  g.strokeStyle = `rgba(${pal.pop2},0.22)`
-  g.lineWidth = 2
-  for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI) / 4 + 0.2
-    const r0 = 30, r1 = 41 + (i % 2) * 7
-    g.beginPath()
-    g.moveTo(mid + Math.cos(a) * r0, PH - 44 + Math.sin(a) * r0)
-    g.lineTo(mid + Math.cos(a) * r1, PH - 44 + Math.sin(a) * r1)
-    g.stroke()
-  }
-
+function paintPropBody(g: CanvasRenderingContext2D, kind: PropKind, muted: boolean): void {
+  const d = muted ? { body: '#262b2f', accent: '#989181', glow: '121,119,110' } : PROP_DEFS[kind]
   g.save()
-  g.translate(mid, PH - 10)
+  g.translate(PW * .5, PH - 10)
   switch (kind) {
     case 'fuel': {                              // ribbed fuel drum + hazard band
       g.fillStyle = d.body
@@ -202,7 +167,7 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
       g.fillRect(-22, -12, 44, 4)
       g.fillStyle = d.accent
       for (let i = 0; i < 3; i++) g.fillRect(-21, -52 + i * 18, 42, 3)
-      g.fillStyle = 'rgba(255,206,120,0.75)'
+      g.fillStyle = muted ? '#c2af89' : 'rgba(255,206,120,0.75)'
       g.font = 'bold 15px ui-monospace,monospace'
       g.fillText('!', -5, -30)
       break
@@ -210,7 +175,7 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
     case 'med': {                              // white field crate + green cross
       g.fillStyle = d.body
       g.fillRect(-24, -60, 48, 52)
-      g.fillStyle = '#d8eae4'
+      g.fillStyle = muted ? '#a3aca9' : '#d8eae4'
       g.fillRect(-20, -56, 40, 44)
       g.fillStyle = 'rgba(0,0,0,0.22)'
       g.fillRect(-20, -56, 7, 44)
@@ -295,54 +260,99 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
     }
   }
   g.restore()
+}
 
-  // BOLD CONTOUR + STICKER TAG — light figure on dark ground (highest
-  // preference in colour-combination research) plus a rotated accent chip
-  // gives the prop a collectible/sticker quality without any asset art.
-  g.strokeStyle = `rgba(${pal.pop},0.5)`
-  g.lineWidth = 2
-  g.beginPath(); g.ellipse(mid, PH - 2, 33, 7, 0, 0, Math.PI * 2); g.stroke()
-  g.save()
-  g.translate(mid + 22, PH - 80)
-  g.rotate(0.22)
-  g.fillStyle = '#05090e'
-  g.fillRect(-9, -7, 18, 14)
-  g.fillStyle = `rgba(${pal.pop2},0.9)`
-  g.fillRect(-7, -5, 14, 10)
-  g.fillStyle = '#05090e'
-  g.beginPath(); g.arc(0, 0, 2.4, 0, Math.PI * 2); g.fill()
-  g.restore()
+function makeSprite(kind: PropKind, pal: MoodPalette, propGen: SurfaceGen, scratchGen: SurfaceGen,
+  mirrors: boolean, noir: boolean, finishBody?: (g: CanvasRenderingContext2D) => void): {
+  sprite: HTMLCanvasElement; mask: HTMLCanvasElement
+} {
+  const d = PROP_DEFS[kind]
+  const { c, g } = propGen.next(PW, mirrors ? PH + PR : PH, 'prop')
+  const mid = PW * 0.5
 
-  // baked directional 3D key over the whole body: lit upper-right, shadowed
-  // lower-left — the same moon as the city bands, so props sit IN the scene
-  const key = g.createLinearGradient(PW, 0, 0, PH)
-  key.addColorStop(0, 'rgba(190,220,248,0.10)')
-  key.addColorStop(0.55, 'rgba(0,0,0,0)')
-  key.addColorStop(1, 'rgba(0,0,0,0.22)')
-  g.fillStyle = key
-  g.fillRect(0, 0, PW, PH)
+  // ground contact + plinth (baked AO, world y=0 is the bottom of PH)
+  g.fillStyle = 'rgba(0,0,0,0.42)'
+  g.beginPath(); g.ellipse(mid, PH - 2, 27, 5, 0, 0, Math.PI * 2); g.fill()
+  g.fillStyle = '#080d12'
+  g.fillRect(mid - 26, PH - 12, 52, 10)
+  g.fillStyle = noir ? '#46443d' : `rgba(${d.glow},0.5)`
+  g.fillRect(mid - 26, PH - 12, 52, 1.4)
+
+  if (!noir) {
+    // Legacy arena identification halo, not in the active bridge.
+    const hg = g.createRadialGradient(mid, PH - 44, 2, mid, PH - 44, 52)
+    hg.addColorStop(0, `rgba(${d.glow},0.34)`)
+    hg.addColorStop(0.55, `rgba(${pal.pop},0.13)`)
+    hg.addColorStop(1, `rgba(${pal.pop},0)`)
+    g.fillStyle = hg
+    g.fillRect(0, PH - 96, PW, 98)
+    g.strokeStyle = `rgba(${pal.pop2},0.22)`
+    g.lineWidth = 2
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4 + 0.2
+      g.beginPath()
+      g.moveTo(mid + Math.cos(a) * 30, PH - 44 + Math.sin(a) * 30)
+      g.lineTo(mid + Math.cos(a) * (41 + (i % 2) * 7), PH - 44 + Math.sin(a) * (41 + (i % 2) * 7))
+      g.stroke()
+    }
+  }
+
+  const body = scratchGen.next(PW, PH, 'prop-scratch')
+  paintPropBody(body.g, kind, noir && !finishBody)
+  finishBody?.(body.g)
+  g.drawImage(body.c, 0, 0)
+  const mask = silhouetteOf(body.c, propGen)
+
+  if (!noir) {
+    // BOLD CONTOUR + STICKER TAG — light figure on dark ground (highest
+    // preference in colour-combination research) plus a rotated accent chip
+    // gives the prop a collectible/sticker quality without any asset art.
+    g.strokeStyle = `rgba(${pal.pop},0.5)`
+    g.lineWidth = 2
+    g.beginPath(); g.ellipse(mid, PH - 2, 33, 7, 0, 0, Math.PI * 2); g.stroke()
+    g.save()
+    g.translate(mid + 22, PH - 80)
+    g.rotate(0.22)
+    g.fillStyle = '#05090e'
+    g.fillRect(-9, -7, 18, 14)
+    g.fillStyle = `rgba(${pal.pop2},0.9)`
+    g.fillRect(-7, -5, 14, 10)
+    g.fillStyle = '#05090e'
+    g.beginPath(); g.arc(0, 0, 2.4, 0, Math.PI * 2); g.fill()
+    g.restore()
+
+
+    // baked directional 3D key over the whole body: lit upper-right, shadowed
+    // lower-left — the same moon as the city bands, so props sit IN the scene
+    const key = g.createLinearGradient(PW, 0, 0, PH)
+    key.addColorStop(0, 'rgba(190,220,248,0.10)')
+    key.addColorStop(0.55, 'rgba(0,0,0,0)')
+    key.addColorStop(1, 'rgba(0,0,0,0.22)')
+    g.fillStyle = key
+    g.fillRect(0, 0, PW, PH)
+
+  }
 
   // PURPOSE PLATE — the player must know what breaking this prop DOES.
   // Baked text, one tiny plate, zero runtime text layout cost.
   g.textAlign = 'center'
   g.fillStyle = 'rgba(2,5,9,0.94)'
   g.fillRect(mid - 29, PH - 88, 58, 16)
-  g.strokeStyle = `rgba(${pal.pop},0.75)`
+  g.strokeStyle = noir ? '#585147' : `rgba(${pal.pop},0.75)`
   g.lineWidth = 1.2
   g.strokeRect(mid - 29, PH - 88, 58, 16)
-  g.fillStyle = `rgba(${d.glow},0.85)`
+  g.fillStyle = noir ? '#6c6352' : `rgba(${d.glow},0.85)`
   g.fillRect(mid - 27, PH - 86, 54, 1)
   g.font = 'bold 9px ui-monospace,monospace'
-  g.fillStyle = d.accent
+  g.fillStyle = noir ? '#b5a88c' : d.accent
   g.fillText(d.hint, mid, PH - 77)
   g.textAlign = 'left'
 
-  /* ---- CHEAP REFLECTION: flipped copy + baked vertical alpha fade ----
-   * Built once per template into its own strip, then pasted below the body
-   * in the SAME canvas. Runtime = one drawImage. */
-  const body = scratch(PW, PH)
+  if (!mirrors) return { sprite: c, mask }
+  /* Ungraded diagnostics only: a prefiltered mirror below the body. */
+  body.g.clearRect(0, 0, PW, PH)
   body.g.drawImage(c, 0, 0, PW, PH, 0, 0, PW, PH)
-  const refl = scratch(PW, PR)
+  const refl = scratchGen.next(PW, PR, 'prop-scratch')
   refl.g.save()
   refl.g.translate(0, PR)
   refl.g.scale(1, -1)
@@ -366,8 +376,21 @@ function makeSprite(kind: PropKind, pal: MoodPalette): HTMLCanvasElement {
     refl.g.fillRect((i * 13) % PW, 4 + i * 5.5, PW * 0.6, 1)
   }
   g.drawImage(refl.c, 0, PH)
-  return c
+  return { sprite: c, mask }
 }
+
+/** v2 ships the exact same pigment and hull as direct painting. No
+ * masks or readbacks need to be built in the browser. */
+export function paintBridgePropAtlas(g: CanvasRenderingContext2D): void {
+  for (const kind of KINDS) for (let variant = 0; variant < 3; variant++) {
+    const d = PROP_DEFS[kind], x = propCellX(kind, variant)
+    g.save(); g.translate(x + PROP_CELL.w / 2, PROP_CELL.h - 1)
+    paintRoutePropBody(g, routePropShape(kind, variant), kind, d.body, d.accent)
+    g.restore()
+  }
+}
+
+type PropArt = HTMLCanvasElement
 
 /* ----------------------------- prop field ------------------------------- */
 
@@ -392,16 +415,28 @@ function segHitsBox(s: BladeSeg, x0: number, x1: number, y0: number, y1: number)
 }
 
 export class PropField {
+  constructor(private readonly mirrors = true, private readonly packedArt = false) {}
+
+  private readonly surfaces = new SurfaceScope('props')
+  private readonly incident = newReceiverLight()
+  private readonly fixtures = newFixtureLobes()
+  private atlas: HTMLImageElement | null = null
+  private readonly spritesGen = this.surfaces.generation('sprite')
+  private readonly scratchGen = this.surfaces.generation('work')
   readonly props: StageProp[] = []
-  private sprites: Partial<Record<PropKind, HTMLCanvasElement>> = {}
+  private sprites: Partial<Record<PropKind, PropArt>> = {}
   /** Baked outlines, one per sprite: the prop's TRUE shadow (ultra tier). */
-  private masks: Partial<Record<PropKind, HTMLCanvasElement>> = {}
+  private masks: Partial<Record<PropKind, PropArt>> = {}
   private built = false
   private moodIdx = 0
   private clock = 0
   private seed = 0
   private nextId = 1
   private spawnClock = 0      // field time of the next arrival
+  private route: BridgeRoute | null = null
+  private routeBand = -1
+  private routeLimit = Infinity
+  private socketHP = new Map<number, number>()
   private spawnTick = 0       // hash counter — keeps arrivals deterministic
   /** PROFILE OVERRIDE (world/profile.ts): how many props the lane wants alive,
    *  0 = use the authored ramp. This is the "auto-placed on a timer" knob: a
@@ -433,7 +468,7 @@ export class PropField {
    *  read as ONE designed frame. Re-bakes the six sprites once. */
   setMood(index: number): void {
     const i = ((index % MOOD_PALETTES.length) + MOOD_PALETTES.length) % MOOD_PALETTES.length
-    if (i === this.moodIdx && this.built) return
+    if (this.packedArt || i === this.moodIdx && this.built) return
     this.moodIdx = i
     this.built = false
     this.sprites = {}
@@ -454,8 +489,11 @@ export class PropField {
    *  scheduled for ~3s in, so the player reads the space before anything
    *  offers them an answer. Pure data — headless-test safe. */
   reset(seed: number = (Math.random() * 0xffffffff) >>> 0): void {
+    this.routeBand = -1
+    this.socketHP.clear()
     this.seed = seed >>> 0
     this.clock = 0
+    this.nextId = 1
     this.spawnTick = 0
     this.props.length = 0
     this.spawnClock = SPAWN_FIRST[0] + this.hash(0) * (SPAWN_FIRST[1] - SPAWN_FIRST[0])
@@ -500,37 +538,110 @@ export class PropField {
   /** Gap-seeking placement: sample bare stretches of deck, prefer ahead of the
    *  player, always respect prop/practical/player clearance. Fills emptiness. */
   private pickX(px: number): number {
+    const playerX = Number.isFinite(px) ? px : (X_MIN + X_MAX) * .5
     let best = -1
-    let bestScore = -1
-    for (let i = 0; i < 20; i++) {
+    let bestScore = -Infinity
+    let fallback = -1
+    let fallbackClearance = -Infinity
+    let fallbackScore = -Infinity
+    for (let i = 0; i < PROP_SPAWN_SEARCH_LIMIT; i++) {
       const h = this.hash(++this.spawnTick * 7 + 3)
       const ahead = h < 0.72
       const span = 340 + this.hash(++this.spawnTick * 3) * 760
-      let x = ahead ? px + span : px - span
+      let x = ahead ? playerX + span : playerX - span
       if (x < X_MIN) x = X_MIN + this.hash(++this.spawnTick * 5) * 160
       if (x > X_MAX) x = X_MAX - this.hash(++this.spawnTick * 5) * 160
-      if (Math.abs(x - px) < GAP_PLAYER) continue
-      if (Math.abs(x - 1755) < DOOR_CLEAR || Math.abs(x - 830) < LAMP_CLEAR) continue
       let nearest = 4000
       for (const p of this.props) {
         const d = Math.abs(p.x - x)
         if (d < nearest) nearest = d
       }
+      const clearance = Math.min(
+        Math.abs(x - playerX) - GAP_PLAYER,
+        Math.abs(x - 1755) - DOOR_CLEAR,
+        Math.abs(x - 830) - LAMP_CLEAR,
+        nearest - GAP_PROP,
+      )
       const gapScore = Math.min(nearest, GAP_PROP * 2.5)
-      const score = gapScore + (ahead ? 90 : 0) - Math.abs(x - px) * 0.02
+      const score = gapScore + (ahead ? 90 : 0) - Math.abs(x - playerX) * 0.02
+      if (clearance > fallbackClearance || clearance === fallbackClearance && score > fallbackScore) {
+        fallbackClearance = clearance; fallbackScore = score; fallback = x
+      }
+      if (clearance < 0) continue
       if (score > bestScore) { bestScore = score; best = x }
     }
-    if (best < 0) best = Math.max(X_MIN, Math.min(X_MAX, px + 640))
-    return best
+    if (best >= 0) return best
+    // If sampling misses every opening, solve the small 1-D exclusion set
+    // directly. Its size is fixed by the six-slot prop pool plus three authored
+    // clearances, so this fallback is deterministic and bounded as well.
+    const safe = this.fallbackGap(playerX)
+    if (safe >= 0) return safe
+    // A fully occupied lane still gets an unconditional deterministic point:
+    // choose the sampled location with the greatest minimum clearance.
+    return fallback >= 0 ? fallback : X_MIN
   }
 
-  /** One arrival: pick a purpose, find bare deck, fade it in. */
+  private fallbackGap(playerX: number): number {
+    const blocked: [number, number][] = [
+      [playerX - GAP_PLAYER, playerX + GAP_PLAYER],
+      [1755 - DOOR_CLEAR, 1755 + DOOR_CLEAR],
+      [830 - LAMP_CLEAR, 830 + LAMP_CLEAR],
+    ]
+    let seen = 0
+    for (const p of this.props) {
+      if (seen++ >= PROP_POOL_LIMIT) break
+      if (Number.isFinite(p.x)) blocked.push([p.x - GAP_PROP, p.x + GAP_PROP])
+    }
+    blocked.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    let cursor = X_MIN, bestLeft = -1, bestRight = -1, bestWidth = -1
+    for (const [rawLeft, rawRight] of blocked) {
+      const left = Math.max(X_MIN, Math.min(X_MAX, rawLeft))
+      const right = Math.max(X_MIN, Math.min(X_MAX, rawRight))
+      if (right < cursor) continue
+      if (left > cursor && left - cursor > bestWidth) {
+        bestLeft = cursor; bestRight = left; bestWidth = left - cursor
+      }
+      cursor = Math.max(cursor, right)
+      if (cursor >= X_MAX) break
+    }
+    if (X_MAX - cursor > bestWidth) { bestLeft = cursor; bestRight = X_MAX }
+    return bestWidth >= 0 ? (bestLeft + bestRight) * .5 : -1
+  }
+
+  /** One arrival: pick a purpose, find bare deck, fade it in. Reuse a
+   * destroyed slot so ambient history cannot grow this per-frame scan forever. */
   private spawn(px: number): void {
-    const kind = this.pickKind()
+    const kind = this.pickKind(), x = this.pickX(px)
+    let slot: StageProp | undefined
+    for (const p of this.props) if (p.dead) { slot = p; break }
+    if (slot) {
+      slot.id = this.nextId++; slot.kind = kind; slot.x = x; slot.hp = PROP_DEFS[kind].hp
+      slot.dead = false; slot.respawn = 0; slot.hitAt = -10; slot.born = this.clock
+      return
+    }
+    if (this.props.length >= PROP_POOL_LIMIT) return
     this.props.push({
-      id: this.nextId++, kind, x: this.pickX(px), hp: PROP_DEFS[kind].hp,
+      id: this.nextId++, kind, x, hp: PROP_DEFS[kind].hp,
       dead: false, respawn: 0, hitAt: -10, born: this.clock,
     })
+  }
+
+  setRoute(route: BridgeRoute, x: number, limit: number): void {
+    const band = route.at(x).index
+    if (this.route === route && this.routeBand === band && limit === this.routeLimit) return
+    const sameRoute = this.route === route
+    this.route = route
+    this.routeBand = band
+    this.routeLimit = limit
+    const old = sameRoute ? new Map(this.props.map(p => [p.id, p])) : new Map<number, StageProp>()
+    this.props.length = 0
+    for (let index = Math.max(0, band - 1); index <= band + 1; index++) {
+      const c = route.chunk(index), id = index + 1, at = c.propSockets[0]
+      if (at > limit - 32 || this.socketHP.get(id) === 0 || route.shelterAt(at, 36)) continue
+      const kind = KINDS[(c.seed >>> 4) % KINDS.length]
+      this.props.push(old.get(id) ?? { id, kind, variant: propVariant(c.seed), x: at, hp: this.socketHP.get(id) ?? PROP_DEFS[kind].hp,
+        dead: false, respawn: Infinity, hitAt: -10, born: this.clock - .5 })
+    }
   }
 
   /** Ambient lifecycle + dash-through contact. No canvas work here. */
@@ -541,13 +652,14 @@ export class PropField {
     this.clock += dt
     const dashing = player.state === 'dash' && Math.abs(player.vx) > 520
     // timed trickle — one arrival at a time, only into an under-stocked lane
-    if (this.clock >= this.spawnClock && this.aliveCount() < this.cap()) {
+    if (!this.route && this.clock >= this.spawnClock && this.aliveCount() < this.cap()) {
       this.spawn(player.x)
       const h = this.hash(++this.spawnTick * 11 + 9)
       this.spawnClock = this.clock + (SPAWN_GAP[0] + h * (SPAWN_GAP[1] - SPAWN_GAP[0])) * this.timerJitter
     }
     for (const p of this.props) {
       if (p.dead) {
+        if (this.route) continue
         p.respawn -= dt
         if (p.respawn <= 0) {
           // the slot re-opens as a NEW weighted purpose at a NEW stretch of
@@ -565,7 +677,10 @@ export class PropField {
         }
         continue
       }
-      if (dashing && Math.abs(p.x - player.x) < 40 && this.clock - p.hitAt > 0.3) {
+      if (!dashing || this.clock - p.hitAt <= .3) continue
+      const shape = this.route ? routePropShape(p.kind, p.variant) : null
+      const reach = shape ? shape.half + 17 : 40
+      if (Math.abs(p.x - player.x) < reach && (!shape || (player.y <= 8 && player.y >= -shape.height - 4))) {
         p.hitAt = this.clock
         this.breakProp(p, 2, w, hooks)
       }
@@ -580,8 +695,10 @@ export class PropField {
     for (const p of this.props) {
       if (p.dead || this.clock - p.hitAt < 0.2) continue
       const near = Math.abs(p.x - px)
-      const box = segHitsBox(blade, p.x - PW * 0.5, p.x + PW * 0.5, -PH + 8, -6)
-      const aoe = atk.aoe > 0 && near < atk.aoe + PW * 0.5
+      const shape = this.route ? routePropShape(p.kind, p.variant) : null
+      const half = shape?.half ?? PW * .5
+      const box = shape ? hitsRouteProp(shape, p.x, blade) : segHitsBox(blade, p.x - half, p.x + half, -PH + 8, -6)
+      const aoe = atk.aoe > 0 && near < atk.aoe + half
       if (!box && !aoe) continue
       p.hitAt = this.clock
       this.breakProp(p, dmg, w, hooks)
@@ -589,9 +706,11 @@ export class PropField {
   }
 
   private breakProp(p: StageProp, dmg: number, w: WorldRef | null, hooks: PropHooks | null): void {
-    p.hp -= dmg
+    p.hp = Math.max(0, p.hp - dmg)
+    if (this.route) this.socketHP.set(p.id, p.hp)
+    const flashY = this.route ? -routePropShape(p.kind, p.variant).height * .65 : -46
     if (w) {
-      w.fx.sparks(p.x, -46, -Math.PI / 2, 1, 8, PROP_DEFS[p.kind].accent, 320, 0.3)
+      w.fx.sparks(p.x, flashY, -Math.PI / 2, 1, 8, PROP_DEFS[p.kind].accent, 320, 0.3)
       w.audio.play('hit', { pitch: 1.2, volume: 0.55 })
     }
     if (p.hp > 0) return
@@ -682,75 +801,149 @@ export class PropField {
     }
   }
 
-  /** PROP SHADOWS — the prop's actual outline, laid flat on the deck and leaned
-   *  away from the moon. One matrix blit + one soft pass per visible prop, ultra
-   *  only (render/graphics.ts `shadows: 'cast+props'`).
-   *
-   *  Why this matters more than it looks: the deck is the largest surface in the
-   *  frame, and a deck with nothing ON it reads as a backdrop. Real projected
-   *  outlines crossing the roof tie the props, the moon and the fighters into one
-   *  lit space — the same information a shadow map gives a 3D scene, bought for
-   *  two blits per prop. */
+  /** Ultra: one projected blit of the faded body mask, not its sprite halo. */
+  /** Route silhouettes for the diffuse receiver, never into the wet composite. */
+  bridgeCasters(left: number, right: number, visit: (x: number, width: number, height: number, gain: number) => void): void {
+    for (const p of this.props) {
+      if (p.dead || p.x < left - 135 || p.x > right + 135) continue
+      const shape = routePropShape(p.kind, p.variant)
+      visit(p.x, shape.half * 2, shape.height, Math.min(1, (this.clock - p.born) / .45))
+    }
+  }
+
   drawShadows(
     ctx: CanvasRenderingContext2D,
     dir: number,
     reach: number,
     viewL: number,
     viewR: number,
+    exposure?: { keyWeightAt?(x: number): number },
+    impulseSlope?: (x: number) => number | undefined,
   ): void {
     if (!this.built) return
     const m = silhouetteMatrix(dir, reach)
+    const lean = -PH * m.c
+    const margin = impulseSlope ? PH * 1.4 : 0
+    const left = viewL - PW * .5 - Math.max(0, lean) - margin
+    const right = viewR + PW * .5 - Math.min(0, lean) + margin
     for (const p of this.props) {
-      if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
+      if (p.dead || p.x < left || p.x > right) continue
       const mask = this.masks[p.kind]
-      if (!mask || mask.width <= 0 || mask.height <= 0) continue
-      ctx.save()
-      ctx.translate(p.x, 0)
-      // The body plate sits on the deck; the mask is drawn upward from there and
-      // the matrix lays it down.
-      ctx.transform(m.a, m.b, m.c, m.d, 0, 0)
       const fade = Math.min(1, (this.clock - p.born) / 0.45)
-      ctx.globalAlpha = 0.30 * fade
-      // 9-arg form: the BODY of the sprite only (the sprite canvas also carries
-      // the baked reflection strip below the base — that must not be projected).
-      ctx.drawImage(mask, 0, 0, PW, PH, -PW / 2, -PH, PW, PH)
-      // Penumbra pass: 8 % larger, half the alpha. Two blits read as a soft edge.
-      ctx.globalAlpha = 0.13 * fade
-      ctx.drawImage(mask, 0, 0, PW, PH, -PW * 0.54, -PH * 1.08, PW * 1.08, PH * 1.08)
+      if (!mask || mask.width <= 0 || mask.height <= 0 || fade <= 0) continue
+      ctx.save()
+      const steer = impulseSlope?.(p.x)
+      ctx.transform(m.a, m.b, steer === undefined ? m.c : -steer, m.d, p.x, 0)
+      ctx.globalAlpha *= .46 * fade * (exposure?.keyWeightAt?.(p.x) ?? 1)
+      ctx.drawImage(mask, -PW * .5, -PH)
       ctx.restore()
     }
   }
 
-  /** One drawImage per visible prop. Lazy, headless-safe sprite build. */
-  draw(ctx: CanvasRenderingContext2D, viewL: number, viewR: number): void {
-    if (!this.built) {
-      this.built = true
-      if (typeof document !== 'undefined') {
-        // A new palette is a new generation of sprites: the old six are freed,
-        // not left resident under keys nobody will ever read again.
-        propGen.begin();
-        for (const k of KINDS) {
-          const spr = makeSprite(k, MOOD_PALETTES[this.moodIdx])
-          this.sprites[k] = spr
-          this.masks[k] = silhouetteOf(spr)
-        }
-      }
+  dispose(): void {
+    this.surfaces.releaseAll()
+    this.atlas = null
+    this.sprites = {}
+    this.masks = {}
+    this.built = false
+  }
+
+  /** Finite diagnostics still own mood-specific sprite and mirror stores.
+   * On Bridge the immutable atlas is shared by all runs and canvases. */
+  warm(): void {
+    if (typeof document === 'undefined') return
+    if (this.packedArt) {
+      const atlas = bridgePlate('props-v2')
+      this.atlas = atlas?.naturalWidth === BRIDGE_PROP_W && atlas.naturalHeight === BRIDGE_PROP_H ? atlas : null
+      return
     }
+    if (this.built) return
+    this.spritesGen.begin()
+    try {
+      for (const kind of KINDS) {
+        try {
+          const { sprite, mask } = makeSprite(kind, MOOD_PALETTES[this.moodIdx], this.spritesGen, this.scratchGen, this.mirrors, false)
+          this.sprites[kind] = sprite
+          this.masks[kind] = mask
+        } finally { this.scratchGen.begin() }
+      }
+      this.built = true
+    } catch (error) {
+      this.dispose()
+      throw error
+    }
+  }
+
+  private drawRoute(ctx: CanvasRenderingContext2D, left: number, right: number, atlas: HTMLImageElement | null, lighting?: BridgeFrame): void {
+    for (const p of this.props) {
+      if (p.dead || p.x < left - 40 || p.x > right + 40) continue
+      const d = PROP_DEFS[p.kind], variant = p.variant ?? 0, shape = routePropShape(p.kind, variant)
+      const { half, height } = shape, cy = -height * .54
+      ctx.save(); ctx.translate(p.x, 0)
+      ctx.globalAlpha *= Math.max(0, Math.min(1, (this.clock - p.born) / .45))
+      ctx.fillStyle = 'rgba(1,6,10,.55)'; ctx.beginPath(); ctx.ellipse(0, 1.6, half + 5, 4.2, 0, 0, 2 * Math.PI); ctx.fill()
+      ctx.fillStyle = '#0b1319'; ctx.fillRect(-half + shape.bevel, -.6, 2 * (half - shape.bevel), 2.2)
+      if (atlas) {
+        const { w, h } = PROP_CELL
+        ctx.drawImage(atlas, propCellX(p.kind, variant), 0, w, h, -w * .5, -h + 1, w, h)
+      } else paintRoutePropBody(ctx, shape, p.kind, d.body, d.accent)
+      if (lighting) {
+        // Direct lamps and combat emissions hit only the shared opaque
+        // hull. No repeated sprite sampling, scratch canvas or tint on text.
+        lighting.receive(p.x, cy, -8, this.incident)
+        lighting.receiveFixtures(p.x, cy, -8, this.fixtures)
+        traceRouteProp(ctx, shape)
+        const before = ctx.globalCompositeOperation
+        ctx.globalCompositeOperation = 'lighter'
+        for (const at of [...this.fixtures, this.incident]) {
+          const brush = localLightBrush(ctx, at, 1, 0, cy, half, height * .54, shape.canister ? .61 : .47, 0, shape.canister ? 23 : 9)
+          if (brush) { ctx.fillStyle = brush; ctx.fill() }
+        }
+        ctx.globalCompositeOperation = before
+      }
+      if (p.hp < d.hp) paintRoutePropDamage(ctx, shape)
+      // Plate and health notches sit outside the opaque/mask region.
+      const labelY = -height - 20
+      ctx.fillStyle = '#091219'; ctx.fillRect(-29, labelY, 58, 15)
+      ctx.strokeStyle = '#657179'; ctx.lineWidth = .8; ctx.strokeRect(-29, labelY, 58, 15)
+      ctx.fillStyle = d.accent; ctx.fillRect(-29, labelY + 1, 2, 13)
+      ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.fillText(d.hint, 1, labelY + 11)
+      for (let i = 0; i < d.hp; i++) {
+        ctx.fillStyle = i < p.hp ? d.accent : '#263039'
+        ctx.fillRect(half - 6 - i * 6, -height + shape.crown + 9, 4, 2)
+      }
+      ctx.restore()
+    }
+  }
+
+  drawBasic(ctx: CanvasRenderingContext2D, left: number, right: number): void {
+    this.drawRoute(ctx, left, right, null)
+  }
+
+  draw(ctx: CanvasRenderingContext2D, viewL: number, viewR: number, wetSurface = true, lighting?: BridgeFrame): void {
+    if (this.packedArt) {
+      this.warm()
+      this.drawRoute(ctx, viewL, viewR, this.atlas, lighting)
+      return
+    }
+    this.warm()
     for (const p of this.props) {
       if (p.dead || p.x < viewL - PW || p.x > viewR + PW) continue
       const spr = this.sprites[p.kind]
       if (!spr) continue
       // 0.45s fade-in: one clamp + one multiply, no extra state or canvases
       const fade = Math.min(1, (this.clock - p.born) / 0.45)
-      // body: opaque. mirror: the same canvas's flipped strip, drawn
-      // additively so only its lit pixels show on the wet deck.
+      // Body only in the authored arenas. The spare flipped strip is
+      // built and used by the ungraded diagnostics.
       if (fade < 1) ctx.globalAlpha = fade
-      ctx.drawImage(spr, 0, 0, PW, PH, p.x - PW * 0.5, -PH, PW, PH)
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.globalAlpha = 0.72 * fade
-      ctx.drawImage(spr, 0, PH, PW, PR, p.x - PW * 0.5, 0, PW, PR)
+      ctx.drawImage(spr, 0, 0, PW, PH, p.x - PW * .5, -PH, PW, PH)
+      if (wetSurface && this.mirrors) {
+        ctx.globalCompositeOperation = 'lighter'
+        ctx.globalAlpha = 0.72 * fade
+        ctx.drawImage(spr, 0, PH, PW, PR, p.x - PW * 0.5, 0, PW, PR)
+        ctx.globalCompositeOperation = 'source-over'
+      }
       ctx.globalAlpha = 1
-      ctx.globalCompositeOperation = 'source-over'
       if (p.hp < PROP_DEFS[p.kind].hp) {          // damage read: two cracks
         ctx.strokeStyle = 'rgba(8,12,16,0.85)'
         ctx.lineWidth = 1.6

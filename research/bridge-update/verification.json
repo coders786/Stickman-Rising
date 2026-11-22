@@ -1,0 +1,5328 @@
+{
+  "schema": "bridge-update-v1",
+  "builds": {
+    "ultraControl": "2n2U3IGQZqJ6sgm6yaBwJ",
+    "loadingUpdate": "hrWb1mWEhTKRsUim0072I",
+    "priorShadowIntegration": "0_okeg00FQzeUaKODJ-Wp",
+    "final": "yXaaEUvW6WLwnUpMmW9wN"
+  },
+  "branch": "arena/3320aa08-stickman-rising",
+  "baseRevision": "9d27d2b25e4ef0e0a5ca100d7e0f365cc3a66520",
+  "environment": {
+    "note": "Chromium headless in Arena sandbox; ANGLE/SwiftShader for explicit WebGL cases, Canvas fallback also exercised. These are functional and CPU/callback tests, not display scanout or physical-device timings.",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  "shadows": {
+    "fixture": {
+      "seed": 42,
+      "position": [
+        3300,
+        3405
+      ],
+      "simulationTime": 7.25,
+      "cameraY": -82,
+      "zoom": {
+        "desktop": 1.58,
+        "portrait": 1.26
+      },
+      "wet": 0.9,
+      "dry": 0,
+      "rain": 0,
+      "roll": 0
+    },
+    "control": "hrWb1mWEhTKRsUim0072I",
+    "build": "yXaaEUvW6WLwnUpMmW9wN",
+    "master": {
+      "before": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "mode": "master-webgl2",
+        "css": [
+          792,
+          510
+        ],
+        "size": [
+          990,
+          637
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2368,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 7481,
+            "max": 0.018679858398437495,
+            "sum": 42.417598791694786,
+            "vectorSeam": {
+              "peak": 0.01352630346082151,
+              "mean": 0.0023432247557633517,
+              "n": 559
+            },
+            "between": {
+              "peak": 0.004445293918251991,
+              "mean": 0.0003860323749973986,
+              "n": 7082
+            }
+          },
+          "contact": {
+            "n": 3670,
+            "max": 0.030390309143066403,
+            "sum": 26.43380896053305,
+            "vectorSeam": {
+              "peak": 0.0090290242806077,
+              "mean": 0.00032174362686287236,
+              "n": 207
+            },
+            "between": {
+              "peak": 0.009435697458684444,
+              "mean": 0.00026934725290378534,
+              "n": 3009
+            }
+          },
+          "return": {
+            "n": 4315,
+            "max": 0.041772393798828134,
+            "sum": 45.159255289267094,
+            "vectorSeam": {
+              "peak": 0.028084082528948784,
+              "mean": 0.001238806462723311,
+              "n": 296
+            },
+            "between": {
+              "peak": 0.0315827801823616,
+              "mean": 0.0010849507690274696,
+              "n": 4143
+            }
+          }
+        },
+        "jump": null,
+        "lighting": null,
+        "pulse": null,
+        "packet": {
+          "version": "4.0",
+          "shadowK": 2,
+          "casters": 2,
+          "elevatedCasters": 0,
+          "primitives": 12,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 8,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 61.34098101265823,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 10.443037974683534
+        },
+        "glError": 0,
+        "teardown": 0
+      },
+      "after": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "mode": "master-webgl2",
+        "css": [
+          792,
+          510
+        ],
+        "size": [
+          990,
+          637
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2368,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 7744,
+            "max": 0.018679858398437495,
+            "sum": 47.207073930740236,
+            "vectorSeam": {
+              "peak": 0.002053961157798767,
+              "mean": 0.0004431828823084395,
+              "n": 510
+            },
+            "between": {
+              "peak": 0.004548659548163414,
+              "mean": 0.0004384356844429326,
+              "n": 7357
+            }
+          },
+          "contact": {
+            "n": 2872,
+            "max": 0.02619023056030273,
+            "sum": 17.956948371505582,
+            "vectorSeam": {
+              "peak": 0.007485097739845514,
+              "mean": 0.00032387612628991956,
+              "n": 162
+            },
+            "between": {
+              "peak": 0.008172398200258613,
+              "mean": 0.0002521789137084433,
+              "n": 2294
+            }
+          },
+          "return": {
+            "n": 5486,
+            "max": 0.042370779418945306,
+            "sum": 59.03897150573513,
+            "vectorSeam": {
+              "peak": 0.02443627268075943,
+              "mean": 0.0011086040345377084,
+              "n": 383
+            },
+            "between": {
+              "peak": 0.03156862407922745,
+              "mean": 0.0010206677870289221,
+              "n": 5286
+            }
+          }
+        },
+        "jump": {
+          "height": 90.65364583333333,
+          "contactSum": 1.6181648246765123,
+          "plantedSum": 17.956948371505582
+        },
+        "lighting": {
+          "samples": 2284,
+          "max": 0.000022927856445323358,
+          "mean": 1.0690772596048956e-7
+        },
+        "pulse": {
+          "lit": 38993,
+          "moved": 45071,
+          "samePose": true
+        },
+        "packet": {
+          "version": "4.0",
+          "shadowK": 2,
+          "casters": 0,
+          "elevatedCasters": 0,
+          "primitives": 15,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 8,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 61.34098101265823,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 10.443037974683534
+        },
+        "glError": 0,
+        "teardown": 0
+      }
+    },
+    "optimized": {
+      "before": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "mode": "mobile-webgl2",
+        "css": [
+          400,
+          844
+        ],
+        "size": [
+          400,
+          844
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2496,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 2913,
+            "max": 0.02097647058823529,
+            "sum": 23.20127843137285,
+            "vectorSeam": {
+              "peak": 0.01119843136984855,
+              "mean": 0.00236058480338444,
+              "n": 342
+            },
+            "between": {
+              "peak": 0.008393725380301476,
+              "mean": 0.0017829512272377643,
+              "n": 2846
+            }
+          },
+          "contact": {
+            "n": 1247,
+            "max": 0.028835294117647053,
+            "sum": 10.357053333333301,
+            "vectorSeam": {
+              "peak": 0.007560000056400895,
+              "mean": 0.0021659026378043123,
+              "n": 116
+            },
+            "between": {
+              "peak": 0.0044721569865942,
+              "mean": 0.001928489614925524,
+              "n": 1081
+            }
+          },
+          "return": {
+            "n": 996,
+            "max": 0.03354352941176471,
+            "sum": 7.220959999999934,
+            "vectorSeam": {
+              "peak": 0.02990509755909443,
+              "mean": 0.0024156785192305918,
+              "n": 102
+            },
+            "between": {
+              "peak": 0.030738823115825653,
+              "mean": 0.002403656834927378,
+              "n": 1022
+            }
+          }
+        },
+        "jump": null,
+        "lighting": null,
+        "pulse": null,
+        "packet": {
+          "version": "4.0",
+          "shadowK": 1,
+          "casters": 2,
+          "elevatedCasters": 0,
+          "primitives": 6,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 4,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 64.73478835978837,
+          "atlasOriginX": -6,
+          "viewWidthMeters": 6.613756613756607
+        },
+        "glError": 0,
+        "teardown": 0
+      },
+      "after": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "mode": "mobile-webgl2",
+        "css": [
+          400,
+          844
+        ],
+        "size": [
+          400,
+          844
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2496,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 2937,
+            "max": 0.017621176470588234,
+            "sum": 18.591653333333436,
+            "vectorSeam": {
+              "peak": 0.003921568451914936,
+              "mean": 0.0015933563822488252,
+              "n": 323
+            },
+            "between": {
+              "peak": 0.008110588416457176,
+              "mean": 0.0016184190116591004,
+              "n": 2922
+            }
+          },
+          "contact": {
+            "n": 947,
+            "max": 0.024913725490196072,
+            "sum": 7.054869803921535,
+            "vectorSeam": {
+              "peak": 0.0044721569865942,
+              "mean": 0.0022285328308206008,
+              "n": 87
+            },
+            "between": {
+              "peak": 0.006726274499669671,
+              "mean": 0.001968525465009334,
+              "n": 815
+            }
+          },
+          "return": {
+            "n": 2310,
+            "max": 0.03382666666666667,
+            "sum": 24.85080078431398,
+            "vectorSeam": {
+              "peak": 0.02990509755909443,
+              "mean": 0.0019656997916349004,
+              "n": 247
+            },
+            "between": {
+              "peak": 0.030738823115825653,
+              "mean": 0.0019784797559695374,
+              "n": 2270
+            }
+          }
+        },
+        "jump": {
+          "height": 90.65364583333333,
+          "contactSum": 0.6725278431372543,
+          "plantedSum": 7.054869803921535
+        },
+        "lighting": {
+          "samples": 1269,
+          "max": 0.002804705882352942,
+          "mean": 0.000029860782768584386
+        },
+        "pulse": {
+          "lit": 14064,
+          "moved": 16868,
+          "samePose": true
+        },
+        "packet": {
+          "version": "4.0",
+          "shadowK": 1,
+          "casters": 0,
+          "elevatedCasters": 0,
+          "primitives": 8,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 4,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 64.73478835978837,
+          "atlasOriginX": -6,
+          "viewWidthMeters": 6.613756613756607
+        },
+        "glError": 0,
+        "teardown": 0
+      }
+    },
+    "canvas": {
+      "desktop": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "mode": "mobile-canvas",
+        "css": [
+          792,
+          510
+        ],
+        "size": [
+          990,
+          637
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2368,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 2441,
+            "max": 0.04897803921568629,
+            "sum": 48.421669803921894,
+            "vectorSeam": {
+              "peak": 0.025464314967393875,
+              "mean": 0.003756336787241375,
+              "n": 164
+            },
+            "between": {
+              "peak": 0.03582901880145073,
+              "mean": 0.003625358919699397,
+              "n": 2411
+            }
+          },
+          "contact": {
+            "n": 1830,
+            "max": 0.08647450980392157,
+            "sum": 48.38823843137317,
+            "vectorSeam": {
+              "peak": 0.018207844346761703,
+              "mean": 0.003313508737344472,
+              "n": 105
+            },
+            "between": {
+              "peak": 0.03334352938691154,
+              "mean": 0.00313611992296803,
+              "n": 1505
+            }
+          },
+          "return": {
+            "n": 6274,
+            "max": 0.07704705882352941,
+            "sum": 127.73761725489933,
+            "vectorSeam": {
+              "peak": 0.024949803948402405,
+              "mean": 0.0028614916949616593,
+              "n": 423
+            },
+            "between": {
+              "peak": 0.040636077523231506,
+              "mean": 0.0026638225779225424,
+              "n": 6068
+            }
+          }
+        },
+        "jump": {
+          "height": 90.65364583333333,
+          "contactSum": 6.081674509803923,
+          "plantedSum": 48.38823843137317
+        },
+        "lighting": null,
+        "pulse": {
+          "lit": 45705,
+          "moved": 45491,
+          "samePose": true
+        },
+        "packet": null,
+        "glError": 0,
+        "teardown": 0
+      },
+      "portrait": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "mode": "mobile-canvas",
+        "css": [
+          400,
+          844
+        ],
+        "size": [
+          500,
+          1055
+        ],
+        "subjects": [
+          3300,
+          3405
+        ],
+        "origin": 2496,
+        "windowWidth": 4096,
+        "before": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "unchanged": [
+          3300,
+          0,
+          100,
+          3405,
+          0,
+          105,
+          7.25,
+          -2.614071064005575,
+          12.465431073935084
+        ],
+        "layers": {
+          "cast": {
+            "n": 1567,
+            "max": 0.04897803921568629,
+            "sum": 31.738899607843372,
+            "vectorSeam": {
+              "peak": 0.024630587548017502,
+              "mean": 0.004276370312910267,
+              "n": 129
+            },
+            "between": {
+              "peak": 0.03219058737158775,
+              "mean": 0.003998508842766889,
+              "n": 1518
+            }
+          },
+          "contact": {
+            "n": 1194,
+            "max": 0.08789490196078431,
+            "sum": 32.57182666666683,
+            "vectorSeam": {
+              "peak": 0.03053882537642494,
+              "mean": 0.004333746069613354,
+              "n": 76
+            },
+            "between": {
+              "peak": 0.026066666468977928,
+              "mean": 0.0032350301471417062,
+              "n": 933
+            }
+          },
+          "return": {
+            "n": 4114,
+            "max": 0.07566274509803923,
+            "sum": 83.66528862744944,
+            "vectorSeam": {
+              "peak": 0.023246274329721928,
+              "mean": 0.00321203750251131,
+              "n": 345
+            },
+            "between": {
+              "peak": 0.042303528636693954,
+              "mean": 0.0031471882868456457,
+              "n": 3974
+            }
+          }
+        },
+        "jump": {
+          "height": 90.65364583333333,
+          "contactSum": 3.998613333333335,
+          "plantedSum": 32.57182666666683
+        },
+        "lighting": null,
+        "pulse": {
+          "lit": 29061,
+          "moved": 28926,
+          "samePose": true
+        },
+        "packet": null,
+        "glError": 0,
+        "teardown": 0
+      }
+    }
+  },
+  "performance": {
+    "units": "ms",
+    "method": "Trusted early Engage and same-page Retry with seeds 42/43; fresh page each trial on a warm production server. The 18-sample fixed viewport settled flow is a separate check. Null means no observed callback; do not treat null as zero.",
+    "matched": {
+      "ultraControl": {
+        "desktop": {
+          "n": 3,
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "samples": [
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 497.59999999403954,
+              "bootReadyMs": 489.69999999552965,
+              "titleSubmitMs": 2455.89999999851,
+              "titleSceneMs": 2471.0999999940395,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 3948.5999999940395,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1702.4000000059605,
+                  "readyMs": 1702.7000000029802,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 1034.7000000029802,
+                    "starMs": 1,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 1057.8999999985099,
+                  "afterSubmitRafMs": 1754.8000000044703,
+                  "jumpAt": 1779.8000000044703,
+                  "stepSubmitMs": 1804.7000000029802,
+                  "jumpMs": 1804.9000000059605,
+                  "simMs": 1948.3000000044703,
+                  "maxLongTaskMs": 1043,
+                  "acceptedToPlayMs": 1701.8999999985099
+                },
+                "RETRY": {
+                  "clickAt": 6078.5999999940395,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 2120.9000000059605,
+                  "readyMs": 2121.2000000029802,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 18,
+                    "starMs": 0.7000000029802322,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 26.600000001490116,
+                  "jumpAt": 2124.7000000029802,
+                  "afterSubmitRafMs": 2125.2000000029802,
+                  "stepSubmitMs": 2141.10000000149,
+                  "jumpMs": 2141.10000000149,
+                  "simMs": 2329.3000000044703,
+                  "maxLongTaskMs": 777,
+                  "acceptedToPlayMs": 2120.7000000029802
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 453.6000000014901,
+              "bootReadyMs": 449.6000000014901,
+              "titleSubmitMs": 2199.10000000149,
+              "titleSceneMs": 2217.5,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 3602.89999999851,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1779.8999999985099,
+                  "readyMs": 1780.3000000044703,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 1119.1000000014901,
+                    "starMs": 2.5,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 1133.1999999955297,
+                  "afterSubmitRafMs": 1820,
+                  "jumpAt": 1842.2000000029802,
+                  "stepSubmitMs": 1854.1000000014901,
+                  "jumpMs": 1854.2000000029802,
+                  "simMs": 2020.3000000044703,
+                  "maxLongTaskMs": 1123,
+                  "acceptedToPlayMs": 1778.1000000014901
+                },
+                "RETRY": {
+                  "clickAt": 5744.79999999702,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1941.6000000014901,
+                  "readyMs": 1941.8000000044703,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 39.100000001490116,
+                    "starMs": 0.6999999955296516,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 46.30000000447035,
+                  "jumpAt": 1944.8000000044703,
+                  "afterSubmitRafMs": 1945.2000000029802,
+                  "stepSubmitMs": 1963.7000000029802,
+                  "jumpMs": 1963.7000000029802,
+                  "simMs": 3275.10000000149,
+                  "maxLongTaskMs": 561,
+                  "acceptedToPlayMs": 1941
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 490.09999999403954,
+              "bootReadyMs": 486.69999999552965,
+              "titleSubmitMs": 2553.2999999970198,
+              "titleSceneMs": 2570.6999999955297,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 4118,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1517.0999999940395,
+                  "readyMs": 1517.5,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 34.399999998509884,
+                    "starMs": 1.7000000029802322,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 54.399999998509884,
+                  "afterSubmitRafMs": 1540.2999999970198,
+                  "jumpAt": 1563.2999999970198,
+                  "stepSubmitMs": 1581.3999999985099,
+                  "jumpMs": 1581.5999999940395,
+                  "simMs": 2998.5,
+                  "maxLongTaskMs": 1451,
+                  "acceptedToPlayMs": 1515.7000000029802
+                },
+                "RETRY": {
+                  "clickAt": 7396.79999999702,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 2050.60000000149,
+                  "readyMs": 2050.89999999851,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 14.799999997019768,
+                    "starMs": 0.7000000029802322,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 28.100000001490116,
+                  "afterSubmitRafMs": 2064.7999999970198,
+                  "stepSubmitMs": 2084.2999999970198,
+                  "jumpAt": 2087.60000000149,
+                  "jumpMs": 2094.5,
+                  "simMs": 2270.2000000029802,
+                  "maxLongTaskMs": 2029,
+                  "acceptedToPlayMs": 2050.1999999955297
+                }
+              }
+            }
+          ],
+          "mediansMs": {
+            "menuMs": 490.09999999403954,
+            "bootReadyMs": 486.69999999552965,
+            "titleSubmitMs": 2455.89999999851,
+            "titleSceneMs": 2471.0999999940395,
+            "titleObservedSamples": 3,
+            "engage": {
+              "submitMs": 1702.4000000059605,
+              "afterSubmitRafMs": 1754.8000000044703,
+              "readyMs": 1702.7000000029802,
+              "stepSubmitMs": 1804.7000000029802,
+              "jumpMs": 1804.9000000059605,
+              "simMs": 2020.3000000044703,
+              "bakeMs": 1057.8999999985099
+            },
+            "retry": {
+              "submitMs": 2050.60000000149,
+              "afterSubmitRafMs": 2064.7999999970198,
+              "readyMs": 2050.89999999851,
+              "stepSubmitMs": 2084.2999999970198,
+              "jumpMs": 2094.5,
+              "simMs": 2329.3000000044703,
+              "bakeMs": 28.100000001490116
+            }
+          }
+        },
+        "touch": {
+          "n": 3,
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "samples": [
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 501.40000000596046,
+              "bootReadyMs": 504.6000000014901,
+              "titleSubmitMs": 2333.10000000149,
+              "titleSceneMs": 2350.3000000044703,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 3577.7000000029802,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1630.8999999985099,
+                  "readyMs": 1631.5,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 31.30000000447035,
+                    "starMs": 0.6999999955296516,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 49.79999999701977,
+                  "afterSubmitRafMs": 1647.8999999985099,
+                  "stepSubmitMs": 1732.1000000014901,
+                  "jumpAt": 1889.6000000014901,
+                  "simMs": 1891.1000000014901,
+                  "jumpMs": 1925,
+                  "maxLongTaskMs": 661,
+                  "acceptedToPlayMs": 1627.5
+                },
+                "RETRY": {
+                  "clickAt": 7117.60000000149,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1191.6000000014901,
+                  "readyMs": 1191.8999999985099,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 37.20000000298023,
+                    "starMs": 1.8999999985098839,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 45.099999994039536,
+                  "afterSubmitRafMs": 1202,
+                  "stepSubmitMs": 1221.5,
+                  "jumpAt": 1278.7000000029802,
+                  "jumpMs": 1293.7000000029802,
+                  "simMs": 2367.5,
+                  "maxLongTaskMs": 1144,
+                  "acceptedToPlayMs": 1191
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 492.70000000298023,
+              "bootReadyMs": 496.1000000014901,
+              "titleSubmitMs": 2360.2000000029802,
+              "titleSceneMs": 2371.10000000149,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 4750.5,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 811.7999999970198,
+                  "readyMs": 812.2000000029802,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 37.599999994039536,
+                    "starMs": 0.8000000044703484,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 46.100000001490116,
+                  "afterSubmitRafMs": 824.6000000014901,
+                  "stepSubmitMs": 874,
+                  "jumpAt": 950.2000000029802,
+                  "jumpMs": 965.7999999970198,
+                  "simMs": 2270.5,
+                  "maxLongTaskMs": 741,
+                  "acceptedToPlayMs": 810.8000000044703
+                },
+                "RETRY": {
+                  "clickAt": 7355.89999999851,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1559.8000000044703,
+                  "readyMs": 1560,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 11.899999998509884,
+                    "starMs": 1.1000000014901161,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 30.19999999552965,
+                  "afterSubmitRafMs": 1570.1000000014901,
+                  "stepSubmitMs": 1591.8999999985099,
+                  "jumpAt": 1638.3000000044703,
+                  "jumpMs": 1654.7000000029802,
+                  "simMs": 1753.2000000029802,
+                  "maxLongTaskMs": 1523,
+                  "acceptedToPlayMs": 1559
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 480.20000000298023,
+              "bootReadyMs": 476.20000000298023,
+              "titleSubmitMs": 2646,
+              "titleSceneMs": 2657.2000000029802,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 4387.10000000149,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 717.7999999970198,
+                  "readyMs": 718.1999999955297,
+                  "seed": 42,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 19.30000000447035,
+                    "starMs": 0.7999999970197678,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 66.5,
+                  "afterSubmitRafMs": 748,
+                  "stepSubmitMs": 834.7999999970198,
+                  "jumpAt": 932.6999999955297,
+                  "jumpMs": 941.6999999955297,
+                  "simMs": 953.7999999970198,
+                  "maxLongTaskMs": 553,
+                  "acceptedToPlayMs": 717.2000000029802
+                },
+                "RETRY": {
+                  "clickAt": 7194.10000000149,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1520.3999999985099,
+                  "readyMs": 1520.6000000014901,
+                  "seed": 43,
+                  "sky": {
+                    "moonSource": "cpu",
+                    "starSource": "cpu",
+                    "moonMs": 28,
+                    "starMs": 0.6000000014901161,
+                    "note": "software WebGL",
+                    "sprites": 0
+                  },
+                  "bakeMs": 36.19999999552965,
+                  "afterSubmitRafMs": 1536.5,
+                  "stepSubmitMs": 1560.6999999955297,
+                  "jumpAt": 1655.1999999955297,
+                  "jumpMs": 1662.7999999970198,
+                  "simMs": 1696.7999999970198,
+                  "maxLongTaskMs": 1481,
+                  "acceptedToPlayMs": 1519.9000000059605
+                }
+              }
+            }
+          ],
+          "mediansMs": {
+            "menuMs": 492.70000000298023,
+            "bootReadyMs": 496.1000000014901,
+            "titleSubmitMs": 2360.2000000029802,
+            "titleSceneMs": 2371.10000000149,
+            "titleObservedSamples": 3,
+            "engage": {
+              "submitMs": 811.7999999970198,
+              "afterSubmitRafMs": 824.6000000014901,
+              "readyMs": 812.2000000029802,
+              "stepSubmitMs": 874,
+              "jumpMs": 965.7999999970198,
+              "simMs": 1891.1000000014901,
+              "bakeMs": 49.79999999701977
+            },
+            "retry": {
+              "submitMs": 1520.3999999985099,
+              "afterSubmitRafMs": 1536.5,
+              "readyMs": 1520.6000000014901,
+              "stepSubmitMs": 1560.6999999955297,
+              "jumpMs": 1654.7000000029802,
+              "simMs": 1753.2000000029802,
+              "bakeMs": 36.19999999552965
+            }
+          }
+        },
+        "cpuCompositorDiagnostic": {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "cpuCompositor": true,
+          "early": true,
+          "input": true,
+          "menuMs": 374,
+          "bootReadyMs": 577.5,
+          "titleSubmitMs": 549.2999999970198,
+          "titleSceneMs": 580,
+          "runs": {
+            "ENGAGE": {
+              "clickAt": 805.7999999970198,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 319.30000000447035,
+              "readyMs": 325.1000000014901,
+              "seed": 42,
+              "sky": {
+                "moonSource": "cpu",
+                "starSource": "cpu",
+                "moonMs": 23.599999994039536,
+                "starMs": 12.400000005960464,
+                "note": "software WebGL",
+                "sprites": 0
+              },
+              "bakeMs": 57.899999998509884,
+              "afterSubmitRafMs": 390.1000000014901,
+              "jumpAt": 452.6000000014901,
+              "stepSubmitMs": 513.7000000029802,
+              "jumpMs": 514,
+              "simMs": 683.3000000044703,
+              "maxLongTaskMs": 222,
+              "acceptedToPlayMs": 324.20000000298023
+            },
+            "RETRY": {
+              "clickAt": 2277.60000000149,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 74.19999999552965,
+              "readyMs": 74.5,
+              "seed": 43,
+              "sky": {
+                "moonSource": "cpu",
+                "starSource": "cpu",
+                "moonMs": 9.299999997019768,
+                "starMs": 14.399999998509884,
+                "note": "software WebGL",
+                "sprites": 0
+              },
+              "bakeMs": 40.100000001490116,
+              "jumpAt": 88.69999999552965,
+              "afterSubmitRafMs": 88.79999999701977,
+              "stepSubmitMs": 111.89999999850988,
+              "jumpMs": 111.89999999850988,
+              "simMs": 388.19999999552965,
+              "maxLongTaskMs": 0,
+              "acceptedToPlayMs": 73.70000000298023
+            }
+          }
+        },
+        "settledFlow": {
+          "master": {
+            "viewport": {
+              "width": 1180,
+              "height": 660,
+              "deviceScaleFactor": 1
+            },
+            "software": false,
+            "calm": {
+              "n": 18,
+              "submitMs": {
+                "median": 1.7,
+                "p95": 3.4
+              },
+              "rafMs": {
+                "median": 16.7,
+                "p95": 2033.2
+              },
+              "impulses": 0,
+              "lights": 1,
+              "path": "master-webgl2"
+            },
+            "busy": {
+              "n": 18,
+              "submitMs": {
+                "median": 2.7,
+                "p95": 3.8
+              },
+              "rafMs": {
+                "median": 1599.8,
+                "p95": 2199.9
+              },
+              "impulses": 3,
+              "lights": 4,
+              "path": "master-webgl2"
+            },
+            "boot": {
+              "runs": [
+                {
+                  "t": 3863.9000000059605,
+                  "legacyMs": 35.29999999701977,
+                  "firstPaintMs": 1414.1000000014901,
+                  "ready": 2888.2999999970198,
+                  "seed": 42,
+                  "window": 9340.29999999702,
+                  "commit": 9517.5,
+                  "plate": 11835.59999999404,
+                  "maxLong": 2805
+                },
+                {
+                  "t": 139608.30000000447,
+                  "legacyMs": 17.099999994039536,
+                  "firstPaintMs": 19.80000000447035,
+                  "ready": 3888.1999999955297,
+                  "seed": 43,
+                  "window": 19305.60000000149,
+                  "commit": 19670.10000000149,
+                  "plate": 20813.39999999851,
+                  "maxLong": 3840
+                }
+              ],
+              "assets": [
+                [
+                  "/bridge/packed-v4/deck.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/lut-32.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/sky-basis-v2.bin",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l2.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/stratum-a.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/metro-street.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/l1-bc7.ktx",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/l2-astc.ktx",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/ripple-bc5.ktx",
+                  0,
+                  0
+                ]
+              ],
+              "surfaces": 0
+            },
+            "worker": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": null,
+              "plates": 3,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 574.7000000029802,
+              "plateMaxMs": 6797.20000000298,
+              "decodeMaxMs": 0.30000000447034836,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            }
+          },
+          "canvas": {
+            "viewport": {
+              "width": 1180,
+              "height": 660,
+              "deviceScaleFactor": 1
+            },
+            "software": true,
+            "calm": {
+              "n": 18,
+              "submitMs": {
+                "median": 4.4,
+                "p95": 5.2
+              },
+              "rafMs": {
+                "median": 16.7,
+                "p95": 33.4
+              },
+              "impulses": 0,
+              "lights": 0,
+              "path": "mobile-canvas"
+            },
+            "busy": {
+              "n": 18,
+              "submitMs": {
+                "median": 5.2,
+                "p95": 5.8
+              },
+              "rafMs": {
+                "median": 33.3,
+                "p95": 33.4
+              },
+              "impulses": 1,
+              "lights": 1,
+              "path": "mobile-canvas"
+            },
+            "boot": {
+              "runs": [
+                {
+                  "t": 766.8000000044703,
+                  "legacyMs": 15.100000001490116,
+                  "firstPaintMs": 58.399999998509884,
+                  "ready": 119.59999999403954,
+                  "seed": 42,
+                  "window": 1020.3999999985099,
+                  "plate": 1020.3999999985099,
+                  "maxLong": 76
+                },
+                {
+                  "t": 4515.30000000447,
+                  "legacyMs": 9.100000001490116,
+                  "firstPaintMs": 22.899999998509884,
+                  "ready": 67.09999999403954,
+                  "seed": 43,
+                  "window": 992,
+                  "plate": 1065.1999999955297,
+                  "maxLong": 0
+                }
+              ],
+              "assets": [
+                [
+                  "/bridge/packed-v4/deck.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/lut-32.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/sky-basis-v2.bin",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l2.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/stratum-a.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/metro-street.webp",
+                  0,
+                  0
+                ]
+              ],
+              "surfaces": 0
+            },
+            "worker": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": null,
+              "plates": 3,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 703.0999999940395,
+              "plateMaxMs": 709.0999999940395,
+              "decodeMaxMs": 0.19999999552965164,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            }
+          }
+        }
+      },
+      "loadingUpdate": {
+        "desktop": {
+          "n": 3,
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "samples": [
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 498.8999999985099,
+              "bootReadyMs": 615.8000000044703,
+              "titleSubmitMs": 596.7000000029802,
+              "titleSceneMs": null,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 648,
+                  "active": true,
+                  "paintedTitle": false,
+                  "submitMs": 1437.2000000029802,
+                  "readyMs": 1437.6000000014901,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.2000000029802322,
+                  "jumpAt": 1447,
+                  "afterSubmitRafMs": 1447.8000000044703,
+                  "stepSubmitMs": 1471.8000000044703,
+                  "jumpMs": 1471.8999999985099,
+                  "simMs": 2102.3000000044703,
+                  "maxLongTaskMs": 423,
+                  "acceptedToPlayMs": 1436.6999999955297
+                },
+                "RETRY": {
+                  "clickAt": 2901.8000000044703,
+                  "active": true,
+                  "paintedTitle": false,
+                  "submitMs": 103.79999999701977,
+                  "readyMs": 105.19999999552965,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 0.6999999955296516,
+                  "jumpAt": 123.29999999701977,
+                  "afterSubmitRafMs": 129.59999999403954,
+                  "stepSubmitMs": 204.39999999850988,
+                  "jumpMs": 204.5,
+                  "simMs": 3191.39999999851,
+                  "maxLongTaskMs": 0,
+                  "acceptedToPlayMs": 104.60000000149012
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 420.8999999985099,
+              "bootReadyMs": 418.1000000014901,
+              "titleSubmitMs": 495.6000000014901,
+              "titleSceneMs": null,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 526.7000000029802,
+                  "active": true,
+                  "paintedTitle": false,
+                  "submitMs": 1421.3999999985099,
+                  "readyMs": 1421.6999999955297,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.3000000044703484,
+                  "jumpAt": 1433.2999999970198,
+                  "afterSubmitRafMs": 1436.1999999955297,
+                  "stepSubmitMs": 1463.3999999985099,
+                  "jumpMs": 1463.3999999985099,
+                  "simMs": 2054.7999999970198,
+                  "maxLongTaskMs": 399,
+                  "acceptedToPlayMs": 1420
+                },
+                "RETRY": {
+                  "clickAt": 2782.39999999851,
+                  "active": true,
+                  "paintedTitle": false,
+                  "submitMs": 2541.5,
+                  "readyMs": 2541.7000000029802,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 0.8999999985098839,
+                  "jumpAt": 2552.4000000059605,
+                  "afterSubmitRafMs": 2552.9000000059605,
+                  "stepSubmitMs": 2570.8000000044703,
+                  "jumpMs": 2570.8000000044703,
+                  "simMs": 2766.7000000029802,
+                  "maxLongTaskMs": 0,
+                  "acceptedToPlayMs": 2541.10000000149
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 637,
+              "bootReadyMs": 741.8999999985099,
+              "titleSubmitMs": 715.3999999985099,
+              "titleSceneMs": 748.2999999970198,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 767.1999999955297,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 1729.1000000014901,
+                  "readyMs": 1729.5,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.2999999970197678,
+                  "jumpAt": 1761.4000000059605,
+                  "afterSubmitRafMs": 1764.3000000044703,
+                  "stepSubmitMs": 1998,
+                  "jumpMs": 1998.2000000029802,
+                  "simMs": 2375.60000000149,
+                  "maxLongTaskMs": 207,
+                  "acceptedToPlayMs": 1728.3999999985099
+                },
+                "RETRY": {
+                  "clickAt": 3348.7999999970198,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 121,
+                  "readyMs": 121.30000000447035,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 0.8999999985098839,
+                  "jumpAt": 142.30000000447035,
+                  "afterSubmitRafMs": 2746.7000000029802,
+                  "stepSubmitMs": 2757.10000000149,
+                  "jumpMs": 2757.2000000029802,
+                  "simMs": 2875,
+                  "maxLongTaskMs": 0,
+                  "acceptedToPlayMs": 120.60000000149012
+                }
+              }
+            }
+          ],
+          "mediansMs": {
+            "menuMs": 498.8999999985099,
+            "bootReadyMs": 615.8000000044703,
+            "titleSubmitMs": 596.7000000029802,
+            "titleSceneMs": 748.2999999970198,
+            "titleObservedSamples": 1,
+            "engage": {
+              "submitMs": 1437.2000000029802,
+              "afterSubmitRafMs": 1447.8000000044703,
+              "readyMs": 1437.6000000014901,
+              "stepSubmitMs": 1471.8000000044703,
+              "jumpMs": 1471.8999999985099,
+              "simMs": 2102.3000000044703,
+              "bakeMs": 1.2999999970197678
+            },
+            "retry": {
+              "submitMs": 121,
+              "afterSubmitRafMs": 2552.9000000059605,
+              "readyMs": 121.30000000447035,
+              "stepSubmitMs": 2570.8000000044703,
+              "jumpMs": 2570.8000000044703,
+              "simMs": 2875,
+              "bakeMs": 0.8999999985098839
+            }
+          }
+        },
+        "touch": {
+          "n": 3,
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "samples": [
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 504.5,
+              "bootReadyMs": 498.8999999985099,
+              "titleSubmitMs": 567.6000000014901,
+              "titleSceneMs": 1962.8999999985099,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 2136.1999999955297,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 98.80000000447035,
+                  "readyMs": 99.30000000447035,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.8000000044703484,
+                  "afterSubmitRafMs": 109.80000000447035,
+                  "stepSubmitMs": 136.80000000447035,
+                  "jumpAt": 498.6000000014901,
+                  "jumpMs": 561.1000000014901,
+                  "simMs": 588.4000000059605,
+                  "maxLongTaskMs": 251,
+                  "acceptedToPlayMs": 98.39999999850988
+                },
+                "RETRY": {
+                  "clickAt": 5465.39999999851,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 48.5,
+                  "readyMs": 48.79999999701977,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 6.899999998509884,
+                  "afterSubmitRafMs": 59.399999998509884,
+                  "stepSubmitMs": 74.79999999701977,
+                  "jumpAt": 200.5,
+                  "jumpMs": 209.39999999850988,
+                  "simMs": 258.3999999985099,
+                  "maxLongTaskMs": 0,
+                  "acceptedToPlayMs": 48.099999994039536
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 508.6000000014901,
+              "bootReadyMs": 500.6000000014901,
+              "titleSubmitMs": 587.1000000014901,
+              "titleSceneMs": 2029.3000000044703,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 2202.2000000029802,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 92.10000000149012,
+                  "readyMs": 92.5,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.4000000059604645,
+                  "afterSubmitRafMs": 102.79999999701977,
+                  "stepSubmitMs": 123.79999999701977,
+                  "jumpAt": 480.8999999985099,
+                  "jumpMs": 522.2999999970198,
+                  "simMs": 551.3999999985099,
+                  "maxLongTaskMs": 235,
+                  "acceptedToPlayMs": 91.60000000149012
+                },
+                "RETRY": {
+                  "clickAt": 5573.89999999851,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 67.60000000149012,
+                  "readyMs": 71.5,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 3.7999999970197678,
+                  "afterSubmitRafMs": 87.70000000298023,
+                  "stepSubmitMs": 97,
+                  "jumpAt": 227,
+                  "jumpMs": 233,
+                  "simMs": 358,
+                  "maxLongTaskMs": 52,
+                  "acceptedToPlayMs": 70.70000000298023
+                }
+              }
+            },
+            {
+              "browser": "HeadlessChrome/153.0.8010.0",
+              "cpuCompositor": false,
+              "early": true,
+              "input": true,
+              "menuMs": 518,
+              "bootReadyMs": 514,
+              "titleSubmitMs": 600.2999999970198,
+              "titleSceneMs": 2093.5,
+              "runs": {
+                "ENGAGE": {
+                  "clickAt": 2265.2999999970198,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 97.10000000149012,
+                  "readyMs": 97.60000000149012,
+                  "seed": 42,
+                  "sky": null,
+                  "bakeMs": 1.3999999985098839,
+                  "afterSubmitRafMs": 107.20000000298023,
+                  "stepSubmitMs": 132.30000000447035,
+                  "jumpAt": 510.20000000298023,
+                  "jumpMs": 550.2000000029802,
+                  "simMs": 602.5,
+                  "maxLongTaskMs": 243,
+                  "acceptedToPlayMs": 96.59999999403954
+                },
+                "RETRY": {
+                  "clickAt": 5748.39999999851,
+                  "active": true,
+                  "paintedTitle": true,
+                  "submitMs": 46.100000001490116,
+                  "readyMs": 46.20000000298023,
+                  "seed": 43,
+                  "sky": null,
+                  "bakeMs": 0.5999999940395355,
+                  "afterSubmitRafMs": 52.70000000298023,
+                  "stepSubmitMs": 64.70000000298023,
+                  "simMs": 220.79999999701977,
+                  "jumpAt": 226.70000000298023,
+                  "jumpMs": 250.29999999701977,
+                  "maxLongTaskMs": 0,
+                  "acceptedToPlayMs": 45.600000001490116
+                }
+              }
+            }
+          ],
+          "mediansMs": {
+            "menuMs": 508.6000000014901,
+            "bootReadyMs": 500.6000000014901,
+            "titleSubmitMs": 587.1000000014901,
+            "titleSceneMs": 2029.3000000044703,
+            "titleObservedSamples": 3,
+            "engage": {
+              "submitMs": 97.10000000149012,
+              "afterSubmitRafMs": 107.20000000298023,
+              "readyMs": 97.60000000149012,
+              "stepSubmitMs": 132.30000000447035,
+              "jumpMs": 550.2000000029802,
+              "simMs": 588.4000000059605,
+              "bakeMs": 1.4000000059604645
+            },
+            "retry": {
+              "submitMs": 48.5,
+              "afterSubmitRafMs": 59.399999998509884,
+              "readyMs": 48.79999999701977,
+              "stepSubmitMs": 74.79999999701977,
+              "jumpMs": 233,
+              "simMs": 258.3999999985099,
+              "bakeMs": 3.7999999970197678
+            }
+          }
+        },
+        "cpuCompositorDiagnostic": {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "cpuCompositor": true,
+          "early": true,
+          "input": true,
+          "menuMs": 358.29999999701977,
+          "bootReadyMs": 484.09999999403954,
+          "titleSubmitMs": 446.29999999701977,
+          "titleSceneMs": 490.19999999552965,
+          "runs": {
+            "ENGAGE": {
+              "clickAt": 555.6999999955297,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 155.70000000298023,
+              "readyMs": 156,
+              "seed": 42,
+              "sky": null,
+              "bakeMs": 1.1000000014901161,
+              "jumpAt": 173.10000000149012,
+              "afterSubmitRafMs": 173.80000000447035,
+              "stepSubmitMs": 208.80000000447035,
+              "jumpMs": 209,
+              "simMs": 395.3999999985099,
+              "maxLongTaskMs": 138,
+              "acceptedToPlayMs": 155.19999999552965
+            },
+            "RETRY": {
+              "clickAt": 1216.3999999985099,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 96.10000000149012,
+              "readyMs": 96.39999999850988,
+              "seed": 43,
+              "sky": null,
+              "bakeMs": 2.100000001490116,
+              "jumpAt": 116.19999999552965,
+              "afterSubmitRafMs": 117.29999999701977,
+              "stepSubmitMs": 167,
+              "jumpMs": 167.10000000149012,
+              "simMs": 319,
+              "maxLongTaskMs": 73,
+              "acceptedToPlayMs": 93.29999999701977
+            }
+          }
+        },
+        "settledFlow": {
+          "master": {
+            "viewport": {
+              "width": 1180,
+              "height": 660,
+              "deviceScaleFactor": 1
+            },
+            "software": false,
+            "calm": {
+              "n": 18,
+              "submitMs": {
+                "median": 1.8,
+                "p95": 2.4
+              },
+              "rafMs": {
+                "median": 16.8,
+                "p95": 1316.6
+              },
+              "impulses": 0,
+              "lights": 1,
+              "path": "master-webgl2"
+            },
+            "busy": {
+              "n": 18,
+              "submitMs": {
+                "median": 2.2,
+                "p95": 4.4
+              },
+              "rafMs": {
+                "median": 1100,
+                "p95": 1266.5
+              },
+              "impulses": 3,
+              "lights": 4,
+              "path": "master-webgl2"
+            },
+            "boot": {
+              "runs": [
+                {
+                  "t": 598.3999999985099,
+                  "legacyMs": 0,
+                  "firstPaintMs": 160.5,
+                  "ready": 1558.6000000014901,
+                  "seed": 42,
+                  "plate": 4061.39999999851,
+                  "window": 4073.89999999851,
+                  "commit": 6807.60000000149,
+                  "maxLong": 168
+                },
+                {
+                  "t": 125927.69999999553,
+                  "legacyMs": 0,
+                  "firstPaintMs": 50.899999998509884,
+                  "ready": 75.80000000447035,
+                  "seed": 43,
+                  "window": 1663,
+                  "plate": 1663,
+                  "commit": 13411.30000000447,
+                  "maxLong": 56
+                }
+              ],
+              "assets": [
+                [
+                  "/bridge/packed-v4/deck.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/lut-32.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/props-v1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/sky-basis-v3.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l2.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/metro-street.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/l1-bc7.ktx",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/l2-astc.ktx",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/ripple-bc5.ktx",
+                  0,
+                  0
+                ]
+              ],
+              "surfaces": 0
+            },
+            "worker": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": null,
+              "plates": 3,
+              "plateBytes": 6248448,
+              "lit": false,
+              "windows": 2,
+              "stale": 0,
+              "workerMaxMs": 754.0999999940395,
+              "plateMaxMs": 205.39999999850988,
+              "decodeMaxMs": 0.30000000447034836,
+              "wireBytes": 3187712,
+              "error": null,
+              "plateError": null
+            }
+          },
+          "canvas": {
+            "viewport": {
+              "width": 1180,
+              "height": 660,
+              "deviceScaleFactor": 1
+            },
+            "software": true,
+            "calm": {
+              "n": 18,
+              "submitMs": {
+                "median": 4.2,
+                "p95": 4.7
+              },
+              "rafMs": {
+                "median": 16.7,
+                "p95": 33.3
+              },
+              "impulses": 0,
+              "lights": 0,
+              "path": "mobile-canvas"
+            },
+            "busy": {
+              "n": 18,
+              "submitMs": {
+                "median": 5.2,
+                "p95": 7.7
+              },
+              "rafMs": {
+                "median": 33.3,
+                "p95": 33.4
+              },
+              "impulses": 1,
+              "lights": 1,
+              "path": "mobile-canvas"
+            },
+            "boot": {
+              "runs": [
+                {
+                  "t": 554.3000000044703,
+                  "legacyMs": 0,
+                  "firstPaintMs": 131.10000000149012,
+                  "ready": 155.59999999403954,
+                  "seed": 42,
+                  "plate": 962.5,
+                  "window": 988.2999999970198,
+                  "maxLong": 137
+                },
+                {
+                  "t": 3884.7000000029802,
+                  "legacyMs": 0,
+                  "firstPaintMs": 31,
+                  "ready": 64.79999999701977,
+                  "seed": 43,
+                  "window": 855.3999999985099,
+                  "plate": 879.1999999955297,
+                  "maxLong": 0
+                }
+              ],
+              "assets": [
+                [
+                  "/bridge/packed-v4/deck.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/packed-v4/lut-32.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/props-v1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/sky-basis-v3.rgba.br",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l1.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/l2.webp",
+                  0,
+                  0
+                ],
+                [
+                  "/bridge/metro-street.webp",
+                  0,
+                  0
+                ]
+              ],
+              "surfaces": 0
+            },
+            "worker": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": null,
+              "plates": 3,
+              "plateBytes": 6248448,
+              "lit": true,
+              "windows": 2,
+              "stale": 0,
+              "workerMaxMs": 544.8999999985099,
+              "plateMaxMs": 520.2000000029802,
+              "decodeMaxMs": 0.30000000447034836,
+              "wireBytes": 3187712,
+              "error": null,
+              "plateError": null
+            }
+          }
+        }
+      }
+    },
+    "finalSmoke": {
+      "desktop": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": false,
+        "early": true,
+        "input": true,
+        "menuMs": 415.09999999403954,
+        "bootReadyMs": 411.5,
+        "titleSubmitMs": 495.09999999403954,
+        "titleSceneMs": null,
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 530.5999999940395,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 1341.2000000029802,
+            "readyMs": 1341.5,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 1.3999999985098839,
+            "jumpAt": 1351.3000000044703,
+            "afterSubmitRafMs": 1353.9000000059605,
+            "stepSubmitMs": 1382.1000000014901,
+            "jumpMs": 1382.3000000044703,
+            "simMs": 1898.3000000044703,
+            "maxLongTaskMs": 374,
+            "acceptedToPlayMs": 1340.0999999940395
+          },
+          "RETRY": {
+            "clickAt": 2628.5,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 2575.2999999970198,
+            "readyMs": 2575.5,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 0.7000000029802322,
+            "jumpAt": 2585,
+            "afterSubmitRafMs": 2585.39999999851,
+            "stepSubmitMs": 2601.39999999851,
+            "jumpMs": 2602,
+            "simMs": 2797.2999999970198,
+            "maxLongTaskMs": 53,
+            "acceptedToPlayMs": 2571.10000000149
+          }
+        }
+      },
+      "touch": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": false,
+        "early": true,
+        "input": true,
+        "menuMs": 497.5,
+        "bootReadyMs": 494.80000000447035,
+        "titleSubmitMs": 572.9000000059605,
+        "titleSceneMs": 1864.1000000014901,
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 2028.8000000044703,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 86.79999999701977,
+            "readyMs": 87.19999999552965,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 1.3999999985098839,
+            "afterSubmitRafMs": 99.39999999850988,
+            "stepSubmitMs": 128.79999999701977,
+            "jumpAt": 494,
+            "jumpMs": 552.3999999985099,
+            "simMs": 590.3999999985099,
+            "maxLongTaskMs": 231,
+            "acceptedToPlayMs": 86.39999999850988
+          },
+          "RETRY": {
+            "clickAt": 4996.80000000447,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 69.89999999850988,
+            "readyMs": 70.10000000149012,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 0.5999999940395355,
+            "afterSubmitRafMs": 80.29999999701977,
+            "stepSubmitMs": 96.19999999552965,
+            "jumpAt": 191.69999999552965,
+            "jumpMs": 210.5,
+            "simMs": 246.5,
+            "maxLongTaskMs": 0,
+            "acceptedToPlayMs": 68.80000000447035
+          }
+        }
+      }
+    },
+    "cacheCpu": {
+      "node": "v22.22.3",
+      "control": "2n2U3IGQZqJ6sgm6yaBwJ",
+      "shard": "419wv9gvqn1vc.js",
+      "seed": 42,
+      "archive": {
+        "tiles": 24,
+        "rawBytes": 12779520,
+        "packedBytes": 3131628,
+        "shippedDecodeBatchMs": {
+          "n": 16,
+          "p50": 23.333634666666665,
+          "p95": 24.560665666666562
+        },
+        "currentDecodeBatchMs": {
+          "n": 16,
+          "p50": 21.169837999999952,
+          "p95": 21.892567000000025
+        }
+      },
+      "window": {
+        "packedBytes": 632399,
+        "rawBytes": 1593856,
+        "identicalBytes": true,
+        "reusedBuffer": true,
+        "shippedBlockAndViewsMs": {
+          "n": 50,
+          "p50": 4.134792999999718,
+          "p95": 5.535409000000072
+        },
+        "rawViewsMs": {
+          "n": 50,
+          "p50": 0.00398300000006202,
+          "p95": 0.010694000000057713
+        }
+      },
+      "checksum": 35900
+    },
+    "assets": {
+      "skyDecodedBytes": 1169408,
+      "skyBrotliBytes": 390437,
+      "propAtlasBytes": 11526
+    }
+  },
+  "visual": {
+    "titleControl": {
+      "build": "2n2U3IGQZqJ6sgm6yaBwJ",
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "css": [
+        1106,
+        722
+      ],
+      "sword": [
+        "nodachi",
+        "FIELD NODACHI"
+      ],
+      "title": {
+        "horizon": 1,
+        "horizonJump": 0,
+        "maxRowJump": 32.210066305002755,
+        "bottom": 47.62989752863177,
+        "opaque": 1,
+        "worldWorker": true
+      },
+      "poses": [
+        {
+          "head": {
+            "x": 547.9358950414918,
+            "y": 187.80358617573563
+          },
+          "sole": {
+            "x": 553,
+            "y": 370.71056343218174
+          },
+          "position": [
+            1150,
+            -132.34375,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 220.99462937838317,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 5,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        },
+        {
+          "head": {
+            "x": 552.0861809967555,
+            "y": 135.3427902934105
+          },
+          "sole": {
+            "x": 553,
+            "y": 318.33214253462813
+          },
+          "position": [
+            1150,
+            -238.68749999999994,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 266.90402478222035,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 5,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        }
+      ],
+      "committed": {
+        "left": 20.438888888888897,
+        "right": 19.633333333333333,
+        "delta": 0.8055555555555642
+      },
+      "neighborMissing": {
+        "left": 20.438888888888897,
+        "right": 34.97222222222222,
+        "delta": 14.533333333333324
+      },
+      "ownsProps": 1,
+      "variants": [],
+      "teardown": 0
+    },
+    "finalDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "css": [
+        1106,
+        722
+      ],
+      "sword": [
+        "nodachi",
+        "FIELD NODACHI"
+      ],
+      "title": {
+        "horizon": 510.7481481481482,
+        "horizonJump": 1.5831826401447486,
+        "horizonRows": 8,
+        "maxRowJump": 2.8387582881254545,
+        "maxRowJumpY": 456,
+        "bottom": 13,
+        "opaque": 1,
+        "worldWorker": false
+      },
+      "poses": [
+        {
+          "head": {
+            "x": 550.461090666976,
+            "y": 188.0601649745698
+          },
+          "sole": {
+            "x": 553,
+            "y": 370.71056343218174
+          },
+          "position": [
+            1150,
+            -132.34375,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 190.61714789690168,
+            "footingY": 689.384984728478,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        },
+        {
+          "head": {
+            "x": 553.8828653011539,
+            "y": 135.65335449687151
+          },
+          "sole": {
+            "x": 553,
+            "y": 318.33214253462813
+          },
+          "position": [
+            1150,
+            -238.68749999999994,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 236.52654330073887,
+            "footingY": 779.1920962383317,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        }
+      ],
+      "committed": {
+        "left": 21.550000000000004,
+        "right": 21.316666666666663,
+        "delta": 0.2333333333333414
+      },
+      "neighborMissing": {
+        "left": 35.888888888888886,
+        "right": 36.08888888888888,
+        "delta": 0.19999999999999574
+      },
+      "ownsProps": 0,
+      "variants": [
+        {
+          "seed": 40,
+          "moonVis": 0.915388286113739,
+          "moonTransmission": 0.9783014199685353,
+          "centerTransmission": 0.979607807725583,
+          "phaseEnergy": 0.935691460725115,
+          "moonVariant": "Porcelain full",
+          "moonTint": [
+            0.9100000006705522,
+            0.9661999997720122,
+            1.0401999987661839
+          ],
+          "moonCss": [
+            365.68274712862376,
+            90.90163567125126
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.5804831086334925,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 70.756,
+          "parallax": 0
+        },
+        {
+          "seed": 41,
+          "moonVis": 0.3033084273338318,
+          "moonTransmission": 0.913950780734436,
+          "centerTransmission": 0.8630176464798128,
+          "phaseEnergy": 0.3318651616807191,
+          "moonVariant": "Copper half",
+          "moonTint": [
+            1.0999999964237213,
+            0.9965999993532896,
+            0.7856000065803528
+          ],
+          "moonCss": [
+            367.4326596344378,
+            84.25385256051436
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.4234164327284604,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 62.09199999999999,
+          "parallax": 0
+        },
+        {
+          "seed": 42,
+          "moonVis": 0.39308446645736694,
+          "moonTransmission": 0.5984642702182605,
+          "centerTransmission": 0.6010283570617396,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            353.790217008668,
+            77.00618137688912
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.34254357946069935,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 57.76,
+          "parallax": 0
+        },
+        {
+          "seed": 43,
+          "moonVis": 0.18742336332798004,
+          "moonTransmission": 0.9282198115318772,
+          "centerTransmission": 0.9571571288817573,
+          "phaseEnergy": 0.20191700768196671,
+          "moonVariant": "Ash crescent",
+          "moonTint": [
+            0.9799999991059303,
+            0.9773999998383224,
+            0.9464000016450882
+          ],
+          "moonCss": [
+            348.36698910596834,
+            93.84035166463514
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.19844715056528306,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 50.540000000000006,
+          "parallax": 0
+        }
+      ],
+      "teardown": 0
+    },
+    "finalPortrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "css": [
+        400,
+        844
+      ],
+      "sword": [
+        "nodachi",
+        "FIELD NODACHI"
+      ],
+      "title": {
+        "horizon": 597.0518518518518,
+        "horizonJump": 1,
+        "horizonRows": 8,
+        "maxRowJump": 2.474166666666669,
+        "maxRowJumpY": 532,
+        "bottom": 13,
+        "opaque": 1,
+        "worldWorker": false
+      },
+      "poses": [
+        {
+          "head": {
+            "x": 196.9731100586384,
+            "y": 177.6411853463953
+          },
+          "sole": {
+            "x": 200,
+            "y": 391.1514065606114
+          },
+          "position": [
+            1150,
+            -132.34375,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 201.2540536634142,
+            "footingY": 763.6738602643151,
+            "bearings": 1,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        },
+        {
+          "head": {
+            "x": 201.05732108725556,
+            "y": 162.06311111111108
+          },
+          "sole": {
+            "x": 200,
+            "y": 375.60597311273983
+          },
+          "position": [
+            1150,
+            -238.68749999999994,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "railY": 278.2744664181955,
+            "footingY": 914.3397694090361,
+            "bearings": 1,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        }
+      ],
+      "committed": {
+        "left": 22.56111111111112,
+        "right": 22.505555555555567,
+        "delta": 0.05555555555555358
+      },
+      "neighborMissing": {
+        "left": 39.85,
+        "right": 39.33333333333332,
+        "delta": 0.5166666666666799
+      },
+      "ownsProps": 0,
+      "variants": [
+        {
+          "seed": 40,
+          "moonVis": 0.8246831893920898,
+          "moonTransmission": 0.8813623237302206,
+          "centerTransmission": 0.9696447258994543,
+          "phaseEnergy": 0.935691460725115,
+          "moonVariant": "Porcelain full",
+          "moonTint": [
+            0.9100000006705522,
+            0.9661999997720122,
+            1.0401999987661839
+          ],
+          "moonCss": [
+            124.36,
+            126.8642712659846
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.5956115125119686,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 554.8518518518518,
+          "moonDiameterCss": 72.128,
+          "parallax": 0
+        },
+        {
+          "seed": 41,
+          "moonVis": 0.3067339062690735,
+          "moonTransmission": 0.9242726789915803,
+          "centerTransmission": 0.8939481068969933,
+          "phaseEnergy": 0.3318651616807191,
+          "moonVariant": "Copper half",
+          "moonTint": [
+            1.0999999964237213,
+            0.9965999993532896,
+            0.7856000065803528
+          ],
+          "moonCss": [
+            124.36,
+            120.08758377359914
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.40902102534659207,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 554.8518518518518,
+          "moonDiameterCss": 63.29599999999999,
+          "parallax": 0
+        },
+        {
+          "seed": 42,
+          "moonVis": 0.4582924246788025,
+          "moonTransmission": 0.6977422678567023,
+          "centerTransmission": 0.7263271904094302,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            112.69937602962659
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 554.8518518518518,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        {
+          "seed": 43,
+          "moonVis": 0.1872626692056656,
+          "moonTransmission": 0.927423922836368,
+          "centerTransmission": 0.9728501450084155,
+          "phaseEnergy": 0.20191700768196671,
+          "moonVariant": "Ash crescent",
+          "moonTint": [
+            0.9799999991059303,
+            0.9773999998383224,
+            0.9464000016450882
+          ],
+          "moonCss": [
+            124.36,
+            129.85997067198264
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.14176428413018582,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 554.8518518518518,
+          "moonDiameterCss": 51.52,
+          "parallax": 0
+        }
+      ],
+      "teardown": 0
+    }
+  },
+  "finalChecks": {
+    "offlineGlslLinks": 17,
+    "productionBuild": true,
+    "bridgeTests": {
+      "tests": 197,
+      "pass": 197,
+      "fail": 0,
+      "skipped": 0
+    },
+    "fullTests": {
+      "tests": 586,
+      "pass": 581,
+      "fail": 5,
+      "skipped": 0,
+      "unchangedFailures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "driver": {
+      "ok": true,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "formats": {
+        "masterRoad": "RGBA16F",
+        "mobileRoad": "RGBA8"
+      },
+      "linked": [
+        "masterSky",
+        "mobileSky",
+        "masterBase",
+        "mobileBase",
+        "receiver",
+        "masterRoad",
+        "mobileRoad",
+        "mobileResolve",
+        "masterActors",
+        "mobileActors",
+        "trail",
+        "weather",
+        "bloom",
+        "masterGrade",
+        "mobileGrade"
+      ],
+      "offsets": {
+        "masterRoad": [
+          0,
+          640,
+          1664,
+          2176,
+          2432,
+          3072,
+          3456
+        ],
+        "mobileRoad": [
+          0,
+          640,
+          1664,
+          2176,
+          2432,
+          3072,
+          3456
+        ]
+      },
+      "mips": [
+        [
+          512,
+          128
+        ],
+        [
+          256,
+          64
+        ],
+        [
+          128,
+          32
+        ],
+        [
+          64,
+          16
+        ]
+      ],
+      "probes": [
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Dry AO",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0.29,
+            0,
+            0,
+            1
+          ],
+          "right": [
+            1,
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Arc Center",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "right": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Bay Interior",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0002,
+          "worstPixel": [
+            4,
+            8,
+            0
+          ],
+          "left": [
+            0.6904,
+            0.2764,
+            0.873,
+            0.5
+          ],
+          "right": [
+            0.2705,
+            0.1216,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Dual Arc",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0002,
+          "worstPixel": [
+            0,
+            0,
+            3
+          ],
+          "left": [
+            0.2979,
+            0.1265,
+            0.2979,
+            0.7578
+          ],
+          "right": [
+            0.5957,
+            0.2529,
+            0.5957,
+            0.7578
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Catwalk Underside",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0,
+          "worstPixel": [
+            8,
+            0,
+            1
+          ],
+          "left": [
+            0.0017,
+            0,
+            1,
+            0
+          ],
+          "right": [
+            0.2952,
+            0.1299,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Crossing dry shadows / baked umbra",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0002,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0,
+            0.29,
+            0,
+            1
+          ],
+          "right": [
+            0,
+            1,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Catwalk blocker / RGB9_E5",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0008,
+          "worstPixel": [
+            0,
+            0,
+            3
+          ],
+          "left": [
+            0,
+            0.6563,
+            0.4805,
+            0.2598
+          ],
+          "right": [
+            1,
+            0.6563,
+            0.4805,
+            0.2598
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Finite emitter penumbra",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0004,
+          "worstPixel": [
+            5,
+            0,
+            1
+          ],
+          "left": [
+            1,
+            0.9067,
+            0.0401,
+            1
+          ],
+          "right": [
+            0,
+            0.1191,
+            0.202,
+            1
+          ]
+        },
+        {
+          "tier": "masterRoad",
+          "format": "RGBA16F",
+          "name": "Damp aggregate / pooled water",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0002,
+          "worstPixel": [
+            12,
+            8,
+            1
+          ],
+          "left": [
+            0.4902,
+            0,
+            0.8989,
+            0.0874
+          ],
+          "right": [
+            0.08,
+            0.9199,
+            0.709,
+            0.0082
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Dry AO",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0002,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0.2902,
+            0,
+            0,
+            1
+          ],
+          "right": [
+            1,
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Arc Center",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "right": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Bay Interior",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.002,
+          "worstPixel": [
+            4,
+            0,
+            3
+          ],
+          "left": [
+            0.6902,
+            0.2745,
+            0.8745,
+            0.502
+          ],
+          "right": [
+            0.2706,
+            0.1216,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Dual Arc",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0019,
+          "worstPixel": [
+            8,
+            0,
+            1
+          ],
+          "left": [
+            0.298,
+            0.1255,
+            0.298,
+            0.7569
+          ],
+          "right": [
+            0.5961,
+            0.251,
+            0.5961,
+            0.7569
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Catwalk Underside",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0017,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0,
+            0,
+            1,
+            0
+          ],
+          "right": [
+            0.2941,
+            0.1294,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Crossing dry shadows / baked umbra",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0016,
+          "worstPixel": [
+            0,
+            0,
+            0
+          ],
+          "left": [
+            0,
+            0.2902,
+            0,
+            1
+          ],
+          "right": [
+            0,
+            1,
+            0,
+            1
+          ]
+        },
+        {
+          "tier": "mobileRoad",
+          "format": "RGBA8",
+          "name": "Catwalk blocker / RGB9_E5",
+          "pass": true,
+          "glError": 0,
+          "maxError": 0.0024,
+          "worstPixel": [
+            0,
+            0,
+            2
+          ],
+          "left": [
+            0,
+            0.6549,
+            0.4824,
+            0.2588
+          ],
+          "right": [
+            1,
+            0.6549,
+            0.4824,
+            0.2588
+          ]
+        }
+      ],
+      "errors": []
+    },
+    "lifecycle": {
+      "rows": [
+        {
+          "label": "engage",
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 2,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 16,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.617021276595747
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "window",
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 0,
+            "stale": 0,
+            "workerMaxMs": 0,
+            "plateMaxMs": 104.5,
+            "decodeMaxMs": 0,
+            "wireBytes": 0,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "context lost",
+          "path": "mobile-canvas",
+          "reason": "WebGL context lost",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": null,
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "plate",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 104.5,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "context restored",
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 2,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 16,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.617021276595747
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "plate",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": false,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 104.5,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "inspect",
+          "path": "mobile-canvas",
+          "reason": "not requested",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": null,
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "plate",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 1,
+            "stale": 1,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 852.1000000014901,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "inspect closed",
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 2,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 16,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.617021276595747
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 1,
+            "stale": 3,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 852.1000000014901,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "over pixel cap",
+          "path": "mobile-webgl2",
+          "reason": "Optimized renderer · Master viewport budget",
+          "requestedScale": 1.25,
+          "backingScale": 0.8780487804878049,
+          "seed": 42,
+          "scene": [
+            1589,
+            1080
+          ],
+          "hud": [
+            1810,
+            1230
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 1,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 9,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -0.7189283860923711,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 16.55487804878049
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 1,
+            "stale": 3,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 852.1000000014901,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "resized",
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            875,
+            560
+          ],
+          "hud": [
+            700,
+            448
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 2,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 16,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.2305518617021274,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.578125
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 1,
+            "stale": 3,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 852.1000000014901,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        },
+        {
+          "label": "retry",
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 43,
+          "scene": [
+            875,
+            560
+          ],
+          "hud": [
+            700,
+            448
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 2,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 16,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.578125
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "window",
+            "plates": 1,
+            "plateBytes": 2082816,
+            "lit": false,
+            "windows": 3,
+            "stale": 4,
+            "workerMaxMs": 713.7000000029802,
+            "plateMaxMs": 852.1000000014901,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 4781568,
+            "error": null,
+            "plateError": null
+          }
+        }
+      ],
+      "surfaceAttempts": null,
+      "dryRaster": [
+        {
+          "path": "master-webgl2",
+          "roll": 0.09,
+          "dryDiff": 0,
+          "wetDiff": 235,
+          "drySamples": 20323,
+          "work": {
+            "openClips": 2,
+            "streaks": 0,
+            "splashes": 1,
+            "wetMarks": 0
+          }
+        },
+        {
+          "path": "mobile-webgl2",
+          "roll": 0.09,
+          "dryDiff": 0,
+          "wetDiff": 243,
+          "drySamples": 13010,
+          "work": {
+            "openClips": 2,
+            "streaks": 79,
+            "splashes": 1,
+            "wetMarks": 0
+          }
+        },
+        {
+          "path": "mobile-canvas",
+          "roll": 0.09,
+          "dryDiff": 0,
+          "wetDiff": 339,
+          "drySamples": 20323,
+          "work": {
+            "openClips": 2,
+            "streaks": 79,
+            "splashes": 1,
+            "wetMarks": 0
+          }
+        }
+      ],
+      "dryResolve": [
+        {
+          "mode": "master",
+          "roadSize": [
+            875,
+            560
+          ],
+          "drySamples": 24930,
+          "dryEaveSamples": 411,
+          "dryDiff": 0,
+          "wetDiff": 66144,
+          "edgeSamples": 3462,
+          "blankEdge": 0,
+          "blackEdge": 0,
+          "roll": 0.09
+        },
+        {
+          "mode": "mobile",
+          "roadSize": [
+            350,
+            224
+          ],
+          "drySamples": 15961,
+          "dryEaveSamples": 270,
+          "dryDiff": 0,
+          "wetDiff": 17518,
+          "edgeSamples": 2216,
+          "blankEdge": 0,
+          "blackEdge": 3,
+          "roll": 0.09
+        }
+      ],
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "floatRefusal": {
+      "rows": [
+        {
+          "label": "float",
+          "path": "mobile-webgl2",
+          "reason": "Optimized renderer · Error: RGBA16F color buffer unavailable",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "seed": 42,
+          "scene": [
+            736,
+            470
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 1,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 9,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.617021276595747
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "window",
+            "plates": 1,
+            "plateBytes": 2082816,
+            "lit": false,
+            "windows": 0,
+            "stale": 0,
+            "workerMaxMs": 0,
+            "plateMaxMs": 120.89999999850988,
+            "decodeMaxMs": 0,
+            "wireBytes": 0,
+            "error": null,
+            "plateError": null
+          }
+        }
+      ],
+      "surfaceAttempts": null,
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "transport": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "denied": false,
+      "mode": "mobile-webgl2",
+      "delayed": {
+        "id": 1,
+        "origin": -512,
+        "upload": 0,
+        "held": 1
+      },
+      "admission": [
+        [
+          "hitstop",
+          0,
+          1
+        ],
+        [
+          "parry",
+          0,
+          2
+        ],
+        [
+          "quiet",
+          1,
+          1,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          2,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          3,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          4,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          5,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          6,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          7,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          8,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          null,
+          4,
+          11264
+        ]
+      ],
+      "swap": {
+        "id": 10,
+        "seed": 43,
+        "previousOrigin": 11264,
+        "origin": -512,
+        "visualBand": 1
+      },
+      "read": {
+        "shadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "expectedShadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "grid": [
+          [
+            42,
+            146,
+            116,
+            42
+          ],
+          [
+            42,
+            146,
+            116,
+            42
+          ]
+        ],
+        "levels": [
+          [
+            [
+              126,
+              45,
+              8
+            ],
+            [
+              126,
+              45,
+              8
+            ]
+          ],
+          [
+            [
+              122,
+              43,
+              7
+            ],
+            [
+              122,
+              43,
+              7
+            ]
+          ],
+          [
+            [
+              114,
+              40,
+              7
+            ],
+            [
+              114,
+              40,
+              7
+            ]
+          ]
+        ],
+        "maxError": 0,
+        "glError": 0
+      },
+      "fx": {
+        "base": 0.006658235294117646,
+        "blocked": 0.006658235294117646,
+        "open": 0.008339803921568627,
+        "admitted": 1,
+        "traced": true,
+        "firstGain": 0.9444444444444444,
+        "decay": 0.34446975745269975,
+        "ended": 0,
+        "glError": 0
+      },
+      "recovery": {
+        "loss": "mobile-canvas",
+        "restored": "mobile-webgl2",
+        "seed": 43
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true
+      },
+      "final": {
+        "path": "mobile-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1,
+        "gpu": {
+          "size": [
+            400,
+            844
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 2062464,
+          "dataBytes": 7692118,
+          "outputBytes": 1350400,
+          "sourceTextureBytes": 2700800,
+          "uploadBytes": 2700800,
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            200,
+            422
+          ],
+          "maxK": 4,
+          "uboBytes": 3584,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176,
+            2432,
+            3072,
+            3456
+          ],
+          "stratumVersion": 10,
+          "transport": {
+            "active": 10,
+            "origin": -512,
+            "staging": null,
+            "stagingLevel": null,
+            "uploads": 9,
+            "updates": 1,
+            "quietDeferrals": 0,
+            "uploadThisFrame": 1,
+            "uploadBytesThisFrame": 4096,
+            "uploadMs": 0.10000000149011612,
+            "levels": 9
+          },
+          "stratumA": {
+            "size": [
+              96,
+              96
+            ],
+            "format": "RGBA8",
+            "opticalCeiling": 1.06,
+            "frames": 9,
+            "refreshes": 5,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.19195812940597534,
+            "moonTransmission": 0.9506783594932163,
+            "centerTransmission": 0.9826901664411994,
+            "phaseEnergy": 0.20191700768196671,
+            "moonVariant": "Ash crescent",
+            "moonTint": [
+              0.9799999991059303,
+              0.9773999998383224,
+              0.9464000016450882
+            ],
+            "moonCss": [
+              124.36,
+              127.68811882013085
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.15252929169684648,
+            "lightningFalloff": 0.8361204013377925,
+            "skyHeight": 552.6800000000001,
+            "moonDiameterCss": 51.52,
+            "parallax": 0
+          },
+          "packedAssets": {
+            "formats": {},
+            "deck": "brotli",
+            "lut": "local",
+            "byteLength": 0,
+            "uploadBytesThisFrame": 0
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              128
+            ],
+            "version": 10,
+            "vectors": [
+              512,
+              16
+            ],
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": null,
+            "sourcePass": "SACR v4 road",
+            "shadowLights": 1
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 10,
+          "casts": 1,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 3,
+            "stale": 1,
+            "workerMaxMs": 696.6000000014901,
+            "plateMaxMs": 889.8999999985099,
+            "decodeMaxMs": 0.5,
+            "wireBytes": 4781568,
+            "error": null,
+            "plateError": null
+          },
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "4.0",
+          "shadowK": 1,
+          "casters": 1,
+          "elevatedCasters": 0,
+          "primitives": 6,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 4,
+          "atlasVersion": 0,
+          "portals": 0,
+          "camWorldX": 2.2986165102618283,
+          "atlasOriginX": 0,
+          "viewWidthMeters": 8.152766979476345
+        }
+      },
+      "requestedAssets": [
+        [
+          200,
+          "/bridge/packed-v4/deck.rgba.br"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/lut-32.rgba.br"
+        ],
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/l1-bc7.ktx"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/l2-astc.ktx"
+        ],
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/lut-16.rgba.br"
+        ],
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ],
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ]
+      ]
+    },
+    "preview": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "port": 3000,
+      "hostCompatible": true,
+      "decodedSkyMatchesV2": true,
+      "frameHold": {
+        "flags": [
+          "--held-frame"
+        ],
+        "engageEnabledWhileHeld": true,
+        "afterReleasePhase": "playing",
+        "readyMs": 381.1000000014901
+      }
+    }
+  },
+  "integrationChecks": {
+    "build": "0_okeg00FQzeUaKODJ-Wp",
+    "masterSurfaceRefusal": {
+      "rows": [
+        {
+          "label": "master-surface",
+          "path": "mobile-webgl2",
+          "reason": "Optimized renderer · surface budget",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "seed": 42,
+          "scene": [
+            736,
+            470
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 1,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 9,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 0,
+            "portals": 0,
+            "camWorldX": -1.25,
+            "atlasOriginX": 0,
+            "viewWidthMeters": 17.617021276595747
+          },
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 767.3000000044703,
+            "plateMaxMs": 123.10000000149012,
+            "decodeMaxMs": 0.4000000059604645,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        }
+      ],
+      "surfaceAttempts": [
+        "bridge-master-actors"
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "bothSurfacesRefused": {
+      "rows": [
+        {
+          "label": "surface",
+          "path": "mobile-canvas",
+          "reason": "surface budget",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "seed": 42,
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "sacr": null,
+          "nonEmpty": true,
+          "stages": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": "plate",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 886.7000000029802,
+            "plateMaxMs": 115.60000000149012,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          }
+        }
+      ],
+      "surfaceAttempts": [
+        "bridge-master-actors",
+        "bridge-mobile-actors"
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "finite": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": false,
+      "combined": true,
+      "checkBaked": true,
+      "checkRelay": false,
+      "scale": 1.25,
+      "fixedCount": 5,
+      "peakBytes": 21614592,
+      "scene": [
+        800,
+        450
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 19255296,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              294,
+              526
+            ],
+            [
+              "concourse",
+              1108,
+              1452
+            ]
+          ]
+        },
+        {
+          "seed": 43,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              237,
+              469
+            ],
+            [
+              "concourse",
+              1082,
+              1426
+            ]
+          ]
+        },
+        {
+          "seed": 44,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              246,
+              478
+            ],
+            [
+              "concourse",
+              1113,
+              1457
+            ]
+          ]
+        },
+        {
+          "seed": 45,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1088,
+              1432
+            ],
+            [
+              "service",
+              2104,
+              2336
+            ]
+          ]
+        },
+        {
+          "seed": 46,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1095,
+              1439
+            ],
+            [
+              "service",
+              2155,
+              2387
+            ]
+          ]
+        },
+        {
+          "seed": 47,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              227,
+              459
+            ],
+            [
+              "concourse",
+              1069,
+              1413
+            ]
+          ]
+        },
+        {
+          "seed": 48,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1062,
+              1406
+            ],
+            [
+              "service",
+              2147,
+              2379
+            ]
+          ]
+        },
+        {
+          "seed": 49,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1113,
+              1457
+            ],
+            [
+              "service",
+              2074,
+              2306
+            ]
+          ]
+        },
+        {
+          "seed": 50,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              209,
+              441
+            ],
+            [
+              "concourse",
+              1078,
+              1422
+            ]
+          ]
+        },
+        {
+          "seed": 51,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              214,
+              446
+            ],
+            [
+              "concourse",
+              1093,
+              1437
+            ]
+          ]
+        },
+        {
+          "seed": 52,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              263,
+              495
+            ],
+            [
+              "concourse",
+              1101,
+              1445
+            ]
+          ]
+        },
+        {
+          "seed": 53,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              239,
+              471
+            ],
+            [
+              "concourse",
+              1117,
+              1461
+            ]
+          ]
+        },
+        {
+          "seed": 54,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1075,
+              1419
+            ],
+            [
+              "service",
+              2109,
+              2341
+            ]
+          ]
+        },
+        {
+          "seed": 55,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1132,
+              1476
+            ],
+            [
+              "service",
+              2149,
+              2381
+            ]
+          ]
+        },
+        {
+          "seed": 56,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1074,
+              1418
+            ],
+            [
+              "service",
+              2181,
+              2413
+            ]
+          ]
+        },
+        {
+          "seed": 57,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1087,
+              1431
+            ],
+            [
+              "service",
+              2064,
+              2296
+            ]
+          ]
+        },
+        {
+          "seed": 58,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              243,
+              475
+            ],
+            [
+              "concourse",
+              1074,
+              1418
+            ]
+          ]
+        },
+        {
+          "seed": 59,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1084,
+              1428
+            ],
+            [
+              "service",
+              2185,
+              2417
+            ]
+          ]
+        },
+        {
+          "seed": 60,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              256,
+              488
+            ],
+            [
+              "concourse",
+              1102,
+              1446
+            ]
+          ]
+        },
+        {
+          "seed": 61,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1070,
+              1414
+            ],
+            [
+              "service",
+              2033,
+              2265
+            ]
+          ]
+        },
+        {
+          "seed": 62,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              300,
+              532
+            ],
+            [
+              "concourse",
+              1090,
+              1434
+            ]
+          ]
+        }
+      ],
+      "afterDestroy": 0
+    },
+    "optics": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "frames": {
+        "lamp-rain": {
+          "cam": [
+            3291,
+            -109,
+            -0.024,
+            1.12
+          ],
+          "wet": 0.9,
+          "lights": 1,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 16,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        },
+        "lamp-dry": {
+          "cam": [
+            3291,
+            -109,
+            -0.024,
+            1.12
+          ],
+          "wet": 0,
+          "lights": 1,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 16,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        },
+        "calm": {
+          "cam": [
+            3291,
+            -109,
+            -0.024,
+            1.12
+          ],
+          "wet": 0.9,
+          "lights": 1,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 16,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        },
+        "strike": {
+          "cam": [
+            3291,
+            -109,
+            -0.024,
+            1.12
+          ],
+          "wet": 0.9,
+          "lights": 3,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 17,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        },
+        "eaves": {
+          "cam": [
+            4080,
+            -120,
+            0.055,
+            1.08
+          ],
+          "wet": 0.9,
+          "lights": 1,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 16,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        },
+        "eaves-dry": {
+          "cam": [
+            4080,
+            -120,
+            0.055,
+            1.08
+          ],
+          "wet": 0,
+          "lights": 1,
+          "time": 30,
+          "targetBytes": 9335816,
+          "draws": 16,
+          "dataBytes": 6830454,
+          "bloomLevels": 4,
+          "backing": [
+            1060,
+            650
+          ],
+          "committed": 2304
+        }
+      },
+      "rainChange": {
+        "samples": 6424,
+        "changed": 5871,
+        "max": 0.034759521484375,
+        "mean": 0.008227073314923278
+      },
+      "combat": {
+        "samples": 7525,
+        "changed": 4641,
+        "max": 3.553619384765625,
+        "mean": 0.04753601403727484
+      },
+      "shelterRoad": {
+        "samples": 1642,
+        "changed": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "openRoad": {
+        "samples": 2849,
+        "changed": 2849,
+        "max": 0.04168701171875,
+        "mean": 0.01470330741456535
+      },
+      "bloom": {
+        "grey": [
+          0,
+          0,
+          0.015625,
+          0.0625,
+          0.25,
+          0.5
+        ],
+        "arc": [
+          0,
+          0.03973388671875,
+          0.3974609375
+        ],
+        "uniform": [
+          0.25,
+          0.5,
+          0.75
+        ]
+      },
+      "spotRain": {
+        "implicit": [
+          -499,
+          -562,
+          203,
+          266
+        ],
+        "differs": 0,
+        "lit": 63,
+        "max": 0.0614013671875,
+        "coverage": 1376
+      },
+      "glError": 0,
+      "teardown": 0
+    },
+    "lunar": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "path": "master-webgl2",
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979082939217,
+        "centerTransmission": 0.9823129264629965,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 176.92592592592592,
+        "bottom": 187.5185185185185
+      },
+      "partial": {
+        "moonVis": 0.3339453637599945,
+        "moonTransmission": 0.5084260413662367,
+        "centerTransmission": 0.8447567245752796,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 187.5185185185185
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.0010299907980278922,
+        "centerTransmission": 0.001029692070887339,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 28.77777777777778
+      },
+      "driver": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "rgbError": 0.000027060508728027344,
+        "alphaError": 0.00011331144401538484,
+        "brightestMist": 0.689453125,
+        "fluxError": 0.0009605799649754221,
+        "returnError": 0,
+        "glError": 0
+      },
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 12178
+      },
+      "variants": [
+        {
+          "seed": 40,
+          "name": "Porcelain full",
+          "energy": 0.935691460725115,
+          "max": 0.00005958974361419678,
+          "glError": 0
+        },
+        {
+          "seed": 41,
+          "name": "Copper half",
+          "energy": 0.3318651616807191,
+          "max": 0.00006085634231567383,
+          "glError": 0
+        },
+        {
+          "seed": 42,
+          "name": "Silver gibbous",
+          "energy": 0.6568219364872221,
+          "max": 0.00010862946510314941,
+          "glError": 0
+        },
+        {
+          "seed": 43,
+          "name": "Ash crescent",
+          "energy": 0.20191700768196671,
+          "max": 0.000058203935623168945,
+          "glError": 0
+        }
+      ],
+      "teardown": 0
+    },
+    "workersDenied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "denied": true,
+      "stream": {
+        "worker": false,
+        "plateWorker": false,
+        "pending": null,
+        "plates": 0,
+        "plateBytes": 0,
+        "lit": true,
+        "windows": 0,
+        "stale": 0,
+        "workerMaxMs": 0,
+        "plateMaxMs": 0,
+        "decodeMaxMs": 0,
+        "wireBytes": 0,
+        "error": "SecurityError: QA Worker denial",
+        "plateError": "SecurityError: QA Worker denial"
+      },
+      "rendered": true,
+      "presentation": {
+        "path": "mobile-canvas",
+        "reason": "Error: Software WebGL adapter; using Canvas fallback",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 10,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "stream": {
+            "worker": false,
+            "plateWorker": false,
+            "pending": null,
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 0,
+            "stale": 0,
+            "workerMaxMs": 0,
+            "plateMaxMs": 0,
+            "decodeMaxMs": 0,
+            "wireBytes": 0,
+            "error": "SecurityError: QA Worker denial",
+            "plateError": "SecurityError: QA Worker denial"
+          },
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true
+      },
+      "requestedAssets": [
+        [
+          200,
+          "/bridge/packed-v4/deck.rgba.br"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/lut-32.rgba.br"
+        ]
+      ]
+    },
+    "metroCanvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "path": "mobile-canvas",
+      "pair": {
+        "x": 1149.0718817398822,
+        "at": 804.5011829049688,
+        "directions": [
+          1,
+          -1
+        ],
+        "leadX": 218.61339989543012,
+        "railY": 179.19682962962963,
+        "footingY": 720.5259259259259,
+        "bearings": 1,
+        "bodies": 4,
+        "trains": 2,
+        "blockers": 2,
+        "clipped": 0,
+        "kind": "Metro local",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "deck": {
+        "maxBlue": 57,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "blockedSource": 0,
+      "priority": {
+        "hits": 1,
+        "impactFirst": true,
+        "orbKept": false
+      },
+      "local": [
+        [
+          2.1523891141550555,
+          1.9025316654028832,
+          1.8235463692729825,
+          2.2556738374667282,
+          1.3475756029744996,
+          1.4724783140648536
+        ],
+        [
+          1.4487569038439732,
+          1.8524982464959683,
+          1.0886519427100003,
+          1.2992636618822042,
+          0.9677727461390899,
+          0.6055709199525949
+        ]
+      ],
+      "glError": 0,
+      "teardown": 0
+    }
+  },
+  "stationArtCheck": {
+    "build": "2n2U3IGQZqJ6sgm6yaBwJ",
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "station": true,
+    "combined": false,
+    "checkBaked": true,
+    "checkRelay": false,
+    "scale": 1.25,
+    "fixedCount": 8,
+    "peakBytes": 11304960,
+    "scene": [
+      487,
+      1055
+    ],
+    "hud": [
+      780,
+      1688
+    ],
+    "rows": [
+      {
+        "seed": 42,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11276288,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 43,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 44,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 45,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 46,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 47,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 48,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 49,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 50,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 51,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 52,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 53,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 54,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 55,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 56,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 57,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 58,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 59,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 60,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 61,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      },
+      {
+        "seed": 62,
+        "surfaces": 23,
+        "bytes": 11276288,
+        "peakBytes": 11304960,
+        "stageBytes": 6303744
+      }
+    ],
+    "afterDestroy": 0
+  },
+  "evidence": {
+    "shadows": "metro-shadow-comparison.webp",
+    "portrait": "metro-portrait.webp",
+    "impact": "metro-impact.webp",
+    "framing": "bridge-title-and-framing.webp"
+  }
+}

@@ -1,14 +1,7 @@
-/** THE LEDGER AND THE LADDER — the two pure controllers from M1.
- *
- * Both are tested without a browser: the ledger takes an injectable surface
- * factory and the ladder takes frame durations. That is the whole point of
- * keeping them DOM-free — the cheapest place to prove an eviction policy is a
- * unit test, not a phone.
- */
+/** Backing-store ownership and foreground frame-gap accounting. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { CanvasLedger, bytesFor, DEFAULT_CAPS } from '../src/game/render/ledger'
-import { QualityLadder } from '../src/game/render/quality'
 import { FrameLog } from '../src/game/render/frameLog'
 
 function stubFactory() {
@@ -111,93 +104,6 @@ test('defaults are the documented ones', () => {
   assert.equal(DEFAULT_CAPS.maxBytes, 48 * 1024 * 1024)
 })
 
-/* ------------------------------ the ladder ------------------------------ */
-
-function simulate(l: QualityLadder, ms: number, seconds: number): string[] {
-  const steps: string[] = []
-  const dt = 1 / 60
-  const frames = Math.round(seconds * 60)
-  for (let i = 0; i < frames; i++) {
-    const s = l.frame(ms, dt)
-    if (s) steps.push(s)
-  }
-  return steps
-}
-
-test('a sustained slow window sheds exactly one tier', () => {
-  const l = new QualityLadder('high')
-  const steps = simulate(l, 40, 4.2)
-  assert.deepEqual(steps, ['medium'], `shed ${JSON.stringify(steps)}`)
-  assert.equal(l.current, 'medium')
-})
-
-test('one slow frame is not a device: no shed on a single 40 ms hit', () => {
-  const l = new QualityLadder('high')
-  let out: string | null = null
-  for (let i = 0; i < 240; i++) {
-    const ms = i === 120 ? 40 : 8
-    const s = l.frame(ms, 1 / 60)
-    if (s) out = s
-  }
-  assert.equal(out, null, 'never shed for a single long frame')
-  assert.equal(l.current, 'high')
-})
-
-test('it cannot oscillate: a raise needs a 12 s dwell after a shed', () => {
-  const l = new QualityLadder('high')
-  simulate(l, 40, 4.2)              // shed to medium
-  assert.equal(l.current, 'medium')
-  const early = simulate(l, 6, 10)// fast again, but inside the dwell
-  assert.deepEqual(early, [], 'raised inside the dwell window')
-  const late = simulate(l, 6, 10)   // now past 12 s
-  assert.deepEqual(late, ['high'], 'raised once the dwell expired')
-})
-
-test('never sheds below the floor, never raises above the ceiling', () => {
-  const l = new QualityLadder('medium')
-  simulate(l, 90, 60)
-  assert.equal(l.current, 'low', 'shed to the floor and stopped')
-  const up = simulate(l, 5, 60)
-  assert.deepEqual(up, ['medium'], `raised once to the ceiling: ${JSON.stringify(up)}`)
-  assert.equal(l.current, 'medium')
-  assert.equal(l.ceilingTier, 'medium')
-})
-
-test('changing the ceiling snaps the tier immediately', () => {
-  const l = new QualityLadder('high')
-  simulate(l, 40, 4.2)
-  assert.equal(l.current, 'medium')
-  l.setCeiling('ultra')
-  assert.equal(l.ceilingTier, 'ultra')
-  assert.equal(l.current, 'medium', 'a ceiling change does not guess forward')
-  l.setCeiling('low')
-  assert.equal(l.current, 'low')
-})
-
-test('garbage samples cannot drive it', () => {
-  const l = new QualityLadder('high')
-  for (let i = 0; i < 600; i++) {
-    l.frame(Number.NaN, 1 / 60)
-    l.frame(-5, 1 / 60)
-    l.frame(0, 1 / 60)
-  }
-  assert.equal(l.current, 'high')
-})
-
-test('a tab-restore spike is clamped, not treated as a 2 s frame', () => {
-  const l = new QualityLadder('high')
-  const steps = simulate(l, 2000, 4.2)
-  // Clamped to 100 ms, which is still over the shed threshold: one shed, then
-  // it must stop rather than stepping again on the same stale window.
-  assert.equal(steps.length, 1, `steps ${JSON.stringify(steps)}`)
-})
-
-test('the ladder reads back as one line', () => {
-  const l = new QualityLadder('high')
-  simulate(l, 40, 4.2)
-  assert.match(l.toString(), /ladder medium \(ceil high\)/)
-})
-
 /* ------------------------------ the frame log ---------------------------- */
 
 test('frame log reports percentiles, not an average', () => {
@@ -215,7 +121,7 @@ test('frame log reports percentiles, not an average', () => {
 test('frame log excludes context switches from the percentile window', () => {
   const f = new FrameLog(60)
   for (let i = 0; i < 60; i++) f.sample(9)
-  f.sample(30_000)
+  f.markGap() // visibilitychange interrupts sampling
   const s = f.snapshot()
   assert.equal(s.gaps, 1)
   assert.equal(s.samples, 60)
@@ -228,10 +134,15 @@ test('frame log is bounded (no unbounded buffer)', () => {
   assert.equal(f.snapshot().samples, 64)
 })
 
-test('a desktop that sheds Ultra can earn it back on a vsynced 60 Hz display', () => {
-  const l = new QualityLadder('ultra')
-  simulate(l, 40, 4.2)
-  assert.equal(l.current, 'high')
-  simulate(l, 1000/60, 18)
-  assert.equal(l.current, 'ultra')
+test('a visible hitch is still in the frame log when an explicit hidden gap is omitted', () => {
+  const f = new FrameLog(32)
+  f.sample(16)
+  f.sample(372)
+  f.markGap()
+  f.sample(17)
+  const s = f.snapshot()
+  assert.equal(s.samples, 3)
+  assert.equal(s.gaps, 1)
+  assert.equal(s.visibleStalls, 1)
+  assert.equal(s.max, 372)
 })

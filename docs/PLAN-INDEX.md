@@ -14,18 +14,32 @@
 
 Kept for reference: `docs/mobile-2.5d/LIGHT-SHADOW-MATCH-PLAN.md`, `docs/ANIMATION.md`.
 
-## Master overhaul package (start here for the graphics overhaul)
+## Start here for current graphics work
+
+- [Bridge visual rules](BRIDGE-VISUAL-RULES.md) — prioritized fighter readability, rain on asphalt, and city depth; implementation and matched in-game comparisons.
+- [Procedural bridge run](PROCEDURAL-BRIDGE.md) — the current Engage path: streamed sectors, service/Flow, single-resolution governor and verification.
+- [Retired environment pilot](ENVIRONMENT-PILOT.md) — reference art and evidence from the former separate previews.
+- [Next-generation environments](NEXT-GEN-ENVIRONMENT-PLAN.md) — the universal graphics specification and phased roadmap, with a visual atlas and 80 review questions.
+- [Practical Optics](PRACTICAL-OPTICS.md) — the accepted Wet Bridge and dry Night Station visuals and paired evidence that the new plan uses as its baseline.
+- [Graphics engine map & mobile visual rulebook](GRAPHICS-ENGINE-MAP.md) — the current frame pipeline and shared scene rules.
+- [Wet Bridge upgrade and Night Station preview](MOBILE-VISUAL-UPGRADE-RESULTS.md) — historical art trial, matched Low 1× captures and validation receipts.
+- [Mobile visual upgrade plan](MOBILE-VISUAL-UPGRADE-PLAN.md) — researched art direction, ownership, rollout order, and phone frame-time gates.
+- [Adaptive graphics presets](lighting/graphics-tiers.md) — the active tier/route contract and visual checks.
+- [Graphics repair without losing the slasher](SLASHER-GRAPHICS-REPAIR-PLAN.md) maps the earlier audit to 24 tickets. The [implementation checkpoint](SLASHER-GRAPHICS-REPAIR-STATUS.md) records landed repairs, evidence, and what still needs device testing.
+
+## Master overhaul package (design history and proposals)
 `docs/master/DECISIONS.md` (D1–D4) → `00-DISCOVERY-REPORT.md` →
 `01-REQUIREMENTS-SPEC.md` → `02-TECH-SELECTION.md` → `03-PSYCHOLOGY-ART-DIRECTION.md`
 → `04-FIDELITY-TARGETS.md` → then 05 architecture … 11 validation.
 
-## Reading order for a new contributor
-0. `LIGHTING-RESEARCH-V4.md` §2 R1 and §4 (the experiments) — the architecture is
-   not settled until E1 answers whether our reflection reads the framebuffer.
-1. `LIGHT-SHADOW-V4-PLAN.md` §2 (the three budgets) and §8 (the do-not-do list).
-2. `LIGHT-SHADOW-V3.md` §2 (architecture) — the line the code actually follows.
-3. `PLAN-INDEX.md` (this file) for what is built vs planned.
-4. `RENDER-ROADMAP-V5-PLUS.md` §5 (decision log) before proposing a new engine.
+## Historical reading order
+
+For the reasoning behind the current system and earlier proposals:
+
+1. `LIGHTING-RESEARCH-V4.md` §2 R1 and §4 (reflection/compositing experiments).
+2. `LIGHT-SHADOW-V4-PLAN.md` §2 (the three budgets) and §8 (the do-not-do list).
+3. `LIGHT-SHADOW-V3.md` §2 (the earlier architecture).
+4. `RENDER-ROADMAP-V5-PLUS.md` §5 (the decision log).
 
 ## The one rule
 **If it can be baked, bake it. If it must move, blit it. If it must think,

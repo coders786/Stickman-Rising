@@ -1,28 +1,49 @@
-import { ART_GRADES, artPalette, type SceneArtOptions } from './art-grade'
+import type { BridgeStreaming } from '../../graphics/bridge/BridgeStreaming'
+import { BridgeAtmosphere } from '../../graphics/bridge/BridgeAtmosphere'
+import { bridgeSkyBasis } from '../../graphics/bridge/SkyBasis'
+import { bridgePlate } from '../stage/bridge-webp'
+import type { BridgeGLTier } from '../../graphics/sacr/BridgeBacking'
+import { atmosphereTransmission } from '../stage/bridge-material'
+import { RouteScenery, type ShelterPaint } from '../stage/route-art'
+import { bridgeBiomeMix, type BridgeRoute } from '../stage/route'
+import { RouteWeather } from './route-weather'
+import type { ServiceTerminal } from './service'
+import { rgba } from '../core/utils'
+import { ART_GRADES, artPalette, type SceneArtOptions, type SceneFinish } from './art-grade'
 import { lightFacade } from '../lighting/facade'
 import { Viaduct } from '../stage/viaduct'
+import { bakePractical, materialRamp, paintPlaneTone, type PracticalStamp } from '../stage/baked-finish'
 import { ROAD } from '../stage/road-section'
+import { FLAT_LANE } from '../stage/flat-lane'
+import { BRIDGE_CLIMATE, composeBridgeRun, SHELTER_KINDS, type BridgeRunPlan, type ShelterKind } from '../stage/run-layout'
+import { bakeRunShelter, SHELTER_DECK_TOP, type ShelterStamp } from '../stage/run-shelter-art'
+import { ENV_TICK, type FrontSample } from './fronts'
+import { worldBounds, type WeatherWork } from './exposed-weather'
+import { SceneFront } from './scene-front'
+import type { WetFixture } from '../stage/sheet-water'
+import { paintStationBand, STATION_VOID } from '../stage/station-art'
 import { FLOOD } from '../lighting/emitters'
 import { RibbonField, newProbe, blockersFor, DECK_W, DECK_H, type Probe } from '../lighting/ribbons'
 import {StormEngine} from './storm'
 import {FOG} from '../render/look'
-import { SkyVaultCache } from '../render/bhst'
+import { clipVisibleRows, SkyVaultCache } from '../render/bhst'
 import { MOOD_PALETTES, moodForSeed, type MoodPalette } from './mood'
 import { makeProfile, type EnvironmentProfile } from './profile'
 import { NightLayer } from './night'
 import { Rigging } from './rigging'
 import { buildCloudBank, bankParams, type BankParams } from './clouds'
-import { SurfaceGen, gameLedger, hasPixels } from '../render/ledger'
+import { SurfaceScope, hasPixels } from '../render/ledger'
+import { finishPaint } from '../render/paint-slices'
 import { WeatherFront, tintAlpha, tintColour } from './weather'
-import { rgbaConst } from '../render/color'
 import { keyLightFor, moonCentreX, reflectionGain, rimDirection, type KeyLight } from './light'
 import { featuresFor, type Tier } from '../render/graphics'
+import type { RaySource } from '../render/post'
 import {
-  LIGHT_TINT, SIGN_Y, PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, BEACON_X, BEACON_Y,
+  LIGHT_TINT, SIGN_Y, LAMP_Y, PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, BEACON_X, BEACON_Y,
   makeStageLights, type PointLight,
 } from './lightfield'
-import { animsForBuilding, drawBuildingAnims, type Band, type BuildingAnim } from './buildings'
-import { drawRoofProps, makeRoofProps, type RoofProp, type RoofPropSet } from './roofprops'
+import { animsForBuilding, drawBuildingAnims, orderBuildingAnims, type Band, type BuildingAnim } from './buildings'
+import { drawRoofProps, makeRoofProps, type RoofPropSet } from './roofprops'
 
 /** the broken streetlight's world x — the stage's second practical (was
  *  STREET_LIGHT from the deleted lighting engine) */
@@ -83,22 +104,55 @@ export interface BackgroundRenderer {
   moonY:number
   moonCover:number
   resize(w:number,h:number):void
+  dispose?():void
   update(dt:number):void
+  /** Fixed active-play weather clock; diagnostic art keeps its own clock. */
+  advanceActiveTicks?(ticks: number, interpolation: number): void
+  keyWeightAt?(x: number): number
+  rainAudioAt?(x: number): number
+  weatherWork?(): Readonly<WeatherWork>
+  skyBackend?(): string
+  runLayout?(): BridgeRunPlan | null
+  setRoute?(route: BridgeRoute): void
+  supportAt?(x: number): ReturnType<BridgeRoute['platformAt']>
+  syncCutaway?(x: number, y: number, dt: number): void
+  drawRouteExterior?(ctx: CanvasRenderingContext2D, cam: BgCam, service?: ServiceTerminal, paint?: ShelterPaint): void
+  drawNearRain?(ctx: CanvasRenderingContext2D, cam: BgCam, master?: boolean): void
+  routeTime?(): number
+  routeRainTime?(): number
+  routeWindAt?(x: number): number
+  routeDrift?(): number
+  routeFootfall?(x: number, y: number, strength: number, vx: number, landing?: boolean): void
+  bridgeLandings?(out: Float32Array, left: number, right: number): number
+  clipWet?(ctx: CanvasRenderingContext2D, left: number, right: number, top: number, bottom: number): void
   /** Change the draw budget WITHOUT discarding baked art. */
   setQuality(q:Quality):void
   /** OPTIONAL: re-seed the procedural skyline for a fresh run. Invalidates
    *  the baked tiles; the rebuild happens once, before the next frame. */
-  setRunSeed?(seed:number):void
+  setRunSeed?(seed: number, preparedNight?: NightLayer): void
+  createNightForSeed?(seed: number): NightLayer | null
   setReducedMotion?(enabled: boolean): void
   useQuietEnemyFinish?(): boolean
   bloomGain?(): number
+  /** Optics are painted from emitters, never sampled from the scene. */
+  usesBakedOptics?(): boolean
+  /** A dry receiver has neither actor nor environment mirrors. */
+  hasWetSurface?(): boolean
   actorReflectionGain?(): number
-  heroCloth?(): string | undefined
   surfaceWetness?(x: number): number
   lightningI():number
   lightningAz():number
-  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam):void
-  drawArena(ctx:CanvasRenderingContext2D, forwardOptics?:boolean, cam?:BgCam):void
+  drawSky(ctx:CanvasRenderingContext2D,cam:BgCam,worldCam?:BgCam, tier?: BridgeGLTier, impulse?: number):void
+  titleAssets?(): number
+  drawBridgeTitle?(ctx: CanvasRenderingContext2D, cam: BgCam): void
+  drawBridgeTitleSteps?(ctx: CanvasRenderingContext2D, cam: BgCam): Generator<void>
+  drawBridgeBackdrop?(ctx: CanvasRenderingContext2D, cam: BgCam, atmo: BridgeAtmosphere, impulse: number, sparse?: boolean): void
+  drawBridgeBackdropSteps?(ctx: CanvasRenderingContext2D, cam: BgCam, atmo: BridgeAtmosphere, sparse: boolean): Generator<void>
+  drawBridgeRoadSteps?(ctx: CanvasRenderingContext2D, cam: BgCam, master: boolean, gpuRoad: boolean): Generator<void>
+  railWake?(t: number, x: number): number
+  bridgeStream?(): BridgeStreaming | undefined
+  drawBridgeWater?(ctx: CanvasRenderingContext2D, cam: BgCam, wet: number): void
+  drawArena(ctx:CanvasRenderingContext2D, forward?:boolean, cam?:BgCam, impulse?: number, master?: boolean, gpuRoad?: boolean, provisional?: boolean, deferStream?: boolean):void
   /** OPTIONAL foreground pass — world-space, drawn AFTER the entities so
    *  near-lane dressing occludes fighters. */
   drawFront?(ctx:CanvasRenderingContext2D):void
@@ -109,7 +163,7 @@ export interface BackgroundRenderer {
   drawMotes?(ctx: CanvasRenderingContext2D, t: number): void
   /** Screen-space positions + weights of the sources the god-ray pass radiates
    *  from (the moon and every lit practical on screen). */
-  raySources?(w: number, h: number, cam: BgCam): Array<[number, number, number]>
+  raySources?(w: number, h: number, cam: BgCam): RaySource[]
   /** The light field's sample at a world point (the renderer reads this). */
   lightAt?(x: number, y?: number, out?: Probe): Probe
   drawReflections?(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality, forward?: boolean): void
@@ -120,13 +174,17 @@ export interface BackgroundRenderer {
   plateStats?(): ReturnType<NightLayer['stats']> | null
   /** Bake the run's plates now and report the cost in ms (see warm above). */
   warm?(): number
+  /** Prepare the attract scene without a synchronous WebGL bake. */
+  warmAttract?(): void
   /** Screen x of the moon — the stage's only light direction (contact shadows). */
   moonScreenX?(): number
   /** The key light model (world/light.ts). */
   lightState?(): KeyLight
   /** Live weather, for the debug readout (world/weather.ts). */
-  weatherState?(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null
+  weatherState?(): Readonly<FrontSample> | WeatherReadout | null
 }
+
+type WeatherReadout = { kind: string; s: number; rain: number; fog: number; gust: number; changes: number }
 
 /* ============================ seeded RNG ================================= */
 
@@ -152,10 +210,13 @@ const NOMINAL_Y = -170;         // usual camera height
  *  render layer's shadow module just for a number. */
 
 
-const ARENA_X0 = -150;          // arena floor spans world x -150 .. 2750
-const ARENA_X1 = 2750;
+const ARENA_X0 = FLAT_LANE.artLeft;
+const ARENA_X1 = FLAT_LANE.artRight;
 const SIGN_X = PRACTICAL_SIGN_X;  // amber traffic display, world x
 const ARENA_W = ARENA_X1 - ARENA_X0;
+// Guard rows keep bilinear filtering from pulling colour between light strips.
+const DECK_STRIDE = DECK_H + 2;
+const deckLightFloor = (lamp: PointLight) => Math.min(1, lamp.gain * (1 - lamp.flicker));
 const STAR_H = 640;
 const DEEP_H = 420;           // deepest skyline band (new)
 const FAR_H = 480;
@@ -166,15 +227,7 @@ function mod(a: number, n: number): number {
   return ((a % n) + n) % n;
 }
 
-/** Every baked city/sky surface of the CURRENT build. `begin()` at the top of a
- *  build releases the previous generation, so a reseed cannot leak a tile — and
- *  because the surfaces are pinned, an LRU sweep cannot blank one either
- *  (render/ledger.ts `Entry.pinned`). */
-const bgGen = new SurfaceGen('bake:')
-
-function makeCanvas(w: number, h: number): { c: HTMLCanvasElement; g: CanvasRenderingContext2D } {
-  return bgGen.next(w, h, 'bake');
-}
+type MakeCanvas = (w: number, h: number) => { c: HTMLCanvasElement; g: CanvasRenderingContext2D };
 
 /** Rounded-rect subpath (no dependency on ctx.roundRect). */
 function rrPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -202,7 +255,7 @@ function rrPath(g: CanvasRenderingContext2D, x: number, y: number, w: number, h:
  * ==========================================================================*/
 
 /** one soft radial light disc, baked once, reused for every emissive source */
-function buildGlowDisc(rgb: string): HTMLCanvasElement {
+function buildGlowDisc(makeCanvas: MakeCanvas, rgb: string): HTMLCanvasElement {
   const { c, g } = makeCanvas(64, 64);
   const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
   gr.addColorStop(0, `rgba(${rgb},0.9)`);
@@ -224,7 +277,7 @@ function buildGlowDisc(rgb: string): HTMLCanvasElement {
  *
  *  Drawn as a trapezoid from the source downward, brightest at the mouth, with a
  *  soft vertical fade so the cone has no visible end. */
-function buildShaft(rgb: string, topW: number, botW: number, h: number): HTMLCanvasElement {
+function buildShaft(makeCanvas: MakeCanvas, rgb: string, topW: number, botW: number, h: number): HTMLCanvasElement {
   const w = Math.ceil(Math.max(topW, botW)) + 24;
   const { c, g } = makeCanvas(w, h);
   // Evaluate the penumbra across each row, not against the maximum width.
@@ -241,6 +294,20 @@ function buildShaft(rgb: string, topW: number, botW: number, h: number): HTMLCan
   }
   g.putImageData(image,0,0)
   return c;
+}
+
+function drawShaft(ctx: CanvasRenderingContext2D, sprite: HTMLCanvasElement,
+  x: number, y: number, gain: number, layers: 1 | 2): void {
+  const core = layers === 2;
+  ctx.globalAlpha = gain * (core ? .65 : 1);
+  ctx.drawImage(sprite, x - sprite.width / 2, y);
+  if (core) {
+    // Redistribute the same light into a tighter core, not a brighter room.
+    // .65 + .875 × .4 = 1. Uses the same pinned plate as the outer cone.
+    const width = sprite.width * .4;
+    ctx.globalAlpha = gain * .875;
+    ctx.drawImage(sprite, x - width / 2, y, width, sprite.height);
+  }
 }
 
 /** EMISSIVE LIGHTMAP SPILL — additive soft light from a source onto its
@@ -462,7 +529,7 @@ function bakeArchetype(g: CanvasRenderingContext2D, b: BldSpec, kind: ArchKind):
 /** AURORA / HIGH-CLOUD SHEET — a sixth parallax plane baked from soft
  *  procedural ribbons. Drifts at its own factor with a slow alpha pulse;
  *  lives inside the cached sky vault so the frame cost is one blit. */
-function buildAuroraTile(pal: MoodPalette, hue = 0.2): HTMLCanvasElement {
+function buildAuroraTile(makeCanvas: MakeCanvas, pal: MoodPalette, hue = 0.2): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 190);
   const rng = mulberry32(0xa0c17e);
   // AURORA HUE (profile axis): 0 = a cold ribbon (cool pop2 / shadow),
@@ -569,13 +636,14 @@ function bakeFilmGrade(
 /** SCREEN VIGNETTE — one baked plate, one blit in the existing weather pass.
  *  Dark corners guide the eye to the centre (visual hierarchy) without any
  *  live radial gradient or full-screen post engine. */
-function buildVignettePlate(w: number, h: number, strength = 1): HTMLCanvasElement {
-  const { c, g } = makeCanvas(Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)));
+function paintVignette(g: CanvasRenderingContext2D, w: number, h: number, strength: number): void {
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  g.globalAlpha = 1;
+  g.clearRect(0, 0, g.canvas.width, g.canvas.height);
   const rg = g.createRadialGradient(w * 0.5, h * 0.46, Math.min(w, h) * 0.2, w * 0.5, h * 0.5, Math.max(w, h) * 0.78);
   rg.addColorStop(0, 'rgba(0,0,0,0)');
-  // VIGNETTE (profile axis): 0.55..1.1 scales the corner falloff. The centre
-  // stop moves too, so a low-vignette run does not merely get a lighter edge —
-  // it gets a wider clear field, which changes where the eye rests.
+  // Seeded strength changes corner density without moving scene geometry.
   const v = Math.max(0.3, Math.min(1.4, strength));
   rg.addColorStop(0.6, `rgba(4,8,14,${(0.055 * v).toFixed(3)})`);
   rg.addColorStop(1, `rgba(2,4,9,${Math.min(0.72, 0.5 * v).toFixed(3)})`);
@@ -586,7 +654,6 @@ function buildVignettePlate(w: number, h: number, strength = 1): HTMLCanvasEleme
   wg.addColorStop(1, 'rgba(255,150,80,0.03)');
   g.fillStyle = wg;
   g.fillRect(0, h * 0.74, w, h * 0.26);
-  return c;
 }
 
 /** ISOLATION + PEAK SHIFT — one supernormal hero per plane. A single
@@ -754,6 +821,10 @@ const LAY_MID: LayerDef = { f: 0.14, vf: 0.901, lift: -26 };
 /** near-mid foreground towers — parallax 0.30 */
 const LAY_NEAR: LayerDef = { f: 0.3, vf: 0.805, lift: -46 };
 
+const RUN_FAR: LayerDef = { ...LAY_FAR, f: .10 };
+const RUN_MID: LayerDef = { ...LAY_MID, f: .21 };
+const RUN_NEAR: LayerDef = { ...LAY_NEAR, f: .32 };
+
 /** drifting fog bands: parallax, y-offset from horizon, alpha, speed, phase */
 /* ============================ fixed palettes ============================= */
 
@@ -785,7 +856,7 @@ function bakePropShadow(g: CanvasRenderingContext2D, cx: number, baseY: number, 
 /** PARALLAX FOG PLANE — a soft horizontal haze sheet with procedural
  *  puffs cut out of it, tiled at its own parallax factor so the mist
  *  moves WITH depth instead of sticking to the screen. */
-function buildFogPlane(): HTMLCanvasElement {
+function buildFogPlane(makeCanvas: MakeCanvas): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 170);
   const gr = g.createLinearGradient(0, 0, 0, 170);
   gr.addColorStop(0, 'rgba(122,152,192,0)');
@@ -810,7 +881,7 @@ function buildFogPlane(): HTMLCanvasElement {
 /* ======================= static sprite pre-renders ======================= */
 
 /** vertical sky gradient strip (stretched to 0..horizon at draw time) */
-function buildSkyStrip(art?: typeof ART_GRADES[keyof typeof ART_GRADES]): HTMLCanvasElement {
+function buildSkyStrip(makeCanvas: MakeCanvas, art?: typeof ART_GRADES[keyof typeof ART_GRADES]): HTMLCanvasElement {
   const { c, g } = makeCanvas(8, 600);
   const gr = g.createLinearGradient(0, 0, 0, 600);
   if (art) {
@@ -833,8 +904,8 @@ function buildSkyStrip(art?: typeof ART_GRADES[keyof typeof ART_GRADES]): HTMLCa
 
 /** CITY GLOW — the light a rooftop sits in that has no single source.
  *
- *  Drawn as one additive plate along the back edge of the deck, scrolling slowly
- *  with its own parallax. Two things make it a GLOW and not a stripe:
+ *  Drawn as an additive plate along the back edge of the deck, anchored to the
+ *  world. Two things make it a GLOW and not a stripe:
  *
  *   · the vertical profile is sampled from a smooth curve (a stack of linear
  *     stops), so the alpha reaches exactly 0 at the top of the plate instead of
@@ -843,7 +914,7 @@ function buildSkyStrip(art?: typeof ART_GRADES[keyof typeof ART_GRADES]): HTMLCa
  *     touch the top edge — a radial gradient clipped by a canvas edge leaves a
  *     hard line, which is the giveaway that a "glow" is a rectangle.
  */
-function buildCityGlow(pal: MoodPalette): HTMLCanvasElement {
+function buildCityGlow(makeCanvas: MakeCanvas, pal: MoodPalette): HTMLCanvasElement {
   const W = 1024
   const H = 220
   const { c, g } = makeCanvas(W, H)
@@ -897,28 +968,6 @@ function buildCityGlow(pal: MoodPalette): HTMLCanvasElement {
   return c
 }
 
-/** ATMOSPHERIC DEPTH — the veil between the backdrop and the fight.
- *
- *  Real air is visible: the further something is, the more of the sky's colour
- *  sits in front of it. The city bands get this from their baked fog; the
- *  mid-ground (roof props, the back edge of the deck) had none, so props read as
- *  pasted on the skyline. One gradient, one blit, drawn between the props and
- *  the fighters — ultra only, because it is exactly the kind of thin layer a
- *  lower tier cannot afford and does not need. */
-function buildHazeBand(w: number): HTMLCanvasElement {
-  const W = Math.max(64, Math.ceil(w / 2))
-  const H = 120
-  const { c, g } = makeCanvas(W, H)
-  const gr = g.createLinearGradient(0, H, 0, 0)
-  gr.addColorStop(0, 'rgba(96,124,152,0)')
-  gr.addColorStop(0.40, 'rgba(65,87,111,0.25)')
-  gr.addColorStop(0.65, 'rgba(65,87,111,0.19)')
-  gr.addColorStop(1, 'rgba(80,108,138,0)')
-  g.fillStyle = gr
-  g.fillRect(0, 0, W, H)
-  return c
-}
-
 /** STYLIZED MOON — a real sphere, not a sticker. 512² plate baked once per
  *  palette, drawn as ONE blit. Physics/stylization kept:
  *   · gibbous terminator with earthshine on the dark limb
@@ -929,7 +978,7 @@ function buildHazeBand(w: number): HTMLCanvasElement {
  *   · chromatic fringe on the limb — 2 offset arcs, the "photographed through
  *     glass" tell that reads as premium
  *   · 3 thin cloud wisps crossing the lower limb for depth against the sky */
-function buildMoon(pal: MoodPalette): HTMLCanvasElement {
+function buildMoon(makeCanvas: MakeCanvas, pal: MoodPalette): HTMLCanvasElement {
   const S = 512, C = 256, R = 152;
   const { c, g } = makeCanvas(S, S);
   const rng = mulberry32(0x4d00d1);
@@ -1045,7 +1094,7 @@ function buildMoon(pal: MoodPalette): HTMLCanvasElement {
 
 /** MOON CORONA — 4 scattering rings + 6 crepuscular rays + one lens streak.
  *  Palette-tinted, fully baked, ONE additive blit at runtime. */
-function buildMoonHalo(pal: MoodPalette): HTMLCanvasElement {
+function buildMoonHalo(makeCanvas: MakeCanvas, pal: MoodPalette): HTMLCanvasElement {
   const { c, g } = makeCanvas(512, 512);
   const C = 256;
   const rings: ReadonlyArray<[number, string, number, number]> = [
@@ -1125,17 +1174,12 @@ function buildMoonHalo(pal: MoodPalette): HTMLCanvasElement {
  *  transparent, pre-baked, scrolled in world space. The deck's own texture
  *  lives in the arena tile; this adds slow moving light variance. */
 
-/** cloud blob layout of the dark tile — drives the eclipse coverage math
- *  (how much cloud mass currently sits over the moon disc). Filled once at
- *  build; lookup is O(16)/frame. */
-const CLOUD_BLOBS: { x: number; y: number; r: number }[] = [];
-
 /* ======================== storm sprite pre-renders ======================= */
 
 /** seamless drifting cloud bank — two flavours built from one layout:
  *  DARK (source-over, the night silhouette) and LIT (additive, re-blitted
  *  while lightning scatters through the deck). Horizontally periodic. */
-function buildCloudTile(lit: boolean, texture = 0.5): HTMLCanvasElement {
+function buildCloudTile(makeCanvas: MakeCanvas, lit: boolean, texture = 0.5): HTMLCanvasElement {
   const { c, g } = makeCanvas(TILE, 300);
   const rng = mulberry32(0x3c19d2);
   // CLOUD TEXTURE (profile axis): at 0 the deck is a soft sheet of few, wide
@@ -1149,7 +1193,6 @@ function buildCloudTile(lit: boolean, texture = 0.5): HTMLCanvasElement {
     const cy = 60 + rng() * 170;
     const rx = (130 + rng() * 220) * (1 - texture * 0.45);
     const ry = (26 + rng() * 58) * (1 - texture * 0.35);
-    if (!lit) CLOUD_BLOBS.push({ x: cx, y: cy, r: rx });
     const a = (lit ? 0.1 + rng() * 0.12 : coreA + rng() * 0.16) * (0.85 + texture * 0.4);
     const col = lit ? '168,198,236' : '16,24,40';
     for (let k = -1; k <= 1; k++) {
@@ -1170,7 +1213,7 @@ function buildCloudTile(lit: boolean, texture = 0.5): HTMLCanvasElement {
 
 /** cheap bokeh depth-of-field: downsample, then smooth-upsample back to the
  *  original tile size (one-time build, zero per-frame cost). */
-function blurTile(src: HTMLCanvasElement, down: number): HTMLCanvasElement {
+function blurTile(makeCanvas: MakeCanvas, src: HTMLCanvasElement, down: number): HTMLCanvasElement {
   // MEMORY: return the DOWNSCALED plate only (1/down each axis). The old
   // version upscaled it back into a second full-size canvas, which kept
   // ~12 MB of duplicate tiles resident for a look we get for free by letting
@@ -1194,12 +1237,20 @@ function blurTile(src: HTMLCanvasElement, down: number): HTMLCanvasElement {
 }
 
 /** humid horizon haze band (transparent → soft → transparent, vertical) */
-function buildHazeStrip(): HTMLCanvasElement {
+function buildHazeStrip(makeCanvas: MakeCanvas, air?: SceneArtOptions['airlight']): HTMLCanvasElement {
   const { c, g } = makeCanvas(8, 150);
   const gr = g.createLinearGradient(0, 0, 0, 150);
-  gr.addColorStop(0, 'rgba(150,180,200,0)');
-  gr.addColorStop(0.5, 'rgba(150,180,200,0.14)');
-  gr.addColorStop(1, 'rgba(150,180,200,0)');
+  if (air) {
+    gr.addColorStop(0, rgba(air.color, 0));
+    gr.addColorStop(.23, rgba(air.color, .12 * air.opacity));
+    gr.addColorStop(.60, rgba(air.color, air.opacity));
+    gr.addColorStop(.83, rgba(air.color, .62 * air.opacity));
+    gr.addColorStop(1, rgba(air.color, 0));
+  } else {
+    gr.addColorStop(0, 'rgba(150,180,200,0)');
+    gr.addColorStop(0.5, 'rgba(150,180,200,0.14)');
+    gr.addColorStop(1, 'rgba(150,180,200,0)');
+  }
   g.fillStyle = gr;
   g.fillRect(0, 0, 8, 150);
   return c;
@@ -1217,7 +1268,7 @@ function buildHazeStrip(): HTMLCanvasElement {
 /** two puddle decals (magenta / cyan neon reflections), stretched per decal */
 
 /** abstract sci-fi glyph panel for one neon sign (no real letters) */
-function buildGlyph(ci: number): HTMLCanvasElement {
+function buildGlyph(makeCanvas: MakeCanvas, ci: number): HTMLCanvasElement {
   const { c, g } = makeCanvas(128, 48);
   const rng = mulberry32(0x9a7c00 + ci * 7919);
   const ink = SIGN_INK[ci];
@@ -1276,15 +1327,11 @@ export class CyberBackground {
   /* pre-rendered art (built once, resolution independent) */
   private built = false;
   private skyStrip!: HTMLCanvasElement;
-  /** light-pollution glow plate (perf, baked at viewport width for 1:1 blit) */
+  /** Narrow, palette-owned vertical pollution ramp stretched across the viewport. */
   private pollPlate: HTMLCanvasElement | null = null;
-  private pollW = 0;
   private starTile!: HTMLCanvasElement;
   private moonSpr!: HTMLCanvasElement;
   private moonHalo!: HTMLCanvasElement;   // 4-ring additive scattering bake
-  private deepTile!: HTMLCanvasElement;
-  private farTile!: HTMLCanvasElement;
-  private midTile!: HTMLCanvasElement;
   private nearTile!: HTMLCanvasElement;
   private deepTileBlur!: HTMLCanvasElement;
   private fogPlane!: HTMLCanvasElement;   // parallax haze sheet (procedural puffs)
@@ -1294,10 +1341,10 @@ export class CyberBackground {
   private signHalo!: HTMLCanvasElement;
   private glowCool!: HTMLCanvasElement;
   private glowSigns: HTMLCanvasElement[] = [];
-  private lampSpr!: HTMLCanvasElement;    // broken streetlight, restored + baked
+  private fixtures: PracticalStamp[] = [];
+  private wetFixtures: WetFixture[] = [];
   private street!: Viaduct;
   private cloudDark!: HTMLCanvasElement;   // drifting night cloud deck
-  private signSpr!: HTMLCanvasElement;    // traffic advisory sign and posts
   private shaftWarm!: HTMLCanvasElement;  // volumetric cone under the display
   private shaftCool!: HTMLCanvasElement;  // ... and under the streetlight
   private glyphSpr: HTMLCanvasElement[] = [];   // sign glyphs (baked into mid tile)
@@ -1330,22 +1377,15 @@ export class CyberBackground {
   /* THE LIGHT FIELD (world/lightfield.ts) — the two authored practicals plus
    * whatever this run's rooftop props generate. Rebuilt on every run seed; every
    * consumer that asks "how lit is this spot" reads this and nothing else. */
-  private lights: PointLight[] = []
   private field: RibbonField | null = null
   private deckAtlas: HTMLCanvasElement | null = null
-  private deckBase: HTMLCanvasElement | null = null
   private deckAnimated: number[] = []
-  private beaconSprite!: HTMLCanvasElement
-  private atlasField: RibbonField | null = null
   private sample = newProbe()
-  /** Rooftop props (world/roofprops.ts). Built once at the maximum budget; the
-   *  tier decides how many of them are DRAWN, so changing quality never
-   *  re-rolls the roof. */
+  /** One seeded layout for the visible props, light blockers and bulb.
+   *  Only the surface finish changes with quality. */
   private roof: RoofPropSet = { props: [], lights: [] }
   /** City animation records, per band (world/buildings.ts). Emitted at bake. */
   private bandAnims: Record<Band, BuildingAnim[]> = { deep: [], far: [], mid: [], near: [] }
-  /** atmospheric depth band over the mid-ground (ultra) */
-  private hazeBand: HTMLCanvasElement | null = null
   /** city light pollution rising over the parapet (one baked plate) */
   private cityGlow: HTMLCanvasElement | null = null
   /** The cumulus bank (world/clouds.ts) — null on a clear run. */
@@ -1362,107 +1402,242 @@ export class CyberBackground {
   private reducedMotion = false
   private wxWet = 1
   private wxGust = 1
-  /** The tint fill, resolved only when its quantised alpha changes. */
-  private wxTint: string | null = null
-  private wxTintKey = ''
   /** THE KEY LIGHT — one model, every consumer (world/light.ts). */
   private light: KeyLight = { type:'directional', azimuth: 0, elevation: 0.78, warmth: 0.45 }
   /** Last few run seeds, so a new run cannot be a near-copy of the last one
    *  (profile.ts §LAW 3). Bounded: three is enough for the metric to work. */
   private seedHistory: number[] = [];
   private heroDisc!: HTMLCanvasElement;
+  private readonly surfaces = new SurfaceScope('background');
+  private readonly bakes = this.surfaces.generation('bake');
+  private readonly practicalScratch = this.surfaces.generation('practical-work');
+  private readonly cityScratch = this.surfaces.generation('city-work');
+  private readonly makeCanvas: MakeCanvas = (w, h) => this.bakes.next(w, h, 'bake');
+  private readonly stageBakes = this.surfaces.generation('stage');
+  private readonly makeStageCanvas: MakeCanvas = (w, h) => this.stageBakes.next(w, h, 'stage-bake');
+  private stageKitBuilt = false;
+  private dryRecess: HTMLCanvasElement | undefined;
+  private layout: BridgeRunPlan | null = null;
+  private shelters: Partial<Record<ShelterKind, ShelterStamp>> = {};
   private vignette: HTMLCanvasElement | null = null;
-  /* V3 reactive layer — baked sprites + a tiny reflection buffer */
+  private vigStrength = NaN;
+  private vigFailed = false;
+  /* A retained, prefiltered reflection buffer. Its size depends on the
+   * viewport and tier, not the per-frame camera zoom or roll. */
   private reflBuf: HTMLCanvasElement | null = null;
-  private reflW = 0;
-  private reflH = 0;
   private vigW = 0;
   private vigH = 0;
-  private pollMood = -1;
+  private pollMood: MoodPalette | null = null;
   private skyVault = new SkyVaultCache();
   private lastCam: BgCam = { x: 1300, y: NOMINAL_Y, zoom: 1 };
+  private readonly station: SceneFinish | undefined;
+  private readonly front?: SceneFront;
+  private scenery?: RouteScenery;
+  private routeWeather?: RouteWeather;
+  private get activeFront() { return this.routeWeather?.clock ?? this.front?.clock }
+  private routeVignette?: HTMLCanvasElement;
+  private lastBakedSky = false;
+  private bridgeCloudRim?: HTMLCanvasElement;
+  private readonly frontView = { left: 0, right: 0, top: 0, bottom: 0 };
+  readonly advanceActiveTicks?: BackgroundRenderer['advanceActiveTicks'];
+  readonly keyWeightAt?: BackgroundRenderer['keyWeightAt'];
+  readonly rainAudioAt?: BackgroundRenderer['rainAudioAt'];
+  readonly weatherWork?: BackgroundRenderer['weatherWork'];
+  readonly skyBackend?: BackgroundRenderer['skyBackend'];
 
   get onThunder(){return this.storm.onThunder}
   set onThunder(cb:(()=>void)|null){this.storm.onThunder=cb}
-  constructor(quality:Quality,storm=new StormEngine(quality), private readonly art: SceneArtOptions = {}){
+  constructor(quality:Quality,storm=new StormEngine(quality), private readonly art: SceneArtOptions = {},
+    mode?: 'combined-run' | 'continuous-run') {
     this.q=quality;this.storm=storm;
+    this.station = art.architecture === 'station' ? art.finish : undefined;
     this.storm.setSharpRain(Boolean(art.sharpRain));
+    if (this.station || mode) this.storm.setRainScale(0);
+    if (mode === 'continuous-run') {
+      this.advanceActiveTicks = (ticks, alpha) => {
+        this.routeWeather?.advance(ticks, alpha);
+        this.t = this.activeFront?.time ?? 0;
+      };
+      this.keyWeightAt = x => this.routeWeather?.keyWeightAt(x) ?? 1;
+      this.rainAudioAt = x => this.routeWeather?.rainAudioAt(x) ?? 0;
+      this.weatherWork = () => this.routeWeather!.work;
+      this.skyBackend = () => this.bank ? 'city-bank' : 'city-decks';
+    }
+    if (mode === 'combined-run') {
+      this.layout = composeBridgeRun(this.runSeed);
+      const front = this.front = new SceneFront(BRIDGE_CLIMATE, this.layout.exposure, this.runSeed);
+      this.advanceActiveTicks = (ticks, alpha) => {
+        front.advance(ticks, alpha);
+        this.t = front.clock.time;
+        this.rig?.windState.setExternal(front.clock.sample.windX);
+        if (!this.reducedMotion && ticks) this.rig?.update(ticks * ENV_TICK);
+      };
+      this.keyWeightAt = x => front.keyWeightAt(x);
+      this.rainAudioAt = x => front.rainAudioAt(x);
+      this.weatherWork = () => front.weather.stats;
+      this.skyBackend = () => this.bank ? 'city-bank' : 'city-decks';
+    }
     this.mood = artPalette(moodForSeed(0x51a2c9), this.art.grade);
+  }
+
+  setRoute(route: BridgeRoute): void {
+    if (this.scenery) this.scenery.reset(route);
+    else this.scenery = new RouteScenery(route);
+    this.routeWeather = new RouteWeather(route);
+    this.t = 0;
+    this.skyVault.invalidate();
+  }
+  railWake(t: number, x: number) { return this.scenery?.railWake(t, x) ?? 0 }
+  bridgeStream() { return this.scenery?.stream }
+  routeCache() { return this.scenery?.stats() ?? null }
+  supportAt(x: number) { return this.scenery?.route.platformAt(x) ?? null }
+  syncCutaway(x: number, y: number, dt: number): void { this.scenery?.updateCutaway(x, y, dt); }
+  drawRouteExterior(ctx: CanvasRenderingContext2D, cam: BgCam, service?: ServiceTerminal, paint?: ShelterPaint): void {
+    if (this.scenery) this.scenery.drawExterior(ctx, worldBounds(this.frontView, this.vw, this.vh, cam), service, paint);
+  }
+  routeTime(): number { return this.routeWeather?.clock.time ?? 0 }
+  routeRainTime(): number { return this.routeWeather?.rainTime ?? 0 }
+  routeWindAt(x: number): number { return this.routeWeather?.gustAt(x, this.reducedMotion) ?? 0 }
+  routeDrift(): number { return this.activeFront?.driftX ?? 0 }
+  routeFootfall(x: number, y: number, strength: number, vx: number, landing?: boolean): void { this.routeWeather?.footfall(x, y, strength, vx, landing) }
+  bridgeLandings(out: Float32Array, left: number, right: number): number { return this.routeWeather?.bridgeLandings(out, left, right) ?? 0 }
+  drawBridgeWater(ctx: CanvasRenderingContext2D, cam: BgCam, wet: number): void {
+    if (!this.scenery || !this.routeWeather || wet < .005) return;
+    const view = worldBounds(this.frontView, this.vw, this.vh, cam);
+    if (view.bottom <= ROAD.rear || view.top >= ROAD.front) return;
+    ctx.save();
+    const open = this.routeWeather.clip(ctx, view.left - 2, view.right + 2, ROAD.rear, ROAD.front);
+    if (open) this.scenery.drawRoadWater(ctx, view, wet, this.reducedMotion ? 0 : this.routeTime(), this.q !== 'low');
+    ctx.restore();
+  }
+
+  drawNearRain(ctx: CanvasRenderingContext2D, cam: BgCam, master = false): void {
+    this.routeWeather?.draw(ctx, worldBounds(this.frontView, this.vw, this.vh, cam), cam.x, this.q, true, this.reducedMotion, master);
+  }
+  clipWet(ctx: CanvasRenderingContext2D, left: number, right: number, top: number, bottom: number): void {
+    if (this.routeWeather) this.routeWeather.clip(ctx, left, right, top, bottom);
+    else { ctx.beginPath(); ctx.rect(left, top, right - left, bottom - top); ctx.clip(); }
   }
 
   /** Tier change is a DRAW BUDGET change, never a re-bake. Every tile is
    *  built from a fixed seed in resolution-independent layer space, so the
    *  art is identical at every tier — only how much of it we draw differs. */
   setQuality(q:Quality):void{
-    if (this.q !== q) this.atlasField = null
     this.q=q;
     // Tiers are DRAW budgets: the rig keeps its physics and loses cables.
     this.rig?.setTier(q);
   }
 
+  /** Compute the same history-dependent profile as a synchronous reseed,
+   * without touching the active sky, weather, or novelty history. */
+  createNightForSeed(seed: number): NightLayer | null {
+    if (this.station || this.scenery) return null;
+    const s = seed >>> 0;
+    if (s === this.runSeed && this.built) return null;
+    const profile = s === this.runSeed && this.profile ? this.profile : makeProfile(s, this.activeFront ? [] : this.seedHistory);
+    return new NightLayer(profile, !this.art.finish);
+  }
+
   /** RE-SEED THE SKYLINE — the whole point of procedural generation: every
    *  run gets a different set of building archetypes, silhouettes, window
-   *  personalities, bridges and neon. Baked once on the next draw, so the
-   *  120 Hz frame path is unchanged (still one blit per band). */
-  setRunSeed(seed:number):void{
-    const s=seed>>>0;
-    if(s===this.runSeed)return;
-    this.runSeed=s;
+   *  personalities, bridges and neon. Baked once on the next draw. */
+  setRunSeed(seed: number, preparedNight?: NightLayer): void {
+    const s = seed >>> 0;
+    if (s === this.runSeed && !preparedNight) {
+      if (this.front) {
+        if (this.profile) this.rig = new Rigging(this.profile, this.q);
+        this.resetCanonicalFront(s);
+      }
+      return;
+    }
+    const changed = s !== this.runSeed;
+    this.runSeed = s;
+    if (changed && this.front) this.layout = composeBridgeRun(s);
     // The profile is the run's identity: mood, moon, stars, clouds, aurora,
     // fog, grade, practicals and prop density, all from one seed. `seedHistory`
     // keeps a new run from being a near-copy of the previous one.
-    this.profile = makeProfile(s, this.seedHistory);
-    this.seedHistory = [s, ...this.seedHistory].slice(0, 3);
+    this.profile = preparedNight?.profile ?? makeProfile(s, this.activeFront ? [] : this.seedHistory);
+    if (changed && !this.activeFront) this.seedHistory = [s, ...this.seedHistory].slice(0, 3);
     this.mood = artPalette(this.profile.mood, this.art.grade);   // coherent colour identity + per-run novelty
     // Release the old plates BEFORE building the new ones: two nights resident
     // at once is exactly the doubling the ledger exists to prevent.
     this.night?.dispose();
-    this.night = new NightLayer(this.profile);
+    this.night = this.station || this.scenery ? null : preparedNight ?? new NightLayer(this.profile, !this.art.finish);
     // The rigging is part of the settlement, not of the sky: it is rebuilt per
     // run because the span, sag and pennant count are run identity.
-    this.rig = new Rigging(this.profile, this.q);
+    this.rig = this.station || this.scenery ? null : new Rigging(this.profile, this.q);
     // Weather is a profile axis cluster: rarity, density and cadence of storms.
     this.storm.applyProfile?.(this.profile.weather);
     // The key light is derived from the profile ONCE per run, and every lit
     // thing in the frame (moon, shadows, rims, cable rim, glitter) reads it.
-    this.light = keyLightFor(this.profile)
+    this.light = this.keyLightForScene(this.profile)
     /* THE LIGHT FIELD, REBUILT PER RUN. The two practicals are the stage; the
      * rooftop props can add one more (a bulb on a stand), and because it is a
      * real source in the field, the player's proximity lighting, the deck pool
      * and the second cast shadow all follow it without knowing it exists.
-     * Built at the ULTRA budget: the tier decides how many props are DRAWN, so
-     * pressing a quality button never re-rolls the roof under the player. */
+     * Layout and light blockers stay fixed through live quality changes. */
     this.resetLighting()
     this.wxRainBase = Math.max(0.35, Math.min(1, this.profile.weather.rain));
     // THE FRONT — the run's weather is a climate, not a constant: inside a run
     // the sky is allowed to change its mind, slowly (world/weather.ts).
     const bias = this.profile.weather.stormBias;
-    if (this.wx) this.wx.reset(this.profile.seed, bias, this.profile.weather.rain);
-    else this.wx = new WeatherFront(this.profile.seed, bias, this.profile.weather.rain);
-    this.applyWeather(0);
-    this.pollMood = -1;           // force the horizon bloom to re-bake
+    if (this.scenery) { this.storm.setRainScale(0); this.t = 0; }
+    else if (this.front) this.resetCanonicalFront(s);
+    else if (this.station) this.storm.setRainScale(0);
+    else {
+      if (this.wx) this.wx.reset(this.profile.seed, bias, this.profile.weather.rain);
+      else this.wx = new WeatherFront(this.profile.seed, bias, this.profile.weather.rain);
+      this.applyWeather();
+    }
+    this.vigFailed = false;       // retry an optional mask at the next run boundary
+    this.surfaces.release('bridge-cloud-rim'); this.bridgeCloudRim = undefined;
     this.built=false;
     this.skyVault.invalidate();   // force one composite with the NEW skyline
+  }
+
+  private resetCanonicalFront(seed: number): void {
+    if (this.front && this.layout) {
+      this.front.reset(seed, this.layout.exposure);
+      this.rig?.windState.setExternal(this.front.clock.sample.windX);
+    }
+    this.storm.setRainScale(0);
+    this.t = 0;
+    this.skyVault.invalidate();
+  }
+
+  dispose(): void {
+    this.scenery?.dispose();
+    this.routeVignette = undefined;
+    this.skyVault.dispose();
+    this.night?.dispose();
+    this.surfaces.releaseAll();
+    this.built = this.stageKitBuilt = false;
+    this.dryRecess = undefined;
+    this.shelters = {};
+    this.fixtures = [];
+    this.wetFixtures = [];
+    this.reflBuf = null;
+    this.pollPlate = null;
+    this.vignette = null;
+    this.vigFailed = false;
   }
 
   /** The current run identity, for the debug overlay and the bench. */
   getProfile(): EnvironmentProfile | null { return this.profile; }
 
-  /** BAKE NOW, NOT ON THE FIRST ACTION FRAME.
-   *
-   * A reseed invalidates every tile, and the bake used to happen inside the
-   * first `drawSky` of the run — i.e. the player pressed PLAY and watched a
-   * frozen frame (measured 120–400 ms depending on the device's canvas speed).
-   * Warming synchronously at the moment of the click moves that cost onto the
-   * menu, where a still frame is what the player already expects. Returns the
-   * milliseconds spent so the frame log can report the truth. */
+  runLayout(): BridgeRunPlan | null { return this.layout; }
+
+  /** Finish the seeded city synchronously; the UI path supplies a prepared
+   * night so this no longer waits for WebGL readback. Standalone callers can
+   * still bake the whole scene at once. */
   warm(): number {
     const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
     this.ensureBuilt()
     return (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0
   }
 
-  /** Which path baked the plates this run — 'gpu' means the WebGL2 baker ran. */
+  warmAttract(): void { this.ensureBuilt(true); }
+
   plateStats(): ReturnType<NightLayer['stats']> | null { return this.night?.stats() ?? null; }
 
   /** CSS-pixel size of the game canvas viewport. */
@@ -1478,10 +1653,8 @@ export class CyberBackground {
     // no tile ever needs re-rendering.
   }
 
-  /** Push the front's current sample into the systems that read weather:
-   *  rain density, fog, wind, wetness of the deck, and the sky's tint. Pure
-   *  arithmetic — no allocation, no canvas work — so it can run every frame. */
-  private applyWeather(_dt: number): void {
+  /** Push the front's current sample to rain, fog, wind and wet optics. */
+  private applyWeather(): void {
     const wx = this.wx
     if (!wx) return
     const s = wx.sample
@@ -1490,22 +1663,18 @@ export class CyberBackground {
     this.wxWet = s.wet
     this.wxGust = s.gust
     this.rig?.windState.setGust(s.gust)
-    // The tint is a fill colour; `rgbaConst` caches by (rgb, alpha) and the
-    // alpha is quantised to 1/32 by the front, so this allocates only when the
-    // weather actually moves a step.
-    const a = tintAlpha(s.tint)
-    const key = `${a}|${s.tint >= 0 ? 'w' : 'c'}`
-    if (key !== this.wxTintKey) {
-      this.wxTintKey = key
-      this.wxTint = a > 0 ? rgbaConst(tintColour(s.tint), a) : null
-    }
   }
 
   /** The key light, for anything that draws a lit edge (render/renderer.ts). */
   lightState(): KeyLight { return this.light; }
 
+  private keyLightForScene(profile: EnvironmentProfile): KeyLight {
+    return this.station ? { type: 'directional', azimuth: .28, elevation: .85, warmth: .32 } : keyLightFor(profile)
+  }
+
   /** For the debug overlay / bench: what the sky is doing right now. */
-  weatherState(): { kind: string; s: number; rain: number; fog: number; gust: number; changes: number } | null {
+  weatherState(): Readonly<FrontSample> | WeatherReadout | null {
+    if (this.activeFront) return this.activeFront.sample;
     const wx = this.wx
     if (!wx) return null
     const s = wx.sample
@@ -1516,36 +1685,95 @@ export class CyberBackground {
    *  The contact shadows and the rim both key from it (see renderer.ground). */
   moonScreenX(): number { return this.moonX; }
 
-  /** advance ambient animation; dt in seconds (clamped internally).
-   *  The sign/puddle state machines are gone — everything animated in the
-   *  city layer is baked now, so this only advances the shared clock. */
+  /** Advance the shared ambient clock; city light modulation is a continuous
+   * function of this clock, not a new per-frame random sample. */
   update(dt: number): void {
-    if (this.art.clean) return;
+    if (this.art.clean || this.activeFront) return;
     const d = dt > 0 ? (dt < 0.1 ? dt : 0.1) : 0;
     this.t += d;
     // The front is driven by the real clock and by the storm's own flash: it
     // will not turn the weather over while the sky is already strobing.
     this.wx?.update(d, this.storm.intensity);
-    this.applyWeather(d);
+    this.applyWeather();
     // Rigging physics runs on the fixed sub-step inside SpringChain, so a slow
     // frame bows the cables the same distance a fast one does.
     this.rig?.update(d);
   }
 
-  setReducedMotion(enabled: boolean): void { this.reducedMotion = enabled }
-  useQuietEnemyFinish(): boolean { return this.art.grade === 'deep-noir' }
+  setReducedMotion(enabled: boolean): void {
+    if (this.activeFront && enabled !== this.reducedMotion) this.skyVault.invalidate();
+    this.reducedMotion = enabled;
+  }
+  useQuietEnemyFinish(): boolean { return this.art.grade === 'deep-noir' || Boolean(this.station) }
   bloomGain(): number { return this.art.grade ? .52 : 1 }
+  usesBakedOptics(): boolean { return this.art.finish !== undefined }
+  hasWetSurface(): boolean { return this.art.finish?.deck.surface !== 'dry-platform' }
   actorReflectionGain(): number { return this.art.amberSpecimen ? .58 : 1 }
   private lampTint(): string { return LIGHT_TINT[this.art.amberSpecimen ? 'warm' : 'cool'].join(',') }
-  heroCloth(): string | undefined { return this.art.grade ? ART_GRADES[this.art.grade].cloth : undefined }
-  surfaceWetness(x: number): number { return Math.min(1.2, this.wxWet) * (0.33 + 0.67 * this.street.wetness(x, .65)) }
+  surfaceWetness(x: number): number {
+    if (this.routeWeather) return this.routeWeather.wetnessAt(x);
+    if (this.front) return this.front.wetnessAt(x);
+    return this.hasWetSurface() ? Math.min(1.2, this.wxWet) * (0.33 + 0.67 * this.street.wetness(x, .65)) : 0;
+  }
 
-  lightningI():number{return this.storm.intensity}
+  lightningI():number{return this.routeWeather?.flash() ?? (this.activeFront ? 0 : this.storm.intensity)}
   lightningAz():number{return this.storm.azimuthValue}
 
   /* ------------------------ screen-space sky pass ------------------------ */
 
-  drawSky(outerCtx: CanvasRenderingContext2D, cam: BgCam): void {
+  private lastBridgeAtmosphere: BridgeAtmosphere | null = null;
+  private readonly canvasAtmosphere = new BridgeAtmosphere();
+
+  /** Same authored horizon on the complete Canvas route and sparse GL
+   * world source. Train/rail are between the city and the live lane. */
+  drawBridgeBackdrop(ctx: CanvasRenderingContext2D, cam: BgCam, atmo: BridgeAtmosphere, _impulse: number, sparse = true): void {
+    this.setBridgeAtmosphere(cam, atmo);
+    this.scenery?.drawBackdrop(ctx, this.vw, this.vh, cam, atmo, this.reducedMotion, sparse);
+  }
+
+  *drawBridgeBackdropSteps(ctx: CanvasRenderingContext2D, cam: BgCam, atmo: BridgeAtmosphere, sparse: boolean): Generator<void> {
+    this.setBridgeAtmosphere(cam, atmo);
+    if (this.scenery) yield* this.scenery.drawBackdropSteps(ctx, this.vw, this.vh, cam, atmo, this.reducedMotion, sparse, true);
+  }
+
+  private setBridgeAtmosphere(cam: BgCam, atmo: BridgeAtmosphere): void {
+    this.lastCam = cam;
+    this.moonX = atmo.moonX; this.moonY = atmo.moonY; this.moonCover = 1 - atmo.moonTransmission;
+    this.lastBridgeAtmosphere = atmo;
+  }
+
+  titleAssets(): number {
+    return +!!bridgeSkyBasis() | (+!!bridgePlate('l1') << 1) | (+!!bridgePlate('l2') << 2);
+  }
+
+  drawBridgeTitle(ctx: CanvasRenderingContext2D, cam: BgCam): void {
+    this.drawRouteSky(ctx, cam, 0, true);
+  }
+
+  *drawBridgeTitleSteps(ctx: CanvasRenderingContext2D, cam: BgCam): Generator<void> {
+    if (!this.scenery) return;
+    this.updateRouteSkyPose(cam, this.scenery.route);
+    yield* this.scenery.drawTitleSteps(ctx, this.vw, this.vh, this.canvasAtmosphere, true);
+  }
+
+  private updateRouteSkyPose(cam: BgCam, route: BridgeRoute): void {
+    const w = this.activeFront?.sample, t = this.reducedMotion ? 0 : this.routeTime();
+    this.canvasAtmosphere.update(bridgeSkyBasis(), cam, this.vw, this.vh, this.runSeed, bridgeBiomeMix(cam.x, route.seed), {
+      time: t, drift: this.reducedMotion ? 0 : this.routeDrift(), cover: w?.cloud ?? .47, haze: w?.fog ?? .27,
+      flash: this.reducedMotion ? 0 : this.lightningI(),
+    });
+  }
+
+  private drawRouteSky(ctx: CanvasRenderingContext2D, cam: BgCam, impulse: number, title = false): boolean {
+    if (!this.scenery) return false;
+    this.updateRouteSkyPose(cam, this.scenery.route);
+    if (title) this.scenery.drawTitle(ctx, this.vw, this.vh, this.canvasAtmosphere);
+    else this.drawBridgeBackdrop(ctx, cam, this.canvasAtmosphere, impulse, false);
+    return true;
+  }
+
+  drawSky(outerCtx: CanvasRenderingContext2D, cam: BgCam, worldCam?: BgCam, tier?: BridgeGLTier, impulse = 0): void {
+    if (this.drawRouteSky(outerCtx, cam, impulse)) return;
     this.ensureBuilt();
     this.lastCam = cam;
     // light-pollution glow plate (perf): vertical gradient, no-lightning case
@@ -1553,19 +1781,43 @@ export class CyberBackground {
     const cy = Number.isFinite(cam.y) ? cam.y : NOMINAL_Y;
     const cz = Number.isFinite(cam.zoom) ? cam.zoom : 1;
     const w = this.vw, h = this.vh, t = this.t;
+    const live = this.activeFront;
+    const mobile = this.scenery && tier === 'mobile';
+    const A = mobile ? bridgePlate('stratum-a') : null, L1 = mobile ? bridgePlate('l1') : null, L2 = mobile ? bridgePlate('l2') : null;
+    const bakedSky = !!(A && L1 && L2);
+    if (this.lastBakedSky !== bakedSky) { this.skyVault.invalidate(); this.lastBakedSky = bakedSky; }
+    const far = this.scenery ? RUN_FAR : LAY_FAR, mid = this.scenery ? RUN_MID : LAY_MID, near = this.scenery ? RUN_NEAR : LAY_NEAR;
+    const wx = live?.sample;
+    const windDrift = live && !this.reducedMotion ? -live.driftX * 12 : 0;
+    const hy = h / 2 - cy * cz; // screen y of world y=0
+    const baseOfSky = bakedSky ? mid : near;
+    const nearY = h * .5 + (baseOfSky.lift - cy * baseOfSky.vf) * cz;
+    const cover = worldCam && !this.scenery ? this.street.opaqueRows(w, h, worldCam) : null;
+    // At nearY the district is solid across the screen. Include two extra
+    // rows for interpolation at the parallax seam. Keep the cache itself
+    // uncropped: it can outlive this particular camera/roll.
+    const skyEnd = worldCam && this.art.finish ? Math.max(0, Math.min(h, Math.ceil(nearY) + 2)) : h;
+    outerCtx.save();
+    if (cover || skyEnd < h) clipVisibleRows(outerCtx, w, skyEnd, cover);
 
     // Publish the position only when repainting the sky plate. On a cache hit
     // the displayed moon did not move; rays and glitter must keep its centre.
     this.skyVault.draw(outerCtx, w, h, cx, cy, cz, t, 0, false, this.q, (ctx) => {
+    if (this.station) {
+      ctx.fillStyle = STATION_VOID;
+      ctx.fillRect(0, 0, w, h);
+      this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, this.deepTileBlur, DEEP_H);
+      this.drawCityBand(ctx, far, h, cx, cy, cz, this.farTileBlur, FAR_H);
+      return;
+    }
     ctx.save();
 
     /* 1 — sky gradient anchored to the world ground line */
-    const hy = h * 0.5 + (0 - cy) * cz;                     // screen y of world y=0
     const skyH = hy > 1 ? (hy < h ? hy : h) : 1;
     // Opaque backing: fractional horizon coordinates cannot expose a clear row.
     ctx.fillStyle = SKY_BELOW;
     ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(this.skyStrip, 0, 0, 8, 600, 0, 0, w, skyH);
+    ctx.drawImage(bakedSky ? A! : this.skyStrip, 0, 0, w, skyH);
     // DYNAMIC SKY TINT — a slow ~90s night pulse swinging the vault
     // between deep indigo and storm-violet. One fillRect inside the
     // cached sky vault: zero cost on the 60/120Hz frame path.
@@ -1586,30 +1838,24 @@ export class CyberBackground {
     }
 
 
-    /* 1.5 — CITY LIGHT-POLLUTION GLOW: the megapolis below breathes color
-     * up into the cloud deck — cool electric blue at altitude, warm sodium
-     * and magenta neon right at the skyline. Additive; towers occlude it.
-     * PERF: the gradient is vertical-only, so the no-lightning case comes
-     * from a baked 8×216 strip stretched full width (identical pixels — a
-     * horizontal stretch interpolates identical columns); the rare
-     * lightning-modulated case keeps the live gradient. */
+    /* 1.5 — city glow is a vertical ramp. Identical columns need not live
+     * in a viewport-wide backing store; resize just stretches this strip. */
     {
-      const pw = Math.max(2, Math.floor(w));
-      const mi = MOOD_PALETTES.indexOf(this.mood);
-      if (!this.pollPlate || this.pollW !== pw || this.pollMood !== mi) {
-        const pc = gameLedger.acquire('poll:plate', pw, 216, 'poll', true) as unknown as HTMLCanvasElement;
-        pc.width = pw; pc.height = 216;
-        const pg2 = pc.getContext('2d')!;
-        const lg = pg2.createLinearGradient(0, 0, 0, 216);
-        lg.addColorStop(0, `rgba(${this.mood.shadow},0)`);
-        lg.addColorStop(0.55, `rgba(${this.mood.shadow},0.09)`);
-        lg.addColorStop(0.84, `rgba(${this.mood.pop},0.075)`);
-        lg.addColorStop(1, `rgba(${this.mood.highlight},0.14)`);
-        pg2.fillStyle = lg;
-        pg2.fillRect(0, 0, pw, 216);
-        this.pollPlate = pc;
-        this.pollW = pw;
-        this.pollMood = mi;
+      if (!hasPixels(this.pollPlate) || this.pollMood !== this.mood) {
+        const pc = this.surfaces.acquire('pollution', 8, 216, 'poll');
+        const pg2 = pc.getContext('2d');
+        if (pg2) {
+          pg2.clearRect(0, 0, 8, 216);
+          const lg = pg2.createLinearGradient(0, 0, 0, 216);
+          lg.addColorStop(0, `rgba(${this.mood.shadow},0)`);
+          lg.addColorStop(0.55, `rgba(${this.mood.shadow},0.09)`);
+          lg.addColorStop(0.84, `rgba(${this.mood.pop},0.075)`);
+          lg.addColorStop(1, `rgba(${this.mood.highlight},0.14)`);
+          pg2.fillStyle = lg;
+          pg2.fillRect(0, 0, 8, 216);
+          this.pollPlate = pc;
+        }
+        this.pollMood = this.mood;
       }
       ctx.globalCompositeOperation = 'lighter';
       // The megapolis' glow is a profile axis: a bright-city run breathes more
@@ -1626,20 +1872,23 @@ export class CyberBackground {
     const ms = mod(cx * 0.015 * cz, TILE);
     // The tile may be a half-resolution bake (GPU/CPU star field); blitRowScaled
     // handles both cases and is one drawImage per wrap either way.
+    if (wx) ctx.globalAlpha = 1 - wx.cloud * .87;
     if (this.starTile.width === TILE) this.blitRow(ctx, this.starTile, ms, starBase - STAR_H);
     else this.blitRowScaled(ctx, this.starTile, ms, starBase - STAR_H, STAR_H);
+    if (wx) ctx.globalAlpha = 1;
     /* 2.5 — DRIFTING CLOUD DECKS: three parallax sheets (high slow thin /
      * main bank / low fast wisps). While lightning scatters through them the
      * LIT twin re-blits additively on the lower two decks. Behind skyline. */
-    {
+    if (!bakedSky) {
       const C = this.profile ? this.profile.clouds : null;
-      const cov = C ? C.coverage : 0.6;      // 0 clear .. 1 overcast
-      const spd = C ? C.speed : 1;           // drift multiplier
-      const alt = C ? C.altitude : 1;        // bank height
+      const cfgCover = C ? C.coverage : 0.6;
+      const cov = wx ? wx.cloud * .84 + cfgCover * .16 : cfgCover;
+      const spd = C ? C.speed : 1;
+      const alt = C ? C.altitude : 1;
       const cloudY = hy * 0.16 - 40 - (cy - NOMINAL_Y) * 0.06 * cz + (alt - 1) * 54;
-      const offA = mod(-t * 3.2 * spd - cx * 0.013 * cz, TILE);
-      const offB = mod(-t * 5 * spd - cx * 0.02 * cz, TILE);
-      const offC = mod(-t * 8.4 * spd - cx * 0.03 * cz, TILE);
+      const offA = mod((live ? windDrift * .55 : -t * 3.2 * spd) - cx * 0.013 * cz, TILE);
+      const offB = mod((live ? windDrift : -t * 5 * spd) - cx * 0.02 * cz, TILE);
+      const offC = mod((live ? windDrift * 1.55 : -t * 8.4 * spd) - cx * (this.scenery ? .015 : .03) * cz, TILE);
       // Coverage scales all three decks together; a clear run keeps a thin
       // high veil (that is what "clear" looks like in a lit city, not black).
       ctx.globalAlpha = 0.10 + 0.42 * cov;
@@ -1659,12 +1908,14 @@ export class CyberBackground {
     // Checking the SIZE (not just the reference) is what stops that from
     // reaching drawImage; every cached plate blit in this file does the same.
     const bank = this.bank;
-    if (hasPixels(bank)) {
+    if (!bakedSky && hasPixels(bank)) {
       const B = this.bankP;
-      const bOff = mod(-t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) * this.wxGust - cx * 0.026 * cz, TILE);
+      const oldDrift = -t * 1.6 * (this.profile ? this.profile.clouds.speed : 1) * this.wxGust;
+      const bOff = mod((live ? windDrift * .38 : oldDrift) - cx * 0.026 * cz, TILE);
       const bY = hy - 210 + (B ? B.lift : 0);
-      ctx.globalAlpha = B ? B.opacity : 0.6;
-      for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(bank, bx, bY);
+      ctx.globalAlpha = wx ? .12 + wx.cloud * .62 : B ? B.opacity : 0.6;
+      if (live) this.blitRowScaled(ctx, bank, bOff, bY, 210);
+      else for (let bx = -bOff; bx < w; bx += TILE) ctx.drawImage(bank, bx, bY);
       ctx.globalAlpha = 1;
     }
 
@@ -1676,7 +1927,7 @@ export class CyberBackground {
       // the whole pass is skipped, which is both cheaper and honest — a faint
       // always-on ribbon is a filter, not an event.
       const A = this.profile ? this.profile.aurora : null;
-      const presence = A ? A.presence : 1;
+      const presence = live ? 0 : A ? A.presence : 1;
       if (presence > 0.02) {
         const aOff = mod(-t * 1.6 - cx * 0.045 * cz, 512);
         const hgt = A ? A.height : 1;
@@ -1701,18 +1952,22 @@ export class CyberBackground {
       const D = MOON_D * sizeMul;
       const half = D * 0.5;
       const drift = M ? M.drift : 1;
-      this.moonX = moonCentreX(this.light, w, cx * 0.03 * cz, t, drift);
+      const lunarTime = live && this.reducedMotion ? 0 : t;
+      this.moonX = moonCentreX(this.light, w, cx * .03 * cz, lunarTime, drift);
       const moonX = this.moonX - half;
-      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - half + Math.cos(t * 0.014 * drift) * 16;
+      const moonY = h * 0.13 - (cy - NOMINAL_Y) * 0.02 * cz - half + Math.cos(lunarTime * 0.014 * drift) * 16;
       this.moonY = moonY + half;
       // same rule as the contact shadows: the rims follow the moon, they do not
       // assume it is on the right because it usually is
-      this.rig?.setRimSide(rimDirection(this.moonX, this.vw));
-      ctx.globalAlpha = 1;
+      if (live) this.rig?.setRimSide(this.light.azimuth < 0 ? -1 : 1);
+      else this.rig?.setRimSide(rimDirection(this.moonX, this.vw));
+      const exposure = this.art.moonExposure;
+      const transmit = wx ? .24 + .76 * wx.key : 1;
+      ctx.globalAlpha = (exposure?.disc ?? 1) * transmit;
       ctx.drawImage(this.moonSpr, moonX, moonY, D, D);
       ctx.globalCompositeOperation = 'lighter';
       const haloD = MOON_HALO_D * sizeMul;
-      ctx.globalAlpha = 0.82 * (M ? Math.min(1.2, M.corona) : 1);
+      ctx.globalAlpha = 0.82 * (exposure?.corona ?? 1) * (M ? Math.min(1.2, M.corona) : 1) * transmit;
       ctx.drawImage(this.moonHalo, moonX + half - haloD * 0.5, moonY + half - haloD * 0.5, haloD, haloD);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
@@ -1726,7 +1981,7 @@ export class CyberBackground {
       const slot = 9 / Math.max(0.35, meteorMul);
       const ev = Math.floor(t / slot);
       const k = t - ev * slot;
-      if (k < 0.7) {
+      if (!live && k < 0.7) {
         const h1 = ((ev * 9301 + 49297) % 233280) / 233280;
         const h2 = ((ev * 49297 + 9301) % 233280) / 233280;
         const prog = k / 0.7;
@@ -1752,21 +2007,24 @@ export class CyberBackground {
     }
 
     /* 3 — DEEP + FAR skylines: pre-blurred plates with feathered bases. */
-    this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, this.deepTileBlur, DEEP_H);
-    this.drawBandAnims(ctx, 'deep', LAY_DEEP, h, cx, cy, cz, DEEP_H);
-    this.drawCityBand(ctx, LAY_FAR, h, cx, cy, cz, this.farTileBlur, FAR_H);
-    this.drawBandAnims(ctx, 'far', LAY_FAR, h, cx, cy, cz, FAR_H);
+    if (bakedSky) this.drawCityBand(ctx, far, h, cx, cy, cz, L1!, FAR_H);
+    else {
+      this.drawCityBand(ctx, LAY_DEEP, h, cx, cy, cz, this.deepTileBlur, DEEP_H);
+      this.drawBandAnims(ctx, 'deep', LAY_DEEP, h, cx, cy, cz, DEEP_H);
+      this.drawCityBand(ctx, far, h, cx, cy, cz, this.farTileBlur, FAR_H);
+      this.drawBandAnims(ctx, 'far', far, h, cx, cy, cz, FAR_H);
+    }
 
     /* 3.5 — PARALLAX FOG PLANE: a procedural haze sheet at its own factor
      * (0.098 — between far and mid) drifting slowly with time, so the mist
      * moves WITH depth instead of sticking to the screen. */
     {
       const byF2 = h * 0.5 + (LAY_FAR.lift - cy * LAY_FAR.vf) * cz;
-      const fpM = mod(cx * 0.098 * cz + t * 2.4, 512);
+      const fpM = mod(cx * 0.098 * cz + (live ? windDrift * .60 : t * 2.4), 512);
       // Fog is a profile axis and it is the cheapest depth cue in the sky: a
       // heavy-fog run separates the four parallax bands without new geometry.
       const A2 = this.profile ? this.profile.atmosphere : null;
-      const fogA = Math.min(1.4, (A2 ? A2.fog : 1) * this.wxFog);
+      const fogA = Math.min(1.4, (A2 ? A2.fog : 1) * (wx ? .56 + 1.12 * wx.fog : this.wxFog));
       const fogY = byF2 - 216 * (A2 ? A2.fogHeight : 1);
       ctx.globalAlpha = fogA;
       for (let fx = -fpM; fx < w; fx += 512) {
@@ -1775,34 +2033,75 @@ export class CyberBackground {
       ctx.globalAlpha = 1;
     }
 
-    /* 4 — mid city: baked neon signs, one shared band draw */
-    this.drawCityBand(ctx, LAY_MID, h, cx, cy, cz, this.midTileBlur, MID_H);
-    this.drawBandAnims(ctx, 'mid', LAY_MID, h, cx, cy, cz, MID_H);
-
-    /* 4.5 — humid horizon haze: one blit around the ground line */
-    ctx.globalAlpha = 0.65;
-    ctx.drawImage(this.hazeSpr!, 0, hy - 96, w, 150);
-    ctx.globalAlpha = 1;
-
-    /* 5 — near towers (no DOF blur — the action plane stays crisp) */
-    this.drawCityBand(ctx, LAY_NEAR, h, cx, cy, cz, this.nearTile, NEAR_H);
-    this.drawBandAnims(ctx, 'near', LAY_NEAR, h, cx, cy, cz, NEAR_H);
     ctx.restore();
     });
-    // Atmospheric color belongs behind all world geometry, not on one side
-    // of an unrotated screen-space curb. Keep it live outside the sky cache.
-    if (!this.art.clean && this.wxTint && this.q !== 'low') {
-      outerCtx.save();
-      outerCtx.fillStyle = this.wxTint;
-      outerCtx.fillRect(0, 0, w, h);
-      outerCtx.restore();
+
+    if (tier === 'master' && live && !this.reducedMotion) {
+      const flash = this.lightningI();
+      if (flash > .02) {
+        if (!hasPixels(this.bridgeCloudRim)) {
+          const c = this.surfaces.tryAcquire('bridge-cloud-rim', 512, 75, 'bridge-cloud-rim');
+          const g = c?.getContext('2d');
+          if (c && g) {
+            g.setTransform(.25, 0, 0, .25, 0, 0);
+            this.bridgeCloudRim = buildCloudTile(() => ({ c, g }), true, this.profile?.clouds.texture);
+          }
+        }
+        if (hasPixels(this.bridgeCloudRim)) {
+          const slide = mod(windDrift - cx * .020 * cz, TILE);
+          outerCtx.save(); outerCtx.globalCompositeOperation = 'lighter'; outerCtx.globalAlpha *= flash * .62;
+          this.blitRowScaled(outerCtx, this.bridgeCloudRim, slide, hy * .16 - 52, 300);
+          outerCtx.restore();
+        }
+      }
     }
+    // Keep the baked mid and near bands live. The slow sky cache can hold
+    // clouds safely, but used to move nearer signs several pixels at once
+    // and hold their intensity between cache refreshes.
+    const ctx = outerCtx;
+    ctx.save();
+    this.drawCityBand(ctx, mid, h, cx, cy, cz, bakedSky ? L2! : this.midTileBlur, MID_H);
+    if (!bakedSky) this.drawBandAnims(ctx, 'mid', mid, h, cx, cy, cz, MID_H);
+
+    const air = this.art.airlight;
+    if (!air && hasPixels(this.hazeSpr)) {
+      ctx.globalAlpha = 0.65;
+      ctx.drawImage(this.hazeSpr, 0, hy - 96, w, 150);
+      ctx.globalAlpha = 1;
+    }
+
+    /* 5 — near towers (no DOF blur — the action plane stays crisp) */
+    if (!bakedSky) this.drawCityBand(ctx, near, h, cx, cy, cz, this.nearTile, NEAR_H);
+    ctx.restore(); // mid/near pass
+    outerCtx.restore(); // sky end
+
+    ctx.save();
+    if (cover) clipVisibleRows(ctx, w, h, cover);
+    this.street.drawDistrict(ctx, w, h, mod(cx * near.f * cz, TILE), nearY);
+    if (!bakedSky) this.drawBandAnims(ctx, 'near', near, h, cx, cy, cz, NEAR_H);
+    // Warm into the horizon; leave the upper towers and sky cool. The strip
+    // follows the road projection, not the edge of the screen.
+    if (air && hasPixels(this.hazeSpr)) {
+      ctx.drawImage(this.hazeSpr, 0, hy - 225 * cz, w, 246 * cz);
+    } else if (!this.art.finish) {
+      const tint = this.art.clean ? 0 : this.wx?.sample.tint ?? 0;
+      const opacity = tintAlpha(tint);
+      if (opacity > 0) {
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = tintColour(tint);
+        ctx.fillRect(0, 0, w, h);
+      }
+    }
+    ctx.restore();
   }
 
 
   private resetLighting(): void {
-    this.roof = makeRoofProps(this.runSeed, { count: 22, x0: ARENA_X0 + 80, x1: ARENA_X1 - 80, deckY: 0 })
+    if (this.scenery) return;
+    this.roof = makeRoofProps(this.runSeed, { count: 22, x0: ARENA_X0 + 80, x1: ARENA_X1 - 80, deckY: 0,
+      reserved: this.layout?.shelters })
     this.field = null
+    this.deckAtlas = null
   }
 
   private lighting(): RibbonField {
@@ -1810,9 +2109,15 @@ export class CyberBackground {
       // A quality governor can drop optional passes, not move solid blockers
       // or switch off an emitter under a stationary actor.
       const props = this.roof.props, bulbs = this.roof.lights
-      this.lights = makeStageLights(this.profile, this.runSeed, this.art.amberSpecimen).concat(bulbs)
+      const lights = makeStageLights(this.profile, this.runSeed, this.art.amberSpecimen).concat(bulbs)
+      if (this.layout) for (const roof of this.layout.shelters) lights.push(roof.source)
+      const finish = this.art.finish
+      if (finish) {
+        const beacon = lights.find(light => light.id === 'stage:beacon')
+        if (beacon) beacon.gain *= finish.beaconGain
+      }
       const blocks = blockersFor(props)
-      this.field = new RibbonField(this.lights, blocks, 10)
+      this.field = new RibbonField(this.station ? lights.filter(lamp => lamp.kind !== 'city') : lights, blocks, 10)
     }
     this.field.tick(this.t)
     return this.field
@@ -1823,43 +2128,32 @@ export class CyberBackground {
     return {warm,cool}
   }
   lightAt(x:number, y=0, out=this.sample):Probe {
-    return this.lighting().sample(x,y,out)
+    return this.scenery?.lightAt(x, y, out) ?? this.lighting().sample(x,y,out)
   }
 
-  /** WHERE THE RAYS COME FROM, in screen space. The moon (the key) plus every
-   *  practical that is on screen and currently lit, each with its live weight —
-   *  a failing tube's rays dim with it, which is the sort of detail that makes a
-   *  post effect look like it belongs to the scene instead of to the shader. */
-  raySources(w: number, h: number, cam: BgCam): Array<[number, number, number]> {
-    const out: Array<[number, number, number]> = []
-    const zoom = Math.max(0.2, Number.isFinite(cam.zoom) ? cam.zoom : 1)
-    const cx = Number.isFinite(cam.x) ? cam.x : 0
-    const cy = Number.isFinite(cam.y) ? cam.y : 0
-    const co=Math.cos(cam.rot ?? 0), si=Math.sin(cam.rot ?? 0)
-    const toScreen = (wx:number,wy:number):[number,number]=>[
-      w*.5 + ((wx-cx)*co-(wy-cy)*si)*zoom,
-      h*.5 + ((wx-cx)*si+(wy-cy)*co)*zoom,
-    ]
-    if (Number.isFinite(this.moonX)) {
-      const mx = this.moonX, my = this.moonY // drawSky already projected the moon
-      if (mx > -w * 0.2 && mx < w * 1.2) out.push([mx, my, 0.85])
+  /** Each real emitter keeps its own glint and a fixed share of the eight ray
+   * taps. A second lamp entering the view cannot cancel the first one's light. */
+  raySources(w: number, h: number, cam: BgCam): RaySource[] {
+    const out: RaySource[] = []
+    const co = Math.cos(cam.rot ?? 0), si = Math.sin(cam.rot ?? 0)
+    const add = (x: number, y: number, gain: number, taps: number) => {
+      const edge = Math.max(0, Math.min(1, (x + 40) / 100, (w + 40 - x) / 100, (y + 40) / 100, (h + 40 - y) / 100))
+      const weight = Math.min(1, gain) * edge * edge * (3 - 2 * edge)
+      if (weight > 0) out.push([x, y, weight, taps])
     }
-    // Post has room for the moon and one practical. Choose by visible
-    // contribution, fading to zero at a tie instead of changing ray origin at full strength.
-    let best=0,next=0,bx=0,by=0
-    for(const ribbon of this.lighting().ribbons){
-      if(ribbon.lamp.kind==='city')continue
-      const [x,y]=toScreen(ribbon.lamp.x,ribbon.lamp.y+ROAD.fixtureOffset)
-      const edge=Math.max(0,Math.min(1,(x+40)/100,(w+40-x)/100,(y+40)/100,(h+40-y)/100))
-      const weight=ribbon.gain*edge
-      if(weight>best){next=best;best=weight;bx=x;by=y}else next=Math.max(next,weight)
+    if (!this.station) add(this.moonX, this.moonY, 0.85, 2) // drawSky already projected it
+    for (const { lamp, gain } of this.lighting().ribbons) {
+      if (lamp.kind === 'city') continue
+      const dx = lamp.x - cam.x, dy = lamp.y + ROAD.fixtureOffset - cam.y
+      const x = w / 2 + (dx * co - dy * si) * cam.zoom
+      const y = h / 2 + (dx * si + dy * co) * cam.zoom
+      add(x, y, gain, lamp.kind === 'bulb' || lamp.id === 'stage:beacon' ? 1 : 2)
     }
-    if(best>next)out.push([bx,by,Math.min(1,best-next)])
     return out
   }
 
   /** How many sources the field has right now (debug overlay + tests). */
-  lightCount(): number { return this.lighting().ribbons.length }
+  lightCount(): number { if (this.scenery) return 0; return this.lighting().ribbons.length }
 
   /** AMBIENT MOTES — a handful of dust specks drifting through the practicals'
    *  cones. One path and one fill for the whole field (ultra only): it is the
@@ -1868,7 +2162,7 @@ export class CyberBackground {
    *  profile seed, never stored. */
   drawMotes(ctx: CanvasRenderingContext2D, t: number): void {
     const K = this.profile
-    if (!K) return
+    if (!K || this.station || this.activeFront) return
     const n = 22
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
@@ -1892,194 +2186,244 @@ export class CyberBackground {
     ctx.restore()
   }
 
-  /** Upload the receiver strips once; all subsequent lighting changes are gain
-   * multipliers. Atlas storage is reused on tier changes and owned by bgGen. */
-  drawLightPools(ctx: CanvasRenderingContext2D, cam=this.lastCam): void {
-    const budget = featuresFor(this.q as Tier).lightPools
-    if (!budget) return
-    const field=this.lighting(), ribbons=field.ribbons
-    // Guard rows prevent bilinear filtering from pulling colour across strips.
-    const stride=DECK_H+2
-    if (!hasPixels(this.deckAtlas) || this.deckAtlas.height < ribbons.length*stride) {
-      this.deckAtlas=makeCanvas(DECK_W,stride*ribbons.length).c;this.atlasField=null
+  /** Bake every fixture's steady floor into the span once per run. A quality
+   * step can drop a little modulation, not switch off a sign's pool. */
+  private bakeRoadLighting(): void {
+    const ribbons = this.lighting().ribbons;
+    if (this.art.finish) {
+      // No retained optical receiver or per-frame remainder on authored art.
+      // Reuse one tiny transfer tile for every practical in this span bake.
+      try {
+        const { c, g } = this.practicalScratch.next(DECK_W, DECK_H, 'practical-work');
+        const image = g.createImageData(DECK_W, DECK_H);
+        this.street.bakeLighting(target => {
+          for (const ribbon of ribbons) {
+            const { left, lamp } = ribbon;
+            ribbon.bakeDeck(image.data, 0, this.street.wetness, this.hasWetSurface());
+            g.putImageData(image, 0, 0);
+            target.globalAlpha = Math.min(1, lamp.gain * (1 - .5 * lamp.flicker));
+            target.drawImage(c, left, ROAD.rear, 2 * lamp.radius, ROAD.front - ROAD.rear);
+          }
+        });
+      } finally { this.practicalScratch.begin(); }
+      return;
     }
-    if(!hasPixels(this.deckBase)) {this.deckBase=makeCanvas(Math.ceil(ARENA_W/5),DECK_H).c;this.atlasField=null}
-    if(this.atlasField!==field){
-      const g=this.deckAtlas.getContext('2d')!, image=g.createImageData(DECK_W,stride*ribbons.length)
-      const base=this.deckBase.getContext('2d')!, sx=this.deckBase.width/ARENA_W
-      base.clearRect(0,0,this.deckBase.width,DECK_H);base.globalCompositeOperation='lighter'
-      // One base draw includes EVERY source on every lit tier. Spend spare
-      // blits on modulation, never on camera-dependent source selection.
-      this.deckAnimated=ribbons.map((_,i)=>i).filter(i=>ribbons[i].lamp.flicker>0)
-        .sort((i,j)=>ribbons[j].lamp.flicker*ribbons[j].lamp.gain-ribbons[i].lamp.flicker*ribbons[i].lamp.gain).slice(0,budget-1)
-      ribbons.forEach((r,i)=>r.bakeDeck(image.data,(i*stride+1)*DECK_W*4,this.street?.wetness))
-      g.putImageData(image,0,0)
-      const atlas=this.deckAtlas
-      ribbons.forEach((r,i)=>{
-        base.globalAlpha=Math.min(1,r.lamp.gain*(1-r.lamp.flicker*(this.deckAnimated.includes(i)?1:.5)))
-        base.drawImage(atlas,0,i*stride+1,DECK_W,DECK_H,(r.left-ARENA_X0)*sx,0,2*r.lamp.radius*sx,DECK_H)
-      });base.globalAlpha=1;this.atlasField=field
-    }
-    const roll=cam.rot ?? 0
-    const half=(this.vw*Math.abs(Math.cos(roll))+this.vh*Math.abs(Math.sin(roll)))/(2*cam.zoom), cx=cam.x
-    ctx.save();ctx.globalCompositeOperation='lighter'
-    ctx.drawImage(this.deckBase,ARENA_X0,ROAD.rear,ARENA_W,ROAD.front-ROAD.rear)
-    for(const i of this.deckAnimated){
-      const r=ribbons[i],l=r.lamp
-      if(Math.abs(l.x-cx)>half+l.radius)continue
-      ctx.globalAlpha=Math.max(0,Math.min(1,r.gain)-Math.min(1,l.gain*(1-l.flicker)))
-      ctx.drawImage(this.deckAtlas,0,i*stride+1,DECK_W,DECK_H,r.left,ROAD.rear,2*l.radius,ROAD.front-ROAD.rear)
-    }
-    ctx.restore()
+    const { c: atlas, g } = this.makeCanvas(DECK_W, DECK_STRIDE * ribbons.length);
+    const image = g.createImageData(atlas.width, atlas.height);
+    const reflective = this.hasWetSurface();
+    ribbons.forEach((r, i) => r.bakeDeck(image.data, (i * DECK_STRIDE + 1) * DECK_W * 4, this.street.wetness, reflective));
+    g.putImageData(image, 0, 0);
+    this.deckAtlas = atlas;
+    this.deckAnimated = ribbons.map((_, i) => i)
+      .filter(i => Math.min(1, ribbons[i].lamp.gain) > deckLightFloor(ribbons[i].lamp))
+      .sort((i, j) => ribbons[j].lamp.flicker * ribbons[j].lamp.gain - ribbons[i].lamp.flicker * ribbons[i].lamp.gain);
+    this.street.bakeLighting(target => {
+      ribbons.forEach(({ left, lamp }, i) => {
+        target.globalAlpha = deckLightFloor(lamp);
+        target.drawImage(atlas, 0, i * DECK_STRIDE + 1, DECK_W, DECK_H, left, ROAD.rear, 2 * lamp.radius, ROAD.front - ROAD.rear);
+      });
+    });
   }
 
-  /** Copy the scene above the lane into a tier-scaled reusable buffer.
-   *  Blur by downsampling, apply the road wetness mask, and mirror in one
-   *  continuous blit. Foreground dressing and impact overlays are excluded. */
-  drawReflections(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality, forward?: boolean): void {
-    if (typeof document === 'undefined') return;
-    this.ensureBuilt();
-    const F = featuresFor((quality as Tier) ?? this.q);
-    // The tier table decides whether there is a mirror at all, and how fine it
-    // is (render/graphics.ts). `reflection: 0` means the pass does not exist.
-    if (F.reflection <= 0) return;
-    const w = this.vw, h = this.vh;
-    const zoom = Math.max(0.35, Number.isFinite(cam.zoom) ? cam.zoom : 1);
-    const deckY = h * 0.5 + zoom * (0 - (Number.isFinite(cam.y) ? cam.y : NOMINAL_Y));
-    const bandH = ROAD.front * zoom;
+  /** Only the time-varying remainder needs live blits, in fixed source order. */
+  drawLightPools(ctx: CanvasRenderingContext2D, cam=this.lastCam): void {
+    const atlas = this.deckAtlas;
+    const budget = Math.min(featuresFor(this.q).poolModulations, this.deckAnimated.length);
+    if (budget <= 0 || !hasPixels(atlas)) return;
+    const ribbons = this.lighting().ribbons;
     const roll = cam.rot ?? 0;
-    const halfH = (w * Math.abs(Math.sin(roll)) + h * Math.abs(Math.cos(roll))) / 2;
-    if (deckY + bandH < h / 2 - halfH || deckY + ROAD.rear * zoom > h / 2 + halfH) return;
-    // Work in screen coordinates before camera roll, then rotate the result
-    // back with the same pivot as the world. Limit optics to the road atlas.
+    const half = (this.vw * Math.abs(Math.cos(roll)) + this.vh * Math.abs(Math.sin(roll))) / (2 * cam.zoom);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let n = 0; n < budget; n++) {
+      const i = this.deckAnimated[n], { left, lamp, gain } = ribbons[i];
+      if (Math.abs(lamp.x - cam.x) > half + lamp.radius) continue;
+      const alpha = Math.min(1, gain) - deckLightFloor(lamp);
+      if (alpha <= 0) continue;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(atlas, 0, i * DECK_STRIDE + 1, DECK_W, DECK_H, left, ROAD.rear, 2 * lamp.radius, ROAD.front - ROAD.rear);
+    }
+    ctx.restore();
+  }
+
+  /** Mirror a fixed world-depth slice. A viewport edge can hide source pixels,
+   * but must never stretch the remaining pixels to fill the receiver. */
+  drawReflections(ctx: CanvasRenderingContext2D, cam: BgCam, quality: Quality, forward?: boolean): void {
+    if (this.usesBakedOptics()) return;
+    const F = featuresFor(quality);
+    const capture = !forward && F.reflection > 0;
+    if (!this.hasWetSurface() || typeof document === 'undefined' || (!capture && !F.glitter)) return;
+    this.ensureBuilt();
+    const w = this.vw, h = this.vh, zoom = cam.zoom, roll = cam.rot ?? 0;
+    const deckY = h / 2 - cam.y * zoom;
+    const bandH = ROAD.front * zoom;
+    const co = Math.abs(Math.cos(roll)), si = Math.abs(Math.sin(roll));
+    const halfH = (w * si + h * co) / 2;
+    if (deckY + bandH <= h / 2 - halfH || deckY + ROAD.rear * zoom >= h / 2 + halfH) return;
     const roadL = w / 2 + (this.street.left - cam.x) * zoom;
     const roadW = (this.street.right - this.street.left) * zoom;
-    const align = () => {
-      ctx.translate(w / 2, h / 2);
-      ctx.rotate(roll);
-      ctx.translate(-w / 2, -h / 2);
-      ctx.beginPath();
-      ctx.rect(roadL, deckY + ROAD.rear * zoom, roadW, bandH - ROAD.rear * zoom);
-      ctx.clip();
-    };
-    const srcH = Math.min(bandH * 1.5, Math.max(0, deckY + halfH - h / 2));
-    if (!forward && srcH >= 6) {
-      const bw = Math.max(24, Math.ceil(w / F.reflection));
-      const bh = Math.max(6, Math.ceil(bandH / F.reflection));
-      if (!this.reflBuf || this.reflW !== bw || this.reflH !== bh) {
-        this.reflBuf = gameLedger.acquire('refl:main', bw, bh, 'refl', true) as unknown as HTMLCanvasElement;
-        this.reflW = bw;
-        this.reflH = bh;
+    const halfW = (w * co + h * si) / 2;
+    if (roadL + roadW <= w / 2 - halfW || roadL >= w / 2 + halfW) return;
+
+    // Stable overscan covers the inverse-rolled viewport, even in portrait.
+    // One transform handles all angles and maps the actual backing store to CSS
+    // pixels before unrolling, so there is no different sampler at roll=0.
+    const srcH = bandH * 1.5;
+    let mirror: HTMLCanvasElement | null = null;
+    let captureW = 0, captureL = 0;
+    if (capture && deckY > h / 2 - halfH && deckY - srcH < h / 2 + halfH) {
+      captureW = Math.ceil(Math.hypot(w, h));
+      captureL = (w - captureW) / 2;
+      const bw = Math.max(24, Math.ceil(captureW / F.reflection));
+      const bh = Math.max(6, Math.ceil(ROAD.front / F.reflection));
+      if (!hasPixels(this.reflBuf) || this.reflBuf.width !== bw || this.reflBuf.height !== bh) {
+        this.reflBuf = this.surfaces.acquire('reflection', bw, bh, 'refl');
       }
       const g = this.reflBuf.getContext('2d');
-      if (!g) return;
-      g.clearRect(0, 0, bw, bh);
-      const image = ctx.canvas
-      const pixelY = image.height / h; // source rectangles use backing pixels, not CSS pixels
-      if (roll === 0) {
-        g.drawImage(image, 0, (deckY - srcH) * pixelY, image.width, srcH * pixelY, 0, 0, bw, bh);
-      } else {
+      if (g) {
+        g.clearRect(0, 0, bw, bh);
+        // Default bilinear resampling can miss a thin emitter entirely when
+        // minifying by 3–8x (more at high DPR). Prefilter before masking.
+        g.imageSmoothingQuality = 'medium';
         g.save();
-        g.scale(bw / w, bh / srcH);
-        g.translate(w / 2, h / 2 - deckY + srcH);
+        g.scale(bw / captureW, bh / srcH);
+        g.translate(w / 2 - captureL, h / 2 - deckY + srcH);
         g.rotate(-roll);
-        g.drawImage(image, -w / 2, -h / 2, w, h);
+        g.drawImage(ctx.canvas, -w / 2, -h / 2, w, h);
         g.restore();
+        this.street.maskReflection(g, (roadL - captureL) * bw / captureW, roadW * bw / captureW, bh);
+        mirror = this.reflBuf;
       }
-      // Draw one continuous receiver instead of separately shifted scanline
-      // slices. Each slice used to introduce a horizontal phase discontinuity.
-      this.street.maskReflection(g, roadL * bw / w, roadW * bw / w, bh);
+    }
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(roll);
+    ctx.translate(-w / 2, -h / 2);
+    ctx.beginPath();
+    ctx.rect(roadL, deckY + ROAD.rear * zoom, roadW, bandH - ROAD.rear * zoom);
+    ctx.clip();
+    if (mirror) {
       ctx.save();
-      align();
       ctx.globalCompositeOperation = 'lighter';
-      const gain = F.depthHaze ? .35 * this.actorReflectionGain() : .23;
-      ctx.globalAlpha = Math.min(.42, gain * Math.min(1.2, this.wxWet));
+      // The divisor changes resolution, not the receiver's exposure.
+      ctx.globalAlpha = .35 * this.actorReflectionGain() * Math.min(1.2, this.wxWet);
       ctx.translate(0, deckY);
       ctx.scale(1, -1);
-      if (hasPixels(this.reflBuf)) ctx.drawImage(this.reflBuf, 0, -bandH, w, bandH);
+      ctx.drawImage(mirror, captureL, -bandH, captureW, bandH);
       ctx.restore();
     }
-    // MOON GLITTER — the moon touching the wet roof, two additive blits. The
-    // mirror above shows the city; this shows the SKY, and together they are
-    // the whole reflection story for two drawImage calls and no readback.
     if (this.night && F.glitter) {
-      // Wetness answers the weather: a hazed night has a dry, matte roof; a
-      // squall makes the deck a mirror. One multiply, no extra blit.
-      const wet = Math.min(
-        1.75,
-        0.85 * this.wxWet * reflectionGain(this.light),
-      );
-      ctx.save();align()
-      this.night.drawGlitter(ctx, this.moonX, deckY, w, h, wet, this.t);ctx.restore()
+      const wet = Math.min(1.75, .85 * this.wxWet * reflectionGain(this.light));
+      this.night.drawGlitter(ctx, this.moonX, deckY, w, zoom, wet, this.t);
     }
+    ctx.restore();
   }
 
   /* ----------------------- world-space arena pass ------------------------ */
 
-  drawArena(ctx: CanvasRenderingContext2D, forwardOptics=false, cam=this.lastCam): void {
+  *drawBridgeRoadSteps(ctx: CanvasRenderingContext2D, cam: BgCam, master: boolean, gpuRoad: boolean,
+    provisional = false, deferStream = true, cold = true): Generator<void> {
+    const scenery = this.scenery, weather = this.routeWeather;
+    if (!scenery || !weather) return;
+    const view = worldBounds(this.frontView, this.vw, this.vh, cam);
+    weather.wake = this.lastBridgeAtmosphere?.wake ?? 0;
+    scenery.drawCables(ctx, view, weather.clock.time, weather.wind, this.reducedMotion);
+    if (cold) yield;
+    if (cold) yield* scenery.drawSteps(ctx, view, cam.x, !gpuRoad, !gpuRoad && !provisional, !deferStream, true);
+    else scenery.draw(ctx, view, cam.x, !gpuRoad, !gpuRoad && !provisional, !deferStream);
+    scenery.drawMotion(ctx, view, weather.clock.time, this.reducedMotion);
+    if (!gpuRoad && !this.reducedMotion && this.lastBridgeAtmosphere)
+      scenery.drawStormEdges(ctx, view, cam, this.vw, this.lastBridgeAtmosphere);
+    if (cold) yield;
+    weather.draw(ctx, view, cam.x, this.q, false, this.reducedMotion, master);
+  }
+
+  drawArena(ctx: CanvasRenderingContext2D, forward=false, cam=this.lastCam, impulse=0, master=false, gpuRoad=master, provisional=false, deferStream=false): void {
     this.ensureBuilt();
-    const t = this.t;
-    const roll = cam.rot ?? 0;
-    const halfW = (this.vw * Math.abs(Math.cos(roll)) + this.vh * Math.abs(Math.sin(roll))) / (2 * cam.zoom) + 32;
-    const viewL = cam.x - halfW, viewR = cam.x + halfW;
-    /* Calm the city behind the lane without hazing the road or actors. */
-    if (featuresFor(this.q as Tier).depthHaze && hasPixels(this.hazeBand)) {
-      const wide = halfW * 2.2
-      ctx.globalAlpha = 0.9
-      ctx.drawImage(this.hazeBand, cam.x - wide * 0.5, -230, wide, 200)
-      ctx.globalAlpha = 1
+    if (this.scenery && this.routeWeather) {
+      finishPaint(this.drawBridgeRoadSteps(ctx, cam, master, gpuRoad, provisional, deferStream, false));
+      return;
     }
-    const RF = featuresFor(this.q as Tier)
+
+    const roll = cam.rot ?? 0;
+    const co = Math.abs(Math.cos(roll)), si = Math.abs(Math.sin(roll));
+    const halfW = (this.vw * co + this.vh * si) / (2 * cam.zoom) + 32;
+    const viewL = cam.x - halfW, viewR = cam.x + halfW;
+    const halfH = (this.vw * si + this.vh * co) / (2 * cam.zoom);
+    const authored = this.usesBakedOptics();
+    const F = featuresFor(this.q)
     /* Grounded city bounce: world-anchored tiles behind the opaque bridge.
-     * Do not paint on top of the asphalt or align the tile to the view edge. */
-    if (hasPixels(this.cityGlow) && RF.lightPools > 0) {
+     * This is base lighting, not a light-pool or depth-of-field budget. */
+    if (hasPixels(this.cityGlow)) {
       const glow = this.cityGlow
       const step = glow.width
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
-      ctx.globalAlpha = (RF.depthHaze ? 0.46 : 0.85) + 0.05 * Math.sin(t * 0.13)
+      ctx.globalAlpha = 0.85
       for (let gx = Math.floor(viewL / step) * step; gx < viewR; gx += step) {
         ctx.drawImage(glow, gx, ROAD.sidewalk - glow.height + 28)
       }
-      ctx.globalAlpha = 1
       ctx.restore()
     }
     this.street.drawRoad(ctx, viewL, viewR)
-    if (featuresFor(this.q as Tier).depthHaze) this.street.drawWetSurface(ctx, this.wxWet)
-    this.drawLightPools(ctx, cam)
-    if (!this.art.clean) this.storm.drawSplashes(ctx, this.street.left, this.street.right, this.street.wetness)
+    if (!authored) this.drawLightPools(ctx, cam)
+    if (!authored && F.wetGlints && this.hasWetSurface()) {
+      if (cam.y + halfH >= ROAD.rear && cam.y - halfH <= ROAD.front) {
+        this.street.drawWetGlints(ctx, viewL, viewR, F.wetGlints, this.wxWet,
+          this.reducedMotion ? 0 : this.t)
+      }
+    }
+    if (this.front) this.front.draw(ctx, worldBounds(this.frontView, this.vw, this.vh, cam), this.q, this.reducedMotion)
+    else if (!this.art.clean) this.storm.drawSplashes(ctx, this.street.left, this.street.right, this.street.wetness)
     // Rear-sidewalk fixtures share a projected depth; simulation heights
     // remain true perpendicular distances above the asphalt.
     ctx.save();ctx.translate(0, ROAD.fixtureOffset)
     this.rig?.draw(ctx)
     const field=this.lighting()
-    drawRoofProps(ctx, this.roof.props, viewL, viewR, RF.roofProps>0,
-      field.ribbons.find(r=>r.lamp.kind==='bulb')?.gain ?? 0)
-    // BROKEN STREETLIGHT — restored foreground practical, one baked blit.
-    // The pole's rim light, glow spill and contact AO are all in the sprite;
-    // its flipped reflection is baked into the arena tile below.
-    ctx.drawImage(this.beaconSprite,BEACON_X-56,BEACON_Y-42);
-    ctx.drawImage(this.lampSpr, LAMP_X - 53, -286);
-    ctx.drawImage(this.signSpr, SIGN_X - 72, SIGN_Y - 18);
+    drawRoofProps(ctx, this.roof.props, viewL, viewR, F.roofFinish,
+      field.ribbons.find(r=>r.lamp.kind==='bulb')?.gain ?? 0, rimDirection(this.moonX, this.vw))
+    // The authored lens, air and body share a padded world sprite. Cull the
+    // whole visible support, not the emitter centre (including camera roll).
+    const y = cam.y - ROAD.fixtureOffset;
+    for (const { sprite, x, y: top } of this.fixtures) {
+      if (x + sprite.width >= viewL && x <= viewR && top + sprite.height >= y - halfH && top <= y + halfH) {
+        ctx.drawImage(sprite, x, top);
+      }
+    }
+    if (authored) {
+      ctx.restore();
+      this.drawShelters(ctx, viewL, viewR, cam.y - halfH, cam.y + halfH);
+      return;
+    }
+    // Ungraded diagnostic scenes still exercise the dynamic optics stack.
+    const [sign, lamp] = field.ribbons;
     ctx.globalCompositeOperation = 'lighter';
-    const [sign,lamp]=field.ribbons
     ctx.globalAlpha=Math.min(.9,(this.art.amberSpecimen ? .38 : .7)*lamp.gain)
     ctx.drawImage(this.lampHalo,lamp.lamp.x-62,lamp.lamp.y-62,124,124)
-    const F = featuresFor(this.q as Tier);
-    if (F.shafts) {
-      const warmGain = sign.gain, coolGain = lamp.gain
-      ctx.globalAlpha = Math.min(.4, .22 * warmGain);
-      ctx.drawImage(this.shaftWarm, SIGN_X-this.shaftWarm.width/2,SIGN_Y+14);
-      ctx.globalAlpha = Math.min(.75, (this.art.amberSpecimen ? .32 : .58) * coolGain);
-      ctx.save();ctx.transform(1,0,FLOOD.aimX,1,lamp.lamp.x,lamp.lamp.y);
-      ctx.drawImage(this.shaftCool,-this.shaftCool.width/2,0);ctx.restore();
-      // Forward optics: scatter only from the visible emissive surfaces, in
-      // world space behind the actors; no full-scene bright-pass capture.
-      if(forwardOptics){
-        ctx.globalAlpha=Math.min(.14,warmGain*.10)
-        ctx.drawImage(this.signHalo,SIGN_X-62,SIGN_Y-11,124,22)
-        ctx.globalAlpha=Math.min(.4,coolGain*.3)
-        ctx.drawImage(this.lampHalo,LAMP_X-90,-260,180,8)
+    if (F.shaftLayers) {
+      if (Math.abs(sign.lamp.x - cam.x) <= halfW + this.shaftWarm.width / 2) {
+        drawShaft(ctx, this.shaftWarm, sign.lamp.x, sign.lamp.y + 14,
+          Math.min(.4, .22 * sign.gain), F.shaftLayers);
+      }
+      const lampReach = this.shaftCool.width / 2 + this.shaftCool.height * Math.abs(FLOOD.aimX);
+      if (Math.abs(lamp.lamp.x - cam.x) <= halfW + lampReach) {
+        ctx.save();
+        ctx.transform(1, 0, FLOOD.aimX, 1, lamp.lamp.x, lamp.lamp.y);
+        drawShaft(ctx, this.shaftCool, 0, 0,
+          Math.min(.75, (this.art.amberSpecimen ? .32 : .58) * lamp.gain), F.shaftLayers);
+        ctx.restore();
+      }
+    }
+    // Kept for ungraded/legacy diagnostic scenes only.
+    if (forward && F.bloom) {
+      if (Math.abs(SIGN_X - cam.x) <= halfW + 62) {
+        ctx.globalAlpha = Math.min(.14, sign.gain * .10);
+        ctx.drawImage(this.signHalo, SIGN_X - 62, SIGN_Y - 11, 124, 22);
+      }
+      if (Math.abs(LAMP_X - cam.x) <= halfW + 90) {
+        ctx.globalAlpha = Math.min(.4, lamp.gain * .3);
+        ctx.drawImage(this.lampHalo, LAMP_X - 90, LAMP_Y - 4, 180, 8);
       }
     }
     ctx.globalCompositeOperation = 'source-over';
@@ -2087,9 +2431,34 @@ export class CyberBackground {
     ctx.restore()
   }
 
+  /** The matte insert is already in the span. Only the part above the
+   * shoulder needs a live blit; it sits between the skyline and fighters. */
+  private drawShelters(ctx: CanvasRenderingContext2D, left: number, right: number, top: number, bottom: number): void {
+    if (!this.layout || top >= SHELTER_DECK_TOP) return;
+    for (const zone of this.layout.shelters) {
+      if (zone.right <= left || zone.left >= right) continue;
+      const stamp = this.shelters[zone.kind];
+      if (!stamp || stamp.y >= bottom) continue;
+      const w = zone.right - zone.left, h = SHELTER_DECK_TOP - stamp.y;
+      ctx.drawImage(stamp.sprite, 0, 0, w, h, zone.left, stamp.y, w, h);
+    }
+  }
+
   /* ---------------------- screen-space weather pass ---------------------- */
 
   drawWeather(ctx:CanvasRenderingContext2D,cam:BgCam):void{
+    if (this.scenery) {
+      if (!hasPixels(this.routeVignette)) {
+        const c = this.routeVignette = this.surfaces.acquire('route-vignette', 96, 96, 'route-vignette');
+        const g = c.getContext('2d')!;
+        const shade = g.createRadialGradient(48, 46, 24, 48, 46, 67);
+        shade.addColorStop(0, 'rgba(5,6,8,0)'); shade.addColorStop(.55, 'rgba(5,6,8,.05)'); shade.addColorStop(1, 'rgba(5,6,8,.21)');
+        g.fillStyle = shade; g.fillRect(0, 0, 96, 96);
+      }
+      ctx.drawImage(this.routeVignette!, 0, 0, this.vw, this.vh);
+      return;
+    }
+    if (this.front) return; // diagnostic bridge uses a single rear field
     this.ensureBuilt();
     this.storm.setView(cam);
     if (!this.art.clean) {
@@ -2105,124 +2474,240 @@ export class CyberBackground {
       ctx.fillRect(0, 0, this.vw, this.vh);
       ctx.globalAlpha = 1;
     }
-    // CINEMATIC VIGNETTE — ONE baked plate, ONE blit. Dark corners focus
-    // attention on the action; no live gradient, no post-processing engine.
-    if (!this.vignette || this.vigW !== this.vw || this.vigH !== this.vh) {
-      this.vignette = buildVignettePlate(this.vw, this.vh, this.profile ? this.profile.grade.vignette : 1);
-      this.vigW = this.vw; this.vigH = this.vh;
+    // Authored depth/receiver grades already set the contrast. No darkening
+    // pass over actors, wet highlights or the rest of the viewport.
+    if (this.usesBakedOptics()) return;
+    // Ungraded diagnostic vignette.
+    const strength = this.profile?.grade.vignette ?? 1;
+    if (this.vigW !== this.vw || this.vigH !== this.vh || this.vigStrength !== strength ||
+        (!this.vigFailed && !hasPixels(this.vignette))) {
+      this.refreshVignette(strength);
     }
     if (hasPixels(this.vignette)) ctx.drawImage(this.vignette, 0, 0);
   }
 
   /* --------------------------- private helpers --------------------------- */
 
+  private refreshVignette(strength: number): void {
+    const w = this.vw, h = this.vh;
+    // This slot belongs to the viewport, not the seed's bake generation.
+    // Same-size retries repaint if the recipe changed; resizing reuses the slot.
+    this.vigW = w; this.vigH = h; this.vigStrength = strength;
+    this.vigFailed = false;
+    try {
+      const plate = this.surfaces.acquire('vignette', Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)), 'vignette');
+      const g = plate.getContext('2d');
+      if (!g || g.isContextLost?.()) throw new Error('Vignette context unavailable');
+      paintVignette(g, w, h, strength);
+      this.vignette = plate;
+    } catch (error) {
+      this.surfaces.release('vignette');
+      this.vignette = null;
+      this.vigFailed = true; // retry on a viewport or recipe boundary, not every frame
+      console.warn('Skipping cinematic vignette for this viewport:', error);
+    }
+  }
+
   private blitRow(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, m: number, y: number): void {
     for (let x = -m; x < this.vw; x += TILE) ctx.drawImage(img, x, y);
   }
 
   /** Same row blit for a reduced-resolution plate: drawn to full layer size. */
-  private blitRowScaled(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement, m: number, y: number, h: number): void {
+  private blitRowScaled(ctx: CanvasRenderingContext2D, img: HTMLCanvasElement | HTMLImageElement, m: number, y: number, h: number): void {
     for (let x = -m; x < this.vw; x += TILE) ctx.drawImage(img, x, y, TILE, h);
   }
 
-  private ensureBuilt(): void {
+  private ensureBuilt(canvasSky = false): void {
     if (this.built) return;
-    this.built = true;
-    // A NEW GENERATION of bakes. Every surface below is pinned to the ledger and
-    // released together when the run reseeds, so a session of runs holds one
-    // city, not one city per run (T1.6).
-    bgGen.begin();
+    // Release only this background's old generation. Viewport slots survive
+    // a reseed; another mounted scene keeps all of its own art.
+    const hadStageKit = this.stageKitBuilt;
+    this.bakes.begin();
+    try {
+      this.bakeScene(canvasSky);
+      this.built = true;
+    } catch (error) {
+      this.bakes.begin();
+      this.surfaces.release('front-bank');
+      this.bank = null;
+      this.bankP = null;
+      if (!hadStageKit) {
+        this.stageBakes.begin();
+        this.stageKitBuilt = false;
+        this.dryRecess = undefined;
+        this.shelters = {};
+        this.fixtures = [];
+        this.wetFixtures = [];
+      }
+      this.night?.dispose();
+      throw error;
+    }
+  }
+
+  private warmRoute(): boolean {
+    if (!this.scenery) return false;
+    bridgeSkyBasis(); bridgePlate('l1'); bridgePlate('l2'); bridgePlate('metro-street');
+    return true;
+  }
+
+  private bakeScene(canvasSky: boolean): void {
     // The profile exists before any plate is painted: every bake below reads
     // its axes, so a null here would silently bake the previous night.
     if (!this.profile) {
       this.profile = makeProfile(this.runSeed);
-      this.light=keyLightFor(this.profile)
+      this.light=this.keyLightForScene(this.profile)
       this.resetLighting()
       this.night?.dispose();
-      this.night = new NightLayer(this.profile);
+      if (!this.station && !this.scenery) this.night = new NightLayer(this.profile, !this.art.finish);
       this.mood = artPalette(this.profile.mood, this.art.grade);
+      if (this.front) {
+        this.rig = new Rigging(this.profile, this.q);
+        this.rig.windState.setExternal(this.front.clock.sample.windX);
+      }
     }
-    this.skyStrip = buildSkyStrip(this.art.grade ? ART_GRADES[this.art.grade] : undefined);
+    this.bandAnims = { deep: [], far: [], mid: [], near: [] };
+    if (this.warmRoute()) return;
+    if (this.art.finish) this.ensureStageKit();
+    if (this.station) {
+      // Only the span and its run-dependent light/blocker transfer are new.
+      this.bakeSection();
+      return;
+    }
+    this.skyStrip = buildSkyStrip(this.makeCanvas, this.art.grade ? ART_GRADES[this.art.grade] : undefined);
     // MOON: the GPU/CPU baker owns it when a DOM exists (phase, tilt, tint and
     // procedural craters from the profile); the legacy plate is the last-resort
     // fallback so a headless import still produces a drawable sprite.
-    this.night?.ensure();
+    this.night?.ensure(undefined, undefined, canvasSky);
     const bakedMoon = this.night?.moonPlate() ?? null;
-    this.moonSpr = bakedMoon ?? buildMoon(this.mood);
-    this.moonHalo = buildMoonHalo(this.mood);
-    // Emissive discs FIRST: buildTrafficSign/buildLampProp paint baked
-    // spill with these, so they must exist before any plate that lights.
-    this.glowWarm = buildGlowDisc(this.mood.highlight);
-    this.glowCool = buildGlowDisc(this.mood.pop2);
-    this.lampHalo=buildGlowDisc(this.lampTint());this.signHalo=buildGlowDisc(LIGHT_TINT.warm.join(','));
-    this.heroDisc = buildGlowDisc(this.mood.pop);
-    // The live city records belong to the tiles being replaced: clear them
-    // before the builders emit into them, or a re-run would inherit the last
-    // run's windows at the last run's coordinates.
-    this.bandAnims = { deep: [], far: [], mid: [], near: [] }
-    this.cityGlow = buildCityGlow(this.mood)
-    this.hazeBand = buildHazeBand(this.vw)
-    // Shafts are baked from the palette, so the cone is the same colour as the
-    // pool it belongs to — a warm door does not cast a green shaft.
-    this.shaftWarm = buildShaft(LIGHT_TINT.warm.join(','), 108, 148, -SIGN_Y-14);
-    this.shaftCool = buildShaft(this.lampTint(), 12, 2*250*Math.tan(Math.acos(FLOOD.outerCos)), 250);
+    this.moonSpr = bakedMoon ?? buildMoon(this.makeCanvas, this.mood);
+    this.moonHalo = buildMoonHalo(this.makeCanvas, this.mood);
+    // Seeded city plates use these tinted discs in their material bakes.
+    this.glowWarm = buildGlowDisc(this.makeCanvas, this.mood.highlight);
+    this.glowCool = buildGlowDisc(this.makeCanvas, this.mood.pop2);
+    this.heroDisc = buildGlowDisc(this.makeCanvas, this.mood.pop);
+    if (!this.art.finish) this.cityGlow = buildCityGlow(this.makeCanvas, this.mood);
+    if (!this.art.finish) this.bakePracticals(this.makeCanvas);
     // Rebuild-safe: a run reseed re-enters ensureBuilt, so reset the array
     // instead of appending a second set of discs forever.
     this.glowSigns.length = 0;
     for (const rgb of ['255,45,149','41,230,210','255,176,46','141,91,255','63,169,255',this.mood.pop,this.mood.pop2]) {
-      this.glowSigns.push(buildGlowDisc(rgb));
+      this.glowSigns.push(buildGlowDisc(this.makeCanvas, rgb));
     }
-    this.signSpr = this.buildTrafficSign();
     // Rebuild-safe: a run reseed re-enters ensureBuilt, so clear the
     // arrays instead of appending a second set of sprites/discs forever.
     this.glyphSpr.length = 0;
-    for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(ci));
+    for (let ci = 0; ci < 5; ci++) this.glyphSpr.push(buildGlyph(this.makeCanvas, ci));
     const profForBake = this.profile ?? makeProfile(this.runSeed);
-    this.cloudDark = buildCloudTile(false, profForBake.clouds.texture);
-    this.fogPlane = buildFogPlane();
-    this.auroraTile = buildAuroraTile(this.mood, profForBake.aurora.hue);
-    // THE BANK: a ragged cumulus silhouette on the skyline. Null on a clear
-    // run (coverage below 0.4) — one of the four cloud surfaces is allowed to
-    // be absent, and its absence is what makes a clear night read as clear.
-    // THROUGH THE LEDGER, not around it: one surface, 1.7 MB, counted.
-    if (typeof document !== 'undefined') {
-      // One bank resident, ever. A new run must not leave the old 1.7 MB surface
-      // behind for the LRU to find later — that is how 37 untracked surfaces
-      // happened in the first place (12 §4).
-      gameLedger.releasePrefix('cloudbank:')
-      const bankKey = `cloudbank:${profForBake.seed}`
-      // PINNED. The bank lives for the whole run and is blitted every frame; an
-      // unpinned surface is an LRU candidate, and the city bake storm pushes the
-      // ledger over its byte cap on a big frame — the sweep then releases the
-      // bank, zeroing its backing store while `this.bank` still points at it, and
-      // the next blit throws InvalidStateError (a 0×0 canvas). That was the crash.
-      const bankSurface = gameLedger.acquire(bankKey, TILE, 210, 'sky', true) as unknown as HTMLCanvasElement
-      const bankHost = buildCloudBank(profForBake, TILE, 210, bankSurface)
-      if (!bankHost) gameLedger.release(bankKey)
-      this.bank = bankHost
-      this.bankP = bankHost ? bankParams(profForBake) : null
-    } else {
-      this.bank = null
-      this.bankP = null
+    this.cloudDark = buildCloudTile(this.makeCanvas, false, profForBake.clouds.texture);
+    this.fogPlane = buildFogPlane(this.makeCanvas);
+    if (!this.activeFront) this.auroraTile = buildAuroraTile(this.makeCanvas, this.mood, profForBake.aurora.hue);
+    // A clear night needs no bank. Keep the actual bank in this generation,
+    // pinned for the run, but don't allocate a surface to discover it's absent.
+    const bankProfile = this.activeFront ? { ...profForBake, clouds: { ...profForBake.clouds, coverage: .73 } } : profForBake;
+    const params = bankParams(bankProfile);
+    this.bank = null;
+    this.bankP = null;
+    if (params.present && typeof document !== 'undefined') {
+      if (this.activeFront) {
+        // Existing cloud decks still show the front if the optional sculpted
+        // plate is denied. The smaller slot replaces, not stacks on, the bank.
+        try {
+          const c = this.surfaces.tryAcquire('front-bank', 1024, 120, 'environment-optional-bank');
+          if (c) {
+            const g = c.getContext('2d');
+            if (!g || g.isContextLost?.()) throw new Error('Bank context unavailable');
+            g.clearRect(0, 0, c.width, c.height);
+            this.bank = buildCloudBank(bankProfile, c.width, c.height, c);
+          }
+        } catch {
+          this.surfaces.release('front-bank');
+        }
+      } else {
+        const { c } = this.bakes.next(TILE, 210, 'cloudbank');
+        this.bank = buildCloudBank(profForBake, TILE, 210, c);
+      }
+      if (this.bank) this.bankP = params;
     }
-    this.beaconSprite=this.buildBeacon();
-    this.lampSpr = this.buildLampProp();
     // STARS: density and warm/cool split come from the profile, so a clear run
     // and an overcast run are visibly different skies (not just different alpha).
     const bakedStars = this.night?.starPlate() ?? null;
     this.starTile = bakedStars && bakedStars.width >= 256
       ? bakedStars
       : this.buildStarTile();
-    this.deepTile = this.buildDeep();
-    this.farTile = this.buildFar();
-    this.midTile = this.buildMid();
+    this.deepTileBlur = this.bakeSoftBand(DEEP_H, 3, 8, g => this.paintDeep(g));
+    this.farTileBlur = this.bakeSoftBand(FAR_H, 2, 6, g => this.paintFar(g));
+    this.midTileBlur = this.bakeSoftBand(MID_H, 1.1, 3, g => this.paintMid(g));
     this.nearTile = this.buildNear();
-    this.street = new Viaduct(this.runSeed, ARENA_X0 - 1024, ARENA_W + 2048, this.mood, makeCanvas, this.art.grade ? ART_GRADES[this.art.grade].asphalt : undefined);
-    /* storm art: horizon haze + per-layer DOF variants (baked once) */
-    this.hazeSpr = buildHazeStrip();
-    this.deepTileBlur = blurTile(this.deepTile, 8);
-    this.farTileBlur = blurTile(this.farTile, 6);
-    this.midTileBlur = blurTile(this.midTile, 3);
+    for (const anims of Object.values(this.bandAnims)) orderBuildingAnims(anims, this.runSeed);
+    this.bakeSection();
+    if (!this.art.finish) this.hazeSpr = buildHazeStrip(this.makeCanvas, this.art.airlight);
+  }
+
+  private bakeSection(): void {
+    this.street = new Viaduct(this.runSeed, ARENA_X0 - FLAT_LANE.artOverhang, ARENA_W + 2 * FLAT_LANE.artOverhang, this.mood, this.makeCanvas,
+      this.art.grade ? ART_GRADES[this.art.grade].asphalt : undefined, this.art.finish?.deck, this.dryRecess, this.wetFixtures,
+      this.layout?.exposure);
+    this.bakeRoadLighting();
+    if (this.layout) for (const zone of this.layout.shelters) {
+      const stamp = this.shelters[zone.kind]!;
+      this.street.bakeReceiver(zone.left, zone.right, SHELTER_DECK_TOP, stamp.sprite, SHELTER_DECK_TOP - stamp.y);
+    }
+  }
+
+  /** Invariant art belongs to this mounted stage, not to every Retry seed. */
+  private ensureStageKit(): void {
+    if (this.stageKitBuilt) return;
+    const make = this.makeStageCanvas;
+    this.bakePracticals(make);
+    if (this.layout) {
+      try {
+        const scratch: MakeCanvas = (w, h) => this.practicalScratch.next(w, h, 'practical-work');
+        for (const kind of SHELTER_KINDS) this.shelters[kind] = bakeRunShelter(kind, make, scratch);
+      } finally { this.practicalScratch.begin(); }
+    }
+    if (this.station) {
+      const { depth, deck } = this.station;
+      this.deepTileBlur = this.bakeSoftBand(DEEP_H, 3, 8, g => paintStationBand(g, TILE, DEEP_H, 'deep', depth.deep), make);
+      this.farTileBlur = this.bakeSoftBand(FAR_H, 2, 6, g => paintStationBand(g, TILE, FAR_H, 'far', depth.far), make);
+      this.midTileBlur = this.bakeSoftBand(MID_H, 1.1, 3, g => paintStationBand(g, TILE, MID_H, 'mid', depth.mid), make);
+      const { c, g } = make(TILE, NEAR_H);
+      paintStationBand(g, TILE, NEAR_H, 'near', depth.near);
+      this.nearTile = c;
+      this.dryRecess = Viaduct.bakeDryRecess(make, deck.district);
+    }
+    this.stageKitBuilt = true;
+  }
+
+  /** The same fixture origins drive baked bodies, light field and pools. */
+  private bakePracticals(make: MakeCanvas): void {
+    const warm = LIGHT_TINT.warm.join(','), lamp = this.lampTint();
+    const finish = this.art.finish;
+    const body = (factory: MakeCanvas): [PracticalStamp, PracticalStamp] => [
+      { sprite: this.buildLampProp(factory), x: LAMP_X - 53, y: LAMP_Y - 30 },
+      { sprite: this.buildTrafficSign(factory), x: SIGN_X - 72, y: SIGN_Y - 18 },
+    ];
+    const beacon = { sprite: this.buildBeacon(make), x: BEACON_X - 56, y: BEACON_Y - 42 };
+    if (!finish) {
+      this.lampHalo = buildGlowDisc(make, lamp);
+      this.signHalo = buildGlowDisc(make, warm);
+      this.shaftWarm = buildShaft(make, warm, 108, 148, -SIGN_Y - 14);
+      this.shaftCool = buildShaft(make, lamp, 12, 2 * 250 * Math.tan(Math.acos(FLOOD.outerCos)), 250);
+      this.fixtures = [beacon, ...body(make)];
+      return;
+    }
+    try {
+      const [head, sign] = body((w, h) => this.practicalScratch.next(w, h, 'practical-work'));
+      // Sample only the small body art at build time. Air isn't reflected by
+      // the asphalt and the gameplay canvas is never an optical source.
+      if (finish.deck.surface === 'wet-asphalt') this.wetFixtures = [beacon, head, sign].map(({ sprite, x }) => ({
+        left: x, image: sprite.getContext('2d')!.getImageData(0, 0, sprite.width, sprite.height),
+      }));
+      const { practicals } = finish;
+      this.fixtures = [beacon,
+        bakePractical(make, head, LAMP_X, LAMP_Y - 1, lamp, practicals.lamp),
+        bakePractical(make, sign, SIGN_X, SIGN_Y - 2, warm, practicals.sign),
+      ];
+    } finally { this.practicalScratch.begin(); }
   }
 
   /* ------------------- city life (world/buildings.ts) -------------------- */
@@ -2263,21 +2748,43 @@ export class CyberBackground {
     cx: number,
     cy: number,
     cz: number,
-    soft: HTMLCanvasElement,
+    soft: HTMLCanvasElement | HTMLImageElement,
     bandH: number,
   ): void {
     const by = h * 0.5 + (lay.lift - cy * lay.vf) * cz;
     const m = mod(cx * lay.f * cz, TILE);
     // soft plate is stored at reduced resolution → scale it up here (GPU)
+    const alpha = ctx.globalAlpha;
+    if (this.routeWeather) {
+      const fog = this.routeWeather.clock.sample.fog;
+      ctx.globalAlpha *= atmosphereTransmission(Math.max(0, 1.15 - lay.f) * 3.1, .12 + fog * .20);
+    }
     this.blitRowScaled(ctx, soft, m, by - bandH, bandH);
-    if (lay === LAY_NEAR) this.street.drawDistrict(ctx, this.vw, h, m, by)
-
+    ctx.globalAlpha = alpha;
   }
 
   /* ------------------------- layer tile builders ------------------------- */
 
+  private bakeSoftBand(height: number, sigma: number, down: number, paint: (g: CanvasRenderingContext2D) => void,
+    make: MakeCanvas = this.makeCanvas): HTMLCanvasElement {
+    try {
+      const source = this.cityScratch.next(TILE, height, 'city-scratch');
+      paint(source.g);
+      const wrapped = this.cityScratch.next(TILE, height, 'city-scratch');
+      wrapped.g.filter = `blur(${sigma}px)`;
+      // Neighbour copies supply the filter's edge pixels before downsampling.
+      for (const x of [-TILE, 0, TILE]) wrapped.g.drawImage(source.c, x, 0);
+      wrapped.g.filter = 'none';
+      return blurTile(make, wrapped.c, down);
+    } finally {
+      // Only the small feathered output survives. No painter retains either
+      // scratch canvas, including when baking a band fails halfway through.
+      this.cityScratch.begin();
+    }
+  }
+
   private buildStarTile(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(TILE, STAR_H);
+    const { c, g } = this.makeCanvas(TILE, STAR_H);
     const rng = mulberry32(0x51a2c9);
     // FAINT NEBULA BLOOMS — two soft color clouds so the upper sky reads
     // as depth instead of a flat ramp (wrap-aware: drawn at ±TILE too)
@@ -2320,8 +2827,7 @@ export class CyberBackground {
    * the heaviest aerial fog of the stack; window grids are reduced to
    * specks because at this distance individual cells no longer read.
    */
-  private buildDeep(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(TILE, DEEP_H);
+  private paintDeep(g: CanvasRenderingContext2D): void {
     const rng = mulberry32(0x33d1e7 ^ this.runSeed);
     const shades = ['#16222f', '#182534', '#1a2838', '#152030'];
     const glow: ReadonlyArray<string> = [
@@ -2431,22 +2937,12 @@ export class CyberBackground {
     tg.addColorStop(1, 'rgba(30,48,76,0)');
     g.fillStyle = tg;
     g.fillRect(0, 0, TILE, FOG.topFadeH + 40);
-    g.fillStyle = 'rgba(46,70,104,0.34)';
-    g.fillRect(0, 0, TILE, DEEP_H);
+    paintPlaneTone(g, TILE, DEEP_H, this.art.finish?.depth.deep ?? 'rgba(46,70,104,0.34)');
     bakeFilmGrade(g, TILE, DEEP_H, this.mood, 0.4, rng);
     g.globalCompositeOperation = 'source-over';
-    // wrap-aware soft bake (the DOF variant in ensureBuilt goes further)
-    const blurred = makeCanvas(TILE, DEEP_H);
-    blurred.g.filter = 'blur(3px)';
-    blurred.g.drawImage(c, -TILE, 0);
-    blurred.g.drawImage(c, 0, 0);
-    blurred.g.drawImage(c, TILE, 0);
-    blurred.g.filter = 'none';
-    return blurred.c;
   }
 
-  private buildFar(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(TILE, FAR_H);
+  private paintFar(g: CanvasRenderingContext2D): void {
     const rng = mulberry32(0xc1f3a0 ^ this.runSeed);
     const shades = ['#121d28', '#14202b', '#15222e', '#172432'];
     let beaconCount = 0;
@@ -2573,8 +3069,7 @@ export class CyberBackground {
     tg.addColorStop(1, 'rgba(26,42,66,0)');
     g.fillStyle = tg;
     g.fillRect(0, 0, TILE, FOG.topFadeH);
-    g.fillStyle = FOG.farLift;
-    g.fillRect(0, 0, TILE, FAR_H);
+    paintPlaneTone(g, TILE, FAR_H, this.art.finish?.depth.far ?? FOG.farLift);
     // GLOBAL KEY WASH — one directional gradient ties every tower to the
     // same moon: bright upper-right → shadowed lower-left (baked 3D read)
     const keyF = g.createLinearGradient(TILE, 0, 0, FAR_H);
@@ -2585,21 +3080,9 @@ export class CyberBackground {
     g.fillRect(0, 0, TILE, FAR_H);
     bakeFilmGrade(g, TILE, FAR_H, this.mood, 0.55, rng);
     g.globalCompositeOperation = 'source-over';
-    // AERIAL FOCUS — the far plate sits past the focal plane: bake a one-
-    // time soft blur (runtime cost ZERO — same drawImage) with wrap-aware
-    // edges so the tile seam stays invisible; the fog carries the rest of
-    // the depth read (bokeh DOF law).
-    const blurred = makeCanvas(TILE, FAR_H);
-    blurred.g.filter = 'blur(2px)';
-    blurred.g.drawImage(c, -TILE, 0);
-    blurred.g.drawImage(c, 0, 0);
-    blurred.g.drawImage(c, TILE, 0);
-    blurred.g.filter = 'none';
-    return blurred.c;
   }
 
-  private buildMid(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(TILE, MID_H);
+  private paintMid(g: CanvasRenderingContext2D): void {
     const rng = mulberry32(0x2b6e5f ^ this.runSeed);
     const shades = ['#0b141c', '#0d1721', '#0e1924', '#101c27'];
     const cands: { bx: number; bw: number; bh: number }[] = [];
@@ -2888,7 +3371,7 @@ export class CyberBackground {
     }
 
     if (cands.length >= 3) {                               // 5 neon signs, BAKED
-      const signGain = this.art.grade === 'deep-noir' ? .56 : 1;
+      const signGain = this.art.finish?.signGain ?? (this.art.grade === 'deep-noir' ? .56 : 1);
       for (let k = 0; k < 5; k++) {
         let idx = (cands.length * (0.1 + 0.2 * k) + rng() * 2) | 0;
         if (idx >= cands.length) idx = cands.length - 1;
@@ -2928,8 +3411,7 @@ export class CyberBackground {
     g.fillStyle = gr;
     g.fillRect(0, MID_H - 70, TILE, 70);
     g.globalCompositeOperation = 'source-atop';            // aerial lift (mid)
-    g.fillStyle = 'rgba(36,56,80,0.09)';
-    g.fillRect(0, 0, TILE, MID_H);
+    paintPlaneTone(g, TILE, MID_H, this.art.finish?.depth.mid ?? 'rgba(36,56,80,0.09)');
     // GLOBAL KEY WASH — same moon, same law: upper-right lit, lower-left
     // in shadow, applied only where towers exist (source-atop)
     const keyM = g.createLinearGradient(TILE, 0, 0, MID_H);
@@ -2940,26 +3422,10 @@ export class CyberBackground {
     g.fillRect(0, 0, TILE, MID_H);
     bakeFilmGrade(g, TILE, MID_H, this.mood, 0.7, rng);
     g.globalCompositeOperation = 'source-over';
-    // ISOLATION HERO — ONE supernormal landmark per tile. A single vivid
-    // crown against desaturated towers is the eye's anchor (von Restorff).
-    if (towers.length > 0) {
-      let ht = towers[0];
-      for (const t2 of towers) if (t2.bh > ht.bh) ht = t2;
-      bakeIsolationHero(g, ht.x, ht.bw, MID_H - ht.bh, MID_H, this.mood, this.heroDisc);
-    }
-    // AERIAL FOCUS (mid): lighter than the far plate — the action plane
-    // stays crisp, only the depth layers soften (wrap-aware bake blur).
-    const blurred = makeCanvas(TILE, MID_H);
-    blurred.g.filter = 'blur(1.1px)';
-    blurred.g.drawImage(c, -TILE, 0);
-    blurred.g.drawImage(c, 0, 0);
-    blurred.g.drawImage(c, TILE, 0);
-    blurred.g.filter = 'none';
-    return blurred.c;
   }
 
   private buildNear(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(TILE, NEAR_H);
+    const { c, g } = this.makeCanvas(TILE, NEAR_H);
     const rng = mulberry32(0x77d1ee ^ this.runSeed);
     const shades = ['#05090d', '#060b10', '#071015', '#050a0f'];
     const towers: { x: number; w: number; h: number }[] = [];
@@ -3216,8 +3682,7 @@ export class CyberBackground {
     g.fillStyle = gr;
     g.fillRect(0, NEAR_H - 60, TILE, 60);
     g.globalCompositeOperation = 'source-atop';            // whisper of air
-    g.fillStyle = 'rgba(30,48,70,0.035)';
-    g.fillRect(0, 0, TILE, NEAR_H);
+    if (!this.art.finish) paintPlaneTone(g, TILE, NEAR_H, 'rgba(30,48,70,0.035)');
     // GLOBAL KEY WASH — strongest of the stack: the near plane carries the
     // clearest directional read (lit right faces, shadowed left + base)
     const keyN = g.createLinearGradient(TILE, 0, 0, NEAR_H);
@@ -3232,13 +3697,30 @@ export class CyberBackground {
     // energy, grouping/repetition) — applied after the grade so the pops
     // stay saturated against the calm field.
     bakeChromaticEdges(g, towers, NEAR_H, this.mood, rng);
+    const facade = (this.art.grade ? ART_GRADES[this.art.grade].facade : 1) * (this.art.finish?.facadeGain ?? 1);
     for(const [i,tower] of towers.entries()){
-      lightFacade(g,tower.x,NEAR_H,tower.w,tower.h,i,this.art.grade ? ART_GRADES[this.art.grade].facade : 1)
+      lightFacade(g,tower.x,NEAR_H,tower.w,tower.h,i,facade)
     }
     {
       let nHero = towers[0];
       for (const t2 of towers) if (t2.h > nHero.h) nHero = t2;
       bakeIsolationHero(g, nHero.x, nHero.w, NEAR_H - nHero.h, NEAR_H, this.mood, this.heroDisc);
+    }
+    // Air sits in front of the facade lights too. Feather the windows toward
+    // a quiet tonal mass near the deck, without drawing over the fighters.
+    if (this.art.finish) {
+      paintPlaneTone(g, TILE, NEAR_H, this.art.finish.depth.near);
+      const air = this.art.airlight;
+      if (air) {
+        g.save(); g.globalCompositeOperation = 'source-atop';
+        const haze = g.createLinearGradient(0, NEAR_H - 154, 0, NEAR_H);
+        haze.addColorStop(0, rgba(air.color, 0));
+        haze.addColorStop(.48, rgba(air.color, air.opacity * .22));
+        haze.addColorStop(.84, rgba(air.color, air.opacity));
+        haze.addColorStop(1, rgba(air.color, air.opacity * .88));
+        g.fillStyle = haze; g.fillRect(0, NEAR_H - 154, TILE, 154);
+        g.restore();
+      }
     }
     return c;
   }
@@ -3247,23 +3729,40 @@ export class CyberBackground {
 
   /* ---------------------- foreground practical props -------------------- */
 
-  /** BROKEN STREETLIGHT — restored physical prop with baked 3D lighting:
-   *  leaning pole, moon rim on the right face, left-face occlusion, a cool
-   *  emissive head, a baked glow spill and a contact AO at the deck line.
-   *  One canvas, one blit at runtime; its mirror is baked into the arena. */
-  private buildBeacon():HTMLCanvasElement {
-    const {c,g}=makeCanvas(112,108), x=56,y=42
+  /** Baked streetlight body and lens; its light on the road is baked from
+   *  the same emitter used by the halo, cone and actor probes. */
+  private buildBeacon(make: MakeCanvas): HTMLCanvasElement {
+    const {c,g}=make(112,108), x=56,y=42
     g.fillStyle='#111724';g.fillRect(x-3,y,6,64);g.fillRect(x-10,y+60,20,5)
     g.fillStyle='#7547a8';g.fillRect(x+1,y+8,1,54)
     g.fillStyle='#182034';g.fillRect(x-10,y-6,20,17)
-    const halo=g.createRadialGradient(x,y,1,x,y,42)
-    halo.addColorStop(0,'rgba(193,90,255,.74)');halo.addColorStop(.25,'rgba(168,60,255,.32)');halo.addColorStop(1,'rgba(156,52,255,0)')
+    const quiet = this.art.finish !== undefined;
+    const halo=g.createRadialGradient(x,y,1,x,y,quiet ? 26 : 42)
+    halo.addColorStop(0,quiet ? 'rgba(193,90,255,.47)' : 'rgba(193,90,255,.74)');halo.addColorStop(.25,quiet ? 'rgba(168,60,255,.17)' : 'rgba(168,60,255,.32)');halo.addColorStop(1,'rgba(156,52,255,0)')
     g.fillStyle=halo;g.fillRect(x-42,y-42,84,84)
     g.fillStyle='#edc6ff';g.fillRect(x-7,y-3,14,5);g.fillStyle='#ba7dea';g.fillRect(x-9,y+6,18,1)
     return c
   }
-  private buildLampProp(): HTMLCanvasElement {
-    const { c, g } = makeCanvas(96, 300);
+  private buildLampProp(make: MakeCanvas): HTMLCanvasElement {
+    const { c, g } = make(96, 300);
+    if (this.station) {
+      const enamel = this.station.enamel;
+      // Platform service column, bolted to the same sidewalk as the sign.
+      // A parallax arch must not be the support for a world-space lamp.
+      g.fillStyle = materialRamp(g, 87, 0, 74, 0, enamel);
+      g.fillRect(74, 4, 13, 291);
+      g.fillStyle = '#16252d'; g.fillRect(68, 289, 25, 6);
+      g.fillRect(43, 13, 39, 7);
+      g.fillStyle = '#778b8c'; g.fillRect(78, 10, 4, 2); g.fillRect(78, 32, 4, 2);
+      g.fillStyle = materialRamp(g, 0, 15, 0, 31, enamel);
+      g.beginPath();
+      g.moveTo(19, 17); g.lineTo(83, 17); g.lineTo(75, 31); g.lineTo(29, 31);
+      g.closePath(); g.fill();
+      g.fillStyle = `rgba(${this.lampTint()},.86)`; g.fillRect(30, 27, 44, 4);
+      g.fillStyle = '#fff0ce'; g.fillRect(33, 29, 38, 1.4);
+      g.fillStyle = '#edb778'; g.fillRect(31, 31, 40, 1);
+      return c;
+    }
     // leaning pole (quad, not a rect — reads as a real extrusion)
     g.fillStyle = '#080d13';
     g.beginPath();
@@ -3276,8 +3775,10 @@ export class CyberBackground {
     g.fillStyle = 'rgba(0,0,0,0.4)';                   // left face occlusion
     g.fillRect(40, 26, 4, 274);
     // bracket arm + lamp head (trapezoid with a lit underside)
+    const enamel = this.art.finish?.enamel;
     g.fillStyle = '#070c11';
     g.fillRect(53, 18, 30, 5);
+    if (enamel) g.fillStyle = materialRamp(g, 0, 10, 0, 28, enamel);
     g.beginPath();
     g.moveTo(30, 10); g.lineTo(76, 10); g.lineTo(70, 28); g.lineTo(36, 28);
     g.closePath(); g.fill();
@@ -3285,14 +3786,25 @@ export class CyberBackground {
     g.fillRect(30, 10, 46, 1.6);
     g.fillStyle = this.art.amberSpecimen ? `rgba(${this.lampTint()},.83)` : 'rgba(190,224,250,0.7)';              // lamp glass
     g.fillRect(38, 26, 30, 3);
-    g.fillStyle = `rgba(${this.mood.pop2},0.55)`;
+    if (enamel) {
+      g.fillStyle = '#da8c47'; g.fillRect(38, 28, 30, 2);
+      g.fillStyle = '#fff2d3'; g.fillRect(40, 27, 26, 2);
+      g.fillStyle = '#ffd187'; g.fillRect(41, 29, 24, 1);
+    }
+    g.fillStyle = `rgba(${enamel ? '105,150,168' : this.mood.pop2},0.55)`;
     g.fillRect(30, 10, 46, 1.4);
+    if (enamel) {
+      g.fillStyle = '#121c24'; g.fillRect(38, 22, 30, 3);
+      g.fillStyle = '#77838a'; g.fillRect(39, 22, 2, 1); g.fillRect(65, 22, 2, 1);
+      // A tight reflected edge and a dark mounting collar, on the same pole.
+      g.fillRect(48, 83, 1, 135);
+    }
 
     // warning band + base collar (baked contact AO)
     g.fillStyle = 'rgba(214,158,52,0.5)';
     g.fillRect(41, 262, 15, 3);
     g.fillRect(41, 270, 15, 3);
-    g.fillStyle = '#05090d';
+    g.fillStyle = enamel ? materialRamp(g, 0, 292, 0, 300, enamel) : '#05090d';
     g.fillRect(36, 292, 24, 8);
     g.fillStyle = 'rgba(0,0,0,0.5)';
     g.beginPath(); g.ellipse(48, 299, 20, 4, 0, 0, TAU); g.fill();
@@ -3300,19 +3812,42 @@ export class CyberBackground {
   }
 
   /** Open under the display: only the two posts meet the rear sidewalk. */
-  private buildTrafficSign(): HTMLCanvasElement {
-    const {c,g}=makeCanvas(144,18-SIGN_Y),cx=72
+  private buildTrafficSign(make: MakeCanvas): HTMLCanvasElement {
+    const {c,g}=make(144,18-SIGN_Y),cx=72
     for(const x of [cx-43,cx+43]) {
       g.fillStyle='#202b35';g.fillRect(x-2,20,5,c.height-20)
       g.fillStyle='#70808d';g.fillRect(x-2,20,1,c.height-20)
       g.fillStyle='#35424c';g.fillRect(x-6,c.height-3,13,3)
     }
-    g.fillStyle='#27343f';g.fillRect(12,1,120,34)
+    const enamel = this.art.finish?.enamel
+    g.fillStyle=enamel ? materialRamp(g, 0, 1, 0, 35, enamel) : '#27343f';g.fillRect(12,1,120,34)
     g.fillStyle='#7d8991';g.fillRect(12,1,120,1)
     g.fillStyle='#161a1e';g.fillRect(16,4,112,28)
-    g.fillStyle='#dd9b4f';g.font='bold 14px monospace';g.textAlign='center'
-    g.fillText('WET ROAD',cx,18)
-    g.fillStyle='#ae8050';g.font='bold 8px monospace';g.fillText('SLOW   /   40',cx,28)
+    if (enamel) {
+      g.fillStyle = '#0b1015'; g.fillRect(16, 30, 112, 2)
+      g.fillStyle = 'rgba(174,196,207,.16)'; g.fillRect(17, 5, 110, 1)
+      g.fillStyle = '#8a9397'
+      for (const x of [14, 129]) for (const y of [5, 29]) g.fillRect(x, y, 1.2, 1.2)
+      g.fillStyle = '#080d12'
+      for (const x of [cx - 43, cx + 43]) g.fillRect(x - 8, c.height - 2, 17, 2)
+    }
+    if (enamel) {
+      const litGlass = g.createLinearGradient(0, 5, 0, 31);
+      litGlass.addColorStop(0, 'rgba(230,157,80,.18)');
+      litGlass.addColorStop(.45, 'rgba(203,118,47,.075)');
+      litGlass.addColorStop(1, 'rgba(203,118,47,0)');
+      g.fillStyle = litGlass; g.fillRect(17, 6, 110, 24);
+      g.fillStyle = '#b37b43';
+      for (const x of [23, 119]) g.fillRect(x, 12, 2, 4);
+      g.fillStyle = '#563823'; g.fillRect(22, 30, 100, 1);
+    }
+    g.fillStyle=this.station ? '#ffedcc' : enamel ? '#ffe0a4' : '#dd9b4f';g.font='bold 14px monospace';g.textAlign='center'
+    g.fillText(this.station ? 'NIGHT LINE' : 'WET ROAD',cx,18)
+    g.fillStyle='#ae8050';g.font='bold 8px monospace';g.fillText(this.station ? 'PLATFORM  02' : 'SLOW   /   40',cx,28)
+    if (this.station) {
+      g.fillStyle = '#825734'; g.fillRect(37, 32, 70, 3);
+      g.fillStyle = '#eab276'; g.fillRect(40, 34, 64, 1);
+    }
     return c
   }
 }

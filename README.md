@@ -1,12 +1,12 @@
 # ⚔️ Stickman Rising
 
-A fast, kinetic **2D wave-survival combat game** with a pseudo-3D stickman warrior — blade combos, lightning-charged dashes, parries, executions, and six unlockable elemental swords. Built as a fully custom canvas game engine inside Next.js.
+A fast, kinetic **side-scrolling 2D combat game** with a pseudo-3D stickman warrior — blade combos, lightning-charged dashes, parries, executions, and six unlockable elemental swords. Built as a fully custom canvas game engine inside Next.js.
 
 ![Stickman Rising](research/final-real-grid.png)
 
 ## 🎮 Features
 
-- **Custom canvas game engine** — no game libraries; hand-rolled pseudo-3D character rig (XYZ-projected limbs), constrained IK legs, ROM-limited arm solver, shadow system, camera, waves, and particles
+- **Custom canvas game engine** — no game libraries; hand-rolled pseudo-3D character rig (XYZ-projected limbs), constrained IK legs, ROM-limited arm solver, shadow system, camera, streamed scenery, and particles
 - **6 elemental swords**, each with a unique ability and ultimate:
   | # | Sword | Ability | Ultimate |
   |---|-------|---------|----------|
@@ -17,7 +17,7 @@ A fast, kinetic **2D wave-survival combat game** with a pseudo-3D stickman warri
   | 5 | 🪐 Gravity Blade | Gravity Crush — drag foes in, suspend, crush | — |
   | 6 | 👻 Phantom Blade | — | — |
 - **Combat system**: light/heavy attack chains, parry, executions, combo counter, dash i-frames
-- **Wave survival** with escalating enemy hordes
+- **Continuous Bridge** with patrols, shelters, and gated boss fights
 - **Persistent leaderboard** (SQLite via Node's built-in `node:sqlite`) and unlock progression saved locally
 - **Character sheet / QA harness** under `research/` — frame-by-frame VLM-verified animation iteration
 
@@ -29,11 +29,11 @@ A fast, kinetic **2D wave-survival combat game** with a pseudo-3D stickman warri
 | Light attack | `J` / `Z` |
 | Heavy attack | `K` / `X` |
 | Dash | `L` / `C` / `Shift` |
-| Jump | `Space` |
+| Jump / drop through a platform | `Space` / `S` + `Space` |
 | Parry | `O` / `F` |
 | Ability | `U` |
-| Ultimate | `I` |
-| Execute | `E` |
+| Overdrive | `R` (`I` also works) |
+| Execute / service | `E` / hold `E` at a service terminal |
 | Sheathe sword | `Q` |
 | Cycle sword | `Tab` / `1`–`6` |
 | Pause | `P` / `Esc` |
@@ -144,12 +144,53 @@ cp .env.example .env
 bun run dev           # http://localhost:3000
 ```
 
+## Embedded live preview
+
+```bash
+npm run build:preview   # builds and packages .next-preview
+npm run preview         # serves the optimized preview on port 3000 (or $PORT)
+```
+
+Use this build for the live preview, and `dev` for hot reload. Stop the preview
+before rebuilding it; `npm run build:iso` can verify changes without touching
+the running preview. Production, preview, and development all use the same
+one-stage **Engage** path; no preview flag or stage picker is needed.
+It uses the checkout's `db/custom.db` unless you export an absolute `file:`
+`DATABASE_URL`.
+Open `/?boot=1` to see local startup timings, or use **Copy timings** if a
+startup report appears automatically. See [game loading and measurements](docs/GAME-LOADING.md).
+
+### The Bridge
+
+**Engage** seeds a continuous road through Metro Approach, Market Overpass and
+Sky Garden District. Fight through gated checkpoints or take cover in a shelter.
+Hold **E** near a service terminal, or tap **Service** on touch, to trade current
+Flow for healing, a shield and a temporary buff. **Retry** seeds a new route.
+See the [Bridge mechanics and checks](docs/PROCEDURAL-BRIDGE.md) and the
+[Metro Bridge guide](docs/BRIDGE-METRO.md) for the city, rail, camera and lighting.
+The [Ronin reveal](docs/NIGHT-CROSSING.md) is an image-free Engage/Retry scene: black, a crease glint, hand-keyed eyelids and a braced Murasama draw. The game opens on the first complete world and HUD frame, never on an animation timer. The [storefront glazing](docs/BRIDGE-GLAZING.md) transmits the lit interiors and reflects the opposite side of the bridge, with angle-dependent clear-glass optics. The [playable Ronin](docs/RONIN-LIGHTING.md) catches actual bridge lamps and moonlight on his original flat 2D ink. The fixed optical sky is unchanged from the [previous Bridge look](docs/BRIDGE-PURE-LOOK.md). See [Game Loading](docs/GAME-LOADING.md) for preparation, recovery and browser QA, and [Bridge Visual Rules](docs/BRIDGE-VISUAL-RULES.md) for the matched pavement, city and actor comparisons.
+
+### Visual quality
+
+Every device offers **Low 0.75×**, **Medium 1.00×**, **High 1.15×**, and
+**Ultra 1.25×**. Presets lock the scale target and detail; Ultra requests HDR
+when supported. Paused Settings shows the actual renderer and backing
+separately. **Adaptive Resolution** is opt-in and changes scale without
+changing the preset. **Show FPS** is independent of both.
+
+See the [Ultra lighting comparison](docs/BRIDGE-ULTRA-FINISH.md) for softer
+shadows, damp-surface materials and localized HDR glow, or the
+[Bridge atmosphere guide](docs/BRIDGE-ATMOSPHERE.md) for moon, cloud and fog.
+Open `/?verifyGraphics=1` for shader and live HUD diagnostics. The [SACR v4.0 guide](docs/BRIDGE-MASTER-V4.md) covers
+GPU light transport; [Noir Bridge](docs/BRIDGE-NOIR.md) is the preserved comparison.
+
 ## Verification and production
 
 ```bash
-bun run check          # types, lint, SQLite/API regression tests, animation audits
-bun run build          # production build with TypeScript checks enabled
-HOSTNAME=0.0.0.0 bun run start
+npm run check:bridge   # current Bridge gameplay, rendering, HUD and persistence
+npm run gate           # full regression suite (see inherited failures in Bridge docs)
+npm run build:preview  # standalone production preview with TypeScript checks
+npm run preview
 ```
 
 - Fonts are bundled through `geist`; builds no longer contact Google Fonts.
@@ -193,7 +234,7 @@ src/
     combat/      # swords, attacks, dash
     fx/          # lightning, particles
     render/      # renderer, lighting, HUD
-    world/       # waves, background
+    world/       # route encounters, weather, background
     audio/       # sound
   components/ui/ # shadcn/ui components
 research/        # animation research, QA harnesses, character sheets, VLM audits

@@ -1,0 +1,1228 @@
+{
+  "builds": {
+    "before": "Ik24_guBPO8hRLGo2Cu8B",
+    "after": "2n2U3IGQZqJ6sgm6yaBwJ"
+  },
+  "adapter": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "capture": "Seed 42; 848×520 CSS; 1.25× backing; real production scene at fixed clock and pose. Diagnostic software GL, not device FPS.",
+  "matchedFrames": {
+    "lamp-rain": {
+      "cam": [
+        3291,
+        -109,
+        -0.024,
+        1.12
+      ],
+      "wet": 0.9,
+      "lights": 1,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 16,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    },
+    "lamp-dry": {
+      "cam": [
+        3291,
+        -109,
+        -0.024,
+        1.12
+      ],
+      "wet": 0,
+      "lights": 1,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 16,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    },
+    "calm": {
+      "cam": [
+        3291,
+        -109,
+        -0.024,
+        1.12
+      ],
+      "wet": 0.9,
+      "lights": 1,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 16,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    },
+    "strike": {
+      "cam": [
+        3291,
+        -109,
+        -0.024,
+        1.12
+      ],
+      "wet": 0.9,
+      "lights": 3,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 17,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    },
+    "eaves": {
+      "cam": [
+        4080,
+        -120,
+        0.055,
+        1.08
+      ],
+      "wet": 0.9,
+      "lights": 1,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 16,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    },
+    "eaves-dry": {
+      "cam": [
+        4080,
+        -120,
+        0.055,
+        1.08
+      ],
+      "wet": 0,
+      "lights": 1,
+      "time": 30,
+      "targetBytes": 9335816,
+      "draws": 16,
+      "dataBytes": 6830454,
+      "bloomLevels": 4,
+      "backing": [
+        1060,
+        650
+      ],
+      "committed": -1280
+    }
+  },
+  "before": {
+    "rainChange": {
+      "samples": 6424,
+      "changed": 3805,
+      "max": 0.0568084716796875,
+      "mean": 0.00391387004187217
+    },
+    "shelterRoad": {
+      "samples": 1642,
+      "changed": 0,
+      "max": 0,
+      "mean": 0
+    },
+    "openRoad": {
+      "samples": 2849,
+      "changed": 231,
+      "max": 0.02813720703125,
+      "mean": 0.00038434581281260967
+    },
+    "combat": {
+      "samples": 7525,
+      "changed": 4843,
+      "max": 3.4889373779296875,
+      "mean": 0.05587997081667878
+    }
+  },
+  "after": {
+    "rainChange": {
+      "samples": 6424,
+      "changed": 5858,
+      "max": 0.0558319091796875,
+      "mean": 0.008083209079941955
+    },
+    "shelterRoad": {
+      "samples": 1642,
+      "changed": 0,
+      "max": 0,
+      "mean": 0
+    },
+    "openRoad": {
+      "samples": 2849,
+      "changed": 2849,
+      "max": 0.04180908203125,
+      "mean": 0.01471088458965351
+    },
+    "combat": {
+      "samples": 7525,
+      "changed": 4795,
+      "max": 3.5626220703125,
+      "mean": 0.05218455976822051
+    },
+    "bloom": {
+      "grey": [
+        0,
+        0,
+        0.015625,
+        0.0625,
+        0.25,
+        0.5
+      ],
+      "arc": [
+        0,
+        0.03973388671875,
+        0.3974609375
+      ],
+      "uniform": [
+        0.25,
+        0.5,
+        0.75
+      ]
+    }
+  },
+  "driver": {
+    "ok": true,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "formats": {
+      "masterRoad": "RGBA16F",
+      "mobileRoad": "RGBA8"
+    },
+    "linked": [
+      "masterSky",
+      "mobileSky",
+      "masterBase",
+      "mobileBase",
+      "receiver",
+      "masterRoad",
+      "mobileRoad",
+      "mobileResolve",
+      "masterActors",
+      "mobileActors",
+      "trail",
+      "weather",
+      "bloom",
+      "masterGrade",
+      "mobileGrade"
+    ],
+    "offsets": {
+      "masterRoad": [
+        0,
+        640,
+        1664,
+        2176,
+        2432,
+        3072,
+        3456
+      ],
+      "mobileRoad": [
+        0,
+        640,
+        1664,
+        2176,
+        2432,
+        3072,
+        3456
+      ]
+    },
+    "mips": [
+      [
+        512,
+        128
+      ],
+      [
+        256,
+        64
+      ],
+      [
+        128,
+        32
+      ],
+      [
+        64,
+        16
+      ]
+    ],
+    "probes": [
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Dry AO",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0001,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0.1801,
+          0,
+          0,
+          1
+        ],
+        "right": [
+          1,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Arc Center",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "right": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Bay Interior",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0002,
+        "worstPixel": [
+          4,
+          8,
+          0
+        ],
+        "left": [
+          0.6904,
+          0.2764,
+          0.873,
+          0.5
+        ],
+        "right": [
+          0.2705,
+          0.1216,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Dual Arc",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0002,
+        "worstPixel": [
+          0,
+          0,
+          3
+        ],
+        "left": [
+          0.2979,
+          0.1265,
+          0.2979,
+          0.7578
+        ],
+        "right": [
+          0.5957,
+          0.2529,
+          0.5957,
+          0.7578
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Catwalk Underside",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0,
+        "worstPixel": [
+          8,
+          0,
+          1
+        ],
+        "left": [
+          0.0017,
+          0,
+          1,
+          0
+        ],
+        "right": [
+          0.2952,
+          0.1299,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Crossing dry shadows / baked umbra",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0002,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0,
+          0.1801,
+          0,
+          1
+        ],
+        "right": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Catwalk blocker / RGB9_E5",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0008,
+        "worstPixel": [
+          0,
+          0,
+          3
+        ],
+        "left": [
+          0,
+          0.6563,
+          0.4805,
+          0.2598
+        ],
+        "right": [
+          1,
+          0.6563,
+          0.4805,
+          0.2598
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Finite emitter penumbra",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0004,
+        "worstPixel": [
+          5,
+          0,
+          1
+        ],
+        "left": [
+          1,
+          0.9067,
+          0.0401,
+          1
+        ],
+        "right": [
+          0,
+          0.1191,
+          0.202,
+          1
+        ]
+      },
+      {
+        "tier": "masterRoad",
+        "format": "RGBA16F",
+        "name": "Damp aggregate / pooled water",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0002,
+        "worstPixel": [
+          12,
+          8,
+          1
+        ],
+        "left": [
+          0.4902,
+          0,
+          0.8989,
+          0.0874
+        ],
+        "right": [
+          0.08,
+          0.9199,
+          0.709,
+          0.0082
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Dry AO",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0004,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0.1804,
+          0,
+          0,
+          1
+        ],
+        "right": [
+          1,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Arc Center",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "right": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Bay Interior",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.002,
+        "worstPixel": [
+          4,
+          0,
+          3
+        ],
+        "left": [
+          0.6902,
+          0.2745,
+          0.8745,
+          0.502
+        ],
+        "right": [
+          0.2706,
+          0.1216,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Dual Arc",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0019,
+        "worstPixel": [
+          8,
+          0,
+          1
+        ],
+        "left": [
+          0.298,
+          0.1255,
+          0.298,
+          0.7569
+        ],
+        "right": [
+          0.5961,
+          0.251,
+          0.5961,
+          0.7569
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Catwalk Underside",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0017,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0,
+          0,
+          1,
+          0
+        ],
+        "right": [
+          0.2941,
+          0.1294,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Crossing dry shadows / baked umbra",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0016,
+        "worstPixel": [
+          0,
+          0,
+          0
+        ],
+        "left": [
+          0,
+          0.1804,
+          0,
+          1
+        ],
+        "right": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      {
+        "tier": "mobileRoad",
+        "format": "RGBA8",
+        "name": "Catwalk blocker / RGB9_E5",
+        "pass": true,
+        "glError": 0,
+        "maxError": 0.0024,
+        "worstPixel": [
+          0,
+          0,
+          2
+        ],
+        "left": [
+          0,
+          0.6549,
+          0.4824,
+          0.2588
+        ],
+        "right": [
+          1,
+          0.6549,
+          0.4824,
+          0.2588
+        ]
+      }
+    ],
+    "errors": []
+  },
+  "metro": {
+    "hdr": {
+      "path": "master-webgl2",
+      "glError": 0,
+      "teardown": 0,
+      "sourceOn": {
+        "player": {
+          "maxR": 226,
+          "changed": 225,
+          "rgbDelta": [
+            21853,
+            9314,
+            6592
+          ]
+        },
+        "enemy": {
+          "maxR": 175,
+          "changed": 196,
+          "rgbDelta": [
+            15417,
+            8130,
+            5911
+          ]
+        },
+        "prop": {
+          "maxR": 65,
+          "changed": 225,
+          "rgbDelta": [
+            5274,
+            2817,
+            2063
+          ]
+        },
+        "road": {
+          "maxR": 49,
+          "changed": 225,
+          "rgbDelta": [
+            6650,
+            1994,
+            1372
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 226,
+          "changed": 225,
+          "rgbDelta": [
+            21853,
+            9314,
+            6592
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 65,
+          "changed": 225,
+          "rgbDelta": [
+            5274,
+            2817,
+            2063
+          ]
+        },
+        "road": {
+          "maxR": 49,
+          "changed": 225,
+          "rgbDelta": [
+            6650,
+            1994,
+            1372
+          ]
+        }
+      },
+      "deck": {
+        "maxBlue": 38,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "priority": {
+        "hits": 2,
+        "impactFirst": true,
+        "orbKept": true
+      },
+      "lightning": {
+        "first": {
+          "count": 2,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5947.847900390625,
+            -79.88944244384766
+          ]
+        },
+        "restrike": {
+          "count": 2,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5950.159679412842,
+            -79.71776580810547
+          ]
+        },
+        "after": 0
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "glError": 0,
+      "teardown": 0,
+      "sourceOn": {
+        "player": {
+          "maxR": 151,
+          "changed": 225,
+          "rgbDelta": [
+            22362,
+            9349,
+            7101
+          ]
+        },
+        "enemy": {
+          "maxR": 156,
+          "changed": 208,
+          "rgbDelta": [
+            19643,
+            10607,
+            8242
+          ]
+        },
+        "prop": {
+          "maxR": 57,
+          "changed": 225,
+          "rgbDelta": [
+            4318,
+            2361,
+            1758
+          ]
+        },
+        "road": {
+          "maxR": 34,
+          "changed": 225,
+          "rgbDelta": [
+            4996,
+            1314,
+            824
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 151,
+          "changed": 225,
+          "rgbDelta": [
+            22362,
+            9349,
+            7101
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 57,
+          "changed": 225,
+          "rgbDelta": [
+            4318,
+            2361,
+            1758
+          ]
+        },
+        "road": {
+          "maxR": 34,
+          "changed": 225,
+          "rgbDelta": [
+            4996,
+            1314,
+            824
+          ]
+        }
+      },
+      "deck": {
+        "maxBlue": 42,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "priority": {
+        "hits": 1,
+        "impactFirst": true,
+        "orbKept": false
+      },
+      "lightning": {
+        "first": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5951.8819580078125,
+            -84.34390258789062
+          ]
+        },
+        "restrike": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5948.9262981414795,
+            -84.1722183227539
+          ]
+        },
+        "after": 0
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "glError": 0,
+      "teardown": 0,
+      "sourceOn": {
+        "player": {
+          "maxR": 90,
+          "changed": 225,
+          "rgbDelta": [
+            10870,
+            4409,
+            2807
+          ]
+        },
+        "enemy": {
+          "maxR": 127,
+          "changed": 212,
+          "rgbDelta": [
+            15631,
+            6344,
+            4031
+          ]
+        },
+        "prop": {
+          "maxR": 43,
+          "changed": 225,
+          "rgbDelta": [
+            5564,
+            2297,
+            1445
+          ]
+        },
+        "road": {
+          "maxR": 53,
+          "changed": 225,
+          "rgbDelta": [
+            11705,
+            4305,
+            2634
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 90,
+          "changed": 225,
+          "rgbDelta": [
+            10870,
+            4409,
+            2807
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 43,
+          "changed": 225,
+          "rgbDelta": [
+            5564,
+            2297,
+            1445
+          ]
+        },
+        "road": {
+          "maxR": 53,
+          "changed": 225,
+          "rgbDelta": [
+            11705,
+            4305,
+            2634
+          ]
+        }
+      },
+      "deck": {
+        "maxBlue": 57,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "priority": {
+        "hits": 1,
+        "impactFirst": true,
+        "orbKept": false
+      },
+      "lightning": {
+        "first": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5950.891523361206,
+            -83.62633514404297
+          ]
+        },
+        "restrike": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5947.935863494873,
+            -83.45465850830078
+          ]
+        },
+        "after": 0
+      }
+    }
+  },
+  "fallback": {
+    "path": [
+      {
+        "label": "engage",
+        "path": "master-webgl2",
+        "reason": "active"
+      },
+      {
+        "label": "context lost",
+        "path": "mobile-canvas",
+        "reason": "WebGL context lost"
+      },
+      {
+        "label": "context restored",
+        "path": "master-webgl2",
+        "reason": "active"
+      },
+      {
+        "label": "inspect",
+        "path": "mobile-canvas",
+        "reason": "not requested"
+      },
+      {
+        "label": "inspect closed",
+        "path": "master-webgl2",
+        "reason": "active"
+      },
+      {
+        "label": "over pixel cap",
+        "path": "mobile-webgl2",
+        "reason": "Optimized renderer · Master viewport budget"
+      },
+      {
+        "label": "resized",
+        "path": "master-webgl2",
+        "reason": "active"
+      },
+      {
+        "label": "retry",
+        "path": "master-webgl2",
+        "reason": "active"
+      }
+    ],
+    "dryRaster": [
+      {
+        "path": "master-webgl2",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 232,
+        "drySamples": 20323,
+        "work": {
+          "openClips": 2,
+          "streaks": 0,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      },
+      {
+        "path": "mobile-webgl2",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 228,
+        "drySamples": 13010,
+        "work": {
+          "openClips": 2,
+          "streaks": 79,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      },
+      {
+        "path": "mobile-canvas",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 345,
+        "drySamples": 20323,
+        "work": {
+          "openClips": 2,
+          "streaks": 79,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      }
+    ],
+    "dryResolve": [
+      {
+        "mode": "master",
+        "roadSize": [
+          875,
+          560
+        ],
+        "drySamples": 24930,
+        "dryEaveSamples": 411,
+        "dryDiff": 0,
+        "wetDiff": 66144,
+        "roll": 0.09
+      },
+      {
+        "mode": "mobile",
+        "roadSize": [
+          350,
+          224
+        ],
+        "drySamples": 15961,
+        "dryEaveSamples": 270,
+        "dryDiff": 0,
+        "wetDiff": 17323,
+        "roll": 0.09
+      }
+    ],
+    "floatDenial": [
+      {
+        "label": "float",
+        "path": "mobile-webgl2",
+        "reason": "Optimized renderer · Error: RGBA16F color buffer unavailable"
+      }
+    ]
+  },
+  "tests": {
+    "focused": [
+      "# tests 190",
+      "# pass 190",
+      "# fail 0"
+    ],
+    "broad": [
+      "# tests 579",
+      "# pass 574",
+      "# fail 5"
+    ],
+    "inheritedFailures": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ],
+    "offlineLinks": 17
+  },
+  "images": [
+    {
+      "file": "before-lamp-rain.webp",
+      "version": "before",
+      "frame": "lamp-rain",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 68116,
+      "sha256": "71c68e772e9eb588da4f67a65e902248d6fe9d3bed3b79e57dd0ead0d86cd213"
+    },
+    {
+      "file": "before-strike.webp",
+      "version": "before",
+      "frame": "strike",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 78678,
+      "sha256": "00b4dbf0aa86f5678476b29879ffeac699e69ff0bc2df2a9b7a8f300f4bb0aa7"
+    },
+    {
+      "file": "before-eaves.webp",
+      "version": "before",
+      "frame": "eaves",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 68994,
+      "sha256": "83bf86d701a9af9fcca7f103257211acb4ce719fe47079f4d7c2e628ae6ce70a"
+    },
+    {
+      "file": "after-lamp-rain.webp",
+      "version": "after",
+      "frame": "lamp-rain",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 70006,
+      "sha256": "a09e20b8ad069aa0d75a3ce8ff4fde2daef3ce2b84e7d25d721da69547e1b3ba"
+    },
+    {
+      "file": "after-strike.webp",
+      "version": "after",
+      "frame": "strike",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 73540,
+      "sha256": "373d71aa2f2e6be663f50f93b7b8df52f2a410663552289037df3d3b498fd86a"
+    },
+    {
+      "file": "after-eaves.webp",
+      "version": "after",
+      "frame": "eaves",
+      "size": [
+        1060,
+        650
+      ],
+      "bytes": 69842,
+      "sha256": "f0eb2f272ad053487c00dd4210f75584ae58272048b7303ba147d3a57d2d867d"
+    },
+    {
+      "file": "lighting-comparison.webp",
+      "size": [
+        1440,
+        895
+      ],
+      "description": "Actual frames, same crop on both sides; no visual filtering beyond resizing and WebP conversion.",
+      "bytes": 139296,
+      "sha256": "e727eb8e396b4a6d029a7495591752e6c252e7c0af4442f74a6121a7d8cdddce"
+    }
+  ]
+}

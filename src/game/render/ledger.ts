@@ -2,10 +2,9 @@
  * THE CANVAS LEDGER: every offscreen surface has an owner, a cost and a way out.
  * ----------------------------------------------------------------------------
  * The audit that produced docs/master/12 found 37 live canvases and 30.3 MB
- * resident, none of them tracked. Canvas memory is not garbage that a browser
- * magically reclaims *during* a match: a 2048×1024 backing store is 8 MB of GPU
- * memory whether or not you still use it, and mobile Safari will happily kill a
- * tab for holding it. Two rules follow:
+ * resident, none of them tracked. A 2048×1024 backing represents 8 MiB of RGBA
+ * pixels, even if nobody samples it. Actual browser and GPU memory can differ.
+ * Two rules follow:
  *
  *  1. ONE PLACE CREATES OFFSCREEN SURFACES. Call sites ask the ledger; the
  *     ledger decides whether that is a fresh allocation, a reuse, or an
@@ -30,10 +29,10 @@ export interface Surface {
 }
 
 export interface LedgerCaps {
-  /** Hard cap on live surfaces. Exceeding it evicts LRU rather than throwing:
-   *  a dropped frame from a missing plate is worse than a re-bake. */
+  /** Soft caps for required surfaces; pinned entries are not evictable.
+   *  Inspect the overage instead of treating estimates as a GPU limit. */
   maxSurfaces: number
-  /** Hard cap on estimated bytes. Same policy. */
+  /** Page-rounded RGBA estimate, not browser/GPU memory. */
   maxBytes: number
   /** Surfaces at or below this size are not worth LRU bookkeeping. */
   minTrackedBytes: number
@@ -76,7 +75,12 @@ export class CanvasLedger {
   acquired = 0
   reused = 0
   evicted = 0
+  /** Live backing estimate; keep the old field name for bench/debug callers. */
   createdBytes = 0
+  peakBytes = 0
+  resized = 0
+  released = 0
+  optionalDeclined = 0
 
   constructor(factory?: (w: number, h: number) => Surface, caps: Partial<LedgerCaps> = {}) {
     this.caps = { ...DEFAULT_CAPS, ...caps }
@@ -93,20 +97,27 @@ export class CanvasLedger {
    *  different size is reallocated in place (canvas resize clears it, which is
    *  what a caller wants anyway); otherwise a new one is created and the LRU
    *  entry is released if a cap is about to be crossed. */
-  acquire(key: string, w: number, h: number, tag = '', pin = false): Surface {
+  acquire(key: string, w: number, h: number, tag = '', pin = false, streaming = false): Surface {
     const wi = Math.max(1, Math.floor(w))
     const hi = Math.max(1, Math.floor(h))
     this.tick++
     const hit = this.map.get(key)
     if (hit) {
-      if (hit.w !== wi || hit.h !== hi) {
-        this.createdBytes -= hit.bytes
-        hit.surface.width = wi
-        hit.surface.height = hi
+      if (hit.w !== wi || hit.h !== hi || hit.surface.width !== wi || hit.surface.height !== hi) {
+        const bytes = bytesFor(wi, hi)
+        const delta = bytes - hit.bytes
+        if (delta > 0) this.enforce(delta, 0, hit)
+        // Shrink the longer side first when the other grows. Width and height
+        // assignments allocate independently on some Canvas implementations.
+        if (hi < hit.surface.height) hit.surface.height = hi
+        if (wi !== hit.surface.width) hit.surface.width = wi
+        if (hi !== hit.surface.height) hit.surface.height = hi
         hit.w = wi
         hit.h = hi
-        hit.bytes = bytesFor(wi, hi)
-        this.createdBytes += hit.bytes
+        hit.bytes = bytes
+        this.createdBytes += delta
+        this.peakBytes = Math.max(this.peakBytes, this.createdBytes)
+        this.resized++
       }
       hit.last = this.tick
       hit.tag = tag || hit.tag
@@ -115,12 +126,28 @@ export class CanvasLedger {
       return hit.surface
     }
     const bytes = bytesFor(wi, hi)
-    this.enforce(wi * hi * 4, 1)
-    const surface = this.factory(wi, hi)
+    this.enforce(bytes, 1)
+    const surface = streaming && typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(wi, hi) as unknown as Surface : this.factory(wi, hi)
     this.map.set(key, { key, surface, w: wi, h: hi, bytes, last: this.tick, tag, pinned: pin })
     this.createdBytes += bytes
+    this.peakBytes = Math.max(this.peakBytes, this.createdBytes)
     this.acquired++
     return surface
+  }
+
+  /** Optional retained art can reuse or shrink a claim, or decline growth.
+   * A declined claim changes neither its old backing nor other owners. The
+   * caller must have a fallback; required paints should use acquire(). */
+  tryAcquire(key: string, w: number, h: number, tag = '', streaming = false): Surface | null {
+    const old = this.map.get(key)
+    const delta = bytesFor(w, h) - (old?.bytes ?? 0)
+    if (delta > 0 && (this.createdBytes + delta > this.caps.maxBytes ||
+                      this.map.size + (old ? 0 : 1) > this.caps.maxSurfaces)) {
+      this.optionalDeclined++
+      return null
+    }
+    return this.acquire(key, w, h, tag, true, streaming)
   }
 
   /** Get without creating. Used by draw paths that must never allocate. */
@@ -141,6 +168,7 @@ export class CanvasLedger {
     e.surface.width = 0
     e.surface.height = 0
     this.map.delete(key)
+    this.released++
     return true
   }
 
@@ -158,41 +186,37 @@ export class CanvasLedger {
     for (const key of Array.from(this.map.keys())) this.release(key)
   }
 
-  /** World-tick advance so a per-frame caller can mark liveness. */
-  stats(): { surfaces: number; bytes: number; createdBytes: number; evicted: number; reused: number; acquired: number } {
-    let bytes = 0
-    for (const e of this.map.values()) bytes += e.bytes
-    return { surfaces: this.map.size, bytes, createdBytes: this.createdBytes, evicted: this.evicted, reused: this.reused, acquired: this.acquired }
+  /** Snapshot on demand; no inventory walk during a normal frame. */
+  stats() {
+    let pinnedBytes = 0
+    for (const e of this.map.values()) if (e.pinned) pinnedBytes += e.bytes
+    return {
+      surfaces: this.map.size, bytes: this.createdBytes, createdBytes: this.createdBytes,
+      pinnedBytes, evictableBytes: this.createdBytes - pinnedBytes, peakBytes: this.peakBytes,
+      resized: this.resized, released: this.released, optionalDeclined: this.optionalDeclined,
+      overBytes: Math.max(0, this.createdBytes - this.caps.maxBytes),
+      overSurfaces: Math.max(0, this.map.size - this.caps.maxSurfaces),
+      evicted: this.evicted, reused: this.reused, acquired: this.acquired,
+    }
   }
 
   /** Ordered by last use, most recent first — the debug overlay's table. */
-  list(): ReadonlyArray<{ key: string; w: number; h: number; bytes: number; tag: string }> {
+  list(): ReadonlyArray<{ key: string; w: number; h: number; bytes: number; tag: string; pinned: boolean }> {
     const out = Array.from(this.map.values())
       .sort((a, b) => b.last - a.last)
-      .map((e) => ({ key: e.key, w: e.w, h: e.h, bytes: e.bytes, tag: e.tag }))
+      .map((e) => ({ key: e.key, w: e.w, h: e.h, bytes: e.bytes, tag: e.tag, pinned: e.pinned }))
     return out
   }
 
-  /** Ensure adding `incomingBytes` / `incomingCount` cannot cross a cap.
-   *  Evicts least-recently-used first.
-   *
-   *  One documented exception: a single claim LARGER than `maxBytes` is
-   *  honoured after every other surface has been evicted. Refusing it would
-   *  mean "this plate cannot exist", and a caller with no plate draws nothing —
-   *  a missing moon is a worse outcome than a temporarily over-budget ledger.
-   *  The bench reports the overshoot so the cap can be raised deliberately. */
-  private enforce(incomingBytes: number, incomingCount: number): void {
-    const overCount = () => this.map.size + incomingCount > this.caps.maxSurfaces
-    const overBytes = () => {
-      let b = incomingBytes
-      for (const e of this.map.values()) b += e.bytes
-      return b > this.caps.maxBytes
-    }
-    while (this.map.size > 0 && (overCount() || overBytes())) {
+  /** Evict LRU scratch for a new or growing claim. The resized entry keeps its
+   * identity and cannot be its own victim; required pinned overflow is counted
+   * in stats rather than evicting a surface that the renderer still holds. */
+  private enforce(incomingBytes: number, incomingCount: number, keep?: Entry): void {
+    while (this.map.size + incomingCount > this.caps.maxSurfaces ||
+           this.createdBytes + incomingBytes > this.caps.maxBytes) {
       let victim: Entry | null = null
       for (const e of this.map.values()) {
-        if (e.pinned) continue // see Entry.pinned
-        if (e.bytes < this.caps.minTrackedBytes) continue
+        if (e === keep || e.pinned || e.bytes < this.caps.minTrackedBytes) continue
         if (!victim || e.last < victim.last) victim = e
       }
       if (!victim) break
@@ -220,6 +244,44 @@ export function hasPixels<T extends { width: number; height: number }>(c: T | nu
 
 /** Process-wide ledger for the game. Tests construct their own. */
 export const gameLedger = new CanvasLedger()
+
+/** A component's stable slots. Distinct instances may share the process
+ * ledger without sharing ownership; replacing one must not zero the other's
+ * live canvas. Use a generation for art that gets replaced as one group. */
+export class SurfaceScope {
+  private static nextId = 0
+  readonly prefix: string
+
+  constructor(label: string, private readonly ledger = gameLedger) {
+    this.prefix = `${label}:${++SurfaceScope.nextId}:`
+  }
+
+  acquire(slot: string, w: number, h: number, tag: string): HTMLCanvasElement {
+    return this.ledger.acquire(this.prefix + slot, w, h, tag, true) as HTMLCanvasElement
+  }
+
+  /** Streamed art uses a real OffscreenCanvas where supported. HTML canvas
+   * fallback shares the same slot keys and release/accounting law. */
+  streamed(slot: string, w: number, h: number, tag: string): OffscreenCanvas | HTMLCanvasElement | null {
+    return this.ledger.tryAcquire(this.prefix + slot, w, h, tag, true) as unknown as OffscreenCanvas | HTMLCanvasElement | null
+  }
+
+  tryAcquire(slot: string, w: number, h: number, tag: string): HTMLCanvasElement | null {
+    return this.ledger.tryAcquire(this.prefix + slot, w, h, tag) as HTMLCanvasElement | null
+  }
+
+  release(slot: string): void {
+    this.ledger.release(this.prefix + slot)
+  }
+
+  releaseAll(): void {
+    this.ledger.releasePrefix(this.prefix)
+  }
+
+  generation(label: string): SurfaceGen {
+    return new SurfaceGen(`${this.prefix}${label}:`, this.ledger)
+  }
+}
 
 /** A GENERATION of pinned surfaces under one key prefix.
  *

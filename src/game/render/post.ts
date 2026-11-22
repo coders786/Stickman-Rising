@@ -1,7 +1,7 @@
 /** Ultra screen lighting. One capture in backing pixels, squared at 1/8 CSS
  * resolution. Bloom is registered to the source at both scales. Rays scatter
  * only a feathered patch around each emitter, never a translated whole frame. */
-import { gameLedger, hasPixels } from './ledger'
+import { SurfaceScope, hasPixels } from './ledger'
 
 /** Blits the bloom pass may issue: capture + copy + square + downsample + 2 additive scales. */
 export const BLOOM_BLITS = 6
@@ -20,6 +20,9 @@ const RAY_CLAMP = 0.01
 const BLOOM_TIGHT = 0.15
 const BLOOM_WIDE = 0.042
 
+/** Screen position, gain and optional fixed share of the tap budget. */
+export type RaySource = readonly [x: number, y: number, weight: number, taps?: number]
+
 /** THE RAY TAPS, as a pure function.
  *
  *  Kept apart from the drawing so the budget is testable without a canvas:
@@ -27,7 +30,7 @@ const BLOOM_WIDE = 0.042
  *  issue — never more than `RAY_BLITS`, marching outward from the frame centre
  *  towards each source, alpha decay already applied. */
 export function rayPlan(
-  lights: ReadonlyArray<readonly [number, number, number]>,
+  lights: readonly RaySource[],
   strength: number,
   w: number,
   h: number,
@@ -35,11 +38,12 @@ export function rayPlan(
   const out: Array<{ lx: number; ly: number; dx: number; dy: number; alpha: number }> = []
   if (strength <= 0.001 || w < 32 || h < 32) return out
   const reach = Math.min(w, h) * RAY_REACH
-  for (const [lx, ly, weight] of lights) {
+  for (const [lx, ly, weight, count = 4] of lights) {
     if (weight <= 0.02 || lx < -120 || lx > w + 120 || ly < -120 || ly > h + 120) continue
-    let alpha = RAY_GAIN * weight * strength
-    for (let i = 1; i <= 4 && out.length < RAY_BLITS; i++) {
-      const t = (i / 4) * reach
+    // Bring the first tap up from zero instead of jumping at the cull threshold.
+    let alpha = RAY_GAIN * Math.min(1, (weight - 0.02) / 0.98) * strength
+    for (let i = 1; i <= count && out.length < RAY_BLITS; i++) {
+      const t = (i / count) * reach
       out.push({
         lx,
         ly,
@@ -55,6 +59,14 @@ export function rayPlan(
 }
 
 export class PostStack {
+  private readonly surfaces = new SurfaceScope('post')
+
+  dispose(): void {
+    this.surfaces.releaseAll()
+    this.buf = this.sq = this.patch = null
+    this.feather = null
+  }
+
   /** The downscale (`buf`) and its squared copy (`sq`). Both pinned: they live
    *  for the whole run, so re-acquiring them per frame would be churn. */
   private buf: HTMLCanvasElement | null = null
@@ -74,7 +86,7 @@ export class PostStack {
     ctx: CanvasRenderingContext2D,
     w: number,
     h: number,
-    lights: ReadonlyArray<readonly [number, number, number]>,
+    lights: readonly RaySource[],
     rays: number,
     bloom: number,
   ): void {
@@ -91,7 +103,7 @@ export class PostStack {
       const n = 32,
         size = Math.min(240, w * 0.35, h * 0.45)
       if (!this.patch || !hasPixels(this.patch)) {
-        this.patch = gameLedger.acquire('post:source', n, n, 'post', true) as HTMLCanvasElement
+        this.patch = this.surfaces.acquire('source', n, n, 'post')
         this.feather = null
       }
       const g = this.patch.getContext('2d')
@@ -124,8 +136,8 @@ export class PostStack {
             g.fillStyle = this.feather
             g.fillRect(0, 0, n, n)
             // Anamorphic highlight: stretch only the masked bright core into a
-            // fine horizontal glint. One small blit per sampled emitter, at
-            // most two per frame; no extra capture or full-screen filter.
+            // fine horizontal glint. One small blit per sampled emitter; the
+            // stage has at most five including the moon, and uses one capture.
             const width = size * 0.8, height = size * 0.035
             ctx.globalAlpha = Math.min(0.13, tap.alpha * 48)
             ctx.drawImage(this.patch, tap.lx - width / 2, tap.ly - height / 2, width, height)
@@ -179,6 +191,9 @@ export class PostStack {
     if (!g || !h2) return null
     g.globalCompositeOperation = 'source-over'
     g.globalAlpha = 1
+    // Prefilter the minification: default bilinear sampling can skip an
+    // entire sign stroke at 1/8 scale and sample its full brightness a pixel later.
+    g.imageSmoothingQuality = 'medium'
     g.clearRect(0, 0, bw, bh)
     g.drawImage(ctx.canvas, 0, 0, bw, bh)
     h2.globalCompositeOperation = 'source-over'
@@ -194,11 +209,11 @@ export class PostStack {
   /** The buffer pair, through the ledger (counted, marked pinned, never evicted). */
   private ensure(w: number, h: number): [HTMLCanvasElement, HTMLCanvasElement] | null {
     if (typeof document === 'undefined') return null
-    if (this.buf && this.sq && this.bufW === w && this.bufH === h && hasPixels(this.sq)) {
+    if (this.bufW === w && this.bufH === h && hasPixels(this.buf) && hasPixels(this.sq)) {
       return [this.buf, this.sq]
     }
-    const a = gameLedger.acquire('post:buf', w, h, 'post', true) as unknown as HTMLCanvasElement
-    const b = gameLedger.acquire('post:sq', w, h, 'post', true) as unknown as HTMLCanvasElement
+    const a = this.surfaces.acquire('buf', w, h, 'post')
+    const b = this.surfaces.acquire('sq', w, h, 'post')
     if (!hasPixels(a) || !hasPixels(b)) return null
     this.buf = a
     this.sq = b

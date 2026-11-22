@@ -44,8 +44,8 @@ for (const tier of ['ultra', 'high', 'medium', 'low'] as const) {
   bg.update(0.016)
   // [FULL] a view that holds both practicals, so the composition can be judged
   const cam = { x: 1290, y: 0, zoom: 1, offX: 0, offY: 0, rot: 0 }
+  if (MODE === 'nopool') (bg as unknown as { bakeRoadLighting: () => void }).bakeRoadLighting = () => {}
   bg.drawSky(ctx, cam as never)
-  if (MODE === 'nopool') (bg as unknown as { drawLightPools: () => void }).drawLightPools = () => {}
   ctx.save()
   ctx.translate(W / 2, H / 2)
   ctx.scale(cam.zoom, cam.zoom)
@@ -70,14 +70,14 @@ for (const tier of ['ultra', 'high', 'medium', 'low'] as const) {
   cg.drawImage(out as never, sx(DOOR, cam.x) - 220, 250, 440, 360, 0, 0, 440, 360)
   writeFileSync(`/tmp/door-${tier}-${MODE}.png`, crop.toBuffer('image/png'))
   const anyBg = bg as unknown as {
-    lights: { id: string; kind: string; x: number; radius: number }[]
+    field: { ribbons: { lamp: { kind: string; x: number } }[] }
     roof: { props: { kind: string }[] }
   }
   if (tier === 'ultra') {
     console.log(JSON.stringify({
       tier,
       mode: MODE,
-      lights: anyBg.lights.map((l) => `${l.kind}@${Math.round(l.x)}`),
+      lights: anyBg.field.ribbons.map(({ lamp }) => `${lamp.kind}@${Math.round(lamp.x)}`),
       roofProps: anyBg.roof.props.length,
       sampleAtDoor: bg.lightAt?.(DOOR, 0).bestW.toFixed(2),
       sampleAtLamp: bg.lightAt?.(LAMP, 0).cool.toFixed(2),

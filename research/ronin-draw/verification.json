@@ -1,0 +1,875 @@
+{
+  "build": "sDKN0u6DPrmZAy90Cvevd",
+  "control": "2VxdRlnYfOeQSPeViWx3M",
+  "port": 3000,
+  "http": {
+    "rootMatchesStaging": true,
+    "immutableLinks": 13,
+    "assetsMatched": 18,
+    "sameAssetsAsControl": true,
+    "retiredReel404": true,
+    "iframeHeadersClear": true,
+    "previewHostOriginAccepted": true
+  },
+  "openingPixels": {
+    "before": [
+      {
+        "ms": 0,
+        "scarletPixelsInLeftEyeRegion": 0,
+        "maxScarletColumnHeight": 0
+      },
+      {
+        "ms": 104,
+        "scarletPixelsInLeftEyeRegion": 0,
+        "maxScarletColumnHeight": 0
+      },
+      {
+        "ms": 132,
+        "scarletPixelsInLeftEyeRegion": 2365,
+        "maxScarletColumnHeight": 13
+      },
+      {
+        "ms": 155,
+        "scarletPixelsInLeftEyeRegion": 15934,
+        "maxScarletColumnHeight": 87
+      },
+      {
+        "ms": 184,
+        "scarletPixelsInLeftEyeRegion": 22577,
+        "maxScarletColumnHeight": 124
+      },
+      {
+        "ms": 232,
+        "scarletPixelsInLeftEyeRegion": 24766,
+        "maxScarletColumnHeight": 128
+      }
+    ],
+    "after": [
+      {
+        "ms": 0,
+        "scarletPixelsInLeftEyeRegion": 0,
+        "maxScarletColumnHeight": 0
+      },
+      {
+        "ms": 104,
+        "scarletPixelsInLeftEyeRegion": 799,
+        "maxScarletColumnHeight": 4
+      },
+      {
+        "ms": 156,
+        "scarletPixelsInLeftEyeRegion": 1019,
+        "maxScarletColumnHeight": 4
+      },
+      {
+        "ms": 218,
+        "scarletPixelsInLeftEyeRegion": 4933,
+        "maxScarletColumnHeight": 18
+      },
+      {
+        "ms": 282,
+        "scarletPixelsInLeftEyeRegion": 16161,
+        "maxScarletColumnHeight": 66
+      },
+      {
+        "ms": 420,
+        "scarletPixelsInLeftEyeRegion": 19841,
+        "maxScarletColumnHeight": 83
+      }
+    ],
+    "after-touch": [
+      {
+        "ms": 0,
+        "scarletPixelsInLeftEyeRegion": 0,
+        "maxScarletColumnHeight": 0
+      },
+      {
+        "ms": 104,
+        "scarletPixelsInLeftEyeRegion": 460,
+        "maxScarletColumnHeight": 3
+      },
+      {
+        "ms": 156,
+        "scarletPixelsInLeftEyeRegion": 622,
+        "maxScarletColumnHeight": 4
+      },
+      {
+        "ms": 218,
+        "scarletPixelsInLeftEyeRegion": 2692,
+        "maxScarletColumnHeight": 14
+      },
+      {
+        "ms": 282,
+        "scarletPixelsInLeftEyeRegion": 8950,
+        "maxScarletColumnHeight": 51
+      },
+      {
+        "ms": 420,
+        "scarletPixelsInLeftEyeRegion": 11084,
+        "maxScarletColumnHeight": 65
+      }
+    ]
+  },
+  "browserPoses": {
+    "desktop": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "realFirstFrame": {
+        "frame": {
+          "id": 2,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "input": true,
+        "dialog": false
+      },
+      "opening": [
+        {
+          "ms": 0,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        },
+        {
+          "ms": 104,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        },
+        {
+          "ms": 156,
+          "upper": "matrix(1, 0, 0, 1, 0, -3.84615)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0.690476)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        },
+        {
+          "ms": 218,
+          "upper": "matrix(1, 0, 0, 1, 0, -11.3007)",
+          "lower": "matrix(1, 0, 0, 1, 0, 5.83598)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        },
+        {
+          "ms": 282,
+          "upper": "matrix(1, 0, 0, 1, 0, -46.6524)",
+          "lower": "matrix(1, 0, 0, 1, 0, 30.1496)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        },
+        {
+          "ms": 420,
+          "upper": "matrix(1, 0, 0, 1, 0, -46)",
+          "lower": "matrix(1, 0, 0, 1, 0, 45)",
+          "irisRect": [
+            362.5,
+            232.8333282470703,
+            88.66665649414062,
+            109.66667175292969
+          ]
+        }
+      ],
+      "draw": [
+        {
+          "ms": 0,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "ms": 70,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 38.1293)"
+        },
+        {
+          "ms": 112,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 45.7804)"
+        },
+        {
+          "ms": 176,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 194,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 259,
+          "bladeOpacity": 1,
+          "visibleLength": 5.99968,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 329,
+          "bladeOpacity": 1,
+          "visibleLength": 208.279,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 380,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 464,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 536,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 640,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 850,
+          "bladeOpacity": 0,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        }
+      ],
+      "maxAnchorErrorCSSPixels": {
+        "grip": 0.004444672666018909,
+        "brace": 0.002673680938020629,
+        "elbows": 0.308863982505287
+      }
+    },
+    "portrait": {
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "realFirstFrame": {
+        "frame": {
+          "id": 4,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "input": true,
+        "dialog": false
+      },
+      "opening": [
+        {
+          "ms": 0,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        },
+        {
+          "ms": 104,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        },
+        {
+          "ms": 156,
+          "upper": "matrix(1, 0, 0, 1, 0, -3.84615)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0.690476)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        },
+        {
+          "ms": 218,
+          "upper": "matrix(1, 0, 0, 1, 0, -11.3007)",
+          "lower": "matrix(1, 0, 0, 1, 0, 5.83598)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        },
+        {
+          "ms": 282,
+          "upper": "matrix(1, 0, 0, 1, 0, -46.6524)",
+          "lower": "matrix(1, 0, 0, 1, 0, 30.1496)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        },
+        {
+          "ms": 420,
+          "upper": "matrix(1, 0, 0, 1, 0, -46)",
+          "lower": "matrix(1, 0, 0, 1, 0, 45)",
+          "irisRect": [
+            111.4375,
+            312.6145935058594,
+            34.51666259765625,
+            42.691650390625
+          ]
+        }
+      ],
+      "draw": [
+        {
+          "ms": 0,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "ms": 70,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 38.1293)"
+        },
+        {
+          "ms": 112,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 45.7804)"
+        },
+        {
+          "ms": 176,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 194,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 259,
+          "bladeOpacity": 1,
+          "visibleLength": 5.99968,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 329,
+          "bladeOpacity": 1,
+          "visibleLength": 208.279,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 380,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 464,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 536,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 640,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 850,
+          "bladeOpacity": 0,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        }
+      ],
+      "maxAnchorErrorCSSPixels": {
+        "grip": 0.002430043438993201,
+        "brace": 0.0014617861223197033,
+        "elbows": 0.1688657299715672
+      }
+    },
+    "webgl": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "realFirstFrame": {
+        "frame": {
+          "id": 1,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "input": true,
+        "dialog": false
+      },
+      "opening": [
+        {
+          "ms": 0,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        },
+        {
+          "ms": 104,
+          "upper": "matrix(1, 0, 0, 1, 0, 0)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        },
+        {
+          "ms": 156,
+          "upper": "matrix(1, 0, 0, 1, 0, -3.84615)",
+          "lower": "matrix(1, 0, 0, 1, 0, 0.690476)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        },
+        {
+          "ms": 218,
+          "upper": "matrix(1, 0, 0, 1, 0, -11.3007)",
+          "lower": "matrix(1, 0, 0, 1, 0, 5.83598)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        },
+        {
+          "ms": 282,
+          "upper": "matrix(1, 0, 0, 1, 0, -46.6524)",
+          "lower": "matrix(1, 0, 0, 1, 0, 30.1496)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        },
+        {
+          "ms": 420,
+          "upper": "matrix(1, 0, 0, 1, 0, -46)",
+          "lower": "matrix(1, 0, 0, 1, 0, 45)",
+          "irisRect": [
+            213.75,
+            156.75,
+            57,
+            70.5
+          ]
+        }
+      ],
+      "draw": [
+        {
+          "ms": 0,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        {
+          "ms": 70,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 38.1293)"
+        },
+        {
+          "ms": 112,
+          "bladeOpacity": 0,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 45.7804)"
+        },
+        {
+          "ms": 176,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 194,
+          "bladeOpacity": 1,
+          "visibleLength": 0,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 259,
+          "bladeOpacity": 1,
+          "visibleLength": 5.99968,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 329,
+          "bladeOpacity": 1,
+          "visibleLength": 208.279,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 380,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 464,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 536,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 640,
+          "bladeOpacity": 1,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        },
+        {
+          "ms": 850,
+          "bladeOpacity": 0,
+          "visibleLength": 380,
+          "lidClosure": "matrix(1, 0, 0, 1, 0, 46)"
+        }
+      ],
+      "maxAnchorErrorCSSPixels": {
+        "grip": 0.0027118654802094975,
+        "brace": 0.0016313154164035474,
+        "elbows": 0.18844977688635386
+      }
+    }
+  },
+  "liveRecording": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "frames": 69,
+    "spanMs": 1823,
+    "engageToSubmitMs": 896,
+    "capturedWithoutChangingClocks": true
+  },
+  "controls": {
+    "served": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "first": {
+        "at": 1438.4000000059605,
+        "frame": {
+          "id": 3,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 0
+      },
+      "artisticJumpWitness": {
+        "at": 3715.5,
+        "frame": {
+          "id": 37,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 44,
+          "time": 0.39999999999999997,
+          "hp": 100,
+          "threats": 2
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 1
+      },
+      "cancelRestoredPhase": "gameover",
+      "cancelRestoredFocus": "RETRY",
+      "requestsForRevealMedia": [],
+      "gameSurfacesAfterDestroy": 0,
+      "trustedGestures": true
+    },
+    "touch": {
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "first": {
+        "at": 2170,
+        "frame": {
+          "id": 5,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 0
+      },
+      "artisticJumpWitness": {
+        "at": 4640,
+        "frame": {
+          "id": 56,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 44,
+          "time": 0.35,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 1
+      },
+      "cancelRestoredPhase": "gameover",
+      "cancelRestoredFocus": "RETRY",
+      "requestsForRevealMedia": [],
+      "gameSurfacesAfterDestroy": 0,
+      "trustedGestures": true
+    },
+    "webglAtSubmit": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "first": {
+        "at": 6441.20000000298,
+        "frame": {
+          "id": 2,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "master-webgl2",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 0
+      },
+      "artisticJumpWitness": null,
+      "cancelRestoredPhase": "gameover",
+      "cancelRestoredFocus": "RETRY",
+      "requestsForRevealMedia": [],
+      "gameSurfacesAfterDestroy": 0,
+      "trustedGestures": true
+    },
+    "reducedMotion": {
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "first": {
+        "at": 1271.5999999940395,
+        "frame": {
+          "id": 5,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 0
+      },
+      "artisticJumpWitness": null,
+      "cancelRestoredPhase": "gameover",
+      "cancelRestoredFocus": "RETRY",
+      "requestsForRevealMedia": [],
+      "gameSurfacesAfterDestroy": 0,
+      "trustedGestures": true
+    },
+    "cssAnimationDisabled": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "first": {
+        "at": 1191.5,
+        "frame": {
+          "id": 3,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "modal": false,
+        "pass": true,
+        "swordOpacity": 0
+      },
+      "artisticJumpWitness": null,
+      "cancelRestoredPhase": "gameover",
+      "cancelRestoredFocus": "RETRY",
+      "requestsForRevealMedia": [],
+      "gameSurfacesAfterDestroy": 0,
+      "trustedGestures": true
+    }
+  },
+  "leanStarts": [
+    {
+      "action": "ENGAGE",
+      "clickToSubmitMs": 208,
+      "remainingEditorialHoldMs": 330,
+      "worldTime": 0,
+      "immediateInput": true
+    },
+    {
+      "action": "RETRY",
+      "clickToSubmitMs": 54,
+      "remainingEditorialHoldMs": 481,
+      "worldTime": 0,
+      "immediateInput": true
+    },
+    {
+      "action": "ENGAGE",
+      "clickToSubmitMs": 55,
+      "remainingEditorialHoldMs": 477,
+      "worldTime": 0,
+      "immediateInput": true
+    }
+  ],
+  "heldRequiredDeck": {
+    "asset": "/bridge/deck-pier.webp",
+    "stage": "background",
+    "holdInput": false,
+    "submittedMs": 1982,
+    "result": {
+      "id": 1,
+      "layer": "scene",
+      "kind": "canvas",
+      "hud": "layer",
+      "seed": 4228739822,
+      "time": 0,
+      "hp": 100,
+      "threats": 1
+    }
+  },
+  "crossOriginSlowIframe": {
+    "phase": "playing",
+    "errors": [],
+    "failed": [],
+    "readyMs": 4560,
+    "clickToPlayMs": 4568
+  },
+  "checks": {
+    "typecheck": true,
+    "productionBuild": true,
+    "editedModulesLint": true,
+    "bridgeTests": 219,
+    "choreographyTests": 3
+  }
+}

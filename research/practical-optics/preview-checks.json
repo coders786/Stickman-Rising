@@ -1,0 +1,1227 @@
+{
+  "routes": {
+    "/": 200,
+    "/?stage=station": 200
+  },
+  "tests": {
+    "focused": {
+      "passed": 174,
+      "tests": 174
+    },
+    "gate": {
+      "passed": 490,
+      "tests": 495,
+      "previousFailures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "typecheck": true,
+    "boundaries": true,
+    "targetedLint": true,
+    "productionBuild": true
+  },
+  "controlPatchSha256": "d63c5fc60500079e16a972f201e5803b1bd0c9922b4e8b5a7819e787056918e1",
+  "touchCompositor": {
+    "control": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "softwareRequested": true,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "trials": [
+        {
+          "mode": "stock",
+          "layers": 11,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 50,
+          "p95": 83.30000000000018,
+          "p99": 83.39999999999964,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        },
+        {
+          "mode": "no-blur",
+          "layers": 0,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 50,
+          "p95": 83.39999999999964,
+          "p99": 83.40000000000055,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        },
+        {
+          "mode": "no-blur",
+          "layers": 0,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 50,
+          "p95": 66.69999999999982,
+          "p99": 83.40000000000055,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        },
+        {
+          "mode": "stock",
+          "layers": 11,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 66.60000000000036,
+          "p95": 99.90000000000055,
+          "p99": 100.10000000000036,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        },
+        {
+          "mode": "stock",
+          "layers": 11,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 50,
+          "p95": 83.39999999999964,
+          "p99": 133.19999999999982,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        },
+        {
+          "mode": "no-blur",
+          "layers": 0,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 50,
+          "p95": 66.80000000000018,
+          "p99": 83.40000000000055,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        }
+      ]
+    },
+    "actualFlatPreview": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "softwareRequested": true,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "trials": [
+        {
+          "mode": "flat",
+          "layers": 0,
+          "surfaces": 11,
+          "layout": [
+            877,
+            1899,
+            780,
+            1688,
+            2.25,
+            "ultra"
+          ],
+          "samples": 72,
+          "p50": 33.30000000000018,
+          "p95": 50,
+          "p99": 66.59999999999991,
+          "stalls250ms": 0,
+          "seed": 42,
+          "playerX": 1384.3158288955754,
+          "time": 1.6999999999999988,
+          "weather": {
+            "kind": "drizzle",
+            "s": 1,
+            "rain": 0.46,
+            "fog": 1.14,
+            "gust": 1.12,
+            "changes": 2
+          }
+        }
+      ]
+    }
+  },
+  "quality": {
+    "desktop": {
+      "touch": false,
+      "stationPreview": false,
+      "offered": [
+        "low",
+        "medium",
+        "high",
+        "ultra"
+      ],
+      "disabled": [],
+      "shed": {
+        "rows": [
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          2250,
+          1395
+        ],
+        "route": "forward",
+        "shadows": "cast+props"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "reshed": {
+        "rows": [
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "raise": {
+        "rows": [
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "ultra",
+            "dpr": 2,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "ultra",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    },
+    "touch": {
+      "touch": true,
+      "stationPreview": true,
+      "offered": [
+        "low",
+        "medium"
+      ],
+      "disabled": [
+        "high",
+        "ultra"
+      ],
+      "shed": {
+        "rows": [
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          877,
+          1899
+        ],
+        "route": "capture",
+        "shadows": "cast+props"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "reshed": {
+        "rows": [
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "raise": {
+        "rows": [
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "medium",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    }
+  },
+  "gestureLifecycle": {
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": false,
+      "engage": {
+        "seed": 2101067072,
+        "requested": 2101067072,
+        "route": true,
+        "tier": "low",
+        "starts": 1,
+        "lightEdges": 0,
+        "plates": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 19.300000000745058,
+          "starMs": 0.3999999985098839,
+          "note": "software WebGL",
+          "sprites": 0
+        }
+      },
+      "retry": {
+        "moonSource": "cpu",
+        "starSource": "cpu",
+        "moonMs": 6.399999998509884,
+        "starMs": 0.6999999992549419,
+        "note": "software WebGL",
+        "sprites": 0,
+        "audio": "running"
+      },
+      "cancelledUnpublishedNight": true,
+      "lowHp": {
+        "w": 1000,
+        "h": 560,
+        "alpha": 255
+      },
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          22,
+          30,
+          43
+        ]
+      },
+      "editor": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trace": {
+        "starts": 2,
+        "lightEdges": 3,
+        "clicks": [
+          [
+            "ENGAGE",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "CANCEL",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ]
+        ],
+        "phases": [
+          "preparing",
+          "playing",
+          "paused",
+          "playing",
+          "gameover",
+          "preparing",
+          "gameover",
+          "preparing",
+          "playing",
+          "gameover",
+          "preparing"
+        ]
+      }
+    },
+    "touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": true,
+      "engage": {
+        "seed": 2870451437,
+        "requested": 2870451437,
+        "route": false,
+        "tier": "low",
+        "starts": 1,
+        "lightEdges": 0,
+        "plates": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 24.299999997019768,
+          "starMs": 0.6000000014901161,
+          "note": "software WebGL",
+          "sprites": 0
+        }
+      },
+      "retry": {
+        "moonSource": "cpu",
+        "starSource": "cpu",
+        "moonMs": 5.599999997764826,
+        "starMs": 0.4000000022351742,
+        "note": "software WebGL",
+        "sprites": 0,
+        "audio": "running"
+      },
+      "cancelledUnpublishedNight": true,
+      "lowHp": {
+        "w": 390,
+        "h": 844,
+        "alpha": 102
+      },
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          16,
+          20,
+          31
+        ]
+      },
+      "editor": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trace": {
+        "starts": 2,
+        "lightEdges": 3,
+        "clicks": [
+          [
+            "ENGAGE",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "CANCEL",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ]
+        ],
+        "phases": [
+          "preparing",
+          "playing",
+          "paused",
+          "playing",
+          "gameover",
+          "preparing",
+          "gameover",
+          "preparing",
+          "playing",
+          "gameover",
+          "preparing"
+        ]
+      }
+    }
+  },
+  "retries": {
+    "forward": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": false,
+      "capture": false,
+      "checkRelay": false,
+      "checkBaked": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 43,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 44,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 45,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 46,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 47,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 48,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 49,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 50,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 51,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 52,
+          "surfaces": 47,
+          "bytes": 18280448,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 53,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 54,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 55,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 56,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 57,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 58,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 59,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 60,
+          "surfaces": 47,
+          "bytes": 18280448,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 61,
+          "surfaces": 47,
+          "bytes": 18280448,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 62,
+          "surfaces": 48,
+          "bytes": 20000768,
+          "stageBytes": 405504
+        }
+      ],
+      "fixedCount": 3,
+      "scene": [
+        1440,
+        810
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "peakBytes": 22360064,
+      "sceneSamples": 0,
+      "relayStore": null,
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "masksReleased": 84,
+      "afterDestroy": 0
+    },
+    "capture": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": false,
+      "capture": true,
+      "checkRelay": false,
+      "checkBaked": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 43,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 44,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 45,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 46,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 47,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 48,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 49,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 50,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 51,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 52,
+          "surfaces": 47,
+          "bytes": 18677760,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 53,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 54,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 55,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 56,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 57,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 58,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 59,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 60,
+          "surfaces": 47,
+          "bytes": 18677760,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 61,
+          "surfaces": 47,
+          "bytes": 18677760,
+          "stageBytes": 405504
+        },
+        {
+          "seed": 62,
+          "surfaces": 48,
+          "bytes": 20398080,
+          "stageBytes": 405504
+        }
+      ],
+      "fixedCount": 3,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "peakBytes": 22757376,
+      "sceneSamples": 0,
+      "relayStore": null,
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "masksReleased": 84,
+      "afterDestroy": 0
+    },
+    "station": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": true,
+      "capture": true,
+      "checkRelay": false,
+      "checkBaked": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 43,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 44,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 45,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 46,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 47,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 48,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 49,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 50,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 51,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 52,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 53,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 54,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 55,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 56,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 57,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 58,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 59,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 60,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 61,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 62,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "stageBytes": 6303744
+        }
+      ],
+      "fixedCount": 8,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "peakBytes": 11304960,
+      "sceneSamples": 0,
+      "relayStore": null,
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "masksReleased": 84,
+      "afterDestroy": 0
+    }
+  }
+}

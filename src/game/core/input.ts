@@ -3,13 +3,13 @@
 export type Action =
   | 'left' | 'right' | 'up' | 'down'
   | 'light' | 'heavy' | 'dash' | 'jump'
-  | 'parry' | 'ability' | 'ult' | 'execute'
+  | 'parry' | 'ability' | 'ult' | 'execute' | 'service'
   | 'pause' | 'cycleSword' | 'confirm' | 'sheathe'
   | 'sword1' | 'sword2' | 'sword3' | 'sword4' | 'sword5' | 'sword6'
 
 const ACTIONS: Action[] = [
   'left', 'right', 'up', 'down', 'light', 'heavy', 'dash', 'jump',
-  'parry', 'ability', 'ult', 'execute', 'pause', 'cycleSword', 'confirm', 'sheathe',
+  'parry', 'ability', 'ult', 'execute', 'service', 'pause', 'cycleSword', 'confirm', 'sheathe',
   'sword1', 'sword2', 'sword3', 'sword4', 'sword5', 'sword6',
 ]
 
@@ -24,7 +24,7 @@ const KEYMAP: Record<string, Action> = {
   Space: 'jump',
   KeyO: 'parry', KeyF: 'parry',
   KeyU: 'ability',
-  KeyI: 'ult',
+  KeyR: 'ult', KeyI: 'ult',
   KeyE: 'execute',
   KeyQ: 'sheathe',
   KeyP: 'pause', Escape: 'pause',

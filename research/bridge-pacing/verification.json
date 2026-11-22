@@ -1,0 +1,4346 @@
+{
+  "builds": {
+    "priorHandoff": "Ddi8k3l0vaASOKHfKK9wu",
+    "canvasPacing": "hLSldMb6IE68_ReAWHBIU"
+  },
+  "benchmarkMethod": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "startup": "Fresh pages on warm production servers, trusted click and jump, fixed seeds 42 and 43. AB, BA, AB desktop order, one matched CPU-compositor control. CPU submit is not scanout.",
+    "scene": "24 measured complete renders per fixture with the same fixed camera/weather sequence, separate Chrome CPU compositor. WebGL2 finish denied by the test. Time is JS/Canvas submit, not browser composition.",
+    "kernel": "40 changing atmospheric inputs after 12 warm frames per workload and two isolated Node/esbuild runs per build. Exact Float32 RGBA hashes compare sky and mist, with decoded atlas and asset denial."
+  },
+  "canvas": {
+    "desktop": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "deny": false,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 5,
+            "cityMedianMs": 3,
+            "opticalMedianMs": 0.19999998807907104
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 6.4000000059604645,
+            "cityMedianMs": 3.2999999970197678,
+            "opticalMedianMs": 1.0999999940395355
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 12.599999994039536,
+            "cityMedianMs": 2.9000000059604645,
+            "opticalMedianMs": 8.200000002980232
+          }
+        },
+        "cards": 1,
+        "visible": true,
+        "afterDestroy": 0
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "deny": false,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 1.9000000059604645,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 0.19999998807907104
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 3.3999999910593033,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 1.0999999940395355
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 12.099999994039536,
+            "cityMedianMs": 3.2000000029802322,
+            "opticalMedianMs": 7.299999997019768
+          }
+        },
+        "cards": 2,
+        "visible": true,
+        "afterDestroy": 0
+      }
+    },
+    "portrait": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "deny": false,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 5.200000002980232,
+            "cityMedianMs": 3.1000000089406967,
+            "opticalMedianMs": 0.10000000894069672
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 9.5,
+            "cityMedianMs": 4.700000002980232,
+            "opticalMedianMs": 1.4000000059604645
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 14.799999997019768,
+            "cityMedianMs": 4.0999999940395355,
+            "opticalMedianMs": 9.200000002980232
+          }
+        },
+        "cards": 1,
+        "visible": true,
+        "afterDestroy": 0
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "deny": false,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 2,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 0.10000000894069672
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 3,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 0.7000000029802322
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 10,
+            "cityMedianMs": 2.8999999910593033,
+            "opticalMedianMs": 5.9000000059604645
+          }
+        },
+        "cards": 2,
+        "visible": true,
+        "afterDestroy": 0
+      }
+    },
+    "deniedCity": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "deny": true,
+      "cpuCompositor": true,
+      "fixtures": {
+        "parked": {
+          "frames": 24,
+          "cityPaints": 0,
+          "canvasMedianMs": 1.8999999910593033,
+          "cityMedianMs": 0.09999999403953552,
+          "opticalMedianMs": 0.10000000894069672
+        },
+        "pan": {
+          "frames": 24,
+          "cityPaints": 0,
+          "canvasMedianMs": 2.5999999940395355,
+          "cityMedianMs": 0,
+          "opticalMedianMs": 0.7000000178813934
+        },
+        "weather": {
+          "frames": 24,
+          "cityPaints": 48,
+          "canvasMedianMs": 14.5,
+          "cityMedianMs": 7.5,
+          "opticalMedianMs": 5.9000000059604645
+        }
+      },
+      "cards": 2,
+      "visible": true,
+      "afterDestroy": 0
+    },
+    "extraBoundedCardBytes": 479232,
+    "imageParity": [
+      {
+        "view": "desktop",
+        "scene": "parked",
+        "pixels": 560000,
+        "meanAbs8bitChannelError": 0.0037589285714285715,
+        "max8bitChannelError": 11,
+        "channelsAbove2": 947
+      },
+      {
+        "view": "desktop",
+        "scene": "pan",
+        "pixels": 560000,
+        "meanAbs8bitChannelError": 0.003388690476190476,
+        "max8bitChannelError": 10,
+        "channelsAbove2": 896
+      },
+      {
+        "view": "desktop",
+        "scene": "weather",
+        "pixels": 560000,
+        "meanAbs8bitChannelError": 0.003630952380952381,
+        "max8bitChannelError": 10,
+        "channelsAbove2": 1053
+      },
+      {
+        "view": "portrait",
+        "scene": "parked",
+        "pixels": 337600,
+        "meanAbs8bitChannelError": 0.004604067930489731,
+        "max8bitChannelError": 12,
+        "channelsAbove2": 688
+      },
+      {
+        "view": "portrait",
+        "scene": "pan",
+        "pixels": 337600,
+        "meanAbs8bitChannelError": 0.0023795418641390205,
+        "max8bitChannelError": 12,
+        "channelsAbove2": 320
+      },
+      {
+        "view": "portrait",
+        "scene": "weather",
+        "pixels": 337600,
+        "meanAbs8bitChannelError": 0.0029768957345971563,
+        "max8bitChannelError": 12,
+        "channelsAbove2": 457
+      }
+    ]
+  },
+  "opticsCPU": {
+    "prior": [
+      [
+        {
+          "tag": "old",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": true,
+          "medianMs": 7.457165999999916,
+          "checksum": "54dc2b735832a412b48a73e496d902ffd37cd1413cca8459bb3e5370c16847ef"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": false,
+          "medianMs": 8.215085000000045,
+          "checksum": "ba6fd446f1699f0172ab02e5a58706648c268c2061b7fb995de9bee3f479e63c"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": true,
+          "medianMs": 6.175883999999996,
+          "checksum": "27ba9b7f41a43cf5fd1895db8656f59fafb87051190cee79ade2318941dff4d3"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": false,
+          "medianMs": 7.244754000000285,
+          "checksum": "a40454abdfec737c1cac0ca74d991de058caec2a9b7f8dc46b9eae63b4f4b275"
+        }
+      ],
+      [
+        {
+          "tag": "old",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": true,
+          "medianMs": 7.6509379999999965,
+          "checksum": "54dc2b735832a412b48a73e496d902ffd37cd1413cca8459bb3e5370c16847ef"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": false,
+          "medianMs": 8.85803999999996,
+          "checksum": "ba6fd446f1699f0172ab02e5a58706648c268c2061b7fb995de9bee3f479e63c"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": true,
+          "medianMs": 6.035724999999957,
+          "checksum": "27ba9b7f41a43cf5fd1895db8656f59fafb87051190cee79ade2318941dff4d3"
+        },
+        {
+          "tag": "old",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": false,
+          "medianMs": 7.007309999999961,
+          "checksum": "a40454abdfec737c1cac0ca74d991de058caec2a9b7f8dc46b9eae63b4f4b275"
+        }
+      ]
+    ],
+    "updated": [
+      [
+        {
+          "tag": "new",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": true,
+          "medianMs": 6.570933999999966,
+          "checksum": "54dc2b735832a412b48a73e496d902ffd37cd1413cca8459bb3e5370c16847ef"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": false,
+          "medianMs": 5.786760999999956,
+          "checksum": "ba6fd446f1699f0172ab02e5a58706648c268c2061b7fb995de9bee3f479e63c"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": true,
+          "medianMs": 4.478206,
+          "checksum": "27ba9b7f41a43cf5fd1895db8656f59fafb87051190cee79ade2318941dff4d3"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": false,
+          "medianMs": 4.732193000000052,
+          "checksum": "a40454abdfec737c1cac0ca74d991de058caec2a9b7f8dc46b9eae63b4f4b275"
+        }
+      ],
+      [
+        {
+          "tag": "new",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": true,
+          "medianMs": 7.366440000000011,
+          "checksum": "54dc2b735832a412b48a73e496d902ffd37cd1413cca8459bb3e5370c16847ef"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            1000,
+            560
+          ],
+          "basis": false,
+          "medianMs": 5.774898000000007,
+          "checksum": "ba6fd446f1699f0172ab02e5a58706648c268c2061b7fb995de9bee3f479e63c"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": true,
+          "medianMs": 4.470508000000109,
+          "checksum": "27ba9b7f41a43cf5fd1895db8656f59fafb87051190cee79ade2318941dff4d3"
+        },
+        {
+          "tag": "new",
+          "viewport": [
+            400,
+            844
+          ],
+          "basis": false,
+          "medianMs": 4.716691000000083,
+          "checksum": "a40454abdfec737c1cac0ca74d991de058caec2a9b7f8dc46b9eae63b4f4b275"
+        }
+      ]
+    ]
+  },
+  "launch": {
+    "prior": {
+      "samples": [
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 80.5,
+            "afterSubmitRafMs": 98.30000001192093,
+            "stepSubmitMs": 168,
+            "simMs": 2194,
+            "richMs": 2456.9000000059605,
+            "postPromotionMs": 3865.1000000089407,
+            "maxLongTaskMs": 281,
+            "richMovement": 8.975635228960243,
+            "trustedJumpDispatchToMotionMs": 74.0
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 40.20000000298023,
+            "afterSubmitRafMs": 53,
+            "stepSubmitMs": 81.90000000596046,
+            "simMs": 236.1000000089407,
+            "richMs": 297.6000000089407,
+            "postPromotionMs": 622.1000000089407,
+            "maxLongTaskMs": 0,
+            "richMovement": 31.815828895578875,
+            "trustedJumpDispatchToMotionMs": 37.79999999701977
+          }
+        },
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 45.20000000298023,
+            "afterSubmitRafMs": 49.80000001192093,
+            "stepSubmitMs": 68.5,
+            "simMs": 1938.7000000029802,
+            "richMs": 2146.1000000089407,
+            "postPromotionMs": 3390.300000011921,
+            "maxLongTaskMs": 0,
+            "richMovement": 10.830726551141026,
+            "trustedJumpDispatchToMotionMs": 1835.5
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 41.80000001192093,
+            "afterSubmitRafMs": 48.5,
+            "stepSubmitMs": 65.40000000596046,
+            "simMs": 222,
+            "richMs": 287.70000000298023,
+            "postPromotionMs": 560.8000000119209,
+            "maxLongTaskMs": 77,
+            "richMovement": 21.452941223096218,
+            "trustedJumpDispatchToMotionMs": 21.299999997019768
+          }
+        },
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 75.70000000298023,
+            "afterSubmitRafMs": 86.1000000089407,
+            "stepSubmitMs": 104.6000000089407,
+            "simMs": 369.1000000089407,
+            "richMs": 479.29999999701977,
+            "postPromotionMs": 3971.7000000029802,
+            "maxLongTaskMs": 0,
+            "richMovement": 30.309306212755644,
+            "trustedJumpDispatchToMotionMs": 21.099999994039536
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 42.29999999701977,
+            "afterSubmitRafMs": 51.5,
+            "stepSubmitMs": 67.59999999403954,
+            "simMs": 231.79999999701977,
+            "richMs": 304.59999999403954,
+            "postPromotionMs": 669.2999999970198,
+            "maxLongTaskMs": 84,
+            "richMovement": 49.31582889557882,
+            "trustedJumpDispatchToMotionMs": 22.299999997019768
+          }
+        }
+      ],
+      "mediansMs": {
+        "ENGAGE": {
+          "submitMs": 75.7,
+          "stepSubmitMs": 104.6,
+          "simMs": 1938.7,
+          "richMs": 2146.1,
+          "postPromotionMs": 3865.1
+        },
+        "RETRY": {
+          "submitMs": 41.8,
+          "stepSubmitMs": 67.6,
+          "simMs": 231.8,
+          "richMs": 297.6,
+          "postPromotionMs": 622.1
+        }
+      }
+    },
+    "updated": {
+      "samples": [
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 47,
+            "afterSubmitRafMs": 53.6000000089407,
+            "stepSubmitMs": 78.1000000089407,
+            "simMs": 390.5,
+            "richMs": 574.7000000029802,
+            "postPromotionMs": 2474.4000000059605,
+            "maxLongTaskMs": 202,
+            "richMovement": 40.37427873811998,
+            "trustedJumpDispatchToMotionMs": 192.40000000596046
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 53.599999994039536,
+            "afterSubmitRafMs": 68.29999999701977,
+            "stepSubmitMs": 86.90000000596046,
+            "simMs": 251.29999999701977,
+            "richMs": 332.40000000596046,
+            "postPromotionMs": 753.9000000059605,
+            "maxLongTaskMs": 109,
+            "richMovement": 25.98249556224556,
+            "trustedJumpDispatchToMotionMs": 25.799999997019768
+          }
+        },
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 82.40000000596046,
+            "afterSubmitRafMs": 109.1000000089407,
+            "stepSubmitMs": 296.6000000089407,
+            "simMs": 397.6000000089407,
+            "richMs": 530.9000000059605,
+            "postPromotionMs": 5231.4000000059605,
+            "maxLongTaskMs": 62,
+            "richMovement": 49.31582889557882,
+            "trustedJumpDispatchToMotionMs": 159.09999999403954
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 54.8999999910593,
+            "afterSubmitRafMs": 68,
+            "stepSubmitMs": 86.5,
+            "simMs": 251.19999998807907,
+            "richMs": 299.5,
+            "postPromotionMs": 649.8999999910593,
+            "maxLongTaskMs": 50,
+            "richMovement": 15.161193582820772,
+            "trustedJumpDispatchToMotionMs": 26.700000002980232
+          }
+        },
+        {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 57.29999999701977,
+            "afterSubmitRafMs": 64.09999999403954,
+            "stepSubmitMs": 89.5,
+            "simMs": 436.3999999910593,
+            "richMs": 424,
+            "postPromotionMs": 4127.79999999702,
+            "maxLongTaskMs": 94,
+            "richMovement": 33.11960788976285,
+            "trustedJumpDispatchToMotionMs": 26.5
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 40.400000005960464,
+            "afterSubmitRafMs": 55.1000000089407,
+            "stepSubmitMs": 73.5,
+            "simMs": 238.70000000298023,
+            "richMs": 297.6000000089407,
+            "postPromotionMs": 575.4000000059605,
+            "maxLongTaskMs": 62,
+            "richMovement": 43.482495562245504,
+            "trustedJumpDispatchToMotionMs": 28.600000008940697
+          }
+        }
+      ],
+      "mediansMs": {
+        "ENGAGE": {
+          "submitMs": 57.3,
+          "stepSubmitMs": 89.5,
+          "simMs": 397.6,
+          "richMs": 530.9,
+          "postPromotionMs": 4127.8
+        },
+        "RETRY": {
+          "submitMs": 53.6,
+          "stepSubmitMs": 86.5,
+          "simMs": 251.2,
+          "richMs": 299.5,
+          "postPromotionMs": 649.9
+        }
+      }
+    },
+    "cpuCompositor": {
+      "prior": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 67.5,
+          "afterSubmitRafMs": 84.30000001192093,
+          "stepSubmitMs": 119.30000001192093,
+          "simMs": 262.70000000298023,
+          "richMs": 366.6000000089407,
+          "postPromotionMs": 691.6000000089407,
+          "maxLongTaskMs": 120,
+          "richMovement": 38.95294122309616,
+          "trustedJumpDispatchToMotionMs": 5.699999988079071
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 25.099999994039536,
+          "afterSubmitRafMs": 39.29999999701977,
+          "stepSubmitMs": 58.3999999910593,
+          "simMs": 222.70000000298023,
+          "richMs": 299.8999999910593,
+          "postPromotionMs": 667.3999999910593,
+          "maxLongTaskMs": 98,
+          "richMovement": 17.521115744135614,
+          "trustedJumpDispatchToMotionMs": 27.599999994039536
+        }
+      },
+      "updated": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 47.099999994039536,
+          "afterSubmitRafMs": 57.20000000298023,
+          "stepSubmitMs": 84.20000000298023,
+          "simMs": 239.09999999403954,
+          "richMs": 320.29999999701977,
+          "postPromotionMs": 616.9000000059605,
+          "maxLongTaskMs": 95,
+          "richMovement": 57.874278738119926,
+          "trustedJumpDispatchToMotionMs": 4.299999997019768
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 17.5,
+          "afterSubmitRafMs": 33.5,
+          "stepSubmitMs": 50.69999998807907,
+          "simMs": 214.79999999701977,
+          "richMs": 304.09999999403954,
+          "postPromotionMs": 695.2999999970198,
+          "maxLongTaskMs": 143,
+          "richMovement": 27.286274556429532,
+          "trustedJumpDispatchToMotionMs": 18.299999997019768
+        }
+      }
+    }
+  },
+  "backendIsolationOnPrior": {
+    "default": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": false,
+        "cpuRaster": false,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": false,
+          "submitMs": 80.79999999701977,
+          "afterSubmitRafMs": 92.70000000298023,
+          "stepSubmitMs": 121.40000000596046,
+          "simMs": 386.79999999701977,
+          "richMs": 506.40000000596046,
+          "maxLongTaskMs": 135,
+          "trustedJumpDispatchToMotionMs": 158.79999999701977
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": false,
+          "submitMs": 57.19999998807907,
+          "afterSubmitRafMs": 74,
+          "stepSubmitMs": 92.59999999403954,
+          "simMs": 255.79999999701977,
+          "richMs": 298.29999999701977,
+          "postPromotionMs": 671.1999999880791,
+          "maxLongTaskMs": 57,
+          "trustedJumpDispatchToMotionMs": 28.600000008940697
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 567.424,
+        "wallMs": 3413.649,
+        "threadCpuMs": 0.163
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": 699.983,
+        "wallMs": 432.175,
+        "threadCpuMs": 73.27
+      }
+    },
+    "default-2": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": false,
+        "cpuRaster": false,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 46.6000000089407,
+          "afterSubmitRafMs": 51.400000005960464,
+          "stepSubmitMs": 71.1000000089407,
+          "simMs": 2473.1000000089407,
+          "richMs": 2454.4000000059605,
+          "maxLongTaskMs": 110,
+          "trustedJumpDispatchToMotionMs": 10.0
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 666.9000000059605,
+          "afterSubmitRafMs": 680.4000000059605,
+          "stepSubmitMs": 700.2000000029802,
+          "simMs": 863.7999999970198,
+          "richMs": 917.6000000089407,
+          "postPromotionMs": 1309.4000000059605,
+          "maxLongTaskMs": 55,
+          "trustedJumpDispatchToMotionMs": 29.599999994039536
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 73.812,
+        "wallMs": 2247.155,
+        "threadCpuMs": 0.746
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": 2739.921,
+        "wallMs": 591.653,
+        "threadCpuMs": 62.549
+      }
+    },
+    "cpu-raster": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": false,
+        "cpuRaster": true,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "disabled_software",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": false,
+          "submitMs": 46.5,
+          "afterSubmitRafMs": 51.8999999910593,
+          "stepSubmitMs": 67.79999999701977,
+          "simMs": 542.3999999910593,
+          "richMs": 525.5,
+          "maxLongTaskMs": 120,
+          "trustedJumpDispatchToMotionMs": 265.59999999403954
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": false,
+          "submitMs": 28.600000008940697,
+          "afterSubmitRafMs": 46.70000000298023,
+          "stepSubmitMs": 61.5,
+          "simMs": 226.1000000089407,
+          "richMs": 278.70000000298023,
+          "postPromotionMs": 603.7000000029802,
+          "maxLongTaskMs": 58,
+          "trustedJumpDispatchToMotionMs": 20.80000001192093
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 589.382,
+        "wallMs": 2834.963,
+        "threadCpuMs": 0.325
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": 705.44,
+        "wallMs": 381.765,
+        "threadCpuMs": 60.845
+      }
+    },
+    "cpu-canvas": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": true,
+        "cpuRaster": false,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "disabled_software",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 66.5,
+          "afterSubmitRafMs": 89.29999999701977,
+          "stepSubmitMs": 117.59999999403954,
+          "simMs": 1676.2999999970198,
+          "richMs": 1888.7000000029802,
+          "maxLongTaskMs": 0,
+          "trustedJumpDispatchToMotionMs": 4.800000011920929
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 63,
+          "afterSubmitRafMs": 86.1000000089407,
+          "stepSubmitMs": 127.90000000596046,
+          "simMs": 285.70000000298023,
+          "richMs": 382.90000000596046,
+          "postPromotionMs": 747.7000000029802,
+          "maxLongTaskMs": 156,
+          "trustedJumpDispatchToMotionMs": 42.20000000298023
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 165.703,
+        "wallMs": 1479.615,
+        "threadCpuMs": 1.731
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": -467.953,
+        "wallMs": 211.227,
+        "threadCpuMs": 23.042
+      }
+    },
+    "cpu-compositor": {
+      "flags": {
+        "cpuCompositor": true,
+        "cpuCanvas": false,
+        "cpuRaster": false,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "disabled_software",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled_readback",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 79.59999999403954,
+          "afterSubmitRafMs": 99.59999999403954,
+          "stepSubmitMs": 139.70000000298023,
+          "simMs": 286.59999999403954,
+          "richMs": 416.09999999403954,
+          "maxLongTaskMs": 155,
+          "trustedJumpDispatchToMotionMs": 7.700000002980232
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 55.3999999910593,
+          "afterSubmitRafMs": 101.69999998807907,
+          "stepSubmitMs": 136,
+          "simMs": 260.8999999910593,
+          "richMs": 318.29999999701977,
+          "postPromotionMs": 782.5,
+          "maxLongTaskMs": 82,
+          "trustedJumpDispatchToMotionMs": 7.899999991059303
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 488.064,
+        "wallMs": 0.25,
+        "threadCpuMs": 0.037
+      },
+      "endRasterFlush": null
+    },
+    "split-processes": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": false,
+        "cpuRaster": false,
+        "splitProcesses": true
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 51.8999999910593,
+          "afterSubmitRafMs": 69.8999999910593,
+          "stepSubmitMs": 107.59999999403954,
+          "simMs": 2670.5999999940395,
+          "richMs": 2839.0999999940395,
+          "maxLongTaskMs": 189,
+          "trustedJumpDispatchToMotionMs": 148.19999998807907
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 531.6999999880791,
+          "afterSubmitRafMs": 544.2999999970198,
+          "stepSubmitMs": 583.3999999910593,
+          "simMs": 726.3999999910593,
+          "richMs": 785.8999999910593,
+          "postPromotionMs": 1200.5,
+          "maxLongTaskMs": 61,
+          "trustedJumpDispatchToMotionMs": 46.20000000298023
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 338.643,
+        "wallMs": 2329.743,
+        "threadCpuMs": 1.716
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": 3087.527,
+        "wallMs": 485.866,
+        "threadCpuMs": 59.213
+      }
+    }
+  },
+  "gates": {
+    "unit": {
+      "tests": 205,
+      "pass": 205,
+      "fail": 0,
+      "failures": []
+    },
+    "full": {
+      "tests": 594,
+      "pass": 589,
+      "fail": 5,
+      "failures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ],
+      "sameFailuresAsHandoff": true
+    },
+    "glslES300Links": 17
+  },
+  "productionBrowserChecks": {
+    "title": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "title": {
+        "horizon": 510.7481481481482,
+        "horizonJump": 0.37522603978305114,
+        "horizonRows": 8,
+        "maxRowJump": 2.0488245931285576,
+        "maxRowJumpY": 461,
+        "bottom": 13,
+        "opaque": 1,
+        "worldWorker": false
+      },
+      "css": [
+        1106,
+        722
+      ],
+      "committed": {
+        "left": 21.311111111111096,
+        "right": 20.36111111111111,
+        "delta": 0.9499999999999851
+      },
+      "neighborMissing": {
+        "left": 39.01111111111108,
+        "right": 37.250000000000014,
+        "delta": 1.761111111111063
+      },
+      "poses": [
+        {
+          "head": {
+            "x": 550.6082988598884,
+            "y": 188.00566884484664
+          },
+          "sole": {
+            "x": 553,
+            "y": 370.71056343218174
+          },
+          "position": [
+            1150,
+            -132.34375,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "scale": 0.9492962962962962,
+            "railY": 175.00085295342373,
+            "footingY": 655.7266366571274,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        },
+        {
+          "head": {
+            "x": 553.7496968323027,
+            "y": 135.64159690220126
+          },
+          "sole": {
+            "x": 553,
+            "y": 318.33214253462813
+          },
+          "position": [
+            1150,
+            -238.68749999999994,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "scale": 0.9492962962962962,
+            "railY": 180.46324204733958,
+            "footingY": 661.1890257510432,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        }
+      ],
+      "sword": [
+        "nodachi",
+        "FIELD NODACHI"
+      ],
+      "variants": [
+        {
+          "seed": 40,
+          "moonVis": 0.915388286113739,
+          "moonTransmission": 0.9783014199685353,
+          "centerTransmission": 0.979607807725583,
+          "phaseEnergy": 0.935691460725115,
+          "moonVariant": "Porcelain full",
+          "moonTint": [
+            0.9100000006705522,
+            0.9661999997720122,
+            1.0401999987661839
+          ],
+          "moonCss": [
+            365.68274712862376,
+            90.90163567125126
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.5804831086334925,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 70.756,
+          "parallax": 0
+        },
+        {
+          "seed": 41,
+          "moonVis": 0.3033084273338318,
+          "moonTransmission": 0.913950780734436,
+          "centerTransmission": 0.8630176464798128,
+          "phaseEnergy": 0.3318651616807191,
+          "moonVariant": "Copper half",
+          "moonTint": [
+            1.0999999964237213,
+            0.9965999993532896,
+            0.7856000065803528
+          ],
+          "moonCss": [
+            367.4326596344378,
+            84.25385256051436
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.4234164327284604,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 62.09199999999999,
+          "parallax": 0
+        },
+        {
+          "seed": 42,
+          "moonVis": 0.39308446645736694,
+          "moonTransmission": 0.5984642702182605,
+          "centerTransmission": 0.6010283570617396,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            353.790217008668,
+            77.00618137688912
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.34254357946069935,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 57.76,
+          "parallax": 0
+        },
+        {
+          "seed": 43,
+          "moonVis": 0.18742336332798004,
+          "moonTransmission": 0.9282198115318772,
+          "centerTransmission": 0.9571571288817573,
+          "phaseEnergy": 0.20191700768196671,
+          "moonVariant": "Ash crescent",
+          "moonTint": [
+            0.9799999991059303,
+            0.9773999998383224,
+            0.9464000016450882
+          ],
+          "moonCss": [
+            348.36698910596834,
+            93.84035166463514
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.19844715056528306,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 50.540000000000006,
+          "parallax": 0
+        }
+      ],
+      "ownsProps": 0,
+      "assets": [
+        "/bridge/props-v2.webp",
+        "/bridge/l1.webp",
+        "/bridge/l2.webp",
+        "/bridge/metro-street.webp",
+        "/bridge/sky-basis-v3.rgba.br"
+      ],
+      "teardown": 0
+    },
+    "embed": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "flags": [
+        "--held-frame"
+      ],
+      "initial": {
+        "engine": true,
+        "phase": "attract",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": true,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 23 ms\nMenu: 398 ms from navigation\nEngine import: 230 ms including script evaluation\nEngage enabled: 594 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible",
+        "marks": [
+          [
+            "sr:engine-request",
+            320.79999999701977
+          ],
+          [
+            "sr:menu",
+            397.59999999403954
+          ],
+          [
+            "sr:engine-module",
+            551.2000000029802
+          ],
+          [
+            "sr:ready",
+            593.9000000059605
+          ]
+        ]
+      },
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 23 ms\nMenu: 398 ms from navigation\nEngine import: 230 ms including script evaluation\nEngage enabled: 594 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible\nEngage \u2192 playing: 130 ms\nEngage \u2192 first scene submitted: 129 ms\nEngage \u2192 first simulation frame submitted: 232 ms",
+        "marks": [
+          [
+            "sr:engine-request",
+            320.79999999701977
+          ],
+          [
+            "sr:menu",
+            397.59999999403954
+          ],
+          [
+            "sr:engine-module",
+            551.2000000029802
+          ],
+          [
+            "sr:ready",
+            593.9000000059605
+          ],
+          [
+            "sr:engage",
+            638
+          ],
+          [
+            "sr:run-submit",
+            767.0999999940395
+          ],
+          [
+            "sr:playing",
+            767.7999999970198
+          ],
+          [
+            "sr:first-step",
+            870.0999999940395
+          ]
+        ]
+      },
+      "timing": {
+        "readyAt": 623.5999999940395,
+        "resources": [
+          {
+            "path": "/_next/static/media/GeistMono_Variable.p.2vtemngyy8z-u.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/media/Geist_Variable-s.p.43azbxi7zpibd.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2vu3ab_2np7iw.css",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/369hzmzm1ocz-.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0q5pxrraqwba9.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/turbopack-2u1d16houkiyo.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1on60-l6dgfqc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3qfy96eoyh-ek.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3802m8uy2z_ug.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2hd98qteq0owm.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/05daxkyuestxh.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2mkhdbdd4himb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/007e_u0jlo9ka.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0at06mlkeimt2.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/37ka78eya4m-4.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1nw3ca_0megbb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2cw8e42t9znhb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/397o4hcr18fhg.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          }
+        ],
+        "clickAt": 634.2000000029802,
+        "playAt": 768.7000000029802
+      },
+      "errors": [],
+      "failed": []
+    },
+    "canvas-recovery": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": true,
+      "glTest": false,
+      "rows": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 1,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 457.32363075182815,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 459.60071505503157,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 466.41583476783956,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 467.91111111111115,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 115,
+            "roadTones": 104,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 0,
+            "bodies": [
+              [
+                214,
+                297,
+                162
+              ],
+              [
+                201,
+                211,
+                227
+              ]
+            ]
+          }
+        },
+        {
+          "label": "full-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 82,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 46425,
+            "warning": 113
+          }
+        },
+        {
+          "label": "hud-unavailable-inline",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 114,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 118
+          }
+        },
+        {
+          "label": "hud-restored",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 82,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 46425,
+            "warning": 113
+          }
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 118,
+            "bodies": [
+              [
+                214,
+                297,
+                162
+              ],
+              [
+                299,
+                259,
+                197
+              ],
+              [
+                256,
+                228,
+                213
+              ]
+            ]
+          }
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": true,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 361.1047876616682,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 359.0967188520968,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 374.99465197416805,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 470.4114911753303,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 467.07966505323765,
+                  "y": 332.09364730045655
+                },
+                {
+                  "x": 470.51728978101255,
+                  "y": 391.06508536503213
+                }
+              ],
+              "tell": {
+                "x": 459.29479610522407,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 262.70938396205014,
+                  "y": 315.31201781750883
+                },
+                {
+                  "x": 260.1980333522277,
+                  "y": 327.67236102625515
+                },
+                {
+                  "x": 254.056863733462,
+                  "y": 390.52067746180217
+                }
+              ],
+              "tell": {
+                "x": 251.13619473851702,
+                "y": 270.4182737111604
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.9814814814815
+          ],
+          "image": {
+            "hpInk": 0,
+            "skyTones": 44,
+            "roadTones": 104,
+            "hole": 1,
+            "black": 397,
+            "roadPx": 52806,
+            "warning": 37
+          }
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 10,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 361.1047876616682,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 359.0967188520968,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 374.99465197416805,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 470.4114911753303,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 467.07966505323765,
+                  "y": 332.09364730045655
+                },
+                {
+                  "x": 470.51728978101255,
+                  "y": 391.06508536503213
+                }
+              ],
+              "tell": {
+                "x": 459.29479610522407,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 262.70938396205014,
+                  "y": 315.31201781750883
+                },
+                {
+                  "x": 260.1980333522277,
+                  "y": 327.67236102625515
+                },
+                {
+                  "x": 254.056863733462,
+                  "y": 390.52067746180217
+                }
+              ],
+              "tell": {
+                "x": 251.13619473851702,
+                "y": 270.4182737111604
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.9814814814815
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 115,
+            "roadTones": 107,
+            "hole": 2,
+            "black": 471,
+            "roadPx": 52806,
+            "warning": 146
+          }
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 948,
+          "height": 572,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            948,
+            572
+          ],
+          "hero": [
+            {
+              "x": 327.72243129453466,
+              "y": 276.8629959452354
+            },
+            {
+              "x": 326.41348559381674,
+              "y": 292.18168789790764
+            },
+            {
+              "x": 341.2792548695182,
+              "y": 366.60950060978416
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 463.8104907624924,
+                  "y": 303.9898361147589
+                },
+                {
+                  "x": 466.1198741338264,
+                  "y": 315.9978711879411
+                },
+                {
+                  "x": 473.03166221135507,
+                  "y": 377.0625074020469
+                }
+              ],
+              "tell": {
+                "x": 474.5481481481482,
+                "y": 261.37434068821096
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            370.74074074074076,
+            445.94814814814816
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 114,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 434,
+            "roadPx": 49780,
+            "warning": 0,
+            "bodies": [
+              [
+                216,
+                295,
+                160
+              ],
+              [
+                295,
+                238,
+                233
+              ]
+            ]
+          }
+        }
+      ],
+      "cancelled": {
+        "frame": {
+          "id": 14,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 92,
+          "threats": 2
+        },
+        "held": false,
+        "pending": false
+      },
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    },
+    "gl-recovery": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": false,
+      "glTest": true,
+      "rows": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 377.8595956211913,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 379.7410163397956,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 385.3719485847752,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 386.6074074074074,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 840,
+            "skyTones": 121,
+            "roadTones": 95,
+            "hole": 0,
+            "black": 264,
+            "roadPx": 30690,
+            "warning": 0
+          }
+        },
+        {
+          "label": "master",
+          "frame": {
+            "id": 43,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "master-webgl2",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 123,
+            "roadTones": 86,
+            "hole": 2,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 93,
+            "bodies": [
+              [
+                179,
+                270,
+                128
+              ],
+              [
+                188,
+                113,
+                117
+              ],
+              [
+                197,
+                129,
+                91
+              ]
+            ]
+          }
+        },
+        {
+          "label": "context-lost-canvas",
+          "frame": {
+            "id": 46,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 122,
+            "roadTones": 101,
+            "hole": 0,
+            "black": 264,
+            "roadPx": 30690,
+            "warning": 86,
+            "bodies": [
+              [
+                180,
+                273,
+                146
+              ],
+              [
+                190,
+                199,
+                164
+              ],
+              [
+                227,
+                207,
+                175
+              ]
+            ]
+          }
+        },
+        {
+          "label": "context-restored",
+          "frame": {
+            "id": 69,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "master-webgl2",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 125,
+            "roadTones": 87,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 90
+          }
+        },
+        {
+          "label": "optimized",
+          "frame": {
+            "id": 85,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-webgl2",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 124,
+            "roadTones": 84,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 90
+          }
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 86,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 122,
+            "roadTones": 101,
+            "hole": 0,
+            "black": 264,
+            "roadPx": 30690,
+            "warning": 86,
+            "bodies": [
+              [
+                180,
+                273,
+                146
+              ],
+              [
+                190,
+                199,
+                164
+              ],
+              [
+                227,
+                207,
+                175
+              ]
+            ]
+          }
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 88,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": true,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 376.49546735606447,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 374.48739854649307,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 390.38533166856433,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 485.8021708697265,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 482.4703447476339,
+                  "y": 332.0936473004565
+                },
+                {
+                  "x": 485.9079694754088,
+                  "y": 391.0650853650321
+                }
+              ],
+              "tell": {
+                "x": 474.6854757996203,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 278.2138681576306,
+                  "y": 315.3403138572378
+                },
+                {
+                  "x": 275.6949169556654,
+                  "y": 327.6991103587413
+                },
+                {
+                  "x": 269.4715564660221,
+                  "y": 390.5445638040486
+                }
+              ],
+              "tell": {
+                "x": 266.61143194142744,
+                "y": 270.42885873330965
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 0,
+            "skyTones": 37,
+            "roadTones": 105,
+            "hole": 1,
+            "black": 374,
+            "roadPx": 52806,
+            "warning": 34
+          }
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 89,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 376.49546735606447,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 374.48739854649307,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 390.38533166856433,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 485.8021708697265,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 482.4703447476339,
+                  "y": 332.0936473004565
+                },
+                {
+                  "x": 485.9079694754088,
+                  "y": 391.0650853650321
+                }
+              ],
+              "tell": {
+                "x": 474.6854757996203,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 278.2138681576306,
+                  "y": 315.3403138572378
+                },
+                {
+                  "x": 275.6949169556654,
+                  "y": 327.6991103587413
+                },
+                {
+                  "x": 269.4715564660221,
+                  "y": 390.5445638040486
+                }
+              ],
+              "tell": {
+                "x": 266.61143194142744,
+                "y": 270.42885873330965
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 115,
+            "roadTones": 107,
+            "hole": 1,
+            "black": 466,
+            "roadPx": 52806,
+            "warning": 148
+          }
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 94,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 43,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 338.03537493667034,
+              "y": 285.5754678456099
+            },
+            {
+              "x": 336.6852386369788,
+              "y": 301.3762165380516
+            },
+            {
+              "x": 352.01881184093656,
+              "y": 378.14616321638573
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 507.9059257864869,
+                  "y": 313.5559498386499
+                },
+                {
+                  "x": 510.2879820611146,
+                  "y": 325.94186014140774
+                },
+                {
+                  "x": 517.4172739592648,
+                  "y": 388.9281107818316
+                }
+              ],
+              "tell": {
+                "x": 518.9814814814815,
+                "y": 269.5994073532246
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 114,
+            "roadTones": 100,
+            "hole": 0,
+            "black": 457,
+            "roadPx": 52806,
+            "warning": 0,
+            "bodies": [
+              [
+                220,
+                296,
+                166
+              ],
+              [
+                219,
+                215,
+                234
+              ]
+            ]
+          }
+        }
+      ],
+      "cancelled": null,
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    },
+    "canvas-atmosphere": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "loads": [
+        200
+      ],
+      "path": "mobile-canvas",
+      "view": [
+        400,
+        844
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.5198264122009277,
+          "moonTransmission": 0.7914266898845431,
+          "centerTransmission": 0.7802938896074857,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.23594310879707336,
+          "moonTransmission": 0.35921928783462875,
+          "centerTransmission": 0.3479907240253879,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.23594310879707336,
+          "moonTransmission": 0.35921928783462875,
+          "centerTransmission": 0.3479907240253879,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.47984930872917175,
+          "moonTransmission": 0.7305622287045034,
+          "centerTransmission": 0.8107327784187969,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.6764254278879599,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979098661549,
+        "centerTransmission": 0.9823129280512414,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          124.36,
+          116.6475241777747
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 558.8,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 172.14814814814815,
+        "bottom": 182.07407407407408
+      },
+      "partial": {
+        "moonVis": 0.33394578099250793,
+        "moonTransmission": 0.5084266628496267,
+        "centerTransmission": 0.8447584631192339,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          124.36,
+          116.6475241777747
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 558.8,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 31.296296296296298,
+        "bottom": 182.07407407407408
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.0010299907996759576,
+        "centerTransmission": 0.0010296920725521885,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          124.36,
+          116.6475241777747
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "lightningFalloff": 0.8361204013377925,
+        "skyHeight": 558.8,
+        "moonDiameterCss": 58.88,
+        "parallax": 0,
+        "top": 31.296296296296298,
+        "bottom": 32.25925925925926
+      },
+      "fog": {
+        "dryCount": 10074,
+        "dryMax": 0,
+        "skyChanged": 18551
+      },
+      "driver": null,
+      "submits": [],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "variants": [],
+      "teardown": 0
+    },
+    "denied-atmosphere": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "loads": [
+        404
+      ],
+      "denied": true,
+      "high": 62500,
+      "phase": 0.6568219364872221,
+      "moonVis": 0.274297833442688,
+      "moonTransmission": 0.41761367201966854,
+      "centerTransmission": 0.3887584484263088,
+      "phaseEnergy": 0.6568219364872221,
+      "moonVariant": "Silver gibbous",
+      "moonTint": [
+        0.94,
+        0.971,
+        1
+      ],
+      "moonCss": [
+        124.36,
+        136.0475241777748
+      ],
+      "flash": 0,
+      "lightningEpicenter": 0.3129465079307556,
+      "lightningFalloff": 0.8361204013377925,
+      "skyHeight": 578.2,
+      "moonDiameterCss": 58.88,
+      "parallax": 0,
+      "path": "mobile-canvas",
+      "states": {
+        "clear": {
+          "moonVis": 0.274297833442688,
+          "moonTransmission": 0.41761367201966854,
+          "centerTransmission": 0.3887584484263088,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            124.36,
+            136.0475241777748
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3129465079307556,
+          "lightningFalloff": 0.8361204013377925,
+          "skyHeight": 578.2,
+          "moonDiameterCss": 58.88,
+          "parallax": 0
+        }
+      },
+      "teardown": 0
+    },
+    "master-atmosphere": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "loads": [
+        200
+      ],
+      "path": "master-webgl2",
+      "view": [
+        820,
+        520
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.5776220560073853,
+          "moonTransmission": 0.8794195770257094,
+          "centerTransmission": 0.893103744763953,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.23150022327899933,
+          "moonTransmission": 0.3524550628919316,
+          "centerTransmission": 0.3212165434503983,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.23150022327899933,
+          "moonTransmission": 0.3524550628919316,
+          "centerTransmission": 0.3212165434503983,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.5610419511795044,
+          "moonTransmission": 0.8541766306279941,
+          "centerTransmission": 0.922249188370696,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.6440072454297336,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979082939217,
+        "centerTransmission": 0.9823129264629965,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 176.92592592592592,
+        "bottom": 187.5185185185185
+      },
+      "partial": {
+        "moonVis": 0.3339453637599945,
+        "moonTransmission": 0.5084260413662367,
+        "centerTransmission": 0.8447567245752796,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 187.5185185185185
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.0010299907980278922,
+        "centerTransmission": 0.001029692070887339,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 28.77777777777778
+      },
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 16196
+      },
+      "driver": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "rgbError": 2.7060508728027344e-05,
+        "alphaError": 0.00011331144401538484,
+        "brightestMist": 0.689453125,
+        "fluxError": 0.0009605799649754221,
+        "returnError": 0,
+        "glError": 0
+      },
+      "submits": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "variants": [
+        {
+          "seed": 40,
+          "name": "Porcelain full",
+          "energy": 0.935691460725115,
+          "max": 5.958974361419678e-05,
+          "glError": 0
+        },
+        {
+          "seed": 41,
+          "name": "Copper half",
+          "energy": 0.3318651616807191,
+          "max": 6.085634231567383e-05,
+          "glError": 0
+        },
+        {
+          "seed": 42,
+          "name": "Silver gibbous",
+          "energy": 0.6568219364872221,
+          "max": 0.00010862946510314941,
+          "glError": 0
+        },
+        {
+          "seed": 43,
+          "name": "Ash crescent",
+          "energy": 0.20191700768196671,
+          "max": 5.8203935623168945e-05,
+          "glError": 0
+        }
+      ],
+      "teardown": 0
+    },
+    "weather": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "canvas": true,
+      "path": "mobile-canvas",
+      "dry": {
+        "rain": 0,
+        "rainStrokes": 0,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0
+      },
+      "shower": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 71,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0
+      },
+      "quiet": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 11,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0,
+        "ventPaints": 0
+      },
+      "changed": 41,
+      "peak": 73,
+      "tick": 796,
+      "paused": 796,
+      "errors": 0
+    }
+  },
+  "servedPreview": {
+    "port": 3000,
+    "build": "hLSldMb6IE68_ReAWHBIU",
+    "sameRootAndAssets": true,
+    "embed": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "flags": [
+        "--held-frame"
+      ],
+      "initial": {
+        "engine": true,
+        "phase": "attract",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": true,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 11 ms\nMenu: 221 ms from navigation\nEngine import: 137 ms including script evaluation\nEngage enabled: 358 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible",
+        "marks": [
+          [
+            "sr:engine-request",
+            210.5
+          ],
+          [
+            "sr:menu",
+            221.09999999403954
+          ],
+          [
+            "sr:engine-module",
+            347.09999999403954
+          ],
+          [
+            "sr:ready",
+            357.5
+          ]
+        ]
+      },
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 11 ms\nMenu: 221 ms from navigation\nEngine import: 137 ms including script evaluation\nEngage enabled: 358 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible\nEngage \u2192 playing: 45 ms\nEngage \u2192 first scene submitted: 44 ms\nEngage \u2192 first simulation frame submitted: 95 ms",
+        "marks": [
+          [
+            "sr:engine-request",
+            210.5
+          ],
+          [
+            "sr:menu",
+            221.09999999403954
+          ],
+          [
+            "sr:engine-module",
+            347.09999999403954
+          ],
+          [
+            "sr:ready",
+            357.5
+          ],
+          [
+            "sr:engage",
+            377.5
+          ],
+          [
+            "sr:run-submit",
+            421.5
+          ],
+          [
+            "sr:playing",
+            422
+          ],
+          [
+            "sr:first-step",
+            472.5
+          ]
+        ]
+      },
+      "timing": {
+        "readyAt": 371.5,
+        "resources": [
+          {
+            "path": "/_next/static/media/GeistMono_Variable.p.2vtemngyy8z-u.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/media/Geist_Variable-s.p.43azbxi7zpibd.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2vu3ab_2np7iw.css",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/369hzmzm1ocz-.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0q5pxrraqwba9.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1on60-l6dgfqc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/turbopack-2u1d16houkiyo.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3qfy96eoyh-ek.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2hd98qteq0owm.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3802m8uy2z_ug.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/05daxkyuestxh.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2mkhdbdd4himb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/007e_u0jlo9ka.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0at06mlkeimt2.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/37ka78eya4m-4.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1nw3ca_0megbb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2cw8e42t9znhb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/397o4hcr18fhg.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          }
+        ],
+        "clickAt": 376.70000000298023,
+        "playAt": 422.20000000298023
+      },
+      "errors": [],
+      "failed": []
+    },
+    "desktop": {
+      "ENGAGE": {
+        "seed": 42,
+        "active": true,
+        "paintedTitle": true,
+        "submitMs": 40,
+        "afterSubmitRafMs": 49.70000000298023,
+        "stepSubmitMs": 76,
+        "simMs": 229.90000000596046,
+        "richMs": 296.20000000298023,
+        "postPromotionMs": 626.2999999970198,
+        "maxLongTaskMs": 0,
+        "richMovement": 43.482495562245504,
+        "trustedJumpDispatchToMotionMs": 11.700000002980232
+      },
+      "RETRY": {
+        "seed": 43,
+        "active": true,
+        "paintedTitle": true,
+        "submitMs": 21.19999998807907,
+        "afterSubmitRafMs": 34.19999998807907,
+        "stepSubmitMs": 53,
+        "simMs": 217.69999998807907,
+        "richMs": 279.59999999403954,
+        "postPromotionMs": 582.5,
+        "maxLongTaskMs": 92,
+        "richMovement": 8.975635228960243,
+        "trustedJumpDispatchToMotionMs": 26.19999998807907
+      }
+    },
+    "touch": {
+      "ENGAGE": {
+        "seed": 42,
+        "active": true,
+        "paintedTitle": true,
+        "submitMs": 58.20000000298023,
+        "afterSubmitRafMs": 70.70000000298023,
+        "stepSubmitMs": 109.59999999403954,
+        "simMs": 245,
+        "richMs": 348.20000000298023,
+        "postPromotionMs": 689.0999999940395,
+        "maxLongTaskMs": 0,
+        "richMovement": 12.968114086491,
+        "trustedJumpDispatchToMotionMs": 10.400000005960464
+      },
+      "RETRY": {
+        "seed": 43,
+        "active": true,
+        "paintedTitle": true,
+        "submitMs": 32.80000001192093,
+        "afterSubmitRafMs": 49,
+        "stepSubmitMs": 64.30000001192093,
+        "simMs": 229.5,
+        "richMs": 274.6000000089407,
+        "postPromotionMs": 575.1000000089407,
+        "maxLongTaskMs": 81,
+        "richMovement": 46.35786646151382,
+        "trustedJumpDispatchToMotionMs": 11.5
+      }
+    },
+    "defaultCompositorTrace": {
+      "flags": {
+        "cpuCompositor": false,
+        "cpuCanvas": false,
+        "cpuRaster": false,
+        "splitProcesses": false
+      },
+      "gpu": {
+        "devices": [
+          {
+            "vendorId": 65535,
+            "deviceId": 65535,
+            "vendorString": "Google Inc. (Google)",
+            "deviceString": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver-5.0.0)",
+            "driverVendor": "SwANGLE",
+            "driverVersion": "5.0.0"
+          }
+        ],
+        "featureStatus": {
+          "2d_canvas": "enabled",
+          "direct_rendering_display_compositor": "disabled_off_ok",
+          "gpu_compositing": "enabled",
+          "multiple_raster_threads": "disabled_off",
+          "opengl": "enabled_on",
+          "rasterization": "enabled",
+          "raw_draw": "disabled_off_ok",
+          "skia_graphite": "disabled_off",
+          "trees_in_viz": "disabled_off",
+          "video_decode": "disabled_software",
+          "video_encode": "disabled_software",
+          "vulkan": "disabled_off",
+          "webgl": "enabled",
+          "webgpu": "unavailable_software",
+          "webgpu_on_vk_via_gl_interop": "disabled_off",
+          "webnn": "disabled_off"
+        }
+      },
+      "timings": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 61.1000000089407,
+          "afterSubmitRafMs": 67.70000000298023,
+          "stepSubmitMs": 91.70000000298023,
+          "simMs": 3453.6000000089407,
+          "richMs": 3437,
+          "postPromotionMs": 4813.4000000059605,
+          "maxLongTaskMs": 139,
+          "richMovement": 18.971693410930186,
+          "trustedJumpDispatchToMotionMs": 24.69999998807907
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 60.70000000298023,
+          "afterSubmitRafMs": 76.20000000298023,
+          "stepSubmitMs": 93.59999999403954,
+          "simMs": 257.79999999701977,
+          "richMs": 298.59999999403954,
+          "postPromotionMs": 602.2000000029802,
+          "maxLongTaskMs": 0,
+          "richMovement": 34.54094540478667,
+          "trustedJumpDispatchToMotionMs": 24.5
+        }
+      },
+      "widgetShutdown": {
+        "name": "LayerTreeHost::~LayerTreeHost",
+        "fromEngageMs": 352.212,
+        "wallMs": 2948.378,
+        "threadCpuMs": 0.374
+      },
+      "endRasterFlush": {
+        "name": "RasterDecoderImpl::DoEndRasterCHROMIUM::Flush",
+        "fromEngageMs": 3827.282,
+        "wallMs": 807.521,
+        "threadCpuMs": 84.368
+      }
+    }
+  }
+}

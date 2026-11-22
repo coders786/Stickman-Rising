@@ -18,7 +18,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { CanvasLedger, SurfaceGen, bytesFor, hasPixels, type Surface } from '../src/game/render/ledger'
+import { CanvasLedger, SurfaceGen, SurfaceScope, bytesFor, hasPixels, type Surface } from '../src/game/render/ledger'
 
 interface Stub extends Surface {
   /** Set when the store is released, so a test can prove the bytes were freed. */
@@ -144,4 +144,78 @@ test('ledger: bytes are page-rounded, so small plates cannot pretend to be free'
   assert.equal(bytesFor(32, 32), 4096)
   assert.equal(bytesFor(64, 64), 16384)
   assert.equal(bytesFor(2048, 210), Math.ceil((2048 * 210 * 4) / 4096) * 4096)
+})
+
+test('ledger: a growing hit enforces the rounded delta without evicting itself', () => {
+  const l = new CanvasLedger(stubFactory(), { maxBytes: 3 * 4096 })
+  const target = l.acquire('target', 32, 32)
+  const old = l.acquire('old', 32, 32)
+  l.acquire('pin', 32, 32, 'bake', true)
+  assert.equal(l.acquire('target', 33, 32), target) // 4096 -> 8192 bytes
+  assert.equal(target.width, 33)
+  assert.equal(old.width, 0)
+  assert.equal(l.stats().bytes, 3 * 4096)
+  assert.equal(l.stats().resized, 1)
+  l.acquire('target', 33, 32)
+  assert.equal(l.stats().resized, 1, 'no-op hit reallocates')
+})
+
+test('ledger: new claims enforce rounding and account for necessary pinned overflow', () => {
+  const l = new CanvasLedger(stubFactory(), { maxBytes: 3 * 4096 })
+  l.acquire('tile', 33, 32, 'bake', true)
+  const old = l.acquire('work', 32, 32)
+  // Both required claims have a raw total below 12 KiB but use 16 KiB rounded.
+  l.acquire('next', 33, 32, 'bake', true)
+  assert.equal(old.width, 0)
+  assert.equal(l.stats().pinnedBytes, 4 * 4096)
+  assert.equal(l.stats().overBytes, 4096)
+  assert.equal(l.stats().peakBytes, 4 * 4096)
+  l.release('tile')
+  assert.equal(l.stats().overBytes, 0)
+  assert.equal(l.stats().peakBytes, 4 * 4096)
+})
+
+test('ledger: a generation or stable slot can be disposed independently of another owner', () => {
+  const ledger = new CanvasLedger(stubFactory())
+  const a = new SurfaceScope('sky', ledger), b = new SurfaceScope('sky', ledger)
+  const gen = a.generation('bake')
+  const discarded = gen.next(20, 20).c
+  const kept = [a.acquire('mask', 30, 30, 'mask'), b.acquire('mask', 25, 25, 'mask'), b.generation('bake').next(30, 30).c]
+  gen.begin()
+  assert.equal(discarded.width, 0)
+  assert.ok(kept.every(hasPixels))
+  a.releaseAll()
+  a.releaseAll() // idempotent
+  assert.equal(kept[0].width, 0)
+  assert.ok(kept.slice(1).every(hasPixels))
+  b.releaseAll()
+  assert.equal(ledger.stats().bytes, 0)
+})
+
+test('ledger: reacquiring a cleared backing at the same requested size restores it without double counting', () => {
+  const ledger = new CanvasLedger(stubFactory())
+  const scope = new SurfaceScope('viewport', ledger)
+  const plate = scope.acquire('mask', 64, 32, 'mask')
+  plate.width = 0
+  assert.equal(scope.acquire('mask', 64, 32, 'mask'), plate)
+  assert.equal(plate.width, 64)
+  assert.equal(ledger.stats().bytes, bytesFor(64, 32))
+  assert.equal(ledger.stats().resized, 1)
+})
+
+test('optional claims can decline without resizing a live mask or evicting another owner', () => {
+  const ledger = new CanvasLedger(stubFactory(), { maxSurfaces: 2, maxBytes: 3 * 4096 })
+  const owner = new SurfaceScope('optics', ledger)
+  const required = ledger.acquire('required', 32, 32, 'city', true)
+  const mask = owner.tryAcquire('mask', 64, 32, 'post')
+  assert.ok(mask)
+  assert.equal(owner.tryAcquire('extra', 32, 32, 'post'), null)
+  assert.equal(owner.tryAcquire('mask', 96, 32, 'post'), null)
+  assert.equal(ledger.stats().optionalDeclined, 2)
+  assert.ok(hasPixels(required) && hasPixels(mask))
+  assert.equal(mask.width, 64)
+  assert.equal(ledger.stats().evicted, 0)
+  assert.equal(owner.tryAcquire('mask', 32, 32, 'post'), mask, 'shrink reuses the same backing entry')
+  owner.release('mask')
+  assert.ok(owner.tryAcquire('extra', 32, 32, 'post'))
 })

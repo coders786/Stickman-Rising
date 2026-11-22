@@ -20,8 +20,8 @@ Tests: **397/402** (5 known fails, all filed). Every profile axis now has a name
 renderer consumer and `tests/profile-consumption.test.ts` fails if one loses it
 (O-08 closed). Run identity is visible in-play and on the results card (O-09), and
 the contact shadow is projected away from the moon (O-10). Ultra is no longer
-"high with bigger dials": `render/post.ts` gives it bloom and god rays, `keyTop`
-and `depthHaze` add the key-from-above and the mid-ground air, `combat/horde.ts`
+"high with bigger dials": `render/post.ts` gives it bloom and god rays and `keyTop`
+adds the key-from-above on High and Ultra. The bridge's [mid-ground air](../lighting/road-and-sign-stability.md#the-warm-bridge-is-base-lighting) stays on every tier. `combat/horde.ts`
 schedules the horde's AI by proximity, and every culled body is counted. See
 `22-BUG-BOUNTY.md` §0–§4 for the verification stack and the re-test protocol.
 

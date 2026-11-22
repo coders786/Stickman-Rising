@@ -39,7 +39,7 @@ export const NO_GPU: GPUCapabilities = {
   available: false, vendor: '', renderer: '', maxTexture: 0, reason: 'no webgl2',
 }
 
-const VERT = `#version 300 es
+export const SKY_BAKE_VERT = `#version 300 es
 precision highp float;
 void main() {
   // Fullscreen triangle from gl_VertexID: no buffers, no attributes, no VAO.
@@ -53,6 +53,46 @@ export interface BakeResult {
   source: 'gpu'
 }
 
+type Uniforms = ReadonlyArray<readonly [string, number]>
+interface BakeStatus { error?: string; caps?: GPUCapabilities }
+
+// Idle between tests of the fence, not between synchronous readPixels calls.
+// A context which never signals must still have a Canvas2D fallback.
+function waitForReadback(gl: WebGL2RenderingContext, fence: WebGLSync, signal: AbortSignal, deadline: number): Promise<boolean> {
+  return new Promise(resolve => {
+    let timer: ReturnType<typeof setTimeout>
+    const finish = (ready: boolean) => {
+      clearTimeout(timer)
+      signal.removeEventListener('abort', cancel)
+      resolve(ready)
+    }
+    const cancel = () => finish(false)
+    const poll = (): void => {
+      if (performance.now() >= deadline) { finish(false); return }
+      const status = gl.clientWaitSync(fence, 0, 0)
+      if (status === gl.ALREADY_SIGNALED || status === gl.CONDITION_SATISFIED) finish(performance.now() < deadline)
+      else if (status === gl.TIMEOUT_EXPIRED) schedule()
+      else finish(false)
+    }
+    const schedule = () => {
+      timer = setTimeout(poll, Math.max(0, Math.min(16, deadline - performance.now())))
+    }
+    if (signal.aborted) { resolve(false); return }
+    signal.addEventListener('abort', cancel, { once: true })
+    schedule()
+  })
+}
+
+/** The owner supplies the persistent 2D target; GL scratch stays here. */
+export type BakeTarget = (width: number, height: number) => HTMLCanvasElement
+
+export function makeBakeTarget(width: number, height: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  return canvas
+}
+
 /** A one-shot WebGL2 bake session. Construct, bake, `dispose()`. */
 export class BakeContext {
   readonly caps: GPUCapabilities
@@ -61,7 +101,7 @@ export class BakeContext {
   private lost = false
   private readonly onLost = (): void => { this.lost = true; this.gl = null }
 
-  constructor() {
+  constructor(interactive = false) {
     if (typeof document === 'undefined') {
       this.caps = { ...NO_GPU, reason: 'no document' }
       return
@@ -75,6 +115,7 @@ export class BakeContext {
         alpha: false, depth: false, stencil: false, antialias: false,
         premultipliedAlpha: false, preserveDrawingBuffer: false,
         powerPreference: 'high-performance', desynchronized: true,
+        failIfMajorPerformanceCaveat: interactive,
       }) as WebGL2RenderingContext | null
     } catch {
       gl = null
@@ -92,6 +133,14 @@ export class BakeContext {
     const dbg = gl.getExtension('WEBGL_debug_renderer_info')
     const vendor = dbg ? String(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) ?? '') : ''
     const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) ?? '') : String(gl.getParameter(gl.RENDERER) ?? '')
+    // Chromium can grant a SwiftShader context despite the caveat flag. Don't
+    // dispatch a large software shader while the player is waiting. Unknown
+    // renderers have the same short deadline, not an assumed device tier.
+    if (interactive && /swiftshader|llvmpipe|softpipe|software rasterizer|microsoft basic render/i.test(renderer)) {
+      this.caps = { ...NO_GPU, renderer: renderer.slice(0, 96), reason: 'software WebGL' }
+      this.dispose()
+      return
+    }
     this.caps = {
       available: true,
       vendor: vendor.slice(0, 96),
@@ -121,12 +170,12 @@ export class BakeContext {
       }
       return sh
     }
-    const vs = mk(gl.VERTEX_SHADER, VERT, 'vertex')
+    const vs = mk(gl.VERTEX_SHADER, SKY_BAKE_VERT, 'vertex')
     if (!vs) return null
     const fs = mk(gl.FRAGMENT_SHADER, frag, 'fragment')
     if (!fs) { gl.deleteShader(vs); return null }
     const prog = gl.createProgram()
-    if (!prog) { error.msg = 'createProgram failed'; return null }
+    if (!prog) { gl.deleteShader(vs); gl.deleteShader(fs); error.msg = 'createProgram failed'; return null }
     gl.attachShader(prog, vs)
     gl.attachShader(prog, fs)
     gl.linkProgram(prog)
@@ -140,17 +189,8 @@ export class BakeContext {
     return prog
   }
 
-  /** Bake `frag` at w×h and return it as a canvas. `uniforms` is a flat list of
-   *  [name, number] pairs; every uniform is a float, which is all the sky
-   *  shaders need. Returns null on any failure with a reason in `out`. */
-  bake(
-    w: number,
-    h: number,
-    frag: string,
-    uniforms: ReadonlyArray<readonly [string, number]>,
-    out: { error?: string } = {},
-  ): BakeResult | null {
-    const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+  /** Both readback paths submit the same shader into the same format. */
+  private draw(w: number, h: number, frag: string, uniforms: Uniforms, out: BakeStatus, deadline = Infinity) {
     const gl = this.gl
     if (!gl || this.lost) { out.error = 'context lost'; return null }
     const maxT = this.caps.maxTexture || 4096
@@ -161,6 +201,9 @@ export class BakeContext {
     if (!prog) { out.error = err.msg; return null }
 
     const tex = gl.createTexture()
+    const fbo = gl.createFramebuffer()
+    const release = () => { gl.deleteFramebuffer(fbo); gl.deleteTexture(tex); gl.deleteProgram(prog) }
+    if (!tex || !fbo) { out.error = 'no framebuffer backing'; release(); return null }
     gl.bindTexture(gl.TEXTURE_2D, tex)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
@@ -168,12 +211,11 @@ export class BakeContext {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-    const fbo = gl.createFramebuffer()
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
       out.error = 'framebuffer incomplete'
-      gl.deleteFramebuffer(fbo); gl.deleteTexture(tex); gl.deleteProgram(prog)
+      release()
       return null
     }
 
@@ -187,17 +229,69 @@ export class BakeContext {
     if (res) gl.uniform2f(res, W, H)
     gl.disable(gl.BLEND)
     gl.disable(gl.DEPTH_TEST)
+    if (performance.now() >= deadline) {
+      out.error = 'sky bake budget exceeded'
+      release()
+      return null
+    }
     gl.drawArrays(gl.TRIANGLES, 0, 3)
+    return { gl, W, H, release }
+  }
 
-    const px = new Uint8Array(W * H * 4)
-    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px)
+  /** Synchronous compatibility path for standalone captures and replays. */
+  bake(w: number, h: number, frag: string, uniforms: Uniforms, out: BakeStatus = {}, target: BakeTarget = makeBakeTarget): BakeResult | null {
+    const t0 = performance.now()
+    const frame = this.draw(w, h, frag, uniforms, out)
+    if (!frame) return null
+    const { gl, W, H, release } = frame
+    try {
+      const px = new Uint8Array(W * H * 4)
+      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px)
+      return this.finish(gl, W, H, px, t0, out, target)
+    } finally {
+      release()
+    }
+  }
+
+  /** Queue a pixel-pack copy and yield while the shader/raster work completes.
+   * Never replace a failed fence with the blocking read on the UI path. */
+  async bakeDeferred(w: number, h: number, frag: string, uniforms: Uniforms, signal: AbortSignal, out: BakeStatus, target: BakeTarget, deadline = performance.now() + 15_000): Promise<BakeResult | null> {
+    if (signal.aborted) return null
+    const t0 = performance.now()
+    if (t0 >= deadline) { out.error = 'sky bake budget exceeded'; return null }
+    const frame = this.draw(w, h, frag, uniforms, out, deadline)
+    if (!frame) return null
+    const { gl, W, H, release } = frame
+    let buffer: WebGLBuffer | null = null, fence: WebGLSync | null = null
+    try {
+      if (performance.now() >= deadline) { out.error = 'sky bake budget exceeded'; return null }
+      buffer = gl.createBuffer()
+      if (!buffer) { out.error = 'no pixel-pack buffer'; return null }
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buffer)
+      gl.bufferData(gl.PIXEL_PACK_BUFFER, W * H * 4, gl.STREAM_READ)
+      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, 0)
+      fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
+      gl.flush()
+      if (!fence || !await waitForReadback(gl, fence, signal, deadline) || signal.aborted || !this.ok) {
+        out.error = signal.aborted ? 'cancelled' : performance.now() >= deadline
+          ? 'sky bake budget exceeded' : 'GPU readback did not complete'
+        return null
+      }
+      const px = new Uint8Array(W * H * 4)
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px)
+      return this.finish(gl, W, H, px, t0, out, target)
+    } finally {
+      gl.deleteSync(fence)
+      gl.deleteBuffer(buffer)
+      release()
+    }
+  }
+
+  private finish(gl: WebGL2RenderingContext, W: number, H: number, px: Uint8Array, t0: number, out: BakeStatus, target: BakeTarget): BakeResult | null {
     const glErr = gl.getError()
-    gl.deleteFramebuffer(fbo)
-    gl.deleteTexture(tex)
-    gl.deleteProgram(prog)
     if (glErr !== gl.NO_ERROR) { out.error = `gl error 0x${glErr.toString(16)}`; return null }
 
-    // readPixels is bottom-up; ImageData is top-down. Flip once, in place.
+    // readPixels is bottom-up; ImageData is top-down.
     const flipped = new Uint8ClampedArray(W * H * 4)
     const stride = W * 4
     for (let y = 0; y < H; y++) {
@@ -205,14 +299,11 @@ export class BakeContext {
       flipped.set(px.subarray(src, src + stride), y * stride)
     }
     const img = new ImageData(flipped, W, H)
-    const outCanvas = document.createElement('canvas')
-    outCanvas.width = W
-    outCanvas.height = H
+    const outCanvas = target(W, H)
     const g2 = outCanvas.getContext('2d')
     if (!g2) { out.error = 'no 2d for readback'; return null }
     g2.putImageData(img, 0, 0)
-    const ms = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0
-    return { canvas: outCanvas, ms, source: 'gpu' }
+    return { canvas: outCanvas, ms: performance.now() - t0, source: 'gpu' }
   }
 
   dispose(): void {
@@ -234,14 +325,30 @@ export function bakeOnce(
   w: number,
   h: number,
   frag: string,
-  uniforms: ReadonlyArray<readonly [string, number]>,
-  out: { error?: string; caps?: GPUCapabilities } = {},
+  uniforms: Uniforms,
+  out: BakeStatus = {},
+  target?: BakeTarget,
 ): BakeResult | null {
   const ctx = new BakeContext()
   out.caps = ctx.caps
-  if (!ctx.ok) { out.error = ctx.caps.reason; return null }
   try {
-    return ctx.bake(w, h, frag, uniforms, out)
+    if (!ctx.ok) { out.error = ctx.caps.reason; return null }
+    return ctx.bake(w, h, frag, uniforms, out, target)
+  } finally {
+    ctx.dispose()
+  }
+}
+
+/** A shared deadline opts into the interactive policy. It bounds polling,
+ * not the duration of a browser/driver API call already on the stack. */
+export async function bakeOnceDeferred(w: number, h: number, frag: string, uniforms: Uniforms, signal: AbortSignal, out: BakeStatus, target: BakeTarget, deadline?: number): Promise<BakeResult | null> {
+  if (signal.aborted) return null
+  if (deadline !== undefined && performance.now() >= deadline) { out.error = 'sky bake budget exceeded'; return null }
+  const ctx = new BakeContext(deadline !== undefined)
+  out.caps = ctx.caps
+  try {
+    if (!ctx.ok) { out.error = ctx.caps.reason; return null }
+    return await ctx.bakeDeferred(w, h, frag, uniforms, signal, out, target, deadline)
   } finally {
     ctx.dispose()
   }

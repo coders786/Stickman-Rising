@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createCanvas } from '@napi-rs/canvas'
-import { DesktopCadence, QualityLadder } from '../src/game/render/quality'
-import { volumeBrush } from '../src/game/lighting/volume'
+import { disposeVolumeBrushes, volumeBrush } from '../src/game/lighting/volume'
+import { gameLedger } from '../src/game/render/ledger'
 
 const withCanvas = (fn: () => void) => {
   const old = Object.getOwnPropertyDescriptor(globalThis, 'document')
@@ -17,23 +17,6 @@ const withCanvas = (fn: () => void) => {
     else Reflect.deleteProperty(globalThis, 'document')
   }
 }
-test('a sixty-Hz display never chases 120; sustained short intervals earn the faster budget', () => {
-  const c = new DesktopCadence()
-  for (let i = 0; i < 180; i++)
-    assert.equal(c.observe(i % 7 ? 16.67 : 8.33), 60)
-  for (let i = 0; i < 30; i++) c.observe(8.33)
-  assert.equal(c.target, 120)
-  for (let i = 0; i < 800; i++) c.observe(16.67)
-  assert.equal(c.target, 60)
-  const high = new QualityLadder('ultra', { windowSec: 0.2 }),
-    normal = new QualityLadder('ultra', { windowSec: 0.2 })
-  for (let i = 0; i < 18; i++) {
-    high.frame(13, 0.013, 120)
-    normal.frame(13, 0.013)
-  }
-  assert.equal(high.current, 'high')
-  assert.equal(normal.current, 'ultra')
-})
 test('helmet normal tile moves its highlight with light direction, leaving the paint mask unchanged', () =>
   withCanvas(() => {
     const c = createCanvas(64, 64),
@@ -63,4 +46,32 @@ test('helmet normal tile moves its highlight with light direction, leaving the p
       px = (32 * 64 + 46) * 4
     assert.ok(right[px] > left[px] + 20)
     assert.equal(right[3], 0)
+    disposeVolumeBrushes(ctx)
+  }))
+
+
+test('normal brush staging is released with its output context, not another owner', () =>
+  withCanvas(() => {
+    const a = createCanvas(64, 64).getContext('2d') as unknown as CanvasRenderingContext2D
+    const b = createCanvas(64, 64).getContext('2d') as unknown as CanvasRenderingContext2D
+    const staging = () => gameLedger.list().filter(e => e.tag === 'lighting')
+    const brush = (ctx: CanvasRenderingContext2D) => volumeBrush(ctx, '#707070',
+      { volume: true, r: 1, g: 1, b: 1, dx: 1, dy: 0.38, keyX: 0, keyGain: 0 },
+      1, 32, 32, 22, 22, 0, false, '#707070')
+    try {
+      assert.notEqual(brush(a), '#707070')
+      const plateA = staging()[0]?.key
+      assert.ok(plateA)
+      const patternB = brush(b)
+      assert.notEqual(patternB, '#707070')
+      assert.equal(staging().length, 2)
+      disposeVolumeBrushes(a)
+      assert.equal(staging().length, 1)
+      assert.notEqual(staging()[0].key, plateA)
+      assert.equal(brush(b), patternB, 'remaining owner still uses its original pattern')
+    } finally {
+      disposeVolumeBrushes(a)
+      disposeVolumeBrushes(b)
+    }
+    assert.equal(staging().length, 0)
   }))

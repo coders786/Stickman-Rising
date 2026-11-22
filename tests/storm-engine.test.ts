@@ -71,3 +71,24 @@ test('sharp rain changes travel without adding drops or rescheduling lightning',
  assert.equal(sharp.snapshot.visibleDrops,stock.snapshot.visibleDrops)
  assert.ok(sharp.snapshot.impacts>stock.snapshot.impacts)
 })
+
+test('zero-alpha weather builds no paths, without stopping the front or thunder', () => {
+ const dry = new StormEngine('ultra'), wet = new StormEngine('ultra')
+ dry.setRainScale(0)
+ dry.setSharpRain(true);wet.setSharpRain(true)
+ const g = createCanvas(800,500).getContext('2d')
+ const ctx = g as unknown as CanvasRenderingContext2D
+ const noPath = g.beginPath.bind(g)
+ let paths=0
+ g.beginPath=()=>{paths++;noPath()}
+ for(let i=0;i<180;i++){
+  dry.update(1/60);wet.update(1/60)
+  dry.drawRain(ctx,{x:1400,y:-110,color:'255,160,90',gain:1})
+  dry.drawSplashes(ctx,800,1800,()=>.8)
+ }
+ assert.equal(paths,0)
+ assert.deepEqual(dry.snapshot,wet.snapshot,'dry rendering changed simulation or thunder')
+ dry.setRainScale(.06)
+ dry.drawRain(ctx)
+ assert.ok(paths>0,'real drizzle did not resume painting')
+})

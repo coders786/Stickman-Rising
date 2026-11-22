@@ -14,9 +14,8 @@
  *
  * So each band keeps an ANIMATION LIST: a handful of tiny records (a window cell,
  * a sign tube, an antenna beacon, a vent) emitted at bake time from the same
- * rectangles, and drawn on top of the band each frame as a few fills. Ten
- * records per band, one to three fills each, all culled to the view: the city
- * gets a pulse for the cost of a HUD element.
+ * rectangles, and drawn on top of the band as a few fills. Each tier picks a
+ * fixed set per tile; visibility culls copies, not which fixtures animate.
  *
  * DETERMINISM, AND WHY THIS FILE IS STATELESS. Records are chosen by hashing
  * (band, tile x, run seed) rather than by consuming the bake's RNG. Two reasons:
@@ -29,9 +28,9 @@
 export type Band = 'deep' | 'far' | 'mid' | 'near'
 
 export type AnimKind =
-  /** One window cell switching on and off — the cheapest "someone is home". */
+  /** One warm window gradually changing intensity. */
   | 'flicker'
-  /** A sign's three cells lighting in sequence (chase). */
+  /** A highlight travels across three continuously lit sign cells. */
   | 'chase'
   /** Red obstruction light on an antenna, pulsing. */
   | 'beacon'
@@ -41,9 +40,9 @@ export type AnimKind =
   | 'laundry'
   /** A satellite dish tracking something slowly. */
   | 'dish'
-  /** A TV behind a window: blue, fast, quantised. */
+  /** A cool window with a gently varying TV glow. */
   | 'tv'
-  /** A neon tube stuttering — the failing sign. */
+  /** A neon tube with subtle ballast variation, never turned off. */
   | 'buzz'
   /** A bare bulb breathing on a wire. */
   | 'bulb'
@@ -60,7 +59,7 @@ export interface BuildingAnim {
   h: number
   /** 0–1, offsets the animation so neighbours never sync. */
   phase: number
-  /** Kind-specific rate (Hz for flicker/beacon, px/s for steam). */
+  /** Kind-specific rate (Hz for emitters, px/s for steam). */
   rate: number
 }
 
@@ -108,9 +107,9 @@ export function animsForBuilding(
   if (which < 0.22) {
     out.push({ kind: 'flicker', band, tx: tx + w * (0.15 + 0.7 * h01(tx | 0, bandN + 3, seed)), ty: ty + h * (0.2 + 0.5 * h01(tx | 0, bandN + 4, seed)), w: band === 'near' ? 3 : 2, h: band === 'near' ? 4 : 3, phase: h01(tx | 0, bandN + 5, seed), rate: 0.28 + 0.5 * h01(tx | 0, bandN + 6, seed) })
   } else if (which < 0.36) {
-    out.push({ kind: 'tv', band, tx: tx + w * (0.2 + 0.6 * h01(tx | 0, bandN + 7, seed)), ty: ty + h * (0.25 + 0.4 * h01(tx | 0, bandN + 8, seed)), w: 2, h: 3, phase: h01(tx | 0, bandN + 9, seed), rate: 3.4 + 4 * h01(tx | 0, bandN + 10, seed) })
+    out.push({ kind: 'tv', band, tx: tx + w * (0.2 + 0.6 * h01(tx | 0, bandN + 7, seed)), ty: ty + h * (0.25 + 0.4 * h01(tx | 0, bandN + 8, seed)), w: 2, h: 3, phase: h01(tx | 0, bandN + 9, seed), rate: 0.55 + 0.6 * h01(tx | 0, bandN + 10, seed) })
   } else if (which < 0.5 && (band === 'mid' || band === 'near')) {
-    out.push({ kind: 'buzz', band, tx: tx + w * 0.2, ty: roofY - 4 - 10 * h01(tx | 0, bandN + 11, seed), w: Math.min(26, w * 0.5), h: 3, phase: h01(tx | 0, bandN + 12, seed), rate: 6 + 9 * h01(tx | 0, bandN + 13, seed) })
+    out.push({ kind: 'buzz', band, tx: tx + w * 0.2, ty: roofY - 4 - 10 * h01(tx | 0, bandN + 11, seed), w: Math.min(26, w * 0.5), h: 3, phase: h01(tx | 0, bandN + 12, seed), rate: 0.6 + 0.65 * h01(tx | 0, bandN + 13, seed) })
   } else if (which < 0.62 && band !== 'deep') {
     out.push({ kind: 'beacon', band, tx: tx + w * (0.25 + 0.5 * h01(tx | 0, bandN + 14, seed)), ty: roofY - 6 - 12 * h01(tx | 0, bandN + 15, seed), w: 2, h: 2, phase: h01(tx | 0, bandN + 16, seed), rate: 0.5 + 0.35 * h01(tx | 0, bandN + 17, seed) })
   } else if (which < 0.74 && band !== 'deep') {
@@ -126,21 +125,17 @@ export function animsForBuilding(
   // SECOND record so a building can have a window and a sign without doubling
   // the density everywhere.
   if (which < 0.36 && band === 'mid' && w > 60) {
-    out.push({ kind: 'chase', band, tx: tx + w * 0.18, ty: roofY - 16, w: Math.min(24, w * 0.42), h: 4, phase: h01(tx | 0, bandN + 40, seed), rate: 1.6 + 2.4 * h01(tx | 0, bandN + 41, seed) })
+    out.push({ kind: 'chase', band, tx: tx + w * 0.18, ty: roofY - 16, w: Math.min(24, w * 0.42), h: 4, phase: h01(tx | 0, bandN + 40, seed), rate: 0.42 + 0.48 * h01(tx | 0, bandN + 41, seed) })
   }
 }
 
-/** wrap a tile-local x into the viewport copies of the scrolled band. Returns
- *  the LEFT-most visible copy's screen x, or NaN when the cell is off-screen. */
-function screenXs(tx: number, m: number, tileW: number, viewL: number, viewR: number, out: [number, number, number]): number {
-  const sx = ((tx - m) % tileW + tileW) % tileW
-  let n = 0
-  for (let k = -1; k <= 1; k++) {
-    const x = sx + k * tileW
-    if (x >= viewL - 40 && x <= viewR + 40) out[n++] = x
-  }
-  return n
+/** Rank once per bake, so small budgets are spread across the district instead
+ *  of taking only its left end. Higher tiers add to the same fixed set. */
+export function orderBuildingAnims(anims: BuildingAnim[], seed: number): void {
+  anims.sort((a, b) => h01(a.tx, a.ty, seed) - h01(b.tx, b.ty, seed))
 }
+
+const TAU = 2 * Math.PI
 
 /** Draw one band's animations. `bandTopY` is the screen y of the band tile's top
  *  row (the same value `drawCityBand` computed), `t` the ambient clock.
@@ -156,62 +151,60 @@ export function drawBuildingAnims(
   viewR: number,
   budget: number,
 ): number {
-  if (budget <= 0 || anims.length === 0) return 0
-  const xs: [number, number, number] = [NaN, NaN, NaN]
+  const count = Math.min(budget, anims.length)
+  if (count <= 0 || tileW <= 0) return 0
   let drawn = 0
-  let comp: GlobalCompositeOperation = 'source-over'
   ctx.save()
-  for (let i = 0; i < anims.length && drawn < budget; i++) {
+  for (let i = 0; i < count; i++) {
     const a = anims[i]
-    const n = screenXs(a.tx, m, tileW, viewL, viewR, xs)
-    if (n === 0) continue
+    // Cull only copies whose whole footprint misses the view. Steam, dishes
+    // and bulbs can extend to the left of the record's anchor.
+    const margin = a.kind === 'dish' ? a.w + 1 : a.kind === 'steam' || a.kind === 'bulb' ? 12 : 1
+    const sx = a.tx - m, left = viewL - a.w - margin, right = viewR + margin
+    const firstX = sx + Math.ceil((left - sx) / tileW) * tileW
+    if (firstX >= right) continue
     const y = bandTopY + a.ty
-    for (let k = 0; k < n && drawn < budget; k++) {
-      const x = xs[k]
+    const phase = TAU * (t * a.rate + a.phase)
+    // Don't inherit additive blending from a previous vent or bulb. Its
+    // visibility may change without any change to this sign's own light.
+    ctx.globalCompositeOperation = a.kind === 'steam' || a.kind === 'bulb' ? 'lighter' : 'source-over'
+    for (let x = firstX; x < right; x += tileW) {
       switch (a.kind) {
         case 'flicker': {
-          // Stepped, not smooth: a light switch has two states.
-          const on = h01((t * a.rate + a.phase) | 0, i, 7) < 0.62
-          if (!on) break
-          ctx.globalAlpha = 0.55
+          ctx.globalAlpha = 0.33 + 0.12 * Math.sin(phase)
           ctx.fillStyle = `rgb(${C_WARM})`
           ctx.fillRect(x, y, a.w, a.h)
           break
         }
         case 'tv': {
-          const b = 0.35 + 0.45 * h01((t * a.rate) | 0, i, 11)
-          ctx.globalAlpha = b
+          ctx.globalAlpha = 0.54 + 0.09 * Math.sin(phase)
           ctx.fillStyle = `rgb(${C_TV})`
           ctx.fillRect(x, y, a.w, a.h)
           break
         }
         case 'chase': {
-          const lit = ((t * a.rate + a.phase * 3) | 0) % 3
           const cw = a.w / 3
-          ctx.globalAlpha = 0.5
           ctx.fillStyle = `rgb(${C_NEON})`
           for (let c = 0; c < 3; c++) {
-            if (c === lit) ctx.fillRect(x + c * cw, y, cw - 1, a.h)
+            ctx.globalAlpha = 0.34 + 0.12 * Math.cos(phase - c * TAU / 3)
+            ctx.fillRect(x + c * cw, y, cw - 1, a.h)
           }
           break
         }
         case 'buzz': {
-          // A failing tube: mostly on, with hard drop-outs.
-          const live = h01((t * a.rate + a.phase * 10) | 0, i, 13) > 0.18
-          ctx.globalAlpha = live ? 0.6 : 0.12
+          ctx.globalAlpha = 0.46 + 0.08 * Math.sin(phase)
           ctx.fillStyle = `rgb(${C_NEON})`
           ctx.fillRect(x, y, a.w, a.h)
           break
         }
         case 'beacon': {
-          const p = Math.max(0, Math.sin(t * a.rate * 6.283 + a.phase * 6.283))
+          const p = Math.max(0, Math.sin(phase))
           ctx.globalAlpha = 0.15 + 0.75 * p * p * p
           ctx.fillStyle = `rgb(${C_BEACON})`
           ctx.fillRect(x, y, a.w, a.h)
           break
         }
         case 'steam': {
-          if (comp !== 'lighter') { ctx.globalCompositeOperation = 'lighter'; comp = 'lighter' }
           ctx.fillStyle = `rgb(${C_STEAM})`
           for (let p = 0; p < 3; p++) {
             // Each puff is on its own trip up the same column.
@@ -254,8 +247,7 @@ export function drawBuildingAnims(
           break
         }
         case 'bulb': {
-          if (comp !== 'lighter') { ctx.globalCompositeOperation = 'lighter'; comp = 'lighter' }
-          const b = 0.5 + 0.5 * Math.sin(t * a.rate + a.phase * 6.283)
+          const b = 0.5 + 0.5 * Math.sin(t * a.rate + a.phase * TAU)
           ctx.globalAlpha = 0.18 + 0.22 * b
           ctx.fillStyle = `rgb(${C_WARM})`
           ctx.beginPath()
@@ -267,8 +259,6 @@ export function drawBuildingAnims(
       drawn++
     }
   }
-  ctx.globalCompositeOperation = 'source-over'
-  ctx.globalAlpha = 1
   ctx.restore()
   return drawn
 }

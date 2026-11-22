@@ -1,3 +1,7 @@
+import { BRIDGE_LIGHT, type BridgeFrame } from '../render/bridge-frame'
+import { addRibbonSample, newRibbon, paintRibbonRows, RIBBON_LIFETIME, ribbonFade, sampleRibbon, trimRibbon, type Trail, type RibbonSegment } from './ribbon'
+import { bridgeTrailTint, type BridgePost } from '../render/bridge-post'
+export type { Trail } from './ribbon'
 /** STICKMAN RISING — the FX engine.
  *
  * Everything spectacular lives here: slash-trail ribbons that follow the real
@@ -8,12 +12,12 @@
 
 import { makePose, Pose } from '../anim/pose'
 import { PLAYER_SPEC, PLAYER_STYLE } from '../anim/skeleton'
-import { makeFighterGeom, solveFighter3D, drawFighter3D } from '../anim/rig3d'
+import { makeFighterGeom, solveFighter3D, drawFighter3D, type FighterGeom } from '../anim/rig3d'
 import { rgba, rand, clamp01, TAU } from '../core/utils'
 import type { QualityLevel } from '../core/types'
 import { LightningSystem, RayOpts, RayWorld } from './lightning'
 import { getParticleLevel } from './particles1d'
-import { gameLedger } from '../render/ledger'
+import { SurfaceScope, hasPixels } from '../render/ledger'
 
 /* ------------------------------------------------------------------ */
 
@@ -34,23 +38,11 @@ interface Particle {
 
 type PType = 'spark' | 'dot' | 'ember' | 'smoke' | 'streak' | 'arc' | 'shard' | 'rock'
 
-export interface Trail {
-  active: boolean
-  pts: Float32Array // ring buffer: [bx,by,tx,ty] * N
-  head: number
-  count: number
-  N: number
-  age: number
-  life: number
-  color: string
-  color2: string
-  width: number
-  emitting: boolean
-}
-
 interface Afterimage {
   active: boolean
   pose: Pose
+  geom: FighterGeom | null
+  needsSolve: boolean
   x: number; y: number
   face: number
   age: number; life: number
@@ -82,6 +74,63 @@ interface Ring {
   axis: number
   /** The local light's colour on the wide pass ('': use `color`). See Flash.lit. */
   litColor?: string
+}
+
+export const BRIDGE_SPARK_LIMIT = 256, BRIDGE_SHOCKWAVE_LIMIT = 8
+/** Only the mixed-type metadata lives in JS; all per-step scalars occupy
+ * fixed packed slots. The views are constructed once, never in a fight. */
+class SparkSlot implements Particle {
+  active = false
+  pts = null
+  color = '#fff'
+  type: PType = 'spark'
+  constructor(private readonly data: Float32Array, private readonly offset: number) {}
+  get x() { return this.data[this.offset + 0] }
+  set x(v: number) { this.data[this.offset + 0] = v }
+  get y() { return this.data[this.offset + 1] }
+  set y(v: number) { this.data[this.offset + 1] = v }
+  get vx() { return this.data[this.offset + 2] }
+  set vx(v: number) { this.data[this.offset + 2] = v }
+  get vy() { return this.data[this.offset + 3] }
+  set vy(v: number) { this.data[this.offset + 3] = v }
+  get age() { return this.data[this.offset + 4] }
+  set age(v: number) { this.data[this.offset + 4] = v }
+  get life() { return this.data[this.offset + 5] }
+  set life(v: number) { this.data[this.offset + 5] = v }
+  get size() { return this.data[this.offset + 6] }
+  set size(v: number) { this.data[this.offset + 6] = v }
+  get grav() { return this.data[this.offset + 7] }
+  set grav(v: number) { this.data[this.offset + 7] = v }
+  get drag() { return this.data[this.offset + 8] }
+  set drag(v: number) { this.data[this.offset + 8] = v }
+  get rot() { return this.data[this.offset + 9] }
+  set rot(v: number) { this.data[this.offset + 9] = v }
+  get vrot() { return this.data[this.offset + 10] }
+  set vrot(v: number) { this.data[this.offset + 10] = v }
+}
+class WaveSlot implements Ring {
+  active = false
+  color = '#fff'
+  litColor = ''
+  constructor(private readonly data: Float64Array, private readonly offset: number) {}
+  get x() { return this.data[this.offset + 0] }
+  set x(v: number) { this.data[this.offset + 0] = v }
+  get y() { return this.data[this.offset + 1] }
+  set y(v: number) { this.data[this.offset + 1] = v }
+  get r0() { return this.data[this.offset + 2] }
+  set r0(v: number) { this.data[this.offset + 2] = v }
+  get r1() { return this.data[this.offset + 3] }
+  set r1(v: number) { this.data[this.offset + 3] = v }
+  get age() { return this.data[this.offset + 4] }
+  set age(v: number) { this.data[this.offset + 4] = v }
+  get life() { return this.data[this.offset + 5] }
+  set life(v: number) { this.data[this.offset + 5] = v }
+  get width() { return this.data[this.offset + 6] }
+  set width(v: number) { this.data[this.offset + 6] = v }
+  get squash() { return this.data[this.offset + 7] }
+  set squash(v: number) { this.data[this.offset + 7] = v }
+  get axis() { return this.data[this.offset + 8] }
+  set axis(v: number) { this.data[this.offset + 8] = v }
 }
 
 interface Crack {
@@ -152,6 +201,7 @@ interface MotionLine {
   len: number
   age: number; life: number
   color: string
+  tint: number
 }
 
 /** GROUND SHADOW SMEAR — the dark streak a dash leaves on the floor:
@@ -167,9 +217,14 @@ interface ShadowSmear {
 /* ------------------------------------------------------------------ */
 
 const MAX_PARTICLES = 1500
-const TRAIL_N = 26
-const echoGeom = makeFighterGeom()
-const aiPose = makePose()
+function echoGeometry(a: Afterimage): FighterGeom {
+  const geom = a.geom ??= makeFighterGeom()
+  if (a.needsSolve) {
+    solveFighter3D(a.pose, PLAYER_SPEC, geom, PLAYER_SPEC.blade)
+    a.needsSolve = false
+  }
+  return geom
+}
 
 /* ------------------------------------------------------------------ *
  * FLASH GLOW SPRITE CACHE (graphics + GC optimization).
@@ -185,25 +240,7 @@ const aiPose = makePose()
  *  the roof comes out the same amber and the blade's own colour is never seen. */
 const LIT_TAKEOVER = 0.35
 const FLASH_GLOW_MAX = 32
-const flashGlowCache = new Map<string, HTMLCanvasElement>()
-
-function flashGlowSprite(color: string, hot = true): HTMLCanvasElement | null {
-  if (typeof document === 'undefined') return null
-  const key = hot ? color : `${color}|cool`
-  const hit = flashGlowCache.get(key)
-  if (hit) return hit
-  if (flashGlowCache.size >= FLASH_GLOW_MAX) {
-    const oldest = flashGlowCache.keys().next().value
-    if (oldest !== undefined) {
-      // The ledger owns the store: releasing it zeroes the canvas and drops it
-      // from the resident-bytes total in one call (no manual shrink).
-      gameLedger.release(`fx:flash:${oldest}`)
-      flashGlowCache.delete(oldest)
-    }
-  }
-  const c = gameLedger.acquire(`fx:flash:${key}`, 64, 64, 'fx', true) as unknown as HTMLCanvasElement
-  const g = c.getContext('2d')
-  if (!g) return null
+function paintFlashGlow(g: CanvasRenderingContext2D, color: string, hot: boolean): void {
   const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
   /* A HOT sprite has a white core; a COOL one is pure colour. The lobe of a hit
    * must be the COLOUR OF THE LIGHT IT HAPPENS IN — if every lobe carried its own
@@ -214,13 +251,47 @@ function flashGlowSprite(color: string, hot = true): HTMLCanvasElement | null {
   grad.addColorStop(1, rgba(color, 0))
   g.fillStyle = grad
   g.fillRect(0, 0, 64, 64)
-  flashGlowCache.set(key, c)
-  return c
 }
 
 export class FX {
+  private readonly flashSurfaces = new SurfaceScope('fx')
+  private readonly flashGlowCache = new Map<string, HTMLCanvasElement>()
+
+  private flashGlowSprite(color: string, hot = true): HTMLCanvasElement | null {
+    if (typeof document === 'undefined') return null
+    const key = hot ? color : `${color}|cool`
+    const cache = this.flashGlowCache
+    const hit = cache.get(key)
+    if (hasPixels(hit)) return hit
+    if (!hit && cache.size >= FLASH_GLOW_MAX) {
+      const oldest = cache.keys().next().value
+      if (oldest !== undefined) {
+        this.flashSurfaces.release(oldest)
+        cache.delete(oldest)
+      }
+    }
+    const c = this.flashSurfaces.acquire(key, 64, 64, 'fx')
+    const g = c.getContext('2d')
+    if (!g) { this.flashSurfaces.release(key); cache.delete(key); return null }
+    paintFlashGlow(g, color, hot)
+    cache.set(key, c)
+    return c
+  }
+
+  dispose(): void {
+    this.flashSurfaces.releaseAll()
+    this.flashGlowCache.clear()
+    this.clear()
+  }
+
   private particles: Particle[] = []
   private pFree: Particle[] = []
+  private readonly sparkData = new Float32Array(BRIDGE_SPARK_LIMIT * 11)
+  private readonly sparkFree = Array.from({ length: BRIDGE_SPARK_LIMIT }, (_, i) => new SparkSlot(this.sparkData, i * 11))
+  private recycleParticle(p: Particle) {
+    if (p instanceof SparkSlot) this.sparkFree.push(p)
+    else this.pFree.push(p)
+  }
   /** THE RAY-TRACED LIGHTNING ENGINE (fx/lightning.ts) — bolts that
    *  reflect off enemies/ground with real mirror laws, lose energy per
    *  bounce, restrike their jag and render as halo/mid/core channels. */
@@ -229,8 +300,9 @@ export class FX {
   private tFree: Trail[] = []
   private afterimages: Afterimage[] = []
   private aFree: Afterimage[] = []
-  private rings: Ring[] = []
-  private rFree: Ring[] = []
+  private rings: WaveSlot[] = []
+  private readonly waveData = new Float64Array(BRIDGE_SHOCKWAVE_LIMIT * 9)
+  private readonly rFree = Array.from({ length: BRIDGE_SHOCKWAVE_LIMIT }, (_, i) => new WaveSlot(this.waveData, i * 9))
   private cracks: Crack[] = []
   private cFree: Crack[] = []
   private texts: DmgText[] = []
@@ -290,7 +362,7 @@ export class FX {
     // POOL LAW: every live entry returns to its free list exactly once;
     // the live arrays empty completely (no stranded corpses — clear() used
     // to deactivate in place, permanently leaking the slot AND the object)
-    for (const p of this.particles) { p.active = false; this.pFree.push(p) }
+    for (const p of this.particles) { p.active = false; this.recycleParticle(p) }
     this.particles.length = 0
     for (const t of this.trails) { t.active = false; this.tFree.push(t) }
     this.trails.length = 0
@@ -320,13 +392,18 @@ export class FX {
 
   /* ---------------- particles ---------------- */
 
-  private nextParticle(): Particle | null {
+  private nextParticle(spark = false): Particle | null {
     // particle toggle (user-facing): OFF rejects every spawn at the gate,
     // so the pools never even grow while particles are disabled
-    if (getParticleLevel() === 0) return null
+    if (getParticleLevel() === 0 || this.particles.length >= MAX_PARTICLES) return null
+    if (spark) {
+      const s = this.sparkFree.pop()
+      if (!s) return null
+      s.active = true; this.particles.push(s)
+      return s
+    }
     let p = this.pFree.pop()
     if (!p) {
-      if (this.particles.length >= MAX_PARTICLES) return null
       p = {
         active: false, x: 0, y: 0, vx: 0, vy: 0, age: 0, life: 1,
         size: 2, color: '#fff', type: 'dot', grav: 0, drag: 0,
@@ -350,7 +427,7 @@ export class FX {
   sparks(x: number, y: number, dir: number, spread: number, count: number, color: string, speed = 320, life = 0.4): void {
     const n = this.scaleCount(count)
     for (let i = 0; i < n; i++) {
-      const p = this.nextParticle()
+      const p = this.nextParticle(true)
       if (!p) return
       const a = dir + rand(-spread, spread)
       const sp = speed * rand(0.45, 1.25)
@@ -373,7 +450,7 @@ export class FX {
     if (getParticleLevel() === 1 && (type === 'smoke' || type === 'shard' || type === 'ember')) return
     const n = this.scaleCount(count)
     for (let i = 0; i < n; i++) {
-      const p = this.nextParticle()
+      const p = this.nextParticle(type === 'spark')
       if (!p) return
       const a = rand(TAU)
       const sp = speed * rand(0.3, 1.2)
@@ -488,6 +565,22 @@ export class FX {
    * thunder sword charges — grip → monouchi, restriking at ~15Hz */
   lightningCrawl(bx: number, by: number, tx: number, ty: number, color: string): void {
     this.lightning.crawl(bx, by, tx, ty, color)
+  }
+
+  /** Read-only packet: emit from confirmed hit cores and live lightning
+   * geometry, not from the luminance of a rendered pixel. */
+  bridgeEmitters(frame: BridgeFrame): void {
+    for (let i = this.flashes.length - 1, n = 0; i >= 0 && n < 3; i--) {
+      const f = this.flashes[i], shine = Math.pow(Math.max(0, 1 - f.age / Math.min(.126, f.life)), 1.3)
+      if (frame.light(BRIDGE_LIGHT.impulse, f.x, f.y, f.heavy ? 212 : 148, f.litColor || f.color, shine * (f.heavy ? 3.4 : 2.2), f.heavy ? 5 : 3)) n++
+    }
+    this.lightning.bridgeEmitters(frame)
+    for (let i = this.trails.length - 1, n = 0; i >= 0 && n < 3; i--) {
+      const t = this.trails[i], arc = t.opticalArc, fade = ribbonFade(t)
+      if (!arc || !t.active || t.age > .126 || fade < .14) continue
+      frame.strikeArc(arc.x, arc.y, arc.radius, arc.angle, arc.sweep, t.color, fade * 3.4, Math.max(1.5, t.width * 4.5))
+      n++
+    }
   }
 
   /** impact flash + directional sparks + micro ring */
@@ -620,10 +713,9 @@ export class FX {
   /* ---------------- shockwaves / cracks / text ---------------- */
 
   private nextRing(): Ring | null {
-    let r = this.rFree.pop()
-    if (!r) {
-      r = { active: false, x: 0, y: 0, r0: 0, r1: 0, age: 0, life: 1, color: '#fff', width: 3, squash: 1, axis: 0 }
-    }
+    const r = this.rFree.pop()
+    if (!r) return null
+    r.axis = 0; r.litColor = ''
     // POOL LAW (M02): recycled rings rejoin the live set (see nextParticle).
     r.active = true
     this.rings.push(r)
@@ -709,21 +801,31 @@ export class FX {
 
   /* ---------------- afterimages ---------------- */
 
-  afterimage(pose: Pose, x: number, y: number, face: number, color: string, life = 0.34, scale = 1): void {
-    if (this.afterimages.length > 40) return
-    const a = this.aFree.pop() ?? {
-      active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
-      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff', a0: 0.44,
+  private captureEcho(pose: Pose, x: number, y: number, face: number, life: number, scale: number): Afterimage | null {
+    if (this.afterimages.length > 40) return null
+    const a: Afterimage = this.aFree.pop() ?? {
+      active: false, pose: makePose(), geom: null, needsSolve: true,
+      x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
+      style: 0, dirX: 1, rim: '#ffffff', a0: 0.44,
     }
     a.active = true
     a.pose.set(pose)
+    // Freeze this pose at emission; solve at its first paint, not once per
+    // frame or at the expense of the action step that launched the dash.
+    a.needsSolve = true
     a.x = x; a.y = y
     a.face = face
     a.age = 0; a.life = life
-    a.color = color
     a.scale = scale
-    a.style = 0
     this.afterimages.push(a)
+    return a
+  }
+
+  afterimage(pose: Pose, x: number, y: number, face: number, color: string, life = 0.34, scale = 1): void {
+    const a = this.captureEcho(pose, x, y, face, life, scale)
+    if (!a) return
+    a.color = color
+    a.style = 0
   }
 
   /** SHADOW-SILHOUETTE dash ghost: the body captured as a dark figure with
@@ -731,23 +833,13 @@ export class FX {
    * ghost + particle clutter on dashes (shadows & light, not confetti).
    * a0 = starting body darkness (0.5 → 0.24 down the trail: each ghost successively darker — HDR value layering). */
   shadowGhost(pose: Pose, x: number, y: number, face: number, dirX: number, rim: string, life = 0.3, scale = 1, a0 = 0.44): void {
-    if (this.afterimages.length > 40) return
-    const a = this.aFree.pop() ?? {
-      active: false, pose: makePose(), x: 0, y: 0, face: 1, age: 0, life: 0.3, color: '#fff', scale: 1,
-      style: 0 as 0 | 1, dirX: 1, rim: '#ffffff', a0: 0.44,
-    }
-    a.active = true
-    a.pose.set(pose)
-    a.x = x; a.y = y
-    a.face = face
-    a.age = 0; a.life = life
+    const a = this.captureEcho(pose, x, y, face, life, scale)
+    if (!a) return
     a.color = '#03060c'
-    a.scale = scale
     a.style = 1
     a.dirX = dirX >= 0 ? 1 : -1
     a.rim = rim
     a.a0 = a0
-    this.afterimages.push(a)
   }
 
   /* ---------------- HDR motion line / ground shadow smear ---------------- */
@@ -756,7 +848,7 @@ export class FX {
    * 6–10 particle speed-streak train). */
   motionLine(x: number, y: number, dx: number, dy: number, len: number, life: number, color: string): void {
     const l = this.lFree.pop() ?? {
-      active: false, x: 0, y: 0, dx: 0, dy: 0, len: 0, age: 0, life: 0.25, color: '#fff',
+      active: false, x: 0, y: 0, dx: 0, dy: 0, len: 0, age: 0, life: 0.25, color: '#fff', tint: 0,
     }
     l.active = true
     const m = Math.hypot(dx, dy) || 1
@@ -764,7 +856,7 @@ export class FX {
     l.dx = dx / m; l.dy = dy / m
     l.len = len
     l.age = 0; l.life = life
-    l.color = color
+    l.color = color; l.tint = bridgeTrailTint(color)
     this.lines.push(l)
   }
 
@@ -781,60 +873,40 @@ export class FX {
   /* ---------------- slash trails ---------------- */
 
   startTrail(color: string, color2: string, width: number): Trail {
-    let t = this.tFree.pop()
-    if (!t) {
-      t = {
-        active: false,
-        pts: new Float32Array(TRAIL_N * 4),
-        head: 0, count: 0, N: TRAIL_N,
-        age: 0, life: 0.3,
-        color, color2, width,
-        emitting: true,
-      }
-    }
-    // POOL LAW (M02): recycled trails rejoin the live set (see nextParticle).
-    t.active = true
-    this.trails.push(t)
-    t.head = 0
-    t.count = 0
-    t.age = 0
-    t.life = 0.3
+    const t = this.tFree.pop() ?? newRibbon()
+    t.active = t.emitting = true
+    t.head = t.count = t.age = t.clock = 0
+    t.life = RIBBON_LIFETIME
     t.color = color
     t.color2 = color2
     t.width = width
-    t.emitting = true
+    t.opticalArc = undefined
+    this.trails.push(t)
     return t
   }
 
   pushTrail(t: Trail, bx: number, by: number, tx: number, ty: number): void {
-    const i = t.head * 4
-    t.pts[i] = bx
-    t.pts[i + 1] = by
-    t.pts[i + 2] = tx
-    t.pts[i + 3] = ty
-    t.head = (t.head + 1) % t.N
-    if (t.count < t.N) t.count++
+    addRibbonSample(t, bx, by, tx, ty)
   }
 
-  /** stop emitting; ribbon fades out */
-  endTrail(t: Trail, life = 0.22): void {
+  endTrail(t: Trail, life = RIBBON_LIFETIME): void {
+    if (!t.active || !t.emitting) return
     t.emitting = false
     t.age = 0
-    t.life = life
+    t.life = Math.min(life, RIBBON_LIFETIME)
   }
 
-  /** a standalone slash arc (ability echoes, cinematic slashes) */
+  /** Echoed and cinematic slashes use the same small curved ribbon. */
   slashArc(x: number, y: number, angle: number, spread: number, radius: number, color: string, color2: string, width = 1): void {
     const t = this.startTrail(color, color2, width)
-    t.life = 0.3
-    t.emitting = false
-    t.age = 0
+    t.opticalArc = { x, y, angle, sweep: spread, radius }
     const steps = 9
     for (let i = 0; i <= steps; i++) {
-      const a = angle - spread / 2 + (spread * i) / steps
-      const r0 = radius * 0.25
-      pushPolar(t, x, y, a, r0, radius)
+      const a = angle - spread * .5 + spread * i / steps
+      const dx = Math.cos(a) * radius, dy = Math.sin(a) * radius
+      this.pushTrail(t, x + dx * .25, y + dy * .25, x + dx, y + dy)
     }
+    this.endTrail(t)
   }
 
   /* ---------------- update ---------------- */
@@ -857,7 +929,7 @@ export class FX {
       if (p.age >= p.life) {
         p.active = false
         this.particles.splice(i, 1)
-        this.pFree.push(p)
+        this.recycleParticle(p)
         continue
       }
       p.vy += p.grav * dt
@@ -875,9 +947,10 @@ export class FX {
     for (let i = this.trails.length - 1; i >= 0; i--) {
       const t = this.trails[i]
       if (!t.active) continue
+      trimRibbon(t, realDt)
       if (!t.emitting) {
-        t.age += dt
-        if (t.age >= t.life) {
+        t.age += realDt
+        if (t.age >= t.life || t.count === 0) {
           t.active = false
           this.trails.splice(i, 1)
           this.tFree.push(t)
@@ -1083,10 +1156,9 @@ export class FX {
       ctx.save()
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
-      aiPose.set(a.pose)
-      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
+      const geom = echoGeometry(a)
       // shadow body — solid dark, source-over (a real cast shadow)
-      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, geom, PLAYER_STYLE, {
         ghost: '#02050b',
         ghostAlpha: (a.a0 ?? 0.44) * k,
       })
@@ -1097,7 +1169,7 @@ export class FX {
       ctx.globalCompositeOperation = 'lighter'
       ctx.save()
       ctx.translate(rimLocal, 0)
-      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, geom, PLAYER_STYLE, {
         ghost: a.rim,
         ghostAlpha: 0.07 * k,
       })
@@ -1108,7 +1180,8 @@ export class FX {
   }
 
   /** additive layer: afterimages, trails, motion lines, particles, rings */
-  drawAdditive(ctx: CanvasRenderingContext2D, time: number): void {
+  drawAdditive(ctx: CanvasRenderingContext2D, time: number, blade?: RibbonSegment & { trail: Trail }, hdr = false,
+    post?: BridgePost, field?: BridgeFrame): void {
     ctx.save()
     ctx.globalCompositeOperation = 'lighter'
 
@@ -1125,9 +1198,7 @@ export class FX {
       ctx.save()
       ctx.translate(a.x, a.y)
       ctx.scale(a.face * a.scale, a.scale)
-      aiPose.set(a.pose)
-      solveFighter3D(aiPose, PLAYER_SPEC, echoGeom, PLAYER_SPEC.blade)
-      drawFighter3D(ctx, echoGeom, PLAYER_STYLE, {
+      drawFighter3D(ctx, echoGeometry(a), PLAYER_STYLE, {
         ghost: a.color,
         ghostAlpha: k * 0.5,
         time,
@@ -1135,47 +1206,51 @@ export class FX {
       ctx.restore()
     }
 
-    // slash trail ribbons
-    for (const t of this.trails) {
-      if (!t.active || t.count < 2) continue
-      const fade = t.emitting ? 1 : 1 - t.age / t.life
-      drawTrail(ctx, t, fade)
+    // Sample each world-space ribbon only once. Latest first when the
+    // bounded native mesh fills; Canvas consumes the same scratch rows.
+    for (let i = this.trails.length - 1; i >= 0; i--) {
+      const t = this.trails[i], rows = sampleRibbon(t, t === blade?.trail ? blade : undefined)
+      if (hdr && field) field.ribbon(t, rows)
+      paintRibbonRows(ctx, t, rows, hdr)
     }
 
-    // HDR motion lines — one clean streak per dash (not a particle train)
-    for (const l of this.lines) {
-      if (!l.active) continue
-      const k = 1 - l.age / l.life
-      const grow = 0.35 + 0.65 * (1 - k) // tail recedes as it dies
-      const tx = l.x - l.dx * l.len * grow
-      const ty = l.y - l.dy * l.len * grow
-      // wide soft bloom band
-      const g1 = ctx.createLinearGradient(tx, ty, l.x, l.y)
-      g1.addColorStop(0, rgba(l.color, 0))
-      g1.addColorStop(0.72, rgba(l.color, 0.38 * k))
-      g1.addColorStop(1, rgba(l.color, 0.9 * k))
-      ctx.strokeStyle = g1
-      ctx.lineWidth = 4.6
-      ctx.lineCap = 'round'
-      ctx.beginPath()
-      ctx.moveTo(tx, ty)
-      ctx.lineTo(l.x, l.y)
-      ctx.stroke()
-      // white-hot core (the HDR read: saturated band + near-white center).
-      // Solid stroke with the line's own fade — a 2-stop gradient here was
-      // pure per-frame allocation for a single color.
-      ctx.strokeStyle = rgba('#ffffff', 0.5 * k)
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.moveTo(tx + (l.x - tx) * 0.4, ty + (l.y - ty) * 0.4)
-      ctx.lineTo(l.x, l.y)
-      ctx.stroke()
-      // leading glint — the launch-point spark
-      ctx.fillStyle = rgba('#ffffff', 0.85 * k)
-      ctx.beginPath()
-      ctx.arc(l.x, l.y, 2.1, 0, TAU)
-      ctx.fill()
+    // Local shutter trails, not ghosts of previous screen frames. A single
+    // atlas blit carries the feather, color and core. Keep a sharp cue for
+    // reduced motion or if the optional surface could not be reserved.
+    if (!field) {
+      // Other arenas keep their existing look. The cached, bounded shutter
+      // treatment below belongs only to the Bridge route.
+      for (const l of this.lines) {
+        if (!l.active) continue
+        const k = 1 - l.age / l.life, grow = .35 + .65 * (1 - k)
+        const tx = l.x - l.dx * l.len * grow, ty = l.y - l.dy * l.len * grow
+        const band = ctx.createLinearGradient(tx, ty, l.x, l.y)
+        band.addColorStop(0, rgba(l.color, 0)); band.addColorStop(.72, rgba(l.color, .38 * k)); band.addColorStop(1, rgba(l.color, .9 * k))
+        ctx.strokeStyle = band; ctx.lineWidth = 4.6; ctx.lineCap = 'round'
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(l.x, l.y); ctx.stroke()
+        ctx.strokeStyle = rgba('#ffffff', .5 * k); ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.moveTo(tx + (l.x - tx) * .4, ty + (l.y - ty) * .4); ctx.lineTo(l.x, l.y); ctx.stroke()
+        ctx.fillStyle = rgba('#ffffff', .85 * k); ctx.beginPath(); ctx.arc(l.x, l.y, 2.1, 0, TAU); ctx.fill()
+      }
+    } else {
+      const view = field.view
+      for (let i = this.lines.length - 1, drawn = 0; i >= 0 && drawn < 16; i--) {
+        const l = this.lines[i]
+        if (!l.active) continue
+        const k = clamp01(1 - l.age / l.life)
+        if (k <= .015) continue
+        const len = Math.min(190, l.len * (1 - .57 * k))
+        const tx = l.x - l.dx * len, ty = l.y - l.dy * len
+        if (Math.max(l.x, tx) + 22 < view.left || Math.min(l.x, tx) - 22 > view.right ||
+            Math.max(l.y, ty) + 22 < view.top || Math.min(l.y, ty) - 22 > view.bottom) continue
+        drawn++
+        if (!field.quiet && post?.streak(ctx, l.tint, l.x, l.y, l.dx, l.dy, len, k)) continue
+        ctx.globalAlpha = .55 * k
+        ctx.strokeStyle = l.color; ctx.lineWidth = 1.5; ctx.lineCap = 'round'
+        ctx.beginPath(); ctx.moveTo((tx + l.x) * .5, (ty + l.y) * .5); ctx.lineTo(l.x, l.y); ctx.stroke()
+      }
     }
+    ctx.globalAlpha = 1
 
     // point impact flashes — radial bloom + lens cross (camera-bloom
     // language, under the sparks so sparks ride on top of the bloom).
@@ -1212,7 +1287,7 @@ export class FX {
        * everybody reads as an effect. So the flash is DIMMED by the light it
        * happens in: full strength in the dark, ~55 % inside a practical. */
       const expo = 1 - 0.45 * Math.min(1, f.lit)
-      const lobe = flashGlowSprite(coreColor, false)
+      const lobe = this.flashGlowSprite(coreColor, false)
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
       ctx.translate(f.x, f.y)
@@ -1225,7 +1300,7 @@ export class FX {
       // The CORE takes the light's colour too when the hit is in one: a hot
       // filament in a warm room is warm-white, not cyan. Out in the dark the
       // blade's own colour is the only light there is, so it keeps it.
-      const core = flashGlowSprite(f.litColor || f.color)
+      const core = this.flashGlowSprite(f.litColor || f.color)
       if (core) {
         ctx.globalAlpha = k * expo
         const cr = r * 0.38
@@ -1446,210 +1521,6 @@ export class FX {
 /* ------------------------------------------------------------------ */
 /* helpers                                                              */
 /* ------------------------------------------------------------------ */
-
-function pushPolar(t: Trail, x: number, y: number, a: number, r0: number, r1: number): void {
-  const i = t.head * 4
-  t.pts[i] = x + Math.cos(a) * r0
-  t.pts[i + 1] = y + Math.sin(a) * r0
-  t.pts[i + 2] = x + Math.cos(a) * r1
-  t.pts[i + 3] = y + Math.sin(a) * r1
-  t.head = (t.head + 1) % t.N
-  if (t.count < t.N) t.count++
-}
-
-const segA: number[] = [0, 0, 0, 0]
-const segB: number[] = [0, 0, 0, 0]
-
-function drawTrail(ctx: CanvasRenderingContext2D, t: Trail, fade: number): void {
-  const n = t.count
-  const pts = t.pts
-  // render oldest → newest
-  const start = (t.head - n + t.N + t.N) % t.N
-
-  const seg = (idx: number, out: number[]): void => {
-    const i = ((start + idx) % t.N) * 4
-    out[0] = pts[i]; out[1] = pts[i + 1]; out[2] = pts[i + 2]; out[3] = pts[i + 3]
-  }
-
-  // ---- wide soft halo + mid core ribbon (tapered: wide at the swing
-  // head, needle-pointing at the tail — the anime trail dissolve).
-  // NO HARD QUAD EDGES (the "square lighting" bug): each layer is ONE path
-  // filled with a feathered gradient across the blade axis — the ribbon
-  // dissolves toward its tail side instead of ending in a translucent slab. ----
-  let mdx = 0
-  let mdy = 0
-  for (let i = 0; i < n; i++) {
-    seg(i, segA)
-    mdx += segA[2] - segA[0]
-    mdy += segA[3] - segA[1]
-  }
-  const ml = Math.hypot(mdx, mdy) || 1
-  seg(Math.max(0, n - 2), segA)
-  seg(n - 1, segB)
-  const gLen = Math.hypot(segB[2] - segB[0], segB[3] - segB[1]) || 20
-  for (let layer = 0; layer < 2; layer++) {
-    const wide = layer === 0
-    const color = wide ? t.color2 : t.color
-    const baseAlpha = wide ? 0.24 : 0.5
-    // feather runs from the tail-side inset edge (alpha 0) to the blade
-    // line (full alpha) — gradient axis = mean blade direction
-    const grad = ctx.createLinearGradient(
-      segB[2] - (mdx / ml) * gLen, segB[3] - (mdy / ml) * gLen,
-      segB[2], segB[3],
-    )
-    grad.addColorStop(0, rgba(color, 0))
-    grad.addColorStop(0.3, rgba(color, baseAlpha * fade * 0.75))
-    grad.addColorStop(1, rgba(color, baseAlpha * fade * (wide ? 0.6 : 1)))
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    for (let i = 0; i < n - 1; i++) {
-      seg(i, segA)
-      seg(i + 1, segB)
-      const headBias = i / Math.max(1, n - 1)
-      // width taper along the trail: 0.3 at the oldest point → 1.0 at head
-      const taperA = 0.3 + 0.7 * headBias
-      const taperB = 0.3 + 0.7 * ((i + 1) / Math.max(1, n - 1))
-      const ax = segA[0] + (segA[2] - segA[0]) * (1 - taperA) * 0.5
-      const ay = segA[1] + (segA[3] - segA[1]) * (1 - taperA) * 0.5
-      const bx = segB[0] + (segB[2] - segB[0]) * (1 - taperB) * 0.5
-      const by = segB[1] + (segB[3] - segB[1]) * (1 - taperB) * 0.5
-      // quad between consecutive blade segments
-      ctx.moveTo(ax, ay)
-      ctx.lineTo(segA[2], segA[3])
-      ctx.lineTo(segB[2], segB[3])
-      ctx.lineTo(bx, by)
-      ctx.closePath()
-    }
-    ctx.fill()
-  }
-
-  // ---- hot inner core: thin near-white strip hugging the blade path ----
-  // (strided every 2nd segment — plasma-line look at half the fill cost;
-  // inset widens toward the tail so the core tapers with the ribbon)
-  for (let i = 0; i < n - 1; i += 2) {
-    seg(i, segA)
-    seg(Math.min(i + 1, n - 1), segB)
-    const headBias = i / Math.max(1, n - 1)
-    const alpha = 0.5 * fade * (0.3 + 0.7 * headBias)
-    const taper = 0.3 + 0.7 * headBias
-    const ins = 0.55 + 0.45 * (1 - taper)
-    // inset both blade endpoints toward the tip → thin strip near the edge
-    const ax = segA[0] + (segA[2] - segA[0]) * ins
-    const ay = segA[1] + (segA[3] - segA[1]) * ins
-    const bx = segB[0] + (segB[2] - segB[0]) * ins
-    const by = segB[1] + (segB[3] - segB[1]) * ins
-    ctx.fillStyle = rgba('#ffffff', alpha)
-    ctx.beginPath()
-    ctx.moveTo(ax, ay)
-    ctx.lineTo(segA[2], segA[3])
-    ctx.lineTo(segB[2], segB[3])
-    ctx.lineTo(bx, by)
-    ctx.closePath()
-    ctx.fill()
-  }
-
-  // ---- layered cutting edges along the tip path ----
-  if (n >= 2) {
-    ctx.beginPath()
-    seg(0, segA)
-    ctx.moveTo(segA[2], segA[3])
-    for (let i = 1; i < n; i++) {
-      seg(i, segA)
-      ctx.lineTo(segA[2], segA[3])
-    }
-    // soft colored edge under a hot white edge → layered "energy blade" look
-    ctx.strokeStyle = rgba(t.color2, 0.34 * fade)
-    ctx.lineWidth = 3.2 * t.width
-    ctx.stroke()
-    ctx.strokeStyle = rgba('#ffffff', 0.55 * fade)
-    ctx.lineWidth = 1.5 * t.width
-    ctx.stroke()
-
-    // base-edge sheen — the opposite rim completes the dual-rim energy
-    // blade (follows the tapered base so it converges into the tail point)
-    ctx.beginPath()
-    seg(0, segA)
-    {
-      const tp = 0.3
-      ctx.moveTo(
-        segA[0] + (segA[2] - segA[0]) * (1 - tp) * 0.5,
-        segA[1] + (segA[3] - segA[1]) * (1 - tp) * 0.5,
-      )
-    }
-    for (let i = 1; i < n; i++) {
-      seg(i, segA)
-      const tp = 0.3 + 0.7 * (i / Math.max(1, n - 1))
-      ctx.lineTo(
-        segA[0] + (segA[2] - segA[0]) * (1 - tp) * 0.5,
-        segA[1] + (segA[3] - segA[1]) * (1 - tp) * 0.5,
-      )
-    }
-    ctx.strokeStyle = rgba(t.color2, 0.16 * fade)
-    ctx.lineWidth = 2 * t.width
-    ctx.stroke()
-  }
-
-  // ---- tip glint + motion-blur streaks (only while the swing is live) ----
-  if (t.emitting && n >= 3) {
-    seg(n - 1, segA)
-    seg(n - 2, segB)
-    const dx = segA[2] - segB[2]
-    const dy = segA[3] - segB[3]
-    const spd = Math.sqrt(dx * dx + dy * dy)
-    if (spd > 3) {
-      const ix = 1 / spd
-      const nx = -dy * ix // perpendicular
-      const ny = dx * ix
-      const glint = Math.min(1, spd / 26) * fade
-      const gx = segA[2]
-      const gy = segA[3]
-      const g1 = 4 + t.width * 2.4
-      const g2 = g1 * 0.42
-      // bloom halo behind the glint — soft radial melt into the weapon color
-      const gr = g1 * 1.9
-      const bg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr)
-      bg.addColorStop(0, rgba('#ffffff', 0.5 * glint))
-      bg.addColorStop(0.4, rgba(t.color, 0.28 * glint))
-      bg.addColorStop(1, rgba(t.color, 0))
-      ctx.fillStyle = bg
-      ctx.beginPath()
-      ctx.arc(gx, gy, gr, 0, TAU)
-      ctx.fill()
-      // 4-point star flare at the newest tip
-      ctx.strokeStyle = rgba('#ffffff', 0.75 * glint)
-      ctx.lineWidth = 1.1
-      ctx.beginPath()
-      ctx.moveTo(gx - g1, gy)
-      ctx.lineTo(gx + g1, gy)
-      ctx.moveTo(gx, gy - g1)
-      ctx.lineTo(gx, gy + g1)
-      ctx.moveTo(gx - g2 * nx, gy - g2 * ny)
-      ctx.lineTo(gx + g2 * nx, gy + g2 * ny)
-      // 45° diagonal pair — the diamond-sparkle read
-      const dg = g2 * 0.9
-      const dc = 0.7071
-      ctx.moveTo(gx - dg * dc, gy - dg * dc)
-      ctx.lineTo(gx + dg * dc, gy + dg * dc)
-      ctx.moveTo(gx + dg * dc, gy - dg * dc)
-      ctx.lineTo(gx - dg * dc, gy + dg * dc)
-      ctx.stroke()
-      ctx.fillStyle = rgba(t.color, 0.9 * glint)
-      ctx.beginPath()
-      ctx.arc(gx, gy, 1.4 + t.width * 0.7, 0, TAU)
-      ctx.fill()
-      // two faint speed streaks trailing behind the tip
-      ctx.strokeStyle = rgba(t.color2, 0.3 * glint)
-      ctx.lineWidth = 1
-      const off = 2.6 + t.width
-      ctx.beginPath()
-      ctx.moveTo(gx - nx * off, gy - ny * off)
-      ctx.lineTo(gx - dx * 2.4 - nx * off, gy - dy * 2.4 - ny * off)
-      ctx.moveTo(gx + nx * off, gy + ny * off)
-      ctx.lineTo(gx - dx * 2.4 + nx * off, gy - dy * 2.4 + ny * off)
-      ctx.stroke()
-    }
-  }
-}
 
 function drawCrack(ctx: CanvasRenderingContext2D, c: Crack): void {
   if (c.pts.length < 4) return

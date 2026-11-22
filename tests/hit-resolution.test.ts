@@ -16,6 +16,7 @@ test('already-dead targets reject repeated contact instead of reporting another 
 
 import {resolveEnemyHit,rewardsConfirmedHit,type HitResolution} from '../src/game/combat/hit-resolution'
 import {Game} from '../src/game/game'
+import {BRIDGE_ART} from '../src/game/world/art-grade'
 
 const blade={bx:400,by:-40,tx:460,ty:-40}
 // Exercise the actual orchestrator without starting a browser loop or replacing
@@ -28,14 +29,14 @@ function guardingEnemy(){
  const e=new Enemy('shield',450,1);e.spawning=false;e.state='chase';e.face=-1;e.blockUp=true;return e
 }
 test('Game shield pressure and guard break do not inflate confirmed-hit combo or score',()=>{
- const g=new Game();g.player.x=400;const e=guardingEnemy();g.enemies=[e]
+ const g=new Game(BRIDGE_ART);g.player.x=400;const e=guardingEnemy();g.enemies=[e]
  const a=contact(g,e),b=contact(g,e),c=contact(g,e)
  assert.equal(a.outcome,'blocked');assert.equal(b.outcome,'blocked');assert.equal(c.outcome,'guardBreak')
  for(const r of [a,b,c]){assert.equal(r.contact,'guard');assert.equal(rewardsConfirmedHit(r),false);assert.ok(r.actualDamage>0)}
  assert.equal(g.combo.hits,0);assert.equal(g.stats.score,0);assert.equal(e.state,'stun')
 })
 test('Game lethal chip awards one kill, no confirmed-hit combo, and rejects repeated rewards',()=>{
- const g=new Game();g.player.x=400;const e=guardingEnemy();e.hp=1;g.enemies=[e]
+ const g=new Game(BRIDGE_ART);g.player.x=400;const e=guardingEnemy();e.hp=1;g.enemies=[e]
  const r=contact(g,e)
  assert.equal(r.outcome,'killed');assert.equal(r.contact,'guard');assert.equal(r.actualDamage,1)
  assert.equal(g.stats.kills,1);assert.equal(g.combo.hits,0)
@@ -44,7 +45,7 @@ test('Game lethal chip awards one kill, no confirmed-hit combo, and rejects repe
  assert.equal(g.stats.kills,1);assert.equal(g.stats.score,score);assert.equal(g.player.meter,meter);assert.equal(g.player.hp,hp)
 })
 test('Game elite parry returns an explicit no-reward outcome',()=>{
- const g=new Game();g.player.x=400;const e=new Enemy('elite',450,1);e.state='chase';e.spawning=false;g.enemies=[e]
+ const g=new Game(BRIDGE_ART);g.player.x=400;const e=new Enemy('elite',450,1);e.state='chase';e.spawning=false;g.enemies=[e]
  const hp=e.hp,random=Math.random
  try{Math.random=()=>0;const r=contact(g,e);assert.equal(r.outcome,'parried');assert.equal(rewardsConfirmedHit(r),false)}finally{Math.random=random}
  assert.equal(e.hp,hp);assert.equal(g.combo.hits,0);assert.equal(g.stats.score,0)
@@ -58,7 +59,7 @@ test('armor remains damage-bearing and overkill cannot inflate resolved damage',
 })
 
 test('Player ability meter uses actual damage and rejects repeated dead-target callbacks',()=>{
- const g=new Game();g.player.x=400;g.player.meter=0
+ const g=new Game(BRIDGE_ART);g.player.x=400;g.player.meter=0
  const e=new Enemy('grunt',450,1);e.hp=1;e.spawning=false;g.enemies=[e]
  const w=(g as unknown as {worldRef:import('../src/game/core/types').WorldRef}).worldRef
  const player=g.player as unknown as {dealAbilityDamage:(world:import("../src/game/core/types").WorldRef,e:{id:number;x:number;y:number;d:number},dmg:number,stagger:number,kb:number,kbY:number)=>void}

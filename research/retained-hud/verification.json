@@ -1,0 +1,2119 @@
+{
+  "scope": "T15 first slice: no drawing on an unchanged separate HUD; full authoritative paint for changes, always paint fresh inline world pixels.",
+  "release": {
+    "controlBuild": "cVsElmZ6KRiOXYXBQhqXH",
+    "build": "iWoXGibOrwMgKYKmauvXc",
+    "previewPort": 3000,
+    "publicAssetsIdenticalToControl": true,
+    "stagedHttpEqualToLive": true,
+    "http": {
+      "build": "iWoXGibOrwMgKYKmauvXc",
+      "originAccepted": true,
+      "iframeHeadersClear": true,
+      "rootSHA256": "61d1a3528871950e0e1ce57d550ac60281a0fc37255d4881b5a4e7cc624b4618",
+      "staticLinks": 11,
+      "retiredLoader404": true,
+      "scoresApi": true,
+      "assets": {
+        "baked-v1/deck.bin.br": {
+          "bytes": 32558,
+          "sha256": "56840399b3012d57dcfedd80ec3b3075fdc019f1b83b546975ba32bb4daf7262"
+        },
+        "baked-v1/look-16.bin.br": {
+          "bytes": 13006,
+          "sha256": "04a228bccd95349606ee7ce6ad6f9af3443c38ef1be79baa026214af80a67141"
+        },
+        "baked-v1/look-32.bin.br": {
+          "bytes": 58670,
+          "sha256": "afcb075498fac8cbfeabd577b5283ded4406a64681d35a5f6c074b341ad3f85e"
+        },
+        "baked-v1/sky.bin.br": {
+          "bytes": 247289,
+          "sha256": "d91bf5e6fc49843f1fcbcb894f60eba1ee545012530913b8d5df7fdeb30a20de"
+        },
+        "deck-pier.webp": {
+          "bytes": 4086,
+          "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+        },
+        "l1.webp": {
+          "bytes": 38162,
+          "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+        },
+        "l2.webp": {
+          "bytes": 49280,
+          "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+        },
+        "metro-street.webp": {
+          "bytes": 19810,
+          "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+        },
+        "props-v2.webp": {
+          "bytes": 5910,
+          "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+        },
+        "shop-return-v2.webp": {
+          "bytes": 269248,
+          "sha256": "18a9da1fcdfec3bdfa823463a74a01f6ab3678e6b22391839898cbfd9aef82c2"
+        },
+        "stratum-a.webp": {
+          "bytes": 250,
+          "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+        }
+      }
+    },
+    "liveTouchBackingParityWithStage": 19,
+    "localCrossOriginEmbed": {
+      "phase": "playing",
+      "errors": [],
+      "readyMsFromNavigation": 347.4,
+      "engageToSubmitMs": 659.9,
+      "engageToPlayingMs": 660.5,
+      "engageToFirstStepSubmitMs": 745.1
+    }
+  },
+  "pixels": {
+    "metric": "SHA-256 of complete HUD getImageData RGBA bytes at each matched backing size; not a scene/GL readback",
+    "desktop": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "exactPairs": 19,
+      "cases": {
+        "opening": {
+          "rgbaSHA256": "e293e1ffc5d859e2da93bdfc15289dcd6da26be9bff9701960c9817fc6f45380",
+          "backing": [
+            1180,
+            660
+          ]
+        },
+        "resized": {
+          "rgbaSHA256": "7fde8e43f5d68dc9123a7577ccbcfc0b8bf652bb8729961812eab28eda6b24e4",
+          "backing": [
+            1143,
+            679
+          ]
+        },
+        "resizeDpr": {
+          "rgbaSHA256": "daf0730931cb3cbde3ba7967be50fe08f517c9454ad5226e0cda8738efb46c08",
+          "backing": [
+            1429,
+            849
+          ]
+        },
+        "title": {
+          "rgbaSHA256": "8257f1ed037de22833f090e6f1d6e3ad3acd4a56e765cb37c46560ec1b43d194",
+          "backing": [
+            1429,
+            849
+          ],
+          "blank": true
+        },
+        "retry": {
+          "rgbaSHA256": "db651b9282daa02630537b0d0babf64929c78ffd9e9b8ce4e0de2a0641892e22",
+          "backing": [
+            1429,
+            849
+          ]
+        },
+        "same-playing": {
+          "rgbaSHA256": "e293e1ffc5d859e2da93bdfc15289dcd6da26be9bff9701960c9817fc6f45380",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            2,
+            0
+          ]
+        },
+        "same-paused": {
+          "rgbaSHA256": "e293e1ffc5d859e2da93bdfc15289dcd6da26be9bff9701960c9817fc6f45380",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            8,
+            0
+          ]
+        },
+        "scene-scale-only": {
+          "rgbaSHA256": "e293e1ffc5d859e2da93bdfc15289dcd6da26be9bff9701960c9817fc6f45380",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            0
+          ]
+        },
+        "cues": {
+          "rgbaSHA256": "45d6c2de4f79aa35ae5d3e59b125d8bb71caebddcb1eaa2b457026c876f04345",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "easing": {
+          "rgbaSHA256": "786840bf1359b554a48998b16f4872cb8e38a9c6b6f794d068df1c902fe1c2df",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            9,
+            9
+          ]
+        },
+        "moved-cues": {
+          "rgbaSHA256": "d27d04cab5c2bd570eaf5401c14a3a67da2872f9d7c2bd0b3147d43005941bbc",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "expired": {
+          "rgbaSHA256": "14357e527803bdfb67a4f30fc1f362141b3c92e492df8e8636c45fd3ae69efb9",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "insets": {
+          "rgbaSHA256": "3e0648f843b06740e832d2a70abdce15fd5edc06720dad1c5f871cc0be5fcb00",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "touch-mode": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "context-restored": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "inspected": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "world",
+          "clears": [
+            0,
+            0
+          ]
+        },
+        "leave-inspector": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "context-lost": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "world",
+          "clears": [
+            0,
+            0
+          ]
+        },
+        "leave-fallback": {
+          "rgbaSHA256": "b4a55ee4ed0be000a5e1a994fd4b60055c60c428426d26983ea5215a4bf05501",
+          "backing": [
+            1180,
+            660
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        }
+      },
+      "engage": {
+        "id": 1,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "retry": {
+        "id": 20,
+        "layer": "scene-work",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 43,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "trustedClicks": [
+        [
+          "ENGAGE",
+          true
+        ],
+        [
+          "RETRY",
+          true
+        ]
+      ],
+      "healthEase": {
+        "cues": 90.970305,
+        "easing": 43.535064
+      },
+      "separateAfterTitle": "hidden",
+      "ownedSurfacesAfterDestroy": 0
+    },
+    "portrait": {
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "exactPairs": 19,
+      "cases": {
+        "opening": {
+          "rgbaSHA256": "50b8ba0f7277ca9d7d96970f27f26720e6893454737d1f2eae349e160bba2350",
+          "backing": [
+            800,
+            1688
+          ]
+        },
+        "resized": {
+          "rgbaSHA256": "03793db889c7817c15529ff127328881dc0758e3f1fed953548a98c4890f42e3",
+          "backing": [
+            726,
+            1726
+          ]
+        },
+        "resizeDpr": {
+          "rgbaSHA256": "d2c1e12873b70cc3866176fe48a4e0fba78236e29eab7962052796091095a135",
+          "backing": [
+            545,
+            1295
+          ]
+        },
+        "title": {
+          "rgbaSHA256": "6feeefcd43fd0d63c50405e26d195818f036e73e53d4cac5a92dd812a8c3668d",
+          "backing": [
+            545,
+            1295
+          ],
+          "blank": true
+        },
+        "retry": {
+          "rgbaSHA256": "20cbe7c28cbe25f6f1ba7a011bb78e87a19e57e8742d8c1c6afd7796ca4b1d34",
+          "backing": [
+            545,
+            1295
+          ]
+        },
+        "same-playing": {
+          "rgbaSHA256": "50b8ba0f7277ca9d7d96970f27f26720e6893454737d1f2eae349e160bba2350",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            2,
+            0
+          ]
+        },
+        "same-paused": {
+          "rgbaSHA256": "50b8ba0f7277ca9d7d96970f27f26720e6893454737d1f2eae349e160bba2350",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            8,
+            0
+          ]
+        },
+        "scene-scale-only": {
+          "rgbaSHA256": "50b8ba0f7277ca9d7d96970f27f26720e6893454737d1f2eae349e160bba2350",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            0
+          ]
+        },
+        "cues": {
+          "rgbaSHA256": "9b3011b0f3f0dddcf4abe4d4dc20fe9bd24c9f6403357af272d9f1b6205cc640",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "easing": {
+          "rgbaSHA256": "b42127e6ffe1218630236c84f78e37b717e8f31e3078b215c523107dfd3b3e94",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            9,
+            9
+          ]
+        },
+        "moved-cues": {
+          "rgbaSHA256": "08dd9dbf3baff0cb4d57190bdcd2ae85951751f7e7871d16173e4df44dbe5cea",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "expired": {
+          "rgbaSHA256": "8a754fc17f7982de41a74b77294fff5620b39b30006e5526a4361c60c9efcc31",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "insets": {
+          "rgbaSHA256": "5f6c25bcf4906e2cb65518dd1779008c249ce12f7ea8dd8c8321a605ba5680ac",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "touch-mode": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "context-restored": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "inspected": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "world",
+          "clears": [
+            0,
+            0
+          ]
+        },
+        "leave-inspector": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        },
+        "context-lost": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "world",
+          "clears": [
+            0,
+            0
+          ]
+        },
+        "leave-fallback": {
+          "rgbaSHA256": "4b31405d9e3fc3f4d34b83d629e08351c486904e63397b0c348f46e84350c5de",
+          "backing": [
+            800,
+            1688
+          ],
+          "path": "layer",
+          "clears": [
+            1,
+            1
+          ]
+        }
+      },
+      "engage": {
+        "id": 4,
+        "layer": "scene-work",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "retry": {
+        "id": 23,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 43,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "trustedClicks": [
+        [
+          "ENGAGE",
+          true
+        ],
+        [
+          "RETRY",
+          true
+        ]
+      ],
+      "healthEase": {
+        "cues": 90.970305,
+        "easing": 43.535064
+      },
+      "separateAfterTitle": "hidden",
+      "ownedSurfacesAfterDestroy": 0
+    }
+  },
+  "pacing": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "mode": "software Canvas with CPU compositor (not device FPS)",
+    "world": "same locked 0.75x Low Canvas and seed 42; 60 Hz deterministic simulation input, reported rAF gaps are real foreground callbacks",
+    "warmCallbacks": 36,
+    "samplesPerWindow": 180,
+    "order": {
+      "A": [
+        "old",
+        "new"
+      ],
+      "B": [
+        "new",
+        "old"
+      ]
+    },
+    "quiet": "stationary player with live weather and scene submits; no FPS overlay",
+    "busy": "travel with deterministic low HP, active Flow, boss, charge, prompt and banner inputs; not a combat throughput benchmark",
+    "counts": "actual clearRect, fillText, fillRect/strokeRect calls on the separate HUD. Cleared pixels are submitted area, not measured memory traffic. JS HUD time measures drawHud submission, not raster completion or state sampling.",
+    "desktop": {
+      "A": {
+        "old": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 3420,
+              "rects": 4500
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 33.3,
+              "p99": 33.4,
+              "mean": 18.055
+            },
+            "js": {
+              "p50": 3.4,
+              "p95": 7.1,
+              "p99": 9.7,
+              "mean": 3.807
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.3,
+              "p99": 0.6,
+              "mean": 0.188
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 5040,
+              "rects": 8274
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 33.4,
+              "p99": 33.4,
+              "mean": 20.369
+            },
+            "js": {
+              "p50": 4.4,
+              "p95": 8.5,
+              "p99": 11.1,
+              "mean": 4.807
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.5,
+              "p99": 1,
+              "mean": 0.324
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        },
+        "new": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 0,
+              "pixels": 0,
+              "text": 0,
+              "rects": 0
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 16.8,
+              "mean": 16.666
+            },
+            "js": {
+              "p50": 2.7,
+              "p95": 5.5,
+              "p99": 7.8,
+              "mean": 3.127
+            },
+            "hudJs": {
+              "p50": 0,
+              "p95": 0.1,
+              "p99": 0.1,
+              "mean": 0.014
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 5040,
+              "rects": 8274
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.3,
+              "mean": 17.407
+            },
+            "js": {
+              "p50": 4,
+              "p95": 6.3,
+              "p99": 8.9,
+              "mean": 4.044
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.4,
+              "p99": 4.1,
+              "mean": 0.355
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        }
+      },
+      "B": {
+        "old": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 3420,
+              "rects": 4500
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.4,
+              "mean": 16.944
+            },
+            "js": {
+              "p50": 3,
+              "p95": 5.6,
+              "p99": 7.7,
+              "mean": 3.294
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.3,
+              "p99": 0.3,
+              "mean": 0.167
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 5040,
+              "rects": 8274
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.4,
+              "mean": 17.036
+            },
+            "js": {
+              "p50": 3.5,
+              "p95": 6.2,
+              "p99": 10.5,
+              "mean": 3.915
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.4,
+              "p99": 0.8,
+              "mean": 0.266
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        },
+        "new": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 0,
+              "pixels": 0,
+              "text": 0,
+              "rects": 0
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 16.8,
+              "mean": 16.666
+            },
+            "js": {
+              "p50": 2.8,
+              "p95": 5.5,
+              "p99": 7.8,
+              "mean": 3.233
+            },
+            "hudJs": {
+              "p50": 0,
+              "p95": 0.1,
+              "p99": 0.1,
+              "mean": 0.016
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                1180,
+                660
+              ],
+              "scene": [
+                885,
+                495
+              ],
+              "layer": [
+                1180,
+                660
+              ],
+              "bytes": 3115200
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 140184000,
+              "text": 5040,
+              "rects": 8274
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.4,
+              "mean": 17.407
+            },
+            "js": {
+              "p50": 3.9,
+              "p95": 6.4,
+              "p99": 11.2,
+              "mean": 4.074
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.4,
+              "p99": 0.5,
+              "mean": 0.281
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        }
+      }
+    },
+    "portrait": {
+      "A": {
+        "old": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 3240,
+              "rects": 3960
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 16.8,
+              "mean": 16.666
+            },
+            "js": {
+              "p50": 3,
+              "p95": 5.9,
+              "p99": 7.7,
+              "mean": 3.359
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.3,
+              "p99": 0.7,
+              "mean": 0.179
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 4860,
+              "rects": 7734
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 33.4,
+              "mean": 16.852
+            },
+            "js": {
+              "p50": 3,
+              "p95": 6,
+              "p99": 8.2,
+              "mean": 3.283
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.4,
+              "p99": 0.6,
+              "mean": 0.261
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        },
+        "new": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 0,
+              "pixels": 0,
+              "text": 0,
+              "rects": 0
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 16.8,
+              "mean": 16.667
+            },
+            "js": {
+              "p50": 2.6,
+              "p95": 5.6,
+              "p99": 8.1,
+              "mean": 3.202
+            },
+            "hudJs": {
+              "p50": 0,
+              "p95": 0.1,
+              "p99": 0.1,
+              "mean": 0.014
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 4860,
+              "rects": 7734
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.3,
+              "mean": 16.851
+            },
+            "js": {
+              "p50": 3.1,
+              "p95": 6.2,
+              "p99": 8.5,
+              "mean": 3.517
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.5,
+              "p99": 0.6,
+              "mean": 0.303
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        }
+      },
+      "B": {
+        "old": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 3240,
+              "rects": 3960
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 33.3,
+              "p99": 33.3,
+              "mean": 17.869
+            },
+            "js": {
+              "p50": 3.1,
+              "p95": 8.8,
+              "p99": 12.9,
+              "mean": 4.017
+            },
+            "hudJs": {
+              "p50": 0.2,
+              "p95": 0.5,
+              "p99": 0.7,
+              "mean": 0.218
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 4860,
+              "rects": 7734
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.8,
+              "p99": 33.4,
+              "mean": 17.221
+            },
+            "js": {
+              "p50": 3.3,
+              "p95": 7.4,
+              "p99": 13.2,
+              "mean": 3.806
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.5,
+              "p99": 1.2,
+              "mean": 0.31
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        },
+        "new": {
+          "quiet": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 660,
+            "cost": {
+              "clears": 0,
+              "pixels": 0,
+              "text": 0,
+              "rects": 0
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 16.8,
+              "mean": 16.666
+            },
+            "js": {
+              "p50": 3.1,
+              "p95": 6.4,
+              "p99": 8.8,
+              "mean": 3.438
+            },
+            "hudJs": {
+              "p50": 0,
+              "p95": 0.1,
+              "p99": 0.1,
+              "mean": 0.016
+            },
+            "over50": 0
+          },
+          "busy": {
+            "frames": 180,
+            "worldSubmits": 180,
+            "size": {
+              "css": [
+                400,
+                844
+              ],
+              "scene": [
+                300,
+                633
+              ],
+              "layer": [
+                800,
+                1688
+              ],
+              "bytes": 5401600
+            },
+            "start": 660,
+            "end": 1899.3158288955694,
+            "cost": {
+              "clears": 180,
+              "pixels": 243072000,
+              "text": 4860,
+              "rects": 7734
+            },
+            "raf": {
+              "p50": 16.7,
+              "p95": 16.7,
+              "p99": 16.8,
+              "mean": 16.666
+            },
+            "js": {
+              "p50": 3.2,
+              "p95": 6,
+              "p99": 7,
+              "mean": 3.367
+            },
+            "hudJs": {
+              "p50": 0.3,
+              "p95": 0.4,
+              "p99": 1.1,
+              "mean": 0.291
+            },
+            "over50": 0
+          },
+          "hidden": false,
+          "surfaces": 0,
+          "errors": 0
+        }
+      }
+    }
+  },
+  "browserChecks": {
+    "canvasComposition": {
+      "rows": [
+        {
+          "case": "engage",
+          "frame": {
+            "id": 1,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "held": false,
+          "hpInk": 992
+        },
+        {
+          "case": "full-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": false,
+          "hpInk": 912
+        },
+        {
+          "case": "hud-unavailable-inline",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": false,
+          "hpInk": 912
+        },
+        {
+          "case": "hud-restored",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": false,
+          "hpInk": 912
+        },
+        {
+          "case": "interrupted-source",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": false,
+          "hpInk": 912
+        },
+        {
+          "case": "held-after-resize",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": true,
+          "hpInk": 0
+        },
+        {
+          "case": "recovered",
+          "frame": {
+            "id": 10,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "held": false,
+          "hpInk": 912
+        },
+        {
+          "case": "retry",
+          "frame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "held": false,
+          "hpInk": 992
+        }
+      ],
+      "cancelled": {
+        "frame": {
+          "id": 14,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 92,
+          "threats": 2
+        },
+        "held": false,
+        "pending": false
+      },
+      "destroy": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    },
+    "masterWebGL": {
+      "trustedClicks": [
+        {
+          "b": "ENGAGE",
+          "trusted": true
+        },
+        {
+          "b": "CANCEL",
+          "trusted": true
+        },
+        {
+          "b": "ENGAGE",
+          "trusted": true
+        },
+        {
+          "b": "RETRY",
+          "trusted": true
+        },
+        {
+          "b": "RETRY",
+          "trusted": true
+        }
+      ],
+      "firstAndRetry": [
+        {
+          "frame": {
+            "id": 4,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "input": true,
+          "path": "master-webgl2",
+          "time": 0
+        },
+        {
+          "frame": {
+            "id": 15,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "input": true,
+          "path": "master-webgl2",
+          "time": 0
+        }
+      ]
+    },
+    "optimizedWebGL": {
+      "first": {
+        "id": 1,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "retry": {
+        "id": 18,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 44,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "stillHoldingGlassAtEngage": true,
+      "cancelledRetainedFrame": true,
+      "destroy": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "realWebGLLossDuringOpening": {
+      "path": "mobile-canvas",
+      "recovered": {
+        "id": 5,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      }
+    },
+    "fpsSettingsSmoke": {
+      "desktop": {
+        "locked": {
+          "min": 1.25,
+          "final": 1.25,
+          "steps": [],
+          "sameRun": true
+        },
+        "adaptive": {
+          "min": 0.75,
+          "final": 1.25,
+          "steps": [
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.75,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.25,
+              "shadow": "cast+props",
+              "stableHud": true
+            }
+          ],
+          "sameRun": true
+        },
+        "pacing": {
+          "frames": 724,
+          "clears": 588,
+          "initialSnap": 2.1169000000000002,
+          "badScale": 0,
+          "endX": 5220,
+          "duration": 30010.800000005962,
+          "insets": {
+            "top": 24,
+            "right": 10,
+            "bottom": 20,
+            "left": 12
+          },
+          "viewport": [
+            1180,
+            660
+          ],
+          "seed": 42,
+          "scale": 1.25,
+          "backing": [
+            1475,
+            825
+          ],
+          "publishCount": 113,
+          "p50": 33.4,
+          "p95": 50.1,
+          "p99": 66.7,
+          "worst": 133.3,
+          "firstLabel": {
+            "label": "59 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          },
+          "lastLabel": {
+            "label": "22 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          }
+        },
+        "persisted": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": true,
+          "volume": 0.5
+        }
+      },
+      "touch": {
+        "locked": {
+          "min": 1.25,
+          "final": 1.25,
+          "steps": [],
+          "sameRun": true
+        },
+        "adaptive": {
+          "min": 0.75,
+          "final": 1.25,
+          "steps": [
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.75,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.25,
+              "shadow": "cast+props",
+              "stableHud": true
+            }
+          ],
+          "sameRun": true
+        },
+        "pacing": {
+          "frames": 1200,
+          "clears": 1098,
+          "initialSnap": 2.7989,
+          "badScale": 0,
+          "endX": 5220,
+          "duration": 30007.500000002983,
+          "insets": {
+            "top": 24,
+            "right": 10,
+            "bottom": 20,
+            "left": 12
+          },
+          "viewport": [
+            400,
+            844
+          ],
+          "seed": 42,
+          "scale": 1.25,
+          "backing": [
+            500,
+            1055
+          ],
+          "publishCount": 115,
+          "p50": 16.7,
+          "p95": 33.4,
+          "p99": 50,
+          "worst": 66.7,
+          "firstLabel": {
+            "label": "46 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          },
+          "lastLabel": {
+            "label": "43 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          }
+        },
+        "persisted": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": true,
+          "volume": 0.4
+        }
+      }
+    },
+    "gestures": {
+      "desktop": {
+        "lowHp": {
+          "hp": 10,
+          "initial": 100,
+          "delayed": 81.2866925914838,
+          "stableBacking": true,
+          "before": [
+            1000,
+            1000
+          ],
+          "bytesAdded": 0
+        },
+        "paused": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "pauseControl": {
+          "scene": 8,
+          "hud": 0,
+          "frozen": true
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            13,
+            18,
+            30
+          ]
+        },
+        "editor": {
+          "scene": 8,
+          "hud": 0,
+          "frozen": true
+        },
+        "hiddenPause": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "teardown": {
+          "queued": true,
+          "workersReleased": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        },
+        "trace": {
+          "starts": 2,
+          "lightEdges": 3,
+          "clicks": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ],
+          "phases": [
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "gameover",
+            "preparing",
+            "playing",
+            "gameover",
+            "preparing"
+          ]
+        }
+      },
+      "touch": {
+        "lowHp": {
+          "hp": 10,
+          "initial": 100,
+          "delayed": 81.23680936783485,
+          "stableBacking": true,
+          "before": [
+            400,
+            800
+          ],
+          "bytesAdded": 0
+        },
+        "paused": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "pauseControl": {
+          "scene": 8,
+          "hud": 0,
+          "frozen": true
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            9,
+            14,
+            24
+          ]
+        },
+        "editor": {
+          "scene": 8,
+          "hud": 0,
+          "frozen": true
+        },
+        "hiddenPause": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "teardown": {
+          "queued": true,
+          "workersReleased": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        },
+        "trace": {
+          "starts": 2,
+          "lightEdges": 3,
+          "clicks": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ],
+          "phases": [
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "gameover",
+            "preparing",
+            "playing",
+            "gameover",
+            "preparing"
+          ]
+        }
+      }
+    }
+  },
+  "gates": {
+    "build": true,
+    "typecheck": true,
+    "boundaryLint": true,
+    "bridge": {
+      "passed": 229,
+      "total": 229
+    },
+    "hudLayout": {
+      "passed": 7,
+      "total": 7
+    },
+    "offlineProgramLinks": 17,
+    "full": {
+      "passed": 613,
+      "total": 618,
+      "unchangedFailures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    }
+  },
+  "notMeasured": [
+    "physical device scan-out/frame rate or GPU compositor timing",
+    "actual memory traffic from the clear",
+    "benefit of partial repairs"
+  ]
+}

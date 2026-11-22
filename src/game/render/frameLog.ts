@@ -24,7 +24,9 @@ export interface FrameSnapshot {
   /** Frames over `longMs`, as a count and as a fraction of the window. */
   long: number
   longFraction: number
-  /** Frames dropped entirely by `markGap` (tab switches, OS sleep). */
+  /** Visible intervals over 250 ms within the sampled window. */
+  visibleStalls: number
+  /** Explicitly observed gaps, e.g. tab switches. */
   gaps: number
 }
 
@@ -32,7 +34,7 @@ export class FrameLog {
   private readonly ring: Float32Array
   private head = 0
   private size = 0
-  /** Everything below this is not a frame, it is a context switch. */
+  /** Threshold for the long-frame counter, independent of visibility. */
   readonly longMs: number
   gaps = 0
   total = 0
@@ -42,11 +44,10 @@ export class FrameLog {
     this.longMs = longMs
   }
 
-  /** Record one frame. `dt` is the wall-clock delta in ms; anything over
-   *  250 ms is treated as a gap (the tab was not rendering), not a frame. */
+  /** Record a foreground rAF interval, including long visible stalls. The
+   * caller excludes intervals crossing known visibility boundaries. */
   sample(dt: number): void {
-    if (!(dt > 0)) return
-    if (dt > 250) { this.gaps++; return }
+    if (!(dt > 0) || !Number.isFinite(dt)) return
     this.ring[this.head] = dt
     this.head = (this.head + 1) % this.ring.length
     if (this.size < this.ring.length) this.size++
@@ -68,8 +69,11 @@ export class FrameLog {
     const a: number[] = new Array(this.size)
     for (let i = 0; i < this.size; i++) a[i] = this.ring[i]
     a.sort((x, y) => x - y)
-    let long = 0
-    for (let i = 0; i < a.length; i++) if (a[i] > this.longMs) long++
+    let long = 0, visibleStalls = 0
+    for (const dt of a) {
+      if (dt > this.longMs) long++
+      if (dt > 250) visibleStalls++
+    }
     return {
       samples: a.length,
       p50: this.percentile(a, 0.5),
@@ -78,6 +82,7 @@ export class FrameLog {
       max: a.length ? a[a.length - 1] : 0,
       long,
       longFraction: a.length ? long / a.length : 0,
+      visibleStalls,
       gaps: this.gaps,
     }
   }
@@ -86,6 +91,6 @@ export class FrameLog {
   report(): string {
     const s = this.snapshot()
     const f = (v: number): string => v.toFixed(1)
-    return `frames ${s.samples} · p50 ${f(s.p50)}ms · p95 ${f(s.p95)}ms · p99 ${f(s.p99)}ms · max ${f(s.max)}ms · long ${s.long} (${(s.longFraction * 100).toFixed(1)}%) · gaps ${s.gaps}`
+    return `frames ${s.samples} · p50 ${f(s.p50)}ms · p95 ${f(s.p95)}ms · p99 ${f(s.p99)}ms · max ${f(s.max)}ms · long ${s.long} (${(s.longFraction * 100).toFixed(1)}%) · stalls >250ms ${s.visibleStalls} · gaps ${s.gaps}`
   }
 }

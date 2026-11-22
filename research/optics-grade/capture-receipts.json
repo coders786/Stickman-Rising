@@ -1,0 +1,524 @@
+{
+  "seed": 42,
+  "captureWarmup": 30,
+  "samples": 72,
+  "scenes": {
+    "bridge-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "low",
+        "fixture": "idle",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 880,
+        "traceState": true
+      },
+      "stateDigest": "eb851dcd32b4e6daa04c81260f108d9b2f8481c9b90a6469fdbcd06ca861793e",
+      "hudHash": "823ea84d8bffd34ee978fce507d1a3ca9fa7fccf7ebf831ce744120b6645ff8a",
+      "visibleFoes": 0,
+      "panWorldPx": 0,
+      "versions": {
+        "before": {
+          "sceneHash": "4c6997595516d052164db04333c3989526110f8cd20e62da76f3e4ddd4f0de31",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "v1": {
+          "sceneHash": "39b71e7c6b4347dc527c919ed9d3c50c73dd31a2a540731722a8d71c864c93d5",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "v2": {
+          "sceneHash": "9a13cc5857c0c0921fc277cbc71cca0f779588286b164db33d6e0c65649928c8",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "final": {
+          "sceneHash": "89631ce994cc28276caafc32f77f3113e220589b3f01ceafaa895aacb561ae77",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        }
+      }
+    },
+    "bridge-sign": {
+      "config": {
+        "route": "capture",
+        "tier": "low",
+        "fixture": "idle",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 1755,
+        "traceState": true
+      },
+      "stateDigest": "8d68e09e5576b1dbe39432a66ba786cb1b1535fa176387cba80f1c6bbbea83a3",
+      "hudHash": "823ea84d8bffd34ee978fce507d1a3ca9fa7fccf7ebf831ce744120b6645ff8a",
+      "visibleFoes": 0,
+      "panWorldPx": 0,
+      "versions": {
+        "before": {
+          "sceneHash": "a19e8700b92cda72526d222193a6bc58f7276408f5c2ab2cfbf11553d55a6387",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "v1": {
+          "sceneHash": "92563b0e88258e2af69c782a88baca1ab2aba94d484bd79ec83ba01c0e4a2724",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "v2": {
+          "sceneHash": "4496531d8fb86b1ae506e131c54670534c0e65c73b57fc0734d9d6d87cb1128e",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        },
+        "final": {
+          "sceneHash": "bad54a61b34e1c5c0344fe298de518fb7b805424cf3dc3a2c740dbe094e50efc",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 58,
+          "retainedBytes": 25190400,
+          "peakBytes": 25190400
+        }
+      }
+    },
+    "station-sign": {
+      "config": {
+        "route": "forward",
+        "tier": "low",
+        "fixture": "idle",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": 1755,
+        "traceState": true
+      },
+      "stateDigest": "8d68e09e5576b1dbe39432a66ba786cb1b1535fa176387cba80f1c6bbbea83a3",
+      "hudHash": "b2e30b20c39119bf3b960dec02f4758a59ea8c93c06e7407567d77ef5a552fac",
+      "visibleFoes": 0,
+      "panWorldPx": 0,
+      "versions": {
+        "before": {
+          "sceneHash": "4c495b35ecce6b37de764c928cccc0fa7f3683a4938bb15f96807ef93aa9cd4d",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 29,
+          "retainedBytes": 14954496,
+          "peakBytes": 14954496
+        },
+        "v1": {
+          "sceneHash": "810cbb3898f895fcb4e11004a62a967fed951ebf73396029c2037f545526455f",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 29,
+          "retainedBytes": 14954496,
+          "peakBytes": 14954496
+        },
+        "v2": {
+          "sceneHash": "e102dacd2ea168d399fa025ac464f913798682c80987d7f0eff584b9d4ecf011",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 29,
+          "retainedBytes": 14954496,
+          "peakBytes": 14954496
+        },
+        "final": {
+          "sceneHash": "1c86f320f7edcbb13016362db13358eae9e6c4d2683ba9878e9fbdeb67d80414",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 29,
+          "retainedBytes": 14954496,
+          "peakBytes": 14954496
+        }
+      }
+    },
+    "bridge-fight": {
+      "config": {
+        "route": "capture",
+        "tier": "low",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 390,
+        "height": 844,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "f83041e6a2efce5e1b251ad4b392edfdd29fa38edf373d76d404a351e2531ca3",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947325,
+      "versions": {
+        "before": {
+          "sceneHash": "76c7aa9e2781b9e3f0b084679bada53af74ed39edf9bee38d5271d3f44dae1d1",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 57,
+          "retainedBytes": 23285760,
+          "peakBytes": 23285760
+        },
+        "v1": {
+          "sceneHash": "a419e55c9509a420c39f01768af0e464a272da2401253214b77c28a672faa230",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 57,
+          "retainedBytes": 23285760,
+          "peakBytes": 23285760
+        },
+        "v2": {
+          "sceneHash": "d08d89d34a976db83a12a4a87559c8dbe4132d1234d6604c9570c10966b37c01",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 57,
+          "retainedBytes": 23285760,
+          "peakBytes": 23285760
+        },
+        "final": {
+          "sceneHash": "ba97a516ba912ed24e222534909f913566faf28280382d84f187b2ae99725579",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 57,
+          "retainedBytes": 23285760,
+          "peakBytes": 23285760
+        }
+      }
+    },
+    "station-fight": {
+      "config": {
+        "route": "capture",
+        "tier": "low",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 390,
+        "height": 844,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "f83041e6a2efce5e1b251ad4b392edfdd29fa38edf373d76d404a351e2531ca3",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947348,
+      "versions": {
+        "before": {
+          "sceneHash": "f1faff5a4a7a70d1f2b8fb8e212a89b8ae84080dd397804d65ba31beb7d04bc2",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 28,
+          "retainedBytes": 13049856,
+          "peakBytes": 13049856
+        },
+        "v1": {
+          "sceneHash": "373852cf26c7e9b48c158cf2e5275d5bd35414c11d1818e7c05c7fd2dafabf2e",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 28,
+          "retainedBytes": 13049856,
+          "peakBytes": 13049856
+        },
+        "v2": {
+          "sceneHash": "d5b9f67fe338e199f37e1e9da7ae6713f181f82c54883c4dcdfb37ee4142a3fd",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 28,
+          "retainedBytes": 13049856,
+          "peakBytes": 13049856
+        },
+        "final": {
+          "sceneHash": "f3df3021865cc23f2547687c8d32a432c1ff49de10b21bac20d69143c3fa2a7f",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 28,
+          "retainedBytes": 13049856,
+          "peakBytes": 13049856
+        }
+      }
+    },
+    "bridge-ultra": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "b7dc0572ee5e7689f303f5f5eb38734bafc4af560aeb73c7667158ef05882559",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947325,
+      "versions": {
+        "before": {
+          "sceneHash": "4a5475340f50e1ca7c0f79f76121454d576d7f2644743a1e97a49c882e33778d",
+          "postSamples": 72,
+          "postSurfaces": [
+            "post:125x70",
+            "post:125x70",
+            "post:32x32"
+          ],
+          "retainedSurfaces": 63,
+          "retainedBytes": 25300992,
+          "peakBytes": 25300992
+        },
+        "v1": {
+          "sceneHash": "7e899083d2ee6ff5b230580976c850de78e19c82ea3ff3ee5a7150975bfaf73d",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 60,
+          "retainedBytes": 25223168,
+          "peakBytes": 25223168
+        },
+        "v2": {
+          "sceneHash": "0978508b999de7b06bbd09f4b841eaa6a94a0271ec5ec5ed669fe00742a45b1e",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 60,
+          "retainedBytes": 25223168,
+          "peakBytes": 25223168
+        },
+        "final": {
+          "sceneHash": "a12aef239e55110822c7bacea59d2be23b38a034ba157be97989b46c4b19b6a5",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 60,
+          "retainedBytes": 25223168,
+          "peakBytes": 25223168
+        }
+      }
+    },
+    "station-ultra": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "8f8f53e4a11f8eb75cd0e18c81725cad4d24e3afdf66e1375f366dd31eaf4f18",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947348,
+      "versions": {
+        "before": {
+          "sceneHash": "3f2a7cf6e91cbca2537bf36ef4c25d7f8bff06baceab00a4c8eb79c616cf2c23",
+          "postSamples": 72,
+          "postSurfaces": [
+            "post:125x70",
+            "post:125x70",
+            "post:32x32"
+          ],
+          "retainedSurfaces": 33,
+          "retainedBytes": 15036416,
+          "peakBytes": 15036416
+        },
+        "v1": {
+          "sceneHash": "dafdf9cf5673c62e54741628a29877fbc1775dedf6ac67085d21b5aea4412f12",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 30,
+          "retainedBytes": 14958592,
+          "peakBytes": 14958592
+        },
+        "v2": {
+          "sceneHash": "997e161c1948b91c81ea461e87fef4c5f6e6506ae3dcdb16f29032b28942b95c",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 30,
+          "retainedBytes": 14958592,
+          "peakBytes": 14958592
+        },
+        "final": {
+          "sceneHash": "7a4638dfd81787f2e91ebcdf2028933c9655844ecff0d3062f387384303c44bb",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 30,
+          "retainedBytes": 14958592,
+          "peakBytes": 14958592
+        }
+      }
+    },
+    "bridge-forward": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "b7dc0572ee5e7689f303f5f5eb38734bafc4af560aeb73c7667158ef05882559",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947325,
+      "versions": {
+        "before": {
+          "sceneHash": "ce482ec972dc607161a23d96f27c4240f76ef7de941f532dd9409158d630428f",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 59,
+          "retainedBytes": 25194496,
+          "peakBytes": 25194496
+        },
+        "final": {
+          "sceneHash": "883a7e4f959d449f77b88d94d3770adb1b3ae5c56917f0d6d2df8f5e35164991",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 59,
+          "retainedBytes": 25194496,
+          "peakBytes": 25194496
+        }
+      }
+    },
+    "station-forward": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 1000,
+        "height": 560,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": null,
+        "traceState": true
+      },
+      "stateDigest": "d59d991ae09f1b2e5eef8ae046cb908f138a5492cccd4cb8e71b1bbd65c48dde",
+      "hudHash": "8f8f53e4a11f8eb75cd0e18c81725cad4d24e3afdf66e1375f366dd31eaf4f18",
+      "visibleFoes": 10,
+      "panWorldPx": 133.77907418947348,
+      "versions": {
+        "before": {
+          "sceneHash": "1db7fb301e30bec1b003e691d09430d4eabf9f9ec636c03b7ae64bd278cde680",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 30,
+          "retainedBytes": 14958592,
+          "peakBytes": 14958592
+        },
+        "final": {
+          "sceneHash": "7a4638dfd81787f2e91ebcdf2028933c9655844ecff0d3062f387384303c44bb",
+          "postSamples": 0,
+          "postSurfaces": [],
+          "retainedSurfaces": 30,
+          "retainedBytes": 14958592,
+          "peakBytes": 14958592
+        }
+      }
+    }
+  },
+  "browser": "HeadlessChrome/153.0.8010.0"
+}

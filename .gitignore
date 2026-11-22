@@ -30,6 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Python tooling caches
+__pycache__/
+*.py[cod]
+
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
@@ -65,6 +69,7 @@ server.log
 /.cache/
 tool-results/
 .next-build
+/.next-preview/
 
 # local visual verification output (.qa/verify-lighting.mts)
 /.qa/*.png

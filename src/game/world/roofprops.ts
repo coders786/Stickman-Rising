@@ -1,4 +1,5 @@
 /** Seeded maintenance-shoulder furniture. Solid housings also feed the light field. */
+import type { GraphicsFeatures } from '../render/graphics'
 import { h01 } from './buildings'
 import { PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, BEACON_X, type PointLight } from './lightfield'
 
@@ -46,9 +47,8 @@ function sizeFor(kind: RoofPropKind, r: number): { w: number; h: number } {
 }
 
 /**
- * Place the props. Deterministic from the run seed; `count` is the tier's
- * budget, so a low-tier device simply gets fewer of the same roof (never a
- * different roof).
+ * Place the props once from the run seed. `count` is a layout size, not a
+ * tier budget: these positions also determine lighting and occlusion.
  *
  * Placement rules, in order of importance:
  *   · never within 110 px of a stage practical (the streetlight's pole and the
@@ -58,7 +58,7 @@ function sizeFor(kind: RoofPropKind, r: number): { w: number; h: number } {
  */
 export function makeRoofProps(
   seed: number,
-  opts: { count: number; x0: number; x1: number; deckY?: number },
+  opts: { count: number; x0: number; x1: number; deckY?: number; reserved?: readonly { left: number; right: number }[] },
 ): RoofPropSet {
   const n = Math.max(0, Math.floor(opts.count))
   const x0 = opts.x0
@@ -87,6 +87,9 @@ export function makeRoofProps(
     let kind = pickKind(h01(i, 31, seed))
     if (kind === 'bulb' && bulbs >= 1) kind = 'marker'
     const size = sizeFor(kind, h01(i, 43, seed))
+    // Do not place housings (or their blockers) through a shelter support.
+    const clearance = size.w * .5 + 8
+    if (opts.reserved?.some(a => x + clearance > a.left && x - clearance < a.right)) continue
     const lit = kind === 'bulb'
     if (lit) bulbs++
     props.push({ kind, x, y, w: size.w, h: size.h, phase: h01(i, 59, seed), lit })
@@ -134,9 +137,9 @@ export function makeRoofProps(
 
 /* Constant inks — the deck's palette. A prop is a silhouette with one edge of
  * moon on it; anything brighter competes with the fighters. */
-const INK_BODY = '#0b131b'
 const INK_DARK = '#080f16'
 const MOON_EDGE = 'rgba(150,185,220,0.22)'
+const MOON_BEVEL = 'rgba(177,202,221,0.46)'
 /** THE CITY IS BELOW YOU. A rooftop object at night is lit from UNDERNEATH by
  *  the street it stands above — that underside edge is the single cue that says
  *  "six floors up" instead of "a crate on a dark floor". */
@@ -144,52 +147,98 @@ const CITY_EDGE = 'rgba(255,190,128,0.30)'
 const CITY_UNDER = 'rgba(255,170,102,0.10)'
 const BULB_GLOW = '255,214,160'
 
-/**
- * Draw the visible props. Returns how many were drawn (the ledger of this pass,
- * used by the tests and the debug overlay).
- *
- * `shadow` turns on the contact chip under each prop — one small ellipse fill,
- * the same grounding language the fighters use.
- */
+const inView = (p: RoofProp, l: number, r: number) => p.x + p.w >= l - 40 && p.x - p.w <= r + 40
+
+function drawFooting(ctx: CanvasRenderingContext2D, props: readonly RoofProp[], l: number, r: number,
+  ink: string, width: number, depth: number, offset: number): void {
+  ctx.beginPath()
+  let visible = false
+  for (const p of props) {
+    if (!inView(p, l, r)) continue
+    const radius = p.w * width
+    ctx.moveTo(p.x + radius, p.y + offset)
+    ctx.ellipse(p.x, p.y + offset, radius, depth, 0, 0, Math.PI * 2)
+    visible = true
+  }
+  if (visible) {
+    ctx.fillStyle = ink
+    ctx.fill()
+  }
+}
+
+/** Same housings and bulb on every tier; only their finish is optional.
+ * Returns the count of visible props. Contact chips batch across the view. */
 export function drawRoofProps(
   ctx: CanvasRenderingContext2D,
   props: readonly RoofProp[],
   viewL: number,
   viewR: number,
-  shadow: boolean,
+  finish: GraphicsFeatures['roofFinish'],
   bulbGain: number,
+  moonSide: -1 | 1 = 1,
 ): number {
   let drawn = 0
   ctx.save()
+  if (finish > 0) {
+    // Dark contact with warm city light spilling around the base. Both paths
+    // are shared across the view rather than repeated for every prop.
+    drawFooting(ctx, props, viewL, viewR, 'rgba(0,0,0,.34)', .62, 2.6, 1)
+    drawFooting(ctx, props, viewL, viewR, CITY_UNDER, .92, 4.2, 1.5)
+  }
   for (const p of props) {
-    if (p.x + p.w < viewL - 40 || p.x - p.w > viewR + 40) continue
+    if (!inView(p, viewL, viewR)) continue
     const bx = p.x - p.w * 0.5
     const by = p.y - p.h
-    if (shadow) {
-      // contact chip + the city's bounce spilling around the base: the object
-      // blocks the light from below, so it is darkest exactly where it meets the
-      // deck and warm at its outer edge.
-      ctx.globalAlpha = 0.34
-      ctx.fillStyle = '#000'
-      ctx.beginPath()
-      ctx.ellipse(p.x, p.y + 1, p.w * 0.62, 2.6, 0, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = 1
-      ctx.fillStyle = CITY_UNDER
-      ctx.beginPath()
-      ctx.ellipse(p.x, p.y + 1.5, p.w * 0.92, 4.2, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
     switch (p.kind) {
       case 'barrier': {
-        ctx.fillStyle='#38434c';ctx.beginPath();ctx.moveTo(bx,p.y);ctx.lineTo(bx+4,by+6);ctx.lineTo(bx+5,by);ctx.lineTo(bx+p.w-5,by);ctx.lineTo(bx+p.w,p.y);ctx.fill()
-        ctx.fillStyle=MOON_EDGE;ctx.fillRect(bx+5,by,p.w-10,1)
-        ctx.fillStyle='#9a8154';ctx.fillRect(bx+8,by+4,7,2);break
+        ctx.fillStyle = '#38434c'
+        ctx.beginPath()
+        ctx.moveTo(bx, p.y)
+        ctx.lineTo(bx + 4, by + 6)
+        ctx.lineTo(bx + 5, by)
+        ctx.lineTo(bx + p.w - 5, by)
+        ctx.lineTo(bx + p.w, p.y)
+        ctx.fill()
+        ctx.fillStyle = MOON_EDGE
+        ctx.fillRect(bx + 5, by, p.w - 10, 1)
+        if (finish >= 2) {
+          // Short, matte caution stripes on the housing, not more lights.
+          ctx.fillStyle = '#a78d5a'
+          ctx.beginPath()
+          for (let i = 0; i < 3; i++) {
+            const x = bx + 8 + i * 6
+            ctx.moveTo(x, by + 9)
+            ctx.lineTo(x + 3, by + 4)
+            ctx.lineTo(x + 6, by + 4)
+            ctx.lineTo(x + 3, by + 9)
+            ctx.closePath()
+          }
+          ctx.fill()
+        }
+        if (finish === 3) {
+          ctx.fillStyle = MOON_BEVEL
+          ctx.fillRect(moonSide < 0 ? bx + 5 : bx + p.w - 6, by + 1, 1, p.h - 5)
+        }
+        break
       }
       case 'cabinet': {
-        ctx.fillStyle='#28333e';ctx.fillRect(bx,by,p.w,p.h)
-        ctx.fillStyle=MOON_EDGE;ctx.fillRect(bx,by,p.w,1)
-        ctx.fillStyle=INK_DARK;for(let i=0;i<3;i++)ctx.fillRect(bx+4,by+4+2*i,p.w-8,1);break
+        ctx.fillStyle = '#28333e'
+        ctx.fillRect(bx, by, p.w, p.h)
+        ctx.fillStyle = MOON_EDGE
+        ctx.fillRect(bx, by, p.w, 1)
+        if (finish >= 2) {
+          ctx.fillStyle = '#4b5760'
+          ctx.fillRect(bx + 3, by + 3, p.w - 6, p.h - 8)
+          ctx.fillStyle = INK_DARK
+          ctx.beginPath()
+          for (let i = 0; i < 3; i++) ctx.rect(bx + 5, by + 6 + 2.5 * i, p.w - 10, 1.25)
+          ctx.fill()
+        }
+        if (finish === 3) {
+          ctx.fillStyle = MOON_BEVEL
+          ctx.fillRect(moonSide < 0 ? bx : bx + p.w - 1, by + 1, 1, p.h - 3)
+        }
+        break
       }
       case 'marker': {
         ctx.fillStyle='#454c51';ctx.fillRect(bx+1,by,4,p.h)

@@ -1,0 +1,1207 @@
+{
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "controlWorkingPatchSha256": "f890b97f14fa7b0722bf3c8f8cf238e67a0ebcb45fc506521f56d6c7381c5b36",
+  "base": "9d27d2b25e4ef0e0a5ca100d7e0f365cc3a66520",
+  "bootMethod": "Production preview, CPU compositor, 3 cold browser samples, warmed server, trusted input after title draw, Bridge desktop and Station touch.",
+  "pacingMethod": "Ultra capture, 1000×560 at 1×, 120 fixed-input samples after 36 warm-up, software rendering, no pixels/traces/pass instrumentation.",
+  "fixtures": {
+    "bridge": {
+      "before": {
+        "boot": [
+          {
+            "sample": 1,
+            "navToEngageEnabledMs": 311.5999999977648,
+            "firstTitleSubmitMs": 973.8000000007451,
+            "acceptedEngageToPlayMs": 642.5,
+            "acceptedRetryToPlayMs": 611.5,
+            "engageAdvancingSimMs": 824.6999999992549,
+            "retryAdvancingSimMs": 791.0999999977648
+          },
+          {
+            "sample": 2,
+            "navToEngageEnabledMs": 330.69999999925494,
+            "firstTitleSubmitMs": 1013.3000000007451,
+            "acceptedEngageToPlayMs": 673.5999999977648,
+            "acceptedRetryToPlayMs": 595.7000000029802,
+            "engageAdvancingSimMs": 846,
+            "retryAdvancingSimMs": 768
+          },
+          {
+            "sample": 3,
+            "navToEngageEnabledMs": 325.0999999977648,
+            "firstTitleSubmitMs": 967.3999999985099,
+            "acceptedEngageToPlayMs": 671.1999999992549,
+            "acceptedRetryToPlayMs": 623.1000000014901,
+            "engageAdvancingSimMs": 851,
+            "retryAdvancingSimMs": 802.5
+          }
+        ],
+        "frames": [
+          {
+            "sample": 1,
+            "rafMs": {
+              "p50": 33.30000000000018,
+              "p95": 50.100000000000364,
+              "p99": 66.69999999999982,
+              "max": 66.69999999999982
+            },
+            "submitMs": {
+              "p50": 21.899999998509884,
+              "p95": 45.399999998509884,
+              "p99": 52.5,
+              "max": 54.599999997764826
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 2,
+            "rafMs": {
+              "p50": 33.30000000000018,
+              "p95": 66.69999999999982,
+              "p99": 66.70000000000027,
+              "max": 83.30000000000018
+            },
+            "submitMs": {
+              "p50": 22.699999999254942,
+              "p95": 47.80000000074506,
+              "p99": 58,
+              "max": 67.10000000149012
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 3,
+            "rafMs": {
+              "p50": 33.30000000000018,
+              "p95": 50.09999999999991,
+              "p99": 66.69999999999982,
+              "max": 66.79999999999973
+            },
+            "submitMs": {
+              "p50": 21.599999997764826,
+              "p95": 44.5,
+              "p99": 51.099999997764826,
+              "max": 51.399999998509884
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          }
+        ]
+      },
+      "final": {
+        "boot": [
+          {
+            "sample": 1,
+            "navToEngageEnabledMs": 299.19999999925494,
+            "firstTitleSubmitMs": 969.1000000014901,
+            "acceptedEngageToPlayMs": 662.9000000022352,
+            "acceptedRetryToPlayMs": 619.9000000022352,
+            "engageAdvancingSimMs": 839.5999999977648,
+            "retryAdvancingSimMs": 801.6999999992549
+          },
+          {
+            "sample": 2,
+            "navToEngageEnabledMs": 293.0999999977648,
+            "firstTitleSubmitMs": 929.1999999992549,
+            "acceptedEngageToPlayMs": 658.5999999977648,
+            "acceptedRetryToPlayMs": 648,
+            "engageAdvancingSimMs": 834,
+            "retryAdvancingSimMs": 819
+          },
+          {
+            "sample": 3,
+            "navToEngageEnabledMs": 342.6000000014901,
+            "firstTitleSubmitMs": 1100.199999999255,
+            "acceptedEngageToPlayMs": 787.8000000007451,
+            "acceptedRetryToPlayMs": 621.6000000014901,
+            "engageAdvancingSimMs": 968.4000000022352,
+            "retryAdvancingSimMs": 801.8000000007451
+          }
+        ],
+        "frames": [
+          {
+            "sample": 1,
+            "rafMs": {
+              "p50": 33.20000000000027,
+              "p95": 50,
+              "p99": 50.100000000000364,
+              "max": 66.79999999999973
+            },
+            "submitMs": {
+              "p50": 20.699999999254942,
+              "p95": 43.400000002235174,
+              "p99": 50.79999999701977,
+              "max": 51.69999999925494
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 2,
+            "rafMs": {
+              "p50": 33.29999999999973,
+              "p95": 50,
+              "p99": 50.09999999999991,
+              "max": 66.59999999999991
+            },
+            "submitMs": {
+              "p50": 20.300000000745058,
+              "p95": 42.400000002235174,
+              "p99": 46.599999997764826,
+              "max": 49
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 3,
+            "rafMs": {
+              "p50": 33.29999999999973,
+              "p95": 50,
+              "p99": 66.59999999999991,
+              "max": 66.69999999999982
+            },
+            "submitMs": {
+              "p50": 21.300000000745058,
+              "p95": 44.400000002235174,
+              "p99": 51,
+              "max": 51.400000002235174
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          }
+        ]
+      }
+    },
+    "station": {
+      "before": {
+        "boot": [
+          {
+            "sample": 1,
+            "navToEngageEnabledMs": 301.29999999701977,
+            "firstTitleSubmitMs": 590,
+            "acceptedEngageToPlayMs": 276.69999999925494,
+            "acceptedRetryToPlayMs": 232.59999999776483,
+            "engageAdvancingSimMs": 457.69999999925494,
+            "retryAdvancingSimMs": 407.9000000022352
+          },
+          {
+            "sample": 2,
+            "navToEngageEnabledMs": 293.8999999985099,
+            "firstTitleSubmitMs": 544.0999999977648,
+            "acceptedEngageToPlayMs": 255.5,
+            "acceptedRetryToPlayMs": 265.4000000022352,
+            "engageAdvancingSimMs": 441.5999999977648,
+            "retryAdvancingSimMs": 439.0999999977648
+          },
+          {
+            "sample": 3,
+            "navToEngageEnabledMs": 338.19999999925494,
+            "firstTitleSubmitMs": 611.5,
+            "acceptedEngageToPlayMs": 294.1000000014901,
+            "acceptedRetryToPlayMs": 260.8999999985099,
+            "engageAdvancingSimMs": 481.0999999977648,
+            "retryAdvancingSimMs": 440.30000000074506
+          }
+        ],
+        "frames": [
+          {
+            "sample": 1,
+            "rafMs": {
+              "p50": 16.700000000000045,
+              "p95": 33.40000000000009,
+              "p99": 50,
+              "max": 50.09999999999991
+            },
+            "submitMs": {
+              "p50": 16.199999999254942,
+              "p95": 23.800000000745058,
+              "p99": 31.700000002980232,
+              "max": 33.69999999925494
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 2,
+            "rafMs": {
+              "p50": 16.700000000000045,
+              "p95": 33.40000000000009,
+              "p99": 33.40000000000009,
+              "max": 33.40000000000009
+            },
+            "submitMs": {
+              "p50": 16,
+              "p95": 23.700000002980232,
+              "p99": 28.5,
+              "max": 33.80000000074506
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 3,
+            "rafMs": {
+              "p50": 16.700000000000045,
+              "p95": 33.40000000000009,
+              "p99": 50,
+              "max": 50
+            },
+            "submitMs": {
+              "p50": 16.100000001490116,
+              "p95": 27.199999999254942,
+              "p99": 35.69999999925494,
+              "max": 43.100000001490116
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          }
+        ]
+      },
+      "final": {
+        "boot": [
+          {
+            "sample": 1,
+            "navToEngageEnabledMs": 321.69999999925494,
+            "firstTitleSubmitMs": 572.5,
+            "acceptedEngageToPlayMs": 73.10000000149012,
+            "acceptedRetryToPlayMs": 49.399999998509884,
+            "engageAdvancingSimMs": 258.20000000298023,
+            "retryAdvancingSimMs": 225.60000000149012
+          },
+          {
+            "sample": 2,
+            "navToEngageEnabledMs": 299.79999999701977,
+            "firstTitleSubmitMs": 552.1999999992549,
+            "acceptedEngageToPlayMs": 65.89999999850988,
+            "acceptedRetryToPlayMs": 51.30000000074506,
+            "engageAdvancingSimMs": 241.5,
+            "retryAdvancingSimMs": 242.30000000074506
+          },
+          {
+            "sample": 3,
+            "navToEngageEnabledMs": 318.29999999701977,
+            "firstTitleSubmitMs": 603.0999999977648,
+            "acceptedEngageToPlayMs": 68.19999999925494,
+            "acceptedRetryToPlayMs": 43,
+            "engageAdvancingSimMs": 256.69999999925494,
+            "retryAdvancingSimMs": 221.09999999776483
+          }
+        ],
+        "frames": [
+          {
+            "sample": 1,
+            "rafMs": {
+              "p50": 16.699999999999818,
+              "p95": 33.299999999999955,
+              "p99": 33.40000000000009,
+              "max": 33.5
+            },
+            "submitMs": {
+              "p50": 2.199999999254942,
+              "p95": 7,
+              "p99": 11.600000001490116,
+              "max": 16.199999999254942
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 2,
+            "rafMs": {
+              "p50": 16.699999999999818,
+              "p95": 33.30000000000018,
+              "p99": 33.40000000000009,
+              "max": 33.40000000000009
+            },
+            "submitMs": {
+              "p50": 2.2000000029802322,
+              "p95": 6.900000002235174,
+              "p99": 11.400000002235174,
+              "max": 16.900000002235174
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          },
+          {
+            "sample": 3,
+            "rafMs": {
+              "p50": 16.699999999999818,
+              "p95": 33.299999999999955,
+              "p99": 33.30000000000018,
+              "max": 33.30000000000018
+            },
+            "submitMs": {
+              "p50": 2,
+              "p95": 6.799999997019768,
+              "p99": 11.300000000745058,
+              "max": 16.5
+            },
+            "visibleStalls250ms": 0,
+            "eventDigest": "e5454d7ba89aac39f4d3d6c6e52e94430c463af699772b37386bd2f8c73dcda7",
+            "simTicks": 146
+          }
+        ]
+      }
+    }
+  },
+  "quality": {
+    "bridgeDesktop": {
+      "touch": false,
+      "stationPreview": false,
+      "offered": [
+        "low",
+        "medium",
+        "high",
+        "ultra"
+      ],
+      "disabled": [],
+      "shed": {
+        "rows": [
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          2250,
+          1395
+        ],
+        "route": "forward"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "reshed": {
+        "rows": [
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "raise": {
+        "rows": [
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "high",
+            "dpr": 1.5,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          },
+          {
+            "tier": "ultra",
+            "dpr": 2,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "ultra",
+        "ceiling": "ultra",
+        "forward": true,
+        "stableRun": true
+      },
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    },
+    "stationTouch": {
+      "touch": true,
+      "stationPreview": true,
+      "offered": [
+        "low",
+        "medium"
+      ],
+      "disabled": [
+        "high",
+        "ultra"
+      ],
+      "shed": {
+        "rows": [
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          877,
+          1899
+        ],
+        "route": "capture"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "reshed": {
+        "rows": [
+          {
+            "tier": "low",
+            "dpr": 1,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "low",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "raise": {
+        "rows": [
+          {
+            "tier": "medium",
+            "dpr": 1.25,
+            "opaquePaint": true,
+            "applied": true,
+            "stableHud": true
+          }
+        ],
+        "reached": "medium",
+        "ceiling": "medium",
+        "forward": false,
+        "stableRun": true
+      },
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    }
+  },
+  "retriesAtAbsoluteUltra": {
+    "bridgeForward": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": false,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 22495232,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 43,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 44,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 45,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 46,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 47,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 48,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 49,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 50,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 51,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 52,
+          "surfaces": 57,
+          "bytes": 20774912,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 53,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 54,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 55,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 56,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 57,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 58,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 59,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 60,
+          "surfaces": 57,
+          "bytes": 20774912,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 61,
+          "surfaces": 57,
+          "bytes": 20774912,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        },
+        {
+          "seed": 62,
+          "surfaces": 58,
+          "bytes": 22495232,
+          "peakBytes": 24920064,
+          "stageBytes": 659456
+        }
+      ],
+      "fixedCount": 8,
+      "scene": [
+        1440,
+        810
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "peakBytes": 24920064,
+      "afterDestroy": 0
+    },
+    "stationCapture": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13053952,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 43,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 44,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 45,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 46,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 47,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 48,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 49,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 50,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 51,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 52,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 53,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 54,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 55,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 56,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 57,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 58,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 59,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 60,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 61,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        },
+        {
+          "seed": 62,
+          "surfaces": 29,
+          "bytes": 13053952,
+          "peakBytes": 13094912,
+          "stageBytes": 6574080
+        }
+      ],
+      "fixedCount": 12,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "peakBytes": 13094912,
+      "afterDestroy": 0
+    }
+  },
+  "shellAndReadyAssets": {
+    "before": {
+      "shell": {
+        "js": {
+          "requests": 10,
+          "bytes": 223278,
+          "decodedBytes": 722789
+        },
+        "css": {
+          "requests": 1,
+          "bytes": 19453,
+          "decodedBytes": 119096
+        },
+        "woff2": {
+          "requests": 2,
+          "bytes": 140700,
+          "decodedBytes": 140700
+        }
+      },
+      "throughReady": {
+        "js": {
+          "requests": 12,
+          "bytes": 383070,
+          "decodedBytes": 1279849
+        },
+        "css": {
+          "requests": 1,
+          "bytes": 19453,
+          "decodedBytes": 119096
+        },
+        "woff2": {
+          "requests": 2,
+          "bytes": 140700,
+          "decodedBytes": 140700
+        }
+      },
+      "htmlBytes": 6817
+    },
+    "final": {
+      "shell": {
+        "js": {
+          "requests": 10,
+          "bytes": 223603,
+          "decodedBytes": 724155
+        },
+        "css": {
+          "requests": 1,
+          "bytes": 19509,
+          "decodedBytes": 119415
+        },
+        "woff2": {
+          "requests": 2,
+          "bytes": 140700,
+          "decodedBytes": 140700
+        }
+      },
+      "throughReady": {
+        "js": {
+          "requests": 12,
+          "bytes": 384614,
+          "decodedBytes": 1285044
+        },
+        "css": {
+          "requests": 1,
+          "bytes": 19509,
+          "decodedBytes": 119415
+        },
+        "woff2": {
+          "requests": 2,
+          "bytes": 140700,
+          "decodedBytes": 140700
+        }
+      },
+      "htmlBytes": 6813
+    }
+  },
+  "liveControls": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "bridgeDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": false,
+      "engage": {
+        "seed": 1491539306,
+        "requested": 1491539306,
+        "route": true,
+        "tier": "low",
+        "starts": 1,
+        "lightEdges": 0,
+        "plates": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 8.600000001490116,
+          "starMs": 0.5999999977648258,
+          "note": "software WebGL",
+          "sprites": 1
+        }
+      },
+      "retry": {
+        "moonSource": "cpu",
+        "starSource": "cpu",
+        "moonMs": 6.099999997764826,
+        "starMs": 0.5999999977648258,
+        "note": "software WebGL",
+        "sprites": 1,
+        "audio": "running"
+      },
+      "cancelledUnpublishedNight": true,
+      "lowHp": {
+        "w": 1000,
+        "h": 560,
+        "alpha": 255
+      },
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          20,
+          22,
+          34
+        ]
+      },
+      "editor": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trace": {
+        "starts": 2,
+        "lightEdges": 3,
+        "clicks": [
+          [
+            "ENGAGE",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "CANCEL",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ]
+        ],
+        "phases": [
+          "preparing",
+          "playing",
+          "paused",
+          "playing",
+          "gameover",
+          "preparing",
+          "gameover",
+          "preparing",
+          "playing",
+          "gameover",
+          "preparing"
+        ]
+      }
+    },
+    "bridgeTouch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": true,
+      "engage": {
+        "seed": 3743152284,
+        "requested": 3743152284,
+        "route": false,
+        "tier": "low",
+        "starts": 1,
+        "lightEdges": 0,
+        "plates": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 17,
+          "starMs": 0.8000000007450581,
+          "note": "software WebGL",
+          "sprites": 1
+        }
+      },
+      "retry": {
+        "moonSource": "cpu",
+        "starSource": "cpu",
+        "moonMs": 4.900000002235174,
+        "starMs": 0.3999999985098839,
+        "note": "software WebGL",
+        "sprites": 1,
+        "audio": "running"
+      },
+      "cancelledUnpublishedNight": true,
+      "lowHp": {
+        "w": 390,
+        "h": 844,
+        "alpha": 102
+      },
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          13,
+          17,
+          28
+        ]
+      },
+      "editor": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trace": {
+        "starts": 2,
+        "lightEdges": 3,
+        "clicks": [
+          [
+            "ENGAGE",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "CANCEL",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ],
+          [
+            "RETRY",
+            true,
+            true
+          ]
+        ],
+        "phases": [
+          "preparing",
+          "playing",
+          "paused",
+          "playing",
+          "gameover",
+          "preparing",
+          "gameover",
+          "preparing",
+          "playing",
+          "gameover",
+          "preparing"
+        ]
+      }
+    }
+  }
+}

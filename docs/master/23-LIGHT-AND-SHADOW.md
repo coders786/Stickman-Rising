@@ -4,6 +4,10 @@ works), 04's FID targets, 06's budgets, 07's tier rules.
 **Status:** implemented on `arena/aefb8bb5-stickman-rising`; numbers below are the
 implemented ones, not targets — except where marked **[provisional]**.
 
+This chapter records the earlier renderer. For today's sole contact, single
+cast and measured preset budgets, see [Shadow Footprint](../SHADOW-FOOTPRINT.md).
+The separate practical and penumbra stacks below are historical.
+
 ---
 
 ## 0 · The complaint, taken literally
@@ -333,18 +337,15 @@ white blade-light in the dark.
 ## 2.7 · Run 5 — the ULTRA stack: ultra stops being "high with bigger numbers"
 
 Up to run 4 the tiers differed by *dial values*: more penumbra passes, a finer
-reflection divisor, a higher DPR cap. That is not a different picture, it is the
-same picture at higher resolution. Run 5 gives ultra four things no other tier
-has, and each one is gated by a flag on the tier table
-(`src/game/render/graphics.ts`) rather than by an `if (tier === 'ultra')` buried
-in a pass:
+reflection divisor, a higher DPR cap. Run 5 adds detail passes controlled by the
+flags in `src/game/render/graphics.ts`, not by tier tests buried in individual
+passes. Base atmosphere and wet-road sheen are now independent of these flags.
 
 | flag | tiers | what it draws |
 |---|---|---|
-| `bloom` | ultra | the frame, downscaled 1/6, squared, added back at two scales — 5 blits |
+| `bloom` | ultra | the frame, downscaled 1/8, squared, added back at two scales — 6 blits |
 | `godRays` | ultra | the same squared buffer smeared radially away from each practical — ≤ 8 taps |
 | `keyTop` | high, ultra | a *top* light term on every figure: the key comes from above, not only from the side |
-| `depthHaze` | ultra | one baked atmosphere band between the roof props and the fighters |
 
 ### 2.7.1 · Bloom without a shader, and the two ways it goes wrong
 
@@ -385,9 +386,9 @@ because it costs almost nothing and fixes the same problem on both.
 
 ### 2.7.3 · Depth, culling and the horde
 
-- **`depthHaze`**: one baked band (a vertical gradient of the sky's own colour)
-  drawn between the props and the fighters. The city bands already had fog; the
-  mid-ground had none, so props read as pasted onto the skyline.
+- **Mid-ground air**: the previous Ultra-only veil and tier-dependent ambient
+  glow changed the skyline's colour when the budget changed. City bounce and
+  warm air now belong to the [base stage](../lighting/road-and-sign-stability.md#the-warm-bridge-is-base-lighting).
 - **Culling**: every body is skipped by one helper that compares against
   `cam.x + cam.offX` with a 90 px margin. The old inline test used `cam.x` alone,
   so during screen shake and the slow-push cutscenes bodies appeared a frame late

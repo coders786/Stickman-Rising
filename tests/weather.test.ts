@@ -187,14 +187,15 @@ test('weather: reset re-identifies the front without allocating', () => {
   assert.deepEqual(run(f, 200).map((e) => e.kind), run(g, 200).map((e) => e.kind))
 })
 
-test('weather: tint helper is quantised so the draw path can cache it', () => {
+test('weather: a skyline tint fades through zero without visible alpha steps', () => {
   assert.notEqual(tintColour(0.3), tintColour(-0.3))
-  assert.equal(tintColour(0), '255,150,74')
-  for (const t of [-1, -0.5, -0.01, 0, 0.01, 0.5, 1]) {
-    const a = tintAlpha(t)
-    assert.ok(a >= 0 && a <= 0.12, `alpha ${a} out of range`)
-    assert.ok(Math.abs(a * 32 - Math.round(a * 32)) < 1e-9, 'alpha is not on the 1/32 grid')
-  }
-  assert.equal(tintAlpha(1), Math.floor(0.12 * 32) / 32)
+  assert.equal(tintColour(0), '#ff964a')
+  assert.equal(tintAlpha(1), 0.12)
   assert.equal(tintAlpha(0), 0)
+  assert.ok(tintAlpha(0.01) > 0)
+
+  const oldBoundary = (2 / 32) / 0.26
+  const a = tintAlpha(oldBoundary - 0.0001)
+  const b = tintAlpha(oldBoundary + 0.0001)
+  assert.ok(b > a && b - a < 0.001, 'the skyline stepped instead of fading')
 })

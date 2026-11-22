@@ -13,8 +13,8 @@
  * the cost of a tier is the sum of the effects it enables, and each effect below
  * is bounded to a handful of fills or blits.
  *
- * THE ORDER OF THE LADDER IS FIXED (ultra > high > medium > low) because
- * `render/quality.ts` and every existing consumer already read it.
+ * Presets are fixed feature sets. RenderScaleControl can shrink the backing
+ * store without changing this table or the current preset.
  *
  * WHAT A TIER MAY NEVER REMOVE (07 §"what a tier may not remove", Rule 10):
  * weather exists on every tier (rain, fog, wind, the front), the moon and its
@@ -25,152 +25,122 @@
 
 export type Tier = 'ultra' | 'high' | 'medium' | 'low'
 
-/** Shadow mode. `contact` is the flat ellipse; `cast` is the projected body;
- *  `cast+props` additionally projects every prop's SILHOUETTE onto the deck. */
+/** `contact`: soft soles; `cast`: add one graded pose projection;
+ *  `cast+props`: also project each visible prop's baked mask once. */
 export type ShadowMode = 'contact' | 'cast' | 'cast+props'
 
 export interface GraphicsFeatures {
   /** How figures are grounded. */
   shadows: ShadowMode
-  /** Softness passes stacked under the hard core: 0 = crisp edge, 3 = soft. */
-  penumbra: number
-  /** Volumetric cones from the two practicals (2 additive blits). */
-  shafts: boolean
+  /** Blits per visible practical cone: off, soft, or soft with a focused core. */
+  shaftLayers: 0 | 1 | 2
   /** Ambient motes drifting in the practicals' cones (one path, ~24 dots). */
   dust: boolean
-  /** Reflection band: 0 = off, otherwise the downscale factor (smaller = finer). */
+  /** Capture-route reflection band: 0 = off, otherwise the downscale divisor. */
   reflection: number
-  /** Device-pixel-ratio cap. This is the single most expensive dial. */
+  /** Forward-route mirror. Medium uses a short outline; High reuses its cast path. */
+  actorMirror: 'off' | 'coarse' | 'posed'
+  /** Small moving highlights per visible curb lens, on either render route. */
+  wetGlints: 0 | 5 | 11
+  /** Scene render scale at locked fidelity. This is the single most expensive dial. */
   dprCap: number
   /** Moon glitter on the wet deck. */
   glitter: boolean
-  /** The weather front's colour fill over the sky. */
-  gradeTint: boolean
   /** The player-keyed rim from the nearest practical. */
   rim: boolean
-  /** A second cast shadow from the nearest practical (the multi-light read). */
-  practicalShadow: boolean
-  /** Prop silhouettes get a moon-side rim edge. */
-  propRim: boolean
-  /** Rooftop props drawn live on the deck (condensers, tanks, vents, the run's
-   *  own bulb). 0 = a bare deck, which is what a tier may choose to lose. */
-  roofProps: number
-  /** City ANIMATION records drawn per band — the windows that change, the signs
-   *  that buzz, the vents that breathe. The city itself is always baked; this is
-   *  how much of it is alive. */
+  /** Successive finish on the same visible fixtures: base, contacts, hardware,
+   * then moon-facing bevels. The layout, blockers and bulb never change. */
+  roofFinish: 0 | 1 | 2 | 3
+  /** Fixed city-animation budget per repeating band tile. The city and its
+   * visible signs are baked; this is the number of extra animated details. */
   buildingAnims: number
-  /** Additive deck pools under the practicals, beyond the player-keyed one. */
-  lightPools: number
+  /** Maximum live remainder blits. All steady pools are baked at every tier. */
+  poolModulations: number
 
-  /* ------------------------- the ULTRA stack ------------------------- *
-   * These four exist ONLY on ultra, and they are what makes ultra a
-   * different picture rather than a slightly cleaner one. Each is a
-   * screen-space pass with a fixed blit budget (see render/post.ts). */
+  /* Legacy optics for ungraded diagnostic scenes. The authored arenas use
+   * fixture-local baked halos at every tier and skip these passes. */
 
   /** Screen-space bloom: one downscale of the frame, squared (a cheap luminance
    *  cut-off) and added back at two scales. 6 blits, ultra only. */
   bloom: boolean
-  /** Radiated god rays from the practicals: an 8-tap additive smear. 8 blits. */
   /** Radial smear of that same squared buffer away from each practical: at most
    *  8 additive taps, ultra only. */
   godRays: boolean
   /** Directional top-light on a figure (the key from above), not just a side rim. */
   keyTop: boolean
-  /** Atmospheric depth on the fighters: haze thickens with distance from the
-   *  camera's focus line, so the horde reads as a crowd in air, not a row. */
-  depthHaze: boolean
 }
 
 /** THE TABLE. Reading it column by column is reading the budget. */
 export const GRAPHICS: Readonly<Record<Tier, GraphicsFeatures>> = {
   low: {
     shadows: 'contact',
-    penumbra: 0,
-    shafts: false,
+    shaftLayers: 0,
     dust: false,
     reflection: 0,
-    dprCap: 1,
+    actorMirror: 'off',
+    wetGlints: 0,
+    dprCap: .75,
     glitter: false,
-    gradeTint: false,
     rim: false,
-    practicalShadow: false,
-    propRim: false,
-    roofProps: 0,
+    roofFinish: 0,
     buildingAnims: 0,
-    lightPools: 0,
+    poolModulations: 0,
     bloom: false,
     godRays: false,
     keyTop: false,
-    depthHaze: false,
   },
   medium: {
     shadows: 'contact',
-    penumbra: 1,
-    shafts: false,
+    shaftLayers: 0,
     dust: false,
     reflection: 8,
-    dprCap: 1.25,
+    actorMirror: 'coarse',
+    wetGlints: 0,
+    dprCap: 1,
     glitter: true,
-    gradeTint: true,
     rim: true,
-    practicalShadow: false,
-    propRim: false,
-    roofProps: 6,
+    roofFinish: 1,
     buildingAnims: 2,
-    lightPools: 1,
+    poolModulations: 0,
     bloom: false,
     godRays: false,
     keyTop: false,
-    depthHaze: false,
   },
   high: {
     shadows: 'cast',
-    penumbra: 2,
-    shafts: true,
+    shaftLayers: 1,
     dust: false,
     reflection: 6,
-    dprCap: 1.5,
+    actorMirror: 'posed',
+    wetGlints: 5,
+    dprCap: 1.15,
     glitter: true,
-    gradeTint: true,
     rim: true,
-    practicalShadow: true,
-    propRim: false,
-    roofProps: 12,
+    roofFinish: 2,
     buildingAnims: 4,
-    lightPools: 2,
+    poolModulations: 1,
     bloom: false,
     godRays: false,
     keyTop: true,
-    depthHaze: false,
   },
   ultra: {
     shadows: 'cast+props',
-    penumbra: 4,
-    shafts: true,
+    shaftLayers: 2,
     dust: true,
     reflection: 3,
-    dprCap: 2.25,
+    actorMirror: 'posed',
+    wetGlints: 11,
+    dprCap: 1.25,
     glitter: true,
-    gradeTint: true,
     rim: true,
-    practicalShadow: true,
-    propRim: true,
-    roofProps: 22,
+    roofFinish: 3,
     buildingAnims: 8,
-    lightPools: 6,
+    poolModulations: 5,
     bloom: true,
     godRays: true,
     keyTop: true,
-    depthHaze: true,
   },
 } as const
-
-const ORDER: readonly Tier[] = ['low', 'medium', 'high', 'ultra']
-
-export function tierIndex(t: Tier): number {
-  const i = ORDER.indexOf(t)
-  return i < 0 ? 0 : i
-}
 
 /** Features for a tier, with an unknown tier falling back to `low` rather than
  *  to `ultra`: a typo must never silently enable the expensive path. */
@@ -178,18 +148,10 @@ export function featuresFor(t: Tier): GraphicsFeatures {
   return GRAPHICS[t] ?? GRAPHICS.low
 }
 
-/** Clamp a requested tier into [floor, ceiling]. Used by the governor: a shed
- *  may not go below `low`, and a raise may not exceed the player's choice. */
-export function clampTier(t: Tier, ceiling: Tier, floor: Tier = 'low'): Tier {
-  const i = tierIndex(t)
-  const lo = tierIndex(floor)
-  const hi = tierIndex(ceiling)
-  return ORDER[Math.max(lo, Math.min(hi, i))]
+/** A click is an explicit lock, even when the same preset was adaptive. */
+export function lockQualityPreset<T extends { quality: Tier; adaptiveQuality: boolean }>(settings: T, quality: Tier): T {
+  return { ...settings, quality, adaptiveQuality: false }
 }
-
-/* -------------------------------------------------------------------------- */
-/* DEVICE CLASS                                                               */
-/* -------------------------------------------------------------------------- */
 
 export interface DeviceClass {
   /** A mouse/trackpad and no touch: the profile of a desktop. */
@@ -198,12 +160,11 @@ export interface DeviceClass {
   megapixels: number
   /** The tier this device should START at. */
   start: Tier
-  /** The highest tier this device is offered. */
-  ceiling: Tier
 }
 
-/** First-run policy, not a GPU benchmark. A pointer desktop starts on Ultra
- * even in a small window. Saved settings and the frame-time governor still win. */
+/** First-run policy, not a GPU benchmark. A fine pointer says nothing
+ * about bandwidth or GPU speed. Start desktops at native scale; saved
+ * presets and locks still win. */
 export function classifyDevice(v: {
   width: number
   height: number
@@ -217,17 +178,20 @@ export function classifyDevice(v: {
   const megapixels = (w * h * dpr * dpr) / 1e6
   const desktop = v.finePointer && !v.touch
   if (desktop && Number.isFinite(v.width * v.height) && v.width > 0 && v.height > 0) {
-    return { desktop, megapixels, start: 'ultra', ceiling: 'ultra' }
+    return { desktop, megapixels, start: 'medium' }
   }
-  // Touch devices: phones and tablets. `high` is offered on big tablets only.
-  if (megapixels >= 3.2) return { desktop, megapixels, start: 'medium', ceiling: 'high' }
-  return { desktop, megapixels, start: 'low', ceiling: 'medium' }
+  // A conservative suggestion for touch. All four presets remain available.
+  if (megapixels >= 3.2) return { desktop, megapixels, start: 'medium' }
+  return { desktop, megapixels, start: 'low' }
 }
 
-/** A conservative fallback for headless callers (tests, the bench). */
-export const HEADLESS_CLASS: DeviceClass = {
-  desktop: false,
-  megapixels: 0,
-  start: 'low',
-  ceiling: 'medium',
+/** Public preset names are separate from saved IDs and from renderer admission. */
+export const QUALITY_PRESETS = ['low', 'medium', 'high', 'ultra'] as const satisfies readonly Tier[]
+export const QUALITY_NAMES: Readonly<Record<Tier, string>> = { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra' }
+
+export type BridgePath = 'master-webgl2' | 'mobile-webgl2' | 'mobile-canvas'
+export const RENDERER_NAMES: Readonly<Record<BridgePath, string>> = {
+  'master-webgl2': 'WebGL2 HDR',
+  'mobile-webgl2': 'WebGL2 Optimized',
+  'mobile-canvas': 'Canvas 2D',
 }

@@ -1,0 +1,393 @@
+{
+  "liveBuild": "vHw4H2152H3jcUqgJajgG",
+  "controlBuild": "sDKN0u6DPrmZAy90Cvevd",
+  "seed": 42,
+  "liveAndStagedReceiptsMatch": true,
+  "unchangedCheckedBridgeAssets": 18,
+  "staticLinksVerified": 13,
+  "hostAndOriginAccepted": true,
+  "iframeHeadersClear": true,
+  "slowCrossOriginBoot": {
+    "phase": "playing",
+    "errors": [],
+    "failedRequests": []
+  },
+  "trustedCanvasEngageCancelRetry": {
+    "tickZeroFrameKinds": [
+      "canvas",
+      "canvas"
+    ],
+    "liveInputAtHandoff": true
+  },
+  "reports": {
+    "canvas": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 960,
+        "height": 620,
+        "deviceScaleFactor": 1
+      },
+      "frameKind": "canvas",
+      "missingWorker": false,
+      "matchedWithOldBuild": true,
+      "exactControlPixels": true,
+      "retainedBlackPercent": [
+        78.3,
+        88.1
+      ],
+      "maxOffBodyPixelsAbove5Past2pxAA": 0,
+      "frames": {
+        "entry": {
+          "x": 240,
+          "pose": "ready",
+          "camera": {
+            "x": 252,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "warm": {
+          "x": 2086,
+          "pose": "ready",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "left": {
+          "x": 330,
+          "pose": "ready",
+          "camera": {
+            "x": 342,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "cool": {
+          "x": 22839,
+          "pose": "ready",
+          "camera": {
+            "x": 22851,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0.038
+          }
+        },
+        "open": {
+          "x": 2341,
+          "pose": "ready",
+          "camera": {
+            "x": 2353,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "covered": {
+          "x": 3983,
+          "pose": "ready",
+          "camera": {
+            "x": 3995,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "strike": {
+          "x": 2108.3326922432348,
+          "pose": "l1",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        }
+      }
+    },
+    "denied": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 412,
+        "height": 780,
+        "deviceScaleFactor": 1,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "frameKind": "canvas",
+      "missingWorker": true,
+      "matchedWithOldBuild": false,
+      "retainedBlackPercent": [
+        78.2,
+        100.0
+      ],
+      "maxOffBodyPixelsAbove5Past2pxAA": 0,
+      "frames": {
+        "entry": {
+          "x": 240,
+          "pose": "ready",
+          "camera": {
+            "x": 252,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "warm": {
+          "x": 2086,
+          "pose": "ready",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "open": {
+          "x": 2341,
+          "pose": "ready",
+          "camera": {
+            "x": 2353,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "covered": {
+          "x": 3983,
+          "pose": "ready",
+          "camera": {
+            "x": 3995,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        }
+      }
+    },
+    "lean": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 412,
+        "height": 780,
+        "deviceScaleFactor": 1,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "frameKind": "starter",
+      "missingWorker": true,
+      "matchedWithOldBuild": false,
+      "retainedBlackPercent": [
+        78.8,
+        100.0
+      ],
+      "maxOffBodyPixelsAbove5Past2pxAA": 0,
+      "frames": {
+        "entry": {
+          "x": 240,
+          "pose": "ready",
+          "camera": {
+            "x": 252,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "warm": {
+          "x": 2086,
+          "pose": "ready",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "open": {
+          "x": 2341,
+          "pose": "ready",
+          "camera": {
+            "x": 2353,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "covered": {
+          "x": 3983,
+          "pose": "ready",
+          "camera": {
+            "x": 3995,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        }
+      }
+    },
+    "master": {
+      "path": "master-webgl2",
+      "viewport": {
+        "width": 960,
+        "height": 620,
+        "deviceScaleFactor": 1
+      },
+      "frameKind": "webgl",
+      "missingWorker": false,
+      "matchedWithOldBuild": true,
+      "exactControlPixels": true,
+      "retainedBlackPercent": [
+        73.1,
+        86.5
+      ],
+      "maxOffBodyPixelsAbove5Past2pxAA": 0,
+      "frames": {
+        "warm": {
+          "x": 2086,
+          "pose": "ready",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "cool": {
+          "x": 22839,
+          "pose": "ready",
+          "camera": {
+            "x": 22851,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0.038
+          }
+        },
+        "open": {
+          "x": 2341,
+          "pose": "ready",
+          "camera": {
+            "x": 2353,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "covered": {
+          "x": 3983,
+          "pose": "ready",
+          "camera": {
+            "x": 3995,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        },
+        "strike": {
+          "x": 2108.3326922432348,
+          "pose": "l1",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.49,
+            "rot": 0
+          }
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "viewport": {
+        "width": 412,
+        "height": 780,
+        "deviceScaleFactor": 1,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "frameKind": "webgl",
+      "missingWorker": false,
+      "matchedWithOldBuild": true,
+      "exactControlPixels": true,
+      "retainedBlackPercent": [
+        76.6,
+        87.3
+      ],
+      "maxOffBodyPixelsAbove5Past2pxAA": 0,
+      "frames": {
+        "entry": {
+          "x": 240,
+          "pose": "ready",
+          "camera": {
+            "x": 252,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "warm": {
+          "x": 2086,
+          "pose": "ready",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "cool": {
+          "x": 22839,
+          "pose": "ready",
+          "camera": {
+            "x": 22851,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0.038
+          }
+        },
+        "covered": {
+          "x": 3983,
+          "pose": "ready",
+          "camera": {
+            "x": 3995,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        },
+        "strike": {
+          "x": 2108.3326922432348,
+          "pose": "l1",
+          "camera": {
+            "x": 2098,
+            "y": -111,
+            "zoom": 1.18,
+            "rot": 0
+          }
+        }
+      }
+    }
+  },
+  "cpuAndCode": {
+    "productionBuild": true,
+    "bridgePass": 222,
+    "bridgeTotal": 222,
+    "exactWebGLProgramsLinked": 17,
+    "fullPass": 609,
+    "fullTotal": 614,
+    "sameFiveFullSuiteFailures": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ]
+  },
+  "evidence": {
+    "metrics": "pixels.json",
+    "comparison": "comparison.webp",
+    "sha256": "e3886d01f1c10b17ec3d5f30cdc9a1532009d2110d607f59d8443efbad546f94"
+  }
+}

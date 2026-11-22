@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Game } from '@/game/game'
+import { flushSync } from 'react-dom'
+import type { Game } from '@/game/game'
+import type { GraphicsDiagnostics } from '@/debug/GraphicsSelfTest'
 import { SWORDS, SWORD_ORDER, SwordId, swordTier, upgradedSword } from '@/game/combat/swords'
 import { DEFAULT_SETTINGS, GameSettings, RunStats, type QualityLevel } from '@/game/core/types'
-import { classifyDevice } from '@/game/render/graphics'
-import { Input as GameInput, Action } from '@/game/core/input'
+import { classifyDevice, featuresFor, lockQualityPreset, QUALITY_NAMES, QUALITY_PRESETS, RENDERER_NAMES } from '@/game/render/graphics'
+import type { Input as GameInput, Action } from '@/game/core/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input as TextInput } from '@/components/ui/input'
@@ -16,12 +18,15 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { fmt } from '@/game/core/utils'
 import { parseSave, parseSettings, readStorage, writeStorage, SAVE_KEY, SETTINGS_KEY, NAME_KEY, type SaveData } from '@/lib/persistence'
-import { scoreRowsSchema, type ScoreRow } from '@/lib/scores'
+import type { ScoreRow } from '@/lib/scores'
+import { markBoot } from '@/lib/boot-timing'
+import type { RunPreparationStage } from '@/game/core/types'
+import { BridgeInterlude } from './bridge-interlude'
 import { Swords, Trophy, Play, Settings as SettingsIcon, BookOpen, ChevronRight, RotateCcw, Home as HomeIcon, Send, Pause } from 'lucide-react'
 
 /* ------------------------------------------------------------------ */
 
-type Screen = 'title' | 'arsenal' | 'howto' | 'scores' | 'settings' | 'playing' | 'paused' | 'gameover'
+type Screen = 'title' | 'arsenal' | 'howto' | 'scores' | 'settings' | 'preparing' | 'playing' | 'paused' | 'gameover'
 
 /** Submission id without assuming a secure context.
  *
@@ -53,48 +58,38 @@ const SCREEN_LABEL: Record<Screen, string> = {
   howto: 'How to play',
   scores: 'Leaderboard',
   settings: 'Settings',
+  preparing: 'Preparing the bridge',
   playing: 'Playing',
   paused: 'Paused',
   gameover: 'Run over: score summary',
 }
 
-/** What each tier actually turns on, in the player's language. These are the
- *  render/graphics.ts table's contents, not marketing: if a line here is false,
- *  the table is wrong. */
 const QUALITY_BLURB: Record<QualityLevel, string> = {
-  low: 'CONTACT SHADOWS · NO REFLECTIONS · 1× RESOLUTION — the 120 fps floor',
-  medium: 'SOFT CONTACT · WET REFLECTION · PENUMBRA · RIM LIGHT',
-  high: 'CAST SHADOWS · TWO LIGHTS PER FIGHTER · VOLUMETRIC SHAFTS · FINER MIRROR',
-  ultra: 'PROP SILHOUETTE SHADOWS · DUST IN THE LIGHT · FULL-PIXEL MIRROR · 2× DPR',
+  low: 'Lightest preset. Simple contact shadows on Canvas.',
+  medium: 'Native scale target. Adds fighter rim light and reflections on Canvas.',
+  high: 'Sharper scale target. Adds projected shadows and finer reflections on Canvas.',
+  ultra: 'Highest scale target. On supported hardware: softer HDR shadows, natural glow and detailed wet surfaces.',
 }
-
-function loadSave(): SaveData { return parseSave(readStorage(SAVE_KEY)) }
-/** The player's first impression is the tier their DEVICE starts at, not a
- *  hard-coded 'low'. `classifyDevice` reads behavioural facts (fine pointer, no
- *  touch, shaded megapixels) because renderer strings are blocked often enough to
- *  be a coin flip (14 §2). */
-function detectStartTier(): QualityLevel | undefined {
-  if (typeof window === 'undefined') return undefined
-  const fine = window.matchMedia?.('(pointer: fine)').matches ?? false
-  const touch = (navigator.maxTouchPoints ?? 0) > 0
-  const cls = classifyDevice({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio || 1, finePointer: fine, touch })
-  return cls.start
-}
-function loadSettings(): GameSettings {
-  const coarse = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches ?? false)
-  return parseSettings(readStorage(SETTINGS_KEY), coarse, detectStartTier())
-}
-
 /* ================================================================== */
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const workRef = useRef<HTMLCanvasElement>(null)
   const hudRef = useRef<HTMLCanvasElement>(null)
+  const finishRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const engageRef = useRef<HTMLButtonElement>(null)
+  const retryRef = useRef<HTMLButtonElement>(null)
+  const returnToRetry = useRef(false)
   const gameRef = useRef<Game | null>(null)
   const saveRef = useRef<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
+  const settingsRef = useRef<GameSettings>({ ...DEFAULT_SETTINGS })
 
   const [screen, setScreen] = useState<Screen>('title')
+  const [interlude, setInterlude] = useState<{ stage: RunPreparationStage; retry: boolean; presented: boolean; cutId?: number } | null>(null)
+  const [runUnavailable, setRunUnavailable] = useState(false)
+  const [arsenalFrom, setArsenalFrom] = useState<'title' | 'gameover'>('title')
+  const completeCut = useCallback((id: number) => gameRef.current?.finishOpeningCut(id), [])
   const [settingsFrom, setSettingsFrom] = useState<Screen>('title')
   const [stats, setStats] = useState<RunStats | null>(null)
   /* Which night this was: the profile label + seed of the sky the player just
@@ -109,8 +104,10 @@ export default function Home() {
    * hydration mismatch badge) */
   const [save, setSave] = useState<SaveData>({ totalKills: 0, best: 0, unlocked: ['katana'] })
   const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS })
-  /* The device's class, measured once on mount: which tiers exist for it at all,
-     and what the settings screen tells the player about the machine it is on. */
+  const graphicsOptIn = useRef(false)
+  const [graphicsQA, setGraphicsQA] = useState<GraphicsDiagnostics | null>(null)
+  const [activeScale, setActiveScale] = useState<number | null>(null)
+  /* First-run suggestion only; every device offers all four presets. */
   const [deviceClass, setDeviceClass] = useState(() => classifyDevice({ width: 1280, height: 720, dpr: 1, finePointer: false, touch: true }))
   const [selectedSword, setSelectedSword] = useState<SwordId>('katana')
   const [loadout, setLoadout] = useState<SwordId[]>(['katana'])
@@ -128,150 +125,227 @@ export default function Home() {
   const [storageError, setStorageError] = useState(false)
   const [newUnlocks, setNewUnlocks] = useState<SwordId[]>([])
   const [touchMode, setTouchMode] = useState(false)
+  const [actions, setActions] = useState({ overdrive: false, service: false, execute: false })
   const [gameInput, setGameInput] = useState<GameInput | null>(null)
-  /** Teardown for the coarse-pointer listener, assigned inside the hydrate
-   *  effect so it can be removed on unmount without a second effect. */
-  const cleanupTouchMode = useRef<(() => void) | null>(null)
+  const canEngage = hydrated && gameInput !== null && !gameError
+  const titleMenu = screen === 'title' || screen === 'howto' || screen === 'scores' ||
+    (screen === 'arsenal' && arsenalFrom === 'title') || (screen === 'settings' && settingsFrom === 'title')
 
-  /* hydrate persisted values AFTER mount (SSR-safe pattern). Batched into a
-   * rAF callback: asynchronous by design, so no cascading renders and no
-   * flash of default content before the first paint. */
+  /* Boot preferences without rAF: a backgrounded or throttled iframe can
+   * postpone animation indefinitely. React can still make the menu usable. */
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      const s = loadSave()
-      saveRef.current = s
-      setSave(s)
-      const latest = s.unlocked[s.unlocked.length - 1] ?? 'katana'
+    let disposed = false
+    let removePointerListener: (() => void) | undefined
+    let disposeGame: (() => void) | undefined
+    const boot = async () => {
+      if (disposed) return
+      const mq = window.matchMedia?.('(pointer: coarse)')
+      const coarse = mq?.matches ?? false
+      const device = classifyDevice({
+        width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio || 1,
+        finePointer: window.matchMedia?.('(pointer: fine)').matches ?? false,
+        touch: (navigator.maxTouchPoints ?? 0) > 0,
+      })
+      const progress = parseSave(readStorage(SAVE_KEY))
+      const savedPrefs = parseSettings(readStorage(SETTINGS_KEY), coarse, device.start)
+      const verify = new URLSearchParams(window.location.search).get('verifyGraphics') === '1'
+      graphicsOptIn.current = verify
+      const preferences = verify ? { ...lockQualityPreset(savedPrefs, 'ultra'), showFps: true } : savedPrefs
+      saveRef.current = progress
+      settingsRef.current = preferences
+      const latest = progress.unlocked[progress.unlocked.length - 1] ?? 'katana'
+      setSave(progress)
       setSelectedSword(latest)
       setLoadout([latest])
-      setSettings(loadSettings())
-      setDeviceClass(
-        classifyDevice({
-          width: window.innerWidth,
-          height: window.innerHeight,
-          dpr: window.devicePixelRatio || 1,
-          finePointer: window.matchMedia?.('(pointer: fine)').matches ?? false,
-          touch: (navigator.maxTouchPoints ?? 0) > 0,
-        }),
-      )
-      setHydrated(true)
-      setTouchMode(window.matchMedia?.('(pointer: coarse)').matches ?? false)
-      // A tablet that gains a mouse (or a phone that rotates into a keyboard
-      // case) must not keep showing thumb buttons, and vice versa. One listener,
-      // removed on unmount.
-      const mq = window.matchMedia?.('(pointer: coarse)')
-      if (mq) {
-        const onChange = (ev: MediaQueryListEvent) => setTouchMode(ev.matches)
-        mq.addEventListener?.('change', onChange)
-        cleanupTouchMode.current = () => mq.removeEventListener?.('change', onChange)
-      }
+      setSettings(preferences)
+      setDeviceClass(device)
+      setTouchMode(coarse)
       setName((readStorage(NAME_KEY) ?? '').slice(0, 16))
+      setHydrated(true)
+      if (mq) {
+        const change = (event: MediaQueryListEvent) => setTouchMode(event.matches)
+        mq.addEventListener?.('change', change)
+        removePointerListener = () => mq.removeEventListener?.('change', change)
+      }
+
+      markBoot('engine-request')
+      // The server-rendered menu doesn't depend on the engine or its art
+      // modules arriving in the initial script group.
+      const { Game } = await import('@/game/game')
+      if (disposed) return
+      markBoot('engine-module')
+      const canvas = canvasRef.current
+      if (!canvas) throw new Error('Missing arena canvas')
+      const game = new Game()
+      game.enableOpeningCut()
+      let lastPhase = game.phase
+      const off = game.on((e) => {
+        if (e.type === 'error') {
+          if (lastPhase === 'preparing') markBoot('run-failed')
+          setGameError('The game encountered an unexpected error. Reload to try again; saved progress is retained.')
+        } else if (e.type === 'runUnavailable') {
+          setRunUnavailable(true)
+        } else if (e.type === 'runStarted') {
+          runRef.current += 1
+          submissionKey.current = submissionId()
+          setSubmitted(false)
+          setSubmitError(null)
+          setNewUnlocks([])
+        } else if (e.type === 'gameover') {
+          setRunSword(game.player.sword.id)
+          setStats(e.stats)
+          const night = game.runIdentity?.()
+          setNightLabel(night ? `${night.label} · ${night.id}` : '')
+          setScreen('gameover')
+          setSubmitted(false)
+          setSubmitError(null)
+          // persist progress + unlocks
+          const prev = saveRef.current
+          const totalKills = prev.totalKills + e.stats.kills
+          const best = Math.max(prev.best, e.stats.score)
+          const unlocked = [...prev.unlocked]
+          const fresh: SwordId[] = []
+          for (const id of SWORD_ORDER) {
+            if (!unlocked.includes(id) && totalKills >= SWORDS[id].unlockKills) {
+              unlocked.push(id)
+              fresh.push(id)
+            }
+          }
+          const next = { totalKills, best, unlocked }
+          saveRef.current = next
+          setSave(next)
+          setStorageError(!writeStorage(SAVE_KEY, JSON.stringify(next)))
+          if (fresh.length) {
+            setNewUnlocks(fresh)
+            setSelectedSword(fresh[fresh.length - 1])
+          }
+        } else if (e.type === 'actions') {
+          setActions({ overdrive: e.overdrive, service: e.service, execute: e.execute })
+        } else if (e.type === 'quality') {
+          setActiveScale(e.scale)
+        } else if (e.type === 'runPreparing') {
+          setInterlude(previous => previous && { ...previous, stage: e.stage, presented: e.presented, cutId: undefined })
+        } else if (e.type === 'runRevealing') {
+          setInterlude(previous => previous && { ...previous, cutId: e.id })
+        } else if (e.type === 'phase') {
+          const arrived = lastPhase === 'preparing' && e.phase === 'playing'
+          if (lastPhase === 'preparing') {
+            returnToRetry.current = e.phase === 'gameover'
+            markBoot(arrived ? 'playing' : 'cancelled')
+          }
+          const next = e.phase === 'attract' ? 'title' : e.phase
+          if (e.phase === 'preparing') {
+            setInterlude({ stage: 'opening', retry: lastPhase === 'gameover', presented: false })
+            setScreen(next)
+          } else if (arrived) flushSync(() => {
+            // Remove the matte and mount touch controls with the input unlock.
+            setInterlude(null)
+            setScreen(next)
+          })
+          else { setInterlude(null); setScreen(next) }
+          lastPhase = e.phase
+        }
+      })
+      let stopResize: (() => void) | undefined
+      let stopGraphics: (() => void) | undefined
+      disposeGame = () => {
+        stopGraphics?.()
+        stopResize?.()
+        off()
+        game.destroy()
+        if (gameRef.current === game) gameRef.current = null
+      }
+      try {
+        game.applySettings(settingsRef.current)
+      } catch (error) {
+        console.warn('Applying saved settings failed:', error)
+      }
+      game.setUnlocked(saveRef.current.unlocked, saveRef.current.totalKills)
+      game.touchControls = mq?.matches ?? false
+      if (verify && (coarse || new URLSearchParams(window.location.search).get('tier') === 'mobile')) game.preferDiagnosticMobile()
+      game.mount(canvas, hudRef.current, finishRef.current, workRef.current)
+      setActiveScale(game.renderConfig.renderScale)
+
+      const resize = () => game.resize()
+      if (wrapRef.current && typeof ResizeObserver === 'function') {
+        const observer = new ResizeObserver(resize)
+        observer.observe(wrapRef.current)
+        stopResize = () => observer.disconnect()
+      } else {
+        window.addEventListener('resize', resize)
+        stopResize = () => window.removeEventListener('resize', resize)
+      }
+      gameRef.current = game
+      setGameInput(game.input)
+      if (verify) void import('@/debug/GraphicsSelfTest').then(({ startGraphicsSelfTest }) => {
+        if (!disposed) stopGraphics = startGraphicsSelfTest(game, setGraphicsQA)
+      }).catch(error => {
+        console.warn('Graphics self-test unavailable:', error)
+        if (!disposed) setGraphicsQA({ version: 'SACR 4.0', status: 'fail' })
+      })
+    }
+    // Asynchronous for React's initial commit but independent of painting.
+    void Promise.resolve().then(boot).catch(error => {
+      if (disposed) return
+      disposeGame?.()
+      disposeGame = undefined
+      markBoot('engine-failed')
+      console.error('Game startup failed', error)
+      setGameError('The game could not start. Reload the preview to try again. Saved progress is retained.')
     })
     return () => {
-      cancelAnimationFrame(id)
-      cleanupTouchMode.current?.()
+      disposed = true
+      removePointerListener?.()
+      disposeGame?.()
     }
   }, [])
 
-  /* ---------------- game mount ---------------- */
+  useEffect(() => { if (hydrated) markBoot('menu') }, [hydrated])
+  useEffect(() => { if (gameRef.current) gameRef.current.touchControls = touchMode }, [touchMode, gameInput])
+  useEffect(() => {
+    if (!canEngage) return
+    markBoot('ready')
+  }, [canEngage])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    let game: Game
-    try {
-      game = new Game()
-    } catch (error) {
-      console.error('Game construction failed', error)
-      setGameError('Unable to start the game. Reload to try again; saved progress is retained.')
-      return
+    // A disabled Engage can't autofocus at mount. Restore keyboard start
+    // once it works, without taking focus from another menu button.
+    if (canEngage && screen === 'title' && document.activeElement === document.body) {
+      engageRef.current?.focus({ preventScroll: true })
     }
-    gameRef.current = game
-    const off = game.on((e) => {
-      if (e.type === 'error') {
-        setGameError('The game encountered an unexpected error. Reload to try again; saved progress is retained.')
-      } else if (e.type === 'gameover') {
-        setRunSword(game.player.sword.id)
-        setStats(e.stats)
-        const night = game.runIdentity?.()
-        setNightLabel(night ? `${night.label} · ${night.id}` : '')
-        setScreen('gameover')
-        setSubmitted(false)
-        setSubmitError(null)
-        // persist progress + unlocks
-        const prev = saveRef.current
-        const totalKills = prev.totalKills + e.stats.kills
-        const best = Math.max(prev.best, e.stats.score)
-        const unlocked = [...prev.unlocked]
-        const fresh: SwordId[] = []
-        for (const id of SWORD_ORDER) {
-          if (!unlocked.includes(id) && totalKills >= SWORDS[id].unlockKills) {
-            unlocked.push(id)
-            fresh.push(id)
-          }
-        }
-        const next = { totalKills, best, unlocked }
-        saveRef.current = next
-        setSave(next)
-        setStorageError(!writeStorage(SAVE_KEY, JSON.stringify(next)))
-        if (fresh.length) {
-          setNewUnlocks(fresh)
-          setSelectedSword(fresh[fresh.length - 1])
-        }
-      } else if (e.type === 'phase') {
-        if (e.phase === 'paused') setScreen('paused')
-        if (e.phase === 'playing') setScreen('playing')
-      }
-    })
-    try {
-      try {
-        game.applySettings(loadSettings())
-      } catch (settingsErr) {
-        console.warn('Applying saved settings failed, falling back to defaults:', settingsErr)
-      }
-      const progress = loadSave()
-      game.setUnlocked(progress.unlocked, progress.totalKills)
-      game.mount(canvas, hudRef.current)
-      setGameInput(game.input)
-    } catch (error) {
-      console.error('Game initialization failed', error)
-      setGameError('Unable to start the game. Check that Canvas 2D is enabled, then reload.')
-      off()
-      game.destroy()
-      gameRef.current = null
-      return
+    if (canEngage && screen === 'gameover' && returnToRetry.current) {
+      returnToRetry.current = false
+      retryRef.current?.focus({ preventScroll: true })
     }
+  }, [canEngage, screen])
 
-    const ro = new ResizeObserver(() => game.resize())
-    if (wrapRef.current) ro.observe(wrapRef.current)
-    return () => {
-      ro.disconnect()
-      off()
-      game.destroy()
-      gameRef.current = null
-    }
-  }, [])
-
-  useEffect(() => { if (gameRef.current) gameRef.current.touchControls = touchMode }, [touchMode])
+  const applyFramePreferences = (next: GameSettings) => {
+    // Do not wait for persistence or a governor tick to lock Ultra or toggle FPS.
+    gameRef.current?.applySettings(next)
+    settingsRef.current = next
+    setSettings(next)
+  }
 
   /* ---------------- settings persistence ---------------- */
 
   useEffect(() => {
-    const game = gameRef.current
-    if (!game || !hydrated) return
+    if (!hydrated) return
+    const changed = settingsRef.current !== settings
+    settingsRef.current = settings
     try {
-      game.applySettings(settings)
+      if (changed) gameRef.current?.applySettings(settings)
     } catch (settingsErr) {
       console.warn('Applying settings failed:', settingsErr)
     }
     // `qualityV` marks the record as post-migration: see parseSettings' note.
-    setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify({ ...settings, qualityV: 2 })))
+    if (!graphicsOptIn.current) setStorageError(!writeStorage(SETTINGS_KEY, JSON.stringify({ ...settings, qualityV: 3 })))
   }, [settings, hydrated])
 
   useEffect(() => {
+    if (!hydrated) return
     gameRef.current?.setUnlocked(save.unlocked, save.totalKills)
     saveRef.current = save
-  }, [save.unlocked, save])
+  }, [hydrated, save])
 
   /* ---------------- pause hotkey when game input disabled ---------------- */
 
@@ -286,9 +360,13 @@ export default function Home() {
       if (e.code === 'KeyP' && screen !== 'playing' && screen !== 'paused') return
       if (screen === 'paused') {
         if (e.code === 'Escape' || e.code === 'KeyP') gameRef.current?.resume()
+      } else if (screen === 'preparing') {
+        gameRef.current?.cancelRunPreparation()
       } else if (screen === 'settings') {
         setScreen(settingsFrom)
-      } else if (screen === 'arsenal' || screen === 'howto' || screen === 'scores') {
+      } else if (screen === 'arsenal') {
+        setScreen(arsenalFrom)
+      } else if (screen === 'howto' || screen === 'scores') {
         setScreen('title')
       } else if (screen === 'gameover') {
         gameRef.current?.quitToMenu()
@@ -299,7 +377,7 @@ export default function Home() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [screen, settingsFrom])
+  }, [screen, settingsFrom, arsenalFrom])
 
   /* ---------------- actions ---------------- */
 
@@ -309,7 +387,8 @@ export default function Home() {
     try {
       const res = await fetch('/api/scores', { cache: 'no-store', signal: AbortSignal.any([AbortSignal.timeout(10_000), ...(signal ? [signal] : [])]) })
       if (!res.ok) throw new Error('Leaderboard unavailable')
-      const rows = scoreRowsSchema.parse(await res.json())
+      const [{ scoreRowsSchema }, data] = await Promise.all([import('@/lib/scores'), res.json()])
+      const rows = scoreRowsSchema.parse(data)
       if (!signal?.aborted) setScores(rows)
     } catch {
       if (!signal?.aborted) setScoreError('Unable to load the leaderboard. Please try again.')
@@ -326,16 +405,19 @@ export default function Home() {
   }, [screen, refreshScores])
 
   const startGame = useCallback((sword: SwordId) => {
-    if (!gameRef.current || !hydrated) return
-    runRef.current += 1
-    submissionKey.current = submissionId()
-    setSubmitted(false)
-    setSubmitError(null)
-    setNewUnlocks([])
-    gameRef.current.setLoadout(loadout)
-    gameRef.current.startRun(sword)
-    setScreen('playing')
-  }, [hydrated, loadout])
+    const game = gameRef.current
+    if (!game || !canEngage) return
+    const action = game.phase === 'gameover' ? 'retry' : 'engage'
+    const clickedAt = performance.now()
+    // Commit the opaque veil on the gesture while the engine queues asset
+    // transfers. Neither the artwork nor its timers gate preparation.
+    flushSync(() => {
+      if (!game.requestRun(sword)) return
+      markBoot(action, clickedAt)
+      setRunUnavailable(false)
+      game.setLoadout(loadout)
+    })
+  }, [canEngage, loadout])
 
   const submitScore = useCallback(async () => {
     if (!stats || submitted || submittingRef.current) return
@@ -376,19 +458,23 @@ export default function Home() {
   /* ================================================================== */
 
   return (
-    <div ref={wrapRef} className="relative w-screen h-[100dvh] overflow-hidden bg-black select-none">
+    <div ref={wrapRef} data-screen={screen} data-title-menu={titleMenu || undefined} className="sr-viewport relative w-screen h-[100dvh] overflow-hidden bg-black select-none">
       <canvas
         ref={canvasRef}
+        data-render-layer="scene"
         className="absolute inset-0 block h-full w-full"
         aria-label="Stickman Rising game canvas"
         aria-describedby="canvas-controls"
       />
-      <canvas ref={hudRef} aria-hidden="true" className="pointer-events-none absolute inset-0 block h-full w-full" />
+      <canvas ref={workRef} data-render-layer="scene-work" aria-hidden="true" className="pointer-events-none absolute inset-0 block h-full w-full" />
+      <canvas ref={finishRef} data-render-layer="finish" hidden aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" />
+      <canvas ref={hudRef} data-render-layer="hud" style={{ visibility: screen === 'settings' ? 'hidden' : 'visible' }} aria-hidden="true" className="pointer-events-none absolute inset-0 block h-full w-full" />
+      <div className="sr-bridge-recovery" role="status">Restoring the arena. Combat is on hold.</div>
       {/* Keyboard controls, readable by a screen reader and invisible on screen.
           A canvas game with an aria-label and nothing else is a black box. */}
       <p id="canvas-controls" className="sr-only">
         Arrow keys or A and D move. Space jumps. J light attack, K heavy attack, L dash,
-        I ultimate, U ability, B cycles particle effects, P or Escape pauses.
+        R Overdrive, U ability, E execute or hold at a service terminal, P or Escape pauses.
       </p>
       {/* Screen announcements: every menu is a mode change, and a mode change
           that a screen reader cannot see is a broken menu. */}
@@ -396,8 +482,16 @@ export default function Home() {
 
       {gameError && <div role="alert" className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black p-6 text-white"><p>{gameError}</p><Button onClick={() => window.location.reload()}>RELOAD</Button></div>}
       {storageError && <p role="status" className="absolute bottom-2 left-2 z-40 text-xs text-amber-300">Local storage is unavailable. Progress may not survive a reload.</p>}
+      {runUnavailable && (screen === 'title' || screen === 'gameover') && <p role="alert"
+        className="pointer-events-none absolute inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] z-40 mx-auto max-w-md border border-red-900 bg-black/95 px-4 py-2 text-center text-sm text-red-100">
+        The arena didn’t finish loading. Try again to restart preparation.
+      </p>}
       {/* ------------ touch controls ------------ */}
-      {screen === 'playing' && touchMode && gameInput && <TouchLayer input={gameInput} onPause={() => gameRef.current?.pause()} />}
+      {screen === 'playing' && touchMode && gameInput && <TouchLayer input={gameInput} actions={actions} onPause={() => gameRef.current?.pause()} />}
+
+      {interlude && screen === 'preparing' && !gameError && (
+        <BridgeInterlude {...interlude} cancel={() => gameRef.current?.cancelRunPreparation()} complete={completeCut} />
+      )}
 
       {/* ------------ TITLE ------------ */}
       {screen === 'title' && (
@@ -410,14 +504,15 @@ export default function Home() {
           <div className="mt-4 h-[3px] w-56 bg-gradient-to-r from-transparent via-red-500 to-transparent" />
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
             <Button
+              ref={engageRef}
               size="lg"
               className={`${menuBtn} bg-red-600 text-white hover:bg-red-500`}
-              autoFocus
+              disabled={!canEngage}
               onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}
             >
               <Play className="mr-2 h-4 w-4" /> ENGAGE
             </Button>
-            <Button size="lg" variant="outline" className={`${menuBtn} border-zinc-700 bg-black/50 text-zinc-200 hover:bg-zinc-900 hover:text-white`} onClick={(e) => { e.currentTarget.blur(); setScreen('arsenal') }}>
+            <Button size="lg" variant="outline" className={`${menuBtn} border-zinc-700 bg-black/50 text-zinc-200 hover:bg-zinc-900 hover:text-white`} onClick={(e) => { e.currentTarget.blur(); setArsenalFrom('title'); setScreen('arsenal') }}>
               <Swords className="mr-2 h-4 w-4" /> ARSENAL
             </Button>
           </div>
@@ -426,12 +521,13 @@ export default function Home() {
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('scores') }}><Trophy className="mr-2 h-4 w-4" /> LEADERBOARD</Button>
             <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setSettingsFrom('title'); setScreen('settings') }}><SettingsIcon className="mr-2 h-4 w-4" /> SETTINGS</Button>
           </div>
+          <p className="mt-4 text-center text-[10px] font-bold tracking-[0.23em] text-slate-300">ONE BRIDGE · A DIFFERENT NIGHT EACH RUN</p>
           <div className="mt-8 flex items-center gap-4 text-[11px] font-mono text-zinc-500">
             <span>BEST {fmt(save.best)}</span>
             <span className="h-3 w-px bg-zinc-800" />
             <span>TOTAL KILLS {fmt(save.totalKills)}</span>
             <span className="h-3 w-px bg-zinc-800" />
-            <span className="text-red-400/80" suppressHydrationWarning>{hydrated ? SWORDS[selectedSword].name : 'LOADING ARSENAL'}</span>
+            <span className="text-red-400/80" aria-live="polite">{canEngage ? SWORDS[selectedSword].name : hydrated ? 'LOADING GAME CODE' : 'STARTING MENU'}</span>
           </div>
         </div>
       )}
@@ -495,7 +591,7 @@ export default function Home() {
                     <div className="mt-3 text-[10px] font-mono leading-relaxed text-zinc-500">
                       <span style={{ color: sw.colors.glow }}>[U]</span> {sw.ability.name} — {sw.ability.desc}
                       <br />
-                      <span style={{ color: sw.colors.glow }}>[I]</span> {sw.ult.name}
+                      <span style={{ color: sw.colors.glow }}>[R]</span> {sw.ult.name}
                     </div>
                     {!unlocked && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70">
@@ -509,9 +605,9 @@ export default function Home() {
             </div>
           </ScrollArea>
           <div className="mt-3 flex justify-between">
-            <Button variant="outline" className="border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('title') }}>BACK</Button>
-            <Button className="bg-red-600 px-10 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
-              ENGAGE <ChevronRight className="ml-1 h-4 w-4" />
+            <Button variant="outline" className="border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen(arsenalFrom) }}>BACK</Button>
+            <Button disabled={!canEngage} className="bg-red-600 px-10 font-black tracking-[0.25em] text-white hover:bg-red-500" onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
+              {arsenalFrom === 'gameover' ? 'RETRY' : 'ENGAGE'} <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -529,7 +625,7 @@ export default function Home() {
                   <tbody className="[&_td]:py-1.5 [&_td:first-child]:w-32 [&_td:first-child]:font-mono [&_td:first-child]:text-red-300 [&_td:last-child]:text-zinc-400">
                     <tr><td>A / D</td><td>Move — normal run</td></tr>
                     <tr><td>A, A / D, D</td><td>Double-tap, hold second press: faster sprint</td></tr>
-                    <tr><td>SPACE</td><td>Jump / double jump</td></tr>
+                    <tr><td>SPACE</td><td>Jump / double jump; hold down to drop through a catwalk</td></tr>
                     <tr><td>Q</td><td>Draw / sheathe — choose sword or empty-hand combat</td></tr>
                     <tr><td>J</td><td>Light chain — fists sheathed, cuts drawn</td></tr>
                     <tr><td>K</td><td>Heavy attack — hold to CHARGE</td></tr>
@@ -540,8 +636,8 @@ export default function Home() {
                     <tr><td>AIR J / K</td><td>Air combos / dive / meteor slam</td></tr>
                     <tr><td>O</td><td>Parry — then J for a riposte</td></tr>
                     <tr><td>U</td><td>Focused palm sheathed / sword ability drawn (energy)</td></tr>
-                    <tr><td>I</td><td>Focused palm finisher / sword ultimate (full meter)</td></tr>
-                    <tr><td>E</td><td>Guard-break strike sheathed / execution drawn</td></tr>
+                    <tr><td>R</td><td>Overdrive: palm finisher / sword ultimate (full meter)</td></tr>
+                    <tr><td>E</td><td>Execute an eligible foe; hold 1.5s at a service terminal</td></tr>
                     <tr><td>1 - 6 / TAB</td><td>Switch blades</td></tr>
                     <tr><td>P / ESC</td><td>Pause</td></tr>
                   </tbody>
@@ -550,6 +646,7 @@ export default function Home() {
               <div>
                 <h3 className="mb-2 text-xs font-black tracking-[0.3em] text-red-400">FIELD MANUAL</h3>
                 <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed text-zinc-400">
+                  <li>Keep moving along the Bridge. Dry shelter holds your Flow and stops enemies and incoming fire.</li>
                   <li>Strike during a dash. Your separate 600-point stamina pool costs 45 for a normal dash or 120 for a power dash; it recovers after a short delay. Below 120, a charged release becomes a normal dash.</li>
                   <li>Power dash commits to a low, less-steerable skid before rising. Attacks remain available through the dash and recovery.</li>
                   <li>Light attacks chain: press J in rhythm for five escalating slashes.</li>
@@ -558,8 +655,10 @@ export default function Home() {
                   <li>A gold ! means an attack is coming. Parry with O right as it lands, then punish.</li>
                   <li>Gunners fire tracer rounds — a perfect parry reflects them back.</li>
                   <li>Shields block frontal hits. Break them with heavy or charged slashes.</li>
+                  <li>Service trades current Flow for +40 health, 50 shield and a 30-second buff. Tap SERVICE on touch.</li>
+                  <li>Defeat the sector boss to unlock the gate ahead.</li>
                   <li>Executions (E) on staggered foes restore health and energy. Stay aggressive.</li>
-                  <li>Kills charge the blade meter. At full charge, unleash [I] and watch the arena burn.</li>
+                  <li>Hits and kills charge Overdrive. At full charge press [R] or tap the glowing Overdrive button.</li>
                 </ul>
               </div>
             </div>
@@ -584,7 +683,7 @@ export default function Home() {
                   <th className="py-2">#</th>
                   <th>OPERATIVE</th>
                   <th>SCORE</th>
-                  <th>WAVE</th>
+
                   <th>COMBO</th>
                   <th>KILLS</th>
                   <th>BLADE</th>
@@ -592,14 +691,14 @@ export default function Home() {
               </thead>
               <tbody className="[&_td]:py-2 [&_tr]:border-b [&_tr]:border-zinc-900">
                 {scores.length === 0 && !scoresLoading && !scoreError && (
-                  <tr><td colSpan={7} className="py-8 text-center font-mono text-zinc-600">NO RECORDS YET — BE THE FIRST</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-center font-mono text-zinc-600">NO RECORDS YET — BE THE FIRST</td></tr>
                 )}
                 {scores.map((r, i) => (
                   <tr key={r.id} className={i === 0 ? 'text-amber-300' : 'text-zinc-300'}>
                     <td className="font-mono">{String(i + 1).padStart(2, '0')}</td>
                     <td className="font-black tracking-wider">{r.name}</td>
                     <td className="font-mono text-red-400">{fmt(r.score)}</td>
-                    <td className="font-mono">{r.wave}</td>
+
                     <td className="font-mono">{r.maxCombo}</td>
                     <td className="font-mono">{r.kills}</td>
                     <td className="font-mono text-zinc-500">{r.sword.toUpperCase()}</td>
@@ -614,76 +713,66 @@ export default function Home() {
 
       {/* ------------ SETTINGS ------------ */}
       {screen === 'settings' && (
-        <div className="absolute inset-0 flex flex-col bg-black/85 px-6 py-6 sm:px-16">
-          <div className="flex items-center gap-3">
-            <SettingsIcon className="h-5 w-5 text-zinc-400" />
-            <h2 className="text-2xl font-black tracking-widest text-white">SETTINGS</h2>
-          </div>
-          <ScrollArea className="mt-4 min-h-0 flex-1">
-            <div className="max-w-xl space-y-6 pb-4">
+        <section aria-labelledby="settings-title" className="sr-settings absolute inset-0 flex flex-col bg-[#080b10]/95">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-600/50 pb-3">
+            <div className="flex items-center gap-3">
+              <SettingsIcon aria-hidden="true" className="h-5 w-5 text-sky-300" />
+              <h2 id="settings-title" className="text-xl font-black tracking-widest text-white sm:text-2xl">SETTINGS</h2>
+            </div>
+            <Button variant="outline" data-settings-back className="sr-settings-back h-11 shrink-0 border-slate-500 bg-slate-900 font-bold text-white"
+              onClick={() => setScreen(settingsFrom === 'paused' ? 'paused' : 'title')}>BACK</Button>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4" tabIndex={0} aria-label="Game preferences">
+            <div className="max-w-xl space-y-5 pb-4">
               <div>
-                <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">LEVEL</div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 font-black tracking-widest border-red-500 bg-red-950/60 text-red-300">NEON ROOFTOP</Button>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div id="quality-label" className="text-xs font-black tracking-widest text-slate-200">GRAPHICS PRESET</div>
+                  <span role="status" className="font-mono text-[11px] text-sky-200">
+                    {settings.adaptiveQuality ? 'Adaptive' : 'Locked'} · {(settings.adaptiveQuality ? activeScale ?? featuresFor(settings.quality).dprCap : featuresFor(settings.quality).dprCap).toFixed(2)}× target
+                  </span>
                 </div>
-                <div className="mt-2 text-[10px] tracking-widest text-slate-500">THE MOONLIT ZEN SCENE WAS REMOVED IN THE 120 FPS STRIP</div>
-              </div>
-              <div>
-                <div className="mb-2 text-xs font-black tracking-[0.25em] text-zinc-500">VISUAL QUALITY</div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {(['low', 'medium', 'high', 'ultra'] as const).map((q) => {
-                    // A tier this device is not offered is DISABLED, not hidden:
-                    // the player should be able to see that ultra exists and that
-                    // it is a desktop tier, rather than wonder where it went.
-                    const beyond = (['low', 'medium', 'high', 'ultra'] as const).indexOf(q) > (['low', 'medium', 'high', 'ultra'] as const).indexOf(deviceClass.ceiling)
-                    return (
-                      <Button
-                        key={q}
-                        variant="outline"
-                        disabled={beyond}
-                        aria-pressed={settings.quality === q}
-                        title={beyond ? 'Desktop only' : QUALITY_BLURB[q]}
-                        className={`flex-1 font-black tracking-widest ${settings.quality === q ? 'border-red-500 bg-red-950/60 text-red-300' : 'border-zinc-800 bg-black/60 text-zinc-400'} ${beyond ? 'opacity-30' : ''}`}
-                        onClick={() => setSettings((s) => ({ ...s, quality: q }))}
-                      >{q.toUpperCase()}</Button>
-                    )
-                  })}
+                <div role="group" aria-labelledby="quality-label" aria-describedby="quality-hint" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {QUALITY_PRESETS.map((q) => (
+                    <Button key={q} variant="outline" aria-pressed={settings.quality === q}
+                      className={`min-h-11 px-2 text-xs font-bold tracking-wide ${settings.quality === q ? 'border-sky-300 bg-sky-950 text-sky-100' : 'border-slate-600 bg-slate-900 text-slate-200'}`}
+                      onClick={() => applyFramePreferences(lockQualityPreset(settingsRef.current, q))}>{QUALITY_NAMES[q]}</Button>
+                  ))}
                 </div>
-                <div className="mt-2 text-[10px] tracking-widest text-slate-400">{QUALITY_BLURB[settings.quality]}</div>
-                <div className="mt-1 text-[10px] tracking-widest text-slate-600">
-                  ULTRA IS A DESKTOP TIER · DEVICE DETECTED: {deviceClass.desktop ? 'DESKTOP' : 'TOUCH'} · {deviceClass.megapixels.toFixed(1)} MP
+                <p className="mt-2 text-xs text-slate-200">{QUALITY_BLURB[settings.quality]}</p>
+                <p id="quality-hint" className="mt-1 text-xs leading-relaxed text-slate-300">
+                  Picking a preset locks the scale target. Adaptive resolution can lower it without changing the preset. Suggested for this device: {QUALITY_NAMES[deviceClass.start]}.
+                </p>
+                {settingsFrom === 'paused' && (() => {
+                  const current = gameRef.current?.graphicsPresentation()
+                  if (!current) return null
+                  return <p data-active-renderer className="mt-2 text-xs text-slate-300" title={current.reason === 'active' ? undefined : current.reason}>
+                    Last frame: {RENDERER_NAMES[current.path]} · {current.backingScale.toFixed(2)}× rendered
+                  </p>
+                })()}
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <label htmlFor="adaptive-quality" className="text-xs font-black tracking-widest text-slate-200">ADAPTIVE RESOLUTION</label>
+                  <Switch id="adaptive-quality" aria-label="Adaptive resolution" aria-describedby="quality-hint" checked={settings.adaptiveQuality}
+                    onCheckedChange={adaptiveQuality => setSettings(s => ({ ...s, adaptiveQuality }))} />
                 </div>
               </div>
+              <Separator className="bg-slate-700/70" />
+              <PreferenceSlider label="Screen shake" sliderLabel="Shake intensity" value={settings.shakeIntensity} min={.2} max={1.5} step={.1}
+                change={shakeIntensity => setSettings(s => ({ ...s, shakeIntensity }))}>
+                <Switch aria-label="Screen shake" checked={settings.shake} onCheckedChange={shake => setSettings(s => ({ ...s, shake }))} />
+              </PreferenceSlider>
+              <PreferenceSlider label="SFX volume" sliderLabel="Sound effects volume" value={settings.sfxVolume}
+                change={sfxVolume => setSettings(s => ({ ...s, sfxVolume }))} />
+              <PreferenceSlider label="Music volume" sliderLabel="Music volume" value={settings.musicVolume}
+                change={musicVolume => setSettings(s => ({ ...s, musicVolume }))} />
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SCREEN SHAKE</div>
-                  <div className="text-[10px] text-zinc-600">Impact trauma on the camera</div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Slider className="w-36" aria-label="Shake intensity" value={[settings.shakeIntensity]} min={0.2} max={1.5} step={0.1} onValueChange={(v) => setSettings((s) => ({ ...s, shakeIntensity: v[0] ?? 1 }))} />
-                  <Switch aria-label="Screen shake" checked={settings.shake} onCheckedChange={(v) => setSettings((s) => ({ ...s, shake: v }))} />
-                </div>
-              </div>
-              <Separator className="bg-zinc-900" />
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SFX VOLUME</div>
-                  <Slider className="w-44" aria-label="Sound effects volume" value={[settings.sfxVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, sfxVolume: v[0] ?? 0.8 }))} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUSIC VOLUME</div>
-                  <Slider className="w-44" aria-label="Music volume" value={[settings.musicVolume]} min={0} max={1} step={0.05} onValueChange={(v) => setSettings((s) => ({ ...s, musicVolume: v[0] ?? 0.55 }))} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">MUTE ALL</div>
-                  <Switch aria-label="Mute all" checked={settings.muted} onCheckedChange={(v) => setSettings((s) => ({ ...s, muted: v }))} />
-                </div>
+                <div className="text-xs font-black tracking-widest text-slate-200">MUTE ALL</div>
+                <Switch aria-label="Mute all" checked={settings.muted} onCheckedChange={muted => setSettings(s => ({ ...s, muted }))} />
               </div>
               <Separator className="bg-zinc-900" />
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-black tracking-[0.25em] text-zinc-500">IMPACT STYLE</div>
-                  <div className="text-[10px] text-zinc-600">Enemy death particles</div>
+                  <div className="text-xs font-black tracking-[0.25em] text-slate-200">IMPACT STYLE</div>
+                  <div className="text-[10px] text-slate-300">Enemy death particles</div>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" className={`font-black tracking-widest ${settings.gore === 'energy' ? 'border-cyan-500 bg-cyan-950/50 text-cyan-300' : 'border-zinc-800 bg-black/60 text-zinc-400'}`} onClick={(e) => { e.currentTarget.blur(); setSettings((s) => ({ ...s, gore: 'energy' })) }}>ENERGY</Button>
@@ -691,13 +780,12 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="text-xs font-black tracking-[0.25em] text-zinc-500">SHOW FPS</div>
-                <Switch aria-label="Show FPS" checked={settings.showFps} onCheckedChange={(v) => setSettings((s) => ({ ...s, showFps: v }))} />
+                <div className="text-xs font-black tracking-[0.25em] text-slate-200">SHOW FPS</div>
+                <Switch aria-label="Show FPS" checked={settings.showFps} onCheckedChange={showFps => applyFramePreferences({ ...settingsRef.current, showFps })} />
               </div>
             </div>
-          </ScrollArea>
-          <Button variant="outline" className="mt-3 self-start border-zinc-800 bg-black/60 text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen(settingsFrom === 'paused' ? 'paused' : 'title') }}>BACK</Button>
-        </div>
+          </div>
+        </section>
       )}
 
       {/* ------------ PAUSED ------------ */}
@@ -735,7 +823,7 @@ export default function Home() {
 
           <div className="mt-6 grid grid-cols-3 gap-x-10 gap-y-4 sm:grid-cols-6">
             <Stat label="SCORE" value={fmt(stats.score)} accent />
-            <Stat label="WAVE" value={`${stats.wave}`} />
+            <Stat label="DISTANCE" value={`${fmt(Math.floor(stats.distanceMetres ?? 0))} m`} />
             <Stat label="MAX COMBO" value={`${stats.maxCombo}`} />
             <Stat label="KILLS" value={`${stats.kills}`} />
             <Stat label="TIME" value={`${Math.floor(stats.timeAlive / 60)}:${String(Math.floor(stats.timeAlive % 60)).padStart(2, '0')}`} />
@@ -757,10 +845,10 @@ export default function Home() {
 
           {submitError && <p role="alert" className="mt-3 text-sm text-red-300">{submitError}</p>}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Button size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" autoFocus onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
+            <Button ref={retryRef} size="lg" className="bg-red-600 px-12 font-black tracking-[0.25em] text-white hover:bg-red-500" autoFocus onClick={(e) => { e.currentTarget.blur(); startGame(selectedSword) }}>
               <RotateCcw className="mr-2 h-4 w-4" /> RETRY
             </Button>
-            <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setScreen('arsenal') }}>
+            <Button size="lg" variant="outline" className="border-zinc-700 bg-black/60 font-black tracking-[0.25em] text-zinc-300 hover:text-white" onClick={(e) => { e.currentTarget.blur(); setArsenalFrom('gameover'); setScreen('arsenal') }}>
               <Swords className="mr-2 h-4 w-4" /> ARSENAL
             </Button>
             <Button size="lg" variant="outline" className="border-zinc-800 bg-black/60 font-black tracking-[0.25em] text-zinc-500 hover:text-white" onClick={(e) => { e.currentTarget.blur(); gameRef.current?.quitToMenu(); setScreen('title') }}>
@@ -769,11 +857,37 @@ export default function Home() {
           </div>
         </div>
       )}
+      {graphicsQA && screen !== 'settings' && (
+        <details className="sr-graphics-diagnostics" data-graphics-diagnostics>
+          <summary aria-live="polite">{graphicsQA.version} · {graphicsQA.status}</summary>
+          <p>Graphics QA only. Ultra and Show FPS are set for this tab. Engage and keep the tab visible for 120 world frames. A pass checks rendering, not a 60 FPS target.</p>
+          <pre>{JSON.stringify(graphicsQA, null, 2)}</pre>
+        </details>
+      )}
     </div>
   )
 }
 
 /* ================================================================== */
+
+function PreferenceSlider({ label, sliderLabel, value, min = 0, max = 1, step = .05, change, children }: {
+  label: string; sliderLabel: string; value: number; min?: number; max?: number; step?: number
+  change: (value: number) => void; children?: React.ReactNode
+}) {
+  const percent = `${Math.round(value * 100)}%`
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4">
+      <div className="min-w-0">
+        <div className="flex items-baseline justify-between gap-2 text-xs font-bold text-slate-200">
+          <span className="uppercase tracking-widest">{label}</span><span className="font-mono text-sky-200">{percent}</span>
+        </div>
+        <Slider className="sr-preference-slider h-8" aria-label={sliderLabel} aria-valuetext={percent}
+          value={[value]} min={min} max={max} step={step} onValueChange={([next]) => change(next ?? value)} />
+      </div>
+      {children}
+    </div>
+  )
+}
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
@@ -800,53 +914,59 @@ function StatBar({ label, v, color }: { label: string; v: number; color: string 
 /* touch controls                                                       */
 /* ================================================================== */
 
-function TouchLayer({ input, onPause }: { input: GameInput; onPause: () => void }) {
+function TouchLayer({ input, onPause, actions }: { input: GameInput; onPause: () => void;
+  actions: { overdrive: boolean; service: boolean; execute: boolean } }) {
   return (
     <>
       <button
         type="button"
         aria-label="Pause"
-        className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded border border-zinc-700 bg-black/60 text-zinc-300"
+        className="sr-pause absolute z-20 flex h-11 w-11 items-center justify-center rounded border border-zinc-700 bg-black/60 text-zinc-300"
         onClick={(e) => { e.currentTarget.blur(); onPause() }}
       >
         <Pause className="h-5 w-5" />
       </button>
       <Joystick input={input} />
-      <div className="absolute bottom-2 right-2 z-20 grid grid-cols-3 gap-1 sm:bottom-5 sm:right-4 sm:gap-2.5">
-        <TouchBtn input={input} action="sheathe" label="DRAW" small />
-        <TouchBtn input={input} action="cycleSword" label="SWORD" small />
-        <div />
+      <div role="group" aria-label="Equipment" className="sr-touch-equipment absolute z-20 flex gap-1">
+        <TouchBtn input={input} action="sheathe" label="DRAW" small compact />
+        <TouchBtn input={input} action="cycleSword" label="SWORD" small compact />
+      </div>
+      {/* Keep three rows on the fight side; a fourth obscures feet and blade
+          tips at the portrait combat zoom. Service shares the contextual row. */}
+      <div className="sr-touch-actions absolute z-20 grid grid-cols-3 place-items-center gap-1 sm:gap-2.5">
         <TouchBtn input={input} action="parry" label="PARRY" small />
         <TouchBtn input={input} action="ability" label="SPEC" small />
-        <TouchBtn input={input} action="ult" label="ULT" small />
+        <TouchBtn input={input} action="ult" label="OVERDRIVE" name="Overdrive" small ready={actions.overdrive} />
         <TouchBtn input={input} action="light" label="SLASH" />
         <TouchBtn input={input} action="heavy" label="HEAVY" />
         <TouchBtn input={input} action="dash" label="DASH" />
-        <div />
+        {actions.service ? <TouchBtn input={input} action="service" label="SERVICE" small ready /> : <div />}
         <TouchBtn input={input} action="jump" label="JUMP" />
-        <TouchBtn input={input} action="execute" label="EXEC" small />
+        {actions.execute ? <TouchBtn input={input} action="execute" label="EXEC" small ready /> : <div />}
       </div>
     </>
   )
 }
 
-function TouchBtn({ input, action, label, small }: { input: GameInput; action: Action; label: string; small?: boolean }) {
+function TouchBtn({ input, action, label, name, small, ready, compact }: { input: GameInput; action: Action; label: string; name?: string; small?: boolean; ready?: boolean; compact?: boolean }) {
   const owner = useRef<number | null>(null)
   useEffect(() => () => { input.setVirtual(action,false) }, [action,input])
   const release = (e: React.PointerEvent) => {
     if (owner.current !== e.pointerId) return
     owner.current=null; input.setVirtual(action,false)
   }
-  const cls = small ? 'text-[9px]' : 'text-[10px]'
-  const size = small
-    ? 'clamp(44px, min(11dvh, calc((100vw - 120px) / 3)), 56px)'
-    : 'clamp(44px, min(13dvh, calc((100vw - 120px) / 3)), 72px)'
+  const cls = action === 'ult' ? 'text-[8px] tracking-tight' : small ? 'text-[9px]' : 'text-[10px]'
+  const size = compact ? '44px' : small
+    ? 'clamp(44px, min(11dvh, var(--sr-action-limit)), 56px)'
+    : 'clamp(44px, min(13dvh, var(--sr-action-limit)), 72px)'
   return (
     <button
       type="button"
-      aria-label={label}
+      aria-label={name ?? label}
+      data-ready={ready || undefined}
+      data-action={action}
       style={{ width: size, height: size }}
-      className={`${cls} touch-none select-none rounded-full border border-zinc-600/80 bg-black/55 font-black tracking-widest text-zinc-200 backdrop-blur-sm active:border-red-500 active:bg-red-950/70 active:text-red-200`}
+      className={`${cls} sr-touch-surface touch-none select-none rounded-full border font-black tracking-widest`}
       onPointerDown={(e) => {
         e.preventDefault()
         if (owner.current !== null) return
@@ -854,6 +974,11 @@ function TouchBtn({ input, action, label, small }: { input: GameInput; action: A
         owner.current=e.pointerId; input.setVirtual(action,true)
       }}
       onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
+      onClick={e => {
+        // A pointer already owns its down/up. Keyboard or assistive activation
+        // arrives as a separate zero-detail click.
+        if (e.detail === 0 && owner.current === null) { input.setVirtual(action, true); input.setVirtual(action, false) }
+      }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}
@@ -893,8 +1018,8 @@ function Joystick({ input }: { input: GameInput }) {
   return (
     <div
       ref={ref}
-      className="absolute bottom-3 left-3 z-20 touch-none rounded-full border border-zinc-700/70 bg-black/40 backdrop-blur-sm"
-      style={{ width: 'clamp(88px, min(25dvh, 26vw), 128px)', height: 'clamp(88px, min(25dvh, 26vw), 128px)' }}
+      className="sr-joystick sr-touch-surface absolute z-20 touch-none rounded-full border"
+      style={{ width: 'var(--sr-joystick-size)', height: 'var(--sr-joystick-size)' }}
       onPointerDown={(e) => {
         e.preventDefault()
         if (activeId.current !== null) return
@@ -911,9 +1036,10 @@ function Joystick({ input }: { input: GameInput }) {
       onContextMenu={(e) => e.preventDefault()}
     >
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 rounded-full border border-zinc-500 bg-zinc-800/90"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 rounded-full border border-[#8796a1] bg-[#263645]"
         ref={knob} style={{ transform: 'translate(-50%, -50%)' }}
       />
+
     </div>
   )
 }

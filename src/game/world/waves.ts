@@ -3,7 +3,7 @@
  */
 
 import { EnemyKind } from '../entities/enemy'
-import { rand, randInt } from '../core/utils'
+import { FLAT_LANE } from '../stage/flat-lane'
 
 export interface WaveCallbacks {
   spawnEnemy(kind: EnemyKind, x: number, waveScale: number): void
@@ -20,8 +20,8 @@ interface QueuedSpawn {
 }
 
 const BOSS_INTERVAL = 5
-const ARENA_MIN = -80
-const ARENA_MAX = 2620
+const MAX_WAVE_ENEMIES = 30
+export const WAVE_SPAWN_SEARCH_LIMIT = 8
 
 export class WaveDirector {
   wave = 0
@@ -29,18 +29,33 @@ export class WaveDirector {
   private phaseT = 2.2
   private queue: QueuedSpawn[] = []
   private time = 0
+  private rngState = 0x51a2c9
   private cb: WaveCallbacks
 
   constructor(cb: WaveCallbacks) {
     this.cb = cb
   }
 
-  reset(): void {
+  reset(seed = 0x51a2c9): void {
     this.wave = 0
     this.phase = 'intermission'
     this.phaseT = 2.2
     this.queue.length = 0
     this.time = 0
+    this.rngState = Number.isFinite(seed) ? seed >>> 0 : 0x51a2c9
+    this.pendingClearCheck = 999
+  }
+
+  private random(): number {
+    this.rngState = (this.rngState + 0x6d2b79f5) >>> 0
+    let t = this.rngState
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+
+  private randomInt(min: number, max: number): number {
+    return min + Math.floor(this.random() * (max - min + 1))
   }
 
   get enemiesRemaining(): number {
@@ -87,7 +102,7 @@ export class WaveDirector {
 
     if (boss) {
       list.push('boss')
-      const escorts = 2 + Math.floor(w / BOSS_INTERVAL)
+      const escorts = Math.min(MAX_WAVE_ENEMIES - 1, 2 + Math.floor(w / BOSS_INTERVAL))
       for (let i = 0; i < escorts; i++) list.push(i % 2 === 0 ? 'grunt' : 'gunner')
     } else if (w === 1) {
       for (let i = 0; i < 4; i++) list.push('grunt')
@@ -108,14 +123,12 @@ export class WaveDirector {
         ['shield', 4], ['heavy', 5.5],
       ]
       if (w >= 7) pool.push(['elite', 9])
-      while (budget > 0) {
-        const [kind, cost] = pool[randInt(0, pool.length - 1)]
+      while (budget > 0 && list.length < MAX_WAVE_ENEMIES) {
+        const [kind, cost] = pool[this.randomInt(0, pool.length - 1)]
         if (cost > budget && list.length > 3) break
         list.push(kind)
         budget -= cost
       }
-      // hard cap alive
-      if (list.length > 30) list.length = 30
     }
 
     // stagger spawn times, spread positions
@@ -124,11 +137,17 @@ export class WaveDirector {
       let x: number
       let tries = 0
       do {
-        x = rand(ARENA_MIN + 120, ARENA_MAX - 120)
+        x = FLAT_LANE.waveLeft + this.random() * (FLAT_LANE.waveRight - FLAT_LANE.waveLeft)
         tries++
-      } while (Math.abs(x - px) < 240 && tries < 8)
+      } while (Math.abs(x - px) < 240 && tries < WAVE_SPAWN_SEARCH_LIMIT)
+      // Keep the retry loop bounded without occasionally placing an enemy
+      // inside the player's 240px buffer when every seeded sample is unlucky.
+      if (Math.abs(x - px) < 240) {
+        const left = FLAT_LANE.waveLeft, right = FLAT_LANE.waveRight
+        x = Math.abs(px - left) >= Math.abs(px - right) ? left : right
+      }
       this.queue.push({ kind, x, at: t, waveScale })
-      t += kind === 'boss' ? 1.2 : rand(0.28, 0.6)
+      t += kind === 'boss' ? 1.2 : .28 + this.random() * .32
     }
     this.phaseT = -0.6 // marker: active until cleared (checked via <= -0.6 after spawn)
     this.pendingClearCheck = t + 1.5

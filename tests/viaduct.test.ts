@@ -67,7 +67,7 @@ test('the lower district is opaque at every pixel below the skyline, even at til
     const v = new Viaduct(seed, 0, 800, moodForSeed(seed), make),
       c = createCanvas(1100, 770),
       g = c.getContext('2d')
-    v.drawDistrict(g as never, 1100, 770, 1023, 75)
+    v.drawDistrict(g as never, 1100, 770, 1023.35, 75.5)
     return g.getImageData(0, 75, 1100, 695).data
   }
   const a = render(2)

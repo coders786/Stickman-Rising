@@ -1,3 +1,4 @@
+import { lightPath, RECEIVER, type ReceiverPart } from '../lighting/receiver'
 import { volumeBrush } from '../lighting/volume'
 /** STICKMAN RISING — skeleton solver + articulated stickman renderer.
  *
@@ -284,6 +285,11 @@ export interface DrawOpts {
   time?: number
   flash?: number
   flashColor?: string
+  surfaceFlash?: number
+  surfaceWidth?: number
+  surfaceSide?: number
+  surfaceTint?: string
+  beveled?: boolean
   /** ghost/afterimage mode: single flat color/gradient, no detail */
   ghost?: string | CanvasGradient
   ghostAlpha?: number
@@ -409,6 +415,26 @@ export function drawStick(
     return
   }
 
+  const materialFlash = clamp01(opts.surfaceFlash ?? 0)
+  const rimColor = opts.surfaceTint ?? '#cfefff'
+  // The additive edge is laid behind opaque armour. Its interior is
+  // occluded by the regular material path, not overlaid with white ink.
+  if (!opts.simple && materialFlash > .02) {
+    const v = Math.sign(opts.surfaceSide || opts.light?.dx || opts.light?.keyX || -.6) * (opts.flipX ?? 1)
+    const step = (opts.surfaceWidth ?? 2) / Math.max(1, opts.unit ?? 1)
+    ctx.save(); ctx.translate(v * step * .82, -step * .27)
+    ctx.strokeStyle = rgba(rimColor, materialFlash * .72)
+    ctx.lineWidth = lineW + 3.6
+    limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
+    limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
+    limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+    limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+    ctx.lineWidth = Math.max(lineW + 3.6, lineW * 1.42)
+    ctx.beginPath(); ctx.moveTo(g.hip.x, g.hip.y); ctx.lineTo(g.waist.x, g.waist.y); ctx.lineTo(g.chest.x, g.chest.y); ctx.stroke()
+    ctx.fillStyle = rgba(rimColor, materialFlash * .73)
+    ctx.beginPath(); ctx.arc(g.headC.x, g.headC.y, 9.4, 0, Math.PI * 2); ctx.fill(); ctx.restore()
+  }
+
   // ---- 1. outline pass (readability against the neon city) ----
   if (!opts.simple) {
     ctx.strokeStyle = style.outline
@@ -426,12 +452,17 @@ export function drawStick(
 
   const body = material(ctx, style.body, opts.light, opts.flipX ?? 1)
   const dark = material(ctx, style.dark, opts.light, opts.flipX ?? 1)
+  const parts = opts.light?.local, flip = opts.flipX ?? 1
+  const litLimb = (a: Vec2, b: Vec2, c: Vec2, part: ReceiverPart) => {
+    limb(ctx, a.x, a.y, b.x, b.y, c.x, c.y)
+    lightPath(ctx, parts?.[part], flip, b.x, b.y, Math.max(5, Math.abs(a.x - c.x) * .50 + 4),
+      Math.max(7, Math.abs(a.y - c.y) * .56 + 3), .53, true)
+  }
   // ---- 2. back limbs ----
   ctx.strokeStyle = dark
   ctx.lineWidth = lineW
-  limb(ctx, g.hipPtL.x, g.hipPtL.y, g.kneeL.x, g.kneeL.y, g.ankleL.x, g.ankleL.y)
-  ctx.strokeStyle = dark
-  limb(ctx, g.shoulderL.x, g.shoulderL.y, g.elbL.x, g.elbL.y, g.handL.x, g.handL.y)
+  litLimb(g.hipPtL, g.kneeL, g.ankleL, RECEIVER.legL)
+  litLimb(g.shoulderL, g.elbL, g.handL, RECEIVER.armL)
 
   // ---- 3. torso (thicker, armored core) ----
   const tilt=Math.atan2(g.chest.x-g.hip.x,g.hip.y-g.chest.y)
@@ -442,12 +473,23 @@ export function drawStick(
   ctx.lineTo(g.waist.x, g.waist.y)
   ctx.lineTo(g.chest.x, g.chest.y)
   ctx.stroke()
+  lightPath(ctx, parts?.[RECEIVER.torso], flip, g.waist.x, g.waist.y, lineW * 1.1, 21, .68, true)
 
   // ---- 4. front limbs ----
   ctx.strokeStyle = body
   ctx.lineWidth = lineW
-  limb(ctx, g.hipPtR.x, g.hipPtR.y, g.kneeR.x, g.kneeR.y, g.ankleR.x, g.ankleR.y)
-  limb(ctx, g.shoulderR.x, g.shoulderR.y, g.elbR.x, g.elbR.y, g.handR.x, g.handR.y)
+  litLimb(g.hipPtR, g.kneeR, g.ankleR, RECEIVER.legR)
+  litLimb(g.shoulderR, g.elbR, g.handR, RECEIVER.armR)
+
+  if (opts.beveled) {
+    const beam = Math.sign(opts.light?.dx || -.6) * (opts.flipX ?? 1) * 1.2
+    const arm = (a: Vec2, k: Vec2, b: Vec2) => {
+      ctx.strokeStyle = '#83929870'; ctx.lineWidth = lineW * .16
+      limb(ctx, a.x + beam, a.y - 1.4, k.x + beam, k.y - 1.4, b.x + beam, b.y - 1.3)
+    }
+    arm(g.hipPtR, g.kneeR, g.ankleR)
+    arm(g.shoulderR, g.elbR, g.handR)
+  }
 
   // ---- 5. feet ----
   ctx.strokeStyle = body
@@ -511,6 +553,7 @@ export function drawStick(
   ctx.beginPath()
   ctx.arc(g.headC.x, g.headC.y, hr, 0, Math.PI * 2)
   ctx.fill()
+  lightPath(ctx, parts?.[RECEIVER.head], flip, g.headC.x, g.headC.y, hr, hr, .62)
   // visor slit (facing side) — glowing
   const va = style.visorAlpha ?? 1
   const vx = g.headC.x + Math.cos(g.headAng) * 0
@@ -570,8 +613,8 @@ export function drawStick(
       ctx.beginPath()
       ctx.arc(cxp, cyp, 3.1 + ca * 0.9, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = rgba(style.core, 0.9)
-      ctx.lineWidth = 1
+      ctx.strokeStyle = rgba(style.core, opts.beveled ? .33 : .9)
+      ctx.lineWidth = opts.beveled ? .6 : 1
       ctx.beginPath()
       ctx.arc(cxp, cyp, 5.6 + ca * 1.4, 0, Math.PI * 2)
       ctx.stroke()
