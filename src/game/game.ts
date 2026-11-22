@@ -1,3 +1,4 @@
+import { graphicsTrace, traceStart, traceEnd } from '../debug/graphics-trace'
 import { markBoot } from '../lib/boot-timing'
 import { bridgeCityPlatesSettled, bridgeOpeningPlatesSettled, bridgePlate, discardPendingBridgePlates } from './stage/bridge-webp'
 import { visiblePlateIndices } from './stage/bridge-plate-paint'
@@ -58,6 +59,7 @@ const { left: ARENA_MIN, right: ARENA_MAX, entryX: ENTRY_X } = FLAT_LANE
 // Bound an unsatisfied opening without waiving dependencies or lowering
 // the grade just because a transfer/driver is slow. No minimum.
 const OPENING_TOTAL_BUDGET_MS = 25_000
+const OPENING_GL_FALLBACK_MS = 12_000
 
 /* ------------------------------------------------------------------ */
 
@@ -725,6 +727,7 @@ export class Game {
     this.audio.stopRainAmbience()
     this.audio.resume() // unlock on the actual gesture, not the deferred bake
     this.input.setEnabled(false)
+    graphicsTrace?.event('run-request', this.phase === 'gameover' ? 'retry' : 'engage')
     this.pendingRun = { sword, seed: (Math.random() * 0xffffffff) >>> 0, returnTo: this.phase, stage: 'opening',
       needsPaint: true, activeMs: 0, presented: false, pace: new OpeningPace() }
     if (this.continuous) this.renderer.beginBridgeOpening()
@@ -783,6 +786,7 @@ export class Game {
   cancelRunPreparation(): void {
     const request = this.discardRunPreparation()
     if (!request) return
+    graphicsTrace?.event('run-cancelled', `stage=${request.stage}`)
     if (request.presented) {
       // A complete replacement world has already been composed under the
       // veil. Until that point Cancel retains the exact old Results backing.
@@ -804,6 +808,7 @@ export class Game {
   private preparationStage(request: RunRequest, stage: RunPreparationStage): void {
     if (request.stage === stage) return
     request.stage = stage
+    graphicsTrace?.state('opening-stage', stage)
     this.emit({ type: 'runPreparing', stage, presented: request.presented })
   }
 
@@ -811,7 +816,7 @@ export class Game {
     const request = this.pendingRun
     this.lastFrame = now
     if (!request) return
-    if (document.hidden) { request.needsPaint = true; request.frameAt = undefined; request.pace.reset(); return }
+    if (document.hidden) { graphicsTrace?.state('opening-wait', 'document-hidden'); request.needsPaint = true; request.frameAt = undefined; request.pace.reset(); return }
     const started = performance.now()
     request.activeMs += Math.max(0, now - (request.frameAt ?? now))
     request.frameAt = now
@@ -822,6 +827,7 @@ export class Game {
     if (yieldDraw && !this.continuous) return
     try {
       if (request.activeMs >= OPENING_TOTAL_BUDGET_MS) {
+        graphicsTrace?.event('opening-timeout', `stage=${request.stage} activeMs=${Math.round(request.activeMs)}`)
         if (this.continuous) {
           discardPendingBridgePlates()
           discardPendingBridgeSky()
@@ -850,7 +856,9 @@ export class Game {
       }
       if (!request.preparation.ready) return
       if (!request.initialized) {
+        const initStart = traceStart()
         this.beginRun(request.sword, request)
+        traceEnd('opening.beginRun', initStart)
         request.initialized = true
         markBoot('run-initialized')
       }
@@ -862,6 +870,7 @@ export class Game {
         return
       }
       if (request.cut) {
+        graphicsTrace?.state('opening-wait', 'reveal-cut')
         // The compositor owns this brief transition. Keep the complete
         // scene and HUD resident; do not render, stream or advance combat.
         if (!this.bridgeFrameLive()) this.restartOpeningDraw()
@@ -874,7 +883,8 @@ export class Game {
       if (opening === false || document.hidden) { request.pace.reset(); return }
       const path = opening ? opening.tier === 'master' ? 'master-webgl2' : 'mobile-webgl2' : 'mobile-canvas'
       if (request.presented && (!this.bridgeFrameLive() || this.renderer.bridgePath !== path)) request.pace.reset()
-      if (this.continuous && request.pace.ready(now) && performance.now() - started < OPENING_MAX_GAP_MS) {
+      if (this.continuous && request.pace.ready(now, performance.now()) && performance.now() - started < OPENING_MAX_GAP_MS) {
+        graphicsTrace?.event('opening-paced', request.pace.slowFallback ? 'slow-complete-frame-fallback' : 'paced')
         markBoot('run-settled')
         if (this.openingCut) {
           const cut = request.cut = { id: ++this.cutId, done: false }
@@ -885,15 +895,16 @@ export class Game {
       }
       // A cold preparation tick may already have allocated or uploaded a
       // backing. Don't stack the first draw on top of that expensive task.
-      if (!request.warmed && performance.now() - started >= OPENING_PAINT_SLICE_MS) return
+      if (!request.warmed && performance.now() - started >= OPENING_PAINT_SLICE_MS) { graphicsTrace?.state('opening-wait', 'paint-slice-budget'); return }
       if (!request.presented && request.stage !== 'surface') this.preparationStage(request, 'frame')
       if (this.paint(0, false, false, opening)) {
+        graphicsTrace?.state('opening-wait', 'frame-pacing')
         request.warmed = true
-        if (!request.presented) { request.presented = true; markBoot('run-submit') }
+        if (!request.presented) { request.presented = true; graphicsTrace?.event('opening-first-submit'); markBoot('run-submit') }
         if (this.continuous) {
           // Present real world + HUD frames under the opaque veil. A staged
           // upload or an idle callback can't satisfy the pacing check.
-          request.pace.submitted(now)
+          request.pace.submitted(now, performance.now())
           this.preparationStage(request, 'settling')
         } else {
           this.pendingRun = null
@@ -907,12 +918,14 @@ export class Game {
     } catch (error) {
       this.failRunPreparation(error)
     } finally {
+      if (graphicsTrace) graphicsTrace.duration('opening.tickJS', performance.now() - started)
       // No loading time, including the handoff itself, is simulation debt.
       this.lastFrame = performance.now()
     }
   }
 
   private completePreparedRun(): void {
+    graphicsTrace?.event('run-input-unlocked')
     this.pendingRun = null
     this.renderer.endBridgeOpening()
     this.openCombat()
@@ -938,9 +951,18 @@ export class Game {
     const { width, height } = opening
     const gpu = this.renderer.advanceBridgeOpening(width, height, this.dpr, this.hudUsable && this.inspect.mode === 'off',
       stream?.openingWindow() ?? null, route.seed, sky && bridgeCityPlatesSettled())
+    // A pending GPU setup cannot hold a working Canvas fallback forever.
+    // This cannot interrupt a synchronous driver call already on the stack.
+    if (!request.presented && request.activeMs >= OPENING_GL_FALLBACK_MS &&
+        (gpu === 'device' || gpu === 'renderer' || gpu === 'lighting')) {
+      graphicsTrace?.event('opening-gl-fallback', `waiting=${gpu}`)
+      this.renderer.fallbackBridgeOpening()
+      this.preparationStage(request, 'background')
+      return false
+    }
     // The transport window is already baking. Don't occupy the only
     // raster lane with an albedo draft until adapter discovery completes.
-    if (gpu === 'device') { this.preparationStage(request, 'renderer'); return false }
+    if (gpu === 'device') { graphicsTrace?.state('opening-gates', 'gpu=device'); this.preparationStage(request, 'renderer'); return false }
     // Start the visible plate lane while programs link. Re-plan for a lit
     // Canvas plate only if admission actually resolves to Canvas.
     const lit = gpu === null
@@ -948,7 +970,9 @@ export class Game {
       stream?.planPlates(route.at(this.cam.x).index, opening.visible, lit, true, false)
       opening.lit = lit
     }
-    const backdrop = plates && sky && (!stream || stream.openingSettled(opening.visible))
+    const streamSettled = !stream || stream.openingSettled(opening.visible)
+    const backdrop = plates && sky && streamSettled
+    graphicsTrace?.state('opening-gates', `gpu=${gpu === null ? 'canvas' : typeof gpu === 'string' ? gpu : gpu.tier} plates=${plates} sky=${sky} stream=${streamSettled} window=${!!stream?.openingWindow()}`)
     if (backdrop && !request.backdropMarked) { request.backdropMarked = true; markBoot('run-backdrop-ready') }
     if (gpu === 'renderer' || !backdrop || gpu === 'lighting') {
       this.preparationStage(request, gpu === 'renderer' ? gpu : !backdrop ? 'background' : 'lighting')
@@ -959,6 +983,7 @@ export class Game {
   }
 
   private failRunPreparation(error: unknown): void {
+    graphicsTrace?.event('opening-error', String(error).slice(0, 400))
     this.discardRunPreparation()
     console.error('Preparing the arena failed', error)
     this.input.setEnabled(false)
@@ -985,10 +1010,16 @@ export class Game {
     // Sky, route sockets and traffic each get their own seeded stream.
     const runSeed = request?.seed ?? ((Math.random() * 0xffffffff) >>> 0)
     this.lastRunSeed = runSeed
+    let initPart = traceStart()
     this.resetRoute(runSeed)
+    traceEnd('opening.resetRoute', initPart)
     const prep = request?.preparation
+    initPart = traceStart()
     this.bg.setRunSeed?.(runSeed, prep?.night ?? undefined)
+    traceEnd('opening.setRunSeed', initPart)
+    initPart = traceStart()
     const worldBakeMs = this.bg.warm?.() ?? 0
+    traceEnd('opening.backgroundWarm', initPart)
     this.bakeMs = prep ? performance.now() - prep.startedAt : worldBakeMs
     this.props.reset(runSeed)
     if (this.route) this.props.setRoute(this.route, this.entryX, Infinity)
@@ -1129,6 +1160,7 @@ export class Game {
       const inactive = this.phase === 'preparing' || this.phase === 'paused'
       const t0 = performance.now()
       this.frame(now)
+      if (graphicsTrace && !inactive && this.phase === 'playing' && !document.hidden) graphicsTrace.duration('frame.js', performance.now() - t0)
       this.cleanStreak++
       if (this.cleanStreak >= 2) this.frameErrors = 0
       if (inactive || this.phase === 'paused' || document.hidden) {
@@ -1144,6 +1176,7 @@ export class Game {
       // Foreground percentiles keep visible hitches. Visibility events, not
       // the length of an interval, identify which samples cross tab switches.
       this.frameLog.sample(gap)
+      if (graphicsTrace && this.phase === 'playing' && gap > 0) graphicsTrace.duration('frame.interval', gap)
       if (gap > 0) {
         this.frameMs += (gap - this.frameMs) * 0.1
         // Residual, NOT a GPU measurement. Most of it is vsync idle on a
@@ -1361,7 +1394,7 @@ export class Game {
       const first = this.awaitingFirstStep && this.phase === 'playing'
       const submitted = this.paint(dtRaw, editFrozen)
       if (!submitted && this.coverage && (this.phase === 'playing' || this.phase === 'paused')) this.holdPresentation(true)
-      if (submitted && first && this.time > 0) { this.awaitingFirstStep = false; markBoot('first-step') }
+      if (submitted && first && this.time > 0) { this.awaitingFirstStep = false; graphicsTrace?.event('first-simulation-submit'); markBoot('first-step') }
       // Inspection paints onto the scene. Leaving it needs a fresh world.
       // A pause fired by a substep still gets one draw at the frozen sim pose.
       this.pausedSceneDirty = !submitted || this.inspect.mode !== 'off' || (!pausedAtStart && this.phase === 'paused')
@@ -1400,18 +1433,25 @@ export class Game {
         time: this.renderTime,
       }
       const observe = this.phase === 'playing' && !document.hidden && this.inspect.mode === 'off' ? this.graphicsObserver : undefined
-      const start = observe ? performance.now() : 0
+      const start = observe || graphicsTrace ? performance.now() : 0
       let kind: WorldSubmit['kind'] = this.phase === 'attract' ? 'title' : provisional && world.routeState?.active ? 'starter' : 'canvas'
       try {
         if (this.dirtyWork.has(ctx)) this.cleanWorkContext(ctx)
         if (opening && this.dirtyWork.has(opening.actors)) this.cleanWorkContext(opening.actors)
         if (draft || (this.coverage && (this.phase === 'attract' || (opening !== undefined && !this.pendingRun?.warmed)))) {
           const job = draft ?? (this.paintDraft = { ctx, world, steps: this.renderer.drawSteps(ctx, world, w, h, dt) })
-          if (job.steps && !advancePaint(job.steps)) return false
+          const sliceStart = traceStart()
+          const completed = !job.steps || advancePaint(job.steps)
+          traceEnd('paint.draftSlice', sliceStart)
+          if (!completed) return false
           job.steps = undefined
-        } else if (!opening || !this.renderer.hasBridgeOpeningFrame) this.renderer.draw(ctx, world, w, h, dt)
+        } else if (!opening || !this.renderer.hasBridgeOpeningFrame) {
+          const drawStart = traceStart()
+          this.renderer.draw(ctx, world, w, h, dt)
+          traceEnd('paint.drawTotal', drawStart)
+        }
         if (ctx.isContextLost?.() || !ctx.canvas.width || !ctx.canvas.height) throw new Error('Arena surface unavailable')
-        if (opening && !this.renderer.bridgeOpeningFrameReady()) return false
+        if (opening && !this.renderer.bridgeOpeningFrameReady()) { graphicsTrace?.state('opening-wait', 'gpu-fence'); return false }
         if (opening !== undefined) {
           if (document.hidden) return false
           this.renderer.drawHud(ctx, world, w, h, 0)

@@ -129,7 +129,7 @@ await withBridge(async ({ page, open, button, phase, wait, frames }) => {
         return { n, m, retired, released, status: status.path, reason: status.reason, glError, surfaces: g.resourceSnapshot().surfaces }
       } finally { proto.getExtension = ext }
     })
-    assert.deepEqual(r, { n: 1, m: 1, retired: 0, released: true, status: 'mobile-canvas', reason: 'Preparing WebGL programs', glError: 0, surfaces: 0 })
+    assert.deepEqual(r, { n: 1, m: 1, retired: 0, released: true, status: 'mobile-canvas', reason: 'Preparing WebGL programs and textures', glError: 0, surfaces: 0 })
     return { pending, ...r }
   }
   let dryRaster = null, dryResolve = null, surfaceAttempts = null

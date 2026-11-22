@@ -21,6 +21,7 @@ export class BridgeFinish {
   private output: HTMLCanvasElement | null = null
   private visibleTier: BridgeGLTier | null = null
   private loading = false
+  private forcedCanvas = false
   private readonly refused: Partial<Record<BridgeGLTier, string>> = {}
   private readonly blocked: Partial<Record<BridgeGLTier, string>> = {}
   private requestedTier: BridgeGLTier | null = null
@@ -153,6 +154,7 @@ export class BridgeFinish {
       return null
     }
     if (provisional) return fallback(true)
+    if (this.forcedCanvas) return fallback()
     if (!requested || !this.output || this.lost) {
       if (!this.lost) this.reason = 'not requested'
       return fallback()
@@ -173,7 +175,16 @@ export class BridgeFinish {
     return pipe.mode === (master ? 'master' : 'mobile')
   }
 
-  beginOpening(): void { this.loading = true }
+  beginOpening(): void { this.forcedCanvas = false; this.loading = true }
+
+  /** A run may use Canvas when GL setup never completes. Keep the requested
+   * preset unchanged and retry GL only at the next run boundary. */
+  fallbackOpening(): void {
+    this.forcedCanvas = true
+    this.device.dispose()
+    this.releaseFrame()
+    this.reason = 'WebGL opening timed out; using Canvas for this run'
+  }
 
   resetOpening(): void {
     this.reason = 'Opening not ready; try again'
@@ -189,6 +200,7 @@ export class BridgeFinish {
     window: BakeWindow | null, seed: number, skySettled: boolean): BridgeOpening {
     this.warming = false
     this.remember(requested, w, h, scale)
+    if (this.forcedCanvas) return null
     if (!requested || !this.output || this.lost) {
       if (!this.lost) this.reason = requested ? 'WebGL output unavailable' : 'Canvas output selected'
       return null
@@ -303,7 +315,7 @@ export class BridgeFinish {
     this.releaseFrame(false)
     this.output?.removeEventListener('webglcontextlost', this.onLoss)
     this.output?.removeEventListener('webglcontextrestored', this.onRestore)
-    this.output = null; this.invalidate = undefined; this.reason = 'released'
+    this.output = null; this.invalidate = undefined; this.reason = 'released'; this.forcedCanvas = false
     this.retry()
   }
 }

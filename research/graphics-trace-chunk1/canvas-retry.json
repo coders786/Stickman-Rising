@@ -1,0 +1,472 @@
+{
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "url": "http://127.0.0.1:3000/?traceGraphics=1&boot=1",
+  "verify": false,
+  "outcome": "retry-playing",
+  "errors": [],
+  "trace": {
+    "timeOrigin": 1795373539522.5,
+    "events": [
+      {
+        "at": 947.8999999999069,
+        "name": "run-request",
+        "detail": "engage"
+      },
+      {
+        "at": 976.5999999999767,
+        "name": "worker-send",
+        "detail": "window id=1"
+      },
+      {
+        "at": 998,
+        "name": "opening-gates",
+        "detail": "gpu=device"
+      },
+      {
+        "at": 998.0999999999767,
+        "name": "opening-stage",
+        "detail": "renderer"
+      },
+      {
+        "at": 3881.5,
+        "name": "worker-send",
+        "detail": "plate id=2"
+      },
+      {
+        "at": 3881.79999999993,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=false window=false"
+      },
+      {
+        "at": 3881.79999999993,
+        "name": "opening-stage",
+        "detail": "background"
+      },
+      {
+        "at": 4743.699999999953,
+        "name": "worker-reply",
+        "detail": "plate id=2 bakeMs=699.6"
+      },
+      {
+        "at": 4750.699999999953,
+        "name": "worker-reply",
+        "detail": "window id=1 bakeMs=938.7"
+      },
+      {
+        "at": 4751.599999999977,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=true window=true"
+      },
+      {
+        "at": 4753.29999999993,
+        "name": "opening-stage",
+        "detail": "frame"
+      },
+      {
+        "at": 5102.79999999993,
+        "name": "opening-wait",
+        "detail": "frame-pacing"
+      },
+      {
+        "at": 5102.79999999993,
+        "name": "opening-first-submit"
+      },
+      {
+        "at": 5103.399999999907,
+        "name": "opening-stage",
+        "detail": "settling"
+      },
+      {
+        "at": 6412.699999999953,
+        "name": "pace-reset",
+        "detail": "ready-gap=1283.3ms"
+      },
+      {
+        "at": 6451.899999999907,
+        "name": "opening-paced"
+      },
+      {
+        "at": 6469.29999999993,
+        "name": "opening-wait",
+        "detail": "reveal-cut"
+      },
+      {
+        "at": 6819.199999999953,
+        "name": "run-input-unlocked"
+      },
+      {
+        "at": 6847.5,
+        "name": "worker-send",
+        "detail": "plate id=3"
+      },
+      {
+        "at": 6906.899999999907,
+        "name": "first-simulation-submit"
+      },
+      {
+        "at": 7294.399999999907,
+        "name": "worker-reply",
+        "detail": "plate id=3 bakeMs=430.7"
+      },
+      {
+        "at": 10528.699999999953,
+        "name": "run-request",
+        "detail": "retry"
+      },
+      {
+        "at": 10548.199999999953,
+        "name": "worker-send",
+        "detail": "window id=4"
+      },
+      {
+        "at": 10556.29999999993,
+        "name": "worker-send",
+        "detail": "plate id=5"
+      },
+      {
+        "at": 10558.29999999993,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=false window=false"
+      },
+      {
+        "at": 10558.29999999993,
+        "name": "opening-stage",
+        "detail": "background"
+      },
+      {
+        "at": 10658.699999999953,
+        "name": "worker-reply",
+        "detail": "plate id=5 bakeMs=101.8"
+      },
+      {
+        "at": 10744.399999999907,
+        "name": "worker-reply",
+        "detail": "window id=4 bakeMs=194.9"
+      },
+      {
+        "at": 10751,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=true window=true"
+      },
+      {
+        "at": 10751.79999999993,
+        "name": "opening-stage",
+        "detail": "frame"
+      },
+      {
+        "at": 10819,
+        "name": "opening-wait",
+        "detail": "frame-pacing"
+      },
+      {
+        "at": 10819,
+        "name": "opening-first-submit"
+      },
+      {
+        "at": 10819.29999999993,
+        "name": "opening-stage",
+        "detail": "settling"
+      },
+      {
+        "at": 11026.599999999977,
+        "name": "pace-reset",
+        "detail": "ready-gap=183.3ms"
+      },
+      {
+        "at": 11070.29999999993,
+        "name": "opening-paced"
+      },
+      {
+        "at": 11087.199999999953,
+        "name": "opening-wait",
+        "detail": "reveal-cut"
+      },
+      {
+        "at": 11435.099999999977,
+        "name": "run-input-unlocked"
+      },
+      {
+        "at": 11457.5,
+        "name": "worker-send",
+        "detail": "plate id=6"
+      }
+    ],
+    "metrics": {
+      "paint.draftSlice": {
+        "count": 22,
+        "meanMs": 12.60454545454228,
+        "maxMs": 47.59999999997672,
+        "recentSamples": 22,
+        "p50Ms": 8,
+        "p95Ms": 37.90000000002328,
+        "p99Ms": 47.59999999997672
+      },
+      "opening.resetRoute": {
+        "count": 2,
+        "meanMs": 0.7999999999883585,
+        "maxMs": 1,
+        "recentSamples": 2,
+        "p50Ms": 0.5999999999767169,
+        "p95Ms": 1,
+        "p99Ms": 1
+      },
+      "opening.setRunSeed": {
+        "count": 2,
+        "meanMs": 0.20000000001164153,
+        "maxMs": 0.30000000004656613,
+        "recentSamples": 2,
+        "p50Ms": 0.09999999997671694,
+        "p95Ms": 0.30000000004656613,
+        "p99Ms": 0.30000000004656613
+      },
+      "opening.backgroundWarm": {
+        "count": 2,
+        "meanMs": 0.15000000002328306,
+        "maxMs": 0.30000000004656613,
+        "recentSamples": 2,
+        "p50Ms": 0,
+        "p95Ms": 0.30000000004656613,
+        "p99Ms": 0.30000000004656613
+      },
+      "opening.beginRun": {
+        "count": 2,
+        "meanMs": 4.250000000058208,
+        "maxMs": 7.200000000069849,
+        "recentSamples": 2,
+        "p50Ms": 1.3000000000465661,
+        "p95Ms": 7.200000000069849,
+        "p99Ms": 7.200000000069849
+      },
+      "opening.tickJS": {
+        "count": 146,
+        "meanMs": 3.486986301374488,
+        "maxMs": 59.90000000002328,
+        "recentSamples": 146,
+        "p50Ms": 0.30000000004656613,
+        "p95Ms": 14.300000000046566,
+        "p99Ms": 47.800000000046566
+      },
+      "paint.canvasWorldAndActors": {
+        "count": 110,
+        "meanMs": 15.93818181817187,
+        "maxMs": 62.300000000046566,
+        "recentSamples": 110,
+        "p50Ms": 11.900000000023283,
+        "p95Ms": 41.199999999953434,
+        "p99Ms": 59.699999999953434
+      },
+      "paint.drawTotal": {
+        "count": 110,
+        "meanMs": 16.876363636364907,
+        "maxMs": 63.40000000002328,
+        "recentSamples": 110,
+        "p50Ms": 12.399999999906868,
+        "p95Ms": 42.40000000002328,
+        "p99Ms": 60.199999999953434
+      },
+      "frame.js": {
+        "count": 101,
+        "meanMs": 21.0178217821879,
+        "maxMs": 64.79999999993015,
+        "recentSamples": 101,
+        "p50Ms": 17.699999999953434,
+        "p95Ms": 47.09999999997672,
+        "p99Ms": 62.09999999997672
+      },
+      "frame.interval": {
+        "count": 99,
+        "meanMs": 35.68888888888889,
+        "maxMs": 233.39999999999964,
+        "recentSamples": 99,
+        "p50Ms": 33.29999999999927,
+        "p95Ms": 66.70000000000073,
+        "p99Ms": 233.39999999999964
+      }
+    },
+    "note": "JS wall/submit timings only; not GPU execution. Percentiles use the most recent 1000 samples."
+  },
+  "phase": "playing",
+  "config": {
+    "preset": "ULTRA",
+    "adaptiveEnabled": false,
+    "renderScale": 1.25,
+    "showFPS": false
+  },
+  "presentation": {
+    "path": "mobile-canvas",
+    "reason": "Error: Software WebGL adapter; using Canvas fallback",
+    "requestedScale": 1.25,
+    "backingScale": 1.25,
+    "staged": false,
+    "gpu": null,
+    "field": {
+      "emitters": 0,
+      "impulses": 0,
+      "cover": 1,
+      "blockers": 11,
+      "casts": 2,
+      "deckCasts": 0,
+      "roadFromDeck": 0,
+      "stream": {
+        "worker": true,
+        "plateWorker": true,
+        "opticsPending": false,
+        "rasterPending": true,
+        "pending": "plate",
+        "plates": 1,
+        "plateBytes": 1926144,
+        "lit": true,
+        "windows": 2,
+        "stale": 0,
+        "retiredJobs": 0,
+        "workerMaxMs": 938.7000000000698,
+        "plateMaxMs": 699.5999999999767,
+        "decodeMaxMs": 0.40000000002328306,
+        "wireBytes": 3187712,
+        "error": null,
+        "plateError": null
+      },
+      "quads": 0,
+      "overflow": false,
+      "trailTriangles": 0,
+      "landings": 0
+    },
+    "glass": {
+      "fronts": 1,
+      "panes": 4,
+      "baked": 4,
+      "solids": 0,
+      "sources": 0,
+      "actors": 0,
+      "shadeTaps": 5,
+      "shaded": 5,
+      "penumbra": 0,
+      "energy": 0.2428235337138176,
+      "fieldBytes": 143360
+    },
+    "post2d": {
+      "atlasBytes": 157696,
+      "lensBlits": 1,
+      "trailBlits": 0,
+      "shadeBlits": 1
+    },
+    "sacr": null,
+    "frame": {
+      "id": 112,
+      "layer": "scene-work",
+      "kind": "canvas",
+      "hud": "layer",
+      "seed": 258886515,
+      "time": 0,
+      "hp": 100,
+      "threats": 1
+    },
+    "held": false,
+    "faults": 0,
+    "fallbackLayer": "scene-work",
+    "fallbackReady": true,
+    "coverageBytes": 10080000
+  },
+  "marks": [
+    {
+      "name": "sr:engine-request",
+      "at": 369.29999999993015
+    },
+    {
+      "name": "sr:menu",
+      "at": 430.39999999990687
+    },
+    {
+      "name": "sr:engine-module",
+      "at": 695.8999999999069
+    },
+    {
+      "name": "sr:ready",
+      "at": 734.2999999999302
+    },
+    {
+      "name": "sr:engage",
+      "at": 940.0999999999767
+    },
+    {
+      "name": "sr:run-initialized",
+      "at": 974.0999999999767
+    },
+    {
+      "name": "sr:run-workers",
+      "at": 976.6999999999534
+    },
+    {
+      "name": "sr:run-backdrop-ready",
+      "at": 4751.699999999953
+    },
+    {
+      "name": "sr:run-renderer-ready",
+      "at": 4752.79999999993
+    },
+    {
+      "name": "sr:run-submit",
+      "at": 5102.899999999907
+    },
+    {
+      "name": "sr:run-settled",
+      "at": 6452
+    },
+    {
+      "name": "sr:run-cut",
+      "at": 6452.399999999907
+    },
+    {
+      "name": "sr:playing",
+      "at": 6819.899999999907
+    },
+    {
+      "name": "sr:first-step",
+      "at": 6906.899999999907
+    },
+    {
+      "name": "sr:retry",
+      "at": 10528.599999999977
+    },
+    {
+      "name": "sr:run-initialized",
+      "at": 10543.199999999953
+    },
+    {
+      "name": "sr:run-workers",
+      "at": 10548.29999999993
+    },
+    {
+      "name": "sr:run-backdrop-ready",
+      "at": 10751
+    },
+    {
+      "name": "sr:run-renderer-ready",
+      "at": 10751.5
+    },
+    {
+      "name": "sr:run-submit",
+      "at": 10819
+    },
+    {
+      "name": "sr:run-settled",
+      "at": 11070.29999999993
+    },
+    {
+      "name": "sr:run-cut",
+      "at": 11070.79999999993
+    },
+    {
+      "name": "sr:playing",
+      "at": 11435.399999999907
+    }
+  ],
+  "verifyStatus": null,
+  "visibility": "visible",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+  "dpr": 1,
+  "viewport": [
+    1120,
+    720
+  ]
+}

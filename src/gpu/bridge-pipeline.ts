@@ -1,3 +1,5 @@
+import { actorPrototypeEnabled, BridgeActorPrototype } from './bridge-actor-prototype'
+import { graphicsTrace, traceStart, traceEnd } from '../debug/graphics-trace'
 import { BRIDGE_GL_ATTRIBUTES, describeBridgeAdapter } from './bridge-device'
 import { packedSettled, warmPackedBridge } from './bridge-packed-assets'
 import { DECK_PACK, gradePack } from '../graphics/bridge/BridgeAssetCodec'
@@ -123,6 +125,12 @@ export class BridgePipeline {
   private checkDraw = false
   private openingFrame: { fbo: WebGLFramebuffer; fence: WebGLSync | null } | null = null
   private exercisedOpeningPrograms = false
+  private readonly actorDebug = actorPrototypeEnabled()
+  private actorDebugProgram: Program | null = null
+  private actorDebugPass: BridgeActorPrototype | null = null
+  private actorDebugDrawn = 0
+  private actorDebugOverflow = false
+  private readonly passDraws = { sky: 0, base: 0, receivers: 0, road: 0, choreography: 0, bloom: 0, grade: 0, debug: 0 }
   private readonly warmTriangle = new Float32Array(3 * BRIDGE_FACE_STRIDE)
 
   static create(canvas: HTMLCanvasElement, mode: BridgeGLTier, allowSoftware: boolean, adapterChecked = false): BridgePipeline {
@@ -153,7 +161,10 @@ export class BridgePipeline {
 
   private program(name: keyof typeof BRIDGE_PROGRAMS): Program {
     const gl = this.gl, [vertex, fragment] = BRIDGE_PROGRAMS[name]
+    const compileStart = traceStart()
     const program = this.compileStatus ? queueProgram(gl, vertex, fragment, name) : linkProgram(gl, vertex, fragment, name)
+    traceEnd('gl.programEnqueue.' + name, compileStart)
+    graphicsTrace?.event('program-queued', `${name} parallel=${!!this.compileStatus}`)
     const locations = new Map<string, WebGLUniformLocation | null>()
     const p = { name, handle: program, units: new Map<string, number>(), loc: (key: string) => {
       if (!locations.has(key)) locations.set(key, gl.getUniformLocation(program, key))
@@ -182,6 +193,7 @@ export class BridgePipeline {
     this.grade = this.program(master ? 'masterGrade' : 'mobileGrade'); yield
     this.road = this.program(master ? 'masterRoad' : 'mobileRoad'); yield
     this.skyProgram = this.program(master ? 'masterSky' : 'mobileSky'); yield
+    if (this.actorDebug) { this.actorDebugProgram = this.program('actorPrototype'); yield }
     if (master) {
       this.receiver = this.program('receiver'); yield
       this.weather = this.program('weather'); yield
@@ -204,6 +216,7 @@ export class BridgePipeline {
     if (!this.initializing) {
       if (compileStatus) {
         if (this.programs.some(p => !gl.getProgramParameter(p.handle, compileStatus))) return false
+        graphicsTrace?.event('programs-complete', this.mode)
         for (const p of this.programs) finishProgram(gl, p.handle, p.name)
       }
       this.initializing = this.initialize()
@@ -211,6 +224,7 @@ export class BridgePipeline {
     const at = performance.now(), next = this.initializing.next()
     if (!next.done) { this.setupMs[next.value] = performance.now() - at; return false }
     this.initialized = true; this.initializing = null
+    graphicsTrace?.event('pipeline-ready', this.mode)
     return true
   }
 
@@ -233,6 +247,8 @@ export class BridgePipeline {
       gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, BRIDGE_FACE_STRIDE * 4, 8)
       gl.bindVertexArray(this.vao)
     }
+    if (this.actorDebugProgram) this.actorDebugPass = new BridgeActorPrototype(gl, this.actorDebugProgram.handle)
+    gl.bindVertexArray(this.vao)
     yield 'rig'
     if (master) {
       this.material = this.texture(gl.TEXTURE_2D_ARRAY); materialTiles(gl)
@@ -624,12 +640,19 @@ export class BridgePipeline {
     const exercise = opening && !this.exercisedOpeningPrograms
     if (!opening) this.sizeOutput()
     this.frameDraws = this.rainInstances = this.moteInstances = 0
+    const passes = this.passDraws
+    passes.sky = passes.base = passes.receivers = passes.road = passes.choreography = passes.bloom = passes.grade = passes.debug = 0
     // One DOM upload per source; never reflect or read back the finished scene.
     gl.activeTexture(gl.TEXTURE0)
+    let uploadStart = traceStart()
     gl.bindTexture(gl.TEXTURE_2D, this.baseTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, back)
+    traceEnd('gl.baseCanvasUpload', uploadStart)
     if (cold) yield
+    uploadStart = traceStart()
     gl.bindTexture(gl.TEXTURE_2D, this.actorTex); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, actors)
+    traceEnd('gl.actorCanvasUpload', uploadStart)
     this.uploadBytes = this.w * this.h * 8
+    graphicsTrace?.state('gl-backing', `${this.mode} ${this.w}x${this.h} canvasUploadBytes=${this.uploadBytes}`)
     if (cold) yield
     this.uploadGlazing(f)
     if (cold) yield
@@ -642,10 +665,12 @@ export class BridgePipeline {
     uploadSACRFrame(gl, this.ubo!, packet)
     if (!opening) this.advanceSkyAssets(f.atmo.basis, f.uploadQuiet)
     this.paintStratumA(f)
+    passes.sky = this.frameDraws
     if (cold) yield
     gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fbo); gl.viewport(0, 0, this.w, this.h)
     gl.useProgram(this.base.handle); this.input(this.base, 'uBase', 0, this.baseTex); this.field(this.base, f, cssW, cssH)
     this.baseLayers(f); this.fullscreen()
+    passes.base = this.frameDraws - passes.sky
     if (cold) yield
     if (master && (f.vertexCount || exercise)) {
       const p = this.receiver
@@ -659,8 +684,12 @@ export class BridgePipeline {
       this.triangles(f.vertexCount ? f.faces : this.warmTriangle, f.vertexCount || 3)
     }
     if (cold) yield
+    passes.receivers = this.frameDraws - passes.sky - passes.base
+    const beforeRoad = this.frameDraws
     this.ground(f, cssW, cssH, scene)
+    passes.road = this.frameDraws - beforeRoad
     if (cold) yield
+    const beforeChoreography = this.frameDraws
     gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
     if (master) this.particles(f, cssW, cssH, false, exercise)
     gl.useProgram(this.emission.handle); this.input(this.emission, 'uActors', 1, this.actorTex); this.field(this.emission, f, cssW, cssH)
@@ -672,7 +701,9 @@ export class BridgePipeline {
     }
     if (master) this.particles(f, cssW, cssH, true)
     gl.disable(gl.BLEND)
+    passes.choreography = this.frameDraws - beforeChoreography
     if (cold) yield
+    const beforeBloom = this.frameDraws
     if (master) {
       const [tight, medium, wide, bloom] = this.bloomTargets
       gl.useProgram(this.filter.handle)
@@ -686,6 +717,7 @@ export class BridgePipeline {
       this.blur(medium, bloom, 2, wide, tight)
       if (cold) yield
     }
+    passes.bloom = this.frameDraws - beforeBloom
     if (opening) this.bindOpeningTarget()
     else gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, this.w, this.h)
@@ -701,6 +733,12 @@ export class BridgePipeline {
     gl.uniform1i(p.loc('uGradeRoofs'), f.roofs)
     gl.uniform4fv(p.loc('uGradeCover[0]'), f.cover)
     this.fullscreen()
+    passes.grade = 1
+    this.actorDebugDrawn = 0; this.actorDebugOverflow = !opening && f.actorPrototype.overflow
+    if (!opening && this.actorDebugPass?.draw(f.actorPrototype, cssW, cssH, f.cam.y, f.cam.zoom, a)) {
+      this.actorDebugDrawn = f.actorPrototype.count; this.frameDraws++; passes.debug = 1
+    }
+    graphicsTrace?.state('gl-draws', `${this.mode} draws=${this.frameDraws} rain=${this.rainInstances} motes=${this.moteInstances}`)
     if (this.checkDraw || opening) {
       this.checkDraw = false
       const error = gl.getError()
@@ -735,8 +773,8 @@ export class BridgePipeline {
     const gl = this.gl, fence = this.openingFrame?.fence
     if (!fence || gl.isContextLost()) throw new Error('Bridge opening GPU frame unavailable')
     const status = gl.clientWaitSync(fence, 0, 0)
-    if (status === gl.ALREADY_SIGNALED || status === gl.CONDITION_SATISFIED) return true
-    if (status === gl.TIMEOUT_EXPIRED) return false
+    if (status === gl.ALREADY_SIGNALED || status === gl.CONDITION_SATISFIED) { graphicsTrace?.state('opening-fence', 'ready'); return true }
+    if (status === gl.TIMEOUT_EXPIRED) { graphicsTrace?.state('opening-fence', 'waiting'); return false }
     throw new Error('Bridge opening GPU frame failed')
   }
 
@@ -794,7 +832,9 @@ export class BridgePipeline {
     const dataBytes = 4 * (master ? 32 : 16) ** 3 * 4 + SACRUniformBuffer.BYTE_LENGTH + 2 * WINDOW_BYTES + (this.skyTextures ? SKY_BASIS_BYTES + this.cityBytes : 0) + Math.ceil((PUDDLE_PITCH * DECK_MASK_H + (master ? MATERIAL_COUNT * MATERIAL_TILE ** 2 + 64 ** 2 / 2 : 0)) * 4 * 4 / 3)
     const shopBytes = this.shopTex ? GLASS_TILE_W * GLASS_TILE_H * SHOP_FRONT_LIMIT * 4 : 0
     return { programs: this.programs.map(p => p.name), size: [this.w, this.h], format: master ? 'RGBA16F' : 'RGBA8', hdrBytes: master ? targetBytes : 0, targetBytes, dataBytes: dataBytes + shopBytes,
+      actorPrototype: this.actorDebug ? { instances: this.actorDebugDrawn, overflow: this.actorDebugOverflow, overlay: true } : null,
       glazing: { bytes: shopBytes, uploadBytes: this.shopUpload },
+      passDraws: { ...this.passDraws }, canvasUploads: { worldBytes: this.w * this.h * 4, choreographyBytes: this.w * this.h * 4 },
       outputBytes: this.w * this.h * 4, sourceTextureBytes: this.w * this.h * 8, uploadBytes: this.uploadBytes,
       setupMs: { ...this.setupMs }, frameDraws: this.frameDraws, rainInstances: this.rainInstances, moteInstances: this.moteInstances,
       bloomLevels: master ? BLOOM_DIVISORS.length : 0, bloomUpPasses: 0,
@@ -816,6 +856,7 @@ export class BridgePipeline {
   dispose(): void {
     const gl = this.gl
     this.releaseTargets()
+    this.actorDebugPass?.dispose(); this.actorDebugPass = null
     gl.disable(gl.SCISSOR_TEST)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.bindVertexArray(null); gl.useProgram(null); gl.bindBuffer(gl.ARRAY_BUFFER, null)

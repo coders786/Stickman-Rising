@@ -1,3 +1,5 @@
+import { actorPrototypeEnabled } from '../../gpu/bridge-actor-prototype'
+import { graphicsTrace, traceStart, traceEnd } from '../../debug/graphics-trace'
 import { newReceiverRig, RECEIVER, sampleReceiverRig } from '../lighting/receiver'
 import { bridgeSkyBasis } from '../../graphics/bridge/SkyBasis'
 import { MOON_KEY, MOON_SLOPE, roadFixtureVisibility, softVisibility, staticFalloff, type LightPoint } from '../../graphics/bridge/NoirGeometry'
@@ -51,6 +53,14 @@ import { BridgePost } from './bridge-post'
 import { finishPaint } from './paint-slices'
 import { GameSettings } from '../core/types'
 
+/** Exclude sliced opening yields from paint attribution. No trace means no clock reads. */
+function tracePaintStage(name: string, start: number, cold: boolean): number {
+  if (cold || !graphicsTrace) return start
+  const now = performance.now()
+  graphicsTrace.duration(name, now - start)
+  return now
+}
+
 export interface RenderWorld {
   cam: Camera
   fx: FX
@@ -92,6 +102,7 @@ export class Renderer {
   private readonly wetStrip = new BridgeWetStrip()
   private readonly canvasReceivers = new BridgeCanvasReceivers()
   private readonly bridgeField = new BridgeFrame()
+  private readonly actorPrototypeDebug = actorPrototypeEnabled()
   private routeIdentity: BridgeRoute | undefined
   private bossTint = 0
   attachWorldOutput(canvas: HTMLCanvasElement, invalidated: () => void): void { this.bridgeFinish.attach(canvas, invalidated) }
@@ -136,6 +147,7 @@ export class Renderer {
 
   beginBridgeOpening(): void { this.bridgeFinish.beginOpening() }
   resetBridgeOpening(): void { this.bridgeFinish.resetOpening() }
+  fallbackBridgeOpening(): void { this.bridgeFinish.fallbackOpening() }
   advanceBridgeOpening(w: number, h: number, scale: number, enableGL: boolean, window: BakeWindow | null, seed: number, skySettled: boolean) {
     return this.bridgeFinish.advanceOpening(enableGL ? this.requestedBridgeTier() : null, w, h, scale, window, seed, skySettled)
   }
@@ -439,6 +451,16 @@ export class Renderer {
       f.streamWindow = (opening ? f.stream?.openingWindow() : f.stream?.requestWindow(f.view.left, f.view.right, worldCam.x)) ?? null
       f.probeWindow = gpu ? this.bridgeFinish.transportWindow(route.seed) : f.streamWindow
       f.uploadQuiet = (world.streamQuiet ?? true) && pulse < .012
+      if (gpu && this.actorPrototypeDebug && !opening) {
+        // Debug comparison only: Canvas remains authoritative and visible.
+        const batch = f.actorPrototype
+        batch.begin(worldCam.x)
+        for (const e of visible) batch.actor(e, 0xf2b952, .55, e.bridgePrototypeWeapon(), e.cfg.style.lineW)
+        // This packet is diagnostic only; Canvas remains the source of the
+        // blade, sheath-transition clipping, hands and all authored detail.
+        if (player.state !== 'dead' || player.deadTime <= 2.6)
+          batch.actor(player, 0x60d7e5, .55, player.bridgePrototypeWeapon())
+      }
       if (gpu) {
         // Restrict the grade's #000 ink swatch to the moving anatomical
         // region; no lookup in the skyline, road, or ordinary near art.
@@ -446,6 +468,7 @@ export class Renderer {
         f.inkBox[0] = x - r; f.inkBox[1] = y - r
         f.inkBox[2] = x + r; f.inkBox[3] = y + r
         const { left, right } = f.view, s = f.sacr
+        const packStart = traceStart()
         s.begin(left, right, worldCam.x, master ? SACR_MASTER_K : SACR_MOBILE_K, route, f.probeWindow)
         s.architecture(route, left, right)
         s.actor(player, 0, SACR_PRIORITY.player, undefined, quiet ? undefined : player.bridgeScarfNodes())
@@ -458,6 +481,7 @@ export class Renderer {
         nearest.sort((a, b) => Math.abs(a.x - worldCam.x) - Math.abs(b.x - worldCam.x) || a.id - b.id)
         for (const e of nearest) if (id < SACR_SOLID_ID) s.actor(e, id++, SACR_PRIORITY.enemy, bridgeTint(e.cfg.style.dark))
         s.seal()
+        traceEnd('sacr.packAndBin', packStart)
         if (master && !quiet) f.landingCount = bg.bridgeLandings?.(f.landings, left, right) ?? 0
       }
     }
@@ -479,8 +503,11 @@ export class Renderer {
         } finally { if (band) g.restore() }
       } else bg.drawSky(g, skyCam, worldCam, gpu?.tier, gust)
     }
+    const canvasStart = !cold && graphicsTrace ? performance.now() : 0
+    let stageStart = canvasStart
     if (cold) yield
     yield* paintSky(ctx, this.bridgeField.liveSky, cold)
+    stageStart = tracePaintStage('paint.bridgeBackdrop', stageStart, cold)
     if (cold) yield
     ctx.save(); applyWorldCamera()
     if (cold && routeState && bg.drawBridgeRoadSteps) yield* bg.drawBridgeRoadSteps(ctx, worldCam, master, !!gpu)
@@ -491,6 +518,8 @@ export class Renderer {
       if (routeState) bg.drawRouteExterior?.(ctx, worldCam, routeState.service, 'structure')
       ctx.restore(); ctx = gpu.actors; ctx.save(); applyWorldCamera()
     }
+
+    stageStart = tracePaintStage('paint.bridgeWorld', stageStart, cold)
 
     // Primary Canvas cast is a fallback, not another GPU coverage pass.
     const liveSlope = routeState ? MOON_SLOPE : moonShadowSlope(moon.dir, moon.reach)
@@ -542,6 +571,8 @@ export class Renderer {
     }
     if (cold) yield
 
+    stageStart = tracePaintStage('paint.bridgeGroundProps', stageStart, cold)
+
     // ground decals + debris
     fx.drawUnder(ctx)
 
@@ -550,6 +581,8 @@ export class Renderer {
     // enemies
     const noirEnemies = bg.useQuietEnemyFinish?.() ?? false
     for (const e of visible) e.draw(ctx, time, lighting(e), noirEnemies, !!routeState, 2 / worldCam.zoom)
+
+    stageStart = tracePaintStage('paint.bridgeEnemiesAndUnder', stageStart, cold)
 
     // Echoes belong behind the opaque live actor, never on top of its hands/eyes.
     fx.drawSilhouettes(ctx)
@@ -560,6 +593,8 @@ export class Renderer {
 
     player.draw(ctx, time, false, routeState ? routeState.quiet ? 0 : master ? 5 : 2 : 5)
 
+    stageStart = tracePaintStage('paint.bridgePlayerAndSmears', stageStart, cold)
+
     // DUST IN THE SHAFTS — air you can see (ultra). Drawn after the players so the
     // motes sit in front of the light rather than behind the fighter.
     if (this.features.dust && particlesDraw(2)) bg.drawMotes?.(ctx, time)
@@ -568,6 +603,7 @@ export class Renderer {
     projectiles.draw(ctx, time)
 
     ctx.restore()
+    stageStart = tracePaintStage('paint.bridgeProjectilesAndMotes', stageStart, cold)
     if (cold) yield
 
     // Authored wetness belongs to the span bake, not to scene pixels.
@@ -603,30 +639,36 @@ export class Renderer {
     fx.drawImpactFocus(ctx, w, h, cam)
 
     if (cold) yield
+    stageStart = tracePaintStage('paint.bridgeForegroundAndEffects', stageStart, cold)
+    if (!cold && graphicsTrace) graphicsTrace.duration('paint.canvasWorldAndActors', performance.now() - canvasStart)
     if (gpu && cold && opening) yield* this.bridgeFinish.stageOpening(scene, this.bridgeField, w, h)
-    else if (gpu) this.bridgeFinish.present(scene, this.bridgeField, w, h, () => {
-      if (!routeState) return
-      // Same-turn repair if the context/FBO fails after Canvas went sparse.
-      finishPaint(paintSky(scene, false, false))
-      scene.save(); applyWorldCamera(scene)
-      bg.drawArena(scene, false, worldCam, gust, false, false, true)
-      const repair = (a: ShadowActor) => {
-        const support = (a.floorY ?? 0) < 0 ? bg.supportAt?.(a.x) : null
-        this.shade(scene, bg, a, moonSlope, keyGain, this.bridgeField.keyX, false, a === player,
-          routeState.route, false, false, support)
-      }
-      repair(player); for (const e of visible) repair(e)
-      this.canvasReceivers.draw(scene, this.bridgeField, routeState.route)
-      bg.drawBridgeWater?.(scene, worldCam, this.bridgeField.wet)
-      drawMobileImpulseReflection(scene, this.bridgeField, bg)
-      bg.drawRouteExterior?.(scene, worldCam, routeState.service, 'structure')
-      this.glass.draw(scene, this.bridgeField, routeState.route, false, player)
-      if (routeState.active) {
-        this.lenses.gloom(scene, w, h, field)
-        if (master) this.lenses.lenses(scene, field, lensLimit)
-      }
-      scene.restore()
-    }, opening)
+    else if (gpu) {
+      const presentStart = traceStart()
+      this.bridgeFinish.present(scene, this.bridgeField, w, h, () => {
+        if (!routeState) return
+        // Same-turn repair if the context/FBO fails after Canvas went sparse.
+        finishPaint(paintSky(scene, false, false))
+        scene.save(); applyWorldCamera(scene)
+        bg.drawArena(scene, false, worldCam, gust, false, false, true)
+        const repair = (a: ShadowActor) => {
+          const support = (a.floorY ?? 0) < 0 ? bg.supportAt?.(a.x) : null
+          this.shade(scene, bg, a, moonSlope, keyGain, this.bridgeField.keyX, false, a === player,
+            routeState.route, false, false, support)
+        }
+        repair(player); for (const e of visible) repair(e)
+        this.canvasReceivers.draw(scene, this.bridgeField, routeState.route)
+        bg.drawBridgeWater?.(scene, worldCam, this.bridgeField.wet)
+        drawMobileImpulseReflection(scene, this.bridgeField, bg)
+        bg.drawRouteExterior?.(scene, worldCam, routeState.service, 'structure')
+        this.glass.draw(scene, this.bridgeField, routeState.route, false, player)
+        if (routeState.active) {
+          this.lenses.gloom(scene, w, h, field)
+          if (master) this.lenses.lenses(scene, field, lensLimit)
+        }
+        scene.restore()
+      }, opening)
+      traceEnd('gl.presentJS', presentStart)
+    }
 
     // The HUD is never input to the GPU stage. Opening HUD is painted just
     // before publishing, after the first world/post frame is complete.
