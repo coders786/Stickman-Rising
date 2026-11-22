@@ -1,3 +1,4 @@
+import type { GPUActorWeaponSegment } from '../render/gpu-actor-batch'
 import { newRibbon, RIBBON_LIFETIME } from '../fx/ribbon'
 import { ROAD, floorTOI } from '../stage/road-section'
 import {DASH_STAMINA_MAX,DASH_STAMINA_COST,POWER_DASH_STAMINA_COST,DASH_STAMINA_REGEN,DASH_STAMINA_REGEN_STILL,DASH_STAMINA_REGEN_SPRINT,DASH_STAMINA_REGEN_DELAY} from '../combat/stamina'
@@ -1486,6 +1487,40 @@ export class Player {
   bridgeCastWeapon() {
     const { grip, tip, hip } = this.geom
     return this.swordDrawn ? [grip, tip] as const : [{ x: hip.x + 12, y: hip.y + 5 }, { x: hip.x - 63, y: hip.y + 25 }] as const
+  }
+
+  private readonly sayaGeometryScratch = { x: 0, y: 0, angle: 0, tipX: 0, tipY: 0 }
+
+  /** Shared saya geometry. Canvas and the GPU diagnostic must use the same
+   * draw socket, including hip pitch and lag; SACR's cast is only a proxy. */
+  private sayaGeometry() {
+    const hp = this.geom.hip
+    const length = PLAYER_SPEC.blade * this.sword.stats.range * 1.06
+    const pitch = this.pose[CH.rootRot] + this.pose[CH.spine] * .35
+    const detail = this.sheathAct?.mode === 'draw' ? this.drawSocket() : null
+    const angle = detail?.ang ?? Math.min(.24 + pitch * .6 + this.sayaLag, this.state === 'dash' && this.grounded ? .5 : 2)
+    const x = detail?.x ?? hp.x + 3, y = detail?.y ?? hp.y + 1
+    const out = this.sayaGeometryScratch
+    out.x = x; out.y = y; out.angle = angle
+    out.tipX = x - Math.cos(angle) * length; out.tipY = y + Math.sin(angle) * length
+    return out
+  }
+
+  /** Diagnostic positions only. The full sword and animated clipping stay
+   * Canvas-owned; never replace them with these line approximations. */
+  bridgePrototypeWeapon(): GPUActorWeaponSegment[] {
+    const saya = this.sayaGeometry(), g = this.geom
+    const width = this.sword.mundane ? 1.75 : 2.3
+    const segments: GPUActorWeaponSegment[] = [{ a: { x: saya.x, y: saya.y },
+      b: { x: saya.tipX, y: saya.tipY }, r0: width, r1: width }]
+    // Avoid falsely drawing a full blade when the real art is clipped by the
+    // saya during draw/noto; these transitions need their own GPU geometry.
+    if (this.swordDrawn && !this.sheathAct) segments.push({
+      a: { x: g.grip.x, y: g.grip.y },
+      b: { x: g.grip.x + Math.cos(g.bladeProjAngle) * g.bladeProjLen,
+        y: g.grip.y + Math.sin(g.bladeProjAngle) * g.bladeProjLen }, r0: 1.5, r1: .7,
+    })
+    return segments
   }
 
   ribbonAnchor() {
@@ -5009,17 +5044,11 @@ export class Player {
     // draw-cuts (l1 / riposte) pull the steel from exactly here.
     {
       const hp = this.geom.hip
-      const sayLen = PLAYER_SPEC.blade * this.sword.stats.range * 1.06
-      // the scabbard rides the PELVIS: its angle follows the hip pitch
-      // (rootRot) + a slice of the pelvis yaw, so it stays glued to the
-      // body through leans, lunges and twists — a world-fixed angle read
-      // as a floating rod whenever the fighter committed forward
-      const pelvisPitch = this.pose[CH.rootRot] + this.pose[CH.spine] * 0.35
-      const detail=this.sheathAct?.mode==='draw'?this.drawSocket():null
-      const ang = sayaAngle = detail?.ang??Math.min(0.24+pelvisPitch*.6+this.sayaLag,this.state==='dash'&&this.grounded?.5:2)
-      const mouthX=detail?.x??hp.x+3,mouthY=detail?.y??hp.y+1
-      const tipX = mouthX - Math.cos(ang) * sayLen
-      const tipY = mouthY + Math.sin(ang) * sayLen
+      // Shared with the diagnostic packet: preserve the painted scabbard's
+      // live pelvis pitch, lag and draw socket, not the SACR cast segment.
+      const saya = this.sayaGeometry()
+      const ang = sayaAngle = saya.angle, mouthX = saya.x, mouthY = saya.y
+      const tipX = saya.tipX, tipY = saya.tipY
       // saya body (slightly lighter than the body so it reads on the hip)
       ctx.strokeStyle = this.sword.mundane ? '#171412' : '#0d1219'
       ctx.lineWidth = this.sword.mundane ? 3.5 : 4.6

@@ -1,3 +1,4 @@
+import type { GPUActorWeaponSegment } from '../render/gpu-actor-batch'
 import { BRIDGE_LIGHT, type BridgeFrame } from '../render/bridge-frame'
 import { ROAD, floorTOI, bodySide } from '../stage/road-section'
 /** STICKMAN RISING — enemies: 7 classes + boss mech.
@@ -1121,6 +1122,32 @@ export class Enemy {
     return [h, { x: h.x + Math.cos(a) * reach, y: h.y + Math.sin(a) * reach }] as const
   }
 
+  private weaponPaintAngle(): number {
+    return this.perch && this.state === 'aim' ? this.aimAngle : this.geom.bladeAngle
+  }
+
+  /** Diagnostic geometry for the painted weapon, not the SACR cast proxy.
+   * Bounds are approximate capsules; telegraph and material art stay on Canvas. */
+  bridgePrototypeWeapon(): GPUActorWeaponSegment[] {
+    const g = this.geom, w = this.cfg.weapon
+    if (w === 'none') return []
+    if (w === 'shield') {
+      const h = g.handL
+      return [{ a: { x: h.x + 6, y: h.y - 10.5 }, b: { x: h.x + 6, y: h.y + 10.5 }, r0: 6.5, r1: 6.5 }]
+    }
+    const angle = this.weaponPaintAngle()
+    const dx = Math.cos(angle), dy = Math.sin(angle), h = g.handR
+    const len = w === 'machete' ? 30 : w === 'dagger' ? 20 : w === 'sword' ? 44 : w === 'bossblade' ? 92 : 34
+    const start = w === 'rifle' ? -10 : w === 'bossblade' ? -6 : 0
+    const radius = w === 'bossblade' ? 2.5 : w === 'dagger' ? 2.5 : w === 'rifle' ? 2.75 : w === 'hammer' ? 2.5 : 3
+    const parts = [{ a: { x: h.x + dx * start, y: h.y + dy * start }, b: { x: h.x + dx * len, y: h.y + dy * len }, r0: radius, r1: radius }]
+    if (w === 'hammer') {
+      const x = h.x + dx * len, y = h.y + dy * len
+      parts.push({ a: { x: x - dy * 4, y: y + dx * 4 }, b: { x: x + dy * 4, y: y - dx * 4 }, r0: 7, r1: 7 })
+    }
+    return parts
+  }
+
   draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight, noir = false, bridge = false, hitRimWidth = 2): void {
     if (this.dead || this.spawning) return
     const s = this.scale
@@ -1292,7 +1319,7 @@ export class Enemy {
   private drawWeapon(ctx: CanvasRenderingContext2D, time: number, bridge = false): void {
     const g = this.geom
     const cfg = this.cfg
-    const a = this.perch && this.state === 'aim' ? this.aimAngle : g.bladeAngle
+    const a = this.weaponPaintAngle()
     const dx = Math.cos(a)
     const dy = Math.sin(a)
     const hx = g.handR.x

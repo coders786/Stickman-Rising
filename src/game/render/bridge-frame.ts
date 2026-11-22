@@ -1,3 +1,4 @@
+import { GPUActorBatch } from './gpu-actor-batch'
 import { newReceiverLight, sampleLocalLight, SACR_LIGHT_KIND, type ReceiverLight } from '../../graphics/sacr/SACRLocalLight'
 import { decodeRGB9E5 } from '../../graphics/sacr/SACRAtlas'
 import { SACR_ACTOR_Z } from '../../graphics/sacr/SACRMath'
@@ -54,6 +55,7 @@ function growLightBox(box: Float32Array, ax: number, ay: number, bx: number, by:
  * delivered to GL are rebased on the camera, preserving precision far out.
  * Fixed-size arrays are reused; the shader never imports a game entity. */
 export class BridgeFrame {
+  readonly actorPrototype = new GPUActorBatch()
   readonly sacr = new BridgeSACRFrame()
   readonly atmo = new BridgeAtmosphere()
   streamWindow: BakeWindow | null = null

@@ -1,0 +1,18 @@
+# Bridge vertical-slice contract and current state
+
+Chunk 3 is **not complete**. The production renderer is hybrid. The bounded actor packet and the opt-in capsule overlay in `research/graphics-actor-prototype/` are diagnostic proxies, not production-quality fighters and not a substitute for the requested playable GPU slice. The implementation here adds per-stage trace attribution and a per-frame pass/upload receipt so migration can be verified without confusing submission timing with GPU execution.
+
+## Existing frame order
+
+1. `Renderer` paints the backdrop to the world Canvas. When live GPU sky assets are ready it clears the Canvas and paints sparse life, below-city and rail coverage; otherwise it paints the full Canvas sky/city/mist. It then paints cables, route plates/coverage, motion/weather and route structure into that same world surface. Some of this coverage can overlap the later road. `RouteScenery` may consume resident stream plates or paint procedural recovery coverage.
+2. It switches to the separate transparent choreography Canvas: grounding/probes, glass and pickups/gates, props/lenses, under-effects, visible enemies, echoes and strike smear, player, motes/projectiles, front art, additive/impact effects, foreground structure, weather and screen effects. These are not simply character pixels. HUD is an independent layer.
+3. `BridgePipeline.presentSteps` uploads **both entire Canvas sources** per frame with `texSubImage2D`. It updates the SACR UBO and any staged transport/sky resources; evaluates the cached sky; shades the base using world coverage and GPU sky/city; draws Master receiver meshes; resolves the road (including half-resolution Mobile work); composites the choreography texture, GPU trails and GPU weather; then runs optional Master bloom and final grade. Grade also samples the choreography texture for ink. The optional capsule overlay comes after grade and intentionally does not preserve scene occlusion.
+4. If GL admission or presentation fails, `BridgeFinish` retains/repairs a complete Canvas frame. The HUD and gameplay simulation do not depend on the prototype packet. Context and stream ownership remain with the existing lifecycle. No SACR v4 ABI or section coordinates change.
+
+## Accounting added
+
+With `?traceGraphics=1`, the normal (non-opening sliced) paint is split into backdrop, world, ground/props, enemies/under-effects, player/smears, projectiles/motes, and foreground/effects. These measure main-thread elapsed JS time for the labeled portions, not Canvas raster completion or GPU time. `gpu.passDraws` reports draws by pipeline stage for the most recently submitted frame; `gpu.canvasUploads` reports uncompressed RGBA source bytes per submitted frame, not actual bus traffic or driver copies. Cold sliced opening frames are excluded from paint-stage timings because their yields would include inter-frame waits. The existing total counters remain available.
+
+## Required next integration
+
+A real slice must preserve the Canvas player’s curved humanoid contour, hands, scabbard/draw transitions, weapon and smears; enemy materials, weapons and telegraphs; props/effects and foreground occlusion; and grade/lighting interactions. It needs an ordered packet or compositing boundary that can interleave these layers, not a topmost overlay. Migrate one bounded scene without hiding unsupported objects, and retain complete Canvas fallback on packet overflow, context loss, missing assets or incomplete shader admission. Verify no per-frame source rasterization for migrated elements on desktop and portrait, plus geometry, combat, and camera parity before declaring the Chunk 3 gate passed. No performance target has been established by this accounting work.

@@ -19,7 +19,7 @@
     "bench": "node --import tsx scripts/bench-render.mjs",
     "lint:bounds": "node scripts/lint-boundaries.mjs",
     "gate": "tsc --noEmit && node scripts/lint-boundaries.mjs && npm run lint:webgl && node --import tsx --test tests/*.test.ts",
-    "check:bridge": "npm run typecheck && npm run lint:bounds && npm run lint:webgl && node --import tsx --test tests/bridge-route.test.ts tests/bridge-combat.test.ts tests/render-scale.test.ts tests/hud-layout.test.ts tests/persistence.test.ts tests/graphics-tiers.test.ts tests/perf-core.test.ts tests/ledger-gen.test.ts tests/hit-resolution.test.ts tests/player-motor.test.ts tests/projectile-sweep.test.ts tests/wave-framing.test.ts tests/fx-pool.test.ts tests/shadows.test.ts tests/profile-consumption.test.ts tests/environment-fronts.test.ts tests/environment-paint.test.ts tests/bridge-look.test.ts tests/ronin-light.test.ts tests/sacr-packing.test.ts tests/sacr-math.test.ts tests/bridge-lighting.test.ts tests/bridge-v4.test.ts tests/bridge-metro.test.ts tests/bridge-handoff.test.ts tests/bridge-post.test.ts tests/bridge-shop.test.ts tests/engine-invariants.test.ts",
+    "check:bridge": "npm run typecheck && npm run lint:bounds && npm run lint:webgl && node --import tsx --test tests/bridge-route.test.ts tests/bridge-combat.test.ts tests/render-scale.test.ts tests/hud-layout.test.ts tests/persistence.test.ts tests/graphics-tiers.test.ts tests/perf-core.test.ts tests/ledger-gen.test.ts tests/hit-resolution.test.ts tests/player-motor.test.ts tests/projectile-sweep.test.ts tests/wave-framing.test.ts tests/fx-pool.test.ts tests/shadows.test.ts tests/profile-consumption.test.ts tests/environment-fronts.test.ts tests/environment-paint.test.ts tests/bridge-look.test.ts tests/ronin-light.test.ts tests/sacr-packing.test.ts tests/sacr-math.test.ts tests/bridge-lighting.test.ts tests/bridge-v4.test.ts tests/bridge-metro.test.ts tests/bridge-handoff.test.ts tests/opening-resilience.test.ts tests/graphics-trace.test.ts tests/gpu-actor-batch.test.ts tests/bridge-post.test.ts tests/bridge-shop.test.ts tests/engine-invariants.test.ts",
     "art:bridge-data": "node --import tsx scripts/bake-bridge-data.ts",
     "lint:webgl": "node --import tsx scripts/lint-webgl.ts",
     "check:webgl:offline": "node --import tsx scripts/lint-webgl.ts --compile",
@@ -28,7 +28,7 @@
     "art:bridge-ktx": "node --import tsx scripts/bake-bridge-ktx.ts",
     "art:bridge-glass": "node --import tsx scripts/bake-bridge-glass.ts",
     "art:bridge-webp": "node --import tsx scripts/bake-bridge-webp.ts",
-    "check:sacr": "node --import tsx --test tests/sacr-packing.test.ts tests/sacr-math.test.ts tests/bridge-lighting.test.ts tests/bridge-v4.test.ts tests/bridge-metro.test.ts tests/bridge-handoff.test.ts tests/bridge-post.test.ts tests/bridge-shop.test.ts tests/engine-invariants.test.ts",
+    "check:sacr": "node --import tsx --test tests/sacr-packing.test.ts tests/sacr-math.test.ts tests/bridge-lighting.test.ts tests/bridge-v4.test.ts tests/bridge-metro.test.ts tests/bridge-handoff.test.ts tests/opening-resilience.test.ts tests/graphics-trace.test.ts tests/gpu-actor-batch.test.ts tests/bridge-post.test.ts tests/bridge-shop.test.ts tests/engine-invariants.test.ts",
     "prebuild": "npm run lint:webgl",
     "prebuild:iso": "npm run lint:webgl",
     "prebuild:preview": "npm run lint:webgl"

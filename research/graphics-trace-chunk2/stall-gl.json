@@ -1,0 +1,380 @@
+{
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "url": "http://127.0.0.1:3000/?traceGraphics=1&boot=1",
+  "verify": false,
+  "outcome": "playing",
+  "errors": [],
+  "trace": {
+    "timeOrigin": 1795374672110.6,
+    "events": [
+      {
+        "at": 665.3999999999069,
+        "name": "run-request",
+        "detail": "engage"
+      },
+      {
+        "at": 687.1999999999534,
+        "name": "worker-send",
+        "detail": "window id=1"
+      },
+      {
+        "at": 692.2999999998137,
+        "name": "worker-send",
+        "detail": "plate id=2"
+      },
+      {
+        "at": 692.3999999999069,
+        "name": "opening-gates",
+        "detail": "gpu=renderer plates=false sky=true stream=false window=false"
+      },
+      {
+        "at": 692.3999999999069,
+        "name": "opening-stage",
+        "detail": "renderer"
+      },
+      {
+        "at": 981,
+        "name": "worker-reply",
+        "detail": "plate id=2 bakeMs=209.4"
+      },
+      {
+        "at": 2421.7999999998137,
+        "name": "opening-gates",
+        "detail": "gpu=renderer plates=true sky=true stream=false window=false"
+      },
+      {
+        "at": 2422.1999999999534,
+        "name": "worker-reply",
+        "detail": "window id=1 bakeMs=342.0"
+      },
+      {
+        "at": 2422.899999999907,
+        "name": "opening-gates",
+        "detail": "gpu=renderer plates=true sky=true stream=true window=true"
+      },
+      {
+        "at": 12671.59999999986,
+        "name": "opening-gl-fallback",
+        "detail": "waiting=renderer"
+      },
+      {
+        "at": 12671.799999999814,
+        "name": "opening-stage",
+        "detail": "background"
+      },
+      {
+        "at": 12688.899999999907,
+        "name": "worker-send",
+        "detail": "plate id=3"
+      },
+      {
+        "at": 12689.09999999986,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=false window=true"
+      },
+      {
+        "at": 12786.299999999814,
+        "name": "worker-reply",
+        "detail": "plate id=3 bakeMs=96.9"
+      },
+      {
+        "at": 12787.899999999907,
+        "name": "opening-gates",
+        "detail": "gpu=canvas plates=true sky=true stream=true window=true"
+      },
+      {
+        "at": 12788.799999999814,
+        "name": "opening-stage",
+        "detail": "frame"
+      },
+      {
+        "at": 13022.299999999814,
+        "name": "opening-wait",
+        "detail": "frame-pacing"
+      },
+      {
+        "at": 13022.299999999814,
+        "name": "opening-first-submit"
+      },
+      {
+        "at": 13022.699999999953,
+        "name": "opening-stage",
+        "detail": "settling"
+      },
+      {
+        "at": 13527.799999999814,
+        "name": "pace-reset",
+        "detail": "ready-gap=483.3ms"
+      },
+      {
+        "at": 13571.59999999986,
+        "name": "opening-paced",
+        "detail": "paced"
+      },
+      {
+        "at": 13588.799999999814,
+        "name": "opening-wait",
+        "detail": "reveal-cut"
+      },
+      {
+        "at": 13938.699999999953,
+        "name": "run-input-unlocked"
+      },
+      {
+        "at": 13959.299999999814,
+        "name": "worker-send",
+        "detail": "plate id=4"
+      },
+      {
+        "at": 13985.799999999814,
+        "name": "first-simulation-submit"
+      },
+      {
+        "at": 14101,
+        "name": "worker-reply",
+        "detail": "plate id=4 bakeMs=141.1"
+      }
+    ],
+    "metrics": {
+      "paint.draftSlice": {
+        "count": 13,
+        "meanMs": 8.63846153846512,
+        "maxMs": 24.699999999953434,
+        "recentSamples": 13,
+        "p50Ms": 7.199999999953434,
+        "p95Ms": 24.699999999953434,
+        "p99Ms": 24.699999999953434
+      },
+      "opening.resetRoute": {
+        "count": 1,
+        "meanMs": 0.5,
+        "maxMs": 0.5,
+        "recentSamples": 1,
+        "p50Ms": 0.5,
+        "p95Ms": 0.5,
+        "p99Ms": 0.5
+      },
+      "opening.setRunSeed": {
+        "count": 1,
+        "meanMs": 0.30000000004656613,
+        "maxMs": 0.30000000004656613,
+        "recentSamples": 1,
+        "p50Ms": 0.30000000004656613,
+        "p95Ms": 0.30000000004656613,
+        "p99Ms": 0.30000000004656613
+      },
+      "opening.backgroundWarm": {
+        "count": 1,
+        "meanMs": 0.09999999986030161,
+        "maxMs": 0.09999999986030161,
+        "recentSamples": 1,
+        "p50Ms": 0.09999999986030161,
+        "p95Ms": 0.09999999986030161,
+        "p99Ms": 0.09999999986030161
+      },
+      "opening.beginRun": {
+        "count": 1,
+        "meanMs": 5.800000000046566,
+        "maxMs": 5.800000000046566,
+        "recentSamples": 1,
+        "p50Ms": 5.800000000046566,
+        "p95Ms": 5.800000000046566,
+        "p99Ms": 5.800000000046566
+      },
+      "opening.tickJS": {
+        "count": 664,
+        "meanMs": 0.29382530120601147,
+        "maxMs": 24.699999999953434,
+        "recentSamples": 664,
+        "p50Ms": 0.09999999986030161,
+        "p95Ms": 0.30000000004656613,
+        "p99Ms": 8.600000000093132
+      },
+      "paint.canvasWorldAndActors": {
+        "count": 105,
+        "meanMs": 5.038095238097456,
+        "maxMs": 25.5,
+        "recentSamples": 105,
+        "p50Ms": 3.800000000046566,
+        "p95Ms": 12.399999999906868,
+        "p99Ms": 22.800000000046566
+      },
+      "paint.drawTotal": {
+        "count": 105,
+        "meanMs": 5.360952380958146,
+        "maxMs": 25.700000000186265,
+        "recentSamples": 105,
+        "p50Ms": 4.100000000093132,
+        "p95Ms": 12.699999999953434,
+        "p99Ms": 22.800000000046566
+      },
+      "frame.js": {
+        "count": 100,
+        "meanMs": 6.644000000003725,
+        "maxMs": 26.800000000046566,
+        "recentSamples": 100,
+        "p50Ms": 5,
+        "p95Ms": 15.400000000139698,
+        "p99Ms": 23.199999999953434
+      },
+      "frame.interval": {
+        "count": 99,
+        "meanMs": 17.00202020202019,
+        "maxMs": 50.099999999998545,
+        "recentSamples": 99,
+        "p50Ms": 16.69999999999891,
+        "p95Ms": 16.700000000000728,
+        "p99Ms": 50.099999999998545
+      }
+    },
+    "note": "JS wall/submit timings only; not GPU execution. Percentiles use the most recent 1000 samples."
+  },
+  "phase": "playing",
+  "config": {
+    "preset": "ULTRA",
+    "adaptiveEnabled": false,
+    "renderScale": 1.25,
+    "showFPS": false
+  },
+  "presentation": {
+    "path": "mobile-canvas",
+    "reason": "WebGL opening timed out; using Canvas for this run",
+    "requestedScale": 1.25,
+    "backingScale": 1.25,
+    "staged": false,
+    "gpu": null,
+    "field": {
+      "emitters": 0,
+      "impulses": 0,
+      "cover": 1,
+      "blockers": 11,
+      "casts": 3,
+      "deckCasts": 0,
+      "roadFromDeck": 0,
+      "stream": {
+        "worker": true,
+        "plateWorker": true,
+        "opticsPending": false,
+        "rasterPending": false,
+        "pending": null,
+        "plates": 2,
+        "plateBytes": 3534336,
+        "lit": true,
+        "windows": 1,
+        "stale": 0,
+        "retiredJobs": 0,
+        "workerMaxMs": 342,
+        "plateMaxMs": 209.4000000001397,
+        "decodeMaxMs": 0.5,
+        "wireBytes": 1593856,
+        "error": null,
+        "plateError": null
+      },
+      "quads": 0,
+      "overflow": false,
+      "trailTriangles": 0,
+      "landings": 0
+    },
+    "glass": {
+      "fronts": 1,
+      "panes": 4,
+      "baked": 4,
+      "solids": 0,
+      "sources": 0,
+      "actors": 0,
+      "shadeTaps": 5,
+      "shaded": 5,
+      "penumbra": 0,
+      "energy": 0.22776470333337784,
+      "fieldBytes": 143360
+    },
+    "post2d": {
+      "atlasBytes": 157696,
+      "lensBlits": 1,
+      "trailBlits": 0,
+      "shadeBlits": 1
+    },
+    "sacr": null,
+    "frame": {
+      "id": 106,
+      "layer": "scene-work",
+      "kind": "canvas",
+      "hud": "layer",
+      "seed": 1306853746,
+      "time": 1.5999999999999992,
+      "hp": 92,
+      "threats": 2
+    },
+    "held": false,
+    "faults": 0,
+    "fallbackLayer": "scene-work",
+    "fallbackReady": true,
+    "coverageBytes": 10080000
+  },
+  "marks": [
+    {
+      "name": "sr:engine-request",
+      "at": 237.39999999990687
+    },
+    {
+      "name": "sr:menu",
+      "at": 246.5
+    },
+    {
+      "name": "sr:engine-module",
+      "at": 441.39999999990687
+    },
+    {
+      "name": "sr:ready",
+      "at": 467.29999999981374
+    },
+    {
+      "name": "sr:engage",
+      "at": 656
+    },
+    {
+      "name": "sr:run-initialized",
+      "at": 686
+    },
+    {
+      "name": "sr:run-workers",
+      "at": 687.2999999998137
+    },
+    {
+      "name": "sr:run-backdrop-ready",
+      "at": 2423
+    },
+    {
+      "name": "sr:run-renderer-ready",
+      "at": 12788
+    },
+    {
+      "name": "sr:run-submit",
+      "at": 13022.399999999907
+    },
+    {
+      "name": "sr:run-settled",
+      "at": 13571.59999999986
+    },
+    {
+      "name": "sr:run-cut",
+      "at": 13572.09999999986
+    },
+    {
+      "name": "sr:playing",
+      "at": 13939.199999999953
+    },
+    {
+      "name": "sr:first-step",
+      "at": 13985.799999999814
+    }
+  ],
+  "verifyStatus": null,
+  "visibility": "visible",
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.0 Safari/537.36",
+  "dpr": 1,
+  "viewport": [
+    1120,
+    720
+  ]
+}

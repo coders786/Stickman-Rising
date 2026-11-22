@@ -1,3 +1,4 @@
+import { graphicsTrace } from '../../debug/graphics-trace'
 import { BRIDGE_CHUNK_PX } from '../../game/stage/route'
 import { decodeWindow, type BakeReply, type BakeRequest, type BakeWindow } from './BridgeBakeProtocol'
 
@@ -6,8 +7,9 @@ const close = (p: Plate) => p.bitmap.close()
 export const PLATE_SLOTS = 3
 export const WINDOW_LEAD = BRIDGE_CHUNK_PX * 1.5
 
-type Lane = { worker: Worker | null; pending: BakeRequest | null; failed: boolean }
-const lane = (): Lane => ({ worker: null, pending: null, failed: false })
+export const BRIDGE_WORKER_JOB_TIMEOUT_MS = 8000
+type Lane = { worker: Worker | null; pending: BakeRequest | null; failed: boolean; timer: ReturnType<typeof setTimeout> | null }
+const lane = (): Lane => ({ worker: null, pending: null, failed: false, timer: null })
 
 /** Backpressure is one job per lane. Transport can fetch the next windows
  * even when an OffscreenCanvas raster/driver is blocked. Camera movement
@@ -122,7 +124,13 @@ export class BridgeStreaming {
   private send(job: Lane, request: BakeRequest) {
     if (!job.worker || job.pending) return
     job.pending = request
-    try { job.worker.postMessage(request) } catch (err) { this.deny(job, String(err)) }
+    graphicsTrace?.event('worker-send', `${request.type} id=${request.id}`)
+    try {
+      job.worker.postMessage(request)
+      job.timer = setTimeout(() => {
+        if (job.pending === request) this.deny(job, `Bridge ${request.type} worker timed out`)
+      }, BRIDGE_WORKER_JOB_TIMEOUT_MS)
+    } catch (err) { this.deny(job, String(err)) }
   }
 
   private pumpWindow(): void {
@@ -139,8 +147,10 @@ export class BridgeStreaming {
   }
 
   private receive(job: Lane, r: BakeReply): void {
+    graphicsTrace?.event('worker-reply', `${r.type} id=${r.id}${r.type === 'error' ? '' : ` bakeMs=${r.bakeMs.toFixed(1)}`}`)
     if (r.id !== job.pending?.id || r.seed !== job.pending.seed) { if (r.type === 'plate') close(r); this.stale++; return }
-    job.pending = null
+    if (job.timer !== null) clearTimeout(job.timer)
+    job.timer = null; job.pending = null
     if (job === this.optics) this.workerMaxMs = Math.max(this.workerMaxMs, r.bakeMs)
     else this.plateMaxMs = Math.max(this.plateMaxMs, r.bakeMs)
     try {
@@ -167,8 +177,12 @@ export class BridgeStreaming {
   receipt() { return { worker: !!this.optics.worker, plateWorker: !!this.raster.worker, opticsPending: !!this.optics.pending, rasterPending: !!this.raster.pending, pending: this.optics.pending?.type ?? this.raster.pending?.type ?? null,
     plates: this.plates.size, plateBytes: this.plateBytes, lit: this.lit, windows: this.windows, stale: this.stale, retiredJobs: this.retiredJobs, workerMaxMs: this.workerMaxMs, plateMaxMs: this.plateMaxMs,
     decodeMaxMs: this.decodeMaxMs, wireBytes: this.wireBytes, error: this.error, plateError: this.plateError } }
-  private stop(job: Lane) { job.worker?.terminate(); job.worker = null; job.pending = null }
+  private stop(job: Lane) {
+    if (job.timer !== null) clearTimeout(job.timer)
+    job.timer = null; job.worker?.terminate(); job.worker = null; job.pending = null
+  }
   private deny(job: Lane, error: string) {
+    graphicsTrace?.event('worker-denied', error)
     if (job === this.optics) this.error = error
     else this.plateError = error
     job.failed = true; this.stop(job)
