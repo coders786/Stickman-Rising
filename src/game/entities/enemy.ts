@@ -1,3 +1,4 @@
+import { BRIDGE_LIGHT, type BridgeFrame } from '../render/bridge-frame'
 import { ROAD, floorTOI, bodySide } from '../stage/road-section'
 /** STICKMAN RISING — enemies: 7 classes + boss mech.
  *
@@ -126,6 +127,12 @@ const NOIR_FINISH: Partial<Record<EnemyKind, StickStyle>> = {
   heavy: { ...ENEMY_CONFIGS.heavy.style, body: '#b89a66', dark: '#76634b' },
 }
 
+const BRIDGE_ARMOR: Record<EnemyKind, StickStyle> = Object.fromEntries(Object.entries(ENEMY_CONFIGS).map(([kind, c]) => {
+  const cool = kind === 'boss'
+  const color = cool ? '#66727a' : kind === 'heavy' ? '#716557' : kind === 'assassin' ? '#54515a' : '#747675'
+  return [kind, { ...c.style, body: color, dark: cool ? '#414a50' : '#484c4e', outline: '#090b0d' }]
+})) as Record<EnemyKind, StickStyle>
+
 let nextId = 1
 
 /* How much of a LIGHT hit's authored knockback actually moves the body.
@@ -140,6 +147,11 @@ export class Enemy {
   cfg: EnemyConfig
   x: number
   y = 0
+  floorY = 0
+  private launchFloor = 0
+  private aimAngle = 0
+  perch?: import('../stage/route').Platform
+  gate?: number
   /** render interpolation: sim position one step ago (see Game.frame) */
   px = NaN
   py = NaN
@@ -163,6 +175,7 @@ export class Enemy {
   private flailT = 0
   hpBarT = 0
   flashT = 0
+  private impactSide = -1
   private side: 1 | -1
   private sideT = 0
   private strikeHits = 0
@@ -203,6 +216,23 @@ export class Enemy {
     if (kind === 'boss') this.vulnerableT = 0
   }
 
+  /** Live shoulder entry. White flashes are reserved for confirmed hits. */
+  arriveOnRoute(facing: 1 | -1, platform?: import('../stage/route').Platform): void {
+    this.face = facing
+    // The finite arena's 3× showpiece hid its tell behind the bridge HUD.
+    if (this.kind === 'boss') this.scale = 1.85
+    this.vx = this.kind === 'assassin' ? facing * 185 : facing * 80
+    this.y = this.floorY = platform?.y ?? ROAD.lane
+    this.perch = platform
+    this.flashT = this.vulnerableT = this.hpBarT = this.stunT = 0
+    this.spawning = false
+    this.state = 'chase'
+    this.stateT = 0
+    this.attackCd = .44
+    this.buildPose(0, 0)
+    this.projectPose()
+  }
+
   get hipY(): number {
     return this.y - 47 * this.scale + this.pose[1] * this.scale
   }
@@ -224,6 +254,7 @@ export class Enemy {
     const py = PLAYER_X_REF.y
     const dx = px - this.x
     const adx = Math.abs(dx)
+    const sheltered = w.isSheltered?.(px) ?? false
 
     // boss runs its pattern brain instead of normal chase
     if (this.kind === 'boss' && (this.state === 'chase' || this.state === 'strafe')) {
@@ -276,13 +307,13 @@ export class Enemy {
         this.walkPhase += Math.abs(this.vx) * dt * 0.055
 
         // attack decisions
-        if (this.attackCd <= 0 && !this.spawning) {
+        if (this.attackCd <= 0 && !this.spawning && !sheltered) {
           if (this.kind === 'gunner') {
-            if (adx > 180 && adx < 520) {
+            if (adx > (this.perch ? 90 : 180) && adx < 520) {
               this.state = 'aim'
               this.stateT = 0
               this.burstLeft = 3
-              this.burstT = 0
+              this.burstT = this.perch ? .38 : 0
             } else if (adx <= 180) {
               // retreat
               this.vx = -Math.sign(dx) * this.cfg.speed
@@ -315,6 +346,9 @@ export class Enemy {
         break
       }
       case 'aim': {
+        if (sheltered) { this.state = 'chase'; this.stateT = 0; break }
+        const slope = this.perch ? Math.atan2(py - 54 - (this.y - 44), Math.max(60, adx - 30)) : 0
+        this.aimAngle = slope
         this.face = dx > 0 ? 1 : -1
         this.vx = damp(this.vx, 0, 6, dt)
         this.burstT -= dt
@@ -324,7 +358,7 @@ export class Enemy {
           w.audio.play('gunshot', { volume: 0.5, pitch: rand(0.95, 1.1) })
           w.spawnProjectile({
             kind: 'bullet', x: this.x + this.face * 30, y: this.y - 44,
-            vx: this.face * 900, vy: 0, dmg: this.dmg, life: 1.2,
+            vx: this.face * Math.cos(slope) * 900, vy: Math.sin(slope) * 900, dmg: this.dmg, life: 1.2,
           })
           w.fx.sparks(this.x + this.face * 30, this.y - 44, this.face > 0 ? 0 : Math.PI, 0.5, 4, '#ffe14d', 260, 0.2)
         }
@@ -461,12 +495,21 @@ export class Enemy {
     if (this.kind === 'drone' && this.state !== 'launched') this.vy = 0
     const oldX=this.x,oldY=this.y
     this.x += this.vx * dt
+    if (this.perch && this.state !== 'launched' && this.y <= this.perch.y + .1)
+      this.x = clamp(this.x, this.perch.left + 14, this.perch.right - 14)
+    this.x = w.enemyTravel?.(oldX, this.x) ?? this.x
     this.y += this.vy * dt
-    if ((this.kind!=='drone'||this.state==='launched') && floorTOI(oldY,this.y)<=1) {
-      this.y=ROAD.lane;this.vy=0
+    const platform = w.platformAt?.(this.x)
+    this.floorY = platform && oldY <= platform.y + .01 ? platform.y : ROAD.lane
+    if (w.platformAt && this.state === 'launched' && this.y < this.launchFloor - 290) {
+      this.y = this.launchFloor - 290
+      this.vy = Math.max(0, this.vy)
+    }
+    if ((this.kind !== 'drone' || this.state === 'launched') && floorTOI(oldY, this.y, this.floorY) <= 1) {
+      this.y=this.floorY;this.vy=0
       if(this.state==='launched'){
         this.state='down';this.stateT=0;this.launched=false
-        w.fx.dust(this.x,ROAD.lane,6);w.audio.play('land',{volume:.4,pitch:.7})
+        this.vx *= .48;w.fx.dust(this.x,this.floorY,6);w.audio.play('land',{volume:.4,pitch:.7})
       }
     }
     // ---- BODY SEPARATION ------------------------------------------------
@@ -499,6 +542,7 @@ export class Enemy {
         if (this.vx * dir < 0) this.vx = 0
       }
     }
+    this.x = w.enemyTravel?.(oldX, this.x) ?? this.x
     this.x = clamp(this.x, w.arenaMinX + 16, w.arenaMaxX - 16)
 
     // build + solve pose
@@ -506,6 +550,10 @@ export class Enemy {
     // ground-contact gait: drive the planner + write the gait hip bob into
     // the pose root BEFORE the solve (the femoral head must ride the bob)
     this.updateGait(dt)
+    this.projectPose()
+  }
+
+  private projectPose(): void {
     solveSkeleton(this.pose, ENEMY_SPEC, this.geom)
     // leg IK: feet exactly where feet go (gait legs + stance snap/clamp)
     this.applyGroundIK()
@@ -518,14 +566,14 @@ export class Enemy {
   private updateGait(dt: number): void {
     const s = this.scale
     const walking = (this.state === 'chase' || this.state === 'strafe' || this.state === 'aim')
-      && this.kind !== 'drone' && this.y > -0.5
+      && this.kind !== 'drone' && this.y > this.floorY - .5
     const speed = Math.abs(this.vx)
     // scale the tune to the body
     this.gaitTune.stride = ENEMY_GAIT.stride * s
     this.gaitTune.clearance = ENEMY_GAIT.clearance * s
     this.gaitTune.stepAhead = ENEMY_GAIT.stepAhead * s
     this.gaitTune.lift = ENEMY_GAIT.lift * s
-    this.gait.update(this.x, this.vx, this.face, speed, this.gaitTune, dt, walking, 2.2 * s, this.y > -0.5)
+    this.gait.update(this.x, this.vx, this.face, speed, this.gaitTune, dt, walking, 2.2 * s, this.y > this.floorY - .5)
     this.gaitW = damp(this.gaitW, walking ? 1 : 0, walking ? 14 : 7, dt)
     if (this.gaitW > 0.01) {
       const bob = 1.3 * Math.abs(Math.sin(Math.PI * 2 * this.gait.phase)) * s
@@ -565,7 +613,7 @@ export class Enemy {
     const l1 = ENEMY_SPEC.thigh
     const l2 = ENEMY_SPEC.shin
     const legLen = l1 + l2
-    const grounded = this.y > -0.5 && this.state !== 'launched' && this.state !== 'enter'
+    const grounded = this.y > this.floorY - .5 && this.state !== 'launched' && this.state !== 'enter'
     const w = this.gaitW
     this.snapContacts.length = 0
 
@@ -576,7 +624,7 @@ export class Enemy {
       ]
       for (const [fp, hipPt, knee, ankle, toe] of legs) {
         const tx = (fp.x - this.x) / (this.face * s)
-        const ty = (fp.y - this.hipY) / s
+        const ty = (this.floorY + fp.y - this.hipY) / s
         solveLegIK(hipPt.x, hipPt.y, tx, ty, l1, l2, 1, this.ikOut)
         knee.x += (this.ikOut.kx - knee.x) * w
         knee.y += (this.ikOut.ky - knee.y) * w
@@ -584,7 +632,7 @@ export class Enemy {
         ankle.y += (this.ikOut.ay - ankle.y) * w
         toeFromPitch(ankle.x, ankle.y, fp.pitch, ENEMY_SPEC.foot, this.toeScratch)
         // the floor is solid — a plantarflexed toe never digs below it
-        const groundLy = (-1 - this.hipY) / s
+        const groundLy = (this.floorY - 1 - this.hipY) / s
         if (this.toeScratch.y > groundLy) this.toeScratch.y = groundLy
         toe.x += (this.toeScratch.x - toe.x) * w
         toe.y += (this.toeScratch.y - toe.y) * w
@@ -602,9 +650,9 @@ export class Enemy {
         const ankleWy = this.hipY + s * ankle.y
         const toeWy = this.hipY + s * toe.y
         const extended = ankle.y > legLen * 0.52
-        const nearGround = ankleWy > -12 * s && toeWy < 6 * s
+        const nearGround = ankleWy > this.floorY - 12 * s && toeWy < this.floorY + 6 * s
         if (extended && nearGround) {
-          const ty = (-2.2 * s - this.hipY) / s
+          const ty = (this.floorY - 2.2 * s - this.hipY) / s
           solveLegIK(hipPt.x, hipPt.y, ankle.x, ty, l1, l2, 1, this.ikOut)
           knee.x += (this.ikOut.kx - knee.x) * iw
           knee.y += (this.ikOut.ky - knee.y) * iw
@@ -614,9 +662,9 @@ export class Enemy {
           toe.x += (this.toeScratch.x - toe.x) * iw
           toe.y += (this.toeScratch.y - toe.y) * iw
           if (iw > 0.5) this.snapContacts.push(this.x + this.face * s * ankle.x)
-        } else if (toeWy > -0.5) {
+        } else if (toeWy > this.floorY - .5) {
           // the floor is solid — toes never render below it
-          const groundLy = (-1 - this.hipY) / s
+          const groundLy = (this.floorY - 1 - this.hipY) / s
           if (toe.y > groundLy) toe.y = groundLy
         }
       }
@@ -636,9 +684,20 @@ export class Enemy {
   /* boss patterns                                                        */
   /* ------------------------------------------------------------------ */
 
-  private updateBossPattern(dt: number, w: WorldRef, px: number, _py: number): void {
+  private updateBossPattern(dt: number, w: WorldRef, px: number, py: number): void {
     this.patternT += dt
     const dx = px - this.x
+    const roadBoss = this.gate !== undefined
+    // On the road these are readable contact windows, not a full-height
+    // damage column or one new strike every tick of the same swing.
+    const swing = (reach: number) => {
+      if (Math.abs(dx) >= reach || (roadBoss && (this.strikeHits === 0 || Math.abs(py - this.y) >= 64 * this.scale))) return
+      if (roadBoss) this.strikeHits = 0
+      if (w.enemyStrikePlayer(this.dmg, Math.sign(dx), true, this.x) && roadBoss) {
+        this.state = 'stun'; this.stateT = 0; this.stunT = .9
+        this.vulnerableT = 1.2; this.vx = 0
+      }
+    }
     this.face = dx > 0 ? 1 : -1
 
     switch (this.patternStep) {
@@ -656,16 +715,15 @@ export class Enemy {
         if (this.patternT > 0.7) {
           this.patternStep = 2
           this.patternT = 0
-          this.vx = Math.sign(dx) * 480
+          this.strikeHits = 1
+          this.vx = Math.sign(dx) * (roadBoss ? 390 : 480)
           w.audio.play('swingHeavy', { pitch: 0.55, volume: 0.9 })
           w.cam.addTrauma(0.3)
         }
         break
       }
       case 2: { // sweep strike
-        if (this.patternT < 0.4 && Math.abs(dx) < 220) {
-          w.enemyStrikePlayer(this.dmg, Math.sign(dx), true, this.x)
-        }
+        if (this.patternT < 0.4) swing(roadBoss ? 148 : 220)
         if (this.patternT > 0.5) {
           this.patternStep = 3
           this.patternT = 0
@@ -681,7 +739,7 @@ export class Enemy {
           w.fx.shockwave(this.x, 0, 240, '#ff2a4a', 0.6, 10)
           w.fx.groundCrack(this.x, 0, 140)
           w.cam.addTrauma(0.55)
-          if (Math.abs(dx) < 250 && Math.abs(this.y) < 20) {
+          if (Math.abs(dx) < 250 && Math.abs(this.y) < 20 && (!roadBoss || py >= -28)) {
             w.enemyStrikePlayer(this.dmg * 0.8, Math.sign(dx), true, this.x)
           }
           this.patternStep = 4
@@ -707,6 +765,7 @@ export class Enemy {
           // enrage rush below 50% hp
           if (this.hp < this.maxHp * 0.5 && Math.random() < 0.4) {
             this.patternStep = 5
+            this.strikeHits = 1
             this.patternT = 0
             w.audio.play('bossAlert', { volume: 0.4 })
           } else {
@@ -721,10 +780,8 @@ export class Enemy {
           this.vx = damp(this.vx, 0, 8, dt) // crouch telegraph
           if (this.patternT < 0.1) w.fx.sparks(this.x, 0, -Math.PI / 2, 1, 8, '#ff2a4a', 200)
         } else if (this.patternT < 1.2) {
-          this.vx = Math.sign(dx || 1) * 620
-          if (Math.abs(dx) < 190) {
-            w.enemyStrikePlayer(this.dmg, Math.sign(dx), true, this.x)
-          }
+          this.vx = Math.sign(dx || 1) * (roadBoss ? 500 : 620)
+          swing(roadBoss ? 126 : 190)
         } else {
           this.patternStep = 0
           this.patternT = 0
@@ -740,10 +797,13 @@ export class Enemy {
 
   /** Armor absorbs interruption, not HP damage. Dead contacts are misses. */
   takeHit(info: AttackRuntimeInfo, dir: number, fromX: number): 'killed' | 'hit' | 'blocked' | 'armored' | 'miss' {
-    if (this.dead) return 'miss'
+    if (this.dead || (this.spawning && this.state === 'enter')) return 'miss'
     this.hpBarT = 2
     this.flashT = 1
+    this.impactSide = Math.sign(fromX - this.x) || -dir
 
+    const crush = this.kind === 'shield' && this.blockUp && info.breakGuard && Math.sign(fromX - this.x) === this.face
+    if (crush) { this.blockHp = 0; this.blockUp = false }
     // shield block: frontal, guard intact, not guard-breaking
     if (
       this.kind === 'shield' && this.blockUp && this.state !== 'stun' &&
@@ -803,10 +863,15 @@ export class Enemy {
       return 'armored'
     }
 
+    if (crush) {
+      this.state = 'stun'; this.stunT = 1.15; this.stateT = 0; this.vx = dir * 145
+      return 'hit'
+    }
     if (info.launch !== 0 && this.kind !== 'heavy') {
       this.launched = true
       this.state = 'launched'
       this.stateT = 0
+      this.launchFloor = this.floorY
       this.vy = info.launch
       this.vx = dir * info.kb * 0.5
       return 'hit'
@@ -1037,7 +1102,26 @@ export class Enemy {
   /** contact-AO anchors from the plant-snap pass (non-gait stances) */
   private snapContacts: number[] = []
 
-  draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight, noir = false): void {
+  bridgeEmitter(frame: BridgeFrame): void {
+    if (this.dead || this.spawning) return
+    if (this.kind === 'drone') {
+      const sweep = frame.quiet ? .65 : .62 + .43 * Math.sin(frame.weatherTime * 2.3 + this.id * .49)
+      frame.light(BRIDGE_LIGHT.beam, this.x, this.y - 8, 184, '#9ba9b0', .52, 3, this.x + this.face * sweep * 84, this.y + 123, .20)
+      return
+    }
+    // GEMINI's armor and idle blade are receivers. Only a confirmed impact
+    // or active attack FX publishes a short bridge light.
+  }
+
+  bridgeCastWeapon() {
+    const w = this.cfg.weapon
+    if (w === 'none') return undefined
+    const { handR: h, bladeAngle: a } = this.geom
+    const reach = w === 'bossblade' ? 90 : w === 'hammer' ? 46 : w === 'shield' ? 21 : 29
+    return [h, { x: h.x + Math.cos(a) * reach, y: h.y + Math.sin(a) * reach }] as const
+  }
+
+  draw(ctx: CanvasRenderingContext2D, time: number, light?: SurfaceLight, noir = false, bridge = false, hitRimWidth = 2): void {
     if (this.dead || this.spawning) return
     const s = this.scale
     const cfg = this.cfg
@@ -1058,19 +1142,25 @@ export class Enemy {
     }
     ctx.translate(this.x, this.hipY)
     ctx.scale(this.face * s, s)
-    drawStick(ctx, this.geom, (noir && NOIR_FINISH[this.kind]) || cfg.style, {
+    const boss = this.kind === 'boss', impact = bridge ? Math.max(this.flashT, this.litT * .56) : 0
+    drawStick(ctx, this.geom, bridge ? BRIDGE_ARMOR[this.kind] : (noir && NOIR_FINISH[this.kind]) || cfg.style, {
       time,
-      flash: this.flashT * 0.8,
+      flash: bridge ? 0 : this.flashT * 0.8,
       flashColor: '#ffffff',
+      surfaceFlash: impact,
+      surfaceTint: this.litT > .03 ? this.litColor : boss ? '#c3bbae' : '#a9babf',
+      surfaceWidth: hitRimWidth,
+      surfaceSide: this.flashT > .02 ? this.impactSide : light?.dx,
+      beveled: bridge && boss,
       light,
       flipX: this.face, unit: s,
     })
-    this.drawWeapon(ctx, time)
+    this.drawWeapon(ctx, time, bridge)
     // LIGHTNING RIM: the bolt's channel lights the body it struck. A true
     // RIM, not a tint: the ghost re-pass draws ~7% scaled up, so the color
     // peeks out AROUND the silhouette (edge light), flickering with the
     // channel's ~15Hz restrike cadence
-    if (this.litT > 0.02) {
+    if (!bridge && this.litT > 0.02) {
       const k = clamp01(this.litT) * (0.8 + 0.2 * Math.sin(time * 47))
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
@@ -1084,6 +1174,15 @@ export class Enemy {
     }
     ctx.restore()
 
+    if (this.perch && this.state === 'aim' && this.stateT < .38) {
+      const x = this.x + 30 * this.face, y = this.y - 44
+      ctx.save()
+      ctx.strokeStyle = rgba('#f9b571', .32 + .8 * this.stateT)
+      ctx.lineWidth = 1
+      ctx.setLineDash([5, 8])
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + this.face * 510, y + Math.tan(this.aimAngle) * 510); ctx.stroke()
+      ctx.restore()
+    }
     // telegraph indicator
     if (this.state === 'windup' || (this.state === 'pattern' && this.patternStep === 1)) {
       const k = clamp01(this.stateT / this.cfg.windup)
@@ -1190,10 +1289,10 @@ export class Enemy {
     ctx.restore()
   }
 
-  private drawWeapon(ctx: CanvasRenderingContext2D, time: number): void {
+  private drawWeapon(ctx: CanvasRenderingContext2D, time: number, bridge = false): void {
     const g = this.geom
     const cfg = this.cfg
-    const a = g.bladeAngle
+    const a = this.perch && this.state === 'aim' ? this.aimAngle : g.bladeAngle
     const dx = Math.cos(a)
     const dy = Math.sin(a)
     const hx = g.handR.x
@@ -1298,6 +1397,19 @@ export class Enemy {
       }
       case 'bossblade': {
         const len = 92
+        if (bridge) {
+          ctx.globalCompositeOperation = 'lighter'
+          ctx.strokeStyle = rgba(cfg.weaponColor, telegraphing ? .12 : .055)
+          ctx.lineWidth = 9.6; line(ctx, hx, hy, dx, dy, len)
+          ctx.strokeStyle = rgba(cfg.weaponColor, .23)
+          ctx.lineWidth = 7.1; line(ctx, hx, hy, dx, dy, len)
+          ctx.strokeStyle = '#df6785'; ctx.lineWidth = 3.7; line(ctx, hx, hy, dx, dy, len)
+          ctx.strokeStyle = '#eec2cb'; ctx.lineWidth = 1.02; line(ctx, hx + dx * 4, hy + dy * 4, dx, dy, len - 5)
+          ctx.globalCompositeOperation = 'source-over'
+          ctx.strokeStyle = '#28323d'; ctx.lineWidth = 5; line(ctx, hx - dx * 6, hy - dy * 6, dx, dy, 9)
+          ctx.strokeStyle = '#ab9ba3'; ctx.lineWidth = 1.15; line(ctx, hx - dx * 6, hy - dy * 6, dx, dy, 9)
+          break
+        }
         ctx.globalCompositeOperation = 'lighter'
         ctx.strokeStyle = rgba(cfg.weaponColor, 0.25 + (telegraphing ? 0.3 * Math.sin(time * 20) : 0))
         ctx.lineWidth = 14

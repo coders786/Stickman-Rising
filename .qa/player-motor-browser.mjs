@@ -10,7 +10,7 @@ const {chromium:pw}=tools('playwright-core'),chromium=tools('@sparticuz/chromium
  console.log('loading');await page.goto(process.env.SR_QA_URL||'http://127.0.0.1:3001',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'ENGAGE',exact:true}).click();
  console.log('engaged');const result=await page.evaluate(()=>{
   const g=window.__sr;cancelAnimationFrame(g.raf);g.autoQuality=false;g.waves.update=()=>{};g.enemies.length=0;g.inspect.draw=()=>{};
-  g.applySettings({...g.settings,quality:'high',showFps:false});g.dprTarget=1;g.resize();
+  g.applySettings({...g.settings,quality:'high',showFps:false});g.setDiagnosticRenderScale(1);
   const camera=g.updateCamera.bind(g);g.updateCamera=dt=>{camera(dt);g.cam.zoom=2;g.cam.x=g.player.x+40;g.cam.y=-80};
   let drawTick=0;const draw=g.renderer.draw.bind(g.renderer);g.renderer.draw=(...args)=>{if(drawTick++%4===0||[20,30,108,116,145,210,270,300].includes(drawTick-1))draw(...args)};const frames=[],states=[];g.player.reset(700);g.player.swordDrawn=true;g.player.vx=480;
   g.input.setEnabled(false);g.input.setEnabled(true);

@@ -3,7 +3,7 @@
  * ----------------------------------------------------------------------------
  * Every claim in docs/master/12 and 21 is falsifiable by this script. It runs
  * in Node (no DOM), so it measures the parts that are pure logic — profile
- * generation, the quality ladder, the motion library — plus a static audit of
+ * generation, the resolution governor, the motion library — plus a static audit of
  * the render code that no unit test can see (canvas creation sites, Math.random
  * inside deterministic modules).
  *
@@ -16,7 +16,7 @@
  */
 import { makeProfile, profileDistance } from '../src/game/world/profile.ts'
 import { SpringChain } from '../src/game/anim/natural.ts'
-import { QualityLadder } from '../src/game/render/quality.ts'
+import { RenderScaleControl } from '../src/game/render/render-scale.ts'
 import { CanvasLedger, bytesFor } from '../src/game/render/ledger.ts'
 import { rgbaConst, colourCacheSize, resetColourCache } from '../src/game/render/color.ts'
 import { FrameLog } from '../src/game/render/frameLog.ts'
@@ -74,13 +74,13 @@ function row(name, value, unit, budget, note = '') {
   row('profile.novelty.mean', sum / Math.max(1, n - 1), 'distance', null, 'bigger is more distinct')
 }
 
-/* ---------------------------- 3. the ladder ----------------------------- */
+/* ---------------------------- 3. render scale ----------------------------- */
 {
-  const l = new QualityLadder('high')
+  const l = new RenderScaleControl('high', true)
   const t0 = now()
-  for (let i = 0; i < 200_000; i++) l.frame(9 + (i % 7), 1 / 60)
+  for (let i = 0; i < 200_000; i++) l.frame(9 + (i % 7))
   const ms = now() - t0
-  row('quality.frame', (ms / 200_000) * 1000, 'µs/frame', 1.0, `${l.sheds} sheds, ${l.raises} raises`)
+  row('renderScale.frame', (ms / 200_000) * 1000, 'µs/frame', 1.0, `resolved scale ${l.value}`)
 }
 
 /* --------------------------- 4. spring chains --------------------------- */

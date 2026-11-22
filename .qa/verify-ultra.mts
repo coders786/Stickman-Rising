@@ -135,7 +135,7 @@ const report: Record<string, unknown> = {}
   writeFileSync('.qa/post-ultra.png', two.toBuffer('image/png'))
 
   report.ultra = {
-    flags: { bloom: f.bloom, godRays: f.godRays, depthHaze: f.depthHaze, keyTop: f.keyTop },
+    flags: { bloom: f.bloom, godRays: f.godRays, keyTop: f.keyTop },
     rays: sources.length,
     rayBlits,
     bloomBlits: post.lastBloomBlits,

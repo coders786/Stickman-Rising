@@ -387,33 +387,21 @@ export function ikArm3D(
 }
 
 /* ------------------------------------------------------------------ */
-/* DEPTH-SHADED FIGHTER RENDERER                                       */
+/* FLAT FIGHTER RENDERER                                               */
 /* ------------------------------------------------------------------ */
 
 export interface FighterDrawOpts {
-  cloth?: string
   motionEnergy?: number
   hands?: import('./hand-gestures').HandGestures
-  /** Contour-only rim, never interior bone strokes. */
-  rimColor?: string
-  rimAlpha?: number
-  /** Tinted surface echo; shares the live ronin anatomy, never a stick rig. */
+  /** Tinted FX echo, not a body material. */
   ghost?: string
   ghostAlpha?: number
   alpha?: number
   time?: number
   flash?: number
   flashColor?: string
-  simple?: boolean
-  edgeLight?: { color: string; a: number }
-  light?: import('../lighting/ribbons').SurfaceLight
-  /** face sign + context scale of the caller's transform — world-space tap
-   *  offsets must be un-flipped/un-scaled or lighting lands on the wrong
-   *  side of a left-facing figure */
-  flipX?: number
-  unit?: number
   scarfNodes?: ReadonlyArray<{ x: number; y: number }>
-  scarfColor?: string
+  scarfCount?: number
 }
 
 /** The old capsule-and-joint-cap renderer has been deleted. */

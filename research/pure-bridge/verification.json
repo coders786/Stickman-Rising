@@ -1,0 +1,1089 @@
+{
+  "preview": {
+    "control": "ZUuFFUCbnKrghXZV8qZ1L",
+    "build": "N_lHn8gHuSyjeD_GfBcku",
+    "rootSha256": "39c6efeff3341ff94751a01ba0191ccfa0367a1ce4613c404072b6cd6ef5bd67",
+    "sameStagedRoot": true,
+    "bundleCount": 13,
+    "bridgeAssets": 23,
+    "reelAssets": 8,
+    "scoresApi": true,
+    "hostOriginAccepted": true,
+    "embed": {
+      "playing": true,
+      "errors": [],
+      "failed": [],
+      "engageToPlayMs": 1244.0
+    },
+    "canvasEngageRetry": [
+      {
+        "label": "ENGAGE",
+        "cuts": [
+          1,
+          2
+        ],
+        "submitMs": 1167.8999999910593,
+        "mountMs": 41.599999994039536,
+        "unmountMs": 1173.3999999910593,
+        "visibleMs": 1131.7999999970198,
+        "startedWorkersMs": 92.09999999403954,
+        "visibleFrames": 50,
+        "compositorFrames": 0,
+        "recordedReady": false,
+        "controls": {
+          "text": "ROUTE ONLINENIGHT CROSSING",
+          "clicks": "none",
+          "opacity": 1,
+          "overlap": [],
+          "cue": [
+            233,
+            259,
+            487,
+            307
+          ],
+          "inView": true
+        },
+        "sequence": [
+          "preparing:opening:undefined",
+          "preparing:background:undefined",
+          "preparing:background:1",
+          "preparing:background:2"
+        ],
+        "complete": {
+          "at": 1981.7999999970198,
+          "modal": false,
+          "phase": "playing",
+          "time": 0,
+          "input": true,
+          "initialized": false,
+          "music": true,
+          "weather": 0,
+          "activeAt": null,
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3828176822,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "oldGL": false,
+          "mode": "playing",
+          "oldCanvas": true,
+          "online": {
+            "text": "ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          }
+        },
+        "readySamples": 0
+      },
+      {
+        "label": "RETRY",
+        "cuts": [
+          1
+        ],
+        "submitMs": 281.30000001192093,
+        "mountMs": 7,
+        "unmountMs": 281.6000000089407,
+        "visibleMs": 274.6000000089407,
+        "startedWorkersMs": 32.6000000089407,
+        "visibleFrames": 14,
+        "compositorFrames": 0,
+        "recordedReady": false,
+        "controls": {
+          "text": "ROUTE ONLINENIGHT CROSSING",
+          "clicks": "none",
+          "opacity": 1,
+          "overlap": [],
+          "cue": [
+            233,
+            259,
+            487,
+            307
+          ],
+          "inView": true
+        },
+        "sequence": [
+          "preparing:opening:undefined",
+          "preparing:background:1"
+        ],
+        "complete": {
+          "at": 2661.4000000059605,
+          "modal": false,
+          "phase": "playing",
+          "time": 0,
+          "input": true,
+          "initialized": false,
+          "music": true,
+          "weather": 0,
+          "activeAt": null,
+          "frame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 846000095,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "oldGL": false,
+          "mode": "playing",
+          "oldCanvas": true,
+          "online": {
+            "text": "ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          }
+        },
+        "readySamples": 0
+      },
+      {
+        "label": "ENGAGE",
+        "cuts": [
+          1
+        ],
+        "submitMs": 318.20000000298023,
+        "mountMs": 5.0999999940395355,
+        "unmountMs": 318.59999999403954,
+        "visibleMs": 313.5,
+        "startedWorkersMs": 33.400000005960464,
+        "visibleFrames": 16,
+        "compositorFrames": 0,
+        "recordedReady": false,
+        "controls": {
+          "text": "ROUTE ONLINENIGHT CROSSING",
+          "clicks": "none",
+          "opacity": 1,
+          "overlap": [],
+          "cue": [
+            233,
+            259,
+            487,
+            307
+          ],
+          "inView": true
+        },
+        "sequence": [
+          "preparing:opening:undefined",
+          "preparing:background:1"
+        ],
+        "complete": {
+          "at": 3415.7000000029802,
+          "modal": false,
+          "phase": "playing",
+          "time": 0,
+          "input": true,
+          "initialized": false,
+          "music": true,
+          "weather": 0,
+          "activeAt": null,
+          "frame": {
+            "id": 28,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3823710809,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "oldGL": false,
+          "mode": "playing",
+          "oldCanvas": true,
+          "online": {
+            "text": "ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          }
+        },
+        "readySamples": 0
+      }
+    ]
+  },
+  "tests": {
+    "bridge": {
+      "tests": 219,
+      "pass": 219,
+      "fail": 0
+    },
+    "full": {
+      "tests": 608,
+      "pass": 603,
+      "fail": 5
+    },
+    "preExistingFailureNames": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ],
+    "linkedGlslPrograms": 17
+  },
+  "baked": {
+    "sky-basis-v5.rgba.br": {
+      "bytes": 421109,
+      "sha256": "585c37aa34e92d50be489e08609b1586bb71ac69b4fe8ce69fe1a83af9ed9980",
+      "rebakedByteIdentically": true
+    },
+    "shop-return-v1.webp": {
+      "bytes": 192514,
+      "sha256": "c2283b32e939451b1cbc3a33fc734d1e36669f451369fa7705cfb27efbb252f5",
+      "rebakedByteIdentically": true
+    }
+  },
+  "packedTransportAssetsUnchanged": 14,
+  "skySignalPlanesUnchangedBeforeAddedTile": true,
+  "matchedDeployViews": {
+    "master": {
+      "path": "master-webgl2",
+      "viewport": {
+        "width": 960,
+        "height": 640,
+        "deviceScaleFactor": 1
+      },
+      "seed": 42,
+      "strike": "l1",
+      "strikeTime": 0.22931333333333342,
+      "identicalToCandidate": 8
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "viewport": {
+        "width": 960,
+        "height": 640,
+        "deviceScaleFactor": 1
+      },
+      "seed": 42,
+      "strike": "l1",
+      "strikeTime": 0.22931333333333342,
+      "identicalToCandidate": 8
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "viewport": {
+        "width": 960,
+        "height": 640,
+        "deviceScaleFactor": 1
+      },
+      "seed": 42,
+      "strike": "l1",
+      "strikeTime": 0.22931333333333342,
+      "identicalToCandidate": 8
+    }
+  },
+  "pixelMetrics": "pixels.json",
+  "glassReceivers": {
+    "master": {
+      "path": "master-webgl2",
+      "assetDenied": false,
+      "workerDenied": false,
+      "teardown": 0,
+      "views": {
+        "metro": {
+          "proof": {
+            "changed": 49760,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14227,
+              "rgb": 189953
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 1433321
+            },
+            "storm": {
+              "count": 19742,
+              "rgb": 259609
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "changed": 47956,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.3349212296307087
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 16814,
+              "rgb": 265134
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 1316512
+            },
+            "storm": {
+              "count": 23814,
+              "rgb": 350575
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "changed": 36147,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 5,
+            "solids": 1,
+            "sources": 3,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.2684734910726547
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 11966,
+              "rgb": 164510
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 991198
+            },
+            "storm": {
+              "count": 17233,
+              "rgb": 216975
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "assetDenied": false,
+      "workerDenied": false,
+      "teardown": 0,
+      "views": {
+        "metro": {
+          "proof": {
+            "changed": 32048,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14227,
+              "rgb": 189953
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 1433321
+            },
+            "storm": {
+              "count": 19742,
+              "rgb": 259609
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "changed": 30551,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.3349212296307087
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 16814,
+              "rgb": 265134
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 1316512
+            },
+            "storm": {
+              "count": 23814,
+              "rgb": 350575
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "changed": 23268,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 5,
+            "solids": 1,
+            "sources": 3,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.2684734910726547
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 11966,
+              "rgb": 164510
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 991198
+            },
+            "storm": {
+              "count": 17233,
+              "rgb": 216975
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "assetDenied": false,
+      "workerDenied": false,
+      "teardown": 0,
+      "views": {
+        "metro": {
+          "proof": {
+            "changed": 41307,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14227,
+              "rgb": 189953
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 1433321
+            },
+            "storm": {
+              "count": 19742,
+              "rgb": 259609
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "changed": 39104,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.3349212296307087
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 16814,
+              "rgb": 265134
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 1316512
+            },
+            "storm": {
+              "count": 23814,
+              "rgb": 350575
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "changed": 25238,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 5,
+            "solids": 1,
+            "sources": 3,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.2684734910726547
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 11966,
+              "rgb": 164510
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 991198
+            },
+            "storm": {
+              "count": 17233,
+              "rgb": 216975
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "touch": {
+      "path": "mobile-webgl2",
+      "assetDenied": false,
+      "workerDenied": false,
+      "teardown": 0,
+      "views": {
+        "metro": {
+          "proof": {
+            "changed": 54456,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 12806,
+              "rgb": 216881
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 1340524
+            },
+            "storm": {
+              "count": 18075,
+              "rgb": 238850
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "changed": 56066,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 0.28965047374367714
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14213,
+              "rgb": 220532
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 1208711
+            },
+            "storm": {
+              "count": 23683,
+              "rgb": 330428
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "denied": {
+      "path": "mobile-canvas",
+      "assetDenied": true,
+      "workerDenied": true,
+      "teardown": 0,
+      "views": {
+        "metro": {
+          "proof": {
+            "changed": 41669,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.5984999984502792
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 8417,
+              "rgb": 182453
+            },
+            "storm": {
+              "count": 24577,
+              "rgb": 646416
+            }
+          }
+        },
+        "market": {
+          "proof": {
+            "changed": 40157,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.5984999984502792
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 7943,
+              "rgb": 169668
+            },
+            "storm": {
+              "count": 23814,
+              "rgb": 626009
+            }
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "changed": 28733,
+            "leak": 0,
+            "occluder": 0
+          },
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 0,
+            "solids": 1,
+            "sources": 3,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 0.5984999984502792
+          },
+          "differences": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 6908,
+              "rgb": 153543
+            },
+            "storm": {
+              "count": 17233,
+              "rgb": 451243
+            }
+          }
+        }
+      }
+    }
+  },
+  "readiness": {
+    "master": {
+      "path": "master-webgl2",
+      "frame": {
+        "id": 5,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "programs": 9,
+      "firstDraws": 17,
+      "heldForNewGlass": {
+        "stage": "background",
+        "time": 0,
+        "input": false,
+        "music": false,
+        "staged": false,
+        "overlay": true
+      },
+      "retainedResultsThroughResizeAndCancel": true,
+      "teardown": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "frame": {
+        "id": 1,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "programs": 6,
+      "firstDraws": 6,
+      "heldForNewGlass": null,
+      "retainedResultsThroughResizeAndCancel": true,
+      "teardown": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "loss": {
+      "path": "mobile-canvas",
+      "frame": {
+        "id": 1,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "programs": 0,
+      "firstDraws": null,
+      "heldForNewGlass": null,
+      "retainedResultsThroughResizeAndCancel": false,
+      "teardown": null
+    }
+  },
+  "optics": {
+    "master": {
+      "path": "master-webgl2",
+      "driver": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "rgbError": 3.0115246772766113e-05,
+        "alphaError": 0.00011100461736435197,
+        "brightestMist": 0.427490234375,
+        "fluxError": 0.0009743629459667558,
+        "returnError": 0,
+        "glError": 0
+      },
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 19445
+      },
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "driver": {
+        "size": [
+          96,
+          96
+        ],
+        "format": "RGBA8",
+        "rgbError": 0.0009224862591297178,
+        "alphaError": 0.00195883029159305,
+        "brightestMist": 0.6627450980392157,
+        "fluxError": 0.0010961799030954067,
+        "returnError": 0,
+        "glError": 0
+      },
+      "fog": {
+        "dryCount": 6448,
+        "dryMax": 0,
+        "skyChanged": 41454
+      },
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "driver": null,
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 26503
+      },
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "teardown": 0
+    }
+  },
+  "deniedSky": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "software": true,
+    "touch": false,
+    "viewport": {
+      "width": 1180,
+      "height": 660,
+      "deviceScaleFactor": 1
+    },
+    "loads": [
+      404
+    ],
+    "denied": true,
+    "high": 128125,
+    "phase": 0.6568219364872221,
+    "moonVis": 0.3353103697299957,
+    "moonTransmission": 0.5105042287550056,
+    "centerTransmission": 0.5198045579725564,
+    "phaseEnergy": 0.6568219364872221,
+    "moonVariant": "Silver gibbous",
+    "moonTint": [
+      0.94,
+      0.971,
+      1
+    ],
+    "moonCss": [
+      266.5248100339437,
+      62.009663821253866
+    ],
+    "flash": 0,
+    "lightningEpicenter": 0.3470435501307976,
+    "lightningFalloff": 2.42603550295858,
+    "skyHeight": 520,
+    "moonDiameterCss": 41.6,
+    "parallax": 0,
+    "path": "mobile-canvas",
+    "states": {
+      "clear": {
+        "moonVis": 0.3353103697299957,
+        "moonTransmission": 0.5105042287550056,
+        "centerTransmission": 0.5198045579725564,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          62.009663821253866
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 520,
+        "moonDiameterCss": 41.6,
+        "parallax": 0
+      }
+    },
+    "teardown": 0
+  },
+  "canvasSkyCache": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "software": true,
+    "touch": false,
+    "viewport": {
+      "width": 1180,
+      "height": 660,
+      "deviceScaleFactor": 1
+    },
+    "deny": false,
+    "cpuCompositor": true,
+    "fixtures": {
+      "parked": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 3.4000000059604645,
+        "cityMedianMs": 0.09999999403953552,
+        "opticalMedianMs": 0.09999999403953552
+      },
+      "pan": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 10.399999991059303,
+        "cityMedianMs": 0,
+        "opticalMedianMs": 8.199999988079071
+      },
+      "weather": {
+        "frames": 24,
+        "cityPaints": 48,
+        "canvasMedianMs": 19.599999994039536,
+        "cityMedianMs": 2.8999999910593033,
+        "opticalMedianMs": 12.700000002980232
+      }
+    },
+    "cards": 2,
+    "visible": true,
+    "afterDestroy": 0
+  }
+}

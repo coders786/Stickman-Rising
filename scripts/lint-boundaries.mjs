@@ -4,10 +4,9 @@
  * Three rules from docs/master/05 that a reviewer would otherwise have to
  * remember on every diff:
  *
- *  1. ONLY THE LEDGER CREATES OFFSCREEN CANVASES. `render/ledger.ts` and the
- *     sky-vault cache are the two allowed sites; everything else must ask. The
- *     measured cost of ignoring this is 30.3 MB resident and 37 untracked
- *     surfaces (12 §4).
+ *  1. ONLY THE LEDGER CREATES OFFSCREEN CANVASES IN GAME CODE. This includes
+ *     the sky vault. The independent GPU baker owns its temporary GL context;
+ *     the game supplies the ledger-backed 2D targets it retains.
  *  2. `src/gpu/**` NEVER IMPORTS GAME ENTITIES. The baker is a leaf: it may
  *     read a profile, never a Player. This is what keeps the "GPU is a baker"
  *     decision (D3) from quietly becoming "the GPU layer knows about combat".
@@ -46,15 +45,15 @@ const push = (file, line, rule, what) => violations.push({ file, line, rule, wha
 const keyOf = (v) => `${v.file.replace(/\\/g, '/')}|${v.rule}`
 
 /* rule 1 — canvas creation */
-const CANVAS_OK = ['render/ledger.ts', 'render/bhst.ts']
+const CANVAS_OK = ['render/ledger.ts']
 for (const f of walk('src/game')) {
   const src = readFileSync(f, 'utf8')
   src.split('\n').forEach((line, i) => {
-    if (!line.includes("createElement('canvas')")) return
+    if (!line.includes("createElement('canvas')") && !/new OffscreenCanvas\(/.test(line)) return
     if (CANVAS_OK.some((ok) => f.endsWith(ok.replace('/', sep)))) return
     // A file that receives a factory is fine; a file that BUILDS one is the
     // thing we are counting, and the ledger's own doc says why.
-    push(f, i + 1, 'canvas-ownership', "createElement('canvas') outside the ledger")
+    push(f, i + 1, 'canvas-ownership', "canvas creation outside the ledger")
   })
 }
 

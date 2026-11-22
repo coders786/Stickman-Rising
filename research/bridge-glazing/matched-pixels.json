@@ -1,0 +1,54 @@
+{
+  "master": {
+    "metro": {
+      "meanMaxRGBDelta": 1.4207162977867203,
+      "peakRGBDelta": 13,
+      "changed3Levels": 16573,
+      "cropPixels": 62125
+    },
+    "market": {
+      "meanMaxRGBDelta": 2.0260833246319305,
+      "peakRGBDelta": 50,
+      "changed3Levels": 17974,
+      "cropPixels": 47885
+    }
+  },
+  "optimized": {
+    "metro": {
+      "meanMaxRGBDelta": 1.848338028169014,
+      "peakRGBDelta": 15,
+      "changed3Levels": 26098,
+      "cropPixels": 62125
+    },
+    "market": {
+      "meanMaxRGBDelta": 2.43765270961679,
+      "peakRGBDelta": 53,
+      "changed3Levels": 24685,
+      "cropPixels": 47885
+    }
+  },
+  "canvas": {
+    "metro": {
+      "meanMaxRGBDelta": 1.4059718309859155,
+      "peakRGBDelta": 9,
+      "changed3Levels": 15572,
+      "cropPixels": 62125
+    },
+    "market": {
+      "meanMaxRGBDelta": 2.570282969614702,
+      "peakRGBDelta": 12,
+      "changed3Levels": 22945,
+      "cropPixels": 47885
+    }
+  },
+  "marketSources": {
+    "lamps-off": {
+      "peakRGBDelta": 53,
+      "changed3Levels": 345
+    },
+    "flash": {
+      "peakRGBDelta": 9,
+      "changed3Levels": 24179
+    }
+  }
+}

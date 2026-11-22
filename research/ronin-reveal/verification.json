@@ -1,0 +1,1296 @@
+{
+  "build": "2VxdRlnYfOeQSPeViWx3M",
+  "port": 3000,
+  "storyboard": {
+    "source": "Desktop browser, verified release. The first four images sample the actual CSS at fixed times; steel and arena are live compositor captures.",
+    "initialRGBMax": 0
+  },
+  "http": {
+    "rootSHA256": "3100ebe0e3cb3c09bf404b5911eba7c2424babf2aa1737c465f56c6f23691395",
+    "originAccepted": true,
+    "iframeHeadersClear": true,
+    "immutableStaticLinks": 13,
+    "assetsMatchedBySHA256": 18,
+    "packedAssetsUnchangedSinceControl": 14,
+    "retiredLoader404": true,
+    "scoresApi": true
+  },
+  "served": {
+    "crossOriginIframe150msRTT1_5Mbps": {
+      "phase": "playing",
+      "navigationToEngageEnabledMs": 4457,
+      "clickToPlayingMs": 4622,
+      "errors": [],
+      "failed": []
+    },
+    "iframeHeldRequestAnimationFrame": {
+      "phase": "playing",
+      "navigationToEngageEnabledMs": 385,
+      "clickToPlayingMs": 794,
+      "errors": [],
+      "failed": []
+    },
+    "desktopInputWhileArtPresent": [
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 811,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "RETRY",
+        "clickToSubmitMs": 228,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 275,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      }
+    ],
+    "touchReducedMotion": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "start": {
+        "phase": "playing",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 4,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "input": true,
+        "modal": false,
+        "touch": true,
+        "hit": "none",
+        "display": "none",
+        "bladeOpacity": 0
+      },
+      "beats": [],
+      "held": {
+        "stage": "background",
+        "focus": "CANCEL",
+        "rect": [
+          278.671875,
+          755.28125,
+          376,
+          799.28125
+        ],
+        "viewport": [
+          400,
+          844
+        ],
+        "flash": 0,
+        "flicker": "none"
+      },
+      "cancelled": {
+        "phase": "gameover",
+        "pending": false,
+        "input": false,
+        "hud": "layer",
+        "focus": "RETRY"
+      },
+      "requests": [],
+      "allGestureClicksTrusted": true,
+      "releasedSurfaces": 0,
+      "recordedFrames": 0
+    },
+    "masterReveal": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "start": {
+        "phase": "playing",
+        "path": "master-webgl2",
+        "frame": {
+          "id": 3,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "input": true,
+        "modal": false,
+        "touch": false,
+        "hit": "none",
+        "display": "block",
+        "bladeOpacity": 0
+      },
+      "beats": [
+        {
+          "name": "black",
+          "eye": 0,
+          "flash": 0,
+          "plume": "matrix(0.96, 0, 0, 0.94, 3, 2)",
+          "sword": 0,
+          "art": "hidden"
+        },
+        {
+          "name": "flash",
+          "eye": 0,
+          "flash": 0.265558,
+          "plume": "matrix(0.963296, 0, 0, 0.94565, 2.65469, 1.78026)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "eyes",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.00184, 0, 0, 1.01173, -1.38366, -0.789602)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "flare",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.06291, 0, 0, 1.10886, -7.76798, -4.62877)",
+          "sword": 0,
+          "art": "visible"
+        }
+      ],
+      "held": {
+        "stage": "lighting",
+        "focus": "CANCEL",
+        "rect": [
+          1028.40625,
+          581.03125,
+          1125.734375,
+          625.03125
+        ],
+        "viewport": [
+          1180,
+          660
+        ],
+        "flash": 0,
+        "flicker": "sr-ember-plume"
+      },
+      "cancelled": {
+        "phase": "gameover",
+        "pending": false,
+        "input": false,
+        "hud": "layer",
+        "focus": "RETRY"
+      },
+      "requests": [],
+      "allGestureClicksTrusted": true,
+      "releasedSurfaces": 0,
+      "recordedFrames": 240
+    },
+    "canvasComposition": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": false,
+      "touch": false,
+      "frames": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 1,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 992,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              207,
+              286,
+              148
+            ],
+            [
+              275,
+              170,
+              183
+            ]
+          ]
+        },
+        {
+          "label": "full-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "hud-unavailable-inline",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "hud-restored",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              207,
+              284,
+              150
+            ],
+            [
+              299,
+              259,
+              195
+            ],
+            [
+              292,
+              238,
+              209
+            ]
+          ]
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": true,
+          "hudPixels": 0,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 10,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 1
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 992,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              207,
+              284,
+              148
+            ],
+            [
+              288,
+              146,
+              177
+            ]
+          ]
+        }
+      ],
+      "cancelled": {
+        "frame": {
+          "id": 14,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 92,
+          "threats": 2
+        },
+        "held": false,
+        "pending": false
+      }
+    },
+    "portraitDeniedBridgeAssets": {
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "denied": true,
+      "touch": true,
+      "frames": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1920,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              1166,
+              1221,
+              757
+            ]
+          ]
+        },
+        {
+          "label": "full-canvas",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1760,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "hud-unavailable-inline",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1744,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "hud-restored",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1760,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 8,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1760,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              1167,
+              1221,
+              779
+            ],
+            [
+              1221,
+              1137,
+              985
+            ],
+            [
+              1221,
+              1118,
+              986
+            ]
+          ]
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 10,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": true,
+          "hudPixels": 0,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 11,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 1928,
+          "roadPlaceholderPixels": 1
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 16,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 2000,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              1156,
+              1220,
+              744
+            ]
+          ]
+        }
+      ],
+      "cancelled": {
+        "frame": {
+          "id": 15,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 92,
+          "threats": 2
+        },
+        "held": false,
+        "pending": false
+      }
+    },
+    "webglLossRestoreTierSwitch": {
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": false,
+      "touch": false,
+      "frames": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 5,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "master-webgl2",
+          "held": false,
+          "hudPixels": 840,
+          "roadPlaceholderPixels": 72
+        },
+        {
+          "label": "master",
+          "frame": {
+            "id": 6,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "master-webgl2",
+          "held": false,
+          "hudPixels": 772,
+          "roadPlaceholderPixels": 87,
+          "bodyWitnessPixels": [
+            [
+              164,
+              265,
+              129
+            ],
+            [
+              95,
+              96,
+              140
+            ],
+            [
+              198,
+              122,
+              107
+            ]
+          ]
+        },
+        {
+          "label": "context-lost-canvas",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 772,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              164,
+              260,
+              132
+            ],
+            [
+              257,
+              226,
+              162
+            ],
+            [
+              232,
+              209,
+              164
+            ]
+          ]
+        },
+        {
+          "label": "context-restored",
+          "frame": {
+            "id": 32,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "master-webgl2",
+          "held": false,
+          "hudPixels": 772,
+          "roadPlaceholderPixels": 303
+        },
+        {
+          "label": "optimized",
+          "frame": {
+            "id": 48,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-webgl2",
+          "held": false,
+          "hudPixels": 772,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 49,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 772,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              164,
+              260,
+              132
+            ],
+            [
+              257,
+              226,
+              162
+            ],
+            [
+              232,
+              209,
+              164
+            ]
+          ]
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 51,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": true,
+          "hudPixels": 0,
+          "roadPlaceholderPixels": 0
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 52,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "path": "mobile-canvas",
+          "held": false,
+          "hudPixels": 912,
+          "roadPlaceholderPixels": 1
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 57,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 43,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "path": "mobile-webgl2",
+          "held": false,
+          "hudPixels": 992,
+          "roadPlaceholderPixels": 0,
+          "bodyWitnessPixels": [
+            [
+              209,
+              286,
+              146
+            ],
+            [
+              246,
+              171,
+              192
+            ]
+          ]
+        }
+      ],
+      "cancelled": null
+    }
+  },
+  "staging": {
+    "desktopReveal": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "start": {
+        "phase": "playing",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 2,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "input": true,
+        "modal": false,
+        "touch": false,
+        "hit": "none",
+        "display": "block",
+        "bladeOpacity": 0
+      },
+      "beats": [
+        {
+          "name": "black",
+          "eye": 0,
+          "flash": 0,
+          "plume": "matrix(0.96, 0, 0, 0.94, 3, 2)",
+          "sword": 0,
+          "art": "hidden"
+        },
+        {
+          "name": "flash",
+          "eye": 0,
+          "flash": 0.265558,
+          "plume": "matrix(0.963296, 0, 0, 0.94565, 2.65469, 1.78026)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "eyes",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.00184, 0, 0, 1.01173, -1.38366, -0.789602)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "flare",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.06291, 0, 0, 1.10886, -7.76798, -4.62877)",
+          "sword": 0,
+          "art": "visible"
+        }
+      ],
+      "held": {
+        "stage": "surface",
+        "focus": "CANCEL",
+        "rect": [
+          1028.40625,
+          581.03125,
+          1125.734375,
+          625.03125
+        ],
+        "viewport": [
+          1180,
+          660
+        ],
+        "flash": 0,
+        "flicker": "sr-ember-plume"
+      },
+      "cancelled": {
+        "phase": "gameover",
+        "pending": false,
+        "input": false,
+        "hud": "layer",
+        "focus": "RETRY"
+      },
+      "requests": [],
+      "allGestureClicksTrusted": true,
+      "releasedSurfaces": 0,
+      "recordedFrames": 35
+    },
+    "touchReveal": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "start": {
+        "phase": "playing",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 5,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "input": true,
+        "modal": false,
+        "touch": true,
+        "hit": "none",
+        "display": "block",
+        "bladeOpacity": 0
+      },
+      "beats": [
+        {
+          "name": "black",
+          "eye": 0,
+          "flash": 0,
+          "plume": "matrix(0.96, 0, 0, 0.94, 3, 2)",
+          "sword": 0,
+          "art": "hidden"
+        },
+        {
+          "name": "flash",
+          "eye": 0,
+          "flash": 0.265558,
+          "plume": "matrix(0.963296, 0, 0, 0.94565, 2.65469, 1.78026)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "eyes",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.00184, 0, 0, 1.01173, -1.38366, -0.789602)",
+          "sword": 0,
+          "art": "visible"
+        },
+        {
+          "name": "flare",
+          "eye": 1,
+          "flash": 0,
+          "plume": "matrix(1.06291, 0, 0, 1.10886, -7.76798, -4.62877)",
+          "sword": 0,
+          "art": "visible"
+        }
+      ],
+      "held": {
+        "stage": "surface",
+        "focus": "CANCEL",
+        "rect": [
+          278.671875,
+          755.28125,
+          376,
+          799.28125
+        ],
+        "viewport": [
+          400,
+          844
+        ],
+        "flash": 0,
+        "flicker": "sr-ember-plume"
+      },
+      "cancelled": {
+        "phase": "gameover",
+        "pending": false,
+        "input": false,
+        "hud": "layer",
+        "focus": "RETRY"
+      },
+      "requests": [],
+      "allGestureClicksTrusted": true,
+      "releasedSurfaces": 0,
+      "recordedFrames": 77
+    },
+    "desktopClickToSubmit": [
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 1204,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "RETRY",
+        "clickToSubmitMs": 551,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 239,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      }
+    ],
+    "touchClickToSubmit": [
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 1023,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "RETRY",
+        "clickToSubmitMs": 291,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 251,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      }
+    ],
+    "leanShortClickToSubmit": [
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 285,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "RETRY",
+        "clickToSubmitMs": 85,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      },
+      {
+        "name": "ENGAGE",
+        "clickToSubmitMs": 86,
+        "world": "canvas",
+        "tick": 0,
+        "inputAtSubmit": true,
+        "artStillPresentOnInput": true
+      }
+    ],
+    "heldRequiredPlate": {
+      "path": "/bridge/deck-pier.webp",
+      "held": {
+        "phase": "preparing",
+        "stage": "background",
+        "time": 0,
+        "input": false,
+        "music": false,
+        "frame": {
+          "id": 2,
+          "layer": "scene-work",
+          "kind": "title",
+          "hud": "off",
+          "seed": 5350089,
+          "time": 0,
+          "hp": 100,
+          "threats": 0
+        },
+        "seed": 162454856,
+        "status": "Loading arena Assemble the bridge",
+        "modal": true,
+        "handOff": false,
+        "media": 0,
+        "focus": "CANCEL",
+        "fit": true,
+        "plume": "matrix(1.00909, 0, 0, 0.890906, -1.9094, 2.81823)"
+      },
+      "clickToSubmitMs": 2111,
+      "frame": {
+        "id": 3,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 162454856,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      }
+    },
+    "stalledRequiredPlate": {
+      "stage": "background",
+      "run-fallback": 7285,
+      "run-submit": 7460,
+      "run-failed": null,
+      "firstPath": "mobile-canvas",
+      "firstWorldTime": 0,
+      "recoveryPrompts": 0,
+      "logged": 0,
+      "inputAfter": true,
+      "surfacesAfterDestroy": 0
+    },
+    "stalledFence": {
+      "stage": "frame",
+      "run-fallback": 8565,
+      "run-submit": 8682,
+      "run-failed": null,
+      "firstPath": "mobile-canvas",
+      "firstWorldTime": 0,
+      "recoveryPrompts": 0,
+      "logged": 0,
+      "inputAfter": true,
+      "surfacesAfterDestroy": 0
+    },
+    "noSurface": {
+      "stage": "background",
+      "run-fallback": 7238,
+      "run-submit": null,
+      "run-failed": 10755,
+      "firstPath": null,
+      "firstWorldTime": null,
+      "recoveryPrompts": 1,
+      "logged": 1,
+      "inputAfter": false,
+      "surfacesAfterDestroy": 0
+    },
+    "masterHeldOptionalGlazing": {
+      "firstPath": "master-webgl2",
+      "first": {
+        "id": 3,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "optionalBakedPanesAtSubmit": 0,
+      "cancelled": {
+        "phase": "gameover",
+        "input": false,
+        "frame": {
+          "id": 19,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.966666666666668,
+          "hp": 0,
+          "threats": 2
+        }
+      },
+      "retry": {
+        "path": "master-webgl2",
+        "frame": {
+          "id": 20,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 44,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      "retryMs": 3682.4000000059605,
+      "surfacesAfterDestroy": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "optimizedSyncTouch": {
+      "firstPath": "mobile-webgl2",
+      "first": {
+        "id": 5,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "cancelled": {
+        "phase": "gameover",
+        "input": false,
+        "frame": {
+          "id": 28,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 1.3666666666666667,
+          "hp": 0,
+          "threats": 2
+        }
+      },
+      "retry": {
+        "path": "mobile-webgl2",
+        "frame": {
+          "id": 29,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 44,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      "retryMs": 1206.2999999970198,
+      "surfacesAfterDestroy": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "realContextLoss": {
+      "firstPath": "mobile-canvas",
+      "first": {
+        "id": 2,
+        "layer": "scene-work",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      }
+    }
+  },
+  "code": {
+    "bridge": {
+      "tests": 219,
+      "pass": 219,
+      "fail": 0
+    },
+    "linkedGLSLPrograms": 17,
+    "fullSuite": {
+      "tests": 608,
+      "pass": 603,
+      "fail": 5,
+      "sameFailuresAsV1Control": true,
+      "failures": [
+        "22 - the blade cleaves a tight pack (26px), every sword strike",
+        "25 - how deep the blade cuts does not depend on the frame rate",
+        "209 - no joint is welded shut in any core strike",
+        "440 - six extra authored keys in each sword ritual preserve timing and gate beats",
+        "550 - a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    }
+  }
+}

@@ -1,0 +1,6881 @@
+{
+  "build": "Qcjd_L8Y3O8GalhD3VDQr",
+  "controlBuild": "0_Y50OnuYUd70U0IdV9M9",
+  "seed": 42,
+  "tests": {
+    "focus": {
+      "tests": 168,
+      "pass": 168,
+      "failures": []
+    },
+    "full": {
+      "tests": 557,
+      "pass": 552,
+      "failures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "controlFull": {
+      "tests": 553,
+      "pass": 548,
+      "failures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "offlinePrograms": 18
+  },
+  "assets": {
+    "sky-basis-v1.bin": {
+      "bytes": 657408,
+      "sha256": "0ce886e71f82424f3bff3bf45379be1f38e57089bb500ba59e288d1b06edbaf7"
+    },
+    "stratum-a.webp": {
+      "bytes": 180,
+      "sha256": "a551cfd7edd416d05eebad3aba32fd48e65304f4875f4f5e532ca8259a5e67c9"
+    },
+    "l1.webp": {
+      "bytes": 68520,
+      "sha256": "c574a4673e87661a0df484750ff989719d4a5049c05e9361663ce8364b9c015d"
+    },
+    "l2.webp": {
+      "bytes": 69412,
+      "sha256": "78b76239c370c39c9a500a641b68dd534fbb1f330dde6894898bf712dc434c24"
+    }
+  },
+  "driver": {
+    "master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "driver": {
+        "ok": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "formats": {
+          "masterRoad": "RGBA16F",
+          "mobileRoad": "RGBA8"
+        },
+        "linked": [
+          "masterSky",
+          "mobileSky",
+          "castInk",
+          "masterBase",
+          "mobileBase",
+          "receiver",
+          "masterRoad",
+          "mobileRoad",
+          "mobileResolve",
+          "masterActors",
+          "mobileActors",
+          "trail",
+          "weather",
+          "bloom",
+          "masterGrade",
+          "mobileGrade"
+        ],
+        "offsets": {
+          "masterRoad": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "mobileRoad": [
+            0,
+            640,
+            1664,
+            2176
+          ]
+        },
+        "mips": [
+          [
+            512,
+            128
+          ],
+          [
+            256,
+            64
+          ],
+          [
+            128,
+            32
+          ],
+          [
+            64,
+            16
+          ]
+        ],
+        "probes": [
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Dry AO",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0001,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0.1801,
+              0,
+              0,
+              1
+            ],
+            "right": [
+              1,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Arc Center",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "right": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Bay Interior",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0002,
+            "worstPixel": [
+              4,
+              8,
+              0
+            ],
+            "left": [
+              0.6904,
+              0.2764,
+              0.873,
+              0.5
+            ],
+            "right": [
+              0.2705,
+              0.1216,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Dual Arc",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0002,
+            "worstPixel": [
+              0,
+              0,
+              3
+            ],
+            "left": [
+              0.2979,
+              0.1265,
+              0.2979,
+              0.7578
+            ],
+            "right": [
+              0.5957,
+              0.2529,
+              0.5957,
+              0.7578
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Catwalk Underside",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              8,
+              0,
+              1
+            ],
+            "left": [
+              0.0017,
+              0,
+              1,
+              0
+            ],
+            "right": [
+              0.2952,
+              0.1299,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Dry AO",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0004,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0.1804,
+              0,
+              0,
+              1
+            ],
+            "right": [
+              1,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Arc Center",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "right": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Bay Interior",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.002,
+            "worstPixel": [
+              4,
+              0,
+              3
+            ],
+            "left": [
+              0.6902,
+              0.2745,
+              0.8745,
+              0.502
+            ],
+            "right": [
+              0.2706,
+              0.1216,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Dual Arc",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0019,
+            "worstPixel": [
+              8,
+              0,
+              1
+            ],
+            "left": [
+              0.298,
+              0.1255,
+              0.298,
+              0.7569
+            ],
+            "right": [
+              0.5961,
+              0.251,
+              0.5961,
+              0.7569
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Catwalk Underside",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0017,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "right": [
+              0.2941,
+              0.1294,
+              0,
+              1
+            ]
+          }
+        ],
+        "errors": []
+      },
+      "timing": {
+        "frames": 120,
+        "fps": 0.8942,
+        "frameIntervalMs": {
+          "p50": 1239.4,
+          "p95": 1845.4,
+          "p99": 2031.8
+        },
+        "cpuSubmitMs": {
+          "p50": 2.8,
+          "p95": 10.3,
+          "p99": 16.4
+        },
+        "fpsVisible": true,
+        "lastFpsInk": "1 FPS",
+        "ultraLocked": true,
+        "minRequestedScale": 1.25,
+        "minBackingScale": 1.25,
+        "size": [
+          750,
+          475
+        ],
+        "paths": {
+          "master-webgl2": 120
+        },
+        "lastPresentation": {
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": {
+            "size": [
+              750,
+              475
+            ],
+            "format": "RGBA16F",
+            "hdrBytes": 4868544,
+            "targetBytes": 4940544,
+            "dataBytes": 6207190,
+            "outputBytes": 1425000,
+            "sourceTextureBytes": 2850000,
+            "uploadBytes": 2850000,
+            "frameDraws": 17,
+            "rainInstances": 350,
+            "moteInstances": 0,
+            "bloomLevels": 4,
+            "bloomUpPasses": 4,
+            "roadSize": [
+              750,
+              475
+            ],
+            "maxK": 8,
+            "uboBytes": 2432,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176
+            ],
+            "stratumVersion": 1,
+            "stratumA": {
+              "size": [
+                256,
+                64
+              ],
+              "format": "RGBA16F",
+              "frames": 121,
+              "refreshes": 121,
+              "refreshed": true,
+              "live": true,
+              "moonVis": 0.9996716380119324,
+              "cloudOcc": 0.25556454352628705,
+              "moonCss": [
+                220.92871117084852,
+                41.66025431739378
+              ],
+              "flash": 0,
+              "lightningEpicenter": 0.6930611640494316,
+              "sweepPhase": 0.27912279963493347,
+              "skyHeight": 268.6998935915011,
+              "moonDiameterCss": 36,
+              "parallax": 0.018
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                160
+              ],
+              "version": 1,
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": [
+                750,
+                96
+              ]
+            },
+            "sectorLut": [
+              1024,
+              32
+            ]
+          },
+          "field": {
+            "emitters": 1,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 1,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 10,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "3.1",
+            "primitives": 18,
+            "feet": 6,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": -1.25,
+            "atlasOriginX": -10,
+            "viewWidthMeters": 17.763157894736842
+          }
+        }
+      },
+      "live": {
+        "fpsLabel": "1 FPS",
+        "litPixels": 57,
+        "clothNodes": 5,
+        "insets": {
+          "top": 24,
+          "right": 9,
+          "bottom": 13,
+          "left": 11
+        },
+        "fpsPosition": [
+          67,
+          198,
+          70
+        ],
+        "artDecoded": true,
+        "presentation": {
+          "path": "master-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": {
+            "size": [
+              750,
+              475
+            ],
+            "format": "RGBA16F",
+            "hdrBytes": 4868544,
+            "targetBytes": 4940544,
+            "dataBytes": 6207190,
+            "outputBytes": 1425000,
+            "sourceTextureBytes": 2850000,
+            "uploadBytes": 2850000,
+            "frameDraws": 17,
+            "rainInstances": 350,
+            "moteInstances": 0,
+            "bloomLevels": 4,
+            "bloomUpPasses": 4,
+            "roadSize": [
+              750,
+              475
+            ],
+            "maxK": 8,
+            "uboBytes": 2432,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176
+            ],
+            "stratumVersion": 1,
+            "stratumA": {
+              "size": [
+                256,
+                64
+              ],
+              "format": "RGBA16F",
+              "frames": 121,
+              "refreshes": 121,
+              "refreshed": true,
+              "live": true,
+              "moonVis": 0.9996716380119324,
+              "cloudOcc": 0.25556454352628705,
+              "moonCss": [
+                220.92871117084852,
+                41.66025431739378
+              ],
+              "flash": 0,
+              "lightningEpicenter": 0.6930611640494316,
+              "sweepPhase": 0.27912279963493347,
+              "skyHeight": 268.6998935915011,
+              "moonDiameterCss": 36,
+              "parallax": 0.018
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                160
+              ],
+              "version": 1,
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": [
+                750,
+                96
+              ]
+            },
+            "sectorLut": [
+              1024,
+              32
+            ]
+          },
+          "field": {
+            "emitters": 1,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 1,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 10,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "3.1",
+            "primitives": 18,
+            "feet": 6,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 8,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": -1.25,
+            "atlasOriginX": -10,
+            "viewWidthMeters": 17.763157894736842
+          }
+        },
+        "backing": [
+          750,
+          475
+        ],
+        "hud": [
+          600,
+          380
+        ],
+        "stores": 13,
+        "bytes": 7938048,
+        "over": 0
+      },
+      "status": "pass"
+    },
+    "mobile": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "driver": {
+        "ok": true,
+        "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+        "formats": {
+          "masterRoad": "RGBA16F",
+          "mobileRoad": "RGBA8"
+        },
+        "linked": [
+          "masterSky",
+          "mobileSky",
+          "castInk",
+          "masterBase",
+          "mobileBase",
+          "receiver",
+          "masterRoad",
+          "mobileRoad",
+          "mobileResolve",
+          "masterActors",
+          "mobileActors",
+          "trail",
+          "weather",
+          "bloom",
+          "masterGrade",
+          "mobileGrade"
+        ],
+        "offsets": {
+          "masterRoad": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "mobileRoad": [
+            0,
+            640,
+            1664,
+            2176
+          ]
+        },
+        "mips": [
+          [
+            512,
+            128
+          ],
+          [
+            256,
+            64
+          ],
+          [
+            128,
+            32
+          ],
+          [
+            64,
+            16
+          ]
+        ],
+        "probes": [
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Dry AO",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0001,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0.1801,
+              0,
+              0,
+              1
+            ],
+            "right": [
+              1,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Arc Center",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "right": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Bay Interior",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0002,
+            "worstPixel": [
+              4,
+              8,
+              0
+            ],
+            "left": [
+              0.6904,
+              0.2764,
+              0.873,
+              0.5
+            ],
+            "right": [
+              0.2705,
+              0.1216,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Dual Arc",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0002,
+            "worstPixel": [
+              0,
+              0,
+              3
+            ],
+            "left": [
+              0.2979,
+              0.1265,
+              0.2979,
+              0.7578
+            ],
+            "right": [
+              0.5957,
+              0.2529,
+              0.5957,
+              0.7578
+            ]
+          },
+          {
+            "tier": "masterRoad",
+            "format": "RGBA16F",
+            "name": "Catwalk Underside",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              8,
+              0,
+              1
+            ],
+            "left": [
+              0.0017,
+              0,
+              1,
+              0
+            ],
+            "right": [
+              0.2952,
+              0.1299,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Dry AO",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0004,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0.1804,
+              0,
+              0,
+              1
+            ],
+            "right": [
+              1,
+              0,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Arc Center",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "right": [
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Bay Interior",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.002,
+            "worstPixel": [
+              4,
+              0,
+              3
+            ],
+            "left": [
+              0.6902,
+              0.2745,
+              0.8745,
+              0.502
+            ],
+            "right": [
+              0.2706,
+              0.1216,
+              0,
+              1
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Dual Arc",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0019,
+            "worstPixel": [
+              8,
+              0,
+              1
+            ],
+            "left": [
+              0.298,
+              0.1255,
+              0.298,
+              0.7569
+            ],
+            "right": [
+              0.5961,
+              0.251,
+              0.5961,
+              0.7569
+            ]
+          },
+          {
+            "tier": "mobileRoad",
+            "format": "RGBA8",
+            "name": "Catwalk Underside",
+            "pass": true,
+            "glError": 0,
+            "maxError": 0.0017,
+            "worstPixel": [
+              0,
+              0,
+              0
+            ],
+            "left": [
+              0,
+              0,
+              1,
+              0
+            ],
+            "right": [
+              0.2941,
+              0.1294,
+              0,
+              1
+            ]
+          }
+        ],
+        "errors": []
+      },
+      "timing": {
+        "frames": 120,
+        "fps": 1.2713,
+        "frameIntervalMs": {
+          "p50": 836.2,
+          "p95": 1358.1,
+          "p99": 1619.1
+        },
+        "cpuSubmitMs": {
+          "p50": 1.7,
+          "p95": 6.3,
+          "p99": 12.8
+        },
+        "fpsVisible": true,
+        "lastFpsInk": "2 FPS",
+        "ultraLocked": true,
+        "minRequestedScale": 1.25,
+        "minBackingScale": 1,
+        "size": [
+          400,
+          844
+        ],
+        "paths": {
+          "mobile-webgl2": 120
+        },
+        "lastPresentation": {
+          "path": "mobile-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": {
+            "size": [
+              400,
+              844
+            ],
+            "format": "RGBA8",
+            "hdrBytes": 0,
+            "targetBytes": 1729984,
+            "dataBytes": 5650134,
+            "outputBytes": 1350400,
+            "sourceTextureBytes": 2700800,
+            "uploadBytes": 2700800,
+            "frameDraws": 7,
+            "rainInstances": 0,
+            "moteInstances": 0,
+            "bloomLevels": 0,
+            "bloomUpPasses": 0,
+            "roadSize": [
+              200,
+              422
+            ],
+            "maxK": 4,
+            "uboBytes": 2432,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176
+            ],
+            "stratumVersion": 1,
+            "stratumA": {
+              "size": [
+                128,
+                32
+              ],
+              "format": "RGBA8",
+              "frames": 121,
+              "refreshes": 61,
+              "refreshed": true,
+              "live": true,
+              "moonVis": 0.5561823844909668,
+              "cloudOcc": 0.4951115471863551,
+              "moonCss": [
+                143.74180744723233,
+                86.00163061146176
+              ],
+              "flash": 0,
+              "lightningEpicenter": 0.6930611640494316,
+              "sweepPhase": 0.22649984061717987,
+              "skyHeight": 554.6311751495876,
+              "moonDiameterCss": 36,
+              "parallax": 0.018
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                160
+              ],
+              "version": 1,
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": [
+                400,
+                64
+              ]
+            },
+            "sectorLut": [
+              256,
+              16
+            ]
+          },
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 10,
+            "casts": 1,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "3.1",
+            "primitives": 9,
+            "feet": 6,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": 3.13388625592417,
+            "atlasOriginX": -6,
+            "viewWidthMeters": 5.33175355450237
+          }
+        }
+      },
+      "live": {
+        "fpsLabel": "2 FPS",
+        "litPixels": 233,
+        "clothNodes": 2,
+        "insets": {
+          "top": 24,
+          "right": 9,
+          "bottom": 13,
+          "left": 11
+        },
+        "fpsPosition": [
+          67,
+          198,
+          70
+        ],
+        "artDecoded": true,
+        "presentation": {
+          "path": "mobile-webgl2",
+          "reason": "active",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": {
+            "size": [
+              400,
+              844
+            ],
+            "format": "RGBA8",
+            "hdrBytes": 0,
+            "targetBytes": 1729984,
+            "dataBytes": 5650134,
+            "outputBytes": 1350400,
+            "sourceTextureBytes": 2700800,
+            "uploadBytes": 2700800,
+            "frameDraws": 7,
+            "rainInstances": 0,
+            "moteInstances": 0,
+            "bloomLevels": 0,
+            "bloomUpPasses": 0,
+            "roadSize": [
+              200,
+              422
+            ],
+            "maxK": 4,
+            "uboBytes": 2432,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176
+            ],
+            "stratumVersion": 1,
+            "stratumA": {
+              "size": [
+                128,
+                32
+              ],
+              "format": "RGBA8",
+              "frames": 121,
+              "refreshes": 61,
+              "refreshed": true,
+              "live": true,
+              "moonVis": 0.5561823844909668,
+              "cloudOcc": 0.4951115471863551,
+              "moonCss": [
+                143.74180744723233,
+                86.00163061146176
+              ],
+              "flash": 0,
+              "lightningEpicenter": 0.6930611640494316,
+              "sweepPhase": 0.22649984061717987,
+              "skyHeight": 554.6311751495876,
+              "moonDiameterCss": 36,
+              "parallax": 0.018
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                160
+              ],
+              "version": 1,
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": [
+                400,
+                64
+              ]
+            },
+            "sectorLut": [
+              256,
+              16
+            ]
+          },
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 10,
+            "casts": 1,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "3.1",
+            "primitives": 9,
+            "feet": 6,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": 3.13388625592417,
+            "atlasOriginX": -6,
+            "viewWidthMeters": 5.33175355450237
+          }
+        },
+        "backing": [
+          400,
+          844
+        ],
+        "hud": [
+          800,
+          1688
+        ],
+        "stores": 12,
+        "bytes": 7860224,
+        "over": 0
+      },
+      "status": "pass"
+    }
+  },
+  "comparisons": {
+    "master": {
+      "renderer": "master-webgl2",
+      "before": {
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            1100,
+            675
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 10000488,
+          "targetBytes": 10098792,
+          "dataBytes": 4415702,
+          "outputBytes": 2970000,
+          "sourceTextureBytes": 5940000,
+          "uploadBytes": 5940000,
+          "frameDraws": 18,
+          "rainInstances": 350,
+          "moteInstances": 84,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            1100,
+            675
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 4,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 13,
+            "refreshes": 13,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.9417890310287476,
+            "cloudOcc": 0.3277245334160306,
+            "moonCss": [
+              632.8482586309135,
+              122.86127206923749
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "parallax": 0.012
+          },
+          "environment": {
+            "format": "RGBA8",
+            "size": [
+              1024,
+              128
+            ],
+            "version": 5,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              1024,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 5,
+          "impulses": 1,
+          "cover": 0,
+          "casts": 2,
+          "quads": 8,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 1,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 8,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 95.95875850340137,
+          "atlasOriginX": 72,
+          "viewWidthMeters": 18.70748299319727
+        }
+      },
+      "after": {
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            1100,
+            675
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 10000488,
+          "targetBytes": 10098792,
+          "dataBytes": 6207190,
+          "outputBytes": 2970000,
+          "sourceTextureBytes": 5940000,
+          "uploadBytes": 5940000,
+          "frameDraws": 17,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            1100,
+            675
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 4,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 11,
+            "refreshes": 11,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 1,
+            "cloudOcc": 0.0279243745431942,
+            "moonCss": [
+              246.7145763839111,
+              67.93288379543665
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 5,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              1024,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 4,
+          "impulses": 0,
+          "cover": 0,
+          "blockers": 4,
+          "casts": 2,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 8,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 12,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 8,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 95.95875850340137,
+          "atlasOriginX": 72,
+          "viewWidthMeters": 18.70748299319727
+        }
+      },
+      "scenes": {
+        "transit": {
+          "camera": [
+            414,
+            -100,
+            1.04,
+            0
+          ],
+          "routeX": 266,
+          "floor": 0,
+          "clock": 4.49,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.9957773089408875,
+            "cloudOcc": 0.27014106299178847,
+            "moonCss": [
+              687.1283386309135,
+              108.17868674001248
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 374,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.1746401338323625,
+            "moonCss": [
+              320.017896383911,
+              56.82942594834596
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 374,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 10,
+          "files": {
+            "before": {
+              "file": "before-transit.webp",
+              "pngSha256": "cc0a3701b3f234467485a6dc3734e7eac7cd55a99830616815a0ce4e49a36b54",
+              "width": 1100,
+              "height": 675,
+              "bytes": 51316
+            },
+            "after": {
+              "file": "transit.webp",
+              "pngSha256": "4fd5a9972a8a4931ce41ae8810e5705a56b675681876824d33d35135f761c26d",
+              "width": 1100,
+              "height": 675,
+              "bytes": 31070
+            }
+          }
+        },
+        "sodium": {
+          "camera": [
+            990,
+            -100,
+            1.14,
+            -0.021
+          ],
+          "routeX": 1026,
+          "floor": 0,
+          "clock": 18.9,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.21101113578309305,
+            "moonCss": [
+              678.7518586309135,
+              114.75799126619457
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 384,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.5824341177940369,
+            "cloudOcc": 0.48575455291654857,
+            "moonCss": [
+              314.3699763839111,
+              63.24101910895244
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 384,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 9,
+          "files": {
+            "before": {
+              "file": "before-sodium.webp",
+              "pngSha256": "a454922c95cbfc32f8254967cd0e4052cf762d25ed462930c3b2d75a7a10e4c5",
+              "width": 1100,
+              "height": 675,
+              "bytes": 61182
+            },
+            "after": {
+              "file": "sodium.webp",
+              "pngSha256": "0ac9938e84b11c4284a1d8d3dc479a9219481946578a4c6598179f8e1f295b16",
+              "width": 1100,
+              "height": 675,
+              "bytes": 31880
+            }
+          }
+        },
+        "catwalk": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.18945270269538944,
+            "moonCss": [
+              501.7292986309134,
+              135.1000987391441
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 442.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.1715662560369662,
+            "moonCss": [
+              55.364136383911074,
+              74.22992091987774
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 442.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 1,
+          "castsToRoadFromSupport": 1,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-catwalk.webp",
+              "pngSha256": "2c5bc33be8fb470049cc3983c1edb56b44a196138aeefff2db238df970399fc6",
+              "width": 1100,
+              "height": 675,
+              "bytes": 64504
+            },
+            "after": {
+              "file": "catwalk.webp",
+              "pngSha256": "571e78a5ebf0527d54b263d7f11d184c457fa1dd5e787d5965ce85dfcdf83b0e",
+              "width": 1100,
+              "height": 675,
+              "bytes": 38576
+            }
+          }
+        },
+        "sheet-lightning": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0.71,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.18945270269538944,
+            "moonCss": [
+              501.7292986309134,
+              135.1000987391441
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 442.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.1715662560369662,
+            "moonCss": [
+              55.364136383911074,
+              74.22992091987774
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 442.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 1,
+          "castsToRoadFromSupport": 1,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-sheet-lightning.webp",
+              "pngSha256": "b3bd8c4c087ad2dc275a6ec04a83f49fd92306a50fa1b9f7bdf33c663839819d",
+              "width": 1100,
+              "height": 675,
+              "bytes": 68980
+            },
+            "after": {
+              "file": "sheet-lightning.webp",
+              "pngSha256": "fefcce3ee62e1969ee540f7e0343bdc17aef38bafe2e331b68e20b0a41f91230",
+              "width": 1100,
+              "height": 675,
+              "bytes": 43080
+            }
+          }
+        },
+        "service-bay": {
+          "camera": [
+            7605,
+            -127,
+            1.04,
+            0.035
+          ],
+          "routeX": 7620,
+          "floor": 0,
+          "clock": 11.7,
+          "cloud": 0.55,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.07266490364128085,
+            "moonCss": [
+              597.3846586309135,
+              118.32600203793719
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 402.08000000000004,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.8113447427749634,
+            "cloudOcc": 0.39724013836612493,
+            "moonCss": [
+              188.86317638391108,
+              64.0125221527188
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 402.08000000000004,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 8,
+          "files": {
+            "before": {
+              "file": "before-service-bay.webp",
+              "pngSha256": "94a5b6996699edf6d6e7eb1b75bf6b3196c6f086afa169a9d8500605f5da1ce9",
+              "width": 1100,
+              "height": 675,
+              "bytes": 68360
+            },
+            "after": {
+              "file": "service-bay.webp",
+              "pngSha256": "9b3eb95c632971e287a5a4cae4fbe6a92ca553b1ebebac26d156e8b78a9fbfbd",
+              "width": 1100,
+              "height": 675,
+              "bytes": 38220
+            }
+          }
+        },
+        "market": {
+          "camera": [
+            6569,
+            -122,
+            1.06,
+            0
+          ],
+          "routeX": 6615,
+          "floor": 0,
+          "clock": 14.4,
+          "cloud": 0.33,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.18052625057117302,
+            "moonCss": [
+              608.7373786309134,
+              118.2248189660661
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 399.32,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.19659616220142656,
+            "moonCss": [
+              207.1882563839111,
+              64.49656319862062
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 399.32,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 5,
+          "files": {
+            "before": {
+              "file": "before-market.webp",
+              "pngSha256": "9227d970b60261c4e2ba635f2551d74b424a9f269cad63143f449f2e5844cebd",
+              "width": 1100,
+              "height": 675,
+              "bytes": 58772
+            },
+            "after": {
+              "file": "market.webp",
+              "pngSha256": "78eacf6b5ab2396e81ea373f19f2747292b3a546187f07c5ab92234f8e6a40a0",
+              "width": 1100,
+              "height": 675,
+              "bytes": 34214
+            }
+          }
+        },
+        "gemini": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.9417890310287476,
+            "cloudOcc": 0.3277245334160306,
+            "moonCss": [
+              632.8482586309135,
+              122.86127206923749
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.0279243745431942,
+            "moonCss": [
+              246.7145763839111,
+              67.93288379543665
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-gemini.webp",
+              "pngSha256": "44235abb729e611c59c0d16b375816722540a451818c8971c9d6fb83b18fc0dc",
+              "width": 1100,
+              "height": 675,
+              "bytes": 64360
+            },
+            "after": {
+              "file": "gemini.webp",
+              "pngSha256": "3a3c4b80e07d2e80c3ccd445b6939cd3f2252c912b55cbf6870b2b69ba635292",
+              "width": 1100,
+              "height": 675,
+              "bytes": 40424
+            }
+          }
+        },
+        "gemini-hit": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.9417890310287476,
+            "cloudOcc": 0.3277245334160306,
+            "moonCss": [
+              632.8482586309135,
+              122.86127206923749
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.0279243745431942,
+            "moonCss": [
+              246.7145763839111,
+              67.93288379543665
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 409.15999999999997,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-gemini-hit.webp",
+              "pngSha256": "bde511a6e71a492363efc339f2bf0590e4f14ff904c6bab886e34c4067cf9db5",
+              "width": 1100,
+              "height": 675,
+              "bytes": 64950
+            },
+            "after": {
+              "file": "gemini-hit.webp",
+              "pngSha256": "9c7dbb1ff76219766a8d000a70468b49dda3ff2107b31f35e3d68dfd19a7c63f",
+              "width": 1100,
+              "height": 675,
+              "bytes": 40956
+            }
+          }
+        }
+      }
+    },
+    "mobile": {
+      "renderer": "mobile-webgl2",
+      "before": {
+        "path": "mobile-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1,
+        "gpu": {
+          "size": [
+            400,
+            844
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 1704384,
+          "dataBytes": 3858646,
+          "outputBytes": 1350400,
+          "sourceTextureBytes": 2700800,
+          "uploadBytes": 2700800,
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            200,
+            422
+          ],
+          "maxK": 4,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 4,
+          "stratumA": {
+            "size": [
+              128,
+              32
+            ],
+            "format": "RGBA8",
+            "frames": 19,
+            "refreshes": 11,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              255.2327721049607,
+              168.50335182904809
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "parallax": 0.012
+          },
+          "environment": {
+            "format": "RGBA8",
+            "size": [
+              1024,
+              128
+            ],
+            "version": 5,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": null
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 3,
+          "impulses": 1,
+          "cover": 0,
+          "casts": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 7,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 1,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 4,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 101.06079931972789,
+          "atlasOriginX": 72,
+          "viewWidthMeters": 8.503401360544217
+        }
+      },
+      "after": {
+        "path": "mobile-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1,
+        "gpu": {
+          "size": [
+            400,
+            844
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 1729984,
+          "dataBytes": 5650134,
+          "outputBytes": 1350400,
+          "sourceTextureBytes": 2700800,
+          "uploadBytes": 2700800,
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            200,
+            422
+          ],
+          "maxK": 4,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 4,
+          "stratumA": {
+            "size": [
+              128,
+              32
+            ],
+            "format": "RGBA8",
+            "frames": 17,
+            "refreshes": 10,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.038164615631103516,
+            "cloudOcc": 0.7177332348697251,
+            "moonCss": [
+              69.10760744723234,
+              93.16946199688932
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 5,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              400,
+              64
+            ]
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 2,
+          "impulses": 0,
+          "cover": 0,
+          "blockers": 4,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 6,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 0,
+          "maxK": 4,
+          "atlasVersion": 4,
+          "portals": 2,
+          "camWorldX": 101.06079931972789,
+          "atlasOriginX": 72,
+          "viewWidthMeters": 8.503401360544217
+        }
+      },
+      "scenes": {
+        "transit": {
+          "camera": [
+            414,
+            -100,
+            1.04,
+            0
+          ],
+          "routeX": 266,
+          "floor": 0,
+          "clock": 4.49,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.02018008653087354,
+            "moonCss": [
+              309.51285210496064,
+              152.1443562172368
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 526,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.05801199667101388,
+            "moonCss": [
+              142.41092744723232,
+              79.92587713590902
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 526,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 10,
+          "files": {
+            "before": {
+              "file": "before-mobile-transit.webp",
+              "pngSha256": "68cfc8c4574a0f861d45006f49b28c3a6a8875cef6f64bbfccbccef2b3d430b1",
+              "width": 400,
+              "height": 844,
+              "bytes": 20120
+            },
+            "after": {
+              "file": "mobile-transit.webp",
+              "pngSha256": "34aae08d0aa3a258e2f8f883998c9391c7734d5067e6fcaa4214d098bf28f3bb",
+              "width": 400,
+              "height": 844,
+              "bytes": 15134
+            }
+          }
+        },
+        "sodium": {
+          "camera": [
+            990,
+            -100,
+            1.14,
+            -0.021
+          ],
+          "routeX": 1026,
+          "floor": 0,
+          "clock": 18.9,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              301.1363721049607,
+              160.1830294757299
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 536,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.10560202598571777,
+            "cloudOcc": 0.6731182938220467,
+            "moonCss": [
+              136.76300744723233,
+              88.27392250624612
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 536,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-mobile-sodium.webp",
+              "pngSha256": "1bd5f0dc2f39d2ecaca1bcd11fe4835a04aaba6b234ab161d0244c3479b16b52",
+              "width": 400,
+              "height": 844,
+              "bytes": 24256
+            },
+            "after": {
+              "file": "mobile-sodium.webp",
+              "pngSha256": "141050cc71971e583811fe6437b201f48302042e5fe45daee9e888755d9b8bce",
+              "width": 400,
+              "height": 844,
+              "bytes": 16910
+            }
+          }
+        },
+        "catwalk": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              124.11381210496069,
+              181.50946189307172
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.981655478477478,
+            "cloudOcc": 0.292601842493767,
+            "moonCss": [
+              331.7571674472323,
+              99.72926095744197
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 1,
+          "castsToRoadFromSupport": 1,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-mobile-catwalk.webp",
+              "pngSha256": "a2fa74a4bfe298ce5ae142b80cce708aa675f4c488725fdeef647005b0acbf40",
+              "width": 400,
+              "height": 844,
+              "bytes": 25968
+            },
+            "after": {
+              "file": "mobile-catwalk.webp",
+              "pngSha256": "5e2c0345a4781e7dd2667245e275d292430c325bab4b7d40ee12601040887e85",
+              "width": 400,
+              "height": 844,
+              "bytes": 18226
+            }
+          }
+        },
+        "sheet-lightning": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0.71,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              124.11381210496069,
+              181.50946189307172
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.981655478477478,
+            "cloudOcc": 0.292601842493767,
+            "moonCss": [
+              331.7571674472323,
+              99.72926095744197
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 2,
+          "castsToSupport": 1,
+          "castsToRoadFromSupport": 1,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-mobile-sheet-lightning.webp",
+              "pngSha256": "ce1a742d6ef9b0095c22daca771462685c0c63b782d3a7bb3718c091793eda2e",
+              "width": 400,
+              "height": 844,
+              "bytes": 26932
+            },
+            "after": {
+              "file": "mobile-sheet-lightning.webp",
+              "pngSha256": "2dd3f0e45fd27a0e841b86681d51a55a1dd0ff24e2830e472301fb2ee2dfb96e",
+              "width": 400,
+              "height": 844,
+              "bytes": 21216
+            }
+          }
+        },
+        "service-bay": {
+          "camera": [
+            7605,
+            -127,
+            1.04,
+            0.035
+          ],
+          "routeX": 7620,
+          "floor": 0,
+          "clock": 11.7,
+          "cloud": 0.55,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              219.76917210496072,
+              163.05728016608694
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 554.08,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.8493090867996216,
+            "cloudOcc": 0.37986344081440626,
+            "moonCss": [
+              11.256207447232342,
+              88.2114461658835
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 554.08,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-mobile-service-bay.webp",
+              "pngSha256": "5ee148fc5c51d442bd281491702a315516e782e30a3829d9340decf4c2847391",
+              "width": 400,
+              "height": 844,
+              "bytes": 29544
+            },
+            "after": {
+              "file": "mobile-service-bay.webp",
+              "pngSha256": "fbbe2688d19d82a538ed3564dfb7775937e1a04870e63b0482e48c8291c5d8e2",
+              "width": 400,
+              "height": 844,
+              "bytes": 19870
+            }
+          }
+        },
+        "market": {
+          "camera": [
+            6569,
+            -122,
+            1.06,
+            0
+          ],
+          "routeX": 6615,
+          "floor": 0,
+          "clock": 14.4,
+          "cloud": 0.33,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              231.1218921049607,
+              163.22675346181396
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 551.3199999999999,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.8111638426780701,
+            "cloudOcc": 0.39731978215819763,
+            "moonCss": [
+              29.58128744723232,
+              89.04699294466472
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 551.3199999999999,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 1,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 1,
+          "files": {
+            "before": {
+              "file": "before-mobile-market.webp",
+              "pngSha256": "33bd5c73124dc8eef9c87dee507a499291a7ed4fd55a26fa76c2ae80b7b299a1",
+              "width": 400,
+              "height": 844,
+              "bytes": 26402
+            },
+            "after": {
+              "file": "mobile-market.webp",
+              "pngSha256": "5f7cd4cf1881aa30f4f51df5b57cd2b92277a6f8331f7338dac16e70d989c3de",
+              "width": 400,
+              "height": 844,
+              "bytes": 19326
+            }
+          }
+        },
+        "gemini": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              255.2327721049607,
+              168.50335182904809
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.038164615631103516,
+            "cloudOcc": 0.7177332348697251,
+            "moonCss": [
+              69.10760744723234,
+              93.16946199688932
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-mobile-gemini.webp",
+              "pngSha256": "6c1baf0db4b3513a5834efce2f4d8cfe3dad566661e886a26bcc01c01f347fe4",
+              "width": 400,
+              "height": 844,
+              "bytes": 29196
+            },
+            "after": {
+              "file": "mobile-gemini.webp",
+              "pngSha256": "abe4f0774ec61df6893568224b81c0591a732d1170b5b1aa423bfe116419e320",
+              "width": 400,
+              "height": 844,
+              "bytes": 19652
+            }
+          }
+        },
+        "gemini-hit": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              255.2327721049607,
+              168.50335182904809
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.038164615631103516,
+            "cloudOcc": 0.7177332348697251,
+            "moonCss": [
+              69.10760744723234,
+              93.16946199688932
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-mobile-gemini-hit.webp",
+              "pngSha256": "3e57733c295b9a2cbe54c51ca60f822388567afd15bde5a849fec2304491edff",
+              "width": 400,
+              "height": 844,
+              "bytes": 29312
+            },
+            "after": {
+              "file": "mobile-gemini-hit.webp",
+              "pngSha256": "86ab2437a1772bf517a0324ece202aabc02d6e942064860ea1a40325f72b8af0",
+              "width": 400,
+              "height": 844,
+              "bytes": 20134
+            }
+          }
+        }
+      }
+    },
+    "canvas": {
+      "renderer": "mobile-canvas",
+      "before": {
+        "path": "mobile-canvas",
+        "reason": "Error: Software WebGL adapter; using Canvas fallback",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 3,
+          "impulses": 1,
+          "cover": 0,
+          "casts": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      "after": {
+        "path": "mobile-canvas",
+        "reason": "Error: Software WebGL adapter; using Canvas fallback",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 2,
+          "impulses": 0,
+          "cover": 0,
+          "blockers": 4,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      "scenes": {
+        "transit": {
+          "camera": [
+            414,
+            -100,
+            1.04,
+            0
+          ],
+          "routeX": 266,
+          "floor": 0,
+          "clock": 4.49,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.19008273137172732,
+            "moonCss": [
+              309.51285210496064,
+              152.1443562172368
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 526,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.05801199667101388,
+            "moonCss": [
+              142.41092744723232,
+              79.92587713590902
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.28431999683380127,
+            "skyHeight": 526,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 10,
+          "files": {
+            "before": {
+              "file": "before-canvas-transit.webp",
+              "pngSha256": "a6b798deec3ce6342ac514fa82f2e9e7c94ef0c614e45f9a6b26438ab1d76087",
+              "width": 500,
+              "height": 1055,
+              "bytes": 21146
+            },
+            "after": {
+              "file": "canvas-transit.webp",
+              "pngSha256": "d97d67924fdfa2ce0d14aba69b8cec53ec3786bf88717126fd54df220350ac3c",
+              "width": 500,
+              "height": 1055,
+              "bytes": 21178
+            }
+          }
+        },
+        "sodium": {
+          "camera": [
+            990,
+            -100,
+            1.14,
+            -0.021
+          ],
+          "routeX": 1026,
+          "floor": 0,
+          "clock": 18.9,
+          "cloud": 0.25,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.9872298836708069,
+            "cloudOcc": 0.2853749938309193,
+            "moonCss": [
+              301.1363721049607,
+              160.1830294757299
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 536,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.10560202598571777,
+            "cloudOcc": 0.6731182938220467,
+            "moonCss": [
+              136.76300744723233,
+              88.27392250624612
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.745199978351593,
+            "skyHeight": 536,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-canvas-sodium.webp",
+              "pngSha256": "461e850da73613c22aafcf5f364ff50f1f9698c3a7bb0d3c0c3ebc10f674471c",
+              "width": 500,
+              "height": 1055,
+              "bytes": 22746
+            },
+            "after": {
+              "file": "canvas-sodium.webp",
+              "pngSha256": "b9a2d763d0db09d9b9b414a8dbc87c5f94cb741808b4152f4bccae48a696a4f5",
+              "width": 500,
+              "height": 1055,
+              "bytes": 24052
+            }
+          }
+        },
+        "catwalk": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              124.11381210496069,
+              181.50946189307172
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.981655478477478,
+            "cloudOcc": 0.292601842493767,
+            "moonCss": [
+              331.7571674472323,
+              99.72926095744197
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-canvas-catwalk.webp",
+              "pngSha256": "25a4d94350b8f74402005b5211ebf931714fd2523f4c36645cb09d99d9774a0d",
+              "width": 500,
+              "height": 1055,
+              "bytes": 26266
+            },
+            "after": {
+              "file": "canvas-catwalk.webp",
+              "pngSha256": "91506395b8f2cb2587582ad01a3b828d40dfd54867ce71c805b3495b3135c05f",
+              "width": 500,
+              "height": 1055,
+              "bytes": 24884
+            }
+          }
+        },
+        "sheet-lightning": {
+          "camera": [
+            14179,
+            -154,
+            1.12,
+            0.024
+          ],
+          "routeX": 14092,
+          "floor": -142,
+          "clock": 32.5,
+          "cloud": 0.12,
+          "sheet": 0.71,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0,
+            "moonCss": [
+              124.11381210496069,
+              181.50946189307172
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.981655478477478,
+            "cloudOcc": 0.292601842493767,
+            "moonCss": [
+              331.7571674472323,
+              99.72926095744197
+            ],
+            "flash": 0.7099999785423279,
+            "lightningEpicenter": 0.3129465079307556,
+            "sweepPhase": 0.7674000263214111,
+            "skyHeight": 594.48,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-canvas-sheet-lightning.webp",
+              "pngSha256": "25a4d94350b8f74402005b5211ebf931714fd2523f4c36645cb09d99d9774a0d",
+              "width": 500,
+              "height": 1055,
+              "bytes": 26266
+            },
+            "after": {
+              "file": "canvas-sheet-lightning.webp",
+              "pngSha256": "9425e3afd63d1bf65a3123b3db555087a7bf274a9f4e9bf569dcd898414e387f",
+              "width": 500,
+              "height": 1055,
+              "bytes": 27288
+            }
+          }
+        },
+        "service-bay": {
+          "camera": [
+            7605,
+            -127,
+            1.04,
+            0.035
+          ],
+          "routeX": 7620,
+          "floor": 0,
+          "clock": 11.7,
+          "cloud": 0.55,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 1,
+            "cloudOcc": 0.026271904477474378,
+            "moonCss": [
+              219.76917210496072,
+              163.05728016608694
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 554.08,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.8493090867996216,
+            "cloudOcc": 0.37986344081440626,
+            "moonCss": [
+              11.256207447232342,
+              88.2114461658835
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.6565999984741211,
+            "skyHeight": 554.08,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 7,
+          "files": {
+            "before": {
+              "file": "before-canvas-service-bay.webp",
+              "pngSha256": "08bac2e6b2cf8d9f6e84a20807d9d40d2caf0a7ab3c80e082df600c70a23f2fd",
+              "width": 500,
+              "height": 1055,
+              "bytes": 28592
+            },
+            "after": {
+              "file": "canvas-service-bay.webp",
+              "pngSha256": "92c460b320d78c506426b11e5ae4bd2f8fbad7c2ec97008653166f63b96ea557",
+              "width": 500,
+              "height": 1055,
+              "bytes": 27410
+            }
+          }
+        },
+        "market": {
+          "camera": [
+            6569,
+            -122,
+            1.06,
+            0
+          ],
+          "routeX": 6615,
+          "floor": 0,
+          "clock": 14.4,
+          "cloud": 0.33,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.959034264087677,
+            "cloudOcc": 0.3146150022745133,
+            "moonCss": [
+              231.1218921049607,
+              163.22675346181396
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 551.3199999999999,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.8111638426780701,
+            "cloudOcc": 0.39731978215819763,
+            "moonCss": [
+              29.58128744723232,
+              89.04699294466472
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.36371438470669093,
+            "sweepPhase": 0.05660000070929527,
+            "skyHeight": 551.3199999999999,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 1,
+          "files": {
+            "before": {
+              "file": "before-canvas-market.webp",
+              "pngSha256": "9a2f80fbf3c783155d6c762ae4b221abf0754b820de348afc009570d305fbd32",
+              "width": 500,
+              "height": 1055,
+              "bytes": 24088
+            },
+            "after": {
+              "file": "canvas-market.webp",
+              "pngSha256": "8759acdccd404dd0dfe5c410b6c50162e3109bae8b3bf62024065a94f5dd9b5f",
+              "width": 500,
+              "height": 1055,
+              "bytes": 25792
+            }
+          }
+        },
+        "gemini": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.985931932926178,
+            "cloudOcc": 0.28717333364689973,
+            "moonCss": [
+              255.2327721049607,
+              168.50335182904809
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.038164615631103516,
+            "cloudOcc": 0.7177332348697251,
+            "moonCss": [
+              69.10760744723234,
+              93.16946199688932
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-canvas-gemini.webp",
+              "pngSha256": "9c89e803b519ab07ac50f32bc13ebe0ab34d4829032290c3c3b3443c570daf07",
+              "width": 500,
+              "height": 1055,
+              "bytes": 28496
+            },
+            "after": {
+              "file": "canvas-gemini.webp",
+              "pngSha256": "0be8834528551f984b6dfa642343fd26d4f1b5dc656cdace824c7355e36d34c4",
+              "width": 500,
+              "height": 1055,
+              "bytes": 27920
+            }
+          }
+        },
+        "gemini-hit": {
+          "camera": [
+            5055,
+            -142,
+            0.98,
+            0
+          ],
+          "routeX": 5010,
+          "floor": 0,
+          "clock": 21.4,
+          "cloud": 0.34,
+          "sheet": 0,
+          "beforeMoon": {
+            "moonVis": 0.985931932926178,
+            "cloudOcc": 0.28717333364689973,
+            "moonCss": [
+              255.2327721049607,
+              168.50335182904809
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "parallax": 0.012
+          },
+          "afterMoon": {
+            "moonVis": 0.038164615631103516,
+            "cloudOcc": 0.7177332348697251,
+            "moonCss": [
+              69.10760744723234,
+              93.16946199688932
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.7505672186892479,
+            "sweepPhase": 0.20419999957084656,
+            "skyHeight": 561.16,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "casts": 0,
+          "castsToSupport": 0,
+          "castsToRoadFromSupport": 0,
+          "blockers": 4,
+          "files": {
+            "before": {
+              "file": "before-canvas-gemini-hit.webp",
+              "pngSha256": "26a3be29218e3e20e631852ed818965dc62f645f6e1a280064172daa7f9ea0bb",
+              "width": 500,
+              "height": 1055,
+              "bytes": 29610
+            },
+            "after": {
+              "file": "canvas-gemini-hit.webp",
+              "pngSha256": "9e90f493f5eed7e45fd5d6f1c00c43210df8e7118270f427d7ae8c5d0bc12ce5",
+              "width": 500,
+              "height": 1055,
+              "bytes": 28468
+            }
+          }
+        }
+      }
+    }
+  },
+  "hit": {
+    "master": {
+      "control": {
+        "changedAtLeast3": 3924,
+        "changedAtLeast15": 1998,
+        "newlyNeutralWhite": 36
+      },
+      "noir": {
+        "changedAtLeast3": 756,
+        "changedAtLeast15": 718,
+        "newlyNeutralWhite": 0
+      }
+    },
+    "mobile": {
+      "control": {
+        "changedAtLeast3": 2652,
+        "changedAtLeast15": 1675,
+        "newlyNeutralWhite": 7
+      },
+      "noir": {
+        "changedAtLeast3": 507,
+        "changedAtLeast15": 486,
+        "newlyNeutralWhite": 0
+      }
+    },
+    "canvas": {
+      "control": {
+        "changedAtLeast3": 4415,
+        "changedAtLeast15": 3283,
+        "newlyNeutralWhite": 121
+      },
+      "noir": {
+        "changedAtLeast3": 818,
+        "changedAtLeast15": 713,
+        "newlyNeutralWhite": 0
+      }
+    }
+  },
+  "native": {
+    "scene": "native-market.webp",
+    "size": [
+      1475,
+      825
+    ],
+    "pngSha256": "50634342476699e7d895866f8c39b840f733b8686a947b2ebdbaf811ee660326",
+    "presentation": {
+      "path": "master-webgl2",
+      "reason": "active",
+      "requestedScale": 1.25,
+      "backingScale": 1.25,
+      "gpu": {
+        "size": [
+          1475,
+          825
+        ],
+        "format": "RGBA16F",
+        "hdrBytes": 16311432,
+        "targetBytes": 16409736,
+        "dataBytes": 6207190,
+        "outputBytes": 4867500,
+        "sourceTextureBytes": 9735000,
+        "uploadBytes": 9735000,
+        "frameDraws": 18,
+        "rainInstances": 350,
+        "moteInstances": 84,
+        "bloomLevels": 4,
+        "bloomUpPasses": 4,
+        "roadSize": [
+          1475,
+          825
+        ],
+        "maxK": 8,
+        "uboBytes": 2432,
+        "uboOffsets": [
+          0,
+          640,
+          1664,
+          2176
+        ],
+        "stratumVersion": 1,
+        "stratumA": {
+          "size": [
+            256,
+            64
+          ],
+          "format": "RGBA16F",
+          "frames": 1,
+          "refreshes": 1,
+          "refreshed": true,
+          "live": true,
+          "moonVis": 0.791951060295105,
+          "cloudOcc": 0.405634931709483,
+          "moonCss": [
+            289.5551319693353,
+            68.64101535004983
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.6930611640494316,
+          "sweepPhase": 0.011133333668112755,
+          "skyHeight": 466.88676599773385,
+          "moonDiameterCss": 36,
+          "parallax": 0.018
+        },
+        "environment": {
+          "format": "RGBA8",
+          "irradiance": "RGB9_E5",
+          "blockerLimit": 24,
+          "size": [
+            1024,
+            160
+          ],
+          "version": 1,
+          "skyBands": [
+            [
+              256,
+              60
+            ],
+            [
+              256,
+              70
+            ]
+          ],
+          "castCoverage": [
+            1024,
+            96
+          ]
+        },
+        "sectorLut": [
+          1024,
+          32
+        ]
+      },
+      "field": {
+        "emitters": 2,
+        "impulses": 0,
+        "cover": 0,
+        "blockers": 7,
+        "casts": 0,
+        "deckCasts": 0,
+        "roadFromDeck": 0,
+        "quads": 7,
+        "overflow": false,
+        "trailTriangles": 0,
+        "landings": 0
+      },
+      "sacr": {
+        "version": "3.1",
+        "primitives": 7,
+        "feet": 2,
+        "arcs": 0,
+        "emissives": 0,
+        "scarves": 2,
+        "undersides": 0,
+        "maxK": 8,
+        "atlasVersion": 1,
+        "portals": 1,
+        "camWorldX": 129.21401515151516,
+        "atlasOriginX": 96,
+        "viewWidthMeters": 20.113636363636374
+      }
+    },
+    "captureOnly": true
+  },
+  "transport": {
+    "master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "tier": "master",
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "upload": {
+        "maxError": 0,
+        "shadow": [
+          [
+            0,
+            15,
+            217,
+            0
+          ],
+          [
+            255,
+            231,
+            242,
+            250
+          ],
+          [
+            0,
+            162,
+            255,
+            42
+          ],
+          [
+            0,
+            92,
+            242,
+            0
+          ]
+        ],
+        "irradiance": [
+          [
+            126,
+            46,
+            8
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      },
+      "uploadError": 0,
+      "traceError": 0,
+      "rayBlocked": true,
+      "admitted": true,
+      "noImpulse": 0.009745025634765623,
+      "blocked": 0.009745025634765623,
+      "unblocked": 0.02037531534830729,
+      "receipts": {
+        "size": [
+          920,
+          587
+        ],
+        "format": "RGBA16F",
+        "hdrBytes": 7309520,
+        "targetBytes": 7397840,
+        "dataBytes": 6207190,
+        "outputBytes": 2160160,
+        "sourceTextureBytes": 4320320,
+        "uploadBytes": 4320320,
+        "frameDraws": 20,
+        "rainInstances": 350,
+        "moteInstances": 84,
+        "bloomLevels": 4,
+        "bloomUpPasses": 4,
+        "roadSize": [
+          920,
+          587
+        ],
+        "maxK": 8,
+        "uboBytes": 2432,
+        "uboOffsets": [
+          0,
+          640,
+          1664,
+          2176
+        ],
+        "stratumVersion": 2,
+        "stratumA": {
+          "size": [
+            256,
+            64
+          ],
+          "format": "RGBA16F",
+          "frames": 7,
+          "refreshes": 7,
+          "refreshed": true,
+          "live": true,
+          "moonVis": 0.9141411781311035,
+          "cloudOcc": 0.34559305382104294,
+          "moonCss": [
+            19.220445702907455,
+            60.238378317948545
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.7505672186892479,
+          "sweepPhase": 0.7017999887466431,
+          "skyHeight": 359.8,
+          "moonDiameterCss": 36,
+          "parallax": 0.018
+        },
+        "environment": {
+          "format": "RGBA8",
+          "irradiance": "RGB9_E5",
+          "blockerLimit": 24,
+          "size": [
+            1024,
+            160
+          ],
+          "version": 3,
+          "skyBands": [
+            [
+              256,
+              60
+            ],
+            [
+              256,
+              70
+            ]
+          ],
+          "castCoverage": [
+            920,
+            96
+          ]
+        },
+        "sectorLut": [
+          1024,
+          32
+        ]
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      }
+    },
+    "mobile": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "tier": "mobile",
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "upload": {
+        "maxError": 0,
+        "shadow": [
+          [
+            0,
+            15,
+            217,
+            0
+          ],
+          [
+            255,
+            231,
+            242,
+            250
+          ],
+          [
+            0,
+            162,
+            255,
+            42
+          ],
+          [
+            0,
+            92,
+            242,
+            0
+          ]
+        ],
+        "irradiance": [
+          [
+            126,
+            46,
+            8
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      },
+      "uploadError": 0,
+      "traceError": 0,
+      "rayBlocked": true,
+      "admitted": true,
+      "noImpulse": 0.009934640522875817,
+      "blocked": 0.009934640522875817,
+      "unblocked": 0.020915032679738564,
+      "receipts": {
+        "size": [
+          400,
+          844
+        ],
+        "format": "RGBA8",
+        "hdrBytes": 0,
+        "targetBytes": 1729984,
+        "dataBytes": 5650134,
+        "outputBytes": 1350400,
+        "sourceTextureBytes": 2700800,
+        "uploadBytes": 2700800,
+        "frameDraws": 11,
+        "rainInstances": 0,
+        "moteInstances": 0,
+        "bloomLevels": 0,
+        "bloomUpPasses": 0,
+        "roadSize": [
+          200,
+          422
+        ],
+        "maxK": 4,
+        "uboBytes": 2432,
+        "uboOffsets": [
+          0,
+          640,
+          1664,
+          2176
+        ],
+        "stratumVersion": 2,
+        "stratumA": {
+          "size": [
+            128,
+            32
+          ],
+          "format": "RGBA8",
+          "frames": 6,
+          "refreshes": 3,
+          "refreshed": false,
+          "live": true,
+          "moonVis": 1,
+          "cloudOcc": 0.031356162788186884,
+          "moonCss": [
+            83.81780744723233,
+            91.54626254656549
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.7505672186892479,
+          "sweepPhase": 0.6466000080108643,
+          "skyHeight": 546.8,
+          "moonDiameterCss": 36,
+          "parallax": 0.018
+        },
+        "environment": {
+          "format": "RGBA8",
+          "irradiance": "RGB9_E5",
+          "blockerLimit": 24,
+          "size": [
+            1024,
+            160
+          ],
+          "version": 3,
+          "skyBands": [
+            [
+              256,
+              60
+            ],
+            [
+              256,
+              70
+            ]
+          ],
+          "castCoverage": [
+            400,
+            64
+          ]
+        },
+        "sectorLut": [
+          256,
+          16
+        ]
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      }
+    }
+  },
+  "lifecycle": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "software": false,
+    "touch": false,
+    "viewport": {
+      "width": 1180,
+      "height": 660,
+      "deviceScaleFactor": 1
+    },
+    "denial": "",
+    "rows": [
+      {
+        "label": "engage",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          920,
+          587
+        ],
+        "scene": [
+          920,
+          587
+        ],
+        "hud": [
+          736,
+          470
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            920,
+            587
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 7309520,
+          "targetBytes": 7397840,
+          "dataBytes": 6207190,
+          "outputBytes": 2160160,
+          "sourceTextureBytes": 4320320,
+          "uploadBytes": 4320320,
+          "frameDraws": 16,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            920,
+            587
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 1,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 6,
+            "refreshes": 6,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.0975257009267807,
+            "cloudOcc": 0.6776210908199515,
+            "moonCss": [
+              266.6787657029074,
+              48.890482841606286
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.21821977198123932,
+            "skyHeight": 332.4201065134812,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 1,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              920,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 1,
+          "portals": 2,
+          "camWorldX": -1.25,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 17.617021276595747
+        }
+      },
+      {
+        "label": "context lost",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          0,
+          0
+        ],
+        "scene": [
+          920,
+          587
+        ],
+        "hud": [
+          736,
+          470
+        ],
+        "hidden": true,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 0,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "mobile-canvas",
+        "reason": "WebGL context lost",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      {
+        "label": "context restored",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          920,
+          587
+        ],
+        "scene": [
+          920,
+          587
+        ],
+        "hud": [
+          736,
+          470
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            920,
+            587
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 7309520,
+          "targetBytes": 7397840,
+          "dataBytes": 6207190,
+          "outputBytes": 2160160,
+          "sourceTextureBytes": 4320320,
+          "uploadBytes": 4320320,
+          "frameDraws": 16,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            920,
+            587
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 1,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 1,
+            "refreshes": 1,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.0975257009267807,
+            "cloudOcc": 0.6776210908199515,
+            "moonCss": [
+              266.6787657029074,
+              48.890482841606286
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.21821977198123932,
+            "skyHeight": 332.4201065134812,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 1,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              920,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 1,
+          "portals": 2,
+          "camWorldX": -1.25,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 17.617021276595747
+        }
+      },
+      {
+        "label": "inspect",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          0,
+          0
+        ],
+        "scene": [
+          920,
+          587
+        ],
+        "hud": [
+          736,
+          470
+        ],
+        "hidden": true,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 0,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "mobile-canvas",
+        "reason": "not requested",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      {
+        "label": "inspect closed",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          920,
+          587
+        ],
+        "scene": [
+          920,
+          587
+        ],
+        "hud": [
+          736,
+          470
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            920,
+            587
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 7309520,
+          "targetBytes": 7397840,
+          "dataBytes": 6207190,
+          "outputBytes": 2160160,
+          "sourceTextureBytes": 4320320,
+          "uploadBytes": 4320320,
+          "frameDraws": 16,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            920,
+            587
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 1,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 1,
+            "refreshes": 1,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.0975257009267807,
+            "cloudOcc": 0.6776210908199515,
+            "moonCss": [
+              266.6787657029074,
+              48.890482841606286
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.21821977198123932,
+            "skyHeight": 332.4201065134812,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 1,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              920,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 1,
+          "portals": 2,
+          "camWorldX": -1.25,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 17.617021276595747
+        }
+      },
+      {
+        "label": "over pixel cap",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          1589,
+          1080
+        ],
+        "scene": [
+          1589,
+          1080
+        ],
+        "hud": [
+          1810,
+          1230
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "mobile-webgl2",
+        "reason": "Mobile active · Master viewport budget",
+        "requestedScale": 1.25,
+        "backingScale": 0.8780487804878049,
+        "gpu": {
+          "size": [
+            1589,
+            1080
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 8630832,
+          "dataBytes": 5650134,
+          "outputBytes": 6864480,
+          "sourceTextureBytes": 13728960,
+          "uploadBytes": 13728960,
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            795,
+            540
+          ],
+          "maxK": 4,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 1,
+          "stratumA": {
+            "size": [
+              128,
+              32
+            ],
+            "format": "RGBA8",
+            "frames": 1,
+            "refreshes": 1,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.37071430683135986,
+            "cloudOcc": 0.5611474238360461,
+            "moonCss": [
+              654.8832097625559,
+              127.94743381952281
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.21821977198123932,
+            "skyHeight": 869.9504915140039,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 1,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              512,
+              64
+            ]
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 7,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 4,
+          "atlasVersion": 1,
+          "portals": 2,
+          "camWorldX": -0.7189283860923711,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 16.55487804878049
+        }
+      },
+      {
+        "label": "resized",
+        "seed": 42,
+        "before": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.08333333333333333,
+          5
+        ],
+        "dpr": 1.25,
+        "draw": [
+          875,
+          560
+        ],
+        "scene": [
+          875,
+          560
+        ],
+        "hud": [
+          700,
+          448
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            875,
+            560
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 6642472,
+          "targetBytes": 6726472,
+          "dataBytes": 6207190,
+          "outputBytes": 1960000,
+          "sourceTextureBytes": 3920000,
+          "uploadBytes": 3920000,
+          "frameDraws": 16,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            875,
+            560
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 1,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 1,
+            "refreshes": 1,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.09750781208276749,
+            "cloudOcc": 0.677631232047411,
+            "moonCss": [
+              253.6243026071246,
+              46.60199215540344
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.21821977198123932,
+            "skyHeight": 316.8600164213608,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 1,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              875,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 1,
+          "portals": 2,
+          "camWorldX": -1.2305518617021274,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 17.578125
+        }
+      },
+      {
+        "label": "retry",
+        "seed": 43,
+        "before": [
+          240,
+          0,
+          100,
+          0.09999999999999999,
+          6
+        ],
+        "after": [
+          240,
+          0,
+          100,
+          0.09999999999999999,
+          6
+        ],
+        "dpr": 1.25,
+        "draw": [
+          875,
+          560
+        ],
+        "scene": [
+          875,
+          560
+        ],
+        "hud": [
+          700,
+          448
+        ],
+        "hidden": false,
+        "config": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        },
+        "nonEmpty": true,
+        "gpuResources": 1,
+        "propAtlases": 1,
+        "overSurfaces": 0,
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            875,
+            560
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 6642472,
+          "targetBytes": 6726472,
+          "dataBytes": 6207190,
+          "outputBytes": 1960000,
+          "sourceTextureBytes": 3920000,
+          "uploadBytes": 3920000,
+          "frameDraws": 16,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            875,
+            560
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 2,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 9,
+            "refreshes": 9,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.11566469818353653,
+            "cloudOcc": 0.6676987271236263,
+            "moonCss": [
+              251.2637542496841,
+              46.60523733132565
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.8458407710492611,
+            "sweepPhase": 0.21779246628284454,
+            "skyHeight": 316.8422791923219,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 3,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              875,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 13,
+          "feet": 4,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 2,
+          "portals": 2,
+          "camWorldX": -1.25,
+          "atlasOriginX": -10,
+          "viewWidthMeters": 17.578125
+        }
+      }
+    ],
+    "dryRaster": [
+      {
+        "path": "master-webgl2",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 226,
+        "drySamples": 20323,
+        "work": {
+          "openClips": 2,
+          "streaks": 0,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      },
+      {
+        "path": "mobile-webgl2",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 230,
+        "drySamples": 13010,
+        "work": {
+          "openClips": 2,
+          "streaks": 76,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      },
+      {
+        "path": "mobile-canvas",
+        "roll": 0.09,
+        "dryDiff": 0,
+        "wetDiff": 340,
+        "drySamples": 20323,
+        "work": {
+          "openClips": 2,
+          "streaks": 76,
+          "splashes": 1,
+          "wetMarks": 0
+        }
+      }
+    ],
+    "dryResolve": [
+      {
+        "mode": "master",
+        "roadSize": [
+          875,
+          560
+        ],
+        "drySamples": 24930,
+        "dryEaveSamples": 411,
+        "dryDiff": 0,
+        "wetDiff": 66144,
+        "roll": 0.09
+      },
+      {
+        "mode": "mobile",
+        "roadSize": [
+          350,
+          224
+        ],
+        "drySamples": 15961,
+        "dryEaveSamples": 270,
+        "dryDiff": 0,
+        "wetDiff": 23266,
+        "roll": 0.09
+      }
+    ],
+    "end": {
+      "stores": 0,
+      "bytes": 0,
+      "presentation": {
+        "path": "mobile-canvas",
+        "reason": "released",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 1,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 11,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 10,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      "finish": [
+        0,
+        0,
+        true
+      ]
+    }
+  },
+  "denials": {
+    "float": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denial": "float",
+      "rows": [
+        {
+          "label": "float",
+          "seed": 42,
+          "before": [
+            240,
+            0,
+            100,
+            0.15,
+            9
+          ],
+          "after": [
+            240,
+            0,
+            100,
+            0.15,
+            9
+          ],
+          "dpr": 1.25,
+          "draw": [
+            736,
+            470
+          ],
+          "scene": [
+            736,
+            470
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "hidden": false,
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "nonEmpty": true,
+          "gpuResources": 1,
+          "propAtlases": 1,
+          "overSurfaces": 0,
+          "path": "mobile-webgl2",
+          "reason": "Mobile active · Error: RGBA16F color buffer unavailable",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": {
+            "size": [
+              736,
+              470
+            ],
+            "format": "RGBA8",
+            "hdrBytes": 0,
+            "targetBytes": 1778752,
+            "dataBytes": 5650134,
+            "outputBytes": 1383680,
+            "sourceTextureBytes": 2767360,
+            "uploadBytes": 2767360,
+            "frameDraws": 6,
+            "rainInstances": 0,
+            "moteInstances": 0,
+            "bloomLevels": 0,
+            "bloomUpPasses": 0,
+            "roadSize": [
+              368,
+              235
+            ],
+            "maxK": 4,
+            "uboBytes": 2432,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176
+            ],
+            "stratumVersion": 1,
+            "stratumA": {
+              "size": [
+                128,
+                32
+              ],
+              "format": "RGBA8",
+              "frames": 5,
+              "refreshes": 3,
+              "refreshed": true,
+              "live": true,
+              "moonVis": 0.37348467111587524,
+              "cloudOcc": 0.5601386295417671,
+              "moonCss": [
+                266.71865370290743,
+                48.92462588872171
+              ],
+              "flash": 0,
+              "lightningEpicenter": 0.6930611640494316,
+              "sweepPhase": 0.21888457238674164,
+              "skyHeight": 332.44319556709974,
+              "moonDiameterCss": 36,
+              "parallax": 0.018
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                160
+              ],
+              "version": 1,
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": [
+                512,
+                64
+              ]
+            },
+            "sectorLut": [
+              256,
+              16
+            ]
+          },
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "3.1",
+            "primitives": 7,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": -1.25,
+            "atlasOriginX": -10,
+            "viewWidthMeters": 17.617021276595747
+          }
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "presentation": {
+          "path": "mobile-canvas",
+          "reason": "released",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        },
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "backing": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denial": "surface",
+      "rows": [
+        {
+          "label": "surface",
+          "seed": 42,
+          "before": [
+            240,
+            0,
+            100,
+            0.11666666666666665,
+            7
+          ],
+          "after": [
+            240,
+            0,
+            100,
+            0.11666666666666665,
+            7
+          ],
+          "dpr": 1.25,
+          "draw": [
+            0,
+            0
+          ],
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "hidden": true,
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "nonEmpty": true,
+          "gpuResources": 0,
+          "propAtlases": 1,
+          "overSurfaces": 0,
+          "path": "mobile-canvas",
+          "reason": "surface budget",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "presentation": {
+          "path": "mobile-canvas",
+          "reason": "released",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        },
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "noDriver": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denial": "auto",
+      "rows": [
+        {
+          "label": "auto",
+          "seed": 42,
+          "before": [
+            240,
+            0,
+            100,
+            0.11666666666666665,
+            7
+          ],
+          "after": [
+            240,
+            0,
+            100,
+            0.11666666666666665,
+            7
+          ],
+          "dpr": 1.25,
+          "draw": [
+            0,
+            0
+          ],
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "hidden": true,
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "nonEmpty": true,
+          "gpuResources": 0,
+          "propAtlases": 1,
+          "overSurfaces": 0,
+          "path": "mobile-canvas",
+          "reason": "Error: Software WebGL adapter; using Canvas fallback",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "presentation": {
+          "path": "mobile-canvas",
+          "reason": "released",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 11,
+            "casts": 0,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        },
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    }
+  },
+  "weather": {
+    "master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "tier": "master",
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "timingExtension": true,
+      "view": [
+        736,
+        470
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "lock": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "clearFrame": {
+        "size": [
+          256,
+          64
+        ],
+        "format": "RGBA16F",
+        "frames": 6,
+        "refreshes": 6,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 1,
+        "cloudOcc": 0.23849396902193154,
+        "moonCss": [
+          239.58448570290744,
+          56.1631164415658
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.36371438470669093,
+        "sweepPhase": 0.23175999522209167,
+        "skyHeight": 358.05,
+        "moonDiameterCss": 36,
+        "parallax": 0.018,
+        "actor": 0.97,
+        "castActors": 1,
+        "cpuMoon": 1,
+        "canvasSkyAlpha": 0
+      },
+      "hiddenFrame": {
+        "size": [
+          256,
+          64
+        ],
+        "format": "RGBA16F",
+        "frames": 7,
+        "refreshes": 7,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 0,
+        "cloudOcc": 0.932361930888984,
+        "moonCss": [
+          235.25488570290747,
+          52.71305043745691
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.6930611640494316,
+        "sweepPhase": 0.15960000455379486,
+        "skyHeight": 358.05,
+        "moonDiameterCss": 36,
+        "parallax": 0.018,
+        "actor": 0,
+        "castActors": 0,
+        "cpuMoon": 0,
+        "canvasSkyAlpha": 0
+      },
+      "cadence": [
+        {
+          "i": 0,
+          "flash": 0,
+          "frame": 11,
+          "refresh": 11,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.25909290290747
+        },
+        {
+          "i": 1,
+          "flash": 0,
+          "frame": 12,
+          "refresh": 12,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.26330010290746
+        },
+        {
+          "i": 2,
+          "flash": 0,
+          "frame": 13,
+          "refresh": 13,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.26750730290746
+        },
+        {
+          "i": 3,
+          "flash": 0.84,
+          "frame": 14,
+          "refresh": 14,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.27171450290746
+        },
+        {
+          "i": 4,
+          "flash": 0.52,
+          "frame": 15,
+          "refresh": 15,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.27592170290745
+        },
+        {
+          "i": 5,
+          "flash": 0.52,
+          "frame": 16,
+          "refresh": 16,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.28012890290745
+        },
+        {
+          "i": 6,
+          "flash": 0,
+          "frame": 17,
+          "refresh": 17,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.28433610290745
+        },
+        {
+          "i": 7,
+          "flash": 0,
+          "frame": 18,
+          "refresh": 18,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 235.28854330290744
+        }
+      ],
+      "storm": {
+        "near": 0.07513866870383892,
+        "far": 0,
+        "global": 0.353179931640625,
+        "epicenter": 0.6930611640494316,
+        "nearCount": 2624,
+        "farCount": 3840
+      },
+      "parity": {
+        "driverCloud": 0.9411764705882353,
+        "cpuCloud": 0.9424247772794371,
+        "driverMoon": 0,
+        "cpuMoon": 0,
+        "maxCenterError": 0.0012483066912017948,
+        "skyMaxError": 0,
+        "litSamples": 752
+      },
+      "shadow": {
+        "castActors": 1,
+        "openDarkened": 19957,
+        "coveredMax": 0.005925496419270834,
+        "wetRadianceDeltaError": 0.003662109375,
+        "maxOpenDarkening": 0.04742431640625,
+        "samples": 65708,
+        "localReturnDelta": 0,
+        "localReturnPeak": 0.0305938720703125
+      },
+      "service": {
+        "litRoofPixels": 10985,
+        "shelteredSamples": 16507,
+        "maxRoofDelta": 0.2396240234375,
+        "maxShelteredDelta": 0
+      },
+      "handoff": {
+        "lunar": {
+          "body": {
+            "slope": 0.9027777777777778,
+            "gain": 0.9883
+          },
+          "crate": {
+            "slope": 0.9027777777777778,
+            "gain": 0.9883
+          },
+          "vertices": 312
+        },
+        "blocked": {
+          "body": {
+            "slope": 0.9027777777777778,
+            "gain": 0
+          },
+          "crate": {
+            "slope": 0.9027777777777778,
+            "gain": 0
+          },
+          "vertices": 0
+        },
+        "practical": {
+          "body": {
+            "slope": -1.4,
+            "gain": 0.6928709225810741
+          },
+          "crate": {
+            "slope": -1.4,
+            "gain": 0.8594272359025162
+          },
+          "vertices": 312
+        },
+        "moonVis": 0
+      },
+      "selectedLights": null,
+      "quiet": {
+        "flash": 0,
+        "refreshed": true,
+        "time": 0,
+        "scarves": 0,
+        "landings": 0
+      },
+      "repair": {
+        "alphaBefore": 0,
+        "alphaAfter": 255,
+        "path": "mobile-canvas",
+        "sameTick": true,
+        "lock": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        }
+      },
+      "roofGeometry": {
+        "span": [
+          13915,
+          14292
+        ],
+        "slabSlots": 53,
+        "bodyCount": 12,
+        "crowd": {
+          "version": "3.1",
+          "primitives": 64,
+          "feet": 16,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 2,
+          "portals": 1,
+          "camWorldX": 289.3567548734581,
+          "atlasOriginX": 262,
+          "viewWidthMeters": 14.786490253083835
+        },
+        "sample": {
+          "covered": {
+            "pixels": 34791,
+            "changed": 7653,
+            "max": 0.002840677897135416,
+            "mean": 0.0004044487747882853,
+            "wetWithoutSlab": 0.014750162760416666
+          },
+          "open": {
+            "pixels": 30917,
+            "changed": 0,
+            "max": 0,
+            "mean": 0,
+            "wetWithoutSlab": 0.03310139973958333
+          }
+        }
+      },
+      "final": {
+        "path": "master-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": {
+          "size": [
+            920,
+            587
+          ],
+          "format": "RGBA16F",
+          "hdrBytes": 7309520,
+          "targetBytes": 7397840,
+          "dataBytes": 6207190,
+          "outputBytes": 2160160,
+          "sourceTextureBytes": 4320320,
+          "uploadBytes": 4320320,
+          "frameDraws": 17,
+          "rainInstances": 350,
+          "moteInstances": 0,
+          "bloomLevels": 4,
+          "bloomUpPasses": 4,
+          "roadSize": [
+            920,
+            587
+          ],
+          "maxK": 8,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 3,
+          "stratumA": {
+            "size": [
+              256,
+              64
+            ],
+            "format": "RGBA16F",
+            "frames": 25,
+            "refreshes": 25,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 1,
+            "cloudOcc": 0.24420030247094549,
+            "moonCss": [
+              194.0189857029074,
+              52.776804769598236
+            ],
+            "flash": 0.8799999952316284,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.44787999987602234,
+            "skyHeight": 358.05,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 3,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              920,
+              96
+            ]
+          },
+          "sectorLut": [
+            1024,
+            32
+          ]
+        },
+        "field": {
+          "emitters": 2,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 7,
+          "casts": 1,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 12,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 8,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 8,
+          "atlasVersion": 3,
+          "portals": 2,
+          "camWorldX": 77.55348261711256,
+          "atlasOriginX": 52,
+          "viewWidthMeters": 14.684701432441548
+        }
+      },
+      "stores": 15,
+      "teardown": [
+        0,
+        0
+      ]
+    },
+    "mobile": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "tier": "mobile",
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "timingExtension": true,
+      "view": [
+        400,
+        844
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "lock": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "clearFrame": {
+        "size": [
+          128,
+          32
+        ],
+        "format": "RGBA8",
+        "frames": 5,
+        "refreshes": 3,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 1,
+        "cloudOcc": 0.23707551845392882,
+        "moonCss": [
+          124.23560744723233,
+          91.52100253266673
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3129465079307556,
+        "sweepPhase": 0.3813599944114685,
+        "skyHeight": 545.05,
+        "moonDiameterCss": 36,
+        "parallax": 0.018,
+        "actor": 0.97,
+        "castActors": 1,
+        "cpuMoon": 1,
+        "canvasSkyAlpha": 0
+      },
+      "hiddenFrame": {
+        "size": [
+          128,
+          32
+        ],
+        "format": "RGBA8",
+        "frames": 7,
+        "refreshes": 4,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 0,
+        "cloudOcc": 1,
+        "moonCss": [
+          110.93000744723233,
+          80.2436758579413
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.6930611640494316,
+        "sweepPhase": 0.15960000455379486,
+        "skyHeight": 545.05,
+        "moonDiameterCss": 36,
+        "parallax": 0.018,
+        "actor": 0,
+        "castActors": 0,
+        "cpuMoon": 0,
+        "canvasSkyAlpha": 0
+      },
+      "cadence": [
+        {
+          "i": 0,
+          "flash": 0,
+          "frame": 11,
+          "refresh": 6,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.9342146472323
+        },
+        {
+          "i": 1,
+          "flash": 0,
+          "frame": 12,
+          "refresh": 6,
+          "didRefresh": false,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.9342146472323
+        },
+        {
+          "i": 2,
+          "flash": 0,
+          "frame": 13,
+          "refresh": 7,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.94262904723232
+        },
+        {
+          "i": 3,
+          "flash": 0.84,
+          "frame": 14,
+          "refresh": 8,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.94683624723231
+        },
+        {
+          "i": 4,
+          "flash": 0.52,
+          "frame": 15,
+          "refresh": 9,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.95104344723234
+        },
+        {
+          "i": 5,
+          "flash": 0.52,
+          "frame": 16,
+          "refresh": 9,
+          "didRefresh": false,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.95104344723234
+        },
+        {
+          "i": 6,
+          "flash": 0,
+          "frame": 17,
+          "refresh": 10,
+          "didRefresh": true,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.95945784723233
+        },
+        {
+          "i": 7,
+          "flash": 0,
+          "frame": 18,
+          "refresh": 10,
+          "didRefresh": false,
+          "moon": 0,
+          "cpuMoon": 0,
+          "moonX": 110.95945784723233
+        }
+      ],
+      "storm": {
+        "near": 0.07388815656981754,
+        "far": 0,
+        "global": 0.4284659746251442,
+        "epicenter": 0.6930611640494316,
+        "nearCount": 672,
+        "farCount": 960
+      },
+      "parity": {
+        "driverCloud": 1,
+        "cpuCloud": 1,
+        "driverMoon": 0,
+        "cpuMoon": 0,
+        "maxCenterError": 0,
+        "skyMaxError": 0,
+        "litSamples": 748
+      },
+      "shadow": null,
+      "service": {
+        "litRoofPixels": 5789,
+        "shelteredSamples": 10570,
+        "maxRoofDelta": 0.20130718954248367,
+        "maxShelteredDelta": 0
+      },
+      "handoff": null,
+      "selectedLights": {
+        "admitted": [
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "indices": [
+          1,
+          3
+        ],
+        "uniforms": [
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            3
+          ],
+          [
+            1,
+            3
+          ]
+        ],
+        "left": 77,
+        "right": 28,
+        "impulses": 2
+      },
+      "quiet": {
+        "flash": 0,
+        "refreshed": true,
+        "time": 0,
+        "scarves": 0,
+        "landings": 0
+      },
+      "repair": {
+        "alphaBefore": 0,
+        "alphaAfter": 255,
+        "path": "mobile-canvas",
+        "sameTick": true,
+        "lock": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": false
+        }
+      },
+      "roofGeometry": {
+        "span": [
+          13915,
+          14292
+        ],
+        "slabSlots": 62,
+        "bodyCount": 30,
+        "crowd": {
+          "version": "3.1",
+          "primitives": 64,
+          "feet": 16,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 4,
+          "atlasVersion": 2,
+          "portals": 2,
+          "camWorldX": 292.43411657258036,
+          "atlasOriginX": 282,
+          "viewWidthMeters": 8.63176685483927
+        },
+        "sample": {
+          "covered": {
+            "pixels": 15672,
+            "changed": 856,
+            "max": 0.00392156862745098,
+            "mean": 0.0003431455958255334,
+            "wetWithoutSlab": 0.013071895424836602
+          },
+          "open": {
+            "pixels": 4504,
+            "changed": 0,
+            "max": 0,
+            "mean": 0,
+            "wetWithoutSlab": 0.0130718954248366
+          }
+        }
+      },
+      "final": {
+        "path": "mobile-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1,
+        "gpu": {
+          "size": [
+            400,
+            844
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 1729984,
+          "dataBytes": 5650134,
+          "outputBytes": 1350400,
+          "sourceTextureBytes": 2700800,
+          "uploadBytes": 2700800,
+          "frameDraws": 7,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            200,
+            422
+          ],
+          "maxK": 4,
+          "uboBytes": 2432,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176
+          ],
+          "stratumVersion": 3,
+          "stratumA": {
+            "size": [
+              128,
+              32
+            ],
+            "format": "RGBA8",
+            "frames": 26,
+            "refreshes": 17,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.22313138842582703,
+            "cloudOcc": 0.6180161381598795,
+            "moonCss": [
+              69.69410744723231,
+              80.3407273835205
+            ],
+            "flash": 0.8799999952316284,
+            "lightningEpicenter": 0.6930611640494316,
+            "sweepPhase": 0.44787999987602234,
+            "skyHeight": 545.05,
+            "moonDiameterCss": 36,
+            "parallax": 0.018
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              160
+            ],
+            "version": 3,
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": [
+              400,
+              64
+            ]
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 7,
+          "casts": 1,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "3.1",
+          "primitives": 5,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 4,
+          "atlasVersion": 3,
+          "portals": 2,
+          "camWorldX": 80.67629438553436,
+          "atlasOriginX": 52,
+          "viewWidthMeters": 8.439077895597952
+        }
+      },
+      "stores": 13,
+      "teardown": [
+        0,
+        0
+      ]
+    }
+  },
+  "settings": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "software": true,
+    "touch": true,
+    "viewport": {
+      "width": 400,
+      "height": 844,
+      "deviceScaleFactor": 2,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "compact": {
+      "start": [
+        286,
+        40,
+        88,
+        44
+      ],
+      "end": [
+        286,
+        40,
+        88,
+        44
+      ],
+      "contentScrolls": true,
+      "scrollTop": 304,
+      "viewportScroll": 0,
+      "sliders": [
+        [
+          "Shake intensity",
+          "100%"
+        ],
+        [
+          "Sound effects volume",
+          "80%"
+        ],
+        [
+          "Music volume",
+          "55%"
+        ]
+      ]
+    },
+    "locked": {
+      "min": 1.25,
+      "final": 1.25,
+      "steps": [],
+      "sameRun": true
+    },
+    "adaptive": {
+      "min": 0.75,
+      "final": 1.25,
+      "steps": [
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 1.15,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 1.05,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 0.95,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 0.85,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 0.75,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 0.85,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 0.95,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 1.05,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 1.15,
+          "shadow": "cast+props",
+          "stableHud": true
+        },
+        {
+          "type": "quality",
+          "active": "ultra",
+          "scale": 1.25,
+          "shadow": "cast+props",
+          "stableHud": true
+        }
+      ],
+      "sameRun": true
+    },
+    "persisted": {
+      "preset": "ULTRA",
+      "adaptiveEnabled": false,
+      "renderScale": 1.25,
+      "showFPS": true,
+      "volume": 0.4
+    }
+  },
+  "route": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "software": true,
+    "touch": true,
+    "viewport": {
+      "width": 400,
+      "height": 844,
+      "deviceScaleFactor": 2,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "retries": 20,
+    "realUI": true,
+    "rows": [
+      {
+        "run": 0,
+        "seed": 42,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9375744,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 24,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1522.6000000014901
+      },
+      {
+        "run": 1,
+        "seed": 43,
+        "retired": true,
+        "from": 240,
+        "end": 10874.8158288956,
+        "gross": 10634.8158288956,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10113024,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 25,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1322.7000000029802
+      },
+      {
+        "run": 2,
+        "seed": 44,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10350592,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 24,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1188.5
+      },
+      {
+        "run": 3,
+        "seed": 45,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9711616,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 25,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1237.8999999985099
+      },
+      {
+        "run": 4,
+        "seed": 46,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10178560,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 26,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1298.6000000014901
+      },
+      {
+        "run": 5,
+        "seed": 47,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9949184,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 24,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1186
+      },
+      {
+        "run": 6,
+        "seed": 48,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 86,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9854976,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 22,
+        "maxSplashes": 3,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1310
+      },
+      {
+        "run": 7,
+        "seed": 49,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9474048,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 21,
+        "maxSplashes": 3,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1333.5
+      },
+      {
+        "run": 8,
+        "seed": 50,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10248192,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 23,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1307.6999999955297
+      },
+      {
+        "run": 9,
+        "seed": 51,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9961472,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 29,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1363
+      },
+      {
+        "run": 10,
+        "seed": 52,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9936896,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 24,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1300.8999999985099
+      },
+      {
+        "run": 11,
+        "seed": 53,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 86,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9994240,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 24,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1251.7000000029802
+      },
+      {
+        "run": 12,
+        "seed": 54,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10121216,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 22,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1224.7999999970198
+      },
+      {
+        "run": 13,
+        "seed": 55,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9822208,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 27,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1209.7000000029802
+      },
+      {
+        "run": 14,
+        "seed": 56,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9363456,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 26,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1202.7999999970198
+      },
+      {
+        "run": 15,
+        "seed": 57,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9519104,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 25,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 9,
+        "elapsed": 1183.8999999985099
+      },
+      {
+        "run": 16,
+        "seed": 58,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10043392,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 26,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1101.6000000014901
+      },
+      {
+        "run": 17,
+        "seed": 59,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9879552,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 23,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1104.8999999985099
+      },
+      {
+        "run": 18,
+        "seed": 60,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 89,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 9203712,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 23,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 10,
+        "elapsed": 1165.7999999970198
+      },
+      {
+        "run": 19,
+        "seed": 61,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 87,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 6,
+        "maxBytes": 10010624,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 27,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1082.3999999985099
+      },
+      {
+        "run": 20,
+        "seed": 62,
+        "retired": true,
+        "from": 240,
+        "end": 10870.14916222898,
+        "gross": 10630.14916222898,
+        "steps": 1865,
+        "paints": 88,
+        "gates": 2,
+        "shelters": 3,
+        "maxThreats": 7,
+        "maxBytes": 10182656,
+        "maxStores": 14,
+        "maxChunks": 2,
+        "maxWeather": 23,
+        "maxSplashes": 2,
+        "maxDryRain": 0,
+        "offscreen": true,
+        "evictions": 8,
+        "elapsed": 1139.8999999985099
+      }
+    ],
+    "end": {
+      "starts": [
+        {
+          "seed": 42,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 43,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 44,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 45,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 46,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 47,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 48,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 49,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 50,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 51,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 52,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 53,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 54,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 55,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 56,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 57,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 58,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 59,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 60,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 61,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        },
+        {
+          "seed": 62,
+          "tick": 0,
+          "gate": "ahead",
+          "x": 240,
+          "scale": 1
+        }
+      ],
+      "sceneSamples": 0,
+      "lastStoresReleased": true,
+      "liveBytes": 0,
+      "liveStores": 0
+    }
+  },
+  "cpuBake": {
+    "node": "v22.22.3",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.60GHz",
+    "seed": 42,
+    "units": "ms wall-clock, no rendering",
+    "firstChunk": 62.43683999999999,
+    "warmCodeNewTiles": {
+      "n": 36,
+      "p50": 3.498,
+      "p95": 10.173,
+      "max": 30.469
+    },
+    "coldAtlas": 23.91438100000005,
+    "overlapShifts": {
+      "n": 9,
+      "p50": 10.699,
+      "p95": 13.85,
+      "max": 13.85
+    },
+    "heldFrames": {
+      "n": 750,
+      "p50": 0,
+      "p95": 0,
+      "max": 0.087
+    }
+  },
+  "notes": [
+    "Software WebGL2 renders and readbacks, not hardware FPS or GPU times.",
+    "Full-suite failures exactly match the control."
+  ]
+}

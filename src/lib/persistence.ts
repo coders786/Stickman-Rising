@@ -1,64 +1,62 @@
-import { z } from 'zod'
-import { SWORD_ORDER } from '@/game/combat/swords'
+import { SWORD_ORDER, type SwordId } from '@/game/combat/swords'
 import { DEFAULT_SETTINGS, type GameSettings, type QualityLevel } from '@/game/core/types'
 
 export const SAVE_KEY = 'sr_save_v1'
 export const SETTINGS_KEY = 'sr_settings_v1'
 export const NAME_KEY = 'sr_name_v1'
-const counter = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).catch(0)
-const saveSchema = z.object({
-  totalKills: counter,
-  best: counter,
-  unlocked: z.array(z.enum(SWORD_ORDER)).catch(['katana']),
-})
-export type SaveData = z.infer<typeof saveSchema>
-export function parseSave(raw: string | null): SaveData {
+
+export interface SaveData { totalKills: number; best: number; unlocked: SwordId[] }
+
+// Local records need only a few field checks. Keep the API schema library on
+// the leaderboard path instead of downloading it to start the game.
+function record(raw: string | null): Record<string, unknown> {
   try {
-    const parsed = saveSchema.parse(JSON.parse(raw ?? '{}'))
-    return { ...parsed, unlocked: [...new Set(['katana' as const, ...parsed.unlocked])] }
-  } catch {
-    return { totalKills: 0, best: 0, unlocked: ['katana'] }
+    const value: unknown = JSON.parse(raw ?? '{}')
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>
+  } catch { /* corrupt JSON */ }
+  return {}
+}
+
+const swordIds = new Set<unknown>(SWORD_ORDER)
+const counter = (value: unknown): number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+
+export function parseSave(raw: string | null): SaveData {
+  const { totalKills, best, unlocked } = record(raw)
+  // Like the old schema, discard a malformed list rather than salvage an
+  // arbitrary subset. A valid list retains its order after de-duplication.
+  const legal = Array.isArray(unlocked) && unlocked.every((id): id is SwordId => swordIds.has(id)) ? unlocked : []
+  return { totalKills: counter(totalKills), best: counter(best), unlocked: [...new Set<SwordId>(['katana', ...legal])] }
+}
+
+const bool = (value: unknown, fallback: boolean): boolean => typeof value === 'boolean' ? value : fallback
+const range = (value: unknown, min: number, max: number, fallback: number): number =>
+  typeof value === 'number' && value >= min && value <= max ? value : fallback
+
+export function parseSettings(raw: string | null, coarse = false, detected?: QualityLevel): GameSettings {
+  const saved = record(raw)
+  const start = detected ?? (coarse ? 'medium' : DEFAULT_SETTINGS.quality)
+  const q = saved.quality
+  const validTier = q === 'low' || q === 'medium' || q === 'high' || q === 'ultra'
+  let quality = validTier ? q : start
+  // Legacy releases wrote 'low' even if the player didn't choose it. Keep
+  // re-detecting those records, but never override a v2 saved tier ceiling.
+  if (q === 'low' && saved.qualityV !== 2 && saved.qualityV !== 3 && detected) quality = detected
+  return {
+    quality,
+    // Fresh detection has headroom to adapt. Do not migrate a saved lock
+    // or mistake an older release's implicit adaptive-on value for a choice.
+    adaptiveQuality: saved.qualityV === 3 ? saved.adaptiveQuality === true : !validTier && !!detected && start !== 'low',
+    level: DEFAULT_SETTINGS.level, // Legacy save field; never chooses a route.
+    shake: bool(saved.shake, DEFAULT_SETTINGS.shake),
+    shakeIntensity: range(saved.shakeIntensity, 0.2, 1.5, DEFAULT_SETTINGS.shakeIntensity),
+    sfxVolume: range(saved.sfxVolume, 0, 1, DEFAULT_SETTINGS.sfxVolume),
+    musicVolume: range(saved.musicVolume, 0, 1, DEFAULT_SETTINGS.musicVolume),
+    muted: bool(saved.muted, DEFAULT_SETTINGS.muted),
+    showFps: bool(saved.showFps, DEFAULT_SETTINGS.showFps),
+    gore: saved.gore === 'energy' || saved.gore === 'blood' ? saved.gore : DEFAULT_SETTINGS.gore,
   }
 }
-export function parseSettings(raw: string | null, coarse = false, detected?: QualityLevel): GameSettings {
-  // THE FIRST IMPRESSION. A brand-new player previously started at a hard-coded
-  // 'low', which is why a desktop with a discrete GPU could launch the game into
-  // its cheapest tier and conclude the graphics were bad. The default is now the
-  // device's own starting tier (render/graphics.ts `classifyDevice`), clamped by
-  // its ceiling; `coarse` (touch) still floors at 'medium' because a phone should
-  // never be handed a cast-shadow pass it will immediately shed.
-  const start: QualityLevel = detected ?? (coarse ? 'medium' : DEFAULT_SETTINGS.quality)
-  const defaults: GameSettings = { ...DEFAULT_SETTINGS, quality: start }
-  const unit = (fallback: number) => z.number().min(0).max(1).catch(fallback)
-  const schema = z.object({
-    quality: z.enum(['low', 'medium', 'high', 'ultra']).catch(defaults.quality),
-    level: z.enum(['rooftop']).catch(defaults.level),
-    shake: z.boolean().catch(defaults.shake),
-    shakeIntensity: z.number().min(0.2).max(1.5).catch(defaults.shakeIntensity),
-    sfxVolume: unit(defaults.sfxVolume),
-    musicVolume: unit(defaults.musicVolume),
-    muted: z.boolean().catch(defaults.muted),
-    showFps: z.boolean().catch(defaults.showFps),
-    gore: z.enum(['energy', 'blood']).catch(defaults.gore),
-  })
-  try {
-    const parsed = JSON.parse(raw ?? '{}') as Record<string, unknown>
-    const out = schema.parse(parsed)
-    /* MIGRATION — a saved quality of 'low' may not be a CHOICE.
-     *
-     * Every player who has touched this build before today has `quality: 'low'`
-     * in localStorage, because that was the hard-coded default. Keeping it would
-     * pin exactly the people who complained about the graphics to the cheapest
-     * tier, and they would reasonably conclude nothing changed. So: a legacy
-     * record (no `qualityV`) with quality 'low' is treated as "never chosen" and
-     * re-detected once. Records written from now on carry `qualityV: 2`, and from
-     * then on 'low' means what it says. */
-    if (parsed.qualityV !== 2 && parsed.quality === 'low' && detected) {
-      out.quality = detected
-    }
-    return out
-  } catch { return defaults }
-}
+
 export function readStorage(key: string): string | null {
   try { return window.localStorage.getItem(key) } catch { return null }
 }

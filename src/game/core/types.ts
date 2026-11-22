@@ -14,24 +14,28 @@ export interface Rect {
 
 export type Facing = 1 | -1
 
-export type GamePhase = 'attract' | 'playing' | 'paused' | 'gameover'
+export type GamePhase = 'attract' | 'preparing' | 'playing' | 'paused' | 'gameover'
 
 export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra'
-/** NEON ROOFTOP is the only stage left — the moonlit zen scene is gone. */
+/** Legacy save slot. Procedural run art does not change saved progress. */
 export type LevelId = 'rooftop'
 
 export interface RunStats {
   score: number
   kills: number
   maxCombo: number
+  /** Legacy leaderboard field; normal runs store the sector here. */
   wave: number
+  distanceMetres?: number
   timeAlive: number
   bestRank: string
 }
 
 export interface GameSettings {
   quality: QualityLevel
-  /** Stage choice is independent from rendering fidelity. */
+  /** Scale scene resolution under measured load, without changing preset detail. */
+  adaptiveQuality: boolean
+  /** Kept in the settings schema for compatibility; not a preview selector. */
   level: LevelId
   shake: boolean
   shakeIntensity: number
@@ -43,9 +47,9 @@ export interface GameSettings {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  // 'low' is the 120 fps default: the storm's rain budget and the fx
-  // particle level key off it, and every graphics engine is gone anyway.
+  // SSR/headless fallback; the browser loads its saved or detected preset.
   quality: 'low',
+  adaptiveQuality: false,
   level: 'rooftop',
   shake: true,
   shakeIntensity: 1,
@@ -57,13 +61,21 @@ export const DEFAULT_SETTINGS: GameSettings = {
 }
 
 /** Events the Game emits to the React layer (discrete, never per-frame). */
+export type RunPreparationStage = 'opening' | 'renderer' | 'background' | 'lighting' | 'frame' | 'settling' | 'surface'
+
 export type GameEvent =
+  | { type: 'runPreparing'; stage: RunPreparationStage; presented: boolean }
+  | { type: 'runRevealing'; id: number }
+  | { type: 'runUnavailable' }
   | { type: 'error' }
+  | { type: 'runStarted' }
   | { type: 'gameover'; stats: RunStats }
   | { type: 'wave'; wave: number; boss: boolean }
   | { type: 'unlock'; swordId: string }
   | { type: 'rank'; rank: string }
   | { type: 'bossSpawn' }
+  | { type: 'quality'; active: QualityLevel; scale: number }
+  | { type: 'actions'; overdrive: boolean; service: boolean; execute: boolean }
   | { type: 'phase'; phase: GamePhase }
 
 /** The slice of the world that combat entities are allowed to touch. */
@@ -78,6 +90,12 @@ export interface WorldRef {
   timeScale: number
   arenaMinX: number
   arenaMaxX: number
+  platformAt?(x: number): import('../stage/route').Platform | null
+  enemyTravel?(from: number, to: number): number
+  projectileBlocked?(from: number, to: number): boolean
+  isSheltered?(x: number): boolean
+  wetFootfall?(x: number, y: number, strength: number, vx: number, landing?: boolean): void
+  bridgeWind?(x: number, simTime: number): number
   quality: QualityLevel
   gore: 'energy' | 'blood'
   /** live combo state (read-only): PAVE escalation reads the live hit count

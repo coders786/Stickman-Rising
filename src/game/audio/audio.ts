@@ -177,6 +177,8 @@ export class AudioEngine {
   private timer: number | null = null;
   private musicWanted = false;
   private warned = false;
+  private rain: { source: AudioBufferSourceNode; filter: BiquadFilterNode; out: GainNode; level: number } | null = null;
+  private rainUnavailable = false;
 
   /* --- sequencer state --- */
   private step = 0;
@@ -198,6 +200,7 @@ export class AudioEngine {
 
   /** Release audio resources when the game unmounts. */
   destroy(): void {
+    this.stopRainAmbience();
     this.stopMusic();
     for (const voice of this.voices) {
       for (const source of voice.srcs) { source.onended = null; stopSource(source, 0); }
@@ -228,6 +231,49 @@ export class AudioEngine {
   setMuted(m: boolean): void {
     this.muted = m;
     this.applyVolumes();
+  }
+
+  /** One quiet, continuous weather voice on the SFX bus. No new audio asset,
+   * random draws, scheduled thunder, or dependency on hearing a weather cue. */
+  setRainAmbience(drive: number): void {
+    const graph = this.graph;
+    if (!graph || this.rainUnavailable) return;
+    const level = Number.isFinite(drive) ? clamp01(drive) : 0;
+    if (!this.rain) {
+      if (level <= .008 || this.muted || graph.ctx.state === 'closed') return;
+      const { ctx } = graph;
+      let source: AudioBufferSourceNode | undefined, filter: BiquadFilterNode | undefined, out: GainNode | undefined;
+      try {
+        source = ctx.createBufferSource();
+        source.buffer = graph.noise; source.loop = true;
+        filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.Q.value = .35;
+        filter.frequency.value = 690;
+        out = ctx.createGain(); out.gain.value = 0;
+        source.connect(filter); filter.connect(out); out.connect(graph.sfx);
+        source.start();
+        this.rain = { source, filter, out, level: 0 };
+      } catch {
+        if (source) { stopSource(source, 0); disconnectNode(source); }
+        if (filter) disconnectNode(filter);
+        if (out) disconnectNode(out);
+        this.rainUnavailable = true;
+        return;
+      }
+    }
+    const voice = this.rain;
+    if (level === voice.level || (level > 0 && Math.abs(voice.level - level) < .012)) return;
+    voice.level = level;
+    const now = graph.ctx.currentTime;
+    voice.filter.frequency.setTargetAtTime(630 + level * 2100, now, .15);
+    voice.out.gain.setTargetAtTime(level * .082, now, .17);
+  }
+
+  stopRainAmbience(): void {
+    const voice = this.rain;
+    if (!voice) return;
+    this.rain = null;
+    stopSource(voice.source, 0);
+    disconnectNode(voice.source); disconnectNode(voice.filter); disconnectNode(voice.out);
   }
 
   /** Battle intensity 0..1 — morphs the running loop (filters/layers). */

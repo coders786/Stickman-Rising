@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Camera, PLAY_ZOOM } from '../src/game/core/camera'
-import { WaveDirector } from '../src/game/world/waves'
+import { WaveDirector, WAVE_SPAWN_SEARCH_LIMIT } from '../src/game/world/waves'
 
 for(const [width,height] of [[750,704],[1000,520],[640,360]]) {
  test(`a grounded run keeps the same road through wave 2 (${width}×${height})`,()=>{
@@ -15,6 +15,42 @@ for(const [width,height] of [[750,704],[1000,520],[640,360]]) {
   assert.ok(waves.wave>=2)
  })
 }
+
+test('procedural waves replay from a run seed and cap both queue size and placement retries', () => {
+  const collect = (seed: number) => {
+    const spawned: [string, number, number][] = []
+    const waves = new WaveDirector({
+      onWaveStart() {}, onWaveClear() {}, getPlayerX: () => 1300,
+      spawnEnemy: (kind, x, scale) => spawned.push([kind, x, scale]),
+    })
+    waves.reset(seed)
+    waves.update(2.2, 0)
+    assert.ok(waves.enemiesRemaining <= 30)
+    waves.update(10, 0)
+    return spawned
+  }
+  assert.ok(WAVE_SPAWN_SEARCH_LIMIT <= 8)
+  assert.deepEqual(collect(42), collect(42))
+  assert.notDeepEqual(collect(42), collect(43))
+
+  const huge = new WaveDirector({ onWaveStart() {}, onWaveClear() {}, spawnEnemy() {}, getPlayerX: () => 1300 })
+  huge.wave = 10_000
+  ;(huge as unknown as { phaseT: number }).phaseT = 0
+  huge.update(0, 0)
+  assert.ok(huge.enemiesRemaining <= 30, 'an extreme procedural wave must not build an unbounded spawn queue')
+})
+
+test('eight unlucky wave samples fall back outside the player safety buffer', () => {
+  const xs: number[] = []
+  const waves = new WaveDirector({ onWaveStart() {}, onWaveClear() {}, getPlayerX: () => 1270,
+    spawnEnemy: (_kind, x) => xs.push(x) })
+  ;(waves as unknown as { random: () => number }).random = () => .5
+  waves.reset(42)
+  waves.update(2.2, 0)
+  waves.update(10, 0)
+  assert.ok(xs.length > 0)
+  assert.ok(xs.every(x => Math.abs(x - 1270) >= 240), 'no exhausted retry can spawn on the player')
+})
 
 test('a high jump stays in view, and neither its apex nor a cinematic leaks into a new run',()=>{
  const c=new Camera();c.setViewport(750,704);c.startOnRoad(1300);const ground=c.y

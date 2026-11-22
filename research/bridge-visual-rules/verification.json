@@ -1,0 +1,4207 @@
+{
+  "controlBuild": "ncp34jFV9QnZXWSlWSvfb",
+  "served": {
+    "build": "YthrLk2hBQ8JzYrg-ORS3",
+    "port": 3000,
+    "sameStagedRoot": true,
+    "rootSha256": "fe939a587e8d89346e6d13da0cfae86f1138bf8f8106c6d8e03af76857fbf824",
+    "hostOriginAccepted": true,
+    "iframeHeadersClear": true,
+    "immutableLinks": 13,
+    "assets": {
+      "deck-pier.webp": {
+        "bytes": 4086,
+        "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+      },
+      "l1.webp": {
+        "bytes": 38162,
+        "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+      },
+      "l2.webp": {
+        "bytes": 49280,
+        "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+      },
+      "metro-street.webp": {
+        "bytes": 19810,
+        "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+      },
+      "packed-v4/deck.rgba.br": {
+        "bytes": 390660,
+        "sha256": "7d20e19e118feb1d8c47e7f15d24be5eac7823691e575fa4ef834032d08cc967"
+      },
+      "packed-v4/l1-bc7.ktx": {
+        "bytes": 328188,
+        "sha256": "c6d40eb4aef3a9f0a5a1bf5c8b4e5c01e6f3d0038dadd0930242d7b006759c12"
+      },
+      "packed-v4/l1-etc2.ktx": {
+        "bytes": 328188,
+        "sha256": "c7a38ed5d40152a389a9200f2e3a0705746d366676477a23c4aab81d2ed8772b"
+      },
+      "packed-v4/l1.ktx2": {
+        "bytes": 47822,
+        "sha256": "551247480a03ef1f1a64efade38c308527ad8f39092c2dba305a625cc87b05d2"
+      },
+      "packed-v4/l2-astc.ktx": {
+        "bytes": 383228,
+        "sha256": "984367ca3b575c6505718999507494e707314c1a878b28cf9e0c33f0d9d65da6"
+      },
+      "packed-v4/l2-bc7.ktx": {
+        "bytes": 383228,
+        "sha256": "8f408bfa2a902711d9ec55064768134708a5027e4a93d2461752f5b792a57cc1"
+      },
+      "packed-v4/l2-etc2.ktx": {
+        "bytes": 383228,
+        "sha256": "259a006496c6ed891705360cea18f623be0f29d1516b3f90aa82d2d4a0dfb2ff"
+      },
+      "packed-v4/l2.ktx2": {
+        "bytes": 383552,
+        "sha256": "441e22b8ad76a945cba152c5ccf895ffd944ee4147730dec39328e632369fe03"
+      },
+      "packed-v4/lut-16.rgba.br": {
+        "bytes": 48036,
+        "sha256": "0e907d9f9d0c74c3292d104a252cf7dfa1cb6c35b9fd51e88e1aeac471c9457d"
+      },
+      "packed-v4/lut-32.rgba.br": {
+        "bytes": 356963,
+        "sha256": "01fe43184de64092cdcee31021875af39c921bdd779c496535c297d2428509b1"
+      },
+      "packed-v4/ripple-astc.ktx": {
+        "bytes": 5580,
+        "sha256": "f249377a90c3eacc32cfb922c01be6af9f042f19bb3a5d6a887b6d2cb795c16d"
+      },
+      "packed-v4/ripple-bc5.ktx": {
+        "bytes": 5580,
+        "sha256": "2855e1d57d660cdabbe1432fb7d24fab04d8bc878b5d6d72e08ca4076bf9773b"
+      },
+      "packed-v4/ripple.ktx2": {
+        "bytes": 5824,
+        "sha256": "b8c84f3a26e3411391839aba8f1164483c29396d102f74e75729884ad58310c9"
+      },
+      "packed-v4/sizes.json": {
+        "bytes": 324,
+        "sha256": "76527f84c6ce5a591e8b275f806be38a1f2a82adcbffe140fd802215cce8e05a"
+      },
+      "props-v2.webp": {
+        "bytes": 5910,
+        "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+      },
+      "sky-basis-v4.rgba.br": {
+        "bytes": 394238,
+        "sha256": "deac3fa8d03d5927a595b1195b8cbdb5d7329ae88d6172c0b1822737ed5bac01"
+      },
+      "stratum-a.webp": {
+        "bytes": 250,
+        "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+      }
+    },
+    "reel": {
+      "01-last-train.png": {
+        "bytes": 2021554,
+        "sha256": "564fe2b87a083bd28c660ecb91c43115cc5a8cdeb5e328757b7e5f798e1b5d8d"
+      },
+      "02-rain-step.png": {
+        "bytes": 2373978,
+        "sha256": "d5ce1eadc262fd5228f9a8ba17ec8ca7562713c84d179352dc427e6a62c9d3be"
+      },
+      "03-shadow-ronin.png": {
+        "bytes": 1999215,
+        "sha256": "41b55be89e9ed23dcae535f03148b29b21750c496ae3e3cb8377ecc088133c4f"
+      },
+      "04-brass-guard.png": {
+        "bytes": 1728172,
+        "sha256": "7c38b1f21ec2d1d13f4f1e734bbef4b7e7e61064dfe045bd5bbbd5e6b23e42cb"
+      },
+      "05-murasama.png": {
+        "bytes": 1684228,
+        "sha256": "f7dfd1125edbc5d74a03434b5f6427608d960588033ce90f0f4bfbfaa1bd401d"
+      },
+      "06-crossing.png": {
+        "bytes": 2297520,
+        "sha256": "66137ea308470bf6acf33b3cb934f990bde06fde2ab2da5c9c1879203b95d0d4"
+      },
+      "07-still-steel.png": {
+        "bytes": 2308551,
+        "sha256": "718f500b76401a9582135efe99b9058ecd6488b9c46a16948b73bb540f281a85"
+      },
+      "08-night-line.png": {
+        "bytes": 2338806,
+        "sha256": "24af766eabc99e38fbbf140a91956c821482afc70897d72d66ae08c733a6dbb5"
+      }
+    },
+    "scoresApi": true,
+    "retiredMirror404": true
+  },
+  "bridgeAssetsAndReelFilesUnchangedFromControl": true,
+  "tests": {
+    "isolatedProductionBuild": "passed",
+    "bridge": {
+      "tests": 218,
+      "pass": 218,
+      "fail": 0,
+      "failedTests": []
+    },
+    "shaderProgramsLinked": 17,
+    "fullSuite": {
+      "tests": 607,
+      "pass": 602,
+      "fail": 5,
+      "failedTests": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ],
+      "sameFailuresAsControl": true
+    }
+  },
+  "fixture": {
+    "seed": 42,
+    "wetnessInputs": [
+      0,
+      0.94
+    ],
+    "rainDuringWaterRead": 0,
+    "fogInputs": [
+      0.08,
+      0.86
+    ],
+    "units": "Display Rec.709 code values, 0–255. Detail is mean adjacent-pixel absolute luma difference.",
+    "scope": "Headless browser correctness only, not frame rates or physical device timing."
+  },
+  "captures": {
+    "metroMasterBeforeAfter": [
+      "metro-before.webp",
+      "metro-after.webp"
+    ],
+    "metroMasterClearAndHaze": [
+      "metro-clear.webp",
+      "metro-haze.webp"
+    ],
+    "marketMasterDryAndWet": [
+      "night-market-dry.webp",
+      "night-market-wet.webp"
+    ],
+    "marketOptimizedPortrait": "market-portrait.webp",
+    "gardenMaster": "sky-garden.webp",
+    "metroCanvas": "metro-canvas.webp",
+    "metroCanvasWithDeniedCityAssets": "metro-denied-city.webp"
+  },
+  "masterAtSameWeather": {
+    "metroCity": {
+      "rect": [
+        12,
+        190,
+        33,
+        152
+      ],
+      "before": {
+        "mean": 60.4313,
+        "adjacentDetail": 4.4502
+      },
+      "after": {
+        "mean": 57.7401,
+        "adjacentDetail": 3.9617
+      },
+      "pixels": 5016,
+      "changedRgbPixels": 4661
+    },
+    "metroShop": {
+      "rect": [
+        455,
+        223,
+        190,
+        62
+      ],
+      "before": {
+        "mean": 42.0859,
+        "adjacentDetail": 3.6852
+      },
+      "after": {
+        "mean": 42.0859,
+        "adjacentDetail": 3.6852
+      },
+      "pixels": 11780,
+      "changedRgbPixels": 0
+    },
+    "marketCity": {
+      "rect": [
+        16,
+        190,
+        206,
+        150
+      ],
+      "before": {
+        "mean": 41.2012,
+        "adjacentDetail": 3.4356
+      },
+      "after": {
+        "mean": 39.9567,
+        "adjacentDetail": 3.002
+      },
+      "pixels": 30900,
+      "changedRgbPixels": 29190
+    },
+    "marketShop": {
+      "rect": [
+        433,
+        210,
+        281,
+        70
+      ],
+      "before": {
+        "mean": 94.0928,
+        "adjacentDetail": 5.2241
+      },
+      "after": {
+        "mean": 94.0928,
+        "adjacentDetail": 5.2241
+      },
+      "pixels": 19670,
+      "changedRgbPixels": 0
+    }
+  },
+  "controlDryVersusWet": {
+    "master": {
+      "metro": {
+        "exposed": {
+          "mean": 1.0667,
+          "magnitude": 1.0667,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 2912
+        },
+        "covered": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 11392
+        }
+      },
+      "market": {
+        "exposed": {
+          "mean": 6.5937,
+          "magnitude": 6.5937,
+          "changed": 0.5771,
+          "darker": 0,
+          "brighter": 0.5771,
+          "size": 11744
+        },
+        "covered": null
+      }
+    },
+    "touch": {
+      "metro": {
+        "exposed": null,
+        "covered": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 9536
+        }
+      },
+      "market": {
+        "exposed": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 11520
+        },
+        "covered": null
+      }
+    },
+    "canvas": {
+      "metro": {
+        "exposed": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 2912
+        },
+        "covered": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 11392
+        }
+      },
+      "market": {
+        "exposed": {
+          "mean": 0,
+          "magnitude": 0,
+          "changed": 0,
+          "darker": 0,
+          "brighter": 0,
+          "size": 11744
+        },
+        "covered": null
+      }
+    }
+  },
+  "visuals": {
+    "master": {
+      "path": "master-webgl2",
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "deny": false,
+      "stats": {
+        "metro": {
+          "pose": [
+            557,
+            0
+          ],
+          "camera": [
+            483,
+            -120,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0.24,
+            "fog": 0.3,
+            "rain": 0
+          },
+          "frame": {
+            "id": 41,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": -640,
+          "sky": true,
+          "draws": 13,
+          "actor": {
+            "mean": 2.1989,
+            "magnitude": 3.5506,
+            "changed": 0.2169,
+            "darker": 0.0535,
+            "brighter": 0.1634,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.05405967408147525
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.09592819911332358
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.017183016837315813
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 483,
+            "exposed": {
+              "mean": -3.5136,
+              "magnitude": 3.5136,
+              "changed": 0.8211,
+              "darker": 0.8211,
+              "brighter": 0,
+              "size": 2912
+            },
+            "covered": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 11392
+            }
+          },
+          "air": {
+            "clear": {
+              "cameraX": 483,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 56.4326,
+                "adjacent": 4.0683
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 42.4945,
+                "adjacent": 3.6674
+              }
+            },
+            "haze": {
+              "cameraX": 483,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 61.8767,
+                "adjacent": 1.9941
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 42.3732,
+                "adjacent": 3.5238
+              }
+            }
+          }
+        },
+        "market": {
+          "pose": [
+            6434,
+            0
+          ],
+          "camera": [
+            6460,
+            -112,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0,
+            "fog": 0.33,
+            "rain": 0
+          },
+          "frame": {
+            "id": 67,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 5376,
+          "sky": true,
+          "draws": 13,
+          "actor": {
+            "mean": -1.8601,
+            "magnitude": 6.0256,
+            "changed": 0.2299,
+            "darker": 0.1395,
+            "brighter": 0.0904,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.15829594930013022,
+                "brightest": 0.14566603602625414
+              },
+              {
+                "sky": 0.3014532871972318,
+                "lunar": 0.18302969137827557,
+                "brightest": 0.13013032603247202
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.08904147148132324,
+                "brightest": 0.18745690644757643
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.06925447781880696,
+                "brightest": 0.11739051570130311
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.12066846895387791
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.13380130301905654
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 6460,
+            "exposed": {
+              "mean": -2.7432,
+              "magnitude": 2.9253,
+              "changed": 0.4881,
+              "darker": 0.4881,
+              "brighter": 0,
+              "size": 11744
+            },
+            "covered": null
+          },
+          "air": {
+            "clear": {
+              "cameraX": 6460,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 37.3952,
+                "adjacent": 3.1265
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 94.3157,
+                "adjacent": 5.1442
+              }
+            },
+            "haze": {
+              "cameraX": 6460,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 45.3059,
+                "adjacent": 1.8682
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 94.522,
+                "adjacent": 5.0129
+              }
+            }
+          },
+          "soaked": 0.94
+        },
+        "garden": {
+          "pose": [
+            14446,
+            -142
+          ],
+          "camera": [
+            14500,
+            -185,
+            1.22
+          ],
+          "weather": {
+            "wet": 0.4608,
+            "fog": 0.26,
+            "rain": 0
+          },
+          "frame": {
+            "id": 80,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 13440,
+          "sky": true,
+          "draws": 14,
+          "actor": {
+            "mean": 1.6563,
+            "magnitude": 6.2834,
+            "changed": 0.2358,
+            "darker": 0.0687,
+            "brighter": 0.1671,
+            "size": 19872,
+            "taps": [
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.14940604310409697,
+                "brightest": 0.05137670427984507
+              },
+              {
+                "sky": 0.8820299884659746,
+                "lunar": 0.15499131574350244,
+                "brightest": 0.08846638307094844
+              }
+            ]
+          }
+        }
+      }
+    },
+    "optimizedPortrait": {
+      "path": "mobile-webgl2",
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "deny": false,
+      "stats": {
+        "metro": {
+          "pose": [
+            557,
+            0
+          ],
+          "camera": [
+            542,
+            -91,
+            1.53
+          ],
+          "css": [
+            400,
+            844
+          ],
+          "backing": [
+            400,
+            844
+          ],
+          "weather": {
+            "wet": 0.24,
+            "fog": 0.3,
+            "rain": 0
+          },
+          "frame": {
+            "id": 34,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": -512,
+          "sky": true,
+          "draws": 5,
+          "actor": {
+            "mean": 2.1128,
+            "magnitude": 3.4243,
+            "changed": 0.2273,
+            "darker": 0.0522,
+            "brighter": 0.1751,
+            "size": 20010,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 20010
+            },
+            "taps": [
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.05405967408147525
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.09592819911332358
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.017183016837315813
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 454,
+            "exposed": {
+              "mean": -3.0299,
+              "magnitude": 3.0299,
+              "changed": 0.7699,
+              "darker": 0.7699,
+              "brighter": 0,
+              "size": 2912
+            },
+            "covered": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 5248
+            }
+          },
+          "air": {
+            "clear": {
+              "cameraX": 454,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  7,
+                  234,
+                  96,
+                  414
+                ],
+                "mean": 26.0556,
+                "adjacent": 2.9897
+              },
+              "glass": {
+                "box": [
+                  208,
+                  274,
+                  376,
+                  346
+                ],
+                "mean": 42.5916,
+                "adjacent": 3.9576
+              }
+            },
+            "haze": {
+              "cameraX": 454,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  7,
+                  234,
+                  96,
+                  414
+                ],
+                "mean": 27.8193,
+                "adjacent": 2.4732
+              },
+              "glass": {
+                "box": [
+                  208,
+                  274,
+                  376,
+                  346
+                ],
+                "mean": 42.4667,
+                "adjacent": 3.8884
+              }
+            }
+          }
+        },
+        "market": {
+          "pose": [
+            6434,
+            0
+          ],
+          "camera": [
+            6450,
+            -89,
+            1.53
+          ],
+          "css": [
+            400,
+            844
+          ],
+          "backing": [
+            400,
+            844
+          ],
+          "weather": {
+            "wet": 0,
+            "fog": 0.33,
+            "rain": 0
+          },
+          "frame": {
+            "id": 60,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 5696,
+          "sky": true,
+          "draws": 5,
+          "actor": {
+            "mean": -1.4278,
+            "magnitude": 5.5659,
+            "changed": 0.2259,
+            "darker": 0.1277,
+            "brighter": 0.0982,
+            "size": 20155,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 20155
+            },
+            "taps": [
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.11960408827837776,
+                "brightest": 0.14566603602625414
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.17379969077951768,
+                "brightest": 0.13013032603247202
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.06727729965658749,
+                "brightest": 0.18745690644757643
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.05232678862179027,
+                "brightest": 0.11739051570130311
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.12066846895387791
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.13380130301905654
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 6450,
+            "exposed": {
+              "mean": -2.0927,
+              "magnitude": 2.8423,
+              "changed": 0.5564,
+              "darker": 0.5318,
+              "brighter": 0.0247,
+              "size": 11520
+            },
+            "covered": null
+          },
+          "air": {
+            "clear": {
+              "cameraX": 6450,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  56,
+                  238,
+                  86,
+                  404
+                ],
+                "mean": 45.4791,
+                "adjacent": 4.8729
+              },
+              "glass": {
+                "box": [
+                  116,
+                  255,
+                  280,
+                  333
+                ],
+                "mean": 91.7455,
+                "adjacent": 5.8404
+              }
+            },
+            "haze": {
+              "cameraX": 6450,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  56,
+                  238,
+                  86,
+                  404
+                ],
+                "mean": 54.0127,
+                "adjacent": 2.8887
+              },
+              "glass": {
+                "box": [
+                  116,
+                  255,
+                  280,
+                  333
+                ],
+                "mean": 91.5795,
+                "adjacent": 5.8112
+              }
+            }
+          },
+          "soaked": 0.94
+        },
+        "garden": {
+          "pose": [
+            14446,
+            -142
+          ],
+          "camera": [
+            14478,
+            -160,
+            1.53
+          ],
+          "weather": {
+            "wet": 0.4608,
+            "fog": 0.26,
+            "rain": 0
+          },
+          "frame": {
+            "id": 74,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 13760,
+          "sky": true,
+          "draws": 6,
+          "actor": {
+            "mean": 1.4013,
+            "magnitude": 5.9491,
+            "changed": 0.2369,
+            "darker": 0.073,
+            "brighter": 0.1639,
+            "size": 19872,
+            "taps": [
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.183363676071167,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.183363676071167,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.183363676071167,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.183363676071167,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.15388167325188132,
+                "brightest": 0.05137670427984507
+              },
+              {
+                "sky": 0.8820299884659746,
+                "lunar": 0.1596342591678395,
+                "brightest": 0.08846638307094844
+              }
+            ]
+          }
+        }
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "deny": false,
+      "stats": {
+        "metro": {
+          "pose": [
+            557,
+            0
+          ],
+          "camera": [
+            483,
+            -120,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0.24,
+            "fog": 0.3,
+            "rain": 0
+          },
+          "frame": {
+            "id": 20,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": -640,
+          "sky": false,
+          "draws": null,
+          "actor": {
+            "mean": 2.7778,
+            "magnitude": 3.9719,
+            "changed": 0.2227,
+            "darker": 0.044,
+            "brighter": 0.1787,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.05405967408147525
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.09592819911332358
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0.017183016837315813
+              },
+              {
+                "sky": 0.2494809688581315,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.26280276816609,
+                "lunar": 0,
+                "brightest": 0
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 483,
+            "exposed": {
+              "mean": -3.943,
+              "magnitude": 3.943,
+              "changed": 0.9997,
+              "darker": 0.9997,
+              "brighter": 0,
+              "size": 2912
+            },
+            "covered": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 11392
+            }
+          },
+          "air": {
+            "clear": {
+              "cameraX": 483,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 73.8016,
+                "adjacent": 2.6339
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 41.5825,
+                "adjacent": 3.0991
+              }
+            },
+            "haze": {
+              "cameraX": 483,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 67.3009,
+                "adjacent": 1.0814
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 41.4612,
+                "adjacent": 3.0411
+              }
+            }
+          }
+        },
+        "market": {
+          "pose": [
+            6434,
+            0
+          ],
+          "camera": [
+            6460,
+            -112,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0,
+            "fog": 0.33,
+            "rain": 0
+          },
+          "frame": {
+            "id": 39,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 5376,
+          "sky": false,
+          "draws": null,
+          "actor": {
+            "mean": -0.9142,
+            "magnitude": 5.4412,
+            "changed": 0.2289,
+            "darker": 0.1232,
+            "brighter": 0.1057,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.15829594930013022,
+                "brightest": 0.14566603602625414
+              },
+              {
+                "sky": 0.3014532871972318,
+                "lunar": 0.18302969137827557,
+                "brightest": 0.13013032603247202
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.08904147148132324,
+                "brightest": 0.18745690644757643
+              },
+              {
+                "sky": 0.4940484429065743,
+                "lunar": 0.06925447781880696,
+                "brightest": 0.11739051570130311
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.12066846895387791
+              },
+              {
+                "sky": 0.5205882352941176,
+                "lunar": 0,
+                "brightest": 0.13380130301905654
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 6460,
+            "exposed": {
+              "mean": -5.5673,
+              "magnitude": 5.5673,
+              "changed": 0.9946,
+              "darker": 0.9946,
+              "brighter": 0,
+              "size": 11744
+            },
+            "covered": null
+          },
+          "air": {
+            "clear": {
+              "cameraX": 6460,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 59.6788,
+                "adjacent": 2.3008
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 86.7273,
+                "adjacent": 4.3274
+              }
+            },
+            "haze": {
+              "cameraX": 6460,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 57.5397,
+                "adjacent": 1.2501
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 87.196,
+                "adjacent": 4.2575
+              }
+            }
+          },
+          "soaked": 0.94
+        },
+        "garden": {
+          "pose": [
+            14446,
+            -142
+          ],
+          "camera": [
+            14500,
+            -185,
+            1.22
+          ],
+          "weather": {
+            "wet": 0.4608,
+            "fog": 0.26,
+            "rain": 0
+          },
+          "frame": {
+            "id": 53,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": 13440,
+          "sky": false,
+          "draws": null,
+          "actor": {
+            "mean": -1.541,
+            "magnitude": 5.3641,
+            "changed": 0.2293,
+            "darker": 0.1281,
+            "brighter": 0.1012,
+            "size": 19872,
+            "taps": [
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.1780305653810501,
+                "brightest": 0
+              },
+              {
+                "sky": 0.8150403690888121,
+                "lunar": 0.14940604310409697,
+                "brightest": 0.05137670427984507
+              },
+              {
+                "sky": 0.8820299884659746,
+                "lunar": 0.15499131574350244,
+                "brightest": 0.08846638307094844
+              }
+            ]
+          }
+        }
+      }
+    },
+    "canvasCityAndWorkerDenial": {
+      "path": "mobile-canvas",
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "deny": true,
+      "stats": {
+        "metro": {
+          "pose": [
+            557,
+            0
+          ],
+          "camera": [
+            483,
+            -120,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0.24,
+            "fog": 0.3,
+            "rain": 0
+          },
+          "frame": {
+            "id": 41,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": null,
+          "sky": false,
+          "draws": null,
+          "actor": {
+            "mean": 0.6773,
+            "magnitude": 4.43,
+            "changed": 0.2193,
+            "darker": 0.1166,
+            "brighter": 0.1027,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.05405967408147525
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.09592819911332358
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.017183016837315813
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 483,
+            "exposed": {
+              "mean": -7.4617,
+              "magnitude": 7.4617,
+              "changed": 1,
+              "darker": 1,
+              "brighter": 0,
+              "size": 2912
+            },
+            "covered": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 11392
+            }
+          },
+          "air": {
+            "clear": {
+              "cameraX": 483,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 73.5306,
+                "adjacent": 2.6116
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 53.6756,
+                "adjacent": 2.6389
+              }
+            },
+            "haze": {
+              "cameraX": 483,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  15,
+                  240,
+                  56,
+                  428
+                ],
+                "mean": 67.177,
+                "adjacent": 1.0647
+              },
+              "glass": {
+                "box": [
+                  569,
+                  279,
+                  806,
+                  356
+                ],
+                "mean": 53.7133,
+                "adjacent": 2.6489
+              }
+            }
+          }
+        },
+        "market": {
+          "pose": [
+            6434,
+            0
+          ],
+          "camera": [
+            6460,
+            -112,
+            1.22
+          ],
+          "css": [
+            1000,
+            625
+          ],
+          "backing": [
+            1250,
+            781
+          ],
+          "weather": {
+            "wet": 0,
+            "fog": 0.33,
+            "rain": 0
+          },
+          "frame": {
+            "id": 57,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 1
+          },
+          "buildWindowOrigin": null,
+          "sky": false,
+          "draws": null,
+          "actor": {
+            "mean": 1.6654,
+            "magnitude": 4.4204,
+            "changed": 0.2272,
+            "darker": 0.0864,
+            "brighter": 0.1409,
+            "size": 19872,
+            "noop": {
+              "mean": 0,
+              "magnitude": 0,
+              "changed": 0,
+              "darker": 0,
+              "brighter": 0,
+              "size": 19872
+            },
+            "taps": [
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.14566603602625414
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.13013032603247202
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.18745690644757643
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.11739051570130311
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.12066846895387791
+              },
+              {
+                "sky": 0.7225,
+                "lunar": 0,
+                "brightest": 0.13380130301905654
+              }
+            ]
+          },
+          "water": {
+            "cameraX": 6460,
+            "exposed": {
+              "mean": -7.5125,
+              "magnitude": 7.5125,
+              "changed": 1,
+              "darker": 1,
+              "brighter": 0,
+              "size": 11744
+            },
+            "covered": null
+          },
+          "air": {
+            "clear": {
+              "cameraX": 6460,
+              "fog": 0.08,
+              "haze": 0.07999999821186066,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 59.5655,
+                "adjacent": 2.1626
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 66.6362,
+                "adjacent": 2.3448
+              }
+            },
+            "haze": {
+              "cameraX": 6460,
+              "fog": 0.86,
+              "haze": 0.8600000143051147,
+              "city": {
+                "box": [
+                  20,
+                  237,
+                  278,
+                  425
+                ],
+                "mean": 57.3838,
+                "adjacent": 1.1257
+              },
+              "glass": {
+                "box": [
+                  541,
+                  262,
+                  893,
+                  350
+                ],
+                "mean": 66.8445,
+                "adjacent": 2.365
+              }
+            }
+          },
+          "soaked": 0.94
+        }
+      }
+    }
+  },
+  "opticalRegressions": {
+    "receivers": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "mode": "master-webgl2",
+      "seed": 48,
+      "stacks": [
+        {
+          "role": "catwalk",
+          "cast": {
+            "top": {
+              "n": 227,
+              "sum": 1.7035818519592285,
+              "max": 0.018301165771484378,
+              "minX": 2772.4078260869564,
+              "maxX": 2852.987536231884,
+              "minY": -145.02898550724638,
+              "maxY": -142.1304347826087
+            },
+            "road": {
+              "n": 1202,
+              "sum": 6.595563352870947,
+              "max": 0.015979502868652344,
+              "minX": 2937.045507246377,
+              "maxX": 3031.538260869565,
+              "minY": 35.260869565217405,
+              "maxY": 49.75362318840584
+            }
+          },
+          "soles": {
+            "top": {
+              "n": 555,
+              "sum": 4.146250497436522,
+              "max": 0.03729306945800782,
+              "minX": 2728.3498550724635,
+              "maxX": 2829.7991304347825,
+              "minY": -146.18840579710147,
+              "maxY": -143.8695652173913
+            }
+          },
+          "edge": {
+            "top": {
+              "n": 436,
+              "sum": 5.276380439758302,
+              "max": 0.06576064300537109,
+              "minX": 2938.9565217391305,
+              "maxX": 3002.7246376811595,
+              "minY": -146.18840579710147,
+              "maxY": -143.8695652173913
+            },
+            "edgeAA": {
+              "n": 1,
+              "sum": 0.007548904418945318,
+              "max": 0.007548904418945318,
+              "minX": 3000.985507246377,
+              "maxX": 3000.985507246377,
+              "minY": -145.02898550724638,
+              "maxY": -145.02898550724638
+            }
+          },
+          "edgeCast": {
+            "top": {
+              "n": 110,
+              "sum": 1.0841734939575196,
+              "max": 0.031825341796875004,
+              "minX": 2955.768115942029,
+              "maxX": 2998.6666666666665,
+              "minY": -144.44927536231884,
+              "maxY": -142.1304347826087
+            },
+            "road": {
+              "n": 348,
+              "sum": 0.9063126113891605,
+              "max": 0.005210693359375001,
+              "minX": 3130.840579710145,
+              "maxX": 3159.826086956522,
+              "minY": 25.40579710144928,
+              "maxY": 37
+            }
+          },
+          "airCast": {
+            "top": {
+              "n": 163,
+              "sum": 1.2482652191162102,
+              "max": 0.019942236328125,
+              "minX": 2794.915072463768,
+              "maxX": 2866.219420289855,
+              "minY": -143.8695652173913,
+              "maxY": -142.1304347826087
+            },
+            "road": {
+              "n": 1554,
+              "sum": 8.420256593513495,
+              "max": 0.016424096679687493,
+              "minX": 2927.668695652174,
+              "maxX": 3040.7121739130434,
+              "minY": 35.260869565217405,
+              "maxY": 51.492753623188435
+            }
+          },
+          "same": true,
+          "x": 2780.06,
+          "window": 6
+        },
+        {
+          "role": "cargo",
+          "cast": {
+            "top": {
+              "n": 182,
+              "sum": 5.35354088745117,
+              "max": 0.05584285888671875,
+              "minX": 8527.190434782608,
+              "maxX": 8600.813623188405,
+              "minY": -98.07246376811595,
+              "maxY": -96.33333333333331
+            }
+          },
+          "soles": {
+            "top": {
+              "n": 1269,
+              "sum": 23.54531015319823,
+              "max": 0.09249271850585936,
+              "minX": 8484.291884057971,
+              "maxX": 8595.01652173913,
+              "minY": -100.97101449275361,
+              "maxY": -96.33333333333331
+            }
+          },
+          "edge": {
+            "top": {
+              "n": 799,
+              "sum": 23.819071881103525,
+              "max": 0.13918858642578125,
+              "minX": 8696.63768115942,
+              "maxX": 8763.304347826086,
+              "minY": -100.97101449275361,
+              "maxY": -96.33333333333331
+            }
+          },
+          "edgeCast": {
+            "top": {
+              "n": 112,
+              "sum": 2.605618981933593,
+              "max": 0.050798583984375006,
+              "minX": 8732,
+              "maxX": 8758.08695652174,
+              "minY": -98.07246376811595,
+              "maxY": -96.33333333333331
+            },
+            "road": {
+              "n": 33,
+              "sum": 0.05224424285888671,
+              "max": 0.0019330047607421866,
+              "minX": 8768.521739130434,
+              "maxX": 8778.95652173913,
+              "minY": 49.17391304347828,
+              "maxY": 49.75362318840584
+            }
+          },
+          "airCast": {
+            "top": {
+              "n": 65,
+              "sum": 1.5312498596191408,
+              "max": 0.05343828125000001,
+              "minX": 8545.06,
+              "maxX": 8606.509275362318,
+              "minY": -96.91304347826086,
+              "maxY": -96.33333333333331
+            }
+          },
+          "same": true,
+          "x": 8540.06,
+          "window": 11
+        }
+      ],
+      "eave": {
+        "lit": {},
+        "dry": {},
+        "wetness": 0,
+        "blocked": 0,
+        "outside": 0.6663299693472965,
+        "impact": {
+          "other": {
+            "n": 43902,
+            "sum": 1157.8571505785262,
+            "max": 1.3946000747680665,
+            "minX": 253.39130434782606,
+            "maxX": 474.84057971014494,
+            "minY": -147.34782608695653,
+            "maxY": 72.36231884057969
+          },
+          "litApproach": {
+            "n": 37827,
+            "sum": 520.085770615098,
+            "max": 0.4720577850341796,
+            "minX": 339.1884057971014,
+            "maxX": 474.84057971014494,
+            "minY": -48.797101449275374,
+            "maxY": 46.855072463768124
+          }
+        }
+      },
+      "serviceCast": {
+        "x": 3996,
+        "moon": 0,
+        "wetness": 0,
+        "exposedWetness": 0.78,
+        "loss": {
+          "interior": {
+            "n": 3821,
+            "sum": 12.231543001556398,
+            "max": 0.009477697753906247,
+            "minX": 3970.4927536231885,
+            "maxX": 4049.913043478261,
+            "minY": 0.4782608695652186,
+            "maxY": 41.63768115942031
+          }
+        }
+      },
+      "glError": 0,
+      "stores": 0
+    },
+    "sourceShadows": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "mode": "master-webgl2",
+      "css": [
+        792,
+        510
+      ],
+      "size": [
+        990,
+        637
+      ],
+      "subjects": [
+        3300,
+        3405
+      ],
+      "origin": 2368,
+      "windowWidth": 4096,
+      "before": [
+        3300,
+        0,
+        100,
+        3405,
+        0,
+        105,
+        7.25,
+        -11.33187412929221,
+        24.503976990217858
+      ],
+      "unchanged": [
+        3300,
+        0,
+        100,
+        3405,
+        0,
+        105,
+        7.25,
+        -11.33187412929221,
+        24.503976990217858
+      ],
+      "layers": {
+        "cast": {
+          "n": 7752,
+          "max": 0.025227288818359367,
+          "sum": 57.29065311946829,
+          "vectorSeam": {
+            "peak": 0.004258406348526478,
+            "mean": 0.0005311924158581725,
+            "n": 507
+          },
+          "between": {
+            "peak": 0.006336957216262817,
+            "mean": 0.00044375974553800184,
+            "n": 7363
+          }
+        },
+        "contact": {
+          "n": 3631,
+          "max": 0.03587289199829101,
+          "sum": 24.30530581798547,
+          "vectorSeam": {
+            "peak": 0.006439289543777704,
+            "mean": 0.0003285905324589169,
+            "n": 204
+          },
+          "between": {
+            "peak": 0.009706214928883128,
+            "mean": 0.0002946871173435827,
+            "n": 2931
+          }
+        },
+        "return": {
+          "n": 5305,
+          "max": 0.04240732574462891,
+          "sum": 54.25198938674919,
+          "vectorSeam": {
+            "peak": 0.02204674296081066,
+            "mean": 0.0011326327996190448,
+            "n": 351
+          },
+          "between": {
+            "peak": 0.02952524763531983,
+            "mean": 0.001027194621962193,
+            "n": 5143
+          }
+        }
+      },
+      "jump": {
+        "height": 90.65364583333333,
+        "contactSum": 1.3564655181884724,
+        "plantedSum": 24.30530581798547
+      },
+      "lighting": {
+        "samples": 2138,
+        "max": 2.182617187499944e-05,
+        "mean": 4.938623412286038e-08
+      },
+      "pulse": {
+        "lit": 38774,
+        "moved": 44994,
+        "samePose": true
+      },
+      "packet": {
+        "version": "4.0",
+        "shadowK": 2,
+        "casters": 0,
+        "elevatedCasters": 0,
+        "primitives": 15,
+        "feet": 2,
+        "arcs": 0,
+        "emissives": 0,
+        "scarves": 2,
+        "undersides": 0,
+        "maxK": 8,
+        "atlasVersion": 6,
+        "portals": 2,
+        "camWorldX": 61.34098101265823,
+        "atlasOriginX": -10,
+        "viewWidthMeters": 10.443037974683534
+      },
+      "glError": 0,
+      "teardown": 0
+    },
+    "shopGlass": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "master-webgl2",
+      "canvas": false,
+      "optimized": false,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              412,
+              265,
+              410,
+              165
+            ],
+            "changed": 49560,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 5099936,
+            "paneCounts": [
+              9180,
+              14800,
+              14800,
+              10780
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 33,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.1136941163680136
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15220,
+              "rgb": 564198
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 1027041
+            },
+            "storm": {
+              "count": 24577,
+              "rgb": 183933
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              413,
+              247,
+              351,
+              172
+            ],
+            "changed": 47997,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 5156162,
+            "paneCounts": [
+              11171,
+              12516,
+              14602,
+              9708
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 45,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.725630692403457
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15018,
+              "rgb": 565732
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 917044
+            },
+            "storm": {
+              "count": 23806,
+              "rgb": 180400
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              503,
+              265,
+              324,
+              157
+            ],
+            "changed": 36040,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 3818822,
+            "paneCounts": [
+              8779,
+              8981,
+              9775,
+              8505
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 57,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 1,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.5234685745407552
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 13331,
+              "rgb": 457376
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 648101
+            },
+            "storm": {
+              "count": 17593,
+              "rgb": 125228
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "rainAndSteam": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "canvas": false,
+      "path": "master-webgl2",
+      "dry": {
+        "rain": 0,
+        "rainStrokes": 0,
+        "instances": 0,
+        "motes": 84,
+        "x": 9678,
+        "y": 43,
+        "count": 1
+      },
+      "shower": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 0,
+        "instances": 350,
+        "motes": 84,
+        "x": 9678,
+        "y": 43,
+        "count": 1
+      },
+      "quiet": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 0,
+        "instances": 36,
+        "motes": 0,
+        "x": 9678,
+        "y": 43,
+        "count": 0,
+        "ventPaints": 0
+      },
+      "changed": 66,
+      "peak": 315,
+      "tick": 827,
+      "paused": 827,
+      "errors": 0
+    },
+    "metro": {
+      "master": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "motion": {
+          "turn": 0,
+          "stopped": 0,
+          "cleared": 0,
+          "travel": 464,
+          "backward": 0,
+          "reverse": 0,
+          "bossOnscreen": 564.5925925925926,
+          "viewport": 848
+        },
+        "pass": {
+          "leadX": 700.0103950103883,
+          "scale": 0.7125925925925926,
+          "railY": 125.18518518518519,
+          "footingY": 462.2222222222222,
+          "bearings": 3,
+          "bodies": 5,
+          "trains": 1,
+          "blockers": 4,
+          "clipped": 0,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "stock": [
+          {
+            "leadX": 700.0103950103883,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 5,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 490.01039501039526,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 5,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 13,
+            "kind": "Parcel freight",
+            "speed": 1069.7279737703502,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 700.0103950103974,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 3,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Night service",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 700.0103950103974,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Metro local",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        ],
+        "pair": {
+          "x": 272.1002215959872,
+          "at": 804.5011829049688,
+          "directions": [
+            1,
+            -1
+          ],
+          "leadX": 487.16919396691065,
+          "scale": 0.7125925925925926,
+          "railY": 125.18518518518519,
+          "footingY": 462.2222222222222,
+          "bearings": 3,
+          "bodies": 9,
+          "trains": 2,
+          "blockers": 4,
+          "clipped": 13,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "seamDelta": {
+          "x": 0.3378378378401976,
+          "wake": 0,
+          "nativePerWorld": 1.351351351360624,
+          "bodies": [
+            6,
+            6
+          ]
+        },
+        "reduced": {
+          "trains": 0,
+          "wake": 0,
+          "activeTrains": 1,
+          "flash": 0
+        },
+        "fixtures": {
+          "x": 2021,
+          "torso": [
+            {
+              "r": 0.15428830515239536,
+              "g": 0.0695314038061636,
+              "b": 0.017071882755703916,
+              "dx": 0.6049994145609215,
+              "dy": -0.6268163516974671,
+              "dz": 0.4909958957319498,
+              "strength": 0.15428830515239536,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            },
+            {
+              "r": 0.041446732561290556,
+              "g": 0.09899535172859933,
+              "b": 0.10221053125761749,
+              "dx": -0.28612844227217393,
+              "dy": -0.4977980308874396,
+              "dz": 0.8187353876360097,
+              "strength": 0.10221053125761749,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            }
+          ],
+          "litParts": 6,
+          "warm": {
+            "rgb": [
+              2686,
+              1302,
+              795
+            ],
+            "changed": 337
+          },
+          "cool": {
+            "rgb": [
+              110,
+              254,
+              281
+            ],
+            "changed": 60
+          },
+          "restored": {
+            "rgb": [
+              0,
+              0,
+              0
+            ],
+            "changed": 0
+          },
+          "size": [
+            120,
+            197
+          ],
+          "dynamic": 0
+        },
+        "deck": {
+          "maxBlue": 32,
+          "changed": 212,
+          "slabCasts": true
+        },
+        "local": [
+          [
+            2.0913179140719014,
+            1.7288032940085771,
+            1.8596201862255461,
+            2.265796296754061,
+            1.3515419534681181,
+            1.547483126221558
+          ],
+          [
+            1.4487569038439732,
+            1.8524982464959683,
+            1.0886519427100003,
+            1.2992636618822042,
+            0.9677727461390899,
+            0.6055709199525949
+          ]
+        ],
+        "blockedSource": 0,
+        "rendered": {
+          "player": {
+            "maxR": 90,
+            "changed": 225,
+            "rgbDelta": [
+              12561,
+              7463,
+              4874
+            ]
+          },
+          "enemy": {
+            "maxR": 173,
+            "changed": 194,
+            "rgbDelta": [
+              15831,
+              8416,
+              6178
+            ]
+          },
+          "prop": {
+            "maxR": 84,
+            "changed": 210,
+            "rgbDelta": [
+              11879,
+              6144,
+              4665
+            ]
+          },
+          "road": {
+            "maxR": 48,
+            "changed": 225,
+            "rgbDelta": [
+              6339,
+              1625,
+              971
+            ]
+          }
+        },
+        "occluded": {
+          "player": {
+            "maxR": 90,
+            "changed": 225,
+            "rgbDelta": [
+              12561,
+              7463,
+              4874
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 84,
+            "changed": 210,
+            "rgbDelta": [
+              11879,
+              6144,
+              4665
+            ]
+          },
+          "road": {
+            "maxR": 48,
+            "changed": 225,
+            "rgbDelta": [
+              6339,
+              1625,
+              971
+            ]
+          }
+        },
+        "reset": {
+          "player": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "road": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "orb": {
+          "impulse": 1,
+          "color": "#35f2ff",
+          "torso": 1.588030001720674
+        },
+        "priority": {
+          "hits": 2,
+          "impactFirst": true,
+          "orbKept": true
+        },
+        "lightning": {
+          "first": {
+            "count": 2,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5949.078861236572,
+              -82.12741088867188
+            ]
+          },
+          "restrike": {
+            "count": 2,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5951.390640258789,
+              -81.95573425292969
+            ]
+          },
+          "after": 0
+        },
+        "path": "master-webgl2",
+        "glError": 0,
+        "css": [
+          848,
+          520
+        ],
+        "backing": [
+          1060,
+          650
+        ],
+        "teardown": 0
+      },
+      "optimized": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": false,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "motion": {
+          "turn": 0,
+          "stopped": 0,
+          "cleared": 0,
+          "travel": 520.5687203791467,
+          "backward": 0,
+          "reverse": 0,
+          "bossOnscreen": 361.65925925925956,
+          "viewport": 400
+        },
+        "pass": {
+          "leadX": 277.92173690277275,
+          "scale": 1.1565925925925926,
+          "railY": 160.98518518518517,
+          "footingY": 708.0222222222221,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 2,
+          "clipped": 0,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "stock": [
+          {
+            "leadX": 277.92173690277275,
+            "scale": 1.1565925925925926,
+            "railY": 160.98518518518517,
+            "footingY": 708.0222222222221,
+            "bearings": 1,
+            "bodies": 2,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 67.92173690277973,
+            "scale": 1.1565925925925926,
+            "railY": 160.98518518518517,
+            "footingY": 708.0222222222221,
+            "bearings": 1,
+            "bodies": 2,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Parcel freight",
+            "speed": 1069.7279737703502,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 277.92173690278184,
+            "scale": 1.1565925925925926,
+            "railY": 160.98518518518517,
+            "footingY": 708.0222222222221,
+            "bearings": 1,
+            "bodies": 2,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Night service",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 277.92173690278184,
+            "scale": 1.1565925925925926,
+            "railY": 160.98518518518517,
+            "footingY": 708.0222222222221,
+            "bearings": 1,
+            "bodies": 2,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Metro local",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        ],
+        "pair": {
+          "x": 272.1002215959872,
+          "at": 804.5011829049688,
+          "directions": [
+            1,
+            -1
+          ],
+          "leadX": 211.30684763193238,
+          "scale": 1.1565925925925926,
+          "railY": 160.98518518518517,
+          "footingY": 708.0222222222221,
+          "bearings": 1,
+          "bodies": 4,
+          "trains": 2,
+          "blockers": 2,
+          "clipped": 0,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "seamDelta": {
+          "x": 0.3378378378400839,
+          "wake": 0,
+          "nativePerWorld": 1.351351351360624,
+          "bodies": [
+            3,
+            3
+          ]
+        },
+        "reduced": {
+          "trains": 0,
+          "wake": 0,
+          "activeTrains": 1,
+          "flash": 0
+        },
+        "fixtures": {
+          "x": 2021,
+          "torso": [
+            {
+              "r": 0.15428830515239536,
+              "g": 0.0695314038061636,
+              "b": 0.017071882755703916,
+              "dx": 0.6049994145609215,
+              "dy": -0.6268163516974671,
+              "dz": 0.4909958957319498,
+              "strength": 0.15428830515239536,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            },
+            {
+              "r": 0.041446732561290556,
+              "g": 0.09899535172859933,
+              "b": 0.10221053125761749,
+              "dx": -0.28612844227217393,
+              "dy": -0.4977980308874396,
+              "dz": 0.8187353876360097,
+              "strength": 0.10221053125761749,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            }
+          ],
+          "litParts": 6,
+          "warm": {
+            "rgb": [
+              4328,
+              2896,
+              1279
+            ],
+            "changed": 889
+          },
+          "cool": {
+            "rgb": [
+              213,
+              550,
+              455
+            ],
+            "changed": 101
+          },
+          "restored": {
+            "rgb": [
+              0,
+              0,
+              0
+            ],
+            "changed": 0
+          },
+          "size": [
+            157,
+            258
+          ],
+          "dynamic": 0
+        },
+        "deck": {
+          "maxBlue": 36,
+          "changed": 223,
+          "slabCasts": true
+        },
+        "local": [
+          [
+            2.0913179140719014,
+            1.7288032940085771,
+            1.8596201862255461,
+            2.265796296754061,
+            1.3515419534681181,
+            1.547483126221558
+          ],
+          [
+            1.4487569038439732,
+            1.8524982464959683,
+            1.0886519427100003,
+            1.2992636618822042,
+            0.9677727461390899,
+            0.6055709199525949
+          ]
+        ],
+        "blockedSource": 0,
+        "rendered": {
+          "player": {
+            "maxR": 61,
+            "changed": 225,
+            "rgbDelta": [
+              11567,
+              6971,
+              4653
+            ]
+          },
+          "enemy": {
+            "maxR": 156,
+            "changed": 209,
+            "rgbDelta": [
+              19589,
+              10744,
+              8162
+            ]
+          },
+          "prop": {
+            "maxR": 78,
+            "changed": 225,
+            "rgbDelta": [
+              12543,
+              6651,
+              5085
+            ]
+          },
+          "road": {
+            "maxR": 22,
+            "changed": 225,
+            "rgbDelta": [
+              4316,
+              1109,
+              521
+            ]
+          }
+        },
+        "occluded": {
+          "player": {
+            "maxR": 61,
+            "changed": 225,
+            "rgbDelta": [
+              11567,
+              6971,
+              4653
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 78,
+            "changed": 225,
+            "rgbDelta": [
+              12543,
+              6651,
+              5085
+            ]
+          },
+          "road": {
+            "maxR": 22,
+            "changed": 225,
+            "rgbDelta": [
+              4316,
+              1109,
+              521
+            ]
+          }
+        },
+        "reset": {
+          "player": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "road": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "orb": {
+          "impulse": 1,
+          "color": "#35f2ff",
+          "torso": 1.588030001720674
+        },
+        "priority": {
+          "hits": 1,
+          "impactFirst": true,
+          "orbKept": false
+        },
+        "lightning": {
+          "first": {
+            "count": 1,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5951.284069061279,
+              -82.89320373535156
+            ]
+          },
+          "restrike": {
+            "count": 1,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5948.328409194946,
+              -82.72151947021484
+            ]
+          },
+          "after": 0
+        },
+        "path": "mobile-webgl2",
+        "glError": 0,
+        "css": [
+          400,
+          844
+        ],
+        "backing": [
+          400,
+          844
+        ],
+        "teardown": 0
+      },
+      "canvas": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "motion": {
+          "turn": 0,
+          "stopped": 0,
+          "cleared": 0,
+          "travel": 464,
+          "backward": 0,
+          "reverse": 0,
+          "bossOnscreen": 564.5925925925926,
+          "viewport": 848
+        },
+        "pass": {
+          "leadX": 700.0103950103883,
+          "scale": 0.7125925925925926,
+          "railY": 125.18518518518519,
+          "footingY": 462.2222222222222,
+          "bearings": 3,
+          "bodies": 5,
+          "trains": 1,
+          "blockers": 4,
+          "clipped": 0,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "stock": [
+          {
+            "leadX": 700.0103950103883,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 5,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 490.01039501039526,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 5,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Parcel freight",
+            "speed": 1069.7279737703502,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 700.0103950103974,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 3,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Night service",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          {
+            "leadX": 700.0103950103974,
+            "scale": 0.7125925925925926,
+            "railY": 125.18518518518519,
+            "footingY": 462.2222222222222,
+            "bearings": 3,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Metro local",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        ],
+        "pair": {
+          "x": 272.1002215959872,
+          "at": 804.5011829049688,
+          "directions": [
+            1,
+            -1
+          ],
+          "leadX": 487.16919396691065,
+          "scale": 0.7125925925925926,
+          "railY": 125.18518518518519,
+          "footingY": 462.2222222222222,
+          "bearings": 3,
+          "bodies": 9,
+          "trains": 2,
+          "blockers": 4,
+          "clipped": 0,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        "seamDelta": {
+          "x": 0.3378378378401976,
+          "wake": 0,
+          "nativePerWorld": 1.351351351360624,
+          "bodies": [
+            6,
+            6
+          ]
+        },
+        "reduced": {
+          "trains": 0,
+          "wake": 0,
+          "activeTrains": 1,
+          "flash": 0
+        },
+        "fixtures": {
+          "x": 2021,
+          "torso": [
+            {
+              "r": 0.15428830515239536,
+              "g": 0.0695314038061636,
+              "b": 0.017071882755703916,
+              "dx": 0.6049994145609215,
+              "dy": -0.6268163516974671,
+              "dz": 0.4909958957319498,
+              "strength": 0.15428830515239536,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            },
+            {
+              "r": 0.041446732561290556,
+              "g": 0.09899535172859933,
+              "b": 0.10221053125761749,
+              "dx": -0.28612844227217393,
+              "dy": -0.4977980308874396,
+              "dz": 0.8187353876360097,
+              "strength": 0.10221053125761749,
+              "strike": 0,
+              "strikeX": 0,
+              "strikeY": 0
+            }
+          ],
+          "litParts": 6,
+          "warm": {
+            "rgb": [
+              3616,
+              2008,
+              326
+            ],
+            "changed": 450
+          },
+          "cool": {
+            "rgb": [
+              107,
+              258,
+              252
+            ],
+            "changed": 55
+          },
+          "restored": {
+            "rgb": [
+              0,
+              0,
+              0
+            ],
+            "changed": 0
+          },
+          "size": [
+            120,
+            197
+          ],
+          "dynamic": 0
+        },
+        "deck": {
+          "maxBlue": 48,
+          "changed": 225,
+          "slabCasts": true
+        },
+        "local": [
+          [
+            2.0913179140719014,
+            1.7288032940085771,
+            1.8596201862255461,
+            2.265796296754061,
+            1.3515419534681181,
+            1.547483126221558
+          ],
+          [
+            1.4487569038439732,
+            1.8524982464959683,
+            1.0886519427100003,
+            1.2992636618822042,
+            0.9677727461390899,
+            0.6055709199525949
+          ]
+        ],
+        "blockedSource": 0,
+        "rendered": {
+          "player": {
+            "maxR": 77,
+            "changed": 225,
+            "rgbDelta": [
+              13658,
+              6534,
+              2669
+            ]
+          },
+          "enemy": {
+            "maxR": 161,
+            "changed": 165,
+            "rgbDelta": [
+              11874,
+              4815,
+              3065
+            ]
+          },
+          "prop": {
+            "maxR": 75,
+            "changed": 210,
+            "rgbDelta": [
+              10947,
+              4444,
+              2829
+            ]
+          },
+          "road": {
+            "maxR": 47,
+            "changed": 225,
+            "rgbDelta": [
+              10036,
+              3818,
+              2351
+            ]
+          }
+        },
+        "occluded": {
+          "player": {
+            "maxR": 77,
+            "changed": 225,
+            "rgbDelta": [
+              13658,
+              6534,
+              2669
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 75,
+            "changed": 210,
+            "rgbDelta": [
+              10947,
+              4444,
+              2829
+            ]
+          },
+          "road": {
+            "maxR": 47,
+            "changed": 225,
+            "rgbDelta": [
+              10036,
+              3818,
+              2351
+            ]
+          }
+        },
+        "reset": {
+          "player": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "enemy": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "prop": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          },
+          "road": {
+            "maxR": 0,
+            "changed": 0,
+            "rgbDelta": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        "orb": {
+          "impulse": 1,
+          "color": "#35f2ff",
+          "torso": 1.588030001720674
+        },
+        "priority": {
+          "hits": 1,
+          "impactFirst": true,
+          "orbKept": false
+        },
+        "lightning": {
+          "first": {
+            "count": 1,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5948.926776885986,
+              -79.72370147705078
+            ]
+          },
+          "restrike": {
+            "count": 1,
+            "match": true,
+            "first": [
+              5940,
+              -83,
+              5951.238555908203,
+              -84.8194580078125
+            ]
+          },
+          "after": 0
+        },
+        "path": "mobile-canvas",
+        "glError": 0,
+        "css": [
+          848,
+          520
+        ],
+        "backing": [
+          1060,
+          650
+        ],
+        "teardown": 0
+      }
+    },
+    "cityCache": {
+      "withPlates": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "deny": false,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 7.299999997019768,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 0.09999999403953552
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 15.899999991059303,
+            "cityMedianMs": 0,
+            "opticalMedianMs": 4.000000014901161
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 51.5,
+            "cityMedianMs": 15.900000005960464,
+            "opticalMedianMs": 31.599999994039536
+          }
+        },
+        "cards": 2,
+        "visible": true,
+        "afterDestroy": 0
+      },
+      "withCityPlatesDenied": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "deny": true,
+        "cpuCompositor": true,
+        "fixtures": {
+          "parked": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 2.2999999970197678,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 0.09999999403953552
+          },
+          "pan": {
+            "frames": 24,
+            "cityPaints": 0,
+            "canvasMedianMs": 4.5,
+            "cityMedianMs": 0.09999999403953552,
+            "opticalMedianMs": 1
+          },
+          "weather": {
+            "frames": 24,
+            "cityPaints": 48,
+            "canvasMedianMs": 19.299999997019768,
+            "cityMedianMs": 9.100000008940697,
+            "opticalMedianMs": 8.799999997019768
+          }
+        },
+        "cards": 2,
+        "visible": true,
+        "afterDestroy": 0
+      }
+    }
+  },
+  "loading": {
+    "ordinaryCrossOriginIframe": {
+      "engine": true,
+      "phase": "playing",
+      "loadingArsenal": false,
+      "loadingEngine": false,
+      "engageEnabled": false,
+      "reportVisible": true,
+      "report": "Game ready.\nPage response (first byte): 15 ms\nMenu: 364 ms from navigation\nEngine import: 222 ms including script evaluation\nEngage enabled: 621 ms from navigation\nTitle scene submitted: 731 ms from navigation\nStartup scripts: 16 (size unavailable)\nPreview: visible\nEngage → playing: 5176 ms\nEngage → first scene submitted: 5176 ms\nEngage → first simulation frame submitted: 5251 ms",
+      "marks": [
+        [
+          "sr:engine-request",
+          346
+        ],
+        [
+          "sr:menu",
+          363.70000000298023
+        ],
+        [
+          "sr:engine-module",
+          567.7000000029802
+        ],
+        [
+          "sr:ready",
+          621.2999999970198
+        ],
+        [
+          "sr:title-submit",
+          730.5
+        ],
+        [
+          "sr:engage",
+          824
+        ],
+        [
+          "sr:run-workers",
+          898.2000000029802
+        ],
+        [
+          "sr:run-backdrop-ready",
+          5892.79999999702
+        ],
+        [
+          "sr:run-submit",
+          5999.5
+        ],
+        [
+          "sr:playing",
+          6000
+        ],
+        [
+          "sr:first-step",
+          6074.9000000059605
+        ]
+      ]
+    },
+    "stagedCrossOriginIframe": {
+      "engine": true,
+      "phase": "playing",
+      "loadingArsenal": false,
+      "loadingEngine": false,
+      "engageEnabled": false,
+      "reportVisible": true,
+      "report": "Game ready.\nPage response (first byte): 30 ms\nMenu: 450 ms from navigation\nEngine import: 264 ms including script evaluation\nEngage enabled: 896 ms from navigation\nTitle scene submitted: 866 ms from navigation\nStartup scripts: 16 (size unavailable)\nPreview: visible\nEngage → playing: 5288 ms\nEngage → first scene submitted: 5278 ms\nEngage → first simulation frame submitted: 5416 ms",
+      "marks": [
+        [
+          "sr:engine-request",
+          443.40000000596046
+        ],
+        [
+          "sr:menu",
+          450.29999999701977
+        ],
+        [
+          "sr:engine-module",
+          707.4000000059605
+        ],
+        [
+          "sr:title-submit",
+          865.5
+        ],
+        [
+          "sr:ready",
+          896.0999999940395
+        ],
+        [
+          "sr:engage",
+          937.5999999940395
+        ],
+        [
+          "sr:run-workers",
+          1033.5
+        ],
+        [
+          "sr:run-backdrop-ready",
+          6027.70000000298
+        ],
+        [
+          "sr:run-submit",
+          6215.79999999702
+        ],
+        [
+          "sr:playing",
+          6225.70000000298
+        ],
+        [
+          "sr:first-step",
+          6353.5
+        ]
+      ]
+    },
+    "delayedOpeningBackdropReel": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "asset": "/bridge/deck-pier.webp",
+      "silence": false,
+      "still": {
+        "phase": "preparing",
+        "time": 0,
+        "input": false,
+        "frame": {
+          "id": 2,
+          "layer": "scene-work",
+          "kind": "title",
+          "hud": "off",
+          "seed": 5350089,
+          "time": 0,
+          "hp": 100,
+          "threats": 0
+        },
+        "want": 3371406969,
+        "shot": 8,
+        "picture": [
+          1376,
+          768
+        ],
+        "animation": "none",
+        "text": "Loading arena Finishing the skyline and bridge deck",
+        "focus": "CANCEL",
+        "fit": true,
+        "elapsed": 5911.100000008941,
+        "prior": {
+          "id": 2,
+          "layer": "scene-work",
+          "kind": "title",
+          "hud": "off",
+          "seed": 5350089,
+          "time": 0,
+          "hp": 100,
+          "threats": 0
+        },
+        "playing": 0
+      },
+      "cuts": [
+        {
+          "index": 1,
+          "at": 269.1000000089407
+        },
+        {
+          "index": 2,
+          "at": 907
+        },
+        {
+          "index": 3,
+          "at": 1456
+        },
+        {
+          "index": 4,
+          "at": 2122.7999999970198
+        },
+        {
+          "index": 5,
+          "at": 2589.6000000089407
+        },
+        {
+          "index": 6,
+          "at": 3222.7999999970198
+        },
+        {
+          "index": 7,
+          "at": 3789.2000000029802
+        },
+        {
+          "index": 8,
+          "at": 4356
+        }
+      ],
+      "playing": [
+        {
+          "id": 3,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 3371406969,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      ],
+      "trusted": true,
+      "at": 1205.7000000029802,
+      "prior": {
+        "id": 2,
+        "layer": "scene-work",
+        "kind": "title",
+        "hud": "off",
+        "seed": 5350089,
+        "time": 0,
+        "hp": 100,
+        "threats": 0
+      },
+      "marks": [
+        [
+          "sr:run-workers",
+          1440.7000000029802
+        ],
+        [
+          "sr:run-backdrop-ready",
+          7160.600000008941
+        ],
+        [
+          "sr:run-submit",
+          7259.5
+        ]
+      ],
+      "deck": 7149.20000000298,
+      "pngs": [
+        "/night-crossing/v1/01-last-train.png",
+        "/night-crossing/v1/02-rain-step.png",
+        "/night-crossing/v1/03-shadow-ronin.png",
+        "/night-crossing/v1/04-brass-guard.png",
+        "/night-crossing/v1/05-murasama.png",
+        "/night-crossing/v1/06-crossing.png",
+        "/night-crossing/v1/07-still-steel.png",
+        "/night-crossing/v1/08-night-line.png"
+      ]
+    },
+    "contextLossAndRetry": {
+      "frames": [
+        {
+          "label": "engage",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "master",
+          "path": "master-webgl2",
+          "frame": {
+            "id": 41,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "context-lost-canvas",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 44,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "context-restored",
+          "path": "master-webgl2",
+          "frame": {
+            "id": 67,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "optimized",
+          "path": "mobile-webgl2",
+          "frame": {
+            "id": 83,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "interrupted-source",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 84,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0,
+          "held": false
+        },
+        {
+          "label": "held-after-resize",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 86,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "held": true
+        },
+        {
+          "label": "recovered",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 87,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "sim": 0.016666666666666666,
+          "held": false
+        },
+        {
+          "label": "retry",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 92,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 43,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "sim": 0,
+          "held": false
+        }
+      ],
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    }
+  }
+}

@@ -30,12 +30,13 @@ export interface SimClockPolicy {
   maxBacklog: number
 }
 
-/** Bounded work, fixed size: 4 × 1/60 ≈ 66.7 ms of sim per render ceiling,
- *  backlog cap identical so a hitch drains fully in one render when able. */
+/** The render loop never feeds more than 50 ms to simulation or visuals;
+ *  physics work is capped at two exact 1/60 steps per rendered frame. */
+export const MAX_FRAME_DT = 0.05
 export const DEFAULT_SIM_CLOCK: SimClockPolicy = {
   stepDt: 1 / 60,
-  maxSteps: 4,
-  maxBacklog: 4 / 60,
+  maxSteps: 2,
+  maxBacklog: 2 / 60,
 }
 
 export interface SimClockAdvance {

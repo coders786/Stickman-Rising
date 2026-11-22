@@ -101,6 +101,7 @@ export function transfer(
 }
 
 export interface SurfaceLight {
+  local?: import('./receiver').ReceiverRig
   volume?: boolean
   r: number
   g: number
@@ -109,6 +110,7 @@ export interface SurfaceLight {
   dy: number
   keyX: number
   keyGain: number
+  lunar?: number // explicitly supplied on the live Bridge; finite art keeps its authored rim
 }
 export interface Probe extends SurfaceLight {
   best: PointLight | null
@@ -190,7 +192,7 @@ export class Ribbon {
 
   /** Bake floor irradiance and a rough specular lobe into ONE atlas strip. Depth
    * is foreshortened on display, not in the visibility test. */
-  bakeDeck(pixels: Uint8ClampedArray, offset: number, wetness?: (x:number,v:number)=>number): void {
+  bakeDeck(pixels: Uint8ClampedArray, offset: number, wetness?: (x:number,v:number)=>number, reflective = true): void {
     const l = this.lamp,
       rgb = LIGHT_TINT[l.kind]
     for (let j = 0; j < DECK_H; j++)
@@ -203,19 +205,19 @@ export class Ribbon {
         const dx = l.x - x,
           dz = EMITTER_Z - z,
           dist = Math.hypot(dx, h, dz) || 1
-        // n dot normalize(L+V) for the planar wet surface and a fixed oblique eye.
-        const ny = h / dist + 0.42,
-          nz = dz / dist + 0.91
-        const wet=wetness?.(x,v) ?? .65
-        const gloss = (ny / (Math.hypot(dx / dist, ny, nz) || 1)) ** (12+42*wet)
-        const energy =
-          transfer(l, this.blocks, x, 0, z) *
-          ((0.22 * h) / dist + (.15+.86*wet) * gloss +
-            // Broken vertical image of the luminaire in pooled water. The
-            // micro-ripple is fixed to world X / depth (no temporal noise).
-            (l.kind==='city'?0:1)*wet*(.45+.55*Math.sin(j*2.7+Math.sin(x*.051)*1.7)**2)*
-            Math.exp(-((dx/(9+24*(1-wet)+v*33))**2))*.85) *
-          (1 - v * v)
+        // The platform takes a broader diffuse key, never a specular copy.
+        let response = ((reflective ? .22 : .30) * h) / dist
+        if (reflective) {
+          // n dot normalize(L+V) for the planar wet surface and a fixed oblique eye.
+          const ny = h / dist + 0.42, nz = dz / dist + 0.91
+          const wet = wetness?.(x, v) ?? .65
+          const gloss = (ny / (Math.hypot(dx / dist, ny, nz) || 1)) ** (12 + 42 * wet)
+          response += (.15 + .86 * wet) * gloss
+          // Broken vertical image in pooled water. World-locked micro-ripple.
+          response += (l.kind === 'city' ? 0 : 1) * wet * (.45 + .55 * Math.sin(j * 2.7 + Math.sin(x * .051) * 1.7) ** 2) *
+            Math.exp(-((dx / (9 + 24 * (1 - wet) + v * 33)) ** 2)) * .85
+        }
+        const energy = transfer(l, this.blocks, x, 0, z) * response * (1 - v * v)
         // Receiver cannot light a neighboring material. Reach zero at the
         // first/last texel so upsampling doesn't leave a bright curb cutoff.
         const t = Math.min(1, j / 3, (DECK_H - 1 - j) / 3)
@@ -318,8 +320,8 @@ export class RibbonField {
         } else runnerUp = Math.max(runnerUp, cast)
       }
     }
-    // Only one secondary silhouette is budgeted. Fade its contrast to zero at
-    // a handoff instead of teleporting a dark shadow across the fighter.
+    // Fade the practical's steering weight at a handoff. The one cast can
+    // return through its key direction instead of jumping between lamps.
     out.castW = Math.max(0, out.castW - runnerUp)
     return out
   }

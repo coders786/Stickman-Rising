@@ -1,0 +1,5785 @@
+{
+  "scope": "Remove playable Ronin incident light, retire stale Retry work, and bake more scene detail at the existing quality ceilings.",
+  "release": {
+    "controlBuild": "iWoXGibOrwMgKYKmauvXc",
+    "verifiedEarlierCandidate": "HkbHsYuiBE-kjopS4T74q",
+    "build": "PVwKfw6Ft7hel8QRweOhB",
+    "previewPort": 3000,
+    "publicAssetsIdenticalToControl": true,
+    "stagedHttpEqualToLive": true,
+    "http": {
+      "build": "PVwKfw6Ft7hel8QRweOhB",
+      "originAccepted": true,
+      "iframeHeadersClear": true,
+      "rootSHA256": "5cbf2482e59731083347349cbb7d22f41e08237eb9ca8d7093bea406d2b84ca1",
+      "staticLinks": 11,
+      "retiredLoader404": true,
+      "scoresApi": true,
+      "assets": {
+        "baked-v1/deck.bin.br": {
+          "bytes": 32558,
+          "sha256": "56840399b3012d57dcfedd80ec3b3075fdc019f1b83b546975ba32bb4daf7262"
+        },
+        "baked-v1/look-16.bin.br": {
+          "bytes": 13006,
+          "sha256": "04a228bccd95349606ee7ce6ad6f9af3443c38ef1be79baa026214af80a67141"
+        },
+        "baked-v1/look-32.bin.br": {
+          "bytes": 58670,
+          "sha256": "afcb075498fac8cbfeabd577b5283ded4406a64681d35a5f6c074b341ad3f85e"
+        },
+        "baked-v1/sky.bin.br": {
+          "bytes": 247289,
+          "sha256": "d91bf5e6fc49843f1fcbcb894f60eba1ee545012530913b8d5df7fdeb30a20de"
+        },
+        "deck-pier.webp": {
+          "bytes": 4086,
+          "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+        },
+        "l1.webp": {
+          "bytes": 38162,
+          "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+        },
+        "l2.webp": {
+          "bytes": 49280,
+          "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+        },
+        "metro-street.webp": {
+          "bytes": 19810,
+          "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+        },
+        "props-v2.webp": {
+          "bytes": 5910,
+          "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+        },
+        "shop-return-v2.webp": {
+          "bytes": 269248,
+          "sha256": "18a9da1fcdfec3bdfa823463a74a01f6ab3678e6b22391839898cbfd9aef82c2"
+        },
+        "stratum-a.webp": {
+          "bytes": 250,
+          "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+        }
+      }
+    },
+    "stagedSlowedCrossOrigin": {
+      "flags": [
+        "--cpu-compositor",
+        "--slow"
+      ],
+      "readyAt": 3839.4000000059605,
+      "clickAt": 3993.4000000059605,
+      "playAt": 7526.79999999702,
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "marks": [
+          [
+            "sr:engine-request",
+            1691.7000000029802
+          ],
+          [
+            "sr:menu",
+            1727.7999999970198
+          ],
+          [
+            "sr:engine-module",
+            3806.0999999940395
+          ],
+          [
+            "sr:ready",
+            3829.0999999940395
+          ],
+          [
+            "sr:title-submit",
+            3960.0999999940395
+          ],
+          [
+            "sr:engage",
+            3997.5999999940395
+          ],
+          [
+            "sr:run-initialized",
+            4099.5
+          ],
+          [
+            "sr:run-workers",
+            4101.4000000059605
+          ],
+          [
+            "sr:run-backdrop-ready",
+            7354.70000000298
+          ],
+          [
+            "sr:run-renderer-ready",
+            7355.0999999940395
+          ],
+          [
+            "sr:run-submit",
+            7523.20000000298
+          ],
+          [
+            "sr:playing",
+            7523.9000000059605
+          ],
+          [
+            "sr:first-step",
+            7664
+          ]
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    "liveCrossOrigin": {
+      "flags": [
+        "--cpu-compositor"
+      ],
+      "readyAt": 770.5,
+      "clickAt": 795.4000000059605,
+      "playAt": 2266.5,
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "marks": [
+          [
+            "sr:engine-request",
+            306
+          ],
+          [
+            "sr:menu",
+            390
+          ],
+          [
+            "sr:engine-module",
+            580.7000000029802
+          ],
+          [
+            "sr:ready",
+            611
+          ],
+          [
+            "sr:title-submit",
+            705.9000000059605
+          ],
+          [
+            "sr:engage",
+            798.2000000029802
+          ],
+          [
+            "sr:run-initialized",
+            876.7999999970198
+          ],
+          [
+            "sr:run-workers",
+            879.5999999940395
+          ],
+          [
+            "sr:run-backdrop-ready",
+            1950.7999999970198
+          ],
+          [
+            "sr:run-renderer-ready",
+            1951.4000000059605
+          ],
+          [
+            "sr:run-submit",
+            2239.9000000059605
+          ],
+          [
+            "sr:playing",
+            2240.7000000029802
+          ],
+          [
+            "sr:first-step",
+            2441.0999999940395
+          ]
+        ]
+      },
+      "errors": [],
+      "failed": []
+    },
+    "liveTouch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "cpuCompositor": true,
+      "touch": true,
+      "menuMs": 634.4000000059605,
+      "titleSceneMs": 763.1000000089407,
+      "path": "mobile-canvas",
+      "runs": {
+        "ENGAGE": {
+          "clickAt": 948.1000000089407,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 1106.0999999940395,
+          "firstKind": "canvas",
+          "readyMs": 1116.5999999940395,
+          "seed": 42,
+          "sky": null,
+          "bakeMs": 1.4000000059604645,
+          "afterSubmitRafMs": 1186.2000000029802,
+          "stepSubmitMs": 1238.5999999940395,
+          "richMs": 1238.5999999940395,
+          "richKind": "canvas",
+          "simMs": 1374,
+          "jumpAt": 1417.5999999940395,
+          "jumpMs": 1437,
+          "postPromotionMs": 1647,
+          "maxLongTaskMs": 208,
+          "acceptedToPlayMs": 1105.4000000059605
+        },
+        "RETRY": {
+          "clickAt": 2862.6000000089407,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 529.7999999970198,
+          "firstKind": "canvas",
+          "readyMs": 541.2000000029802,
+          "seed": 43,
+          "sky": null,
+          "bakeMs": 0.7999999970197678,
+          "afterSubmitRafMs": 617.0999999940395,
+          "stepSubmitMs": 640.8999999910593,
+          "richMs": 640.8999999910593,
+          "richKind": "canvas",
+          "simMs": 763.5999999940395,
+          "jumpAt": 788.3999999910593,
+          "jumpMs": 793,
+          "maxLongTaskMs": 136,
+          "acceptedToPlayMs": 529.2999999970198
+        }
+      },
+      "marks": [
+        [
+          "sr:engine-request",
+          293.20000000298023
+        ],
+        [
+          "sr:menu",
+          416.1000000089407
+        ],
+        [
+          "sr:engine-module",
+          607.2000000029802
+        ],
+        [
+          "sr:title-submit",
+          733.5
+        ],
+        [
+          "sr:ready",
+          758.9000000059605
+        ],
+        [
+          "sr:engage",
+          949.2000000029802
+        ],
+        [
+          "sr:run-initialized",
+          992.9000000059605
+        ],
+        [
+          "sr:run-workers",
+          995.9000000059605
+        ],
+        [
+          "sr:run-backdrop-ready",
+          1923.300000011921
+        ],
+        [
+          "sr:run-renderer-ready",
+          1923.4000000059605
+        ],
+        [
+          "sr:run-submit",
+          2054.2000000029802
+        ],
+        [
+          "sr:playing",
+          2054.6000000089407
+        ],
+        [
+          "sr:first-step",
+          2186.7000000029802
+        ],
+        [
+          "sr:retry",
+          2863.4000000059605
+        ],
+        [
+          "sr:run-initialized",
+          2891.1000000089407
+        ],
+        [
+          "sr:run-workers",
+          2891.4000000059605
+        ],
+        [
+          "sr:run-backdrop-ready",
+          3341
+        ],
+        [
+          "sr:run-renderer-ready",
+          3341
+        ],
+        [
+          "sr:run-submit",
+          3392.4000000059605
+        ],
+        [
+          "sr:playing",
+          3392.7000000029802
+        ],
+        [
+          "sr:first-step",
+          3503.5
+        ]
+      ],
+      "workerPrepReplies": [
+        {
+          "stage": "worker.reply",
+          "at": 1007.7000000029802,
+          "ms": 778.7000000029802,
+          "phase": "preparing",
+          "name": "bridge-art",
+          "type": "plate",
+          "seed": 42,
+          "bakeMs": 583.4000000059605
+        },
+        {
+          "stage": "worker.reply",
+          "at": 995.7000000029802,
+          "ms": 914.9000000059605,
+          "phase": "preparing",
+          "name": "bridge-bake",
+          "type": "window",
+          "seed": 42,
+          "bakeMs": 783.2000000029802
+        },
+        {
+          "stage": "worker.reply",
+          "at": 2891.4000000059605,
+          "ms": 154.29999999701977,
+          "phase": "preparing",
+          "name": "bridge-art",
+          "type": "plate",
+          "seed": 43,
+          "bakeMs": 153.3999999910593
+        },
+        {
+          "stage": "worker.reply",
+          "at": 2891.300000011921,
+          "ms": 443,
+          "phase": "preparing",
+          "name": "bridge-bake",
+          "type": "window",
+          "seed": 43,
+          "bakeMs": 436.69999998807907
+        }
+      ],
+      "prepPaints": [
+        {
+          "stage": "bg.drawBridgeBackdrop",
+          "phase": "preparing",
+          "at": 1926.300000011921,
+          "ms": 58.29999999701977
+        },
+        {
+          "stage": "paint",
+          "phase": "preparing",
+          "at": 1923.800000011921,
+          "ms": 130.3999999910593
+        },
+        {
+          "stage": "bg.drawBridgeBackdrop",
+          "phase": "preparing",
+          "at": 3343,
+          "ms": 48
+        },
+        {
+          "stage": "paint",
+          "phase": "preparing",
+          "at": 3342.2000000029802,
+          "ms": 50.20000000298023
+        }
+      ]
+    }
+  },
+  "retryStall": {
+    "fixture": "Withhold the two old worker replies before Results. Use trusted same-seed Retry at locked High.",
+    "controlDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 2082816,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 640.0999999940395,
+            "plateMaxMs": 426.40000000596046,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 3,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": true,
+            "rasterPending": true,
+            "pending": "window",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 640.0999999940395,
+            "plateMaxMs": 426.40000000596046,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [],
+      "marks": {
+        "retry": 2033.5,
+        "fallback": 9269.800000011921,
+        "submit": 9357
+      },
+      "retryMs": 7323.5,
+      "surfacesAfterDestroy": 0
+    },
+    "releaseDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 3,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "retiredJobs": 0,
+            "workerMaxMs": 606.5999999940395,
+            "plateMaxMs": 374,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 2,
+            "stale": 0,
+            "retiredJobs": 2,
+            "workerMaxMs": 661.0999999940395,
+            "plateMaxMs": 454.6000000089407,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 3187712,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [
+        "optics",
+        "raster"
+      ],
+      "marks": {
+        "retry": 2099.2999999970198,
+        "fallback": null,
+        "submit": 2884.4000000059605
+      },
+      "retryMs": 785.1000000089407,
+      "surfacesAfterDestroy": 0
+    },
+    "controlPortrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 2082816,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 586.8000000119209,
+            "plateMaxMs": 404,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": true,
+            "rasterPending": true,
+            "pending": "window",
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "workerMaxMs": 586.8000000119209,
+            "plateMaxMs": 404,
+            "decodeMaxMs": 0.3999999910593033,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [],
+      "marks": {
+        "retry": 1859.2999999970198,
+        "fallback": 9105,
+        "submit": 9152.20000000298
+      },
+      "retryMs": 7292.9000000059605,
+      "surfacesAfterDestroy": 0
+    },
+    "releasePortrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 3,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "retiredJobs": 0,
+            "workerMaxMs": 679.1000000089407,
+            "plateMaxMs": 515.9000000059605,
+            "decodeMaxMs": 3.699999988079071,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 2,
+            "stale": 0,
+            "retiredJobs": 2,
+            "workerMaxMs": 679.1000000089407,
+            "plateMaxMs": 515.9000000059605,
+            "decodeMaxMs": 3.699999988079071,
+            "wireBytes": 3187712,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [
+        "optics",
+        "raster"
+      ],
+      "marks": {
+        "retry": 2079.4000000059605,
+        "fallback": null,
+        "submit": 2682.6000000089407
+      },
+      "retryMs": 603.2000000029802,
+      "surfacesAfterDestroy": 0
+    },
+    "earlierCandidateDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "retiredJobs": 0,
+            "workerMaxMs": 892.5999999940395,
+            "plateMaxMs": 478.20000000298023,
+            "decodeMaxMs": 0.30000001192092896,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 2,
+            "stale": 0,
+            "retiredJobs": 2,
+            "workerMaxMs": 892.5999999940395,
+            "plateMaxMs": 652.5999999940395,
+            "decodeMaxMs": 0.30000001192092896,
+            "wireBytes": 3187712,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [
+        "optics",
+        "raster"
+      ],
+      "marks": {
+        "retry": 3036.7999999970198,
+        "fallback": null,
+        "submit": 3898.9000000059605
+      },
+      "retryMs": 862.1000000089407,
+      "surfacesAfterDestroy": 0
+    },
+    "earlierCandidatePortrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "starts": [
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 1,
+            "stale": 0,
+            "retiredJobs": 0,
+            "workerMaxMs": 900.2999999970198,
+            "plateMaxMs": 533.2000000029802,
+            "decodeMaxMs": 0.5,
+            "wireBytes": 1593856,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        },
+        {
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "opticsPending": false,
+            "rasterPending": true,
+            "pending": "plate",
+            "plates": 1,
+            "plateBytes": 1926144,
+            "lit": true,
+            "windows": 2,
+            "stale": 0,
+            "retiredJobs": 2,
+            "workerMaxMs": 900.2999999970198,
+            "plateMaxMs": 533.2000000029802,
+            "decodeMaxMs": 0.5,
+            "wireBytes": 3187712,
+            "error": null,
+            "plateError": null
+          },
+          "time": 0,
+          "input": true,
+          "music": true,
+          "overlay": false
+        }
+      ],
+      "held": [
+        {
+          "lane": "optics",
+          "type": "window",
+          "seed": 42,
+          "id": 4,
+          "left": 9900,
+          "right": 12590.880000000001
+        },
+        {
+          "lane": "raster",
+          "type": "plate",
+          "seed": 42,
+          "id": 5,
+          "index": 9,
+          "lit": true
+        }
+      ],
+      "stopped": [
+        "optics",
+        "raster"
+      ],
+      "marks": {
+        "retry": 3057,
+        "fallback": null,
+        "submit": 4006
+      },
+      "retryMs": 949,
+      "surfacesAfterDestroy": 0
+    }
+  },
+  "pixels": {
+    "matchCount": 12,
+    "pairs": {
+      "canvas": {
+        "path": "mobile-canvas",
+        "viewport": {
+          "width": 960,
+          "height": 620,
+          "deviceScaleFactor": 1
+        },
+        "beforeTeardown": 0,
+        "afterTeardown": {
+          "surfaces": 0,
+          "opticalWindows": 0,
+          "curbMips": 0
+        },
+        "scenes": {
+          "entry": {
+            "frameKind": "canvas",
+            "actor": {
+              "sha256": "9eabeb0bed3e71fee73efb5412b301592fe7d7daf18533e53f6f577978d6abf2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 252,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 0,
+            "plates": [
+              2,
+              2
+            ],
+            "bytes": [
+              4165632,
+              3534336
+            ],
+            "visibleSourcePx": 257046,
+            "frameSHA256": "d432ddd22527a23deb41c65cfc7e9566370271ad000d0ab89de90a53151f1002"
+          },
+          "warm": {
+            "frameKind": "canvas",
+            "actor": {
+              "sha256": "cd5bab434ad6a136d0adf9046aa2a0647e1f27fca953d2d6388eeb859ed177e2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 0,
+            "plates": [
+              3,
+              3
+            ],
+            "bytes": [
+              6248448,
+              5142528
+            ],
+            "visibleSourcePx": 226850,
+            "frameSHA256": "e7ac51df4d7f1c90f856e36f7398cbd2f5e5420ff0bff6e9069c03a158527d70"
+          },
+          "covered": {
+            "frameKind": "canvas",
+            "actor": {
+              "sha256": "cd5bab434ad6a136d0adf9046aa2a0647e1f27fca953d2d6388eeb859ed177e2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 3995,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 0,
+            "plates": [
+              3,
+              2
+            ],
+            "bytes": [
+              6248448,
+              3303936
+            ],
+            "visibleSourcePx": 239200,
+            "frameSHA256": "f68c7dac88dcda2c4d22cae2aa9642984f6d37a5fdaadd4cd19cddd6474de9a9"
+          },
+          "strike": {
+            "frameKind": "canvas",
+            "actor": {
+              "sha256": "79c72a58b2083b5c267d7bac5776eeb7d5e28905afaf4435d34d0a9cecf73e66",
+              "opaque": 11781,
+              "black": 8894
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 1,
+            "plates": [
+              2,
+              2
+            ],
+            "bytes": [
+              4165632,
+              3216384
+            ],
+            "visibleSourcePx": 226850,
+            "frameSHA256": "17c93fb77897e1b4b5a345d9f2120800a2b4d629031014b388704bb7bd7d5033"
+          }
+        }
+      },
+      "starter": {
+        "path": "mobile-canvas",
+        "viewport": {
+          "width": 412,
+          "height": 780,
+          "deviceScaleFactor": 1,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "beforeTeardown": 0,
+        "afterTeardown": {
+          "surfaces": 0,
+          "opticalWindows": 0,
+          "curbMips": 0
+        },
+        "scenes": {
+          "entry": {
+            "frameKind": "starter",
+            "actor": {
+              "sha256": "9eabeb0bed3e71fee73efb5412b301592fe7d7daf18533e53f6f577978d6abf2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 252,
+              "y": -111,
+              "zoom": 1.18,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 0,
+              "seed": null
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 0,
+            "plates": [
+              0,
+              0
+            ],
+            "bytes": [
+              0,
+              0
+            ],
+            "visibleSourcePx": 121220,
+            "frameSHA256": "33dbf34a7db2c22fceff9cc53737a9978cfb63d4e14eb3bd9e255fb8868691f1"
+          },
+          "warm": {
+            "frameKind": "starter",
+            "actor": {
+              "sha256": "cd5bab434ad6a136d0adf9046aa2a0647e1f27fca953d2d6388eeb859ed177e2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.18,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 0,
+              "seed": null
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 0,
+            "strikeSources": 0,
+            "plates": [
+              0,
+              0
+            ],
+            "bytes": [
+              0,
+              0
+            ],
+            "visibleSourcePx": 121220,
+            "frameSHA256": "8628131abc84f134e3e452eb02b921dc79ff763b5ba6203f4e0a5149e8922053"
+          }
+        }
+      },
+      "optimized": {
+        "path": "mobile-webgl2",
+        "viewport": {
+          "width": 412,
+          "height": 780,
+          "deviceScaleFactor": 1,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "beforeTeardown": 0,
+        "afterTeardown": {
+          "surfaces": 0,
+          "opticalWindows": 0,
+          "curbMips": 0
+        },
+        "scenes": {
+          "entry": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "9eabeb0bed3e71fee73efb5412b301592fe7d7daf18533e53f6f577978d6abf2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 252,
+              "y": -111,
+              "zoom": 1.18,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 0,
+            "plates": [
+              2,
+              2
+            ],
+            "bytes": [
+              4165632,
+              3534336
+            ],
+            "visibleSourcePx": 147972,
+            "frameSHA256": "9d2c6a7726ac6a0a3b1b7d1953523514f6b682d11439adc222f1cbfc1670e02d"
+          },
+          "covered": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "cd5bab434ad6a136d0adf9046aa2a0647e1f27fca953d2d6388eeb859ed177e2",
+              "opaque": 9995,
+              "black": 8402
+            },
+            "cam": {
+              "x": 3995,
+              "y": -111,
+              "zoom": 1.18,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 0,
+            "plates": [
+              3,
+              3
+            ],
+            "bytes": [
+              6248448,
+              4912128
+            ],
+            "visibleSourcePx": 130272,
+            "frameSHA256": "8ed512aba5eeacf2143899608334f7565cf6269b145690144f3161f5bdeaec27"
+          },
+          "strike": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "79c72a58b2083b5c267d7bac5776eeb7d5e28905afaf4435d34d0a9cecf73e66",
+              "opaque": 11781,
+              "black": 8894
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.18,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 1,
+            "plates": [
+              3,
+              3
+            ],
+            "bytes": [
+              6248448,
+              5142528
+            ],
+            "visibleSourcePx": 123546,
+            "frameSHA256": "12f2feb6228a38484e005f816cacc6da266338071dbca4cf27aac0aeb4cd02f8"
+          }
+        }
+      },
+      "master": {
+        "path": "master-webgl2",
+        "viewport": {
+          "width": 960,
+          "height": 620,
+          "deviceScaleFactor": 1
+        },
+        "beforeTeardown": {
+          "surfaces": 0,
+          "opticalWindows": 1,
+          "curbMips": 4
+        },
+        "afterTeardown": {
+          "surfaces": 0,
+          "opticalWindows": 0,
+          "curbMips": 0
+        },
+        "scenes": {
+          "entry": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "5ef73c0bca4f04995c539c101adab28ccc0afed890bffac7a47f18ad440393c2",
+              "opaque": 10197,
+              "black": 8604
+            },
+            "cam": {
+              "x": 252,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 0,
+            "plates": [
+              2,
+              2
+            ],
+            "bytes": [
+              4165632,
+              3534336
+            ],
+            "visibleSourcePx": 257046,
+            "frameSHA256": "bd43e82f9a39f2f2974b69da138d562b7a62ff140b937f50df9a6762c4bf48d8"
+          },
+          "warm": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "2842c971d8b3a829d6d915536368fd5ca47c361ea91f259fe70a7e6d70ec4d7a",
+              "opaque": 10197,
+              "black": 8604
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 0,
+            "plates": [
+              3,
+              3
+            ],
+            "bytes": [
+              6248448,
+              5142528
+            ],
+            "visibleSourcePx": 226850,
+            "frameSHA256": "5630fd234f6b2ef9448e3b0774bf8c9b3c05114dd9a98466799c3254677d8e06"
+          },
+          "strike": {
+            "frameKind": "webgl",
+            "actor": {
+              "sha256": "1805cf31a6771064e65f1841ba4b59f3c7530cff0ac42190e7bdf43218e74571",
+              "opaque": 11865,
+              "black": 8978
+            },
+            "cam": {
+              "x": 2098,
+              "y": -111,
+              "zoom": 1.49,
+              "rot": 0
+            },
+            "atlas": {
+              "width": 4096,
+              "seed": 42
+            },
+            "fixtureTaps": [
+              6,
+              0
+            ],
+            "casters": 1,
+            "strikeSources": 1,
+            "plates": [
+              3,
+              3
+            ],
+            "bytes": [
+              6248448,
+              5142528
+            ],
+            "visibleSourcePx": 226850,
+            "frameSHA256": "3057f14f9685b4691a6f21a63f5a2aaaa954dbbcf7a4212e9942c29aaa150438"
+          }
+        }
+      }
+    },
+    "apron": {
+      "bounds": {
+        "left": [
+          100,
+          450,
+          104,
+          533
+        ],
+        "right": [
+          105,
+          450,
+          109,
+          533
+        ]
+      },
+      "control": {
+        "left": 53.03128734939756,
+        "right": 23.420267469879477,
+        "step": 29.611019879518082
+      },
+      "release": {
+        "left": 23.39283192771078,
+        "right": 23.387677710843313,
+        "step": 0.005154216867467198
+      }
+    },
+    "images": {
+      "entry-before.webp": {
+        "size": [
+          960,
+          620
+        ],
+        "bytes": 214952,
+        "originalSHA256": "c23b2b8f421eeefada989e231815653b24b96e08fa9915e32565755d0d367c1c"
+      },
+      "entry.webp": {
+        "size": [
+          960,
+          620
+        ],
+        "bytes": 220158,
+        "originalSHA256": "d432ddd22527a23deb41c65cfc7e9566370271ad000d0ab89de90a53151f1002"
+      },
+      "service-portrait.webp": {
+        "size": [
+          412,
+          780
+        ],
+        "bytes": 187058,
+        "originalSHA256": "8ed512aba5eeacf2143899608334f7565cf6269b145690144f3161f5bdeaec27"
+      }
+    }
+  },
+  "ordinaryLoadEarly": {
+    "cpu": {
+      "old": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": true,
+        "touch": false,
+        "menuMs": 642.3000000119209,
+        "titleSceneMs": 812.9000000059605,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 1096.7000000029802,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 1206.9000000059605,
+            "firstKind": "canvas",
+            "readyMs": 1231.7999999970198,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 4.699999988079071,
+            "jumpAt": 1290.4000000059605,
+            "afterSubmitRafMs": 1292.9000000059605,
+            "stepSubmitMs": 1359.1000000089407,
+            "richMs": 1359.1000000089407,
+            "richKind": "canvas",
+            "jumpMs": 1360.2999999970198,
+            "simMs": 1553,
+            "maxLongTaskMs": 378,
+            "acceptedToPlayMs": 1204.5
+          },
+          "RETRY": {
+            "clickAt": 3036,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 726.2000000029802,
+            "firstKind": "canvas",
+            "readyMs": 729.9000000059605,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 1.8999999910593033,
+            "jumpAt": 828.7000000029802,
+            "afterSubmitRafMs": 877.2000000029802,
+            "stepSubmitMs": 941.6000000089407,
+            "richMs": 941.6000000089407,
+            "richKind": "canvas",
+            "jumpMs": 941.8000000119209,
+            "simMs": 1132.300000011921,
+            "maxLongTaskMs": 180,
+            "acceptedToPlayMs": 725.4000000059605
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            306.70000000298023
+          ],
+          [
+            "sr:menu",
+            465.20000000298023
+          ],
+          [
+            "sr:engine-module",
+            601.7000000029802
+          ],
+          [
+            "sr:title-submit",
+            752.3000000119209
+          ],
+          [
+            "sr:ready",
+            792.9000000059605
+          ],
+          [
+            "sr:engage",
+            1099.5
+          ],
+          [
+            "sr:run-initialized",
+            1157.4000000059605
+          ],
+          [
+            "sr:run-workers",
+            1170.9000000059605
+          ],
+          [
+            "sr:run-backdrop-ready",
+            2008.2000000029802
+          ],
+          [
+            "sr:run-renderer-ready",
+            2008.300000011921
+          ],
+          [
+            "sr:run-submit",
+            2303.6000000089407
+          ],
+          [
+            "sr:playing",
+            2304
+          ],
+          [
+            "sr:first-step",
+            2455.800000011921
+          ],
+          [
+            "sr:retry",
+            3037
+          ],
+          [
+            "sr:run-initialized",
+            3095.1000000089407
+          ],
+          [
+            "sr:run-workers",
+            3095.4000000059605
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3685.4000000059605
+          ],
+          [
+            "sr:run-renderer-ready",
+            3685.5
+          ],
+          [
+            "sr:run-submit",
+            3762.2000000029802
+          ],
+          [
+            "sr:playing",
+            3762.4000000059605
+          ],
+          [
+            "sr:first-step",
+            3977.7000000029802
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 1170.800000011921,
+            "ms": 697.1999999880791,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 588.5999999940395
+          },
+          {
+            "stage": "worker.reply",
+            "at": 1180.6000000089407,
+            "ms": 818.3999999910593,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 618.5999999940395
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3095.4000000059605,
+            "ms": 176.79999999701977,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 174.29999999701977
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3095.300000011921,
+            "ms": 587.0999999940395,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 586
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 2013.2000000029802,
+            "ms": 95.29999999701977
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 2009.1000000089407,
+            "ms": 294.3999999910593
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3686.800000011921,
+            "ms": 63.19999998807907
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3686.1000000089407,
+            "ms": 76.09999999403954
+          }
+        ]
+      },
+      "new": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": true,
+        "touch": false,
+        "menuMs": 545.1000000089407,
+        "titleSceneMs": 679.4000000059605,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 823.3000000119209,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 1331.199999988079,
+            "firstKind": "canvas",
+            "readyMs": 1336.199999988079,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 3.9000000059604645,
+            "jumpAt": 1455.0999999940395,
+            "afterSubmitRafMs": 1457.5999999940395,
+            "stepSubmitMs": 1522.699999988079,
+            "richMs": 1522.699999988079,
+            "richKind": "canvas",
+            "jumpMs": 1523,
+            "simMs": 1640.8999999910593,
+            "maxLongTaskMs": 330,
+            "acceptedToPlayMs": 1330.699999988079
+          },
+          "RETRY": {
+            "clickAt": 2725.6000000089407,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 510.20000000298023,
+            "firstKind": "canvas",
+            "readyMs": 520.3999999910593,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 2.2000000029802322,
+            "jumpAt": 621.0999999940395,
+            "afterSubmitRafMs": 627.5999999940395,
+            "stepSubmitMs": 668.2999999970198,
+            "richMs": 668.2999999970198,
+            "richKind": "canvas",
+            "jumpMs": 668.5,
+            "simMs": 818.0999999940395,
+            "maxLongTaskMs": 152,
+            "acceptedToPlayMs": 508.8999999910593
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            296.20000000298023
+          ],
+          [
+            "sr:menu",
+            307.30000001192093
+          ],
+          [
+            "sr:engine-module",
+            528.3000000119209
+          ],
+          [
+            "sr:title-submit",
+            642
+          ],
+          [
+            "sr:ready",
+            661.8000000119209
+          ],
+          [
+            "sr:engage",
+            824.3000000119209
+          ],
+          [
+            "sr:run-initialized",
+            870.7000000029802
+          ],
+          [
+            "sr:run-workers",
+            877.3000000119209
+          ],
+          [
+            "sr:run-backdrop-ready",
+            1927.4000000059605
+          ],
+          [
+            "sr:run-renderer-ready",
+            1927.5
+          ],
+          [
+            "sr:run-submit",
+            2154.5
+          ],
+          [
+            "sr:playing",
+            2155
+          ],
+          [
+            "sr:first-step",
+            2346.1000000089407
+          ],
+          [
+            "sr:retry",
+            2727.1000000089407
+          ],
+          [
+            "sr:run-initialized",
+            2768.5
+          ],
+          [
+            "sr:run-workers",
+            2768.800000011921
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3193.4000000059605
+          ],
+          [
+            "sr:run-renderer-ready",
+            3193.5
+          ],
+          [
+            "sr:run-submit",
+            3235.800000011921
+          ],
+          [
+            "sr:playing",
+            3236
+          ],
+          [
+            "sr:first-step",
+            3394
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 895,
+            "ms": 909.5,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 703
+          },
+          {
+            "stage": "worker.reply",
+            "at": 877.1000000089407,
+            "ms": 1043.5999999940395,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 914.5999999940395
+          },
+          {
+            "stage": "worker.reply",
+            "at": 2768.9000000059605,
+            "ms": 265.59999999403954,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 263.70000000298023
+          },
+          {
+            "stage": "worker.reply",
+            "at": 2768.7000000029802,
+            "ms": 417.79999999701977,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 413.40000000596046
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 1933,
+            "ms": 92.5
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 1928,
+            "ms": 226.5
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3194.5,
+            "ms": 23.100000008940697
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3194.1000000089407,
+            "ms": 41.599999994039536
+          }
+        ]
+      }
+    },
+    "stock": {
+      "old": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": false,
+        "touch": false,
+        "menuMs": 687.2000000029802,
+        "titleSceneMs": null,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 907.4000000059605,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 2499.2999999970198,
+            "firstKind": "canvas",
+            "readyMs": 2508,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 2.300000011920929,
+            "jumpAt": 2536.2999999970198,
+            "afterSubmitRafMs": 2560.7999999970198,
+            "stepSubmitMs": 2614.9000000059605,
+            "richMs": 2614.9000000059605,
+            "richKind": "canvas",
+            "jumpMs": 2615.0999999940395,
+            "simMs": 4405.20000000298,
+            "maxLongTaskMs": 240,
+            "acceptedToPlayMs": 2496.8999999910593
+          },
+          "RETRY": {
+            "clickAt": 5493.4000000059605,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 782.5,
+            "firstKind": "canvas",
+            "readyMs": 787.5,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 1.5999999940395355,
+            "jumpAt": 803.5999999940395,
+            "afterSubmitRafMs": 826.9000000059605,
+            "stepSubmitMs": 854.2999999970198,
+            "richMs": 854.2999999970198,
+            "richKind": "canvas",
+            "jumpMs": 854.4000000059605,
+            "simMs": 1083.2000000029802,
+            "maxLongTaskMs": 94,
+            "acceptedToPlayMs": 772.9000000059605
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            289
+          ],
+          [
+            "sr:menu",
+            332.20000000298023
+          ],
+          [
+            "sr:engine-module",
+            542.5
+          ],
+          [
+            "sr:ready",
+            577.3000000119209
+          ],
+          [
+            "sr:title-submit",
+            888.5
+          ],
+          [
+            "sr:engage",
+            910.3000000119209
+          ],
+          [
+            "sr:run-initialized",
+            1004.5
+          ],
+          [
+            "sr:run-workers",
+            1008.3000000119209
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3203.1000000089407
+          ],
+          [
+            "sr:run-renderer-ready",
+            3203.1000000089407
+          ],
+          [
+            "sr:run-submit",
+            3406.7000000029802
+          ],
+          [
+            "sr:playing",
+            3407.2000000029802
+          ],
+          [
+            "sr:first-step",
+            3522.4000000059605
+          ],
+          [
+            "sr:retry",
+            5503.20000000298
+          ],
+          [
+            "sr:run-initialized",
+            5589.300000011921
+          ],
+          [
+            "sr:run-workers",
+            5589.800000011921
+          ],
+          [
+            "sr:run-backdrop-ready",
+            6216.20000000298
+          ],
+          [
+            "sr:run-renderer-ready",
+            6216.300000011921
+          ],
+          [
+            "sr:run-submit",
+            6275.9000000059605
+          ],
+          [
+            "sr:playing",
+            6276.100000008941
+          ],
+          [
+            "sr:first-step",
+            6347.70000000298
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 1084.800000011921,
+            "ms": 2081.5999999940395,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 358.20000000298023
+          },
+          {
+            "stage": "worker.reply",
+            "at": 1008.3000000119209,
+            "ms": 2193.699999988079,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 492.5
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5590.100000008941,
+            "ms": 208.09999999403954,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 205.09999999403954
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5589.4000000059605,
+            "ms": 625.7000000029802,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 620.5
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3208.7000000029802,
+            "ms": 60.400000005960464
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3203.5,
+            "ms": 203.20000000298023
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 6217.4000000059605,
+            "ms": 48.900000005960464
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 6216.70000000298,
+            "ms": 59.20000000298023
+          }
+        ]
+      },
+      "new": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": false,
+        "touch": false,
+        "menuMs": 535.9000000059605,
+        "titleSceneMs": null,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 548.9000000059605,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 3576.2000000029802,
+            "firstKind": "canvas",
+            "readyMs": 3578.5999999940395,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 4.700000002980232,
+            "jumpAt": 3708.2000000029802,
+            "afterSubmitRafMs": 3746.2000000029802,
+            "stepSubmitMs": 3821.2999999970198,
+            "richMs": 3821.2999999970198,
+            "richKind": "canvas",
+            "jumpMs": 3821.5,
+            "simMs": 4855.20000000298,
+            "maxLongTaskMs": 475,
+            "acceptedToPlayMs": 3575.5
+          },
+          "RETRY": {
+            "clickAt": 5493.600000008941,
+            "active": true,
+            "paintedTitle": false,
+            "submitMs": 643.2000000029802,
+            "firstKind": "canvas",
+            "readyMs": 644.8999999910593,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 1,
+            "jumpAt": 652.7999999970198,
+            "afterSubmitRafMs": 653.8999999910593,
+            "stepSubmitMs": 706.3999999910593,
+            "richMs": 706.3999999910593,
+            "richKind": "canvas",
+            "jumpMs": 706.5,
+            "simMs": 858.5,
+            "maxLongTaskMs": 83,
+            "acceptedToPlayMs": 642.1999999880791
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            251.90000000596046
+          ],
+          [
+            "sr:menu",
+            283.20000000298023
+          ],
+          [
+            "sr:engine-module",
+            485.80000001192093
+          ],
+          [
+            "sr:ready",
+            510.70000000298023
+          ],
+          [
+            "sr:engage",
+            550.1000000089407
+          ],
+          [
+            "sr:run-initialized",
+            639.5
+          ],
+          [
+            "sr:run-workers",
+            646.2000000029802
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3781.5
+          ],
+          [
+            "sr:run-renderer-ready",
+            3781.6000000089407
+          ],
+          [
+            "sr:run-submit",
+            4125.20000000298
+          ],
+          [
+            "sr:playing",
+            4125.600000008941
+          ],
+          [
+            "sr:first-step",
+            4370.20000000298
+          ],
+          [
+            "sr:retry",
+            5494.800000011921
+          ],
+          [
+            "sr:run-initialized",
+            5577.300000011921
+          ],
+          [
+            "sr:run-workers",
+            5577.4000000059605
+          ],
+          [
+            "sr:run-backdrop-ready",
+            6063
+          ],
+          [
+            "sr:run-renderer-ready",
+            6063.100000008941
+          ],
+          [
+            "sr:run-submit",
+            6136.800000011921
+          ],
+          [
+            "sr:playing",
+            6137
+          ],
+          [
+            "sr:first-step",
+            6200
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 646.1000000089407,
+            "ms": 2693.2000000029802,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 721.5
+          },
+          {
+            "stage": "worker.reply",
+            "at": 751.4000000059605,
+            "ms": 3028.2999999970198,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 442.40000000596046
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5577.4000000059605,
+            "ms": 178.20000000298023,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 174.80000001192093
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5577.4000000059605,
+            "ms": 479.70000000298023,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 472.1000000089407
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3794.2000000029802,
+            "ms": 101.29999999701977
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3782.2000000029802,
+            "ms": 342.90000000596046
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 6064.20000000298,
+            "ms": 68.1000000089407
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 6063.4000000059605,
+            "ms": 73.29999999701977
+          }
+        ]
+      }
+    },
+    "touch": {
+      "old": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": true,
+        "touch": true,
+        "menuMs": 740.4000000059605,
+        "titleSceneMs": 897.9000000059605,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 1118.2999999970198,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 1257.800000011921,
+            "firstKind": "canvas",
+            "readyMs": 1273.800000011921,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 4.700000002980232,
+            "afterSubmitRafMs": 1353.800000011921,
+            "stepSubmitMs": 1384.5,
+            "richMs": 1384.5,
+            "richKind": "canvas",
+            "simMs": 1490.2000000029802,
+            "jumpAt": 1523.7000000029802,
+            "jumpMs": 1556.2000000029802,
+            "postPromotionMs": 1819.2000000029802,
+            "maxLongTaskMs": 191,
+            "acceptedToPlayMs": 1256.0999999940395
+          },
+          "RETRY": {
+            "clickAt": 3154.5,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 833.9000000059605,
+            "firstKind": "canvas",
+            "readyMs": 854.7000000029802,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 0.699999988079071,
+            "afterSubmitRafMs": 941,
+            "stepSubmitMs": 973.9000000059605,
+            "richMs": 973.9000000059605,
+            "richKind": "canvas",
+            "simMs": 1203.1000000089407,
+            "jumpAt": 1372.6000000089407,
+            "jumpMs": 1382.7999999970198,
+            "postPromotionMs": 1465.2999999970198,
+            "maxLongTaskMs": 229,
+            "acceptedToPlayMs": 832.8999999910593
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            400.5
+          ],
+          [
+            "sr:menu",
+            497.79999999701977
+          ],
+          [
+            "sr:engine-module",
+            706
+          ],
+          [
+            "sr:title-submit",
+            865.7000000029802
+          ],
+          [
+            "sr:ready",
+            889.9000000059605
+          ],
+          [
+            "sr:engage",
+            1120.4000000059605
+          ],
+          [
+            "sr:run-initialized",
+            1178.7000000029802
+          ],
+          [
+            "sr:run-workers",
+            1188.7999999970198
+          ],
+          [
+            "sr:run-backdrop-ready",
+            2263.4000000059605
+          ],
+          [
+            "sr:run-renderer-ready",
+            2263.6000000089407
+          ],
+          [
+            "sr:run-submit",
+            2376.1000000089407
+          ],
+          [
+            "sr:playing",
+            2376.5
+          ],
+          [
+            "sr:first-step",
+            2502.7999999970198
+          ],
+          [
+            "sr:retry",
+            3155.9000000059605
+          ],
+          [
+            "sr:run-initialized",
+            3185
+          ],
+          [
+            "sr:run-workers",
+            3185.1000000089407
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3868.7999999970198
+          ],
+          [
+            "sr:run-renderer-ready",
+            3868.9000000059605
+          ],
+          [
+            "sr:run-submit",
+            3988.4000000059605
+          ],
+          [
+            "sr:playing",
+            3988.7999999970198
+          ],
+          [
+            "sr:first-step",
+            4128.4000000059605
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 1201.4000000059605,
+            "ms": 789.7999999970198,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 570.5
+          },
+          {
+            "stage": "worker.reply",
+            "at": 1188.7000000029802,
+            "ms": 1065.4000000059605,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 896.2000000029802
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3185.1000000089407,
+            "ms": 167.69999998807907,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 161
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3185.1000000089407,
+            "ms": 669.6999999880791,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 660.9000000059605
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 2268.7999999970198,
+            "ms": 66
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 2264.2000000029802,
+            "ms": 111.90000000596046
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3873.7999999970198,
+            "ms": 80.70000000298023
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3869.5,
+            "ms": 118.79999999701977
+          }
+        ]
+      },
+      "new": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "cpuCompositor": true,
+        "touch": true,
+        "menuMs": 771.2000000029802,
+        "titleSceneMs": 950.2000000029802,
+        "path": "mobile-canvas",
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 1191.5,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 1220.8999999910593,
+            "firstKind": "canvas",
+            "readyMs": 1261.2999999970198,
+            "seed": 42,
+            "sky": null,
+            "bakeMs": 1.5999999940395355,
+            "afterSubmitRafMs": 1334.5,
+            "stepSubmitMs": 1390.7999999970198,
+            "richMs": 1390.7999999970198,
+            "richKind": "canvas",
+            "simMs": 1551.0999999940395,
+            "jumpAt": 1587,
+            "jumpMs": 1596.7000000029802,
+            "postPromotionMs": 1816.3999999910593,
+            "maxLongTaskMs": 293,
+            "acceptedToPlayMs": 1221.2000000029802
+          },
+          "RETRY": {
+            "clickAt": 3192,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 421.20000000298023,
+            "firstKind": "canvas",
+            "readyMs": 424.3999999910593,
+            "seed": 43,
+            "sky": null,
+            "bakeMs": 2.1000000089406967,
+            "afterSubmitRafMs": 449.09999999403954,
+            "stepSubmitMs": 488.79999999701977,
+            "richMs": 488.79999999701977,
+            "richKind": "canvas",
+            "jumpAt": 656.8999999910593,
+            "simMs": 660.3999999910593,
+            "jumpMs": 674.8999999910593,
+            "postPromotionMs": 988.2000000029802,
+            "maxLongTaskMs": 0,
+            "acceptedToPlayMs": 420.29999999701977
+          }
+        },
+        "marks": [
+          [
+            "sr:engine-request",
+            462.20000000298023
+          ],
+          [
+            "sr:menu",
+            553.5
+          ],
+          [
+            "sr:engine-module",
+            737.8999999910593
+          ],
+          [
+            "sr:title-submit",
+            870.0999999940395
+          ],
+          [
+            "sr:ready",
+            931.0999999940395
+          ],
+          [
+            "sr:engage",
+            1198.7999999970198
+          ],
+          [
+            "sr:run-initialized",
+            1265.7000000029802
+          ],
+          [
+            "sr:run-workers",
+            1271.7000000029802
+          ],
+          [
+            "sr:run-backdrop-ready",
+            2230.0999999940395
+          ],
+          [
+            "sr:run-renderer-ready",
+            2230.0999999940395
+          ],
+          [
+            "sr:run-submit",
+            2412.3999999910593
+          ],
+          [
+            "sr:playing",
+            2420
+          ],
+          [
+            "sr:first-step",
+            2582.2999999970198
+          ],
+          [
+            "sr:retry",
+            3193.2000000029802
+          ],
+          [
+            "sr:run-initialized",
+            3215.8999999910593
+          ],
+          [
+            "sr:run-workers",
+            3216.0999999940395
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3596.7000000029802
+          ],
+          [
+            "sr:run-renderer-ready",
+            3596.8999999910593
+          ],
+          [
+            "sr:run-submit",
+            3613.2000000029802
+          ],
+          [
+            "sr:playing",
+            3613.5
+          ],
+          [
+            "sr:first-step",
+            3680.7999999970198
+          ]
+        ],
+        "workerPrepReplies": [
+          {
+            "stage": "worker.reply",
+            "at": 1289.8999999910593,
+            "ms": 541.3000000119209,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 335.40000000596046
+          },
+          {
+            "stage": "worker.reply",
+            "at": 1271.5999999940395,
+            "ms": 944.7000000029802,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 759
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3216.2000000029802,
+            "ms": 213.09999999403954,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 210.09999999403954
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3216,
+            "ms": 371.5,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 371
+          }
+        ],
+        "prepPaints": [
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 2234.2000000029802,
+            "ms": 71.59999999403954
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 2230.5999999940395,
+            "ms": 181.79999999701977
+          },
+          {
+            "stage": "bg.drawBridgeBackdrop",
+            "phase": "preparing",
+            "at": 3598,
+            "ms": 12.799999997019768
+          },
+          {
+            "stage": "paint",
+            "phase": "preparing",
+            "at": 3597.2999999970198,
+            "ms": 15.900000005960464
+          }
+        ]
+      }
+    }
+  },
+  "lockedHighTravel": {
+    "desktop": {
+      "old-a": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          1180,
+          660,
+          1
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 26.504205702085365,
+        "raf": {
+          "p50": 33.399999999999636,
+          "p95": 50.100000000000364,
+          "p99": 66.69999999999982,
+          "max": 83.39999999999964,
+          "mean": 37.72986111111111
+        },
+        "js": {
+          "p50": 5.4000000059604645,
+          "p95": 8.700000002980232,
+          "p99": 16.30000001192093,
+          "max": 19,
+          "mean": 5.662500000041392
+        },
+        "over250": 0,
+        "sizes": [
+          "1357\u00d7758"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 986.1000000089407,
+        "readyMs": 372.29999999701977,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 4.9000000059604645,
+            "p95": 8.200000002980232,
+            "p99": 15.900000005960464,
+            "max": 18.600000008940697,
+            "mean": 5.223611111028327
+          },
+          "game.step": {
+            "p50": 0.29999999701976776,
+            "p95": 0.5,
+            "p99": 1.0999999940395355,
+            "max": 1.5,
+            "mean": 0.32847222220152617
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.4000000059604645,
+            "mean": 0.020138888930281002
+          },
+          "sky.draw": {
+            "p50": 0.10000000894069672,
+            "p95": 3.5,
+            "p99": 7.100000008940697,
+            "max": 14.799999997019768,
+            "mean": 1.044444444278876
+          },
+          "sky.mist": {
+            "p50": 0.7999999970197678,
+            "p95": 1.5,
+            "p99": 6,
+            "max": 8.299999997019768,
+            "mean": 0.9673611107799742
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.9000000059604645,
+            "max": 1.2999999970197678,
+            "mean": 0.07152777806752258
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 2.4000000059604645,
+            "mean": 0.05416666705989175
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2,
+            "p99": 2.1000000089406967,
+            "max": 11.5,
+            "mean": 0.2986111112145914
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.29999999701976776,
+            "p99": 1.2999999970197678,
+            "max": 1.4000000059604645,
+            "mean": 0.20138888826800716
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.013888888888888888
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.06527777750872904
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.05416666602508889
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.7999999970197678,
+            "p95": 4.9000000059604645,
+            "p99": 10,
+            "max": 16.299999997019768,
+            "mean": 2.488888889344202
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.3999999910593033,
+            "p99": 0.800000011920929,
+            "max": 1,
+            "mean": 0.16944444376147455
+          },
+          "glass.draw": {
+            "p50": 0.7999999970197678,
+            "p95": 1.3999999910593033,
+            "p99": 2.2000000029802322,
+            "max": 2.7000000029802322,
+            "mean": 0.7277777783779634
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.009027777653601434
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.03472222201526165
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 6248448,
+          "lit": true,
+          "windows": 2,
+          "stale": 0,
+          "workerMaxMs": 588.5,
+          "plateMaxMs": 389.20000000298023,
+          "decodeMaxMs": 0.7999999970197678,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "new-a": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          1180,
+          660,
+          1
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 25.044784945301497,
+        "raf": {
+          "p50": 33.399999999999636,
+          "p95": 66.60000000000036,
+          "p99": 83.29999999999927,
+          "max": 83.30000000000018,
+          "mean": 39.92847222222222
+        },
+        "js": {
+          "p50": 5.5999999940395355,
+          "p95": 10.900000005960464,
+          "p99": 14.5,
+          "max": 23,
+          "mean": 6.013888888371487
+        },
+        "over250": 0,
+        "sizes": [
+          "1357\u00d7758"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 767.5999999940395,
+        "readyMs": 644.2000000029802,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 5,
+            "p95": 10.300000011920929,
+            "p99": 14,
+            "max": 22.5,
+            "mean": 5.558333333374725
+          },
+          "game.step": {
+            "p50": 0.29999999701976776,
+            "p95": 0.5,
+            "p99": 1,
+            "max": 1.3999999910593033,
+            "mean": 0.35277777734316057
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.30000001192092896,
+            "mean": 0.015277777798473835
+          },
+          "sky.draw": {
+            "p50": 0.19999998807907104,
+            "p95": 3.7999999970197678,
+            "p99": 9.700000002980232,
+            "max": 18.700000002980232,
+            "mean": 1.2499999993791182
+          },
+          "sky.mist": {
+            "p50": 0.7999999970197678,
+            "p95": 1.2000000029802322,
+            "p99": 4.5999999940395355,
+            "max": 9.900000005960464,
+            "mean": 0.9298611105316215
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.10000000894069672,
+            "p99": 0.5999999940395355,
+            "max": 1.1000000089406967,
+            "mean": 0.06597222294658422
+          },
+          "sky.life": {
+            "p50": 0.09999999403953552,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 3.2000000029802322,
+            "mean": 0.0791666666045785
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2.2999999970197678,
+            "p99": 4.0999999940395355,
+            "max": 8.800000011920929,
+            "mean": 0.3201388886405362
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.3999999910593033,
+            "p99": 3.6000000089406967,
+            "max": 3.800000011920929,
+            "mean": 0.2652777773845527
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.013888888578448031
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.6000000089406967,
+            "max": 0.9000000059604645,
+            "mean": 0.08333333312637276
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.29999999701976776,
+            "mean": 0.047916666294137635
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.7999999970197678,
+            "p95": 6.800000011920929,
+            "p99": 11.300000011920929,
+            "max": 20.5,
+            "mean": 2.681944444672101
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.4000000059604645,
+            "p99": 0.5,
+            "max": 0.5,
+            "mean": 0.17430555468632114
+          },
+          "glass.draw": {
+            "p50": 0.7999999970197678,
+            "p95": 1.5,
+            "p99": 3.7999999970197678,
+            "max": 4,
+            "mean": 0.8180555557418201
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.012500000082784228
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.29999999701976776,
+            "mean": 0.03958333366447025
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 5142528,
+          "lit": true,
+          "windows": 2,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 535.9000000059605,
+          "plateMaxMs": 339.70000000298023,
+          "decodeMaxMs": 0.3999999910593033,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "new-b": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          1180,
+          660,
+          1
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 27.69337282203162,
+        "raf": {
+          "p50": 33.30000000000018,
+          "p95": 50,
+          "p99": 83.30000000000018,
+          "max": 83.30000000000018,
+          "mean": 36.10972222222222
+        },
+        "js": {
+          "p50": 5,
+          "p95": 8.800000011920929,
+          "p99": 10.100000008940697,
+          "max": 21.099999994039536,
+          "mean": 5.442361110097004
+        },
+        "over250": 0,
+        "sizes": [
+          "1357\u00d7758"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 1007.7999999970198,
+        "readyMs": 504,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 4.5999999940395355,
+            "p95": 8.399999991059303,
+            "p99": 9.700000002980232,
+            "max": 20.599999994039536,
+            "mean": 5.012500000082785
+          },
+          "game.step": {
+            "p50": 0.29999999701976776,
+            "p95": 0.5,
+            "p99": 1,
+            "max": 3.9000000059604645,
+            "mean": 0.3319444443202681
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.011111111173199283
+          },
+          "sky.draw": {
+            "p50": 0.10000000894069672,
+            "p95": 4.200000002980232,
+            "p99": 5.699999988079071,
+            "max": 15.900000005960464,
+            "mean": 1.121527777156896
+          },
+          "sky.mist": {
+            "p50": 0.7000000029802322,
+            "p95": 1.199999988079071,
+            "p99": 1.5,
+            "max": 2.7000000029802322,
+            "mean": 0.8111111109869348
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 1.7000000029802322,
+            "max": 3.5,
+            "mean": 0.10347222267753547
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.4000000059604645,
+            "max": 0.4000000059604645,
+            "mean": 0.042361111380159855
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2.5,
+            "p99": 3.2000000029802322,
+            "max": 4.299999997019768,
+            "mean": 0.26944444411330754
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.30000001192092896,
+            "p99": 0.4000000059604645,
+            "max": 1.1000000089406967,
+            "mean": 0.18750000051740143
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.20000000298023224,
+            "mean": 0.012500000393225087
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.20000000298023224,
+            "max": 0.7000000029802322,
+            "mean": 0.07291666728754838
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.03611111113180717
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.5,
+            "p95": 5.5999999940395355,
+            "p99": 7.0999999940395355,
+            "max": 18.400000005960464,
+            "mean": 2.402083333271245
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.4000000059604645,
+            "p99": 0.5,
+            "max": 0.7000000029802322,
+            "mean": 0.17083333298150036
+          },
+          "glass.draw": {
+            "p50": 0.7999999970197678,
+            "p95": 1.3999999910593033,
+            "p99": 1.7999999970197678,
+            "max": 2.2000000029802322,
+            "mean": 0.720138888909585
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.006944444651405017
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.7999999970197678,
+            "max": 3.5999999940395355,
+            "mean": 0.0604166668943233
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 5142528,
+          "lit": true,
+          "windows": 2,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 673.3999999910593,
+          "plateMaxMs": 526,
+          "decodeMaxMs": 0.29999999701976776,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "old-b": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          1180,
+          660,
+          1
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 20.282832835652712,
+        "raf": {
+          "p50": 50,
+          "p95": 83.30000000000018,
+          "p99": 133.29999999999973,
+          "max": 150.10000000000036,
+          "mean": 49.30277777777778
+        },
+        "js": {
+          "p50": 6.100000008940697,
+          "p95": 17.600000008940697,
+          "p99": 26.900000005960464,
+          "max": 30.599999994039536,
+          "mean": 7.4361111110904154
+        },
+        "over250": 0,
+        "sizes": [
+          "1357\u00d7758"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 908.5,
+        "readyMs": 427.40000000596046,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 5.5,
+            "p95": 17,
+            "p99": 25.900000005960464,
+            "max": 26.200000002980232,
+            "mean": 6.816666666004393
+          },
+          "game.step": {
+            "p50": 0.29999999701976776,
+            "p95": 1.3999999910593033,
+            "p99": 4.299999997019768,
+            "max": 7.5,
+            "mean": 0.49791666699780357
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.29999999701976776,
+            "mean": 0.012499999875823656
+          },
+          "sky.draw": {
+            "p50": 0.19999998807907104,
+            "p95": 4.5,
+            "p99": 12.400000005960464,
+            "max": 22.5,
+            "mean": 1.3923611109041505
+          },
+          "sky.mist": {
+            "p50": 0.8999999910593033,
+            "p95": 2.3999999910593033,
+            "p99": 12.5,
+            "max": 14.099999994039536,
+            "mean": 1.2243055561557412
+          },
+          "sky.city": {
+            "p50": 0,
+            "p95": 0.20000000298023224,
+            "p99": 2.5999999940395355,
+            "max": 3.5,
+            "mean": 0.11458333333333333
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.19999998807907104,
+            "p99": 0.7000000029802322,
+            "max": 3.3999999910593033,
+            "mean": 0.08541666674945089
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2.5,
+            "p99": 6.299999997019768,
+            "max": 11.899999991059303,
+            "mean": 0.3902777780054344
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.6000000089406967,
+            "p99": 3.1000000089406967,
+            "max": 8.100000008940697,
+            "mean": 0.3277777775915133
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.01597222240848674
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.7999999970197678,
+            "max": 1.2000000029802322,
+            "mean": 0.09027777808821863
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.8999999910593033,
+            "max": 1,
+            "mean": 0.06180555559694767
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 2.1000000089406967,
+            "p95": 8.300000011920929,
+            "p99": 14.599999994039536,
+            "max": 23.5,
+            "mean": 3.1798611112559834
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.7000000029802322,
+            "p99": 1.1000000089406967,
+            "max": 1.2999999970197678,
+            "mean": 0.21944444378217062
+          },
+          "glass.draw": {
+            "p50": 0.7999999970197678,
+            "p95": 2.699999988079071,
+            "p99": 4.4000000059604645,
+            "max": 5.5,
+            "mean": 0.9375000006208817
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.010416666563186381
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 1.0999999940395355,
+            "max": 5.9000000059604645,
+            "mean": 0.08680555534859498
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 6248448,
+          "lit": true,
+          "windows": 2,
+          "stale": 0,
+          "workerMaxMs": 558.6999999880791,
+          "plateMaxMs": 408.3999999910593,
+          "decodeMaxMs": 0.5,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        }
+      }
+    },
+    "touch": {
+      "old-a": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          400,
+          844,
+          2
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 44.769159023783615,
+        "raf": {
+          "p50": 16.699999999999818,
+          "p95": 33.400000000000546,
+          "p99": 50,
+          "max": 50,
+          "mean": 22.336805555555557
+        },
+        "js": {
+          "p50": 4,
+          "p95": 8,
+          "p99": 14,
+          "max": 15.299999997019768,
+          "mean": 4.5041666667287545
+        },
+        "over250": 0,
+        "sizes": [
+          "459\u00d7970"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 1348.1000000089407,
+        "readyMs": 622,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 3.5,
+            "p95": 7.4000000059604645,
+            "p99": 13.200000002980232,
+            "max": 14.799999997019768,
+            "mean": 4.034027778647012
+          },
+          "game.step": {
+            "p50": 0.29999999701976776,
+            "p95": 0.6000000089406967,
+            "p99": 2.4000000059604645,
+            "max": 2.5,
+            "mean": 0.37013888866123223
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.4000000059604645,
+            "mean": 0.012499999979303943
+          },
+          "sky.draw": {
+            "p50": 0.20000000298023224,
+            "p95": 3.5,
+            "p99": 8.399999991059303,
+            "max": 9.899999991059303,
+            "mean": 1.05972222207735
+          },
+          "sky.mist": {
+            "p50": 0.5,
+            "p95": 0.7000000029802322,
+            "p99": 1.5,
+            "max": 1.7000000029802322,
+            "mean": 0.507638887812694
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.20000000298023224,
+            "max": 2.2999999970197678,
+            "mean": 0.07083333387143081
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.04930555561764373
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2.0999999940395355,
+            "p99": 5,
+            "max": 5,
+            "mean": 0.26875000002069604
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.30000001192092896,
+            "p99": 0.5,
+            "max": 2.699999988079071,
+            "mean": 0.19027777844005161
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.004166666625274552
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.20000000298023224,
+            "max": 0.5,
+            "mean": 0.06111111077997419
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.699999988079071,
+            "max": 0.9000000059604645,
+            "mean": 0.05069444463070896
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1,
+            "p95": 4.799999997019768,
+            "p99": 10.099999994039536,
+            "max": 12,
+            "mean": 1.914583332836628
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.4000000059604645,
+            "p99": 0.5,
+            "max": 0.7999999970197678,
+            "mean": 0.17500000012417635
+          },
+          "glass.draw": {
+            "p50": 0,
+            "p95": 0.699999988079071,
+            "p99": 1.2999999970197678,
+            "max": 1.5,
+            "mean": 0.0680555555348595
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.009722222263614336
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.19999998807907104,
+            "max": 0.7000000029802322,
+            "mean": 0.04236111086275843
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 6248448,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "workerMaxMs": 947.9000000059605,
+          "plateMaxMs": 364.29999999701977,
+          "decodeMaxMs": 0.7000000029802322,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "new-a": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          400,
+          844,
+          2
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 40.187541862022776,
+        "raf": {
+          "p50": 16.700000000000273,
+          "p95": 50,
+          "p99": 50.100000000000364,
+          "max": 50.100000000000364,
+          "mean": 24.883333333333333
+        },
+        "js": {
+          "p50": 4.200000002980232,
+          "p95": 8.899999991059303,
+          "p99": 14.400000005960464,
+          "max": 16.599999994039536,
+          "mean": 4.9291666662320495
+        },
+        "over250": 0,
+        "sizes": [
+          "459\u00d7970"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 749.2999999970198,
+        "readyMs": 490.20000000298023,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 3.7000000029802322,
+            "p95": 8.100000008940697,
+            "p99": 13.700000002980232,
+            "max": 15.899999991059303,
+            "mean": 4.388194444071916
+          },
+          "game.step": {
+            "p50": 0.3999999910593033,
+            "p95": 0.800000011920929,
+            "p99": 1.2999999970197678,
+            "max": 4.399999991059303,
+            "mean": 0.4173611112766796
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.016666666708058782
+          },
+          "sky.draw": {
+            "p50": 0.20000000298023224,
+            "p95": 4.200000002980232,
+            "p99": 10.099999994039536,
+            "max": 12.400000005960464,
+            "mean": 1.2347222216841247
+          },
+          "sky.mist": {
+            "p50": 0.5,
+            "p95": 1.5,
+            "p99": 3.5,
+            "max": 5.5999999940395355,
+            "mean": 0.666666666770147
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 2.1000000089406967,
+            "max": 3.7000000029802322,
+            "mean": 0.1076388887854086
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 3.9000000059604645,
+            "mean": 0.07152777786056201
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 2.2999999970197678,
+            "p99": 4.200000002980232,
+            "max": 6.399999991059303,
+            "mean": 0.3090277777777778
+          },
+          "bg.drawArena": {
+            "p50": 0.19999998807907104,
+            "p95": 0.3999999910593033,
+            "p99": 0.5999999940395355,
+            "max": 1.9000000059604645,
+            "mean": 0.18333333430604803
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.20000000298023224,
+            "mean": 0.011111111276679568
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.06111111129737563
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.800000011920929,
+            "mean": 0.044444444278875984
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.5,
+            "p95": 6,
+            "p99": 11.599999994039536,
+            "max": 13.600000008940697,
+            "mean": 2.3770833320708737
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.4000000059604645,
+            "p99": 0.7000000029802322,
+            "max": 1,
+            "mean": 0.1847222222843104
+          },
+          "glass.draw": {
+            "p50": 0,
+            "p95": 0.7000000029802322,
+            "p99": 1.5999999940395355,
+            "max": 1.7999999970197678,
+            "mean": 0.07013888946837848
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.19999998807907104,
+            "mean": 0.007638888950977061
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.7999999970197678,
+            "max": 0.8999999910593033,
+            "mean": 0.0506944450446301
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 5142528,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 541.9000000059605,
+          "plateMaxMs": 331.1000000089407,
+          "decodeMaxMs": 0.29999999701976776,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "new-b": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          400,
+          844,
+          2
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 40.3757184915183,
+        "raf": {
+          "p50": 16.700000000000728,
+          "p95": 33.400000000000546,
+          "p99": 50,
+          "max": 83.29999999999927,
+          "mean": 24.76736111111111
+        },
+        "js": {
+          "p50": 4,
+          "p95": 9.299999997019768,
+          "p99": 13.100000008940697,
+          "max": 16.600000008940697,
+          "mean": 4.783333332691756
+        },
+        "over250": 0,
+        "sizes": [
+          "459\u00d7970"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 698,
+        "readyMs": 481.5,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 3.5,
+            "p95": 8.900000005960464,
+            "p99": 12.5,
+            "max": 13,
+            "mean": 4.276388888868193
+          },
+          "game.step": {
+            "p50": 0.3999999910593033,
+            "p95": 0.5,
+            "p99": 2.5,
+            "max": 3.6000000089406967,
+            "mean": 0.4069444440926115
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.20000000298023224,
+            "mean": 0.01527777717759212
+          },
+          "sky.draw": {
+            "p50": 0.20000000298023224,
+            "p95": 5.5999999940395355,
+            "p99": 7.299999997019768,
+            "max": 8.299999997019768,
+            "mean": 1.2076388885163598
+          },
+          "sky.mist": {
+            "p50": 0.5,
+            "p95": 1.0999999940395355,
+            "p99": 2.199999988079071,
+            "max": 2.5,
+            "mean": 0.5881944438442588
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.20000000298023224,
+            "max": 0.29999999701976776,
+            "mean": 0.0694444448583656
+          },
+          "sky.life": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 1,
+            "mean": 0.05763888876471254
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 3,
+            "p99": 4.0999999940395355,
+            "max": 6.4000000059604645,
+            "mean": 0.32777777769499356
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.29999999701976776,
+            "p99": 0.4000000059604645,
+            "max": 1.4000000059604645,
+            "mean": 0.1875
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.005555555741820071
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.7000000029802322,
+            "max": 3.3999999910593033,
+            "mean": 0.1006944448583656
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.043749999461902514
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.2999999970197678,
+            "p95": 6.5,
+            "p99": 8.599999994039536,
+            "max": 9.299999997019768,
+            "mean": 2.1826388891786337
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.4000000059604645,
+            "p99": 0.4000000059604645,
+            "max": 1,
+            "mean": 0.18611111088345447
+          },
+          "glass.draw": {
+            "p50": 0,
+            "p95": 0.699999988079071,
+            "p99": 1.2000000029802322,
+            "max": 2.2000000029802322,
+            "mean": 0.0756944448997577
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.004166666832235124
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.19999998807907104,
+            "max": 0.19999998807907104,
+            "mean": 0.042361111069718994
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 5142528,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 476.6000000089407,
+          "plateMaxMs": 345.3999999910593,
+          "decodeMaxMs": 0.4000000059604645,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        }
+      },
+      "old-b": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "viewport": [
+          400,
+          844,
+          2
+        ],
+        "frames": 144,
+        "quality": "high",
+        "adaptive": false,
+        "hidden": false,
+        "fps": 32.48217991518541,
+        "raf": {
+          "p50": 33.30000000000018,
+          "p95": 50,
+          "p99": 66.69999999999982,
+          "max": 99.89999999999964,
+          "mean": 30.786111111111115
+        },
+        "js": {
+          "p50": 4.5,
+          "p95": 12.700000002980232,
+          "p99": 23.400000005960464,
+          "max": 28.900000005960464,
+          "mean": 5.6645833337679505
+        },
+        "over250": 0,
+        "sizes": [
+          "459\u00d7970"
+        ],
+        "paths": [
+          "mobile-canvas"
+        ],
+        "start": 660,
+        "playerX": 1689.3158288955722,
+        "prepareMs": 971,
+        "readyMs": 789.1000000089407,
+        "surfaceCount": 0,
+        "frameErrors": 0,
+        "timings": {
+          "game.paint": {
+            "p50": 3.9000000059604645,
+            "p95": 12.200000002980232,
+            "p99": 22.900000005960464,
+            "max": 28.5,
+            "mean": 5.131944445065326
+          },
+          "game.step": {
+            "p50": 0.3999999910593033,
+            "p95": 0.7000000029802322,
+            "p99": 2.2999999970197678,
+            "max": 2.3999999910593033,
+            "mean": 0.41388889039970106
+          },
+          "game.prepareRunFrame": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "game.buildHudState": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.016666666501098208
+          },
+          "sky.draw": {
+            "p50": 0.10000000894069672,
+            "p95": 5.899999991059303,
+            "p99": 9.300000011920929,
+            "max": 15.100000008940697,
+            "mean": 1.450694445003238
+          },
+          "sky.mist": {
+            "p50": 0.5,
+            "p95": 1.0999999940395355,
+            "p99": 4.700000002980232,
+            "max": 5.100000008940697,
+            "mean": 0.6180555556590358
+          },
+          "sky.city": {
+            "p50": 0.09999999403953552,
+            "p95": 0.20000000298023224,
+            "p99": 0.3999999910593033,
+            "max": 1.1000000089406967,
+            "mean": 0.07291666687362724
+          },
+          "sky.life": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.20000000298023224,
+            "max": 0.20000000298023224,
+            "mean": 0.0590277775708172
+          },
+          "sky.detail": {
+            "p50": 0,
+            "p95": 3.5,
+            "p99": 4.9000000059604645,
+            "max": 6.9000000059604645,
+            "mean": 0.39166666629413766
+          },
+          "bg.drawArena": {
+            "p50": 0.20000000298023224,
+            "p95": 0.30000001192092896,
+            "p99": 0.7999999970197678,
+            "max": 3.199999988079071,
+            "mean": 0.20138888878540862
+          },
+          "bg.drawRouteExterior": {
+            "p50": 0,
+            "p95": 0.09999999403953552,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.005555555638339784
+          },
+          "bg.drawBridgeWater": {
+            "p50": 0.09999999403953552,
+            "p95": 0.19999998807907104,
+            "p99": 0.3999999910593033,
+            "max": 0.7000000029802322,
+            "mean": 0.0722222218496932
+          },
+          "bg.drawNearRain": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.3999999910593033,
+            "max": 0.9000000059604645,
+            "mean": 0.05277777763290538
+          },
+          "bg.drawBridgeBackdrop": {
+            "p50": 1.1000000089406967,
+            "p95": 8.100000008940697,
+            "p99": 11.099999994039536,
+            "max": 15.900000005960464,
+            "mean": 2.506944444754885
+          },
+          "hud.draw": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0,
+            "max": 0,
+            "mean": 0
+          },
+          "hud.drawLayer": {
+            "p50": 0.20000000298023224,
+            "p95": 0.5,
+            "p99": 1.6000000089406967,
+            "max": 6.399999991059303,
+            "mean": 0.23958333322985303
+          },
+          "glass.draw": {
+            "p50": 0,
+            "p95": 1,
+            "p99": 1.7000000029802322,
+            "max": 1.9000000059604645,
+            "mean": 0.09236111109041506
+          },
+          "field.gather": {
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.10000000894069672,
+            "max": 0.10000000894069672,
+            "mean": 0.004861111338767741
+          },
+          "field.gatherBlockers": {
+            "p50": 0,
+            "p95": 0.10000000894069672,
+            "p99": 0.10000000894069672,
+            "max": 0.20000000298023224,
+            "mean": 0.037499999834431544
+          }
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 3,
+          "plateBytes": 6248448,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "workerMaxMs": 610.9000000059605,
+          "plateMaxMs": 493.59999999403954,
+          "decodeMaxMs": 0.29999999701976776,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        }
+      }
+    }
+  },
+  "checks": {
+    "productionBuild": true,
+    "bridge": {
+      "tests": 232,
+      "pass": 232,
+      "fail": 0
+    },
+    "offlinePrograms": 17,
+    "full": {
+      "tests": 621,
+      "pass": 616,
+      "fail": 5,
+      "failures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "canvasCoverageEarlierCandidate": {
+      "rows": [
+        {
+          "label": "engage",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 3,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          }
+        },
+        {
+          "label": "full-canvas",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "hud-unavailable-inline",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "hud-restored",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 8,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "interrupted-source",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "held-after-resize",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 11,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "recovered",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 12,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          }
+        },
+        {
+          "label": "retry",
+          "path": "mobile-canvas",
+          "frame": {
+            "id": 17,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          }
+        }
+      ],
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    },
+    "heldResourceEarlierCandidate": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "fence": false,
+      "surface": false,
+      "before": {
+        "phase": "preparing",
+        "stage": "background",
+        "time": 0,
+        "overlay": true
+      },
+      "after": {
+        "starts": [
+          {
+            "frame": {
+              "id": 5,
+              "layer": "scene",
+              "kind": "canvas",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "path": "mobile-canvas",
+            "modal": false,
+            "clock": 0,
+            "at": 8564.300000011921,
+            "input": true,
+            "music": true
+          }
+        ],
+        "errors": 0,
+        "logged": 0,
+        "marks": {
+          "engage": 1071.5,
+          "run-fallback": 8296.10000000894,
+          "run-submit": 8556.90000000596,
+          "playing": 8557.20000000298,
+          "run-failed": null
+        },
+        "staged": false,
+        "input": true
+      },
+      "teardown": 0
+    },
+    "trustedGesturesEarlierCandidate": {
+      "desktop": {
+        "engage": {
+          "seed": 2817530805,
+          "requested": 2817530805,
+          "route": true,
+          "tier": "low",
+          "starts": 1,
+          "lightEdges": 0,
+          "plates": null
+        },
+        "retry": {
+          "audio": "running"
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            53,
+            61,
+            71
+          ]
+        },
+        "teardown": {
+          "queued": true,
+          "workersReleased": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        }
+      },
+      "touch": {
+        "engage": {
+          "seed": 2722434311,
+          "requested": 2722434311,
+          "route": false,
+          "tier": "low",
+          "starts": 1,
+          "lightEdges": 0,
+          "plates": null
+        },
+        "retry": {
+          "audio": "running"
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            22,
+            26,
+            32
+          ]
+        },
+        "teardown": {
+          "queued": true,
+          "workersReleased": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        }
+      }
+    },
+    "heldOptimizedRelease": {
+      "first": {
+        "at": 7064.5,
+        "phase": "playing",
+        "initialized": false,
+        "seed": 42,
+        "frame": {
+          "id": 5,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-webgl2",
+        "input": true,
+        "music": true,
+        "overlay": false,
+        "touch": false,
+        "tick": 0,
+        "time": 0,
+        "weather": 0,
+        "rain": 0,
+        "player": [
+          240,
+          0,
+          100
+        ],
+        "threat": [
+          [
+            388,
+            0,
+            0
+          ]
+        ],
+        "priorGL": [
+          700,
+          460,
+          false
+        ],
+        "priorHUD": [
+          700,
+          460
+        ],
+        "staged": false,
+        "pipeSize": [
+          700,
+          460
+        ],
+        "size": [
+          700,
+          460
+        ],
+        "gpu": {
+          "programs": [
+            "mobileBase",
+            "mobileActors",
+            "mobileGrade",
+            "mobileRoad",
+            "mobileSky",
+            "mobileResolve"
+          ],
+          "size": [
+            700,
+            460
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 1967840,
+          "dataBytes": 8234838,
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "outputBytes": 1288000,
+          "sourceTextureBytes": 2576000,
+          "uploadBytes": 2719360,
+          "setupMs": {
+            "rig": 1.3999999910593033,
+            "deck-rows-52": 28.799999997019768,
+            "deck": 7.799999997019768,
+            "grade-source": 0,
+            "look-0": 4.0999999940395355,
+            "look-1": 0.29999999701976776,
+            "look-2": 0.20000000298023224,
+            "look-3": 0.20000000298023224,
+            "transport-storage": 0.5
+          },
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            350,
+            230
+          ],
+          "maxK": 4,
+          "uboBytes": 3584,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176,
+            2432,
+            3072,
+            3456
+          ],
+          "stratumVersion": 1,
+          "transport": {
+            "active": 1,
+            "origin": -640,
+            "staging": null,
+            "stagingLevel": null,
+            "uploads": 9,
+            "updates": 1,
+            "quietDeferrals": 0,
+            "uploadThisFrame": 0,
+            "uploadBytesThisFrame": 0,
+            "uploadMs": 0,
+            "levels": 9
+          },
+          "stratumA": {
+            "size": [
+              160,
+              56
+            ],
+            "format": "RGBA8",
+            "opticalCeiling": 1.39,
+            "frames": 1,
+            "refreshes": 1,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.029940064996480942,
+            "moonTransmission": 0.04558323042503267,
+            "centerTransmission": 0.04068395251855026,
+            "phaseEnergy": 0.6568219364872221,
+            "moonVariant": "Silver gibbous",
+            "moonTint": [
+              0.94,
+              0.971,
+              1
+            ],
+            "moonCss": [
+              223.0796396454117,
+              54.85470261110919
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.66359393374715,
+            "lightningFalloff": 2.3411371237458196,
+            "skyHeight": 460,
+            "moonDiameterCss": 36.800000000000004,
+            "parallax": 0
+          },
+          "packedAssets": {
+            "city": "shared-webp",
+            "deck": "brotli",
+            "lut": "brotli",
+            "lutVolumes": [
+              "brotli",
+              "brotli",
+              "brotli",
+              "brotli"
+            ]
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              128
+            ],
+            "version": 1,
+            "vectors": [
+              512,
+              16
+            ],
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": null,
+            "sourcePass": "SACR v4 road",
+            "shadowLights": 1
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "blits": 1,
+        "links": 6,
+        "optics": {
+          "seed": 42,
+          "id": 1,
+          "origin": -640
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 3534336,
+          "lit": false,
+          "windows": 1,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 796.7000000029802,
+          "plateMaxMs": 267.5,
+          "decodeMaxMs": 0.5,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        },
+        "glass": {
+          "fronts": 1,
+          "panes": 4,
+          "baked": 0,
+          "solids": 0,
+          "sources": 0,
+          "actors": 0,
+          "shadeTaps": 5,
+          "shaded": 5,
+          "penumbra": 0,
+          "energy": 0.22776470333337784,
+          "fieldBytes": 143360
+        },
+        "atlas": null,
+        "platesReady": false
+      },
+      "retry": {
+        "at": 20703.5,
+        "phase": "playing",
+        "initialized": false,
+        "seed": 44,
+        "frame": {
+          "id": 22,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 44,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-webgl2",
+        "input": true,
+        "music": true,
+        "overlay": false,
+        "touch": false,
+        "tick": 0,
+        "time": 0,
+        "weather": 0,
+        "rain": 0,
+        "player": [
+          240,
+          0,
+          100
+        ],
+        "threat": [
+          [
+            388,
+            0,
+            0
+          ]
+        ],
+        "priorGL": [
+          738,
+          482,
+          false
+        ],
+        "priorHUD": [
+          738,
+          482
+        ],
+        "staged": false,
+        "pipeSize": [
+          738,
+          482
+        ],
+        "size": [
+          738,
+          482
+        ],
+        "gpu": {
+          "programs": [
+            "mobileBase",
+            "mobileActors",
+            "mobileGrade",
+            "mobileRoad",
+            "mobileSky",
+            "mobileResolve"
+          ],
+          "size": [
+            738,
+            482
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 2170136,
+          "dataBytes": 8234838,
+          "glazing": {
+            "bytes": 430080,
+            "uploadBytes": 143360
+          },
+          "outputBytes": 1422864,
+          "sourceTextureBytes": 2845728,
+          "uploadBytes": 2989088,
+          "setupMs": {
+            "rig": 1.3999999910593033,
+            "deck-rows-52": 28.799999997019768,
+            "deck": 7.799999997019768,
+            "grade-source": 0,
+            "look-0": 4.0999999940395355,
+            "look-1": 0.29999999701976776,
+            "look-2": 0.20000000298023224,
+            "look-3": 0.20000000298023224,
+            "transport-storage": 0.5
+          },
+          "frameDraws": 6,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            369,
+            241
+          ],
+          "maxK": 4,
+          "uboBytes": 3584,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176,
+            2432,
+            3072,
+            3456
+          ],
+          "stratumVersion": 8,
+          "transport": {
+            "active": 8,
+            "origin": -640,
+            "staging": null,
+            "stagingLevel": null,
+            "uploads": 27,
+            "updates": 3,
+            "quietDeferrals": 0,
+            "uploadThisFrame": 0,
+            "uploadBytesThisFrame": 0,
+            "uploadMs": 0,
+            "levels": 9
+          },
+          "stratumA": {
+            "size": [
+              160,
+              56
+            ],
+            "format": "RGBA8",
+            "opticalCeiling": 1.39,
+            "frames": 20,
+            "refreshes": 12,
+            "refreshed": true,
+            "live": true,
+            "moonVis": 0.003813036484643817,
+            "moonTransmission": 0.004048786914904918,
+            "centerTransmission": 0.0038366179629789102,
+            "phaseEnergy": 0.941772604374815,
+            "moonVariant": "Porcelain full",
+            "moonTint": [
+              0.9100000006705522,
+              0.9661999997720122,
+              1.0401999987661839
+            ],
+            "moonCss": [
+              232.51488644564284,
+              67.87906214806992
+            ],
+            "flash": 0,
+            "lightningEpicenter": 0.4022729736750915,
+            "lightningFalloff": 2.3555697414618577,
+            "skyHeight": 482,
+            "moonDiameterCss": 47.236000000000004,
+            "parallax": 0
+          },
+          "packedAssets": {
+            "city": "shared-webp",
+            "deck": "brotli",
+            "lut": "brotli",
+            "lutVolumes": [
+              "brotli",
+              "brotli",
+              "brotli",
+              "brotli"
+            ]
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              128
+            ],
+            "version": 8,
+            "vectors": [
+              512,
+              16
+            ],
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": null,
+            "sourcePass": "SACR v4 road",
+            "shadowLights": 1
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "blits": 2,
+        "links": 6,
+        "optics": {
+          "seed": 44,
+          "id": 8,
+          "origin": -640
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 3534336,
+          "lit": false,
+          "windows": 3,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 796.7000000029802,
+          "plateMaxMs": 267.5,
+          "decodeMaxMs": 0.5,
+          "wireBytes": 4781568,
+          "error": null,
+          "plateError": null
+        },
+        "glass": {
+          "fronts": 1,
+          "panes": 4,
+          "baked": 4,
+          "solids": 0,
+          "sources": 0,
+          "actors": 0,
+          "shadeTaps": 5,
+          "shaded": 5,
+          "penumbra": 0,
+          "energy": 0.22776470333337784,
+          "fieldBytes": 143360
+        },
+        "atlas": 8050.600000008941,
+        "platesReady": false
+      },
+      "teardown": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "lossDuringOpeningRelease": {
+      "first": {
+        "at": 9531,
+        "phase": "playing",
+        "initialized": false,
+        "seed": 42,
+        "frame": {
+          "id": 4,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "input": true,
+        "music": true,
+        "overlay": false,
+        "touch": false,
+        "tick": 0,
+        "time": 0,
+        "weather": 0,
+        "rain": 0,
+        "player": [
+          240,
+          0,
+          100
+        ],
+        "threat": [
+          [
+            388,
+            0,
+            0
+          ]
+        ],
+        "priorGL": [
+          0,
+          0,
+          true
+        ],
+        "priorHUD": [
+          700,
+          460
+        ],
+        "staged": false,
+        "pipeSize": [
+          null,
+          null
+        ],
+        "size": [
+          700,
+          460
+        ],
+        "gpu": null,
+        "blits": 0,
+        "links": 9,
+        "optics": {
+          "seed": 42,
+          "id": 1,
+          "origin": -640
+        },
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": true,
+          "pending": "plate",
+          "plates": 1,
+          "plateBytes": 1926144,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "retiredJobs": 0,
+          "workerMaxMs": 1038.2000000029802,
+          "plateMaxMs": 393,
+          "decodeMaxMs": 0.6000000089406967,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        },
+        "glass": {
+          "fronts": 1,
+          "panes": 4,
+          "baked": 4,
+          "solids": 0,
+          "sources": 0,
+          "actors": 0,
+          "shadeTaps": 5,
+          "shaded": 5,
+          "penumbra": 0,
+          "energy": 0.22776470333337784,
+          "fieldBytes": 143360
+        },
+        "atlas": 1278.5,
+        "platesReady": false
+      }
+    },
+    "actualContextLossRestoreRelease": {
+      "rows": [
+        {
+          "label": "engage",
+          "seed": 42,
+          "draw": [
+            920,
+            587
+          ],
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "composed": {
+            "width": 736,
+            "height": 470,
+            "road": [
+              305.8369635130316,
+              368.50363017969823
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "hp": 100,
+            "id": 8,
+            "roadTones": 78,
+            "backdropHoles": 19,
+            "roadSamples": 8736,
+            "hpInk": 50
+          },
+          "path": "master-webgl2",
+          "reason": "active"
+        },
+        {
+          "label": "context lost",
+          "seed": 42,
+          "draw": [
+            0,
+            0
+          ],
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "composed": {
+            "width": 736,
+            "height": 470,
+            "road": [
+              305.8369635130316,
+              368.50363017969823
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "hp": 100,
+            "id": 9,
+            "roadTones": 74,
+            "backdropHoles": 0,
+            "roadSamples": 8736,
+            "hpInk": 50
+          },
+          "path": "mobile-canvas",
+          "reason": "WebGL context lost"
+        },
+        {
+          "label": "context restored",
+          "seed": 42,
+          "draw": [
+            920,
+            587
+          ],
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "composed": {
+            "width": 736,
+            "height": 470,
+            "road": [
+              305.8369635130316,
+              368.50363017969823
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "hp": 100,
+            "id": 46,
+            "roadTones": 78,
+            "backdropHoles": 19,
+            "roadSamples": 8736,
+            "hpInk": 50
+          },
+          "path": "master-webgl2",
+          "reason": "active"
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "storesAfterDestroy": 0
+    },
+    "matchedOptimizedRoadResolve": {
+      "control": {
+        "rows": [
+          {
+            "label": "engage",
+            "seed": 42,
+            "draw": [
+              700,
+              448
+            ],
+            "config": {
+              "preset": "ULTRA",
+              "adaptiveEnabled": false,
+              "renderScale": 1.25,
+              "showFPS": false
+            },
+            "composed": {
+              "width": 700,
+              "height": 448,
+              "road": [
+                291.5218997303704,
+                351.2552330637037
+              ],
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              },
+              "hp": 100,
+              "id": 9,
+              "roadTones": 59,
+              "backdropHoles": 0,
+              "roadSamples": 7770,
+              "hpInk": 50
+            },
+            "path": "mobile-webgl2",
+            "reason": "active"
+          }
+        ],
+        "dryRaster": null,
+        "dryResolve": [
+          {
+            "mode": "mobile",
+            "roadSize": [
+              350,
+              224
+            ],
+            "drySamples": 15961,
+            "dryEaveSamples": 270,
+            "dryDiff": 0,
+            "wetDiff": 39792,
+            "edgeSamples": 2216,
+            "blankEdge": 0,
+            "blackEdge": 0,
+            "roll": 0.09
+          }
+        ],
+        "storesAfterDestroy": 0
+      },
+      "release": {
+        "rows": [
+          {
+            "label": "engage",
+            "seed": 42,
+            "draw": [
+              700,
+              448
+            ],
+            "config": {
+              "preset": "ULTRA",
+              "adaptiveEnabled": false,
+              "renderScale": 1.25,
+              "showFPS": false
+            },
+            "composed": {
+              "width": 700,
+              "height": 448,
+              "road": [
+                291.5210021961162,
+                351.2543355294496
+              ],
+              "insets": {
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              },
+              "hp": 100,
+              "id": 8,
+              "roadTones": 59,
+              "backdropHoles": 0,
+              "roadSamples": 7770,
+              "hpInk": 50
+            },
+            "path": "mobile-webgl2",
+            "reason": "active"
+          }
+        ],
+        "dryRaster": null,
+        "dryResolve": [
+          {
+            "mode": "mobile",
+            "roadSize": [
+              350,
+              224
+            ],
+            "drySamples": 15961,
+            "dryEaveSamples": 270,
+            "dryDiff": 0,
+            "wetDiff": 39806,
+            "edgeSamples": 2216,
+            "blankEdge": 0,
+            "blackEdge": 0,
+            "roll": 0.09
+          }
+        ],
+        "storesAfterDestroy": 0
+      }
+    },
+    "combinedWideCapDiagnostic": {
+      "notes": "Wide-cap restore and eave wetness/opacity reached the assertions. The longer sequence failed the RGB-zero edge-color guard once; the matched isolated Optimized fixture passed on both builds.",
+      "wideCapRestoreRelease": null,
+      "edgeColorAssertion": {
+        "mode": "mobile",
+        "roadSize": [
+          350,
+          224
+        ],
+        "drySamples": 15961,
+        "dryEaveSamples": 270,
+        "dryDiff": 0,
+        "wetDiff": 38400,
+        "edgeSamples": 2216,
+        "blankEdge": 0,
+        "blackEdge": 37,
+        "roll": 0.09
+      }
+    },
+    "largerSwiftShaderViewportTimeouts": {
+      "control": {
+        "paints": 25,
+        "elapsed": 33753.5,
+        "uploadQuiet": true,
+        "skyUploads": 1,
+        "path": "mobile-webgl2",
+        "reason": "Optimized renderer \u00b7 Master viewport budget",
+        "frame": {
+          "id": 106,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      "release": {
+        "path": "mobile-webgl2",
+        "reason": "Optimized renderer \u00b7 Master viewport budget",
+        "frame": {
+          "id": 109,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.19999999999999998,
+          "hp": 100,
+          "threats": 1
+        }
+      }
+    },
+    "masterControls": {
+      "previousShortControl": {
+        "gl": true,
+        "view": {
+          "width": 720,
+          "height": 360,
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false
+        },
+        "first": {
+          "id": 4,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "starts": [
+          {
+            "id": 4,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          {
+            "id": 16,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          }
+        ],
+        "trusted": true,
+        "stores": 0
+      },
+      "shortStageWatchdogWitness": {
+        "marks": [
+          [
+            "sr:engine-request",
+            298.09999999403954
+          ],
+          [
+            "sr:menu",
+            307.40000000596046
+          ],
+          [
+            "sr:engine-module",
+            489.40000000596046
+          ],
+          [
+            "sr:ready",
+            507.59999999403954
+          ],
+          [
+            "sr:title-submit",
+            598.7000000029802
+          ],
+          [
+            "sr:engage",
+            680.2999999970198
+          ],
+          [
+            "sr:run-initialized",
+            711.7000000029802
+          ],
+          [
+            "sr:run-workers",
+            720.4000000059605
+          ],
+          [
+            "sr:cancelled",
+            1442.9000000059605
+          ],
+          [
+            "sr:engage",
+            1802.2999999970198
+          ],
+          [
+            "sr:run-initialized",
+            1869.0999999940395
+          ],
+          [
+            "sr:run-workers",
+            1880.2999999970198
+          ],
+          [
+            "sr:run-backdrop-ready",
+            3845.2000000029802
+          ],
+          [
+            "sr:run-renderer-ready",
+            3987.2999999970198
+          ],
+          [
+            "sr:run-fallback",
+            11204.40000000596
+          ],
+          [
+            "sr:run-submit",
+            11621
+          ],
+          [
+            "sr:playing",
+            11621.90000000596
+          ],
+          [
+            "sr:first-step",
+            11982.09999999404
+          ]
+        ],
+        "path": "mobile-canvas",
+        "reason": "Opening resources stalled; using Canvas",
+        "frame": {
+          "id": 6,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.19999999999999998,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      "releaseShort": {
+        "gl": true,
+        "view": {
+          "width": 720,
+          "height": 360,
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false
+        },
+        "first": {
+          "id": 4,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "starts": [
+          {
+            "id": 4,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          {
+            "id": 15,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          }
+        ],
+        "trusted": true,
+        "stores": 0
+      },
+      "releaseStaticReveal": {
+        "gl": true,
+        "view": {
+          "width": 720,
+          "height": 360,
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false
+        },
+        "first": {
+          "id": 4,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "starts": [
+          {
+            "id": 4,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          {
+            "id": 14,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          }
+        ],
+        "trusted": true,
+        "stores": 0
+      },
+      "notes": "Forced software WebGL only. The cold animated Master fixture can hit the existing first-frame watchdog and open Canvas; ordinary app use does not force the software adapter."
+    }
+  },
+  "limits": [
+    "Injected blocked workers reproduce a Retry stall, not the original reported hang. Ordinary Engage/Retry reached input.",
+    "Headless SwiftShader/CPU compositor does not measure device frame rates, the user browser, or the public proxy.",
+    "Fixed-High pacing pairs move in both directions. No overall FPS or normal Engage speedup is claimed."
+  ]
+}

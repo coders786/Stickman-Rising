@@ -1,0 +1,1726 @@
+{
+  "browsers": {
+    "master": {
+      "path": "master-webgl2",
+      "poses": {
+        "metro": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  24,
+                  25,
+                  29
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  34,
+                  38,
+                  42
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  27,
+                  29,
+                  32
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  27,
+                  28,
+                  32
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4639,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 25,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4748,
+            "blackOnChangedPixels": 2830
+          },
+          "geometry": {
+            "camera": {
+              "x": 725,
+              "y": -106,
+              "zoom": 1.24,
+              "rot": 0,
+              "offX": 0,
+              "offY": 0
+            },
+            "actor": {
+              "headC": {
+                "x": 623.0815034874482,
+                "y": 301.8639546939329
+              },
+              "neckTop": {
+                "x": 622.1943760746467,
+                "y": 312.30021423452956
+              },
+              "chest": {
+                "x": 621.5492132056288,
+                "y": 319.79646541335484
+              },
+              "hip": {
+                "x": 614.7136,
+                "y": 371.7276144278714
+              },
+              "kneeL": {
+                "x": 595.652317860194,
+                "y": 409.7417661569632
+              },
+              "kneeR": {
+                "x": 638.9515193367646,
+                "y": 406.92384896557945
+              },
+              "ankleL": {
+                "x": 575.1863773871904,
+                "y": 443.2725741221087
+              },
+              "ankleR": {
+                "x": 633.8537763464197,
+                "y": 445.87488
+              },
+              "handL": {
+                "x": 631.9881608843289,
+                "y": 372.01151368630656
+              },
+              "handR": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "grip": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "tip": {
+                "x": 571.8748277995178,
+                "y": 478.7049430153508
+              }
+            },
+            "panes": [
+              {
+                "left": 140.24,
+                "top": 223.28,
+                "right": 218.36,
+                "bottom": 312.56
+              },
+              {
+                "left": 230.76,
+                "top": 215.84,
+                "right": 317.56,
+                "bottom": 346.04
+              },
+              {
+                "left": 329.96000000000004,
+                "top": 215.84,
+                "right": 416.76,
+                "bottom": 346.04
+              },
+              {
+                "left": 430.4,
+                "top": 215.84,
+                "right": 491.16,
+                "bottom": 351
+              }
+            ],
+            "region": {
+              "left": 130.32,
+              "top": 167.48,
+              "right": 501.08,
+              "bottom": 367.12
+            }
+          }
+        },
+        "strike": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  32,
+                  34,
+                  37
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  59,
+                  63,
+                  66
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  34,
+                  37,
+                  39
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  42,
+                  46,
+                  49
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4465,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 24,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4442,
+            "blackOnChangedPixels": 2546
+          },
+          "geometry": {
+            "actor": {
+              "headC": {
+                "x": 559.4567833339169,
+                "y": 405.97965943405524
+              },
+              "neckTop": {
+                "x": 555.6400922841968,
+                "y": 414.8631714237509
+              },
+              "chest": {
+                "x": 552.9061651047296,
+                "y": 421.242383129371
+              },
+              "hip": {
+                "x": 531.2219433717995,
+                "y": 464.38660706220605
+              },
+              "kneeL": {
+                "x": 515.2652878680805,
+                "y": 500.029569294599
+              },
+              "kneeR": {
+                "x": 549.62731726114,
+                "y": 498.8668807386281
+              },
+              "ankleL": {
+                "x": 498.0891381369607,
+                "y": 531.7988555858294
+              },
+              "ankleR": {
+                "x": 547.2489207349938,
+                "y": 534.90368
+              },
+              "handL": {
+                "x": 561.1190371980225,
+                "y": 474.98076322672455
+              },
+              "handR": {
+                "x": 567.8459301035747,
+                "y": 472.4209942913102
+              },
+              "grip": {
+                "x": 567.8458487297034,
+                "y": 472.4209777898021
+              },
+              "tip": {
+                "x": 635.3645383533635,
+                "y": 564.4542769631175
+              }
+            },
+            "id": "l1",
+            "time": 0.22931333333333342,
+            "x": 853.3326922432352
+          }
+        }
+      },
+      "glass": {
+        "before": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 94,
+              "meanAbsDelta": 15.1492
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 81,
+              "meanAbsDelta": 12.4978
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 88,
+              "meanAbsDelta": 11.2645
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 87,
+              "meanAbsDelta": 12.9496
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.077929412617403
+          }
+        },
+        "after": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 13,
+              "meanAbsDelta": 5.298
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 11,
+              "meanAbsDelta": 4.5094
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 11,
+              "meanAbsDelta": 4.1204
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 10,
+              "meanAbsDelta": 4.5887
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          }
+        }
+      },
+      "sky": {
+        "before": {
+          "pan": {
+            "pixelsChanged": 14826,
+            "maxChannelDelta": 163,
+            "meanAbsDelta": 8.3728
+          },
+          "later": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              66.95958624154326
+            ],
+            "pan": [
+              303.4151508110076,
+              221.39158624154322
+            ],
+            "later": [
+              303.4151508110076,
+              66.95958624154326
+            ]
+          },
+          "raster": [
+            256,
+            59
+          ]
+        },
+        "after": {
+          "pan": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "later": {
+            "pixelsChanged": 5281,
+            "maxChannelDelta": 12,
+            "meanAbsDelta": 0.4328
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "pan": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "later": [
+              303.4151508110076,
+              76.31958624154322
+            ]
+          },
+          "raster": [
+            256,
+            63
+          ]
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "poses": {
+        "metro": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  24,
+                  24,
+                  28
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  33,
+                  37,
+                  40
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  28,
+                  28,
+                  32
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  28,
+                  28,
+                  32
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 11137,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 25,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 11032,
+            "blackOnChangedPixels": 2886
+          },
+          "geometry": {
+            "camera": {
+              "x": 725,
+              "y": -106,
+              "zoom": 1.24,
+              "rot": 0,
+              "offX": 0,
+              "offY": 0
+            },
+            "actor": {
+              "headC": {
+                "x": 623.0815034874482,
+                "y": 301.8639546939329
+              },
+              "neckTop": {
+                "x": 622.1943760746467,
+                "y": 312.30021423452956
+              },
+              "chest": {
+                "x": 621.5492132056288,
+                "y": 319.79646541335484
+              },
+              "hip": {
+                "x": 614.7136,
+                "y": 371.7276144278714
+              },
+              "kneeL": {
+                "x": 595.652317860194,
+                "y": 409.7417661569632
+              },
+              "kneeR": {
+                "x": 638.9515193367646,
+                "y": 406.92384896557945
+              },
+              "ankleL": {
+                "x": 575.1863773871904,
+                "y": 443.2725741221087
+              },
+              "ankleR": {
+                "x": 633.8537763464197,
+                "y": 445.87488
+              },
+              "handL": {
+                "x": 631.9881608843289,
+                "y": 372.01151368630656
+              },
+              "handR": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "grip": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "tip": {
+                "x": 571.8748277995178,
+                "y": 478.7049430153508
+              }
+            },
+            "panes": [
+              {
+                "left": 140.24,
+                "top": 223.28,
+                "right": 218.36,
+                "bottom": 312.56
+              },
+              {
+                "left": 230.76,
+                "top": 215.84,
+                "right": 317.56,
+                "bottom": 346.04
+              },
+              {
+                "left": 329.96000000000004,
+                "top": 215.84,
+                "right": 416.76,
+                "bottom": 346.04
+              },
+              {
+                "left": 430.4,
+                "top": 215.84,
+                "right": 491.16,
+                "bottom": 351
+              }
+            ],
+            "region": {
+              "left": 130.32,
+              "top": 167.48,
+              "right": 501.08,
+              "bottom": 367.12
+            }
+          }
+        },
+        "strike": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  33,
+                  37,
+                  37
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  60,
+                  63,
+                  67
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  33,
+                  37,
+                  37
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  39,
+                  45,
+                  46
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4463,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 24,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4452,
+            "blackOnChangedPixels": 2582
+          },
+          "geometry": {
+            "actor": {
+              "headC": {
+                "x": 559.4567833339169,
+                "y": 405.97965943405524
+              },
+              "neckTop": {
+                "x": 555.6400922841968,
+                "y": 414.8631714237509
+              },
+              "chest": {
+                "x": 552.9061651047296,
+                "y": 421.242383129371
+              },
+              "hip": {
+                "x": 531.2219433717995,
+                "y": 464.38660706220605
+              },
+              "kneeL": {
+                "x": 515.2652878680805,
+                "y": 500.029569294599
+              },
+              "kneeR": {
+                "x": 549.62731726114,
+                "y": 498.8668807386281
+              },
+              "ankleL": {
+                "x": 498.0891381369607,
+                "y": 531.7988555858294
+              },
+              "ankleR": {
+                "x": 547.2489207349938,
+                "y": 534.90368
+              },
+              "handL": {
+                "x": 561.1190371980225,
+                "y": 474.98076322672455
+              },
+              "handR": {
+                "x": 567.8459301035747,
+                "y": 472.4209942913102
+              },
+              "grip": {
+                "x": 567.8458487297034,
+                "y": 472.4209777898021
+              },
+              "tip": {
+                "x": 635.3645383533635,
+                "y": 564.4542769631175
+              }
+            },
+            "id": "l1",
+            "time": 0.22931333333333342,
+            "x": 853.3326922432352
+          }
+        }
+      },
+      "glass": {
+        "before": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 94,
+              "meanAbsDelta": 13.8987
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 82,
+              "meanAbsDelta": 12.4366
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 89,
+              "meanAbsDelta": 11.2594
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 85,
+              "meanAbsDelta": 12.8353
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.0350117638531855
+          }
+        },
+        "after": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 13,
+              "meanAbsDelta": 4.2588
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 13,
+              "meanAbsDelta": 4.8254
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 12,
+              "meanAbsDelta": 4.3713
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 12,
+              "meanAbsDelta": 4.8281
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          }
+        }
+      },
+      "sky": {
+        "before": {
+          "pan": {
+            "pixelsChanged": 5911,
+            "maxChannelDelta": 159,
+            "meanAbsDelta": 8.3315
+          },
+          "later": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              66.95958624154326
+            ],
+            "pan": [
+              303.4151508110076,
+              221.39158624154322
+            ],
+            "later": [
+              303.4151508110076,
+              66.95958624154326
+            ]
+          },
+          "raster": [
+            160,
+            37
+          ]
+        },
+        "after": {
+          "pan": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "later": {
+            "pixelsChanged": 1763,
+            "maxChannelDelta": 12,
+            "meanAbsDelta": 0.4366
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "pan": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "later": [
+              303.4151508110076,
+              76.31958624154322
+            ]
+          },
+          "raster": [
+            160,
+            40
+          ]
+        }
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "poses": {
+        "metro": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  30,
+                  33,
+                  37
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  44,
+                  49,
+                  55
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  34,
+                  39,
+                  42
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  34,
+                  38,
+                  42
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4688,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  620,
+                  298,
+                  627,
+                  305
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  616,
+                  343,
+                  621,
+                  348
+                ],
+                "pixels": 25,
+                "black": 25,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  585,
+                  423,
+                  588,
+                  426
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  635,
+                  422,
+                  638,
+                  425
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4730,
+            "blackOnChangedPixels": 3042
+          },
+          "geometry": {
+            "camera": {
+              "x": 725,
+              "y": -106,
+              "zoom": 1.24,
+              "rot": 0,
+              "offX": 0,
+              "offY": 0
+            },
+            "actor": {
+              "headC": {
+                "x": 623.0815034874482,
+                "y": 301.8639546939329
+              },
+              "neckTop": {
+                "x": 622.1943760746467,
+                "y": 312.30021423452956
+              },
+              "chest": {
+                "x": 621.5492132056288,
+                "y": 319.79646541335484
+              },
+              "hip": {
+                "x": 614.7136,
+                "y": 371.7276144278714
+              },
+              "kneeL": {
+                "x": 595.652317860194,
+                "y": 409.7417661569632
+              },
+              "kneeR": {
+                "x": 638.9515193367646,
+                "y": 406.92384896557945
+              },
+              "ankleL": {
+                "x": 575.1863773871904,
+                "y": 443.2725741221087
+              },
+              "ankleR": {
+                "x": 633.8537763464197,
+                "y": 445.87488
+              },
+              "handL": {
+                "x": 631.9881608843289,
+                "y": 372.01151368630656
+              },
+              "handR": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "grip": {
+                "x": 613.8332386696004,
+                "y": 389.5797394707309
+              },
+              "tip": {
+                "x": 571.8748277995178,
+                "y": 478.7049430153508
+              }
+            },
+            "panes": [
+              {
+                "left": 140.24,
+                "top": 223.28,
+                "right": 218.36,
+                "bottom": 312.56
+              },
+              {
+                "left": 230.76,
+                "top": 215.84,
+                "right": 317.56,
+                "bottom": 346.04
+              },
+              {
+                "left": 329.96000000000004,
+                "top": 215.84,
+                "right": 416.76,
+                "bottom": 346.04
+              },
+              {
+                "left": 430.4,
+                "top": 215.84,
+                "right": 491.16,
+                "bottom": 351
+              }
+            ],
+            "region": {
+              "left": 130.32,
+              "top": 167.48,
+              "right": 501.08,
+              "bottom": 367.12
+            }
+          }
+        },
+        "strike": {
+          "before": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 0,
+                "medianRgb": [
+                  39,
+                  44,
+                  46
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 0,
+                "medianRgb": [
+                  68,
+                  74,
+                  76
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  41,
+                  45,
+                  49
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 0,
+                "medianRgb": [
+                  50,
+                  55,
+                  58
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4537,
+            "blackOnChangedPixels": 0
+          },
+          "after": {
+            "core": {
+              "head": {
+                "rect": [
+                  556,
+                  402,
+                  563,
+                  409
+                ],
+                "pixels": 49,
+                "black": 49,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "torso": {
+                "rect": [
+                  540,
+                  440,
+                  545,
+                  445
+                ],
+                "pixels": 25,
+                "black": 25,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "leftShin": {
+                "rect": [
+                  506,
+                  512,
+                  509,
+                  515
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              },
+              "rightShin": {
+                "rect": [
+                  547,
+                  513,
+                  550,
+                  516
+                ],
+                "pixels": 9,
+                "black": 9,
+                "medianRgb": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            "actorToggleChangedPixels": 4542,
+            "blackOnChangedPixels": 2815
+          },
+          "geometry": {
+            "actor": {
+              "headC": {
+                "x": 559.4567833339169,
+                "y": 405.97965943405524
+              },
+              "neckTop": {
+                "x": 555.6400922841968,
+                "y": 414.8631714237509
+              },
+              "chest": {
+                "x": 552.9061651047296,
+                "y": 421.242383129371
+              },
+              "hip": {
+                "x": 531.2219433717995,
+                "y": 464.38660706220605
+              },
+              "kneeL": {
+                "x": 515.2652878680805,
+                "y": 500.029569294599
+              },
+              "kneeR": {
+                "x": 549.62731726114,
+                "y": 498.8668807386281
+              },
+              "ankleL": {
+                "x": 498.0891381369607,
+                "y": 531.7988555858294
+              },
+              "ankleR": {
+                "x": 547.2489207349938,
+                "y": 534.90368
+              },
+              "handL": {
+                "x": 561.1190371980225,
+                "y": 474.98076322672455
+              },
+              "handR": {
+                "x": 567.8459301035747,
+                "y": 472.4209942913102
+              },
+              "grip": {
+                "x": 567.8458487297034,
+                "y": 472.4209777898021
+              },
+              "tip": {
+                "x": 635.3645383533635,
+                "y": 564.4542769631175
+              }
+            },
+            "id": "l1",
+            "time": 0.22931333333333342,
+            "x": 853.3326922432352
+          }
+        }
+      },
+      "glass": {
+        "before": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 42,
+              "meanAbsDelta": 10.805
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 38,
+              "meanAbsDelta": 8.7383
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 41,
+              "meanAbsDelta": 8.1681
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 40,
+              "meanAbsDelta": 9.0236
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.077929412617403
+          }
+        },
+        "after": {
+          "glassOnlyInPane": [
+            {
+              "pixelsChanged": 7020,
+              "maxChannelDelta": 7,
+              "meanAbsDelta": 3.4536
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 8,
+              "meanAbsDelta": 2.8619
+            },
+            {
+              "pixelsChanged": 11310,
+              "maxChannelDelta": 8,
+              "meanAbsDelta": 2.8319
+            },
+            {
+              "pixelsChanged": 8235,
+              "maxChannelDelta": 6,
+              "meanAbsDelta": 3.1224
+            }
+          ],
+          "painter": {
+            "fronts": 1,
+            "panes": 4,
+            "baked": 4,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 0.07450980599969625
+          }
+        }
+      },
+      "sky": {
+        "before": {
+          "pan": {
+            "pixelsChanged": 594752,
+            "maxChannelDelta": 176,
+            "meanAbsDelta": 12.6553
+          },
+          "later": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              66.95958624154326
+            ],
+            "pan": [
+              303.4151508110076,
+              221.39158624154322
+            ],
+            "later": [
+              303.4151508110076,
+              66.95958624154326
+            ]
+          },
+          "raster": [
+            960,
+            640
+          ]
+        },
+        "after": {
+          "pan": {
+            "pixelsChanged": 0,
+            "maxChannelDelta": 0,
+            "meanAbsDelta": 0.0
+          },
+          "later": {
+            "pixelsChanged": 204298,
+            "maxChannelDelta": 13,
+            "meanAbsDelta": 0.4449
+          },
+          "moonCss": {
+            "fixed": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "pan": [
+              303.4151508110076,
+              76.31958624154322
+            ],
+            "later": [
+              303.4151508110076,
+              76.31958624154322
+            ]
+          },
+          "raster": [
+            960,
+            640
+          ]
+        }
+      }
+    }
+  },
+  "suppliedScreenshot": {
+    "size": [
+      1920,
+      1080
+    ],
+    "source": "image-13.png",
+    "crop": [
+      1212,
+      582,
+      1433,
+      836
+    ],
+    "interiorSamples": {
+      "head": {
+        "rect": [
+          1374,
+          599,
+          1385,
+          610
+        ],
+        "pixels": 121,
+        "black": 0,
+        "medianRgb": [
+          22,
+          24,
+          25
+        ]
+      },
+      "torso": {
+        "rect": [
+          1370,
+          629,
+          1381,
+          648
+        ],
+        "pixels": 209,
+        "black": 0,
+        "medianRgb": [
+          37,
+          38,
+          40
+        ]
+      },
+      "leg": {
+        "rect": [
+          1393,
+          698,
+          1403,
+          711
+        ],
+        "pixels": 130,
+        "black": 0,
+        "medianRgb": [
+          46,
+          35,
+          25
+        ]
+      }
+    }
+  }
+}

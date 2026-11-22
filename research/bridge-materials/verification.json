@@ -1,0 +1,1030 @@
+{
+  "build": "AHv7FNwv5ff7lCCRVmTxt",
+  "served": {
+    "build": "AHv7FNwv5ff7lCCRVmTxt",
+    "port": 3000,
+    "sameStagedRoot": true,
+    "rootSha256": "ebc1ea6b4fde11ce8d7f607a27e793a006722e2000a33b5ca3ede3e4235ab495",
+    "hostOriginAccepted": true,
+    "iframeHeadersClear": true,
+    "immutableLinks": 13,
+    "assets": {
+      "deck-pier.webp": {
+        "bytes": 4086,
+        "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+      },
+      "l1.webp": {
+        "bytes": 38162,
+        "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+      },
+      "l2.webp": {
+        "bytes": 49280,
+        "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+      },
+      "metro-street.webp": {
+        "bytes": 19810,
+        "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+      },
+      "packed-v4/deck.rgba.br": {
+        "bytes": 390660,
+        "sha256": "7d20e19e118feb1d8c47e7f15d24be5eac7823691e575fa4ef834032d08cc967"
+      },
+      "packed-v4/l1-bc7.ktx": {
+        "bytes": 328188,
+        "sha256": "c6d40eb4aef3a9f0a5a1bf5c8b4e5c01e6f3d0038dadd0930242d7b006759c12"
+      },
+      "packed-v4/l1-etc2.ktx": {
+        "bytes": 328188,
+        "sha256": "c7a38ed5d40152a389a9200f2e3a0705746d366676477a23c4aab81d2ed8772b"
+      },
+      "packed-v4/l1.ktx2": {
+        "bytes": 47822,
+        "sha256": "551247480a03ef1f1a64efade38c308527ad8f39092c2dba305a625cc87b05d2"
+      },
+      "packed-v4/l2-astc.ktx": {
+        "bytes": 383228,
+        "sha256": "984367ca3b575c6505718999507494e707314c1a878b28cf9e0c33f0d9d65da6"
+      },
+      "packed-v4/l2-bc7.ktx": {
+        "bytes": 383228,
+        "sha256": "8f408bfa2a902711d9ec55064768134708a5027e4a93d2461752f5b792a57cc1"
+      },
+      "packed-v4/l2-etc2.ktx": {
+        "bytes": 383228,
+        "sha256": "259a006496c6ed891705360cea18f623be0f29d1516b3f90aa82d2d4a0dfb2ff"
+      },
+      "packed-v4/l2.ktx2": {
+        "bytes": 383552,
+        "sha256": "441e22b8ad76a945cba152c5ccf895ffd944ee4147730dec39328e632369fe03"
+      },
+      "packed-v4/lut-16.rgba.br": {
+        "bytes": 48036,
+        "sha256": "0e907d9f9d0c74c3292d104a252cf7dfa1cb6c35b9fd51e88e1aeac471c9457d"
+      },
+      "packed-v4/lut-32.rgba.br": {
+        "bytes": 356963,
+        "sha256": "01fe43184de64092cdcee31021875af39c921bdd779c496535c297d2428509b1"
+      },
+      "packed-v4/ripple-astc.ktx": {
+        "bytes": 5580,
+        "sha256": "f249377a90c3eacc32cfb922c01be6af9f042f19bb3a5d6a887b6d2cb795c16d"
+      },
+      "packed-v4/ripple-bc5.ktx": {
+        "bytes": 5580,
+        "sha256": "2855e1d57d660cdabbe1432fb7d24fab04d8bc878b5d6d72e08ca4076bf9773b"
+      },
+      "packed-v4/ripple.ktx2": {
+        "bytes": 5824,
+        "sha256": "b8c84f3a26e3411391839aba8f1164483c29396d102f74e75729884ad58310c9"
+      },
+      "packed-v4/sizes.json": {
+        "bytes": 324,
+        "sha256": "76527f84c6ce5a591e8b275f806be38a1f2a82adcbffe140fd802215cce8e05a"
+      },
+      "props-v2.webp": {
+        "bytes": 5910,
+        "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+      },
+      "sky-basis-v4.rgba.br": {
+        "bytes": 394238,
+        "sha256": "deac3fa8d03d5927a595b1195b8cbdb5d7329ae88d6172c0b1822737ed5bac01"
+      },
+      "stratum-a.webp": {
+        "bytes": 250,
+        "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+      }
+    },
+    "scoresApi": true,
+    "retiredMirror404": true,
+    "samePriorBridgeAssets": true,
+    "stageMatches": true
+  },
+  "browserTiming": "Trusted Headless Chromium events and DOM lifetimes, not physical display or hardware performance.",
+  "loadingMinimumMs": 2000,
+  "load": {
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "touch": false,
+      "reduced": false,
+      "arsenalBack": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "attempts": [
+        {
+          "button": "ENGAGE",
+          "panelMs": 2754.8,
+          "gestureToSubmitMs": 2908.1,
+          "gestureToWorkerStartMs": 453.9,
+          "firstFrame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 3200819025,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "RETRY",
+          "panelMs": 2488.2,
+          "gestureToSubmitMs": 2524.4,
+          "gestureToWorkerStartMs": 208,
+          "firstFrame": {
+            "id": 17,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 4237270186,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "ENGAGE",
+          "panelMs": 2291.9,
+          "gestureToSubmitMs": 2313.3,
+          "gestureToWorkerStartMs": 228.2,
+          "firstFrame": {
+            "id": 27,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 4170097721,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        }
+      ]
+    },
+    "touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "touch": true,
+      "reduced": true,
+      "arsenalBack": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "attempts": [
+        {
+          "button": "ENGAGE",
+          "panelMs": 2387.4,
+          "gestureToSubmitMs": 2512.1,
+          "gestureToWorkerStartMs": 207.7,
+          "firstFrame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 3015098784,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "RETRY",
+          "panelMs": 2047.5,
+          "gestureToSubmitMs": 2065.1,
+          "gestureToWorkerStartMs": 38.9,
+          "firstFrame": {
+            "id": 27,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 1865519348,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "ENGAGE",
+          "panelMs": 2047.5,
+          "gestureToSubmitMs": 2053.3,
+          "gestureToWorkerStartMs": 48.3,
+          "firstFrame": {
+            "id": 42,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 1471534997,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        }
+      ]
+    },
+    "short": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "viewport": {
+        "width": 720,
+        "height": 360,
+        "deviceScaleFactor": 1,
+        "hasTouch": true,
+        "isMobile": true
+      },
+      "touch": true,
+      "reduced": true,
+      "arsenalBack": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "attempts": [
+        {
+          "button": "ENGAGE",
+          "panelMs": 2270.1,
+          "gestureToSubmitMs": 2394.3,
+          "gestureToWorkerStartMs": 209.1,
+          "firstFrame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 3004269785,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "RETRY",
+          "panelMs": 2025.6,
+          "gestureToSubmitMs": 2045.7,
+          "gestureToWorkerStartMs": 44.3,
+          "firstFrame": {
+            "id": 30,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 4123890918,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "ENGAGE",
+          "panelMs": 2048.3,
+          "gestureToSubmitMs": 2071.5,
+          "gestureToWorkerStartMs": 49.5,
+          "firstFrame": {
+            "id": 51,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 2229812032,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        }
+      ]
+    },
+    "gl": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "touch": false,
+      "reduced": false,
+      "arsenalBack": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "attempts": [
+        {
+          "button": "ENGAGE",
+          "panelMs": 2215.4,
+          "gestureToSubmitMs": 2293.5,
+          "gestureToWorkerStartMs": 205.5,
+          "firstFrame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 2987002689,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "RETRY",
+          "panelMs": 2149.1,
+          "gestureToSubmitMs": 2177.5,
+          "gestureToWorkerStartMs": 149.8,
+          "firstFrame": {
+            "id": 30,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 3999424474,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "ENGAGE",
+          "panelMs": 2182.6,
+          "gestureToSubmitMs": 2198.3,
+          "gestureToWorkerStartMs": 151.5,
+          "firstFrame": {
+            "id": 45,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 2277232510,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        }
+      ]
+    },
+    "served": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "touch": false,
+      "reduced": false,
+      "arsenalBack": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "attempts": [
+        {
+          "button": "ENGAGE",
+          "panelMs": 2081.5,
+          "gestureToSubmitMs": 2130.3,
+          "gestureToWorkerStartMs": 106,
+          "firstFrame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 2182164632,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "RETRY",
+          "panelMs": 2041.8,
+          "gestureToSubmitMs": 2059.4,
+          "gestureToWorkerStartMs": 35.2,
+          "firstFrame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 2329225462,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        },
+        {
+          "button": "ENGAGE",
+          "panelMs": 2043.7,
+          "gestureToSubmitMs": 2053.8,
+          "gestureToWorkerStartMs": 52.6,
+          "firstFrame": {
+            "id": 29,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 3592003805,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true,
+          "cueOverlap": []
+        }
+      ]
+    }
+  },
+  "held": {
+    "held-touch": {
+      "reduced": true,
+      "denied": true,
+      "earlyCancel": {
+        "duration": 264.3999999910593,
+        "pending": false,
+        "input": false,
+        "starts": 0
+      },
+      "engage": true,
+      "retry": true,
+      "blockedInput": true,
+      "tracksStartedWhileHeld": 0,
+      "renderer": {
+        "steps": 0,
+        "uploads": 0
+      },
+      "surfaceStatus": "02 / 02Loading arena Restoring the arena surface",
+      "cancelFocus": "RETRY",
+      "cancelPending": false,
+      "publishedDuringHold": false
+    },
+    "held-gl": {
+      "reduced": false,
+      "denied": false,
+      "earlyCancel": {
+        "duration": 306.09999999403954,
+        "pending": false,
+        "input": false,
+        "starts": 0
+      },
+      "engage": true,
+      "retry": true,
+      "blockedInput": true,
+      "tracksStartedWhileHeld": 0,
+      "renderer": {
+        "steps": 71,
+        "uploads": 0
+      },
+      "surfaceStatus": "02 / 02Loading arena Restoring the arena surface",
+      "cancelFocus": "RETRY",
+      "cancelPending": false,
+      "publishedDuringHold": false
+    }
+  },
+  "embed": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "finalPhase": "playing",
+    "trustedGestureToPlayMs": 2220,
+    "errors": []
+  },
+  "glazing": {
+    "canvas": {
+      "path": "mobile-canvas",
+      "deniedWorker": false,
+      "deniedCity": false,
+      "scenes": {
+        "metro": {
+          "seed": 42,
+          "changed": 42078,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 24196,
+          "wetOnly": 0,
+          "pan": 15220,
+          "shadow": 24577,
+          "storm": 24577
+        },
+        "market": {
+          "seed": 42,
+          "changed": 40543,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 38776,
+          "wetOnly": 0,
+          "pan": 15018,
+          "shadow": 23814,
+          "storm": 23806
+        },
+        "catwalk": {
+          "seed": 42,
+          "changed": 30222,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 31442,
+          "wetOnly": 0,
+          "pan": 13331,
+          "shadow": 17611,
+          "storm": 17593
+        }
+      }
+    },
+    "master": {
+      "path": "master-webgl2",
+      "deniedWorker": false,
+      "deniedCity": false,
+      "scenes": {
+        "metro": {
+          "seed": 42,
+          "changed": 49560,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 15220,
+          "shadow": 24577,
+          "storm": 24577
+        },
+        "market": {
+          "seed": 42,
+          "changed": 47997,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 15018,
+          "shadow": 23814,
+          "storm": 23806
+        },
+        "catwalk": {
+          "seed": 42,
+          "changed": 36040,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 13331,
+          "shadow": 17611,
+          "storm": 17593
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "deniedWorker": false,
+      "deniedCity": false,
+      "scenes": {
+        "metro": {
+          "seed": 42,
+          "changed": 31803,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 15220,
+          "shadow": 24577,
+          "storm": 24577
+        },
+        "market": {
+          "seed": 42,
+          "changed": 30551,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 15018,
+          "shadow": 23814,
+          "storm": 23806
+        },
+        "catwalk": {
+          "seed": 42,
+          "changed": 23207,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 0,
+          "wetOnly": 0,
+          "pan": 13331,
+          "shadow": 17611,
+          "storm": 17593
+        }
+      }
+    },
+    "denied": {
+      "path": "mobile-canvas",
+      "deniedWorker": true,
+      "deniedCity": true,
+      "scenes": {
+        "metro": {
+          "seed": 42,
+          "changed": 42059,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 39869,
+          "wetOnly": 0,
+          "pan": 9215,
+          "shadow": null,
+          "storm": 24577
+        },
+        "market": {
+          "seed": 42,
+          "changed": 40611,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 39555,
+          "wetOnly": 0,
+          "pan": 9410,
+          "shadow": null,
+          "storm": 23814
+        },
+        "catwalk": {
+          "seed": 42,
+          "changed": 30319,
+          "leak": 0,
+          "solidLeak": 0,
+          "dividerLeak": 0,
+          "fasciaLeak": 30812,
+          "wetOnly": 0,
+          "pan": 7626,
+          "shadow": null,
+          "storm": 17611
+        }
+      }
+    }
+  },
+  "coverage": {
+    "frames": [
+      {
+        "label": "engage",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 5,
+          "layer": "scene",
+          "kind": "starter",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 840,
+          "skyTones": 121,
+          "roadTones": 95,
+          "hole": 0,
+          "black": 264,
+          "roadPx": 30690,
+          "warning": 0
+        }
+      },
+      {
+        "label": "master",
+        "path": "master-webgl2",
+        "frame": {
+          "id": 42,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 772,
+          "skyTones": 123,
+          "roadTones": 95,
+          "hole": 114,
+          "black": 0,
+          "roadPx": 30690,
+          "warning": 94,
+          "bodies": [
+            [
+              179,
+              270,
+              137
+            ],
+            [
+              95,
+              96,
+              143
+            ],
+            [
+              197,
+              130,
+              111
+            ]
+          ]
+        }
+      },
+      {
+        "label": "context-lost-canvas",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 45,
+          "layer": "scene",
+          "kind": "starter",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 772,
+          "skyTones": 122,
+          "roadTones": 100,
+          "hole": 0,
+          "black": 264,
+          "roadPx": 30690,
+          "warning": 85,
+          "bodies": [
+            [
+              180,
+              274,
+              145
+            ],
+            [
+              257,
+              226,
+              162
+            ],
+            [
+              232,
+              209,
+              164
+            ]
+          ]
+        }
+      },
+      {
+        "label": "context-restored",
+        "path": "master-webgl2",
+        "frame": {
+          "id": 68,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 772,
+          "skyTones": 124,
+          "roadTones": 90,
+          "hole": 27,
+          "black": 0,
+          "roadPx": 30690,
+          "warning": 94
+        }
+      },
+      {
+        "label": "optimized",
+        "path": "mobile-webgl2",
+        "frame": {
+          "id": 84,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 772,
+          "skyTones": 123,
+          "roadTones": 87,
+          "hole": 0,
+          "black": 0,
+          "roadPx": 30690,
+          "warning": 94
+        }
+      },
+      {
+        "label": "interrupted-source",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 85,
+          "layer": "scene",
+          "kind": "emergency",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 772,
+          "skyTones": 122,
+          "roadTones": 100,
+          "hole": 0,
+          "black": 264,
+          "roadPx": 30690,
+          "warning": 85,
+          "bodies": [
+            [
+              180,
+              274,
+              145
+            ],
+            [
+              257,
+              226,
+              162
+            ],
+            [
+              232,
+              209,
+              164
+            ]
+          ]
+        }
+      },
+      {
+        "label": "held-after-resize",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 87,
+          "layer": "scene",
+          "kind": "emergency",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0.016666666666666666,
+        "held": true,
+        "image": {
+          "hpInk": 0,
+          "skyTones": 47,
+          "roadTones": 106,
+          "hole": 0,
+          "black": 374,
+          "roadPx": 52806,
+          "warning": 34
+        }
+      },
+      {
+        "label": "recovered",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 88,
+          "layer": "scene-work",
+          "kind": "starter",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.016666666666666666,
+          "hp": 92,
+          "threats": 2
+        },
+        "sim": 0.016666666666666666,
+        "held": false,
+        "image": {
+          "hpInk": 912,
+          "skyTones": 114,
+          "roadTones": 105,
+          "hole": 1,
+          "black": 466,
+          "roadPx": 52806,
+          "warning": 148
+        }
+      },
+      {
+        "label": "retry",
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 93,
+          "layer": "scene",
+          "kind": "starter",
+          "hud": "layer",
+          "seed": 43,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "sim": 0,
+        "held": false,
+        "image": {
+          "hpInk": 992,
+          "skyTones": 115,
+          "roadTones": 101,
+          "hole": 0,
+          "black": 458,
+          "roadPx": 52806,
+          "warning": 0,
+          "bodies": [
+            [
+              220,
+              296,
+              166
+            ],
+            [
+              294,
+              244,
+              214
+            ]
+          ]
+        }
+      }
+    ],
+    "teardown": {
+      "stores": 0,
+      "coverageBytes": 0,
+      "hudBytes": 0
+    }
+  },
+  "checks": {
+    "bridge": {
+      "tests": 214,
+      "pass": 214,
+      "fail": 0
+    },
+    "full": {
+      "tests": 603,
+      "pass": 598,
+      "fail": 5,
+      "sameFailuresAsPrior": true,
+      "failed": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "shaders": 17
+  },
+  "stills": {
+    "market-dry.webp": {
+      "bytes": 55784,
+      "sha256": "cbcaa58528f54b1041fc64abda8c7ed7d5e1ce92429d8f2258ae3969a80dfbdf"
+    },
+    "market-wet.webp": {
+      "bytes": 56034,
+      "sha256": "5dadfe31a53d3688f3911666c9d67e146b8f4fa9a1a2ca15b5f160e92779a6dc"
+    },
+    "metro-shelter.webp": {
+      "bytes": 46074,
+      "sha256": "f5908decb1ba7faa7f969e275903fa3993e9c509d108e7e31dd5475157fda713"
+    },
+    "night-crossing-desktop.webp": {
+      "bytes": 21252,
+      "sha256": "17f95a0bb0bf9f373972b69c8754499f3cfaf060b93372db74f8d899fa93bf87"
+    },
+    "night-crossing-touch.webp": {
+      "bytes": 21946,
+      "sha256": "d0190e0c04934bbf6f23dd5456d9595105da6a1f1bd87f138d4d3d591db8ec9d"
+    },
+    "sky-garden.webp": {
+      "bytes": 55080,
+      "sha256": "897ac0fe394f3e0f15818b799126ce0da899f53f086106611a82dcfd354c1597"
+    }
+  }
+}

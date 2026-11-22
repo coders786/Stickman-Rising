@@ -1,0 +1,1403 @@
+{
+  "controlBuild": "mPsKToiSEc-lpcwo0naSY",
+  "previewBuild": "cVsElmZ6KRiOXYXBQhqXH",
+  "method": "Serial production builds, cold headless Chromium; unique encoded HTTP response bodies, foreground rAF and JS separately. Seed 42, locked simulation input or fresh preferences. Not a hardware FPS benchmark.",
+  "http": {
+    "build": "cVsElmZ6KRiOXYXBQhqXH",
+    "originAccepted": true,
+    "iframeHeadersClear": true,
+    "rootSHA256": "dea716c7de7ad9851667370bdf221cf9a668e5c29867ffc4ce15d6cb7b1847d5",
+    "staticLinks": 11,
+    "retiredLoader404": true,
+    "scoresApi": true,
+    "assets": {
+      "baked-v1/deck.bin.br": {
+        "bytes": 32558,
+        "sha256": "56840399b3012d57dcfedd80ec3b3075fdc019f1b83b546975ba32bb4daf7262"
+      },
+      "baked-v1/look-16.bin.br": {
+        "bytes": 13006,
+        "sha256": "04a228bccd95349606ee7ce6ad6f9af3443c38ef1be79baa026214af80a67141"
+      },
+      "baked-v1/look-32.bin.br": {
+        "bytes": 58670,
+        "sha256": "afcb075498fac8cbfeabd577b5283ded4406a64681d35a5f6c074b341ad3f85e"
+      },
+      "baked-v1/sky.bin.br": {
+        "bytes": 247289,
+        "sha256": "d91bf5e6fc49843f1fcbcb894f60eba1ee545012530913b8d5df7fdeb30a20de"
+      },
+      "deck-pier.webp": {
+        "bytes": 4086,
+        "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+      },
+      "l1.webp": {
+        "bytes": 38162,
+        "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+      },
+      "l2.webp": {
+        "bytes": 49280,
+        "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+      },
+      "metro-street.webp": {
+        "bytes": 19810,
+        "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+      },
+      "props-v2.webp": {
+        "bytes": 5910,
+        "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+      },
+      "shop-return-v2.webp": {
+        "bytes": 269248,
+        "sha256": "18a9da1fcdfec3bdfa823463a74a01f6ab3678e6b22391839898cbfd9aef82c2"
+      },
+      "stratum-a.webp": {
+        "bytes": 250,
+        "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+      }
+    }
+  },
+  "wire": {
+    "canvas": {
+      "before": {
+        "frame": {
+          "id": 1,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "bodies": {
+          "menu": {
+            "requests": 20,
+            "bytes": 691595,
+            "bridge": 0,
+            "code": 543738,
+            "fonts": 140700
+          },
+          "opening": {
+            "requests": 33,
+            "bytes": 1517049,
+            "bridge": 807605,
+            "code": 561587,
+            "fonts": 140700
+          },
+          "play": {
+            "requests": 33,
+            "bytes": 1517049,
+            "bridge": 807605,
+            "code": 561587,
+            "fonts": 140700
+          }
+        }
+      },
+      "after": {
+        "frame": {
+          "id": 4,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-canvas",
+        "bodies": {
+          "menu": {
+            "requests": 18,
+            "bytes": 541608,
+            "bridge": 0,
+            "code": 534598,
+            "fonts": 0
+          },
+          "opening": {
+            "requests": 31,
+            "bytes": 1193278,
+            "bridge": 633785,
+            "code": 552483,
+            "fonts": 0
+          },
+          "play": {
+            "requests": 31,
+            "bytes": 1193278,
+            "bridge": 633785,
+            "code": 552483,
+            "fonts": 0
+          }
+        }
+      }
+    },
+    "optimized": {
+      "before": {
+        "frame": {
+          "id": 1,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-webgl2",
+        "bodies": {
+          "menu": {
+            "requests": 20,
+            "bytes": 691595,
+            "bridge": 0,
+            "code": 543738,
+            "fonts": 140700
+          },
+          "opening": {
+            "requests": 37,
+            "bytes": 2667161,
+            "bridge": 1957717,
+            "code": 561587,
+            "fonts": 140700
+          },
+          "play": {
+            "requests": 37,
+            "bytes": 2667161,
+            "bridge": 1957717,
+            "code": 561587,
+            "fonts": 140700
+          }
+        }
+      },
+      "after": {
+        "frame": {
+          "id": 3,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "mobile-webgl2",
+        "bodies": {
+          "menu": {
+            "requests": 19,
+            "bytes": 547518,
+            "bridge": 5910,
+            "code": 534598,
+            "fonts": 0
+          },
+          "opening": {
+            "requests": 33,
+            "bytes": 1238842,
+            "bridge": 679349,
+            "code": 552483,
+            "fonts": 0
+          },
+          "play": {
+            "requests": 33,
+            "bytes": 1238842,
+            "bridge": 679349,
+            "code": 552483,
+            "fonts": 0
+          }
+        }
+      }
+    },
+    "hdr": {
+      "before": {
+        "frame": {
+          "id": 4,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "master-webgl2",
+        "bodies": {
+          "menu": {
+            "requests": 20,
+            "bytes": 691595,
+            "bridge": 0,
+            "code": 543738,
+            "fonts": 140700
+          },
+          "opening": {
+            "requests": 38,
+            "bytes": 2981668,
+            "bridge": 2272224,
+            "code": 561587,
+            "fonts": 140700
+          },
+          "play": {
+            "requests": 38,
+            "bytes": 2981668,
+            "bridge": 2272224,
+            "code": 561587,
+            "fonts": 140700
+          }
+        }
+      },
+      "after": {
+        "frame": {
+          "id": 3,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "path": "master-webgl2",
+        "bodies": {
+          "menu": {
+            "requests": 19,
+            "bytes": 547518,
+            "bridge": 5910,
+            "code": 534598,
+            "fonts": 0
+          },
+          "opening": {
+            "requests": 33,
+            "bytes": 1284506,
+            "bridge": 725013,
+            "code": 552483,
+            "fonts": 0
+          },
+          "play": {
+            "requests": 33,
+            "bytes": 1284506,
+            "bridge": 725013,
+            "code": 552483,
+            "fonts": 0
+          }
+        }
+      }
+    }
+  },
+  "pacing": {
+    "desktopUltra": {
+      "before": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 25.639199487216008,
+          "raf": {
+            "p50": 33.399999999999636,
+            "p95": 50.099999999999454,
+            "p99": 50.100000000000364,
+            "max": 83.39999999999964,
+            "mean": 39.00277777777778
+          },
+          "js": {
+            "p50": 3.7000000029802322,
+            "p95": 11.5,
+            "p99": 15.599999994039536,
+            "max": 26.5,
+            "mean": 4.7979166659836965
+          },
+          "over50": 8,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 747.5,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 388.79999999701977,
+            "plateMaxMs": 356.69999998807907,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        },
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 25.3387295442548,
+          "raf": {
+            "p50": 33.399999999999636,
+            "p95": 50,
+            "p99": 50.100000000000364,
+            "max": 66.80000000000018,
+            "mean": 39.46527777777777
+          },
+          "js": {
+            "p50": 3.8999999910593033,
+            "p95": 11.700000002980232,
+            "p99": 15,
+            "max": 26.299999997019768,
+            "mean": 4.8597222213736835
+          },
+          "over50": 5,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 705.4000000059605,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 428.40000000596046,
+            "plateMaxMs": 320.3999999910593,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ],
+      "after": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 27.96225096120237,
+          "raf": {
+            "p50": 33.30000000000018,
+            "p95": 50,
+            "p99": 50.100000000000364,
+            "max": 50.100000000000364,
+            "mean": 35.76250000000001
+          },
+          "js": {
+            "p50": 4.299999997019768,
+            "p95": 6.899999991059303,
+            "p99": 10.200000002980232,
+            "max": 11.700000002980232,
+            "mean": 4.564583332795236
+          },
+          "over50": 3,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 645.0999999940395,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 383.5,
+            "plateMaxMs": 262.70000000298023,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        },
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 23.80243975007438,
+          "raf": {
+            "p50": 33.399999999999636,
+            "p95": 66.69999999999982,
+            "p99": 83.30000000000018,
+            "max": 100,
+            "mean": 42.0125
+          },
+          "js": {
+            "p50": 4.899999991059303,
+            "p95": 13.400000005960464,
+            "p99": 21.799999997019768,
+            "max": 23.299999997019768,
+            "mean": 5.782638888806105
+          },
+          "over50": 22,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 582.5,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 367.6000000089407,
+            "plateMaxMs": 263.69999998807907,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ]
+    },
+    "desktopFresh": {
+      "before": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": true,
+          "fps": 25.41296060991105,
+          "raf": {
+            "p50": 33.399999999999636,
+            "p95": 50.099999999999454,
+            "p99": 50.100000000000364,
+            "max": 50.100000000000364,
+            "mean": 39.35000000000001
+          },
+          "js": {
+            "p50": 4,
+            "p95": 12.299999997019768,
+            "p99": 20.100000008940697,
+            "max": 24.5,
+            "mean": 5.937499999793039
+          },
+          "over50": 9,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 3124.3158288955956,
+          "prepareMs": 690.3999999910593,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 401.59999999403954,
+            "plateMaxMs": 298.5,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        },
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": true,
+          "fps": 24.40760703752669,
+          "raf": {
+            "p50": 33.400000000000546,
+            "p95": 50.099999999999454,
+            "p99": 66.59999999999945,
+            "max": 66.69999999999982,
+            "mean": 40.97083333333334
+          },
+          "js": {
+            "p50": 4.300000011920929,
+            "p95": 12.599999994039536,
+            "p99": 14.599999994039536,
+            "max": 18.900000005960464,
+            "mean": 6.260416666459706
+          },
+          "over50": 10,
+          "over250": 0,
+          "sizes": [
+            "1475\u00d7825"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 3188.482495562264,
+          "prepareMs": 650.6999999880791,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 388.8999999910593,
+            "plateMaxMs": 271.20000000298023,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ],
+      "after": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": true,
+          "realClock": true,
+          "fps": 49.94277390490063,
+          "raf": {
+            "p50": 16.699999999999818,
+            "p95": 33.399999999999636,
+            "p99": 49.999999999999545,
+            "max": 50,
+            "mean": 20.022916666666667
+          },
+          "js": {
+            "p50": 4.100000008940697,
+            "p95": 7,
+            "p99": 14,
+            "max": 16,
+            "mean": 4.571527778067523
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "1180\u00d7660",
+            "1062\u00d7594",
+            "944\u00d7528"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 2004.315828895568,
+          "prepareMs": 638.2999999970198,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 376.59999999403954,
+            "plateMaxMs": 261.29999999701977,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        },
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": true,
+          "realClock": true,
+          "fps": 50.82592121982211,
+          "raf": {
+            "p50": 16.699999999999818,
+            "p95": 33.399999999999636,
+            "p99": 33.40000000000009,
+            "max": 33.400000000000546,
+            "mean": 19.674999999999997
+          },
+          "js": {
+            "p50": 4.199999988079071,
+            "p95": 7.5999999940395355,
+            "p99": 12.400000005960464,
+            "max": 18.400000005960464,
+            "mean": 4.618055554210311
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "1180\u00d7660",
+            "1062\u00d7594",
+            "944\u00d7528"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1951.8158288955688,
+          "prepareMs": 569.8999999910593,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 362,
+            "plateMaxMs": 307,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ]
+    },
+    "desktopMedium": {
+      "before": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 35.556433492185,
+          "raf": {
+            "p50": 33.30000000000018,
+            "p95": 33.400000000000546,
+            "p99": 50,
+            "max": 50,
+            "mean": 28.12430555555555
+          },
+          "js": {
+            "p50": 3.699999988079071,
+            "p95": 11.799999997019768,
+            "p99": 14.400000005960464,
+            "max": 18.5,
+            "mean": 4.578472223443289
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "1180\u00d7660"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 830.7999999970198,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 544.0999999940395,
+            "plateMaxMs": 429.79999999701977,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ],
+      "after": [
+        {
+          "viewport": [
+            1180,
+            660,
+            1
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 38.746132113547695,
+          "raf": {
+            "p50": 33.29999999999973,
+            "p95": 33.40000000000009,
+            "p99": 33.400000000000546,
+            "max": 33.400000000000546,
+            "mean": 25.80902777777778
+          },
+          "js": {
+            "p50": 4.0999999940395355,
+            "p95": 7.5,
+            "p99": 9.799999997019768,
+            "max": 9.899999991059303,
+            "mean": 4.450694445106718
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "1180\u00d7660"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 650.2999999970198,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 390.09999999403954,
+            "plateMaxMs": 304.90000000596046,
+            "plateBytes": 6248448,
+            "wireBytes": 3187712
+          }
+        }
+      ]
+    },
+    "portraitMedium": {
+      "before": [
+        {
+          "viewport": [
+            400,
+            844,
+            2
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 57.989690721649474,
+          "raf": {
+            "p50": 16.699999999999818,
+            "p95": 16.799999999999727,
+            "p99": 33.399999999999636,
+            "max": 33.400000000000546,
+            "mean": 17.244444444444447
+          },
+          "js": {
+            "p50": 2.5999999940395355,
+            "p95": 10.600000008940697,
+            "p99": 14.200000002980232,
+            "max": 16.200000002980232,
+            "mean": 3.5875000001655684
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "400\u00d7844"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 747.7999999970198,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 512.6000000089407,
+            "plateMaxMs": 313.20000000298023,
+            "plateBytes": 6248448,
+            "wireBytes": 1593856
+          }
+        }
+      ],
+      "after": [
+        {
+          "viewport": [
+            400,
+            844,
+            2
+          ],
+          "frames": 144,
+          "quality": "medium",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 59.59031657355681,
+          "raf": {
+            "p50": 16.699999999999818,
+            "p95": 16.799999999999272,
+            "p99": 16.800000000000182,
+            "max": 33.40000000000009,
+            "mean": 16.781249999999996
+          },
+          "js": {
+            "p50": 3.0999999940395355,
+            "p95": 5.9000000059604645,
+            "p99": 7.699999988079071,
+            "max": 7.700000002980232,
+            "mean": 3.3930555560315647
+          },
+          "over50": 0,
+          "over250": 0,
+          "sizes": [
+            "400\u00d7844"
+          ],
+          "paths": [
+            "mobile-canvas"
+          ],
+          "playerX": 1689.3158288955722,
+          "prepareMs": 554.0999999940395,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 365.5,
+            "plateMaxMs": 333,
+            "plateBytes": 6248448,
+            "wireBytes": 1593856
+          }
+        }
+      ]
+    },
+    "softwareHDR": {
+      "before": [
+        {
+          "viewport": [
+            544,
+            340,
+            1
+          ],
+          "frames": 24,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 2.2713936893111994,
+          "raf": {
+            "p50": 433.3000000000029,
+            "p95": 483.2999999999993,
+            "p99": 483.2999999999993,
+            "max": 483.2999999999993,
+            "mean": 440.2583333333334
+          },
+          "js": {
+            "p50": 10.5,
+            "p95": 12.700000002980232,
+            "p99": 12.800000011920929,
+            "max": 12.800000011920929,
+            "mean": 10.824999999875823
+          },
+          "over50": 24,
+          "over250": 24,
+          "sizes": [
+            "680\u00d7425"
+          ],
+          "paths": [
+            "master-webgl2"
+          ],
+          "playerX": 825.9824955622463,
+          "prepareMs": 3993.699999988079,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 734.0999999940395,
+            "plateMaxMs": 189.5,
+            "plateBytes": 4165632,
+            "wireBytes": 1593856
+          }
+        }
+      ],
+      "after": [
+        {
+          "viewport": [
+            544,
+            340,
+            1
+          ],
+          "frames": 24,
+          "quality": "ultra",
+          "adaptive": false,
+          "realClock": false,
+          "fps": 2.318930200200974,
+          "raf": {
+            "p50": 433.2999999999993,
+            "p95": 450.09999999999854,
+            "p99": 466.7000000000007,
+            "max": 466.7000000000007,
+            "mean": 431.23333333333335
+          },
+          "js": {
+            "p50": 10.200000002980232,
+            "p95": 12.299999997019768,
+            "p99": 12.599999994039536,
+            "max": 12.599999994039536,
+            "mean": 10.42083333308498
+          },
+          "over50": 24,
+          "over250": 24,
+          "sizes": [
+            "680\u00d7425"
+          ],
+          "paths": [
+            "master-webgl2"
+          ],
+          "playerX": 825.9824955622463,
+          "prepareMs": 3616.7999999970198,
+          "surfaceCount": 0,
+          "frameErrors": 0,
+          "localBakes": {
+            "workerMaxMs": 576.5,
+            "plateMaxMs": 222.79999999701977,
+            "plateBytes": 4165632,
+            "wireBytes": 1593856
+          }
+        }
+      ]
+    }
+  },
+  "throttledEmbed": {
+    "latencyMs": 150,
+    "downMbps": 1.5,
+    "before": {
+      "menuMs": 2343.2000000029802,
+      "readyMs": 4410.0999999940395,
+      "engageToSubmitMs": 4644.4000000059605,
+      "engageToFirstStepMs": 4730.0
+    },
+    "after": {
+      "menuMs": 1629.699999988079,
+      "readyMs": 3726.8999999910593,
+      "engageToSubmitMs": 3479.0,
+      "engageToFirstStepMs": 3581.9000000059605
+    }
+  },
+  "sky": {
+    "before": {
+      "parked": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 3.7999999970197678,
+        "cityMedianMs": 0,
+        "opticalMedianMs": 0.10000000894069672
+      },
+      "pan": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 10.700000002980232,
+        "cityMedianMs": 0.09999999403953552,
+        "opticalMedianMs": 8
+      },
+      "weather": {
+        "frames": 24,
+        "cityPaints": 48,
+        "canvasMedianMs": 13.900000005960464,
+        "cityMedianMs": 2.8999999910593033,
+        "opticalMedianMs": 9
+      }
+    },
+    "after": {
+      "parked": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 3.5,
+        "cityMedianMs": 0.09999999403953552,
+        "opticalMedianMs": 0.10000000894069672
+      },
+      "pan": {
+        "frames": 24,
+        "cityPaints": 0,
+        "canvasMedianMs": 4.9000000059604645,
+        "cityMedianMs": 0.09999999403953552,
+        "opticalMedianMs": 2.300000011920929
+      },
+      "weather": {
+        "frames": 24,
+        "cityPaints": 48,
+        "canvasMedianMs": 7.5999999940395355,
+        "cityMedianMs": 2.7999999970197678,
+        "opticalMedianMs": 2.5
+      }
+    },
+    "matchedPixels": {
+      "parked": {
+        "viewport": [
+          1000,
+          560
+        ],
+        "meanAbsCode": 0.005642261904761905,
+        "p99AbsCode": 0.0,
+        "maxAbsCode": 10,
+        "pixelsGT3": 307,
+        "pixelsGT10": 0,
+        "alphaExact": true,
+        "GT3Bounds": [
+          35,
+          0,
+          971,
+          390
+        ]
+      },
+      "pan": {
+        "viewport": [
+          1000,
+          560
+        ],
+        "meanAbsCode": 0.04896190476190476,
+        "p99AbsCode": 1.0,
+        "maxAbsCode": 17,
+        "pixelsGT3": 507,
+        "pixelsGT10": 71,
+        "alphaExact": true,
+        "GT3Bounds": [
+          12,
+          0,
+          948,
+          500
+        ]
+      },
+      "weather": {
+        "viewport": [
+          1000,
+          560
+        ],
+        "meanAbsCode": 0.0057321428571428575,
+        "p99AbsCode": 0.0,
+        "maxAbsCode": 10,
+        "pixelsGT3": 280,
+        "pixelsGT10": 0,
+        "alphaExact": true,
+        "GT3Bounds": [
+          80,
+          22,
+          990,
+          412
+        ]
+      }
+    },
+    "deniedSkyPath": "mobile-canvas",
+    "deniedCardsDrawn": true
+  },
+  "restoredBakes": {
+    "sky": {
+      "bytes": 1282048,
+      "sha256": "d11db7304ff36492a40b0e1b23fd8dcc852f3a1d33b6baa038268a85105c52c6"
+    },
+    "deck": {
+      "bytes": 851968,
+      "sha256": "780686042ee0fda5c4d64d6ca8d1de64ad7d2bcdd03743abd1b407b572f942c2"
+    },
+    "grades": [
+      {
+        "bytes": 65536,
+        "sha256": "32f5de8c98ee49f132ce4c07cced5dbe7ef593b8ad6d1490be96c435eb3aa611"
+      },
+      {
+        "bytes": 524288,
+        "sha256": "034c69378e2ae44ca6ee736942754bde2f8a114bfe48bb4e19ee17be820ea079"
+      }
+    ]
+  },
+  "matchedLocalBakePairs": 16,
+  "hdrLightingPixels": {
+    "warm": {
+      "matchedFields": [
+        "x",
+        "y",
+        "pose",
+        "joints",
+        "cam",
+        "lunar",
+        "samples"
+      ],
+      "sceneMeanCode": 0.36296762992831544,
+      "sceneP99Code": 7.0,
+      "sceneMaxCode": 114,
+      "actorMeanCode": 0.010655439471906024,
+      "actorP99Code": 0.0,
+      "ablationPixelsGT5": 1408,
+      "ablationOutsidePlus2": 0
+    },
+    "cool": {
+      "matchedFields": [
+        "x",
+        "y",
+        "pose",
+        "joints",
+        "cam",
+        "lunar",
+        "samples"
+      ],
+      "sceneMeanCode": 0.2785013440860215,
+      "sceneP99Code": 4.0,
+      "sceneMaxCode": 112,
+      "actorMeanCode": 0.07688715953307393,
+      "actorP99Code": 1.0,
+      "ablationPixelsGT5": 1027,
+      "ablationOutsidePlus2": 0
+    }
+  },
+  "glazing": {
+    "unchangedAtlasSHA256": "18a9da1fcdfec3bdfa823463a74a01f6ab3678e6b22391839898cbfd9aef82c2",
+    "glError": 0,
+    "fixtures": {
+      "metro": {
+        "visibleBakedPanes": 4,
+        "uploadBytes": 143360,
+        "dividerPixels": 0,
+        "occluderPixels": 0,
+        "wetOnlyDelta": 0
+      },
+      "market": {
+        "visibleBakedPanes": 4,
+        "uploadBytes": 143360,
+        "dividerPixels": 0,
+        "occluderPixels": 0,
+        "wetOnlyDelta": 0
+      }
+    }
+  },
+  "browser": {
+    "packedSources": {
+      "packed-assets": {
+        "city": "shared-webp",
+        "deck": "brotli",
+        "lut": "brotli",
+        "lutVolumes": [
+          "brotli",
+          "brotli",
+          "brotli",
+          "brotli"
+        ]
+      },
+      "packed-denied": {
+        "city": "shared-webp",
+        "deck": "local",
+        "lut": "local",
+        "lutVolumes": [
+          "local",
+          "local",
+          "local",
+          "local"
+        ]
+      },
+      "packed-malformed": {
+        "city": "shared-webp",
+        "deck": "local",
+        "lut": "local",
+        "lutVolumes": [
+          "local",
+          "local",
+          "local",
+          "local"
+        ]
+      }
+    },
+    "heldGrade": "renderer",
+    "heldCity": "background",
+    "firstPaneStateWhileAtlasHeld": {
+      "fronts": 1,
+      "panes": 4,
+      "baked": 0,
+      "solids": 0,
+      "sources": 0,
+      "actors": 0,
+      "shadeTaps": 5,
+      "shaded": 5,
+      "penumbra": 0,
+      "energy": 0.22776470333337784,
+      "fieldBytes": 143360
+    },
+    "fallbackOnContextLoss": {
+      "frame": {
+        "id": 4,
+        "layer": "scene-work",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "path": "mobile-canvas",
+      "time": 0,
+      "input": true,
+      "music": true
+    },
+    "starts": {
+      "desktop-controls": [
+        {
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        },
+        {
+          "frame": {
+            "id": 19,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        }
+      ],
+      "portrait-controls": [
+        {
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        },
+        {
+          "frame": {
+            "id": 27,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        }
+      ],
+      "reduced-controls": [
+        {
+          "frame": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        },
+        {
+          "frame": {
+            "id": 34,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        }
+      ],
+      "gl-controls-short": [
+        {
+          "frame": {
+            "id": 3,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "master-webgl2",
+          "time": 0,
+          "input": true,
+          "music": true
+        },
+        {
+          "frame": {
+            "id": 15,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "master-webgl2",
+          "time": 0,
+          "input": true,
+          "music": true
+        }
+      ],
+      "live-touch": [
+        {
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        },
+        {
+          "frame": {
+            "id": 39,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "path": "mobile-canvas",
+          "time": 0,
+          "input": true,
+          "music": true
+        }
+      ]
+    },
+    "heldRetryRetainsResults": true,
+    "heldOpticalFence": true,
+    "scopedTeardown": 0
+  },
+  "checks": {
+    "bridge": {
+      "passed": 226,
+      "total": 226
+    },
+    "offlineGlslLinks": 17,
+    "full": {
+      "passed": 610,
+      "total": 615,
+      "inheritedFailures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    },
+    "preview": {
+      "stagedAndServedMatch": true,
+      "embeddedBoot": "playing",
+      "trustedTouchRetry": true
+    }
+  }
+}

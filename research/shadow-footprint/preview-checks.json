@@ -1,0 +1,320 @@
+{
+  "productionBuild": "NEXT_PUBLIC_STICKMAN_PREVIEW=1 npm run build:iso",
+  "http": {
+    "/": 200,
+    "/?stage=station": 200
+  },
+  "cases": {
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "absoluteUltra": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          2250,
+          1395
+        ],
+        "route": "forward",
+        "shadows": "cast+props"
+      },
+      "governorLock": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "resumedAndPersisted": true,
+      "qualityOffered": [
+        "low",
+        "medium",
+        "high",
+        "ultra"
+      ],
+      "effectiveDown": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "effectiveUp": [
+        "medium",
+        "high",
+        "ultra"
+      ],
+      "switchedToStationFromSettings": false,
+      "trustedEngageRetryAndCancel": true,
+      "pausedSceneIdle": true,
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      }
+    },
+    "touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "absoluteUltra": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          877,
+          1899
+        ],
+        "route": "capture",
+        "shadows": "cast+props"
+      },
+      "governorLock": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "resumedAndPersisted": true,
+      "qualityOffered": [
+        "low",
+        "medium"
+      ],
+      "effectiveDown": [
+        "low"
+      ],
+      "effectiveUp": [
+        "medium"
+      ],
+      "switchedToStationFromSettings": true,
+      "trustedEngageRetryAndCancel": true,
+      "pausedSceneIdle": true,
+      "hiddenPause": {
+        "scene": 0,
+        "hud": 0,
+        "frozen": true
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      }
+    }
+  },
+  "retries": {
+    "desktop": {
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "scene": [
+        1440,
+        810
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "retiredMasksZeroed": 84,
+      "relayStore": [
+        759,
+        52
+      ],
+      "sceneSamples": 0,
+      "storesAfterDestroy": 0
+    },
+    "capture": {
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "retiredMasksZeroed": 84,
+      "relayStore": [
+        954,
+        52
+      ],
+      "sceneSamples": 0,
+      "storesAfterDestroy": 0
+    },
+    "station": {
+      "seeds": [
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62
+      ],
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "maskStores": [
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ],
+        [
+          76,
+          88
+        ]
+      ],
+      "retiredMasksZeroed": 84,
+      "relayStore": null,
+      "sceneSamples": 0,
+      "storesAfterDestroy": 0
+    }
+  },
+  "tests": {
+    "focusedPassed": 121,
+    "fullPassed": 490,
+    "fullTests": 495,
+    "preExistingFailures": [
+      "a connecting strike puts the striking joint ON the body, not near it",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "the blade cleaves a tight pack (26px), every sword strike"
+    ]
+  }
+}

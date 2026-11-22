@@ -1,0 +1,149 @@
+{
+  "build": "mPsKToiSEc-lpcwo0naSY",
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "stagingMatchesServedBuild": true,
+  "preview": {
+    "port": 3000,
+    "slowCrossOriginEmbedPassed": true,
+    "staticLinks": 13,
+    "unchangedWorldAssetsCompared": 18,
+    "retiredReel404": true
+  },
+  "fixedCssPoses": {
+    "desktop": {
+      "renderer": "canvas",
+      "pixels": [
+        1180,
+        660
+      ],
+      "launchTickSeconds": 0,
+      "hp": 100,
+      "blackOpeningLitPixels": 0,
+      "sealedLitPixels": 0,
+      "pulseMsOnArtClock": 541.2,
+      "apertureAtPulse": 0.8,
+      "screenFlashAlpha": 0.64,
+      "maximumNormalizedTipToWakeGap": 5e-06,
+      "brightCornerPixelsBeforeReveal": {
+        "bottomLeft": 234,
+        "topRight": 224
+      },
+      "exactWorldAndHudAfterCut": true
+    },
+    "portrait": {
+      "renderer": "canvas",
+      "pixels": [
+        800,
+        1688
+      ],
+      "launchTickSeconds": 0,
+      "hp": 100,
+      "blackOpeningLitPixels": 0,
+      "sealedLitPixels": 0,
+      "pulseMsOnArtClock": 541.2,
+      "apertureAtPulse": 0.8,
+      "screenFlashAlpha": 0.64,
+      "maximumNormalizedTipToWakeGap": 5e-06,
+      "brightCornerPixelsBeforeReveal": {
+        "bottomLeft": 242,
+        "topRight": 290
+      },
+      "exactWorldAndHudAfterCut": true
+    },
+    "gl": {
+      "renderer": "webgl",
+      "pixels": [
+        720,
+        440
+      ],
+      "launchTickSeconds": 0,
+      "hp": 100,
+      "blackOpeningLitPixels": 0,
+      "sealedLitPixels": 0,
+      "pulseMsOnArtClock": 541.2,
+      "apertureAtPulse": 0.8,
+      "screenFlashAlpha": 0.64,
+      "maximumNormalizedTipToWakeGap": 2.8e-05,
+      "brightCornerPixelsBeforeReveal": {
+        "bottomLeft": 104,
+        "topRight": 100
+      },
+      "exactWorldAndHudAfterCut": true
+    }
+  },
+  "trustedLivePlayback": [
+    {
+      "gesture": "ENGAGE",
+      "recordedCompositorFrames": 64,
+      "submitMs": 836.2,
+      "artCloseDelayMs": 0,
+      "visibleRedPulseInPlayback": true
+    },
+    {
+      "gesture": "RETRY",
+      "recordedCompositorFrames": 66,
+      "submitMs": 395.1,
+      "artCloseDelayMs": 367.3,
+      "visibleRedPulseInPlayback": true
+    }
+  ],
+  "workerDeniedRetrySubmitMs": 68.8,
+  "heldRequiredDeck": {
+    "asset": "/bridge/deck-pier.webp",
+    "observedPendingAtMs": 1800,
+    "startedAtMs": 2107.3,
+    "openApertureWhilePending": 1,
+    "flashWhilePending": 0,
+    "steelWhilePending": "hidden"
+  },
+  "controls": {
+    "desktop-controls": {
+      "trustedClicks": true,
+      "tickZeroInputAndAudio": true,
+      "jumpDuringSlash": true,
+      "cancelRestoresResults": true,
+      "extraArtRequests": [],
+      "surfacesAfterDestroy": 0
+    },
+    "portrait-controls": {
+      "trustedClicks": true,
+      "tickZeroInputAndAudio": true,
+      "jumpDuringSlash": true,
+      "cancelRestoresResults": true,
+      "extraArtRequests": [],
+      "surfacesAfterDestroy": 0
+    },
+    "gl-controls": {
+      "trustedClicks": true,
+      "tickZeroInputAndAudio": true,
+      "jumpDuringSlash": false,
+      "cancelRestoresResults": true,
+      "extraArtRequests": [],
+      "surfacesAfterDestroy": 0
+    },
+    "reduced-motion": {
+      "trustedClicks": true,
+      "tickZeroInputAndAudio": true,
+      "jumpDuringSlash": false,
+      "cancelRestoresResults": true,
+      "extraArtRequests": [],
+      "surfacesAfterDestroy": 0
+    },
+    "static-controls": {
+      "trustedClicks": true,
+      "tickZeroInputAndAudio": true,
+      "jumpDuringSlash": false,
+      "cancelRestoresResults": true,
+      "extraArtRequests": [],
+      "surfacesAfterDestroy": 0
+    }
+  },
+  "tests": {
+    "bridgePassed": 222,
+    "bridgeTotal": 222,
+    "fullSuitePassed": 606,
+    "fullSuiteTotal": 611,
+    "sameKnownCombatFailures": 5,
+    "removedObsoleteCharacterRigTests": 3
+  }
+}

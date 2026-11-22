@@ -31,14 +31,18 @@ export class StormEngine{
  private y=new Float32Array(CAP)
  private velocity=new Float32Array(CAP)
  private length=new Float32Array(CAP)
+ // One projection shared by the halo, core and optional practical pass.
+ // Float64 retains the exact coordinates Canvas previously received.
+ private streakX=new Float64Array(CAP)
+ private streakY=new Float64Array(CAP)
+ private streakTailX=new Float64Array(CAP)
+ private streakTailY=new Float64Array(CAP)
+ private streakVisible=new Uint8Array(CAP)
  private splashX=new Float32Array(SPLASHES)
  private splashAge=new Float32Array(SPLASHES).fill(9)
  private splashSeed=new Float32Array(SPLASHES)
  private splashHead=0
  private impacts=0
- private bolt=new Float32Array(42)
- /** fork branches spawned with each strike: 3 forks × 2 points × [x,y] + dir */
- private forks=new Float32Array(3*2*2)
  onThunder:(()=>void)|null=null
  constructor(quality:StormQuality='low'){
   this.quality=quality
@@ -93,7 +97,6 @@ export class StormEngine{
   return a<1.1?Math.max(0,Math.exp(-6*a)-Math.exp(-6.6)):0
  }
  get azimuthValue(){return this.azimuth}
- get boltActive(){return this.strikeAge<.23}
  get gust(){return .5+.25*Math.sin(this.t*.7)}
  get snapshot(){return{time:this.t,quality:this.quality,visibleDrops:budgets[this.quality],strikes:this.strikes,intensity:this.intensity,impacts:this.impacts,activeSplashes:this.splashAge.filter(a=>a<.4).length}}
  update(dt:number){
@@ -106,23 +109,17 @@ export class StormEngine{
   this.t+=dt;this.strikeAge+=dt;this.nextStrike-=dt
   if(this.nextStrike<=0){
    this.strikeAge=0;this.nextStrike=(4+this.lightningRandom()*3)/(this.stormBias*this.strikeCadence);this.strikes++;this.azimuth=this.lightningRandom()*1.6-.8
-   for(let i=0;i<21;i++){this.bolt[i*2]=(this.lightningRandom()-.5)*.12;this.bolt[i*2+1]=i/20}
-   // fork branches peel off the main channel at random heights
-   for(let f=0;f<3;f++){
-    const j=3+((this.lightningRandom()*15)|0)
-    const fx=this.bolt[j*2],fy=this.bolt[j*2+1]
-    const dir=this.lightningRandom()<.5?-1:1
-    const seg=.05+this.lightningRandom()*.11
-    this.forks[f*4]=fx;this.forks[f*4+1]=fy
-    this.forks[f*4+2]=fx+dir*seg;this.forks[f*4+3]=fy+seg*.85
-   }
+   // No weather channel is drawn. Advance the 21 trunk + 3×3 fork draws
+   // anyway so the next strike, azimuth and thunder keep their exact rhythm.
+   for(let i=0;i<30;i++)this.lightningRandom()
    this.onThunder?.()
   }
   const z=this.view.zoom,span=this.width/z+180,top=Math.min(-180,this.view.y-this.height/(2*z)-80)
+  const wind=this.wind
   for(let i=0;i<SPLASHES;i++)this.splashAge[i]+=dt
   for(let i=0;i<CAP;i++){
    const distance=this.velocity[i]*dt*(this.sharp ? 1.22 : 1)
-   this.x[i]+=distance*this.wind;this.y[i]+=distance
+   this.x[i]+=distance*wind;this.y[i]+=distance
    if(this.y[i]>=0){
     if(i<budgets[this.quality]){
      this.splashX[this.splashHead]=this.x[i];this.splashAge[this.splashHead]=0
@@ -140,37 +137,42 @@ export class StormEngine{
   }
  }
  drawRain(ctx:CanvasRenderingContext2D, amber?: {x:number;y:number;color:string;gain:number}){
+  if(this.rainScale===0)return
   const {x:cx,y:cy,zoom:z}=this.view,w=this.width,h=this.height,ground=h*.5-cy*z
-  ctx.save();ctx.beginPath();ctx.rect(0,0,w,Math.max(0,Math.min(h,ground)));ctx.clip()
+  if(ground<=0)return
+  const n=budgets[this.quality],wind=this.wind,intensity=this.intensity
+  for(let i=0;i<n;i++){
+   const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
+   this.streakX[i]=x;this.streakY[i]=y
+   this.streakTailX[i]=x-l*wind;this.streakTailY[i]=y-l
+   this.streakVisible[i]=x<-60||x>w+60||y<-60||y>h+60?0:1
+  }
+  ctx.save();ctx.beginPath();ctx.rect(0,0,w,Math.min(h,ground));ctx.clip()
   ctx.lineCap='round'
   // Three coherent world-space depth treatments. Low still draws every band.
-  // Each band is a WIDE DIM HALO plus a BRIGHT CORE — the core additive so
-  // the bloom pass turns every streak into a lit filament.
-  const n=budgets[this.quality]
+  // Paint the dim halos first, then the additive cores, as before.
   // DEPTH LAYERING (weather-physics sync): far rain thin/dark/dim, near rain
   // larger but MORE transparent so it never clutters the playable foreground.
   const hA=[.11,.15,.17],hC=['#22323f','#2c4152','#3a5062'],hW=[1.1,1.7,3.0]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(this.sharp ? .56 : 1)*(hA[band]+this.intensity*.1)*(1+band*.35)*this.rainScale
+   ctx.globalAlpha=(this.sharp ? .56 : 1)*(hA[band]+intensity*.1)*(1+band*.35)*this.rainScale
    ctx.strokeStyle=hC[band];ctx.lineWidth=hW[band]*(this.sharp ? .64 : 1)
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
-    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
-    if(x<-60||x>w+60||y<-60||y>h+60)continue
-    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
+    if(!this.streakVisible[i])continue
+    ctx.moveTo(this.streakX[i],this.streakY[i]);ctx.lineTo(this.streakTailX[i],this.streakTailY[i])
    }
    ctx.stroke()
   }
   ctx.globalCompositeOperation='lighter'
   const cA=[.24,.32,.3],cC=['#5c7d96','#7fa6c2','#a8c8dd'],cW=[.7,1.0,1.6]
   for(let band=0;band<3;band++){
-   ctx.globalAlpha=(this.sharp ? .66 : 1)*cA[band]*(1+this.intensity*.8)*this.rainScale
+   ctx.globalAlpha=(this.sharp ? .66 : 1)*cA[band]*(1+intensity*.8)*this.rainScale
    ctx.strokeStyle=cC[band];ctx.lineWidth=cW[band]*(this.sharp ? .72 : 1)
    ctx.beginPath()
    for(let i=band;i<n;i+=3){
-    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
-    if(x<-60||x>w+60||y<-60||y>h+60)continue
-    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
+    if(!this.streakVisible[i])continue
+    ctx.moveTo(this.streakX[i],this.streakY[i]);ctx.lineTo(this.streakTailX[i],this.streakTailY[i])
    }
    ctx.stroke()
   }
@@ -182,8 +184,7 @@ export class StormEngine{
    for(let i=0;i<n;i++){
     const dy=this.y[i]-amber.y,dx=this.x[i]-amber.x
     if(dy<10||dy>270||Math.abs(dx)>220||emission(FLOOD,dx,dy,18)<.48)continue
-    const x=w*.5+(this.x[i]-cx)*z,y=h*.5+(this.y[i]-cy)*z,l=this.length[i]*z
-    ctx.moveTo(x,y);ctx.lineTo(x-l*this.wind,y-l)
+    ctx.moveTo(this.streakX[i],this.streakY[i]);ctx.lineTo(this.streakTailX[i],this.streakTailY[i])
    }
    ctx.stroke()
   }
@@ -193,9 +194,10 @@ export class StormEngine{
 
  /** Deck impacts use the world transform and sit behind fighters. */
  drawSplashes(ctx:CanvasRenderingContext2D,left:number,right:number,wetness?:(x:number,v:number)=>number){
+  if(this.rainScale===0||right<=left)return
   ctx.save();ctx.beginPath();ctx.rect(left,ROAD.rear,right-left,ROAD.front-ROAD.rear);ctx.clip()
   ctx.strokeStyle='#b8ddec';ctx.lineWidth=.85
-  const windTilt=this.wind*SPLASH.tiltGain
+  const windTilt=this.wind*SPLASH.tiltGain,intensity=this.intensity
   let rippleBudget = 5
   for(let i=0;i<SPLASHES;i++){
    const age=this.splashAge[i],sd=this.splashSeed[i],x=this.splashX[i]
@@ -205,7 +207,7 @@ export class StormEngine{
    const depth=(sd*73.731)%1
    const y=ROAD.rear+9+depth*(ROAD.front-ROAD.rear-18)
    const u=age/.32,r=(1.5+u*6)*(.65+sd*.65)
-   ctx.globalAlpha=(1-u)*(SPLASH.baseAlpha*.55+.09*this.intensity)*this.rainScale
+   ctx.globalAlpha=(1-u)*(SPLASH.baseAlpha*.55+.09*intensity)*this.rainScale
    ctx.beginPath();ctx.ellipse(x,y,r,r*SPLASH.squash,windTilt,0,Math.PI*2);ctx.stroke()
    const v=(y-ROAD.rear)/(ROAD.front-ROAD.rear)
    if(this.sharp && rippleBudget>0 && u>.3 && (wetness?.(x,v) ?? 0)>.54){

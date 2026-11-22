@@ -1,10 +1,9 @@
-/** M03 — fixed-step simulation clock: only exact 1/60 steps run, backlog
- *  above the bound is dropped EXPLICITLY (counted), and no variable-size
- *  "catch-up tick" is ever produced. Old source had no scheduler — the
- *  frame loop stepped Math.min(acc, 0.05) directly. */
+/** M03 — fixed-step simulation clock: only exact 1/60 steps run, at most two
+ *  per rendered frame; backlog above the bound is dropped EXPLICITLY and
+ *  no variable-size catch-up tick is ever produced. */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { advanceSimClock, DEFAULT_SIM_CLOCK } from '../src/game/core/sim-clock'
+import { advanceSimClock, DEFAULT_SIM_CLOCK, MAX_FRAME_DT } from '../src/game/core/sim-clock'
 
 test('a steady 60 Hz frame runs exactly one fixed step and carries no debt', () => {
   const a = advanceSimClock(0, 1 / 60)
@@ -12,6 +11,16 @@ test('a steady 60 Hz frame runs exactly one fixed step and carries no debt', () 
   assert.equal(a.dropped, 0)
   assert.ok(a.acc < 1e-9)
   assert.equal(a.stepDt, 1 / 60)
+})
+
+test('a 50 ms frame never schedules more than two physics substeps', () => {
+  const a = advanceSimClock(0, 0.05)
+  assert.equal(a.steps, 2)
+  assert.equal(a.stepDt, 1 / 60)
+  assert.equal(DEFAULT_SIM_CLOCK.maxSteps, 2)
+  assert.equal(MAX_FRAME_DT, 0.05)
+  assert.ok(Math.abs(a.dropped - 1 / 60) < 1e-9)
+  assert.ok(a.acc < 1e-9)
 })
 
 test('a no-step frame runs zero steps and keeps the requested time as debt', () => {

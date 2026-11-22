@@ -1,0 +1,2105 @@
+{
+  "methodology": "Fixed 60 Hz replay input/sim, observed Chromium rAF and submit intervals with GPU disabled. Timing is not hardware or presented FPS. Three paired runs; reverse order in the middle. Profile hooks and PNG captures are separate.",
+  "profiles": {
+    "low": {
+      "config": {
+        "route": "forward",
+        "tier": "low",
+        "fixture": "crowd",
+        "scale": 1,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        960,
+        544,
+        960,
+        544,
+        "low",
+        "forward"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 270,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 0,
+            "inPractical": 0
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1740,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 0,
+            "inPractical": 0
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 22.33,
+          "castPaints": 0,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.07,
+        "sceneReads": 0,
+        "waterRelay": [],
+        "trackedBytes": 24887296
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 0,
+            "inPractical": 0
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 0,
+            "inPractical": 0
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 14.89,
+          "castPaints": 0,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.07,
+        "sceneReads": 0,
+        "waterRelay": [],
+        "trackedBytes": 24813568
+      }
+    },
+    "medium": {
+      "config": {
+        "route": "forward",
+        "tier": "medium",
+        "fixture": "crowd",
+        "scale": 1.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        1200,
+        680,
+        960,
+        544,
+        "medium",
+        "forward"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 2320,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 29.78,
+          "castPaints": 0,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.2,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25124864
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 14.89,
+          "castPaints": 0,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.19,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25051136
+      }
+    },
+    "high": {
+      "config": {
+        "route": "forward",
+        "tier": "high",
+        "fixture": "crowd",
+        "scale": 1.5,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        1440,
+        816,
+        960,
+        544,
+        "high",
+        "forward"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 270,
+            "practical": 114,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 2320,
+            "key": 1740,
+            "practical": 411,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 57.94,
+          "castPaints": 28.17,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.36,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25128960
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 90,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 580,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 0,
+        "perFrame": {
+          "actorPaints": 22.33,
+          "castPaints": 7.44,
+          "propBlits": 0
+        },
+        "groundingSubmitMsPerFrame": 0.26,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25055232
+      }
+    },
+    "ultra": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 2,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        1920,
+        1088,
+        960,
+        544,
+        "ultra",
+        "forward"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 450,
+            "practical": 114,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 2320,
+            "key": 2900,
+            "practical": 411,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 360,
+        "perFrame": {
+          "actorPaints": 72.83,
+          "castPaints": 43.06,
+          "propBlits": 4
+        },
+        "groundingSubmitMsPerFrame": 0.44,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25128960
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 90,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 580,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 180,
+        "perFrame": {
+          "actorPaints": 22.33,
+          "castPaints": 7.44,
+          "propBlits": 2
+        },
+        "groundingSubmitMsPerFrame": 0.32,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25055232
+      }
+    },
+    "absolute": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        2160,
+        1224,
+        960,
+        544,
+        "ultra",
+        "forward"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 450,
+            "practical": 114,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 2320,
+            "key": 2900,
+            "practical": 411,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 360,
+        "perFrame": {
+          "actorPaints": 72.83,
+          "castPaints": 43.06,
+          "propBlits": 4
+        },
+        "groundingSubmitMsPerFrame": 0.44,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25128960
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 90,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 580,
+            "outlines": 580,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 180,
+        "perFrame": {
+          "actorPaints": 22.33,
+          "castPaints": 7.44,
+          "propBlits": 2
+        },
+        "groundingSubmitMsPerFrame": 0.31,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:1128x52"
+        ],
+        "trackedBytes": 25055232
+      }
+    },
+    "portrait": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 2.25,
+        "width": 390,
+        "height": 844,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        390,
+        844,
+        877,
+        1899,
+        390,
+        844,
+        "ultra",
+        "capture"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 450,
+            "practical": 114,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 540,
+            "contact": 2160,
+            "key": 2700,
+            "practical": 411,
+            "graded": 0,
+            "outlines": 540,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 346,
+        "perFrame": {
+          "actorPaints": 68.83,
+          "castPaints": 40.83,
+          "propBlits": 3.84
+        },
+        "groundingSubmitMsPerFrame": 0.46,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:954x52"
+        ],
+        "trackedBytes": 23490560
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 90,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 540,
+            "contact": 1080,
+            "key": 0,
+            "practical": 0,
+            "graded": 540,
+            "outlines": 540,
+            "inPractical": 137
+          }
+        },
+        "propBlits": 138,
+        "perFrame": {
+          "actorPaints": 21,
+          "castPaints": 7,
+          "propBlits": 1.53
+        },
+        "groundingSubmitMsPerFrame": 0.52,
+        "sceneReads": 0,
+        "waterRelay": [
+          "water-relay:954x52"
+        ],
+        "trackedBytes": 23416832
+      }
+    },
+    "station": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": true,
+        "shadowProps": true
+      },
+      "layout": [
+        960,
+        544,
+        2160,
+        1224,
+        960,
+        544,
+        "ultra",
+        "capture"
+      ],
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "before": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 360,
+            "key": 450,
+            "practical": 114,
+            "graded": 0,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 2320,
+            "key": 2900,
+            "practical": 396,
+            "graded": 0,
+            "outlines": 580,
+            "inPractical": 132
+          }
+        },
+        "propBlits": 360,
+        "perFrame": {
+          "actorPaints": 72.67,
+          "castPaints": 42.89,
+          "propBlits": 4
+        },
+        "groundingSubmitMsPerFrame": 0.69,
+        "sceneReads": 0,
+        "waterRelay": [],
+        "trackedBytes": 14655488
+      },
+      "after": {
+        "samples": 90,
+        "byActor": {
+          "hero": {
+            "calls": 90,
+            "contact": 180,
+            "key": 0,
+            "practical": 0,
+            "graded": 90,
+            "outlines": 90,
+            "inPractical": 38
+          },
+          "enemies": {
+            "calls": 580,
+            "contact": 1160,
+            "key": 0,
+            "practical": 0,
+            "graded": 580,
+            "outlines": 580,
+            "inPractical": 132
+          }
+        },
+        "propBlits": 180,
+        "perFrame": {
+          "actorPaints": 22.33,
+          "castPaints": 7.44,
+          "propBlits": 2
+        },
+        "groundingSubmitMsPerFrame": 0.87,
+        "sceneReads": 0,
+        "waterRelay": [],
+        "trackedBytes": 14581760
+      }
+    }
+  },
+  "pacing": {
+    "low": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 50.1,
+            "max": 50.1
+          },
+          "submitMs": {
+            "p50": 1.8,
+            "p95": 21.3,
+            "p99": 29.8,
+            "max": 29.8
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 50,
+            "max": 50
+          },
+          "submitMs": {
+            "p50": 1.8,
+            "p95": 20.9,
+            "p99": 28.5,
+            "max": 28.5
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 50.1,
+            "max": 50.1
+          },
+          "submitMs": {
+            "p50": 1.8,
+            "p95": 24,
+            "p99": 31.1,
+            "max": 31.1
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.3,
+            "p99": 50,
+            "max": 50
+          },
+          "submitMs": {
+            "p50": 1.9,
+            "p95": 20.5,
+            "p99": 23.8,
+            "max": 23.8
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.4,
+            "p99": 50,
+            "max": 50
+          },
+          "submitMs": {
+            "p50": 1.9,
+            "p95": 23,
+            "p99": 30.4,
+            "max": 30.4
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 16.7,
+            "p95": 33.3,
+            "p99": 50,
+            "max": 50
+          },
+          "submitMs": {
+            "p50": 1.6,
+            "p95": 19.8,
+            "p99": 24.1,
+            "max": 24.1
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 16.7,
+          "p95": 33.4,
+          "p99": 50.1,
+          "max": 50.1
+        },
+        "submitMs": {
+          "p50": 1.8,
+          "p95": 21.3,
+          "p99": 29.8,
+          "max": 29.8
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 16.7,
+          "p95": 33.3,
+          "p99": 50,
+          "max": 50
+        },
+        "submitMs": {
+          "p50": 1.9,
+          "p95": 20.5,
+          "p99": 24.1,
+          "max": 24.1
+        }
+      }
+    },
+    "medium": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 66.6,
+            "p99": 66.7,
+            "max": 66.7
+          },
+          "submitMs": {
+            "p50": 3.1,
+            "p95": 24.3,
+            "p99": 35.4,
+            "max": 35.4
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 66.5,
+            "p99": 66.8,
+            "max": 66.8
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 23.9,
+            "p99": 25.4,
+            "max": 25.4
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 50.1,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 3.1,
+            "p95": 27.5,
+            "p99": 42.9,
+            "max": 42.9
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 50.1,
+            "p99": 66.7,
+            "max": 66.7
+          },
+          "submitMs": {
+            "p50": 3.1,
+            "p95": 21.4,
+            "p99": 32.6,
+            "max": 32.6
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 50,
+            "p99": 66.7,
+            "max": 66.7
+          },
+          "submitMs": {
+            "p50": 2.9,
+            "p95": 22.5,
+            "p99": 27.2,
+            "max": 27.2
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 33.3,
+            "p95": 50.1,
+            "p99": 66.7,
+            "max": 66.7
+          },
+          "submitMs": {
+            "p50": 2.8,
+            "p95": 24,
+            "p99": 28,
+            "max": 28
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 33.3,
+          "p95": 66.5,
+          "p99": 66.8,
+          "max": 66.8
+        },
+        "submitMs": {
+          "p50": 3.1,
+          "p95": 24.3,
+          "p99": 35.4,
+          "max": 35.4
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 33.3,
+          "p95": 50.1,
+          "p99": 66.7,
+          "max": 66.7
+        },
+        "submitMs": {
+          "p50": 2.9,
+          "p95": 22.5,
+          "p99": 28,
+          "max": 28
+        }
+      }
+    },
+    "high": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 66.6,
+            "p99": 66.7,
+            "max": 66.7
+          },
+          "submitMs": {
+            "p50": 4.1,
+            "p95": 22.4,
+            "p99": 31.1,
+            "max": 31.1
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 66.7,
+            "p99": 83.3,
+            "max": 83.3
+          },
+          "submitMs": {
+            "p50": 3.5,
+            "p95": 23.5,
+            "p99": 36.6,
+            "max": 36.6
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 100,
+            "max": 100
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 23.8,
+            "p99": 29.9,
+            "max": 29.9
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 99.9,
+            "max": 99.9
+          },
+          "submitMs": {
+            "p50": 3.8,
+            "p95": 23.7,
+            "p99": 43.2,
+            "max": 43.2
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 66.7,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 3.8,
+            "p95": 22.4,
+            "p99": 30,
+            "max": 30
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 49.9,
+            "p95": 66.7,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 21.7,
+            "p99": 28.7,
+            "max": 28.7
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 50,
+          "p95": 66.7,
+          "p99": 83.3,
+          "max": 83.3
+        },
+        "submitMs": {
+          "p50": 3.5,
+          "p95": 23.5,
+          "p99": 31.1,
+          "max": 31.1
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 50,
+          "p95": 66.7,
+          "p99": 83.4,
+          "max": 83.4
+        },
+        "submitMs": {
+          "p50": 3.8,
+          "p95": 22.4,
+          "p99": 30,
+          "max": 30
+        }
+      }
+    },
+    "ultra": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 83.3,
+            "p95": 116.6,
+            "p99": 116.7,
+            "max": 116.7
+          },
+          "submitMs": {
+            "p50": 3.8,
+            "p95": 23.9,
+            "p99": 37.5,
+            "max": 37.5
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 66.7,
+            "p95": 100,
+            "p99": 150.1,
+            "max": 150.1
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 22.6,
+            "p99": 28.9,
+            "max": 28.9
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.3,
+            "p95": 116.6,
+            "p99": 150,
+            "max": 150
+          },
+          "submitMs": {
+            "p50": 3.6,
+            "p95": 24.6,
+            "p99": 38.1,
+            "max": 38.1
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 83.3,
+            "p95": 133.3,
+            "p99": 166.7,
+            "max": 166.7
+          },
+          "submitMs": {
+            "p50": 3.8,
+            "p95": 26,
+            "p99": 50.7,
+            "max": 50.7
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.3,
+            "p95": 100,
+            "p99": 116.7,
+            "max": 116.7
+          },
+          "submitMs": {
+            "p50": 3.7,
+            "p95": 23.4,
+            "p99": 31.1,
+            "max": 31.1
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.3,
+            "p95": 100.1,
+            "p99": 116.7,
+            "max": 116.7
+          },
+          "submitMs": {
+            "p50": 3.7,
+            "p95": 24.5,
+            "p99": 30.2,
+            "max": 30.2
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 83.3,
+          "p95": 116.6,
+          "p99": 150,
+          "max": 150
+        },
+        "submitMs": {
+          "p50": 3.6,
+          "p95": 23.9,
+          "p99": 37.5,
+          "max": 37.5
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 83.3,
+          "p95": 100.1,
+          "p99": 116.7,
+          "max": 116.7
+        },
+        "submitMs": {
+          "p50": 3.7,
+          "p95": 24.5,
+          "p99": 31.1,
+          "max": 31.1
+        }
+      }
+    },
+    "absolute": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 83.4,
+            "p95": 116.7,
+            "p99": 133.4,
+            "max": 133.4
+          },
+          "submitMs": {
+            "p50": 3.6,
+            "p95": 22.2,
+            "p99": 33.8,
+            "max": 33.8
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.4,
+            "p95": 133.3,
+            "p99": 133.4,
+            "max": 133.4
+          },
+          "submitMs": {
+            "p50": 3.6,
+            "p95": 21.4,
+            "p99": 29.5,
+            "max": 29.5
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 100,
+            "p95": 133.3,
+            "p99": 150,
+            "max": 150
+          },
+          "submitMs": {
+            "p50": 3.6,
+            "p95": 23.8,
+            "p99": 36.5,
+            "max": 36.5
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 83.4,
+            "p95": 116.7,
+            "p99": 150,
+            "max": 150
+          },
+          "submitMs": {
+            "p50": 3.7,
+            "p95": 24.6,
+            "p99": 32.9,
+            "max": 32.9
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.4,
+            "p95": 116.7,
+            "p99": 116.7,
+            "max": 116.7
+          },
+          "submitMs": {
+            "p50": 3.5,
+            "p95": 22.1,
+            "p99": 29.9,
+            "max": 29.9
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 83.4,
+            "p95": 116.7,
+            "p99": 150,
+            "max": 150
+          },
+          "submitMs": {
+            "p50": 3.5,
+            "p95": 23.4,
+            "p99": 40.7,
+            "max": 40.7
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 83.4,
+          "p95": 133.3,
+          "p99": 133.4,
+          "max": 133.4
+        },
+        "submitMs": {
+          "p50": 3.6,
+          "p95": 22.2,
+          "p99": 33.8,
+          "max": 33.8
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 83.4,
+          "p95": 116.7,
+          "p99": 150,
+          "max": 150
+        },
+        "submitMs": {
+          "p50": 3.5,
+          "p95": 23.4,
+          "p99": 32.9,
+          "max": 32.9
+        }
+      }
+    },
+    "portrait": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 99.9,
+            "max": 99.9
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 17.1,
+            "p99": 24.1,
+            "max": 24.1
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 100,
+            "max": 100
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 15.3,
+            "p99": 23.3,
+            "max": 23.3
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 83.3,
+            "max": 83.3
+          },
+          "submitMs": {
+            "p50": 3.3,
+            "p95": 15.1,
+            "p99": 26.4,
+            "max": 26.4
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.3,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 3.2,
+            "p95": 15.9,
+            "p99": 23.5,
+            "max": 23.5
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 83.4,
+            "p99": 100,
+            "max": 100
+          },
+          "submitMs": {
+            "p50": 3.4,
+            "p95": 16.5,
+            "p99": 40.3,
+            "max": 40.3
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 50,
+            "p95": 66.7,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 3.1,
+            "p95": 14.7,
+            "p99": 21.9,
+            "max": 21.9
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 50,
+          "p95": 83.3,
+          "p99": 99.9,
+          "max": 99.9
+        },
+        "submitMs": {
+          "p50": 3.4,
+          "p95": 15.3,
+          "p99": 24.1,
+          "max": 24.1
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 50,
+          "p95": 83.3,
+          "p99": 83.4,
+          "max": 83.4
+        },
+        "submitMs": {
+          "p50": 3.2,
+          "p95": 15.9,
+          "p99": 23.5,
+          "max": 23.5
+        }
+      }
+    },
+    "station": {
+      "before": [
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 83.3,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 2,
+            "p95": 6.4,
+            "p99": 11.6,
+            "max": 11.6
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 83.3,
+            "p99": 100,
+            "max": 100
+          },
+          "submitMs": {
+            "p50": 2,
+            "p95": 6.2,
+            "p99": 26.8,
+            "max": 26.8
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 66.7,
+            "p99": 100,
+            "max": 100
+          },
+          "submitMs": {
+            "p50": 2.1,
+            "p95": 6.2,
+            "p99": 23.7,
+            "max": 23.7
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "after": [
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 66.8,
+            "p99": 83.4,
+            "max": 83.4
+          },
+          "submitMs": {
+            "p50": 1.9,
+            "p95": 6.3,
+            "p99": 14.4,
+            "max": 14.4
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 100,
+            "p99": 133.3,
+            "max": 133.3
+          },
+          "submitMs": {
+            "p50": 2,
+            "p95": 8.3,
+            "p99": 15.7,
+            "max": 15.7
+          },
+          "stalls250ms": 0
+        },
+        {
+          "rafMs": {
+            "p50": 66.6,
+            "p95": 83.4,
+            "p99": 116.7,
+            "max": 116.7
+          },
+          "submitMs": {
+            "p50": 2.3,
+            "p95": 6.7,
+            "p99": 13.3,
+            "max": 13.3
+          },
+          "stalls250ms": 0
+        }
+      ],
+      "medianBefore": {
+        "rafMs": {
+          "p50": 66.6,
+          "p95": 83.3,
+          "p99": 100,
+          "max": 100
+        },
+        "submitMs": {
+          "p50": 2,
+          "p95": 6.2,
+          "p99": 23.7,
+          "max": 23.7
+        }
+      },
+      "medianAfter": {
+        "rafMs": {
+          "p50": 66.6,
+          "p95": 83.4,
+          "p99": 116.7,
+          "max": 116.7
+        },
+        "submitMs": {
+          "p50": 2,
+          "p95": 6.7,
+          "p99": 14.4,
+          "max": 14.4
+        }
+      }
+    }
+  },
+  "stills": {
+    "low-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "low",
+        "fixture": "idle",
+        "scale": 1,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": null,
+      "sceneHash": [
+        "593bb87eb18fd51435b8c6cfae737e4b7e18806d0d576423629b085365e6db27",
+        "dcf6764b0444572f1fe2085d04bef2620ee5a82984a44ddf8ec2a69ba9a9f2f7"
+      ]
+    },
+    "medium-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "medium",
+        "fixture": "idle",
+        "scale": 1.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": "be9cc8d8c8165da20419bfe411c5644f7ce197588e717b0a3568ac274a2385d3",
+      "sceneHash": [
+        "44878c08e693bfc4633996c98b11be467f77750fedd2be17358b9dc56894eac1",
+        "ab1eae5ad0d04aca1f27c5aecb9446c3fe6855b849d7ceeb6f60d49cf75468dd"
+      ]
+    },
+    "high-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "high",
+        "fixture": "idle",
+        "scale": 1.5,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": "25412619d1de6033417102e3650e5f275da3843699ef7145a1fde47b9869d939",
+      "sceneHash": [
+        "f45aeb5204f111294ce4c71dafb86f607f065b6318326ebc1512b0818ba34283",
+        "5ed97899542e4b371cc81784fdca0cff4642b805c41ec25212ed1762c7fb0b1b"
+      ]
+    },
+    "ultra-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "idle",
+        "scale": 2,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": "25412619d1de6033417102e3650e5f275da3843699ef7145a1fde47b9869d939",
+      "sceneHash": [
+        "e6069c6fd02e5a9aee769f3ecfa665ce9703e04a49d1501c55cfc93c50da68b8",
+        "80110ba7ac7778797cd25017f76bbeb788ce21eb3a5bc17b6bd34d4ef4994f95"
+      ]
+    },
+    "absolute-lamp": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "idle",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": "25412619d1de6033417102e3650e5f275da3843699ef7145a1fde47b9869d939",
+      "sceneHash": [
+        "1a3dd8016dde16e8332193f5c70d1b39a39c16347154802fb5334aa8fafbc728",
+        "9b7fa78db837a3e5362a6b7d833e0375e265c7f8118fc4e36f530d8423fa882a"
+      ]
+    },
+    "portrait-lamp": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "idle",
+        "scale": 2.25,
+        "width": 390,
+        "height": 844,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -151.9230769230769,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "b8b21aea6c38e09fea96a674b92d2f0dc19e41e39da9f2f528de34c4ce820080",
+      "relayHash": "0da5c63ebb01e5f1367eba4714cbe6fb1f88bf06ac1f15938c79bcae9349d225",
+      "sceneHash": [
+        "372d268b0f45619b76c4f3438d9d1b362eb822ae2eaba0e9a222b2e609a58039",
+        "1f5239393637f69c4928e721e0e49761b1df41742802285cf8c174b5f6092458"
+      ]
+    },
+    "station-lamp": {
+      "config": {
+        "route": "capture",
+        "tier": "ultra",
+        "fixture": "idle",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 42,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "station",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": 0,
+        "state": "move"
+      },
+      "stateDigest": "148ac27a8cebf228ab564f829a2897daae0beb55f7e9a5fa0ce547c7a7337ea4",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "75a6fb0862c1599f0eadf8bd8df19de05304e4451a2180cf922be0771a6959ec",
+      "relayHash": null,
+      "sceneHash": [
+        "7c41164e1d35f156e7e574c2914b5adef7370746a7c69631724e5bbeb8a6c095",
+        "75995e36f879ed7ae13ada273a2ad41b6e77d0be45a2dda4d3254171509517bb"
+      ]
+    },
+    "absolute-fight": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 90,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 1151.5661915715257,
+        "y": -112.46153846153845,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 92,
+        "x": 1151.3396456437565,
+        "y": 0,
+        "state": "hurt"
+      },
+      "stateDigest": "08684b5b9d3277a824022271f78fcf6f4725118a7e311b54a8e06d3d8071f2c8",
+      "eventDigest": "36a3d6e2eef5f0c60537cf6b13af2b9d1ecddc9c1ad2ba964ab4a91e51c9caa7",
+      "hudHash": "6fd524e3f64d25ef95609256d1a79ba76b6984b4f6afd79ee878f9573929b93f",
+      "relayHash": "ae119ca631a02bf66b15af1b6a51325e12553583c3f2e082b119b7bbb554fcec",
+      "sceneHash": [
+        "3716c1bc784a5e5e13368250bfd978053cb2ff12091ad03e5c0347e4917fc47b",
+        "d740ab1a4b671e549b55d64340bc4d94b0310881116c9e00983266cf14c3a3c9"
+      ]
+    },
+    "absolute-jump": {
+      "config": {
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "jump",
+        "scale": 2.25,
+        "width": 960,
+        "height": 544,
+        "warmup": 36,
+        "frames": 14,
+        "fixed": true,
+        "stages": false,
+        "stall": false,
+        "seed": 42,
+        "wet": true,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "bridge",
+        "atX": 945,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": true
+      },
+      "view": {
+        "x": 945,
+        "y": -143.74762226316278,
+        "zoom": 1.04,
+        "rot": 0
+      },
+      "player": {
+        "hp": 100,
+        "x": 945,
+        "y": -140.94791666666666,
+        "state": "move"
+      },
+      "stateDigest": "7773d51b5f291e4420e0f154ef152b0db04d9ac7a43ab3b9b7faa921437f972e",
+      "eventDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "hudHash": "8024e9489e10765f90eeb5718ec39aeb23b7b1a55f16f9193a4352ec2eb3ab7e",
+      "relayHash": "2ffcba0c702b04a37a531d67171bf5eafed3f768bdffee1fdcb14c5d825594d8",
+      "sceneHash": [
+        "f8d01d2cc410b9a296db066ebbd4ad4650a191934b5b22cfb2b774796cceb145",
+        "90c4d61638262a01cc49ba635d7e303acb9982147b292bb839ca5bbb88f65328"
+      ]
+    }
+  },
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "isolatedRaster": {
+    "methodology": "One frozen 2.25× dry Station crowd frame. Repeat only the shadow painters into a shallow CPU canvas, including backdrop clear and a one-pixel flush on that test canvas, not the game scene. Medians of three paired runs.",
+    "before": [
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 4.03,
+          "p95": 4.62,
+          "p99": 5.33,
+          "max": 5.33
+        }
+      },
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 4.05,
+          "p95": 5.2,
+          "p99": 5.33,
+          "max": 5.33
+        }
+      },
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 4.28,
+          "p95": 5.15,
+          "p99": 5.58,
+          "max": 5.58
+        }
+      }
+    ],
+    "after": [
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 2.47,
+          "p95": 2.91,
+          "p99": 4.02,
+          "max": 4.02
+        }
+      },
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 2.4,
+          "p95": 3.13,
+          "p99": 3.21,
+          "max": 3.21
+        }
+      },
+      {
+        "backdrop": [
+          2160,
+          144
+        ],
+        "frozenCalls": 12,
+        "batch": 24,
+        "laps": 36,
+        "elapsedMsPerDraw": {
+          "p50": 2.5,
+          "p95": 3.45,
+          "p99": 3.5,
+          "max": 3.5
+        }
+      }
+    ]
+  }
+}

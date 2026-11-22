@@ -35,6 +35,7 @@ export class Wind {
    *  run's own wind; a squall leans on it, a haze stills it. It scales the
    *  ACCELERATION, not `base`, so the sign of a left-blowing night survives. */
   private gust = 1
+  private external: number | null = null
 
   constructor(profile: EnvironmentProfile) {
     this.profile = profile
@@ -48,6 +49,11 @@ export class Wind {
 
   update(dt: number): void {
     if (dt > 0) this.t += dt
+    if (this.external !== null) {
+      this._accel = this.external * 150
+      this._airspeed = Math.min(1, Math.abs(this._accel) / 70)
+      return
+    }
     const g1 = this.life.at(this.t, 0.16) - 0.5
     const g2 = this.life.at(this.t * 1.7 + 3.1, 0.23) - 0.5
     this._accel = (this.base * (0.55 + 1.4 * Math.abs(g1)) + this.base * g2 * 0.8) * this.gust
@@ -62,6 +68,12 @@ export class Wind {
     const g = Number.isFinite(mul) ? Math.max(0.35, Math.min(2.2, mul)) : 1
     if (g === this.gust) return
     this.gust = g
+    this.update(0)
+  }
+
+  /** A compiled scene may supply the same signed wind used by rain and sky. */
+  setExternal(wind: number): void {
+    this.external = Math.max(-1, Math.min(1, wind))
     this.update(0)
   }
 

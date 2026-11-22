@@ -7,8 +7,9 @@ import type { NextConfig } from "next";
  * from memory, then every chunk under /_next/static 404s and the game is a black
  * screen. That is the "corrupted server" from earlier in this project — it was
  * never the server, it was two processes sharing one output directory.
- * So: verify with `npm run build:iso` (distDir `.next-build`) while dev is up,
- * and keep the plain `build` for CI, where no dev server is running. */
+ * Dev, verification and the live production preview use different paths:
+ * `.next`, `.next-build` (build:iso), `.next-preview` (build:preview). Keep
+ * the plain `build` for CI, where no dev server is running. */
 const nextConfig: NextConfig = {
   distDir: process.env.STICKMAN_DIST_DIR || ".next",
   output: "standalone",
@@ -20,10 +21,18 @@ const nextConfig: NextConfig = {
   // than file contents, so intermediaries and browsers must never serve stale
   // dev chunks across edits or server restarts.
   async headers() {
-    return [{
-      source: '/:path*',
+    // Keep the entry HTML and API fresh in production, but let Next cache
+    // content-hashed assets (including the lazy engine) for repeat visits.
+    const sources = process.env.NODE_ENV === 'development' ? ['/:path*'] : ['/', '/api/:path*']
+    return [{ source: '/bridge/baked-v1/:asset(.*\\.bin\\.br)', headers: [
+      { key: 'Content-Encoding', value: 'br' }, { key: 'Content-Type', value: 'application/octet-stream' },
+      { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ] }, { source: '/bridge/shop-return-v2.webp', headers: [
+      { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ] }, ...sources.map(source => ({
+      source,
       headers: [{ key: 'Cache-Control', value: 'no-store, no-cache, max-age=0, must-revalidate' }],
-    }]
+    }))]
   },
 };
 

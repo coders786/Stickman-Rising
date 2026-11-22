@@ -1,10 +1,14 @@
-/** STICKMAN RISING — canvas HUD: vital bars, combo counter with rank escalation,
- * wave banners, boss bar, execution prompts, damage vignette.
- */
+/** Canvas-only overlays in CSS pixels, on the final, unrotated HUD pass. */
+import { clamp, clamp01, damp, fmt } from '../core/utils'
+import { DASH_STAMINA_COST, POWER_DASH_STAMINA_COST } from '../combat/stamina'
+import { styleColor } from '../combat/style'
 
-import { clamp01, damp, fmt, rgba, TAU } from '../core/utils'
-import { gameLedger } from './ledger'
-import {DASH_STAMINA_COST,POWER_DASH_STAMINA_COST} from '../combat/stamina'
+interface ScreenPoint { x: number; y: number }
+export interface SafeInsets { top: number; right: number; bottom: number; left: number }
+export interface RouteTelemetry {
+  metres: number; sector: number; biome: string; safe: string | null
+  gate: { distance: number; eta: number | null; locked: boolean } | null
+}
 
 export interface HudComboState {
   hits: number
@@ -45,10 +49,14 @@ export interface HudState {
   score: number
   boss: { hp: number; maxHp: number; name: string } | null
   banner: { title: string; sub: string; t: number; dur: number; color: string } | null
-  executePrompt: { x: number; y: number } | null
+  executePrompt: ScreenPoint | null
   ultReady: boolean
   abilityReady: boolean
-  perfLabel?: string
+  shield?: number
+  insets?: SafeInsets
+  route?: RouteTelemetry
+  terminal?: ScreenPoint & { progress: number; buff: string }
+  buff?: { name: string; seconds: number }
   fps: number
   touch?: boolean
   showFps: boolean
@@ -58,453 +66,313 @@ export interface HudState {
   attract: boolean
 }
 
-const RANKS: [number, string, string][] = [
-  [80, 'SSS', '#ffffff'],
-  [55, 'SS', '#ff2d95'],
-  [35, 'S', '#ff2a4a'],
-  [20, 'A', '#ff6a1f'],
-  [10, 'B', '#ffb02e'],
-  [5, 'C', '#58c470'],
-  [1, 'D', '#9aa0a6'],
-]
+export const HUD_PAD = 16
+const GAP = 8
+const MONO = '"Consolas", "Menlo", monospace'
+const DISPLAY = '"Arial Black", "Segoe UI", Arial, sans-serif'
+const INK = '#f1f6fa', DIM = '#acbdc9', MINT = '#9fe4c8', SKY = '#add8ec', WARM = '#f1c795', PINK = '#ffaacd'
+export interface HudBox { x: number; y: number; w: number; h: number }
 
-export function rankForHits(hits: number): { rank: string; color: string } {
-  for (const [min, rank, color] of RANKS) {
-    if (hits >= min) return { rank, color }
-  }
-  return { rank: '', color: '#9aa0a6' }
+export function hudRegions(w: number, h: number, touch: boolean, shield = 0, inset?: SafeInsets) {
+  const l = (inset?.left ?? 0) + HUD_PAD, r = w - (inset?.right ?? 0) - HUD_PAD
+  const top = (inset?.top ?? 0) + HUD_PAD, bottom = h - (inset?.bottom ?? 0) - HUD_PAD
+  const span = Math.max(48, r - l), small = span < 580
+  const vitW = small ? Math.round(span * .37) : Math.min(264, Math.round(span * .33))
+  const scoreW = small ? Math.max(81, Math.round(span * .25)) : Math.min(206, Math.round(span * .27))
+  const centerW = Math.min(264, span - vitW - scoreW - GAP * 2)
+  const stacked = centerW < 88
+  const vitality: HudBox = { x: l, y: top, w: vitW, h: shield > 0 ? 157 : 134 }
+  const score: HudBox = { x: r - scoreW, y: top + (touch ? 52 : 0), w: scoreW, h: 91 }
+  const telemetry: HudBox = { x: stacked ? l : clamp(Math.round((l + r - centerW) / 2), l + vitW + GAP, r - scoreW - centerW - GAP),
+    y: stacked ? Math.max(vitality.y + vitality.h, score.y + score.h) + GAP : top,
+    w: stacked ? span : centerW, h: 110 }
+  const fps: HudBox = { x: l, y: Math.min(bottom - 23, vitality.y + vitality.h + GAP + (stacked ? telemetry.h + GAP : 0)), w: 80, h: 23 }
+  return { vitality, telemetry, score, fps, l, r, top, bottom, small, stack: stacked }
 }
 
-const FONT = '"Arial Black", "Segoe UI", Arial, sans-serif'
-const MONO = '"Consolas", "Menlo", monospace'
+function plate(ctx: CanvasRenderingContext2D, { x, y, w, h }: HudBox, edge: string, fill = 'rgba(6,12,20,.93)'): void {
+  ctx.fillStyle = fill; ctx.fillRect(x, y, w, h)
+  ctx.strokeStyle = '#a4c1d93c'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, w - 1, h - 1)
+  ctx.fillStyle = edge; ctx.fillRect(x + 1, y + 1, 16, 1.6)
+}
+function text(ctx: CanvasRenderingContext2D, label: string, x: number, y: number, width: number,
+  size: number, color: string, align: CanvasTextAlign = 'left', display = false): void {
+  if (width <= 0) return
+  ctx.font = `bold ${size}px ${display ? DISPLAY : MONO}`
+  ctx.textAlign = align; ctx.fillStyle = color
+  ctx.fillText(label, x, y, width)
+}
+function track(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, f: number, color: string): void {
+  ctx.fillStyle = '#2a3b49'; ctx.fillRect(x, y, w, h)
+  ctx.fillStyle = color; ctx.fillRect(x, y, w * clamp01(f), h)
+}
+
+const keyboardHint = (s: HudState, w: number) => !s.touch && s.runTime < 16 && w >= 720
+const bannerAlpha = (b: HudState['banner']) => !b || b.t >= b.dur || b.title.startsWith('WAVE ') ? 0 :
+  clamp01(b.t / .18) * clamp01((b.dur - b.t) / .35)
+
+/** Keep this stamp in sync with the painter. Capture visual values, not
+ * references to live game objects. Round the fast-moving text counters the
+ * way they are drawn; keep animated geometry/fades exact. Reuse the slots
+ * instead of allocating a snapshot/string on every display callback. */
+class HudInkStamp {
+  private readonly values: (number | string | boolean | null)[] = []
+  private at = 0
+  private same = false
+
+  private mark(v: number | string | boolean | null): void {
+    if (this.values[this.at] !== v) { this.values[this.at] = v; this.same = false }
+    this.at++
+  }
+
+  update(s: HudState, w: number, delayedHp: number, scene: string): boolean {
+    this.at = 0; this.same = true
+    this.mark(s.attract)
+    if (!s.attract) {
+      // Layout and vitality.
+      this.mark(!!s.touch)
+      this.mark(s.insets?.left ?? 0); this.mark(s.insets?.top ?? 0)
+      this.mark(s.insets?.right ?? 0); this.mark(s.insets?.bottom ?? 0)
+      this.mark(s.hp); this.mark(s.maxHp); this.mark(delayedHp)
+      this.mark(s.shield ?? 0)
+      this.mark(s.stamina); this.mark(s.maxStamina); this.mark(s.staminaCooldown > 0)
+      this.mark(s.dashCharge); this.mark(s.slashCharge)
+      if (s.slashCharge >= .999) { this.mark(s.swordDrawn); this.mark(s.fistStrike) }
+      this.mark(s.meter); this.mark(s.ultReady)
+      this.mark(s.energy); this.mark(s.maxEnergy); this.mark(s.abilityReady)
+
+      // Telemetry. Travel time, position and gate ETA can advance without
+      // changing their displayed digits; don't invalidate from raw time.
+      const t = s.route, gate = t?.gate
+      this.mark(!!t)
+      if (t) {
+        this.mark(t.sector); this.mark(t.biome); this.mark(Math.floor(t.metres)); this.mark(t.safe)
+      } else {
+        this.mark(s.wave); this.mark(scene); this.mark(Math.round(s.runTime))
+      }
+      this.mark(!!gate?.locked)
+      if (!t?.safe) {
+        this.mark(s.enemiesLeft)
+        if (!gate?.locked) {
+          this.mark(!!gate)
+          if (gate) {
+            this.mark(Math.ceil(gate.distance))
+            this.mark(gate.eta !== null && gate.eta < 100 ? Math.ceil(gate.eta) : null)
+          } else this.mark(s.kills)
+        }
+      }
+
+      // Score, stacked notices and world-anchored prompts.
+      const c = s.combo, b = s.banner, boss = s.boss, buff = s.buff
+      this.mark(Math.round(s.score)); this.mark(c.rank); this.mark(c.hits); this.mark(c.mult)
+      this.mark(c.rankUpT > 0); this.mark(c.hits > 0 ? clamp01(c.timer / c.timerMax) : 0)
+      this.mark(!!boss)
+      if (boss) { this.mark(boss.name); this.mark(clamp01(boss.hp / boss.maxHp)) }
+      this.mark(!!buff)
+      if (buff) { this.mark(buff.name); this.mark(buff.seconds) }
+      const alpha = bannerAlpha(b)
+      this.mark(alpha)
+      if (alpha && b) { this.mark(b.title); this.mark(b.sub); this.mark(b.color) }
+      const exec = s.executePrompt, terminal = s.terminal
+      this.mark(!!exec)
+      if (exec) { this.mark(exec.x); this.mark(exec.y) }
+      this.mark(!!terminal)
+      if (terminal) {
+        this.mark(terminal.x); this.mark(terminal.y); this.mark(clamp01(terminal.progress || 0)); this.mark(terminal.buff)
+      }
+      this.mark(keyboardHint(s, w))
+      this.mark(s.showFps)
+      if (s.showFps) this.mark(Math.round(s.fps))
+    }
+    if (this.values.length !== this.at) { this.values.length = this.at; this.same = false }
+    return this.same
+  }
+}
 
 export class HUD {
   private hpDisplay = 100
-  private comboPop = 0
-  private rankFlash = 0
-  private lastHits = 0
-  private lowHpPulse = 0
+  private scene = 'Viaduct'
+  private fpsInk: string | null = null
+  private readonly ink = new HudInkStamp()
+  private layer: CanvasRenderingContext2D | null = null
+  private layerW = 0
+  private layerH = 0
+  private layerBW = 0
+  private layerBH = 0
 
-  /* low-HP red vignette: baked plate (see drawLowHpVignette) */
-  private lowHpPlate: HTMLCanvasElement | null = null
-  private propLegend: HTMLCanvasElement | null = null
-  private moodName = 'NEON NOIR'
-  private lowHpW = 0
-  private lowHpH = 0
+  get lastFpsDraw(): string | null { return this.fpsInk }
+  invalidateLayer(): void { this.layer = null }
+  reset(): void { this.hpDisplay = 100; this.fpsInk = null; this.invalidateLayer() }
+  dispose(): void { this.reset() }
+  setMoodLabel(name: string): void { this.scene = name }
 
-  reset(): void {
-    this.hpDisplay = 100
-    this.comboPop = 0
-    this.rankFlash = 0
-    this.lastHits = 0
-    this.lowHpPlate = null
+  private advance(s: HudState, dt: number): void {
+    if (!s.attract && this.hpDisplay !== s.hp) this.hpDisplay = damp(this.hpDisplay, s.hp, 7, dt)
   }
 
+  /** The scene backing is repainted by its owner: inline HUD ink must be
+   * applied on every submit, and must never clear the world. */
   draw(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState, dt: number): void {
+    this.invalidateLayer()
+    this.advance(s, dt)
+    this.paint(ctx, w, h, s)
+  }
+
+  /** Independent layer only. A match does not clear, transform or rasterize.
+   * Do not mark an incomplete paint reusable after an exception or loss. */
+  drawLayer(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState, dt: number, deviceScale: number): boolean {
+    if (ctx.isContextLost?.()) { this.invalidateLayer(); return false }
+    const ratio = Math.min(2, deviceScale || 1), c = ctx.canvas
+    const bw = Math.max(1, Math.round(w * ratio)), bh = Math.max(1, Math.round(h * ratio))
+    this.advance(s, dt)
+    const sameInk = this.ink.update(s, w, this.hpDisplay, this.scene)
+    if (sameInk && this.layer === ctx && w === this.layerW && h === this.layerH &&
+        bw === this.layerBW && bh === this.layerBH && c.width === bw && c.height === bh) return false
+
+    this.invalidateLayer()
+    if (c.width !== bw) c.width = bw
+    if (c.height !== bh) c.height = bh
+    ctx.setTransform(bw / w, 0, 0, bh / h, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+    this.paint(ctx, w, h, s)
+    if (ctx.isContextLost?.()) return false
+    this.layer = ctx; this.layerW = w; this.layerH = h; this.layerBW = bw; this.layerBH = bh
+    return true
+  }
+
+  private paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
+    this.fpsInk = null
     if (s.attract) return
-
-    this.hpDisplay = damp(this.hpDisplay, s.hp, 7, dt)
-    if (s.combo.hits > this.lastHits) {
-      this.comboPop = 1
-      this.lastHits = s.combo.hits
-    } else if (s.combo.hits === 0) {
-      this.lastHits = 0
+    const r = hudRegions(w, h, !!s.touch, s.shield, s.insets)
+    ctx.save()
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.textBaseline = 'alphabetic'
+    this.vitality(ctx, r.vitality, s)
+    this.telemetry(ctx, r.telemetry, s)
+    this.score(ctx, r.score, s)
+    let noticeY = r.telemetry.y + r.telemetry.h + GAP
+    if (s.boss) {
+      const b = { ...r.telemetry, y: noticeY, h: 30 }
+      plate(ctx, b, '#ff9380')
+      text(ctx, s.boss.name, b.x + b.w * .5, b.y + 14, b.w - 12, 10, '#ffc4b5', 'center')
+      track(ctx, b.x + 7, b.y + 20, b.w - 14, 4, s.boss.hp / s.boss.maxHp, '#ff8978')
+      noticeY += b.h + GAP
     }
-    this.comboPop = Math.max(0, this.comboPop - dt * 6)
-    this.rankFlash = Math.max(0, s.combo.rankUpT)
-    this.lowHpPulse += dt
-
-    this.drawLowHpVignette(ctx, w, h, s)
-    this.drawVitals(ctx, w, s)
-    this.drawScore(ctx, w, s)
-    this.drawCombo(ctx, w, h, s)
-    this.drawBossBar(ctx, w, s)
-    this.drawBanner(ctx, w, h, s)
-    this.drawPrompts(ctx, s)
-    this.drawHints(ctx, w, h, s)
-    this.drawPropLegend(ctx, w, h, s)
+    if (s.buff) {
+      const b = { ...r.telemetry, y: noticeY, h: r.small ? 34 : 24 }
+      plate(ctx, b, WARM)
+      text(ctx, s.buff.name, b.x + b.w / 2, b.y + 14, b.w - (r.small ? 12 : 50), 10, WARM, 'center')
+      text(ctx, `${s.buff.seconds}s`, r.small ? b.x + b.w / 2 : b.x + b.w - 7, b.y + (r.small ? 27 : 15), 36, 10, INK, r.small ? 'center' : 'right')
+      noticeY += b.h + GAP
+    }
+    const alpha = bannerAlpha(s.banner)
+    if (alpha && s.banner) {
+      const width = Math.min(300, r.r - r.l)
+      const b = { x: Math.round((r.l + r.r - width) / 2), y: Math.max(r.score.y + r.score.h + GAP, noticeY), w: width, h: 41 }
+      ctx.save(); ctx.globalAlpha = alpha
+      plate(ctx, b, s.banner.color)
+      text(ctx, s.banner.title, b.x + b.w / 2, b.y + 17, b.w - 18, 13, INK, 'center', true)
+      text(ctx, s.banner.sub, b.x + b.w / 2, b.y + 32, b.w - 18, 10, DIM, 'center')
+      ctx.restore()
+    }
+    const reserved = [r.vitality, r.telemetry, r.score]
+    if (s.showFps) reserved.push(r.fps)
+    if (s.executePrompt) this.prompt(ctx, s.executePrompt, s.touch ? 'TAP EXEC' : 'E  EXECUTE', r, reserved)
+    if (s.terminal) this.prompt(ctx, s.terminal, s.touch ? 'TAP SERVICE' : 'HOLD E  1.5s', r, reserved,
+      '+40 HP · +50 SHIELD · COST: FLOW', s.terminal.progress || 0, s.terminal.buff)
+    if (keyboardHint(s, w)) {
+      const box = { x: Math.round((w - 514) / 2), y: r.bottom - 24, w: 514, h: 24 }
+      plate(ctx, box, '#538397', 'rgba(6,12,20,.83)')
+      text(ctx, 'A/D MOVE   J/K STRIKE   L DASH   SPACE JUMP   O PARRY   R OVERDRIVE', w / 2, r.bottom - 8, box.w - 14, 11, DIM, 'center')
+    }
+    // FPS is always the last ink. No inherited alpha, effect transform,
+    // compressed rank-width budget or viewport-bottom control conflict.
     if (s.showFps) {
-      ctx.save()
-      ctx.font = `12px ${MONO}`
-      ctx.fillStyle = 'rgba(180,200,210,0.8)'
-      ctx.textAlign = 'right'
-      const fxLabel = (['OFF', 'LOW', 'FULL'] as const)[s.particleLevel] ?? 'FULL'
-      const x=w-(s.touch || w<850 ? 64 : 16)
-      const available=x-(12+this.panelWidth(w)+8)
-      ctx.fillText(`${Math.round(s.fps)} FPS`,x,w<850?121:65,available)
-      if(w>=850 && s.perfLabel) ctx.fillText(`${s.perfLabel} · FX ${fxLabel}`,x,81,available)
-      ctx.restore()
+      plate(ctx, r.fps, SKY, '#080e17')
+      const label = `${Math.round(s.fps)} FPS`
+      text(ctx, label, r.fps.x + r.fps.w / 2, r.fps.y + 16, r.fps.w - 10, 12, INK, 'center')
+      this.fpsInk = label
     }
-  }
-
-  /* ------------------------------------------------------------------ */
-
-  /** A single responsive panel keeps all resources aligned and legible. */
-  private panelWidth(w:number):number{return Math.min(350,Math.max(150,w*.55),w-140)}
-
-  private drawVitals(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
-    const x=12,y=12,pw=this.panelWidth(w),pad=10,bx=x+pad,bw=pw-pad*2
-    const stamina=clamp01(s.stamina/s.maxStamina),hp=clamp01(s.hp/s.maxHp)
-    const energy=clamp01(s.energy/s.maxEnergy),ult=clamp01(s.meter/100)
-    const canDash=s.stamina>=DASH_STAMINA_COST,canPower=s.stamina>=POWER_DASH_STAMINA_COST
-    const charge=clamp01(s.dashCharge),slash=clamp01(s.slashCharge),compact=pw<215
-    ctx.save()
-    // One backing surface instead of separately clipped, overlapping plates.
-    ctx.fillStyle='rgba(5,11,18,.88)';ctx.fillRect(x,y,pw,154)
-    ctx.strokeStyle='rgba(170,213,221,.26)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,pw-1,153)
-    ctx.fillStyle=s.swordColor;ctx.fillRect(x,y,3,154)
-    const text=(label:string,value:string,yy:number,color:string)=>{
-      ctx.font=`bold 10px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(218,230,235,.96)'
-      ctx.fillText(label,bx,yy,bw*.53)
-      ctx.textAlign='right';ctx.fillStyle=color;ctx.fillText(value,bx+bw,yy,bw*.47)
-    }
-    const bar=(yy:number,height:number,fraction:number,color:string)=>{
-      ctx.fillStyle='rgba(37,50,55,.9)';ctx.fillRect(bx,yy,bw,height)
-      ctx.fillStyle=color;ctx.fillRect(bx,yy,bw*fraction,height)
-    }
-    text('HEALTH',`${Math.ceil(s.hp)} / ${s.maxHp}`,y+16,'#ffc4c9')
-    bar(y+21,8,clamp01(this.hpDisplay/s.maxHp),'#f5b5bd')
-    ctx.fillStyle='#ff5064';ctx.fillRect(bx,y+21,bw*hp,8)
-    text('ENERGY',`${Math.floor(s.energy)} / ${s.maxEnergy}`,y+44,'#80e8ef')
-    bar(y+49,6,energy,'#39dbe7')
-    text('STAMINA',`${Math.floor(s.stamina)} / ${s.maxStamina}`,y+71,canDash?'#b8ffcf':'#ff9890')
-    bar(y+76,13,stamina,canDash?'#60dd9a':'#fa8875')
-    // Exact cost markers make the two launch limits visible on any pool size.
-    ctx.strokeStyle='rgba(4,16,13,.9)';ctx.lineWidth=2
-    for(const cost of [DASH_STAMINA_COST,POWER_DASH_STAMINA_COST]){
-      const tx=bx+bw*clamp01(cost/s.maxStamina)
-      ctx.beginPath();ctx.moveTo(tx,y+76);ctx.lineTo(tx,y+89);ctx.stroke()
-    }
-    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left'
-    ctx.fillStyle=canDash?'rgba(207,236,222,.95)':'#ffaaa0'
-    const status=slash>0?(
-      s.swordDrawn
-        ?(slash>=.999?(canPower?'RELEASE BOTH: RAIJIN ZAN':'BLADE LOCKED — STAMINA LOW'):`BLADE CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`)
-        :(slash>=.999?(canPower?`RELEASE BOTH: ${s.fistStrike==='kick'?'FUJIN KYAKU':'RAIJIN KEN'}`:'FISTS LOCKED — STAMINA LOW'):`FIST CHARGING ${Math.round(slash*100)}% — HOLD HEAVY`))
-      :charge>0?(charge>=.999?(canPower?'RELEASE: POWER':'RELEASE: NORMAL'):`CHARGING ${Math.round(charge*100)}%`)
-      :!canDash?'EXHAUSTED':!canPower?'POWER LOW':s.staminaCooldown>0?'RECOVERING':'POWER READY'
-    ctx.fillText(status,bx,y+103,bw*.53)
-    ctx.textAlign='right';ctx.fillStyle='rgba(187,211,200,.95)'
-    ctx.fillText(compact?'45 / 120':'DASH 45  |  POWER 120',bx+bw,y+103,bw*.43)
-    // Charge indicator is distinct from stamina: holding is not spending.
-    // The dual (blade) segment draws on the same strip, one grade hotter —
-    // drawn steel reads white.
-    ctx.fillStyle='rgba(34,48,47,.95)';ctx.fillRect(bx,y+107,bw,3)
-    if(slash>0){ctx.fillStyle=canPower?(slash>=.999?'#ffffff':'#d5ffe0'):'#f2bc69';ctx.fillRect(bx,y+107,bw*slash,3)}
-    else if(charge>0){ctx.fillStyle=canPower?'#d5ff8c':'#f2bc69';ctx.fillRect(bx,y+107,bw*charge,3)}
-    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(207,218,228,.9)'
-    ctx.fillText(compact?'ULT':'ULTIMATE',bx,y+123,bw*.35)
-    ctx.textAlign='right';ctx.fillStyle=s.ultReady?'#ff80bd':'#cda0b8'
-    ctx.fillText(s.ultReady?(s.touch?'ULT READY':'READY [I]'):`${Math.floor(s.meter)}%`,bx+bw,y+123,bw*.6)
-    bar(y+127,4,ult,s.ultReady?'#ff5ab2':'#b73e7c')
-    ctx.font=`bold 9px ${MONO}`;ctx.textAlign='left';ctx.fillStyle='rgba(188,214,220,.95)'
-    const equip=compact?(s.swordName.includes('SHEATHED')?'EMPTY HAND':'SWORD DRAWN'):s.swordName
-    ctx.fillText(equip,bx,y+145,bw*.53)
-    ctx.textAlign='right';ctx.fillStyle=s.abilityReady?'#7fe5ed':'#82949d'
-    ctx.fillText(s.abilityReady?(s.touch?'SPEC READY':'[U] READY'):`${s.touch?'SPEC':'[U]'} ${s.abilityCost} EN`,bx+bw,y+145,bw*.47)
     ctx.restore()
   }
 
-  private drawScore(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
-    // Reserve the upper-right 48px for the touch pause button on narrow screens.
-    const compact=w<850,x=w-(compact||s.touch?64:16),available=Math.max(45,x-(12+this.panelWidth(w)+8))
-    ctx.save();ctx.textAlign='right';ctx.fillStyle='#f0f7fa';ctx.font=`900 ${compact?16:20}px ${FONT}`
-    ctx.fillText(fmt(s.score),x,29,available)
-    ctx.font=`10px ${MONO}`;ctx.fillStyle='rgba(200,219,225,.9)'
-    if(compact){
-      ctx.fillText(`WAVE ${s.wave}`,x,45,available)
-      ctx.fillText(`${s.enemiesLeft} FOES`,x,59,available)
-      ctx.fillText(`${s.kills} KILLS`,x,73,available)
-    } else ctx.fillText(`WAVE ${s.wave}  HOSTILES ${s.enemiesLeft}  KILLS ${s.kills}`,x,48,available)
-    ctx.restore()
+  private vitality(ctx: CanvasRenderingContext2D, b: HudBox, s: HudState): void {
+    plate(ctx, b, '#ff91a6')
+    const x = b.x + 8, w = b.w - 16, y = b.y
+    const hp = clamp01(s.hp / s.maxHp), delayed = clamp01(this.hpDisplay / s.maxHp)
+    const canDash = s.stamina >= DASH_STAMINA_COST, canPower = s.stamina >= POWER_DASH_STAMINA_COST
+    text(ctx, 'VITALITY', x, y + 16, w - 31, 10, DIM)
+    text(ctx, `${Math.ceil(s.hp)}`, x + w, y + 16, 42, 12, '#ffd7de', 'right')
+    track(ctx, x, y + 22, w, 6, delayed, '#f2b8c0')
+    ctx.fillStyle = '#ff667e'; ctx.fillRect(x, y + 22, hp * w, 6)
+    const shield = s.shield ?? 0, d = shield > 0 ? 23 : 0
+    if (shield > 0) {
+      text(ctx, 'SHIELD', x, y + 43, w - 20, 10, SKY)
+      text(ctx, `${Math.ceil(shield)}`, x + w, y + 43, 28, 11, SKY, 'right')
+      track(ctx, x, y + 48, w, 3, shield / 50, '#7ccbfa')
+    }
+    text(ctx, 'STAMINA', x, y + 45 + d, w - 28, 10, DIM)
+    text(ctx, `${Math.floor(s.stamina)}`, x + w, y + 45 + d, 36, 11, MINT, 'right')
+    track(ctx, x, y + 50 + d, w, 6, s.stamina / s.maxStamina, canDash ? '#80dcae' : '#ff9d87')
+    ctx.fillStyle = '#132a27'
+    for (const threshold of [DASH_STAMINA_COST, POWER_DASH_STAMINA_COST])
+      ctx.fillRect(x + w * clamp01(threshold / s.maxStamina), y + 50 + d, 1.7, 6)
+    const charge = clamp01(s.dashCharge), slash = clamp01(s.slashCharge)
+    const status = slash > 0 ? (slash >= .999 ? canPower ?
+      (s.swordDrawn ? 'RELEASE: RAIJIN ZAN' : `RELEASE: ${s.fistStrike === 'kick' ? 'FUJIN KYAKU' : 'RAIJIN KEN'}`) : 'POWER LOW' : `CHAIN CHARGE ${Math.round(slash * 100)}%`)
+      : charge > 0 ? (charge >= .999 ? canPower ? 'RELEASE: POWER' : 'RELEASE: DASH' : `CHARGING ${Math.round(charge * 100)}%`)
+      : !canDash ? 'EXHAUSTED' : !canPower ? 'POWER LOW' : s.staminaCooldown > 0 ? 'RECOVERING' : 'POWER READY'
+    text(ctx, status, x, y + 70 + d, w, 9, canDash ? MINT : '#ff9d87')
+    if (charge || slash) track(ctx, x, y + 74 + d, w, 2, slash || charge, '#e8ffd2')
+    text(ctx, 'OVERDRIVE', x, y + 91 + d, w * .64, 10, s.ultReady ? PINK : DIM)
+    text(ctx, s.ultReady ? (s.touch ? 'READY' : 'R READY') : `${Math.floor(s.meter)}%`, x + w, y + 91 + d, w * .45, 10, PINK, 'right')
+    track(ctx, x, y + 97 + d, w, 5, s.meter / 100, s.ultReady ? '#ffa5d3' : '#bb6696')
+    text(ctx, s.touch ? 'SPEC' : 'U · SPEC', x, y + 120 + d, w * .55, 9, s.abilityReady ? SKY : DIM)
+    text(ctx, `${Math.floor(s.energy)} EN`, x + w, y + 120 + d, w * .45, 9, SKY, 'right')
+    track(ctx, x, y + 124 + d, w, 2, s.energy / s.maxEnergy, '#78bcd2')
   }
 
-  private drawCombo(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    const c = s.combo
-    if (c.hits < 2) return
-    const { rank, color } = rankForHits(c.hits)
-    if(w<850){
-      ctx.save();ctx.textAlign='right';ctx.font=`bold 12px ${FONT}`;ctx.fillStyle=color
-      const x=w-64,available=Math.max(45,x-(12+this.panelWidth(w)+8))
-      ctx.fillText(`${rank} ${c.hits} HITS  ×${c.mult.toFixed(1)}`,x,100,available)
-      ctx.restore();return
-    }
-    const cx = w - 108
-    const cy = h * 0.34
-    const pop = 1 + this.comboPop * 0.35
-
-    ctx.save()
-    ctx.textAlign = 'center'
-
-    // hits number
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.scale(pop, pop)
-    ctx.font = `900 54px ${FONT}`
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'
-    ctx.fillText(`${c.hits}`, 3, 3)
-    ctx.fillStyle = '#f4f9fc'
-    ctx.fillText(`${c.hits}`, 0, 0)
-    ctx.restore()
-
-    ctx.font = `900 12px ${FONT}`
-    ctx.fillStyle = 'rgba(200,215,225,0.9)'
-    ctx.fillText('HITS', cx, cy + 18)
-
-    // multiplier
-    if (c.mult > 1) {
-      ctx.font = `900 18px ${FONT}`
-      ctx.fillStyle = rgba(color, 0.95)
-      ctx.fillText(`×${c.mult.toFixed(1)}`, cx, cy - 52)
-    }
-
-    // rank letter
-    if (rank) {
-      const rs = 1 + this.rankFlash * 0.5
-      ctx.save()
-      ctx.translate(cx - 76, cy - 8)
-      ctx.rotate(-0.08)
-      ctx.scale(rs, rs)
-      ctx.font = `900 44px ${FONT}`
-      // glow
-      ctx.globalCompositeOperation = 'lighter'
-      ctx.fillStyle = rgba(color, 0.45)
-      ctx.fillText(rank, 0, 0)
-      ctx.globalCompositeOperation = 'source-over'
-      ctx.fillStyle = color
-      ctx.fillText(rank, 0, 0)
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)'
-      ctx.lineWidth = 1
-      ctx.strokeText(rank, 0, 0)
-      ctx.restore()
-      // rank-up flash ring
-      if (this.rankFlash > 0) {
-        const r = (1 - this.rankFlash) * 70 + 26
-        ctx.strokeStyle = rgba(color, this.rankFlash * 0.8)
-        ctx.lineWidth = 3
-        ctx.beginPath()
-        ctx.arc(cx - 76, cy - 22, r, 0, TAU)
-        ctx.stroke()
-      }
-    }
-
-    // combo timer drain
-    const tw = 120
-    const frac = clamp01(c.timer / c.timerMax)
-    ctx.fillStyle = 'rgba(6,9,14,0.7)'
-    ctx.fillRect(cx - tw / 2, cy + 30, tw, 5)
-    ctx.fillStyle = frac > 0.4 ? rgba(color, 0.9) : '#ff2a4a'
-    ctx.fillRect(cx - tw / 2, cy + 30, tw * frac, 5)
-    ctx.restore()
+  private telemetry(ctx: CanvasRenderingContext2D, b: HudBox, s: HudState): void {
+    const t = s.route, center = b.x + b.w * .5, w = b.w - 14, y = b.y
+    plate(ctx, b, t?.safe ? WARM : SKY)
+    text(ctx, t ? `SECTOR ${String(t.sector).padStart(2, '0')}` : `WAVE ${s.wave}`, center, y + 16, w, 10, SKY, 'center')
+    text(ctx, t ? t.biome.toUpperCase() : this.scene.toUpperCase(), center, y + 32, w, 10, INK, 'center')
+    text(ctx, t ? `${Math.floor(t.metres)} m` : `${Math.round(s.runTime)} s`, center, y + 57, w, 21, INK, 'center', true)
+    text(ctx, t?.safe ?? `${s.enemiesLeft} ${s.enemiesLeft === 1 ? 'THREAT' : 'THREATS'}`, center, y + 77, w, 10,
+      t?.safe ? WARM : s.enemiesLeft ? '#ffc3aa' : DIM, 'center')
+    const gate = t?.gate
+    const gateLabel = t?.safe ? 'FLOW HELD' : gate ? gate.locked ? 'GATE LOCKED' :
+      `BOSS ${Math.ceil(gate.distance)}m${gate.eta !== null && gate.eta < 100 ? ` · ${Math.ceil(gate.eta)}s` : ''}` : `${s.kills} KILLS`
+    text(ctx, gateLabel, center, y + 96, w, 10, gate?.locked ? '#ffa892' : t?.safe ? WARM : DIM, 'center')
   }
 
-  private drawBossBar(ctx: CanvasRenderingContext2D, w: number, s: HudState): void {
-    const b = s.boss
-    if (!b) return
-    const bw=this.panelWidth(w)-16
-    const bx = 20
-    const by = 181
-    const frac = clamp01(b.hp / b.maxHp)
-    ctx.save()
-    ctx.fillStyle = 'rgba(4,6,10,0.85)'
-    ctx.fillRect(bx - 8, by - 6, bw + 16, 26)
-    // segments
-    const g = ctx.createLinearGradient(bx, by, bx + bw, by)
-    g.addColorStop(0, '#ff2a4a')
-    g.addColorStop(1, '#ff7a5e')
-    ctx.fillStyle = g
-    ctx.fillRect(bx, by, bw * frac, 14)
-    ctx.strokeStyle = 'rgba(4,6,10,0.9)'
-    ctx.lineWidth = 2
-    for (let i = 1; i < 5; i++) {
-      const tx = bx + (bw / 5) * i
-      ctx.beginPath()
-      ctx.moveTo(tx, by)
-      ctx.lineTo(tx, by + 14)
-      ctx.stroke()
+  private score(ctx: CanvasRenderingContext2D, b: HudBox, s: HudState): void {
+    const c = s.combo, rank = c.rank || '—', color = styleColor(rank)
+    plate(ctx, b, c.rankUpT > 0 ? color : '#778c9e')
+    const x = b.x + b.w - 8, w = b.w - 16
+    text(ctx, 'SCORE', x, b.y + 16, w, 10, DIM, 'right')
+    text(ctx, fmt(s.score), x, b.y + 39, w, 20, INK, 'right', true)
+    text(ctx, `STYLE ${rank}`, x, b.y + 57, w, 11, color, 'right')
+    text(ctx, `${c.hits} H · ×${c.mult.toFixed(1)}`, x, b.y + 72, w, 10, DIM, 'right')
+    track(ctx, b.x + 8, b.y + 79, w, 3, c.hits > 0 ? c.timer / c.timerMax : 0, color)
+  }
+
+  private prompt(ctx: CanvasRenderingContext2D, p: ScreenPoint, title: string, r: ReturnType<typeof hudRegions>, reserved: HudBox[],
+    desc?: string, progress?: number, buff?: string): void {
+    if (p.x < r.l - 8 || p.x > r.r + 8 || p.y < r.top + 12 || p.y > r.bottom) return
+    const width = desc ? Math.min(251, r.r - r.l) : 112
+    const b = { x: Math.round(clamp(p.x - width * .5, r.l, r.r - width)), y: Math.round(p.y) - (desc ? 62 : 32), w: width, h: desc ? 56 : 26 }
+    if (b.y < r.top || reserved.some(q => q.x < b.x + b.w && q.x + q.w > b.x && q.y < b.y + b.h && q.y + q.h > b.y)) return
+    const color = desc ? WARM : '#ffd0b1', x = b.x + b.w / 2
+    plate(ctx, b, color, '#0b141e')
+    text(ctx, title, x, b.y + 17, b.w - 12, 11, color, 'center')
+    if (desc) {
+      text(ctx, desc, x, b.y + 31, b.w - 12, 9, INK, 'center')
+      if (buff) text(ctx, buff, x, b.y + 43, b.w - 12, 9, WARM, 'center')
+      track(ctx, b.x + 7, b.y + 48, b.w - 14, 3, progress ?? 0, WARM)
     }
-    ctx.strokeStyle = 'rgba(230,240,245,0.4)'
-    ctx.lineWidth = 1
-    ctx.strokeRect(bx, by, bw, 14)
-    ctx.font = `900 12px ${FONT}`
-    ctx.textAlign = 'center'
-    ctx.fillStyle = 'rgba(240,245,250,0.95)'
-    ctx.fillText(b.name, bx+bw/2, by + 26,bw)
-    ctx.restore()
-  }
-
-  private drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    const b = s.banner
-    if (!b) return
-    const appear = clamp01(b.t / 0.25)
-    const fade = 1 - clamp01((b.t - b.dur + 0.5) / 0.5)
-    const a = appear * fade
-    if (a <= 0) return
-    // Routine wave notices belong to the HUD, not over the combat lane.
-    // Keep boss warnings and cinematic announcements separate.
-    if (b.title.startsWith('WAVE ')) {
-      const x=12, y=s.boss ? 214 : 171, width=this.panelWidth(w)
-      ctx.save();ctx.globalAlpha=a;ctx.textAlign='left'
-      ctx.fillStyle='rgba(5,11,18,.88)';ctx.fillRect(x,y,width,20)
-      ctx.fillStyle=b.color;ctx.fillRect(x,y,3,20)
-      ctx.font=`bold 10px ${MONO}`;ctx.fillStyle='#f4f9fc'
-      ctx.fillText(`${b.title}  /  ${b.sub}`,x+8,y+14,width-16)
-      ctx.restore();return
-    }
-    const cy = Math.min(h-46,w<850 ? 248 : 120)
-
-    ctx.save()
-    ctx.globalAlpha = a
-    ctx.textAlign = 'center'
-    ctx.translate(Math.round(w / 2), cy)
-    ctx.font = `900 ${w<650?28:44}px ${FONT}`
-    ctx.fillStyle = '#f4f9fc'
-    ctx.fillText(b.title, 0, 0, w-24)
-    if (b.sub) {
-      ctx.font = `900 15px ${FONT}`
-      ctx.fillStyle = 'rgba(210,225,235,0.9)'
-      ctx.fillText(b.sub, 0, 28,w-24)
-    }
-    // underline slash
-    ctx.strokeStyle = rgba(b.color, 0.9)
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    const lw = 150 * appear
-    ctx.moveTo(-lw, 40)
-    ctx.lineTo(lw, 36)
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  private drawPrompts(ctx: CanvasRenderingContext2D, s: HudState): void {
-    const p = s.executePrompt
-    if (!p) return
-    const pulse = 0.7 + 0.3 * Math.sin(this.lowHpPulse * 10)
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.font = `900 15px ${FONT}`
-    ctx.fillStyle = rgba('#ff2a4a', pulse)
-    ctx.strokeStyle = 'rgba(4,6,10,0.9)'
-    ctx.lineWidth = 4
-    ctx.strokeText(s.touch?'TAP EXEC':'E — EXECUTE', Math.round(p.x), Math.round(p.y))
-    ctx.fillText(s.touch?'TAP EXEC':'E — EXECUTE', Math.round(p.x), Math.round(p.y))
-    ctx.restore()
-  }
-
-  private drawHints(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    if (s.touch || s.runTime > 14 || s.wave > 2 || w < 650) return
-    const a = clamp01((14 - s.runTime) / 3) * 0.75
-    ctx.save()
-    ctx.globalAlpha = a
-    ctx.textAlign = 'center'
-    ctx.font = `10px ${MONO}`
-    ctx.fillStyle = 'rgba(200,215,225,0.95)'
-    ctx.fillText(
-      'A/D MOVE   J LIGHT   K HEAVY   L DASH   SPACE JUMP   O PARRY   U ABILITY   E EXECUTE   Q SHEATHE/DRAW   HOLD L+K, RELEASE BOTH: RAIJIN ZAN / SHEATHED RAIJIN KEN·FUJIN KYAKU   1-6 SWORDS',
-      w / 2,
-      h - 16,
-      w-24,
-    )
-    ctx.restore()
-  }
-
-  /** Re-bake the legend when the run's curated palette changes. */
-  setMoodLabel(name: string): void {
-    if (this.moodName === name) return
-    this.moodName = name
-    this.propLegend = null
-  }
-
-  /** PROP PURPOSE LEGEND — a single baked plate (built once, blitted once
-   *  per frame) so the six destructible props are self-explanatory. No live
-   *  text layout on the 120 Hz path. */
-  private drawPropLegend(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    if (typeof document === 'undefined' || s.touch || w < 676) return
-    const a = clamp01((26 - s.runTime) / 4) * 0.82
-    if (a <= 0.01) return
-    if (!this.propLegend) {
-      // Through the ledger: pinned, so the LRU sweep can never blank the legend
-      // mid-run (it is drawn every frame for the first 26 s and then never).
-      const c = gameLedger.acquire('hud:legend', 660, 22, 'hud', true) as unknown as HTMLCanvasElement
-      const g = c.getContext('2d')
-      if (!g) return
-      g.clearRect(0,0,660,22)
-      // dark plate + accent hairline: a light figure on a dark ground
-      g.fillStyle = 'rgba(3,7,12,0.78)'
-      g.fillRect(0, 0, 660, 22)
-      g.fillStyle = 'rgba(120,226,255,0.4)'
-      g.fillRect(0, 0, 660, 1)
-      g.fillRect(0, 21, 660, 1)
-      g.textBaseline = 'middle'
-      g.font = `bold 10px ${MONO}`
-      g.fillStyle = 'rgba(198,216,228,0.9)'
-      g.fillText('BREAK PROPS', 4, 11)
-      const items: ReadonlyArray<readonly [string, string, string]> = [
-        ['!', 'BLAST', '#ff7a3c'], ['+', 'HEAL', '#5cffb4'], ['^', 'LAUNCH', '#9fd8ff'],
-        ['Z', 'STUN', '#a6d0ff'], ['~', 'EXPOSE', '#c39cff'], ['$', 'SCORE', '#ffd670'],
-      ]
-      let x = 92
-      for (const [sym, label, col] of items) {
-        g.fillStyle = col
-        g.fillRect(x, 4, 13, 14)
-        g.fillStyle = '#050a0e'
-        g.font = `bold 10px ${MONO}`
-        g.fillText(sym, x + 3, 11)
-        g.fillStyle = 'rgba(214,230,240,0.95)'
-        g.font = `10px ${MONO}`
-        g.fillText(label, x + 17, 11)
-        x += 21 + g.measureText(label).width + 12
-      }
-      // MOOD BADGE — names the curated palette; makes each run read as a
-      // deliberately designed level rather than a random colour shuffle.
-      g.fillStyle = 'rgba(120,226,255,0.12)'
-      g.fillRect(556, 3, 100, 16)
-      g.strokeStyle = 'rgba(120,226,255,0.6)'
-      g.lineWidth = 1
-      g.strokeRect(556.5, 3.5, 99, 15)
-      g.fillStyle = '#bfefff'
-      g.font = `bold 9px ${MONO}`
-      g.textAlign = 'center'
-      g.fillText(this.moodName, 606, 11)
-      g.textAlign = 'left'
-      this.propLegend = c
-    }
-    ctx.save()
-    ctx.globalAlpha = a
-    ctx.drawImage(this.propLegend, Math.max(8, (w - 660) * 0.5), h - 52)
-    ctx.restore()
-  }
-
-  private drawLowHpVignette(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
-    const frac = s.hp / s.maxHp
-    if (frac > 0.32) return
-    const intensity = (0.32 - frac) / 0.32
-    const pulse = 0.55 + 0.45 * Math.sin(this.lowHpPulse * 5)
-    const a = intensity * pulse * 0.5
-    // baked red-edge plate (rebuilt only on resize) — the live radial
-    // gradient + full-screen fill cost ~10-15ms/frame on software raster,
-    // exactly when the player is hurt and combat is hottest
-    if (!this.lowHpPlate || this.lowHpW !== w || this.lowHpH !== h) {
-      // A stable key: the ledger RESIZES a surface in place when the frame size
-      // changes, which is exactly the reallocation this plate wants.
-      const c = gameLedger.acquire('hud:lowhp', Math.max(2, Math.floor(w)), Math.max(2, Math.floor(h)), 'hud', true) as unknown as HTMLCanvasElement
-      const g = c.getContext('2d')
-      if (g) {
-        g.clearRect(0,0,w,h)
-        const rg = g.createRadialGradient(w / 2, h / 2, h * 0.35, w / 2, h / 2, h * 0.85)
-        rg.addColorStop(0, 'rgba(200,10,40,0)')
-        rg.addColorStop(1, 'rgba(200,14,40,1)')
-        g.fillStyle = rg
-        g.fillRect(0, 0, w, h)
-      }
-      this.lowHpPlate = c
-      this.lowHpW = w
-      this.lowHpH = h
-    }
-    if (!this.lowHpPlate) return
-    ctx.save()
-    ctx.globalAlpha = a
-    ctx.drawImage(this.lowHpPlate, 0, 0, w, h)
-    ctx.restore()
+    const tip = clamp(p.x, b.x + 7, b.x + b.w - 7)
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(tip - 3, b.y + b.h); ctx.lineTo(tip + 3, b.y + b.h); ctx.lineTo(p.x, p.y); ctx.fill()
   }
 }

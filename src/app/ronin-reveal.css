@@ -1,0 +1,84 @@
+/* A solid matte until the engine submits a complete, paced arena. The cut
+   moves one opaque shutter; only the bounded ink card and controls fade. */
+.sr-ronin-reveal {
+  position: absolute; inset: 0; z-index: 24; overflow: hidden;
+  pointer-events: none;
+  --cut-duration: 330ms;
+  --shutter-inset: calc(22dvh + 8px);
+  --shutter-angle: -22deg;
+}
+.sr-ronin-veil {
+  position: absolute; inset: 0 calc(-1 * var(--shutter-inset));
+  background: #000; transform: skewX(var(--shutter-angle)); will-change: transform;
+}
+.sr-ronin-veil::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 4px;
+  background: #a84249; border-right: 1px solid #d4c6ad;
+}
+.sr-ronin-card {
+  position: absolute; left: 50%; top: 43%;
+  width: min(86%, 150dvh, 720px); transform: translate(-50%, -50%);
+  will-change: opacity, transform;
+  animation: sr-ink-in 170ms cubic-bezier(.22,.7,.26,1) both;
+}
+.sr-ronin-ink { display: block; width: 100%; height: auto; }
+.sr-ronin-caption {
+  margin: 4px 0 0; display: flex; align-items: center; justify-content: center; gap: 14px;
+  color: #d5cbb2; text-transform: uppercase; white-space: nowrap;
+  font: 600 clamp(9px, 1.65vw, 12px)/1.5 ui-monospace, monospace; letter-spacing: .34em;
+}
+.sr-ronin-caption i { width: 18px; height: 1px; background: #943542; }
+.sr-ronin-reveal[data-cut] .sr-ronin-veil {
+  transform: translateX(100%) skewX(var(--shutter-angle));
+  animation: sr-cut-out var(--cut-duration) cubic-bezier(.2,.67,.39,1) both;
+}
+.sr-ronin-reveal[data-cut] .sr-ronin-card { opacity: 0; animation: sr-ink-out 110ms ease-in both; }
+.sr-ronin-reveal[data-cut] .sr-interlude-controls { animation: sr-controls-out var(--cut-duration) ease-out both; }
+.sr-ronin-reveal[data-cut] .sr-interlude-controls:has(:focus-visible), .sr-ronin-reveal[data-cut] .sr-interlude-controls:hover { animation: none; }
+
+@keyframes sr-ink-in {
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes sr-ink-out { to { opacity: 0; transform: translate(-51%, -51%); } }
+@keyframes sr-cut-out {
+  0%, 23% { transform: skewX(var(--shutter-angle)); }
+  100% { transform: translateX(100%) skewX(var(--shutter-angle)); }
+}
+@keyframes sr-controls-out { 0%, 40% { opacity: 1; } 100% { opacity: 0; } }
+@media (max-aspect-ratio: 4/5) {
+  .sr-ronin-card { width: 98%; }
+  .sr-ronin-reveal { --shutter-angle: -14deg; --shutter-inset: calc(14dvh + 8px); }
+}
+
+.sr-interlude { position: absolute; inset: 0; pointer-events: auto; }
+.sr-interlude-controls {
+  position: absolute;
+  left: max(24px, 4.6vw, calc(var(--sr-inset-left) + 12px));
+  right: max(24px, 4.6vw, calc(var(--sr-inset-right) + 12px));
+  bottom: max(21px, 5.3dvh, calc(var(--sr-inset-bottom) + 11px));
+  display: flex; justify-content: space-between; align-items: end; gap: 14px;
+  color: #f1e6e4;
+}
+.sr-interlude-state { min-width: 0; }
+.sr-interlude-state p { display: grid; gap: 5px; margin: 0; }
+.sr-interlude-state strong, .sr-interlude-cancel {
+  font: 700 10px/1.4 ui-monospace, monospace; letter-spacing: .22em; text-transform: uppercase;
+}
+.sr-interlude-state p span { color: #b9a8ac; font-size: 12px; line-height: 1.35; }
+.sr-interlude-signal { display: flex; gap: 4px; margin-bottom: 11px; }
+.sr-interlude-signal i { width: 18px; height: 2px; background: #49272d; }
+.sr-interlude-signal i:first-child,
+.sr-interlude-signal:not([data-stage='opening']) i:nth-child(2),
+.sr-interlude-signal:is([data-stage='background'], [data-stage='lighting'], [data-stage='frame'], [data-stage='settling'], [data-stage='surface']) i:nth-child(3),
+.sr-interlude-signal:is([data-stage='lighting'], [data-stage='frame'], [data-stage='settling'], [data-stage='surface']) i:nth-child(4),
+.sr-interlude-signal:is([data-stage='frame'], [data-stage='settling'], [data-stage='surface']) i:nth-child(5) { background: #e94a4d; }
+.sr-interlude-cancel {
+  min-height: 44px; padding: 0 13px; display: inline-flex; flex: none; align-items: center; gap: 7px;
+  border: 1px solid #583239; border-radius: 2px; background: #160c10; color: inherit; cursor: pointer;
+}
+.sr-interlude-cancel:hover { background: #2a1017; border-color: #df585c; }
+.sr-interlude-cancel:focus-visible { outline: 2px solid #ffaaaa; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .sr-ronin-reveal *, .sr-ronin-reveal[data-cut] * { animation: none !important; }
+}

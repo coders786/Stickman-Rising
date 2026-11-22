@@ -1,0 +1,6600 @@
+{
+  "notes": [
+    "Browser timings are local software Chromium, not physical display measurements. Control vs update sessions do not establish a speedup.",
+    "Glass proof measures the real Canvas world or WebGL actor source before and after the glass pass. The open-shadow/pan/storm ablations use a local world crop, not a production readback.",
+    "Desktop renderer and recovery matrix was run on OVNAKJ4up6pLCX-GbJne4. All static JS/worker chunks are byte-identical to xWO7XAonBSVO7rObnhuTB; only the desktop cue CSS differs. Release desktop/touch handoff and portrait glass were retested on the final bundle."
+  ],
+  "builds": {
+    "intermediateBehavior": "OVNAKJ4up6pLCX-GbJne4",
+    "verifiedCSSOnlyDelta": true,
+    "stage": {
+      "build": "xWO7XAonBSVO7rObnhuTB",
+      "port": 3001,
+      "rootSha256": "c5966e9e266de0d8c3a1fe713dd9186d64145ef49e215b4bcd59c97fefd6d9f6"
+    },
+    "live": {
+      "build": "xWO7XAonBSVO7rObnhuTB",
+      "port": 3000,
+      "sameStagedRoot": true,
+      "rootSha256": "c5966e9e266de0d8c3a1fe713dd9186d64145ef49e215b4bcd59c97fefd6d9f6",
+      "hostOriginAccepted": true,
+      "iframeHeadersClear": true,
+      "immutableLinks": 13,
+      "assets": {
+        "deck-pier.webp": {
+          "bytes": 4086,
+          "sha256": "92e72cfba3e741a057998e5f639b17a3d4cd5540d28d517a8b7057fde45f782b"
+        },
+        "l1.webp": {
+          "bytes": 38162,
+          "sha256": "777e8a914ec9cd7eebe82fd38fca505e8deb51cc8bba91ddc6abf1e4c5362297"
+        },
+        "l2.webp": {
+          "bytes": 49280,
+          "sha256": "b7808d8e418623386383660c2181ad7f9a1e121bc94ef196e8971856d2359681"
+        },
+        "metro-street.webp": {
+          "bytes": 19810,
+          "sha256": "cd9211ba2c19754ce2a63a4fbb68037bcf715c2c62662f996bc14ef47c009480"
+        },
+        "packed-v4/deck.rgba.br": {
+          "bytes": 390660,
+          "sha256": "7d20e19e118feb1d8c47e7f15d24be5eac7823691e575fa4ef834032d08cc967"
+        },
+        "packed-v4/l1-bc7.ktx": {
+          "bytes": 328188,
+          "sha256": "c6d40eb4aef3a9f0a5a1bf5c8b4e5c01e6f3d0038dadd0930242d7b006759c12"
+        },
+        "packed-v4/l1-etc2.ktx": {
+          "bytes": 328188,
+          "sha256": "c7a38ed5d40152a389a9200f2e3a0705746d366676477a23c4aab81d2ed8772b"
+        },
+        "packed-v4/l1.ktx2": {
+          "bytes": 47822,
+          "sha256": "551247480a03ef1f1a64efade38c308527ad8f39092c2dba305a625cc87b05d2"
+        },
+        "packed-v4/l2-astc.ktx": {
+          "bytes": 383228,
+          "sha256": "984367ca3b575c6505718999507494e707314c1a878b28cf9e0c33f0d9d65da6"
+        },
+        "packed-v4/l2-bc7.ktx": {
+          "bytes": 383228,
+          "sha256": "8f408bfa2a902711d9ec55064768134708a5027e4a93d2461752f5b792a57cc1"
+        },
+        "packed-v4/l2-etc2.ktx": {
+          "bytes": 383228,
+          "sha256": "259a006496c6ed891705360cea18f623be0f29d1516b3f90aa82d2d4a0dfb2ff"
+        },
+        "packed-v4/l2.ktx2": {
+          "bytes": 383552,
+          "sha256": "441e22b8ad76a945cba152c5ccf895ffd944ee4147730dec39328e632369fe03"
+        },
+        "packed-v4/lut-16.rgba.br": {
+          "bytes": 48036,
+          "sha256": "0e907d9f9d0c74c3292d104a252cf7dfa1cb6c35b9fd51e88e1aeac471c9457d"
+        },
+        "packed-v4/lut-32.rgba.br": {
+          "bytes": 356963,
+          "sha256": "01fe43184de64092cdcee31021875af39c921bdd779c496535c297d2428509b1"
+        },
+        "packed-v4/ripple-astc.ktx": {
+          "bytes": 5580,
+          "sha256": "f249377a90c3eacc32cfb922c01be6af9f042f19bb3a5d6a887b6d2cb795c16d"
+        },
+        "packed-v4/ripple-bc5.ktx": {
+          "bytes": 5580,
+          "sha256": "2855e1d57d660cdabbe1432fb7d24fab04d8bc878b5d6d72e08ca4076bf9773b"
+        },
+        "packed-v4/ripple.ktx2": {
+          "bytes": 5824,
+          "sha256": "b8c84f3a26e3411391839aba8f1164483c29396d102f74e75729884ad58310c9"
+        },
+        "packed-v4/sizes.json": {
+          "bytes": 324,
+          "sha256": "76527f84c6ce5a591e8b275f806be38a1f2a82adcbffe140fd802215cce8e05a"
+        },
+        "props-v2.webp": {
+          "bytes": 5910,
+          "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+        },
+        "sky-basis-v4.rgba.br": {
+          "bytes": 394238,
+          "sha256": "deac3fa8d03d5927a595b1195b8cbdb5d7329ae88d6172c0b1822737ed5bac01"
+        },
+        "stratum-a.webp": {
+          "bytes": 250,
+          "sha256": "881e80c2b36481ac597abceb8bac0e018fa3e7c5db9bfde445976c9a3205b8db"
+        }
+      },
+      "scoresApi": true,
+      "retiredMirror404": true
+    }
+  },
+  "embed": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "phase": "playing",
+    "gestureToPlayMs": 346.5,
+    "errors": [],
+    "failedRequests": []
+  },
+  "storefronts": {
+    "canvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "mobile-canvas",
+      "canvas": true,
+      "optimized": false,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              378,
+              244,
+              379,
+              152
+            ],
+            "changed": 42106,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 22437,
+            "distance": 950960,
+            "paneCounts": [
+              7769,
+              12604,
+              12604,
+              9129
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 12,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.4622682338041417
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15180,
+              "rgb": 672944
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 798307
+            },
+            "storm": {
+              "count": 24169,
+              "rgb": 156361
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              380,
+              227,
+              323,
+              159
+            ],
+            "changed": 40654,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 39781,
+            "distance": 966053,
+            "paneCounts": [
+              9472,
+              10686,
+              12330,
+              8166
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.9837850746109904
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14936,
+              "rgb": 635432
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 711555
+            },
+            "storm": {
+              "count": 23675,
+              "rgb": 148383
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              462,
+              243,
+              298,
+              145
+            ],
+            "changed": 30417,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 31095,
+            "distance": 504195,
+            "paneCounts": [
+              7419,
+              7588,
+              8243,
+              7167
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 18,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 1,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.8150941489412267
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 13180,
+              "rgb": 515116
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 507063
+            },
+            "storm": {
+              "count": 17496,
+              "rgb": 108721
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "master-webgl2",
+      "canvas": false,
+      "optimized": false,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              412,
+              265,
+              410,
+              165
+            ],
+            "changed": 49560,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 6339866,
+            "paneCounts": [
+              9180,
+              14800,
+              14800,
+              10780
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 36,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.4622682338041417
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15180,
+              "rgb": 672944
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 798307
+            },
+            "storm": {
+              "count": 24169,
+              "rgb": 156361
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              413,
+              247,
+              351,
+              172
+            ],
+            "changed": 48094,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 6276682,
+            "paneCounts": [
+              11258,
+              12516,
+              14602,
+              9718
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 48,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.9837850746109904
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14936,
+              "rgb": 635432
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 711555
+            },
+            "storm": {
+              "count": 23675,
+              "rgb": 148383
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              503,
+              265,
+              324,
+              157
+            ],
+            "changed": 36060,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 4609866,
+            "paneCounts": [
+              8785,
+              8984,
+              9781,
+              8510
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 60,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 1,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.8150941489412267
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 13180,
+              "rgb": 515116
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 507063
+            },
+            "storm": {
+              "count": 17496,
+              "rgb": 108721
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "optimized": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "mobile-webgl2",
+      "canvas": false,
+      "optimized": true,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              328,
+              211,
+              331,
+              135
+            ],
+            "changed": 31831,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 4070998,
+            "paneCounts": [
+              5903,
+              9520,
+              9520,
+              6888
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 32,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.4622682338041417
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15180,
+              "rgb": 672944
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 798307
+            },
+            "storm": {
+              "count": 24169,
+              "rgb": 156361
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              330,
+              197,
+              282,
+              139
+            ],
+            "changed": 30551,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 3985931,
+            "paneCounts": [
+              7104,
+              7973,
+              9282,
+              6192
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 44,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.9837850746109904
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14936,
+              "rgb": 635432
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 711555
+            },
+            "storm": {
+              "count": 23675,
+              "rgb": 148383
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              401,
+              211,
+              261,
+              128
+            ],
+            "changed": 23223,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 2968877,
+            "paneCounts": [
+              5673,
+              5776,
+              6293,
+              5481
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 56,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 1,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.8150941489412267
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 13180,
+              "rgb": 515116
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 507063
+            },
+            "storm": {
+              "count": 17496,
+              "rgb": 108721
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "portrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "path": "mobile-webgl2",
+      "canvas": false,
+      "optimized": true,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              0,
+              252,
+              400,
+              182
+            ],
+            "changed": 54353,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 7116321,
+            "paneCounts": [
+              9040,
+              18040,
+              18040,
+              9233
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 34,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.4622682338041417
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": -31.318518518518516,
+              "y": 232.8814814814815
+            },
+            "lower": {
+              "x": 436.0074074074074,
+              "y": 451.6962962962963
+            },
+            "pose": {
+              "x": 53.08148148148149,
+              "y": 422
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -85,
+            "zoom": 1.5629629629629629
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 12751,
+              "rgb": 597163
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 847392
+            },
+            "storm": {
+              "count": 24237,
+              "rgb": 165804
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              0,
+              232,
+              364,
+              189
+            ],
+            "changed": 56067,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 7585315,
+            "paneCounts": [
+              11088,
+              15345,
+              17820,
+              11814
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 46,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.9386464261664593
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": -26.62962962962962,
+              "y": 228.1925925925926
+            },
+            "lower": {
+              "x": 371.9259259259259,
+              "y": 422
+            },
+            "pose": {
+              "x": 53.08148148148149,
+              "y": 422
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -85,
+            "zoom": 1.5629629629629629
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 10692,
+              "rgb": 487372
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 779931
+            },
+            "storm": {
+              "count": 23713,
+              "rgb": 161646
+            },
+            "seed": 42
+          }
+        }
+      }
+    },
+    "denied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "mobile-canvas",
+      "canvas": true,
+      "optimized": false,
+      "denied": true,
+      "denyCity": true,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              378,
+              244,
+              379,
+              152
+            ],
+            "changed": 42062,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 40195,
+            "distance": 920604,
+            "paneCounts": [
+              7766,
+              12604,
+              12604,
+              9088
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 12,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 0,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 3.818332797689438
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 9193,
+              "rgb": 494797
+            },
+            "storm": {
+              "count": 24577,
+              "rgb": 149324
+            }
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              380,
+              227,
+              323,
+              159
+            ],
+            "changed": 40627,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 40086,
+            "distance": 928488,
+            "paneCounts": [
+              9472,
+              10686,
+              12330,
+              8139
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 0,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 3.818332797689438
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 9389,
+              "rgb": 470549
+            },
+            "storm": {
+              "count": 23814,
+              "rgb": 147186
+            }
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              462,
+              243,
+              298,
+              145
+            ],
+            "changed": 30422,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 31095,
+            "distance": 609626,
+            "paneCounts": [
+              7421,
+              7586,
+              8245,
+              7170
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 18,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 0,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 0,
+            "shaded": 0,
+            "penumbra": 0,
+            "energy": 3.818332797689438
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 7573,
+              "rgb": 365526
+            },
+            "storm": {
+              "count": 17593,
+              "rgb": 99796
+            }
+          }
+        }
+      }
+    },
+    "liveMaster": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 984,
+        "height": 610,
+        "deviceScaleFactor": 1
+      },
+      "path": "master-webgl2",
+      "canvas": false,
+      "optimized": false,
+      "denied": false,
+      "denyCity": false,
+      "obsolete": [],
+      "stores": 0,
+      "samples": {
+        "metro": {
+          "proof": {
+            "rect": [
+              412,
+              265,
+              410,
+              165
+            ],
+            "changed": 49560,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 6339866,
+            "paneCounts": [
+              9180,
+              14800,
+              14800,
+              10780
+            ]
+          },
+          "kind": "concourse",
+          "active": {
+            "id": 34,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 0,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 0,
+            "energy": 2.4622682338041417
+          },
+          "geometry": {
+            "area": {
+              "left": 451,
+              "right": 734,
+              "top": -190,
+              "bottom": -81
+            },
+            "panes": [
+              {
+                "left": 451,
+                "top": -184,
+                "right": 514,
+                "bottom": -112,
+                "use": "counter"
+              },
+              {
+                "left": 524,
+                "top": -190,
+                "right": 594,
+                "bottom": -85,
+                "use": "shelves"
+              },
+              {
+                "left": 604,
+                "top": -190,
+                "right": 674,
+                "bottom": -85,
+                "use": "seating"
+              },
+              {
+                "left": 685,
+                "top": -190,
+                "right": 734,
+                "bottom": -81,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 324.81481481481484,
+              "y": 198.81481481481484
+            },
+            "lower": {
+              "x": 662.574074074074,
+              "y": 356.96296296296293
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 591,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 15180,
+              "rgb": 672944
+            },
+            "opened": {
+              "count": 24577,
+              "rgb": 798307
+            },
+            "storm": {
+              "count": 24169,
+              "rgb": 156361
+            },
+            "seed": 42
+          }
+        },
+        "market": {
+          "proof": {
+            "rect": [
+              413,
+              247,
+              351,
+              172
+            ],
+            "changed": 48094,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 6276682,
+            "paneCounts": [
+              11258,
+              12516,
+              14602,
+              9718
+            ]
+          },
+          "kind": "market",
+          "active": {
+            "id": 46,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 2,
+            "solids": 0,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.9837850746109904
+          },
+          "geometry": {
+            "area": {
+              "left": 6392.1,
+              "right": 6632.4,
+              "top": -203,
+              "bottom": -89
+            },
+            "panes": [
+              {
+                "left": 6392.1,
+                "top": -203,
+                "right": 6448.65,
+                "bottom": -105,
+                "use": "counter"
+              },
+              {
+                "left": 6453.35,
+                "top": -203,
+                "right": 6512.35,
+                "bottom": -98,
+                "use": "shelves"
+              },
+              {
+                "left": 6517.05,
+                "top": -203,
+                "right": 6585.85,
+                "bottom": -98,
+                "use": "seating"
+              },
+              {
+                "left": 6590.55,
+                "top": -203,
+                "right": 6632.4,
+                "bottom": -89,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 328.2037037037037,
+              "y": 195.42592592592592
+            },
+            "lower": {
+              "x": 616.2592592592592,
+              "y": 335.5
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 6531,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 14936,
+              "rgb": 635432
+            },
+            "opened": {
+              "count": 23814,
+              "rgb": 711555
+            },
+            "storm": {
+              "count": 23675,
+              "rgb": 148383
+            },
+            "seed": 42
+          }
+        },
+        "catwalk": {
+          "proof": {
+            "rect": [
+              503,
+              265,
+              324,
+              157
+            ],
+            "changed": 36060,
+            "leak": 0,
+            "occluder": 0,
+            "dividers": 0,
+            "detail": 0,
+            "distance": 4609866,
+            "paneCounts": [
+              8785,
+              8984,
+              9781,
+              8510
+            ]
+          },
+          "kind": "garden",
+          "active": {
+            "id": 58,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 8.75,
+            "hp": 100,
+            "threats": 0
+          },
+          "glass": {
+            "fronts": 1,
+            "panes": 4,
+            "city": 1,
+            "solids": 1,
+            "sources": 2,
+            "shadeTaps": 5,
+            "shaded": 5,
+            "penumbra": 1,
+            "energy": 2.8150941489412267
+          },
+          "geometry": {
+            "area": {
+              "left": 14520.1,
+              "right": 14739.4,
+              "top": -189,
+              "bottom": -90
+            },
+            "panes": [
+              {
+                "left": 14520.1,
+                "top": -189,
+                "right": 14580.36,
+                "bottom": -106,
+                "use": "counter"
+              },
+              {
+                "left": 14585.06,
+                "top": -189,
+                "right": 14634.12,
+                "bottom": -99,
+                "use": "shelves"
+              },
+              {
+                "left": 14638.82,
+                "top": -189,
+                "right": 14692.36,
+                "bottom": -99,
+                "use": "seating"
+              },
+              {
+                "left": 14697.06,
+                "top": -189,
+                "right": 14739.4,
+                "bottom": -90,
+                "use": "door"
+              }
+            ]
+          },
+          "wet": 0,
+          "screen": {
+            "upper": {
+              "x": 400.5,
+              "y": 211.24074074074076
+            },
+            "lower": {
+              "x": 664.8333333333333,
+              "y": 334.3703703703704
+            },
+            "pose": {
+              "x": 385.81481481481484,
+              "y": 335.5
+            }
+          },
+          "camera": {
+            "x": 14595,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "diff": {
+            "wetOnly": {
+              "count": 0,
+              "rgb": 0
+            },
+            "pan": {
+              "count": 13180,
+              "rgb": 515116
+            },
+            "opened": {
+              "count": 17611,
+              "rgb": 507063
+            },
+            "storm": {
+              "count": 17496,
+              "rgb": 108721
+            },
+            "seed": 42
+          }
+        }
+      }
+    }
+  },
+  "naturalLoad": {
+    "controlDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "gl": true,
+      "reduced": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 104.59999999403954,
+          "mountMs": 39,
+          "unmountMs": 142,
+          "visibleMs": 103,
+          "visibleFrames": 2,
+          "compositorFrames": 2,
+          "sequence": [
+            "preparing:opening:profile",
+            "playing:opening:profile"
+          ],
+          "complete": {
+            "at": 824.2000000029802,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "profile",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 1338963681,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 176.20000000298023,
+          "mountMs": 25.5,
+          "unmountMs": 268.09999999403954,
+          "visibleMs": 242.59999999403954,
+          "visibleFrames": 2,
+          "compositorFrames": 2,
+          "sequence": [
+            "preparing:opening:steel",
+            "playing:opening:steel"
+          ],
+          "complete": {
+            "at": 13270.90000000596,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "steel",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 31,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 812613963,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 79.79999999701977,
+          "mountMs": 10.200000002980232,
+          "unmountMs": 96.20000000298023,
+          "visibleMs": 86,
+          "visibleFrames": 2,
+          "compositorFrames": 1,
+          "sequence": [
+            "preparing:opening:profile",
+            "playing:opening:profile"
+          ],
+          "complete": {
+            "at": 22923.29999999702,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "profile",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 39,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 1657573950,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        }
+      ],
+      "menu": {
+        "at": 22756.20000000298,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.3333333333333333,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 37,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 812613963,
+          "time": 0.3333333333333333,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": true
+      }
+    },
+    "controlTouch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "gl": true,
+      "reduced": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 144.59999999403954,
+          "mountMs": 61.70000000298023,
+          "unmountMs": 176.5,
+          "visibleMs": 114.79999999701977,
+          "visibleFrames": 2,
+          "compositorFrames": 4,
+          "sequence": [
+            "preparing:opening:profile",
+            "playing:opening:profile"
+          ],
+          "complete": {
+            "at": 1024.7999999970198,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "profile",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 4,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 4251054627,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 52.69999998807907,
+          "mountMs": 10.699999988079071,
+          "unmountMs": 68.29999999701977,
+          "visibleMs": 57.6000000089407,
+          "visibleFrames": 2,
+          "compositorFrames": 1,
+          "sequence": [
+            "preparing:opening:profile",
+            "playing:opening:profile"
+          ],
+          "complete": {
+            "at": 6258.0999999940395,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "profile",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 28,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 1593062196,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 35.599999994039536,
+          "mountMs": 11.699999988079071,
+          "unmountMs": 52.29999999701977,
+          "visibleMs": 40.6000000089407,
+          "visibleFrames": 2,
+          "compositorFrames": 0,
+          "sequence": [
+            "preparing:opening:profile",
+            "playing:opening:profile"
+          ],
+          "complete": {
+            "at": 8237.5,
+            "modal": true,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "stage": "opening",
+            "shot": "profile",
+            "title": "NIGHT CROSSING",
+            "status": "01 / 02Establishing route",
+            "activeAt": true,
+            "frame": {
+              "id": 42,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3264838803,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false
+          },
+          "readySamples": 1
+        }
+      ],
+      "menu": {
+        "at": 8079.4000000059605,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.31666666666666665,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 40,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 1593062196,
+          "time": 0.31666666666666665,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": true
+      }
+    },
+    "controlArsenal": {
+      "phase": "gameover",
+      "button": "ENGAGE"
+    },
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "gl": false,
+      "reduced": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 319.09999999403954,
+          "mountMs": 73.70000000298023,
+          "unmountMs": 321.29999999701977,
+          "visibleMs": 247.59999999403954,
+          "visibleFrames": 1,
+          "compositorFrames": 5,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1492.8999999910593,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 2,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 2470987367,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 106.5,
+          "mountMs": 29.599999994039536,
+          "unmountMs": 106.79999999701977,
+          "visibleMs": 77.20000000298023,
+          "visibleFrames": 1,
+          "compositorFrames": 1,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ]
+          },
+          "sequence": [
+            "preparing:opening:steel"
+          ],
+          "complete": {
+            "at": 4295.79999999702,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 14,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3635112640,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 165.6000000089407,
+          "mountMs": 11.300000011920929,
+          "unmountMs": 170.6000000089407,
+          "visibleMs": 159.29999999701977,
+          "visibleFrames": 1,
+          "compositorFrames": 5,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 5808.29999999702,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 26,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 2068257750,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ]
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 5525.899999991059,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.5166666666666666,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 24,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 3635112640,
+          "time": 0.5166666666666666,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "touchReduce": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "gl": false,
+      "reduced": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 215.3999999910593,
+          "mountMs": 63.599999994039536,
+          "unmountMs": 225.79999999701977,
+          "visibleMs": 162.20000000298023,
+          "visibleFrames": 1,
+          "compositorFrames": 7,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1055.5,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 945986491,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 57,
+          "mountMs": 21.599999994039536,
+          "unmountMs": 59.8999999910593,
+          "visibleMs": 38.29999999701977,
+          "visibleFrames": 1,
+          "compositorFrames": 1,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 2994.800000011921,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 30,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 1143812577,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 48.8999999910593,
+          "mountMs": 13.399999991059303,
+          "unmountMs": 53.20000000298023,
+          "visibleMs": 39.80000001192093,
+          "visibleFrames": 1,
+          "compositorFrames": 1,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 4069,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 46,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 597233573,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ]
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 3898.5,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.6000000000000002,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 44,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 1143812577,
+          "time": 0.6000000000000002,
+          "hp": 0,
+          "threats": 2
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "desktopWebGL": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "gl": true,
+      "reduced": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 409.69999998807907,
+          "mountMs": 119.3999999910593,
+          "unmountMs": 450.59999999403954,
+          "visibleMs": 331.20000000298023,
+          "visibleFrames": 1,
+          "compositorFrames": 4,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              592,
+              717,
+              640
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1843.7999999970198,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 2,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3003145724,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                592,
+                717,
+                640
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 211.40000000596046,
+          "mountMs": 30,
+          "unmountMs": 229.20000000298023,
+          "visibleMs": 199.20000000298023,
+          "visibleFrames": 1,
+          "compositorFrames": 2,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              592,
+              717,
+              640
+            ]
+          },
+          "sequence": [
+            "preparing:opening:steel"
+          ],
+          "complete": {
+            "at": 24489.90000000596,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 29,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 2947352290,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                592,
+                717,
+                640
+              ]
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 203.8999999910593,
+          "mountMs": 6.5999999940395355,
+          "unmountMs": 205.3999999910593,
+          "visibleMs": 198.79999999701977,
+          "visibleFrames": 1,
+          "compositorFrames": 2,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              592,
+              717,
+              640
+            ]
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 45317.29999999702,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 41,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3818685039,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                592,
+                717,
+                640
+              ]
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 44886.60000000894,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.44999999999999996,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 39,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 2947352290,
+          "time": 0.44999999999999996,
+          "hp": 0,
+          "threats": 2
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "shortDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "gl": false,
+      "reduced": false,
+      "short": true,
+      "viewport": {
+        "width": 720,
+        "height": 360,
+        "deviceScaleFactor": 1,
+        "hasTouch": false,
+        "isMobile": false
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 178.20000000298023,
+          "mountMs": 88.29999999701977,
+          "unmountMs": 180.79999999701977,
+          "visibleMs": 92.5,
+          "visibleFrames": 1,
+          "compositorFrames": 3,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1172.6000000089407,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 1533756546,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                259,
+                487,
+                307
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 79,
+          "mountMs": 19.69999998807907,
+          "unmountMs": 79.29999999701977,
+          "visibleMs": 59.6000000089407,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:steel"
+          ],
+          "complete": {
+            "at": 2836.800000011921,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 19,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 2047030590,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                259,
+                487,
+                307
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 44.29999999701977,
+          "mountMs": 11.399999991059303,
+          "unmountMs": 47,
+          "visibleMs": 35.6000000089407,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              259,
+              487,
+              307
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 3690.9000000059605,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 31,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 730751184,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                259,
+                487,
+                307
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 3571.6000000089407,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.5166666666666666,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 29,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 2047030590,
+          "time": 0.5166666666666666,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "shortTouchReduce": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "gl": false,
+      "reduced": true,
+      "short": true,
+      "viewport": {
+        "width": 720,
+        "height": 360,
+        "deviceScaleFactor": 1,
+        "hasTouch": true,
+        "isMobile": true
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 156.70000000298023,
+          "mountMs": 61.900000005960464,
+          "unmountMs": 160,
+          "visibleMs": 98.09999999403954,
+          "visibleFrames": 1,
+          "compositorFrames": 6,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              298,
+              487,
+              346
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 932.0999999940395,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 978351634,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                298,
+                487,
+                346
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 37.599999994039536,
+          "mountMs": 13.5,
+          "unmountMs": 37.8999999910593,
+          "visibleMs": 24.399999991059303,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              298,
+              487,
+              346
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 2288.0999999940395,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 31,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 786419839,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                298,
+                487,
+                346
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 54.80000001192093,
+          "mountMs": 7.9000000059604645,
+          "unmountMs": 60.400000005960464,
+          "visibleMs": 52.5,
+          "visibleFrames": 1,
+          "compositorFrames": 1,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              233,
+              298,
+              487,
+              346
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 3020.7000000029802,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 55,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 4200116337,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                233,
+                298,
+                487,
+                346
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 2854.8999999910593,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.41666666666666663,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 53,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 786419839,
+          "time": 0.41666666666666663,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "servedDesktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "gl": false,
+      "reduced": false,
+      "short": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 378.5,
+          "mountMs": 126,
+          "unmountMs": 382.09999999403954,
+          "visibleMs": 256.09999999403954,
+          "visibleFrames": 1,
+          "compositorFrames": 3,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1207.2999999970198,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 2,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 2722935911,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 101.90000000596046,
+          "mountMs": 13.5,
+          "unmountMs": 104.40000000596046,
+          "visibleMs": 90.90000000596046,
+          "visibleFrames": 1,
+          "compositorFrames": 2,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:steel"
+          ],
+          "complete": {
+            "at": 3934.2000000029802,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 17,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3550601581,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 67.59999999403954,
+          "mountMs": 7.799999997019768,
+          "unmountMs": 68,
+          "visibleMs": 60.20000000298023,
+          "visibleFrames": 1,
+          "compositorFrames": 2,
+          "recordedReady": true,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              463,
+              559,
+              717,
+              607
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 4458.29999999702,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 23,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 713666491,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                463,
+                559,
+                717,
+                607
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 4292.79999999702,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.13333333333333333,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 21,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 3550601581,
+          "time": 0.13333333333333333,
+          "hp": 0,
+          "threats": 1
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    },
+    "servedTouchReduce": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "gl": false,
+      "reduced": true,
+      "short": false,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "timing": [
+        {
+          "label": "ENGAGE",
+          "submitMs": 247.1000000089407,
+          "mountMs": 78.40000000596046,
+          "unmountMs": 252.70000000298023,
+          "visibleMs": 174.29999999701977,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": false,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 1233,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3260568107,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "RETRY",
+          "submitMs": 54.6000000089407,
+          "mountMs": 10.400000005960464,
+          "unmountMs": 54.900000005960464,
+          "visibleMs": 44.5,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": false,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 3372.5,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 24,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 553561446,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        },
+        {
+          "label": "ENGAGE",
+          "submitMs": 63.20000000298023,
+          "mountMs": 10.5,
+          "unmountMs": 63.599999994039536,
+          "visibleMs": 53.099999994039536,
+          "visibleFrames": 1,
+          "compositorFrames": 0,
+          "recordedReady": false,
+          "controls": {
+            "text": "010203 ROUTE ONLINENIGHT CROSSING",
+            "clicks": "none",
+            "opacity": 1,
+            "overlap": [],
+            "cue": [
+              73,
+              166,
+              327,
+              214
+            ],
+            "inView": true
+          },
+          "sequence": [
+            "preparing:opening:profile"
+          ],
+          "complete": {
+            "at": 4299.70000000298,
+            "modal": false,
+            "phase": "playing",
+            "time": 0,
+            "input": true,
+            "shot": null,
+            "activeAt": null,
+            "frame": {
+              "id": 46,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 3158303486,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "oldGL": false,
+            "mode": "playing",
+            "oldCanvas": true,
+            "online": {
+              "text": "010203 ROUTE ONLINENIGHT CROSSING",
+              "clicks": "none",
+              "opacity": 1,
+              "overlap": [],
+              "cue": [
+                73,
+                166,
+                327,
+                214
+              ],
+              "inView": true
+            }
+          },
+          "readySamples": 0
+        }
+      ],
+      "arsenal": {
+        "phase": "gameover",
+        "button": "RETRY"
+      },
+      "menu": {
+        "at": 4141.5,
+        "modal": false,
+        "phase": "attract",
+        "time": 0.5166666666666666,
+        "input": false,
+        "shot": null,
+        "activeAt": null,
+        "frame": {
+          "id": 44,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 553561446,
+          "time": 0.5166666666666666,
+          "hp": 0,
+          "threats": 2
+        },
+        "oldGL": false,
+        "mode": "title",
+        "oldCanvas": false,
+        "online": null
+      }
+    }
+  },
+  "held": {
+    "webGL": {
+      "touch": false,
+      "gl": true,
+      "reduced": false,
+      "denied": false,
+      "short": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "engage": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 46,
+          "uploads": 0
+        },
+        "glPublished": false,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 4165632,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "workerMaxMs": 550.5,
+          "plateMaxMs": 618.0999999940395,
+          "decodeMaxMs": 0.4000000059604645,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        },
+        "musicStarts": 0
+      },
+      "retry": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 0,
+          "uploads": 0
+        },
+        "glPublished": true,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 4165632,
+          "lit": false,
+          "windows": 2,
+          "stale": 0,
+          "workerMaxMs": 550.5,
+          "plateMaxMs": 618.0999999940395,
+          "decodeMaxMs": 0.4000000059604645,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        },
+        "musicStarts": 1
+      },
+      "cancel": {
+        "pending": false,
+        "focus": "RETRY",
+        "frame": {
+          "id": 29,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 1.4999999999999996,
+          "hp": 92,
+          "threats": 2
+        },
+        "musicStarts": 1
+      },
+      "final": {
+        "starts": [
+          {
+            "now": 2804.699999988079,
+            "frame": {
+              "id": 2,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "opticsPending": false,
+              "rasterPending": false,
+              "pending": null,
+              "plates": 2,
+              "plateBytes": 4165632,
+              "lit": true,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 550.5,
+              "plateMaxMs": 618.0999999940395,
+              "decodeMaxMs": 0.4000000059604645,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "music": true,
+            "time": 0
+          },
+          {
+            "now": 22534.89999999106,
+            "frame": {
+              "id": 30,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 45,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "opticsPending": true,
+              "rasterPending": true,
+              "pending": "window",
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": false,
+              "windows": 2,
+              "stale": 0,
+              "workerMaxMs": 550.5,
+              "plateMaxMs": 618.0999999940395,
+              "decodeMaxMs": 0.4000000059604645,
+              "wireBytes": 3187712,
+              "error": null,
+              "plateError": null
+            },
+            "music": true,
+            "time": 0
+          }
+        ],
+        "musicStarts": 2,
+        "stores": 0
+      }
+    },
+    "deniedTouchReduce": {
+      "touch": true,
+      "gl": false,
+      "reduced": true,
+      "denied": true,
+      "short": false,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "engage": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 0,
+          "uploads": 0
+        },
+        "glPublished": false,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": false,
+          "plateWorker": false,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 0,
+          "plateBytes": 0,
+          "lit": true,
+          "windows": 0,
+          "stale": 0,
+          "workerMaxMs": 0,
+          "plateMaxMs": 0,
+          "decodeMaxMs": 0,
+          "wireBytes": 0,
+          "error": "SecurityError: QA worker unavailable",
+          "plateError": "SecurityError: QA worker unavailable"
+        },
+        "musicStarts": 0
+      },
+      "retry": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 0,
+          "uploads": 0
+        },
+        "glPublished": false,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": false,
+          "plateWorker": false,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 0,
+          "plateBytes": 0,
+          "lit": true,
+          "windows": 0,
+          "stale": 0,
+          "workerMaxMs": 0,
+          "plateMaxMs": 0,
+          "decodeMaxMs": 0,
+          "wireBytes": 0,
+          "error": "SecurityError: QA worker unavailable",
+          "plateError": "SecurityError: QA worker unavailable"
+        },
+        "musicStarts": 1
+      },
+      "cancel": {
+        "pending": false,
+        "focus": "RETRY",
+        "frame": {
+          "id": 22,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.9500000000000013,
+          "hp": 100,
+          "threats": 2
+        },
+        "musicStarts": 1
+      },
+      "final": {
+        "starts": [
+          {
+            "now": 1441.2999999970198,
+            "frame": {
+              "id": 4,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": false,
+              "plateWorker": false,
+              "opticsPending": false,
+              "rasterPending": false,
+              "pending": null,
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": true,
+              "windows": 0,
+              "stale": 0,
+              "workerMaxMs": 0,
+              "plateMaxMs": 0,
+              "decodeMaxMs": 0,
+              "wireBytes": 0,
+              "error": "SecurityError: QA worker unavailable",
+              "plateError": "SecurityError: QA worker unavailable"
+            },
+            "music": true,
+            "time": 0
+          },
+          {
+            "now": 3400.2000000029802,
+            "frame": {
+              "id": 23,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 45,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": false,
+              "plateWorker": false,
+              "opticsPending": false,
+              "rasterPending": false,
+              "pending": null,
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": true,
+              "windows": 0,
+              "stale": 0,
+              "workerMaxMs": 0,
+              "plateMaxMs": 0,
+              "decodeMaxMs": 0,
+              "wireBytes": 0,
+              "error": "SecurityError: QA worker unavailable",
+              "plateError": "SecurityError: QA worker unavailable"
+            },
+            "music": true,
+            "time": 0
+          }
+        ],
+        "musicStarts": 2,
+        "stores": 0
+      }
+    },
+    "shortDesktop": {
+      "touch": false,
+      "gl": false,
+      "reduced": false,
+      "denied": false,
+      "short": true,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "engage": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 0,
+          "uploads": 0
+        },
+        "glPublished": false,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 4165632,
+          "lit": true,
+          "windows": 1,
+          "stale": 0,
+          "workerMaxMs": 735.8000000119209,
+          "plateMaxMs": 766.2000000029802,
+          "decodeMaxMs": 0.30000001192092896,
+          "wireBytes": 1593856,
+          "error": null,
+          "plateError": null
+        },
+        "musicStarts": 0
+      },
+      "retry": {
+        "status": "02 / 02Restoring the arena surface",
+        "priming": {
+          "steps": 0,
+          "uploads": 0
+        },
+        "glPublished": false,
+        "first": 0,
+        "input": false,
+        "holding": true,
+        "stream": {
+          "worker": true,
+          "plateWorker": true,
+          "opticsPending": false,
+          "rasterPending": false,
+          "pending": null,
+          "plates": 2,
+          "plateBytes": 4165632,
+          "lit": true,
+          "windows": 2,
+          "stale": 0,
+          "workerMaxMs": 735.8000000119209,
+          "plateMaxMs": 766.2000000029802,
+          "decodeMaxMs": 0.30000001192092896,
+          "wireBytes": 3187712,
+          "error": null,
+          "plateError": null
+        },
+        "musicStarts": 1
+      },
+      "cancel": {
+        "pending": false,
+        "focus": "RETRY",
+        "frame": {
+          "id": 11,
+          "layer": "scene",
+          "kind": "starter",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.13333333333333333,
+          "hp": 100,
+          "threats": 1
+        },
+        "musicStarts": 1
+      },
+      "final": {
+        "starts": [
+          {
+            "now": 2464,
+            "frame": {
+              "id": 3,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "opticsPending": false,
+              "rasterPending": false,
+              "pending": null,
+              "plates": 2,
+              "plateBytes": 4165632,
+              "lit": true,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 735.8000000119209,
+              "plateMaxMs": 766.2000000029802,
+              "decodeMaxMs": 0.30000001192092896,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "music": true,
+            "time": 0
+          },
+          {
+            "now": 3532.2000000029802,
+            "frame": {
+              "id": 12,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 45,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "opticsPending": true,
+              "rasterPending": true,
+              "pending": "window",
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": true,
+              "windows": 2,
+              "stale": 0,
+              "workerMaxMs": 735.8000000119209,
+              "plateMaxMs": 766.2000000029802,
+              "decodeMaxMs": 0.30000001192092896,
+              "wireBytes": 3187712,
+              "error": null,
+              "plateError": null
+            },
+            "music": true,
+            "time": 0
+          }
+        ],
+        "musicStarts": 2,
+        "stores": 0
+      }
+    }
+  },
+  "assets": {
+    "mirrorRemoved": 78020,
+    "bridgeArtBefore": 589756,
+    "bridgeArtAfter": 511736,
+    "offlineWebPsBitIdentical": 6,
+    "packedV4FilesUnchanged": 14,
+    "newGlassBackingStores": 0
+  },
+  "tests": {
+    "bridge": {
+      "tests": 211,
+      "pass": 211,
+      "fail": 0,
+      "cancelled": 0
+    },
+    "repository": {
+      "tests": 600,
+      "pass": 595,
+      "fail": 5,
+      "cancelled": 0
+    },
+    "priorRepository": {
+      "tests": 599,
+      "pass": 594,
+      "fail": 5,
+      "cancelled": 0
+    },
+    "inheritedFailures": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ],
+    "offlinePrograms": 17,
+    "browserRegressions": {
+      "coverage": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "glTest": true,
+        "rows": [
+          {
+            "label": "engage",
+            "frame": {
+              "id": 5,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "hp": 100,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "mobile-canvas",
+            "fallback": "scene",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 377.8595956211913,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 379.7410163397956,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 385.3719485847752,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 386.6074074074074,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 840,
+              "skyTones": 121,
+              "roadTones": 95,
+              "hole": 0,
+              "black": 264,
+              "roadPx": 30690,
+              "warning": 0
+            }
+          },
+          {
+            "label": "master",
+            "frame": {
+              "id": 43,
+              "layer": "finish",
+              "kind": "webgl",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "master-webgl2",
+            "fallback": "scene",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 355.4150633649177,
+                    "y": 252.44664194073874
+                  },
+                  {
+                    "x": 352.85401546538554,
+                    "y": 262.0738618493826
+                  },
+                  {
+                    "x": 355.6759998000808,
+                    "y": 308.75899580414205
+                  }
+                ],
+                "tell": {
+                  "x": 346.9111111111111,
+                  "y": 215.36103703703705
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 189.10707104547535,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 187.2256503268711,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 181.59471808189144,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 180.35925925925926,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 772,
+              "skyTones": 123,
+              "roadTones": 88,
+              "hole": 1,
+              "black": 0,
+              "roadPx": 30690,
+              "warning": 94,
+              "bodies": [
+                [
+                  179,
+                  270,
+                  128
+                ],
+                [
+                  94,
+                  96,
+                  109
+                ],
+                [
+                  197,
+                  130,
+                  91
+                ]
+              ]
+            }
+          },
+          {
+            "label": "context-lost-canvas",
+            "frame": {
+              "id": 46,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "mobile-canvas",
+            "fallback": "scene-work",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 355.4150633649177,
+                    "y": 252.44664194073874
+                  },
+                  {
+                    "x": 352.85401546538554,
+                    "y": 262.0738618493826
+                  },
+                  {
+                    "x": 355.6759998000808,
+                    "y": 308.75899580414205
+                  }
+                ],
+                "tell": {
+                  "x": 346.9111111111111,
+                  "y": 215.36103703703705
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 189.10707104547535,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 187.2256503268711,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 181.59471808189144,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 180.35925925925926,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 772,
+              "skyTones": 122,
+              "roadTones": 101,
+              "hole": 0,
+              "black": 264,
+              "roadPx": 30690,
+              "warning": 85,
+              "bodies": [
+                [
+                  180,
+                  274,
+                  146
+                ],
+                [
+                  257,
+                  226,
+                  164
+                ],
+                [
+                  232,
+                  209,
+                  175
+                ]
+              ]
+            }
+          },
+          {
+            "label": "context-restored",
+            "frame": {
+              "id": 69,
+              "layer": "finish",
+              "kind": "webgl",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "master-webgl2",
+            "fallback": "scene-work",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 355.4150633649177,
+                    "y": 252.44664194073874
+                  },
+                  {
+                    "x": 352.85401546538554,
+                    "y": 262.0738618493826
+                  },
+                  {
+                    "x": 355.6759998000808,
+                    "y": 308.75899580414205
+                  }
+                ],
+                "tell": {
+                  "x": 346.9111111111111,
+                  "y": 215.36103703703705
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 189.10707104547535,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 187.2256503268711,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 181.59471808189144,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 180.35925925925926,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 772,
+              "skyTones": 124,
+              "roadTones": 87,
+              "hole": 0,
+              "black": 0,
+              "roadPx": 30690,
+              "warning": 94
+            }
+          },
+          {
+            "label": "optimized",
+            "frame": {
+              "id": 85,
+              "layer": "finish",
+              "kind": "webgl",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "mobile-webgl2",
+            "fallback": "scene",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 355.4150633649177,
+                    "y": 252.44664194073874
+                  },
+                  {
+                    "x": 352.85401546538554,
+                    "y": 262.0738618493826
+                  },
+                  {
+                    "x": 355.6759998000808,
+                    "y": 308.75899580414205
+                  }
+                ],
+                "tell": {
+                  "x": 346.9111111111111,
+                  "y": 215.36103703703705
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 189.10707104547535,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 187.2256503268711,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 181.59471808189144,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 180.35925925925926,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 772,
+              "skyTones": 123,
+              "roadTones": 84,
+              "hole": 0,
+              "black": 0,
+              "roadPx": 30690,
+              "warning": 94
+            }
+          },
+          {
+            "label": "interrupted-source",
+            "frame": {
+              "id": 86,
+              "layer": "scene-work",
+              "kind": "emergency",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0,
+            "width": 716,
+            "height": 466,
+            "held": false,
+            "path": "mobile-canvas",
+            "fallback": "scene-work",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 266.99065206862434,
+                "y": 225.55621697636312
+              },
+              {
+                "x": 265.924273228529,
+                "y": 238.0361303503933
+              },
+              {
+                "x": 278.0351971489431,
+                "y": 298.67137637090804
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 355.4150633649177,
+                    "y": 252.44664194073874
+                  },
+                  {
+                    "x": 352.85401546538554,
+                    "y": 262.0738618493826
+                  },
+                  {
+                    "x": 355.6759998000808,
+                    "y": 308.75899580414205
+                  }
+                ],
+                "tell": {
+                  "x": 346.9111111111111,
+                  "y": 215.36103703703705
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 189.10707104547535,
+                    "y": 247.65605529628957
+                  },
+                  {
+                    "x": 187.2256503268711,
+                    "y": 257.4388251286373
+                  },
+                  {
+                    "x": 181.59471808189144,
+                    "y": 307.1872874988704
+                  }
+                ],
+                "tell": {
+                  "x": 180.35925925925926,
+                  "y": 212.9378369942418
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              302.03703703703707,
+              363.30740740740737
+            ],
+            "image": {
+              "hpInk": 772,
+              "skyTones": 122,
+              "roadTones": 101,
+              "hole": 0,
+              "black": 264,
+              "roadPx": 30690,
+              "warning": 85,
+              "bodies": [
+                [
+                  180,
+                  274,
+                  146
+                ],
+                [
+                  257,
+                  226,
+                  164
+                ],
+                [
+                  232,
+                  209,
+                  175
+                ]
+              ]
+            }
+          },
+          {
+            "label": "held-after-resize",
+            "frame": {
+              "id": 88,
+              "layer": "scene-work",
+              "kind": "emergency",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0.016666666666666666,
+            "width": 980,
+            "height": 590,
+            "held": true,
+            "path": "mobile-canvas",
+            "fallback": "scene-work",
+            "fallbackReady": true,
+            "fallbackSize": [
+              716,
+              466
+            ],
+            "hero": [
+              {
+                "x": 376.49546735606447,
+                "y": 286.34133985761594
+              },
+              {
+                "x": 374.48739854649307,
+                "y": 302.0713638815958
+              },
+              {
+                "x": 390.38533166856433,
+                "y": 378.32968893784795
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 485.8021708697265,
+                    "y": 319.92878393025796
+                  },
+                  {
+                    "x": 482.4703447476339,
+                    "y": 332.0936473004565
+                  },
+                  {
+                    "x": 485.9079694754088,
+                    "y": 391.0650853650321
+                  }
+                ],
+                "tell": {
+                  "x": 474.6854757996203,
+                  "y": 272.78103706412844
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 278.1000636564464,
+                    "y": 315.31201781750883
+                  },
+                  {
+                    "x": 275.588713046624,
+                    "y": 327.6723610262551
+                  },
+                  {
+                    "x": 269.44754342785825,
+                    "y": 390.52067746180217
+                  }
+                ],
+                "tell": {
+                  "x": 266.5268744329133,
+                  "y": 270.4182737111604
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              382.4074074074074,
+              459.98148148148147
+            ],
+            "image": {
+              "hpInk": 0,
+              "skyTones": 47,
+              "roadTones": 105,
+              "hole": 1,
+              "black": 374,
+              "roadPx": 52806,
+              "warning": 34
+            }
+          },
+          {
+            "label": "recovered",
+            "frame": {
+              "id": 89,
+              "layer": "scene",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 42,
+              "time": 0.016666666666666666,
+              "hp": 92,
+              "threats": 2
+            },
+            "hp": 92,
+            "sim": 0.016666666666666666,
+            "width": 980,
+            "height": 590,
+            "held": false,
+            "path": "mobile-canvas",
+            "fallback": "scene",
+            "fallbackReady": true,
+            "fallbackSize": [
+              980,
+              590
+            ],
+            "hero": [
+              {
+                "x": 376.49546735606447,
+                "y": 286.34133985761594
+              },
+              {
+                "x": 374.48739854649307,
+                "y": 302.0713638815958
+              },
+              {
+                "x": 390.38533166856433,
+                "y": 378.32968893784795
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 485.8021708697265,
+                    "y": 319.92878393025796
+                  },
+                  {
+                    "x": 482.4703447476339,
+                    "y": 332.0936473004565
+                  },
+                  {
+                    "x": 485.9079694754088,
+                    "y": 391.0650853650321
+                  }
+                ],
+                "tell": {
+                  "x": 474.6854757996203,
+                  "y": 272.78103706412844
+                },
+                "state": "windup"
+              },
+              {
+                "body": [
+                  {
+                    "x": 278.1000636564464,
+                    "y": 315.31201781750883
+                  },
+                  {
+                    "x": 275.588713046624,
+                    "y": 327.6723610262551
+                  },
+                  {
+                    "x": 269.44754342785825,
+                    "y": 390.52067746180217
+                  }
+                ],
+                "tell": {
+                  "x": 266.5268744329133,
+                  "y": 270.4182737111604
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              382.4074074074074,
+              459.98148148148147
+            ],
+            "image": {
+              "hpInk": 912,
+              "skyTones": 114,
+              "roadTones": 109,
+              "hole": 1,
+              "black": 466,
+              "roadPx": 52806,
+              "warning": 148
+            }
+          },
+          {
+            "label": "retry",
+            "frame": {
+              "id": 94,
+              "layer": "scene-work",
+              "kind": "starter",
+              "hud": "layer",
+              "seed": 43,
+              "time": 0,
+              "hp": 100,
+              "threats": 1
+            },
+            "hp": 100,
+            "sim": 0,
+            "width": 980,
+            "height": 590,
+            "held": false,
+            "path": "mobile-canvas",
+            "fallback": "scene-work",
+            "fallbackReady": true,
+            "fallbackSize": [
+              980,
+              590
+            ],
+            "hero": [
+              {
+                "x": 338.03537493667034,
+                "y": 285.5754678456099
+              },
+              {
+                "x": 336.6852386369788,
+                "y": 301.3762165380516
+              },
+              {
+                "x": 352.01881184093656,
+                "y": 378.14616321638573
+              }
+            ],
+            "threats": [
+              {
+                "body": [
+                  {
+                    "x": 507.9059257864869,
+                    "y": 313.5559498386499
+                  },
+                  {
+                    "x": 510.2879820611146,
+                    "y": 325.94186014140774
+                  },
+                  {
+                    "x": 517.4172739592648,
+                    "y": 388.9281107818316
+                  }
+                ],
+                "tell": {
+                  "x": 518.9814814814815,
+                  "y": 269.5994073532246
+                },
+                "state": "chase"
+              }
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "road": [
+              382.4074074074074,
+              459.98148148148147
+            ],
+            "image": {
+              "hpInk": 992,
+              "skyTones": 115,
+              "roadTones": 100,
+              "hole": 0,
+              "black": 457,
+              "roadPx": 52806,
+              "warning": 0,
+              "bodies": [
+                [
+                  220,
+                  296,
+                  166
+                ],
+                [
+                  294,
+                  244,
+                  234
+                ]
+              ]
+            }
+          }
+        ],
+        "teardown": {
+          "stores": 0,
+          "coverageBytes": 0,
+          "hudBytes": 0
+        }
+      },
+      "stream": {
+        "master": {
+          "mode": "master-webgl2",
+          "admission": [
+            [
+              "hitstop",
+              0,
+              1
+            ],
+            [
+              "parry",
+              0,
+              2
+            ],
+            [
+              "quiet",
+              1,
+              1,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              2,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              3,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              4,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              5,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              6,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              7,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              8,
+              1,
+              -640
+            ],
+            [
+              "quiet",
+              1,
+              null,
+              6,
+              11072
+            ]
+          ],
+          "sameSeed": {
+            "previous": 6,
+            "active": 11,
+            "origin": -640,
+            "stale": 2,
+            "keptWorker": true
+          },
+          "swap": {
+            "id": 14,
+            "seed": 43,
+            "previousOrigin": 11072,
+            "origin": -640,
+            "visualBand": 1
+          },
+          "fx": {
+            "base": 0.008051713160106113,
+            "blocked": 0.008051713160106113,
+            "open": 0.009063611262185231,
+            "samples": 56,
+            "maxLeak": 0,
+            "changed": 22,
+            "admitted": 1,
+            "traced": true,
+            "firstGain": 0.9444444444444444,
+            "decay": 0.34446975745269975,
+            "ended": 0,
+            "glError": 0
+          },
+          "recovery": {
+            "loss": "mobile-canvas",
+            "restored": "master-webgl2",
+            "seed": 43
+          },
+          "final": {
+            "path": "master-webgl2",
+            "reason": "active",
+            "requestedScale": 1.25,
+            "backingScale": 1.25,
+            "priming": {
+              "steps": 0,
+              "uploads": 0
+            },
+            "gpu": {
+              "size": [
+                920,
+                575
+              ],
+              "format": "RGBA16F",
+              "hdrBytes": 7211008,
+              "targetBytes": 7211008,
+              "dataBytes": 4949846,
+              "outputBytes": 2116000,
+              "sourceTextureBytes": 4232000,
+              "uploadBytes": 4232000,
+              "setupMs": {
+                "rig": 0.29999999701976776,
+                "materials": 0.10000000894069672,
+                "ripple": 0.5,
+                "deck": 2,
+                "look-0": 0.29999999701976776,
+                "look-1": 0.7999999970197678,
+                "look-2": 0.20000000298023224,
+                "look-3": 0.29999999701976776,
+                "transport-storage": 4.799999997019768
+              },
+              "frameDraws": 12,
+              "rainInstances": 0,
+              "moteInstances": 0,
+              "bloomLevels": 4,
+              "bloomUpPasses": 3,
+              "roadSize": [
+                920,
+                575
+              ],
+              "maxK": 8,
+              "uboBytes": 3584,
+              "uboOffsets": [
+                0,
+                640,
+                1664,
+                2176,
+                2432,
+                3072,
+                3456
+              ],
+              "stratumVersion": 14,
+              "transport": {
+                "active": 14,
+                "origin": -640,
+                "staging": null,
+                "stagingLevel": null,
+                "uploads": 9,
+                "updates": 1,
+                "quietDeferrals": 0,
+                "uploadThisFrame": 1,
+                "uploadBytesThisFrame": 4096,
+                "uploadMs": 0.09999999403953552,
+                "levels": 9
+              },
+              "stratumA": {
+                "size": [
+                  256,
+                  88
+                ],
+                "format": "RGBA16F",
+                "opticalCeiling": 1.06,
+                "frames": 0,
+                "refreshes": 0,
+                "refreshed": true,
+                "live": false
+              },
+              "packedAssets": {
+                "formats": {},
+                "deck": "brotli",
+                "lut": "brotli",
+                "lutStrips": [
+                  "brotli",
+                  "brotli",
+                  "brotli",
+                  "brotli"
+                ],
+                "byteLength": 0,
+                "uploadBytesThisFrame": 0
+              },
+              "environment": {
+                "format": "RGBA8",
+                "irradiance": "RGB9_E5",
+                "blockerLimit": 24,
+                "size": [
+                  1024,
+                  128
+                ],
+                "version": 14,
+                "vectors": [
+                  512,
+                  16
+                ],
+                "skyBands": [
+                  [
+                    256,
+                    60
+                  ],
+                  [
+                    256,
+                    70
+                  ]
+                ],
+                "castCoverage": null,
+                "sourcePass": "SACR v4 road",
+                "shadowLights": 2
+              },
+              "sectorLut": [
+                1024,
+                32
+              ]
+            },
+            "field": {
+              "emitters": 1,
+              "impulses": 0,
+              "cover": 1,
+              "blockers": 10,
+              "casts": 1,
+              "deckCasts": 0,
+              "roadFromDeck": 0,
+              "stream": {
+                "worker": true,
+                "plateWorker": true,
+                "opticsPending": false,
+                "rasterPending": false,
+                "pending": null,
+                "plates": 2,
+                "plateBytes": 4165632,
+                "lit": false,
+                "windows": 4,
+                "stale": 2,
+                "workerMaxMs": 626.1000000089407,
+                "plateMaxMs": 777,
+                "decodeMaxMs": 0.29999999701976776,
+                "wireBytes": 6375424,
+                "error": null,
+                "plateError": null
+              },
+              "quads": 9,
+              "overflow": false,
+              "trailTriangles": 0,
+              "landings": 0
+            },
+            "glass": {
+              "fronts": 1,
+              "panes": 4,
+              "city": 1,
+              "solids": 0,
+              "sources": 0,
+              "shadeTaps": 0,
+              "shaded": 0,
+              "penumbra": 0,
+              "energy": 3.9023232042360307
+            },
+            "sacr": {
+              "version": "4.0",
+              "shadowK": 2,
+              "casters": 1,
+              "elevatedCasters": 0,
+              "primitives": 9,
+              "feet": 2,
+              "arcs": 0,
+              "emissives": 0,
+              "scarves": 2,
+              "undersides": 1,
+              "maxK": 8,
+              "atlasVersion": 0,
+              "portals": 0,
+              "camWorldX": -0.8409552017952464,
+              "atlasOriginX": 0,
+              "viewWidthMeters": 14.431910403590493
+            }
+          }
+        },
+        "optimized": {
+          "mode": "mobile-webgl2",
+          "admission": [
+            [
+              "hitstop",
+              0,
+              1
+            ],
+            [
+              "parry",
+              0,
+              2
+            ],
+            [
+              "quiet",
+              1,
+              1,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              2,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              3,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              4,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              5,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              6,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              7,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              8,
+              1,
+              -512
+            ],
+            [
+              "quiet",
+              1,
+              null,
+              6,
+              11264
+            ]
+          ],
+          "sameSeed": {
+            "previous": 6,
+            "active": 11,
+            "origin": -512,
+            "stale": 2,
+            "keptWorker": true
+          },
+          "swap": {
+            "id": 14,
+            "seed": 43,
+            "previousOrigin": 11264,
+            "origin": -512,
+            "visualBand": 1
+          },
+          "fx": {
+            "base": 0.007468683473389354,
+            "blocked": 0.007468683473389354,
+            "open": 0.008492450980392151,
+            "samples": 56,
+            "maxLeak": 0,
+            "changed": 34,
+            "admitted": 1,
+            "traced": true,
+            "firstGain": 0.9444444444444444,
+            "decay": 0.34446975745269975,
+            "ended": 0,
+            "glError": 0
+          },
+          "recovery": {
+            "loss": "mobile-canvas",
+            "restored": "mobile-webgl2",
+            "seed": 43
+          },
+          "final": {
+            "path": "mobile-webgl2",
+            "reason": "active",
+            "requestedScale": 1.25,
+            "backingScale": 1,
+            "priming": {
+              "steps": 0,
+              "uploads": 0
+            },
+            "gpu": {
+              "size": [
+                400,
+                844
+              ],
+              "format": "RGBA8",
+              "hdrBytes": 0,
+              "targetBytes": 2062464,
+              "dataBytes": 4392790,
+              "outputBytes": 1350400,
+              "sourceTextureBytes": 2700800,
+              "uploadBytes": 2700800,
+              "setupMs": {
+                "rig": 0.5999999940395355,
+                "deck": 1.0999999940395355,
+                "look-0": 0.29999999701976776,
+                "look-1": 0.09999999403953552,
+                "look-2": 0.09999999403953552,
+                "look-3": 0.10000000894069672,
+                "transport-storage": 1.0999999940395355
+              },
+              "frameDraws": 5,
+              "rainInstances": 0,
+              "moteInstances": 0,
+              "bloomLevels": 0,
+              "bloomUpPasses": 0,
+              "roadSize": [
+                200,
+                422
+              ],
+              "maxK": 4,
+              "uboBytes": 3584,
+              "uboOffsets": [
+                0,
+                640,
+                1664,
+                2176,
+                2432,
+                3072,
+                3456
+              ],
+              "stratumVersion": 14,
+              "transport": {
+                "active": 14,
+                "origin": -512,
+                "staging": null,
+                "stagingLevel": null,
+                "uploads": 9,
+                "updates": 1,
+                "quietDeferrals": 0,
+                "uploadThisFrame": 1,
+                "uploadBytesThisFrame": 4096,
+                "uploadMs": 0,
+                "levels": 9
+              },
+              "stratumA": {
+                "size": [
+                  96,
+                  96
+                ],
+                "format": "RGBA8",
+                "opticalCeiling": 1.06,
+                "frames": 0,
+                "refreshes": 0,
+                "refreshed": true,
+                "live": false
+              },
+              "packedAssets": {
+                "formats": {},
+                "deck": "brotli",
+                "lut": "brotli",
+                "lutStrips": [
+                  "brotli",
+                  "brotli",
+                  "brotli",
+                  "brotli"
+                ],
+                "byteLength": 0,
+                "uploadBytesThisFrame": 0
+              },
+              "environment": {
+                "format": "RGBA8",
+                "irradiance": "RGB9_E5",
+                "blockerLimit": 24,
+                "size": [
+                  1024,
+                  128
+                ],
+                "version": 14,
+                "vectors": [
+                  512,
+                  16
+                ],
+                "skyBands": [
+                  [
+                    256,
+                    60
+                  ],
+                  [
+                    256,
+                    70
+                  ]
+                ],
+                "castCoverage": null,
+                "sourcePass": "SACR v4 road",
+                "shadowLights": 1
+              },
+              "sectorLut": [
+                256,
+                16
+              ]
+            },
+            "field": {
+              "emitters": 0,
+              "impulses": 0,
+              "cover": 1,
+              "blockers": 8,
+              "casts": 1,
+              "deckCasts": 0,
+              "roadFromDeck": 0,
+              "stream": {
+                "worker": true,
+                "plateWorker": true,
+                "opticsPending": false,
+                "rasterPending": false,
+                "pending": null,
+                "plates": 2,
+                "plateBytes": 4165632,
+                "lit": false,
+                "windows": 4,
+                "stale": 2,
+                "workerMaxMs": 850.0999999940395,
+                "plateMaxMs": 784.0999999940395,
+                "decodeMaxMs": 0.20000000298023224,
+                "wireBytes": 6375424,
+                "error": null,
+                "plateError": null
+              },
+              "quads": 0,
+              "overflow": false,
+              "trailTriangles": 0,
+              "landings": 0
+            },
+            "glass": {
+              "fronts": 1,
+              "panes": 4,
+              "city": 1,
+              "solids": 0,
+              "sources": 0,
+              "shadeTaps": 0,
+              "shaded": 0,
+              "penumbra": 0,
+              "energy": 3.9023232042360307
+            },
+            "sacr": {
+              "version": "4.0",
+              "shadowK": 1,
+              "casters": 1,
+              "elevatedCasters": 0,
+              "primitives": 6,
+              "feet": 2,
+              "arcs": 0,
+              "emissives": 0,
+              "scarves": 2,
+              "undersides": 1,
+              "maxK": 4,
+              "atlasVersion": 0,
+              "portals": 0,
+              "camWorldX": 2.2986165102618283,
+              "atlasOriginX": 0,
+              "viewWidthMeters": 8.152766979476345
+            }
+          }
+        }
+      },
+      "rail": {
+        "railDelta": 28.92828354125919,
+        "footingDelta": 28.928283541259248,
+        "grounded": {
+          "x": 3088,
+          "time": 77.84220374371684,
+          "camera": {
+            "x": 3088,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": 0,
+          "heroHead": {
+            "x": 502.60531231682126,
+            "y": 295.25599217935945
+          },
+          "lane": 431.5185185185185,
+          "height": 610,
+          "width": 984,
+          "streetY": 542.2222222222222,
+          "bearings": [
+            {
+              "id": 8,
+              "x": -135.75777777777827,
+              "worldX": 2532.2799999999997
+            },
+            {
+              "id": 9,
+              "x": 220.34666666666615,
+              "worldX": 2847.52
+            },
+            {
+              "id": 10,
+              "x": 576.4511111111105,
+              "worldX": 3162.7599999999998
+            },
+            {
+              "id": 11,
+              "x": 932.555555555555,
+              "worldX": 3478
+            }
+          ],
+          "dir": 1,
+          "stockWorldX": 3315.239855516787,
+          "rail": {
+            "leadX": 895.6497825991133,
+            "scale": 0.8359259259259259,
+            "railY": 146.85185185185188,
+            "footingY": 542.2222222222222,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "air": {
+          "x": 3088,
+          "time": 77.84220374371684,
+          "camera": {
+            "x": 3088,
+            "y": -137.6086444463606,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 490.3665909753494,
+            "y": 173.72787439680104
+          },
+          "lane": 460.4468020597777,
+          "height": 610,
+          "width": 984,
+          "streetY": 571.1505057634814,
+          "bearings": [
+            {
+              "id": 8,
+              "x": -135.75777777777827,
+              "worldX": 2532.2799999999997
+            },
+            {
+              "id": 9,
+              "x": 220.34666666666615,
+              "worldX": 2847.52
+            },
+            {
+              "id": 10,
+              "x": 576.4511111111105,
+              "worldX": 3162.7599999999998
+            },
+            {
+              "id": 11,
+              "x": 932.555555555555,
+              "worldX": 3478
+            }
+          ],
+          "dir": 1,
+          "stockWorldX": 3315.239855516787,
+          "rail": {
+            "leadX": 895.6497825991133,
+            "scale": 0.8359259259259259,
+            "railY": 175.78013539311107,
+            "footingY": 571.1505057634814,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "travelling": {
+          "x": 3088,
+          "time": 77.90720374371683,
+          "camera": {
+            "x": 3088,
+            "y": -137.6086444463606,
+            "zoom": 1.0618518518518516
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 490.46459551682847,
+            "y": 181.604201932993
+          },
+          "lane": 451.119993936191,
+          "height": 610,
+          "width": 984,
+          "streetY": 555.1814754176725,
+          "bearings": [
+            {
+              "id": 8,
+              "x": -98.0923111111112,
+              "worldX": 2532.2799999999997
+            },
+            {
+              "id": 9,
+              "x": 236.6458666666665,
+              "worldX": 2847.52
+            },
+            {
+              "id": 10,
+              "x": 571.3840444444443,
+              "worldX": 3162.7599999999998
+            },
+            {
+              "id": 11,
+              "x": 906.1222222222219,
+              "worldX": 3478
+            }
+          ],
+          "dir": 1,
+          "stockWorldX": 3376.7839830525822,
+          "rail": {
+            "leadX": 1016.3857499654753,
+            "scale": 0.7857703703703702,
+            "railY": 183.53332726952442,
+            "footingY": 555.1814754176725,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "resources": 0
+      },
+      "receivers": {
+        "mode": "mobile-canvas",
+        "seed": 52,
+        "stacks": [
+          {
+            "role": "catwalk",
+            "cast": {
+              "top": {
+                "n": 329,
+                "sum": 3.81143215686275,
+                "max": 0.03335921568627451,
+                "minX": 6208.117971014493,
+                "maxX": 6310.726666666667,
+                "minY": -145.02898550724638,
+                "maxY": -142.1304347826087
+              },
+              "road": {
+                "n": 167,
+                "sum": 0.5395333333333332,
+                "max": 0.003921568627451008,
+                "minX": 6424.349855072464,
+                "maxX": 6466.668695652174,
+                "minY": 40.47826086956525,
+                "maxY": 45.69565217391306
+              }
+            },
+            "soles": {
+              "top": {
+                "n": 1232,
+                "sum": 34.14595372549005,
+                "max": 0.20090588235294116,
+                "minX": 6193.625217391304,
+                "maxX": 6278.262898550725,
+                "minY": -150.82608695652175,
+                "maxY": -142.1304347826087
+              }
+            },
+            "edge": {
+              "top": {
+                "n": 685,
+                "sum": 24.979217254902,
+                "max": 0.23497960784313726,
+                "minX": 6406.550724637681,
+                "maxX": 6464.521739130435,
+                "minY": -150.82608695652175,
+                "maxY": -142.1304347826087
+              },
+              "edgeAA": {
+                "n": 3,
+                "sum": 0.011764705882352927,
+                "max": 0.003921568627450994,
+                "minX": 6456.985507246377,
+                "maxX": 6462.782608695652,
+                "minY": -148.5072463768116,
+                "maxY": -145.02898550724638
+              }
+            },
+            "edgeCast": {
+              "top": {
+                "n": 158,
+                "sum": 2.4363803921568623,
+                "max": 0.04926117647058825,
+                "minX": 6418.144927536232,
+                "maxX": 6439.594202898551,
+                "minY": -145.02898550724638,
+                "maxY": -142.1304347826087
+              }
+            },
+            "airCast": {
+              "top": {
+                "n": 280,
+                "sum": 2.4149278431372574,
+                "max": 0.022695686274509796,
+                "minX": 6231.204927536232,
+                "maxX": 6319.900579710145,
+                "minY": -143.8695652173913,
+                "maxY": -142.1304347826087
+              },
+              "road": {
+                "n": 148,
+                "sum": 0.4678392156862752,
+                "max": 0.003921568627450994,
+                "minX": 6431.204927536232,
+                "maxX": 6486.857101449275,
+                "minY": 40.47826086956525,
+                "maxY": 49.75362318840584
+              }
+            },
+            "same": true,
+            "x": 6236.06,
+            "window": 3
+          },
+          {
+            "role": "cargo",
+            "cast": {
+              "top": {
+                "n": 312,
+                "sum": 12.631966274509828,
+                "max": 0.11379764705882356,
+                "minX": 1598.3788405797102,
+                "maxX": 1687.6542028985507,
+                "minY": -98.65217391304346,
+                "maxY": -96.33333333333331
+              },
+              "road": {
+                "n": 1939,
+                "sum": 45.06811607843097,
+                "max": 0.05887529411764708,
+                "minX": 1683.596231884058,
+                "maxX": 1834.900579710145,
+                "minY": 17.869565217391326,
+                "maxY": 41.05797101449275
+              }
+            },
+            "soles": {
+              "top": {
+                "n": 1223,
+                "sum": 99.18651686274474,
+                "max": 0.36934274509803916,
+                "minX": 1585.6252173913042,
+                "maxX": 1670.8426086956522,
+                "minY": -104.44927536231884,
+                "maxY": -96.33333333333331
+              }
+            },
+            "edge": {
+              "top": {
+                "n": 709,
+                "sum": 80.00832313725465,
+                "max": 0.4730635294117646,
+                "minX": 1798.5507246376812,
+                "maxX": 1856.5217391304348,
+                "minY": -104.44927536231884,
+                "maxY": -96.33333333333331
+              },
+              "edgeAA": {
+                "n": 9,
+                "sum": 0.05410431372549046,
+                "max": 0.014018823529411806,
+                "minX": 1846.6666666666667,
+                "maxX": 1855.9420289855072,
+                "minY": -102.71014492753625,
+                "maxY": -97.4927536231884
+              }
+            },
+            "edgeCast": {
+              "top": {
+                "n": 102,
+                "sum": 1.964338039215685,
+                "max": 0.038665098039215695,
+                "minX": 1813.623188405797,
+                "maxX": 1845.5072463768115,
+                "minY": -98.65217391304346,
+                "maxY": -96.91304347826086
+              }
+            },
+            "airCast": {
+              "top": {
+                "n": 146,
+                "sum": 5.305038431372555,
+                "max": 0.08155529411764706,
+                "minX": 1622.0455072463767,
+                "maxX": 1689.291884057971,
+                "minY": -96.91304347826086,
+                "maxY": -96.33333333333331
+              },
+              "road": {
+                "n": 1996,
+                "sum": 35.94793490196024,
+                "max": 0.04429019607843135,
+                "minX": 1706.683188405797,
+                "maxX": 1858.5672463768115,
+                "minY": 23.086956521739125,
+                "maxY": 45.69565217391306
+              }
+            },
+            "same": true,
+            "x": 1628.06,
+            "window": 7
+          }
+        ],
+        "serviceCast": {
+          "x": 3996,
+          "moon": 0,
+          "wetness": 0,
+          "exposedWetness": 0.78,
+          "loss": {
+            "interior": {
+              "n": 162,
+              "sum": 0.5919270588235317,
+              "max": 0.004472156862745116,
+              "minX": 3968.753623188406,
+              "maxX": 4028.463768115942,
+              "minY": 1.0579710144927645,
+              "maxY": 10.333333333333343
+            }
+          }
+        },
+        "glError": 0,
+        "stores": 0
+      }
+    }
+  }
+}

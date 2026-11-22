@@ -65,6 +65,7 @@ server.log
 /.cache/
 tool-results/
 .next-build
+/.next-preview/
 
 # local visual verification output (.qa/verify-lighting.mts)
 /.qa/*.png

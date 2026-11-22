@@ -1,3 +1,18 @@
+import { hasPixels, SurfaceScope } from './ledger'
+
+export type ScreenBand = readonly [top: number, bottom: number]
+
+/** Skip only rows completely hidden by later opaque geometry. The clip is
+ * screen-aligned even when the stage rolls; a fractional silhouette itself
+ * still gets the normal antialiasing against background outside the clip. */
+export function clipVisibleRows(ctx: CanvasRenderingContext2D, width: number, height: number, covered: ScreenBand | null): void {
+  ctx.beginPath()
+  const top = Math.min(height, covered?.[0] ?? height)
+  if (top > 0) ctx.rect(0, 0, width, top)
+  if (covered && covered[1] < height) ctx.rect(0, covered[1], width, height - covered[1])
+  ctx.clip()
+}
+
 /**
  * BIFOCAL HORIZON-STRATA TRANSPORT (BHST) — trimmed to its two survivors
  * ======================================================================
@@ -55,6 +70,7 @@ export function blitWorldFrustum(
  *   - cloud/twinkle clock advances by >= 42 ms (~24 Hz).
  */
 export class SkyVaultCache {
+  private readonly surfaces = new SurfaceScope('sky-vault')
   private plate: HTMLCanvasElement | null = null
   private plateCtx: CanvasRenderingContext2D | null = null
   private pw = 0
@@ -65,6 +81,14 @@ export class SkyVaultCache {
   private lastTime = -999
   private lastStormI = -1
   private lastQuality = ''
+  hits = 0
+  rebuilds = 0
+
+  dispose(): void {
+    this.surfaces.releaseAll()
+    this.plate = this.plateCtx = null
+    this.invalidate()
+  }
 
   invalidate(): void {
     this.lastTime = -999
@@ -96,10 +120,8 @@ export class SkyVaultCache {
     // action plane native; a DPR-2 screen otherwise bakes four sky pixels per CSS pixel.
     const destW=ctx.canvas?.width || Math.max(1,w|0),destH=ctx.canvas?.height || Math.max(1,h|0)
     const iw=Math.min(destW,Math.max(1,Math.ceil(w))),ih=Math.min(destH,Math.max(1,Math.ceil(h)))
-    if (!this.plate || this.pw !== iw || this.ph !== ih) {
-      const c = document.createElement('canvas')
-      c.width = iw
-      c.height = ih
+    if (!hasPixels(this.plate) || this.pw !== iw || this.ph !== ih) {
+      const c = this.surfaces.acquire('viewport', iw, ih, 'sky-vault')
       this.plate = c
       this.plateCtx = c.getContext('2d', { alpha: false })
       this.pw = iw
@@ -143,6 +165,9 @@ export class SkyVaultCache {
       this.lastTime = time
       this.lastStormI = stormI
       this.lastQuality = quality
+      this.rebuilds++
+    } else {
+      this.hits++
     }
     ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)

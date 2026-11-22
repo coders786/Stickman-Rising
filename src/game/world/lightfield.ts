@@ -32,22 +32,9 @@ export interface PointLight {
 export const SIGN_Y = -98
 export const PRACTICAL_SIGN_X = 1755
 export const PRACTICAL_LAMP_X = 830
+export const LAMP_Y = -256
 export const BEACON_X = 1545
 export const BEACON_Y = -64
-
-/** A practical's shadow is a COLOURED absence — the light it blocks is coloured.
- *  Warm blocked is a brown shadow, cool blocked is a blue one. These are the
- *  inks the cast-shadow painter takes. */
-export const LIGHT_INK: Readonly<Record<LightKind, string>> = {
-  warm: '16,8,4',
-  cool: '4,7,14',
-  bulb: '14,10,2',
-  neon: '8,4,14',
-  // CITY BOUNCE — light pollution coming UP from the street below the roof.
-  // Its shadow is a warm-grey absence, never black: it is the dimmest source in
-  // the field and the one that is always there.
-  city: '13,10,7',
-}
 
 /** Body-wash tint per kind: what a lit surface picks up. Kept dim on purpose —
  *  an additive wash that is visible as a colour is a filter, not light. */
@@ -124,7 +111,7 @@ export function makeStageLights(profile: {
       // The broken streetlight: cool, weak, and failing at its own rate.
       id: 'stage:lamp', shape: FLOOD,
       x: PRACTICAL_LAMP_X,
-      y: -256,
+      y: LAMP_Y,
       kind: amberSpecimen ? 'warm' : 'cool',
       // A streetlight is dim at the head and generous on the deck — its radius
       // has to reach the ground it is pointing at, or the practical reads as a

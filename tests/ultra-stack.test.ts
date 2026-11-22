@@ -17,7 +17,7 @@ import { BLOOM_BLITS, RAY_BLITS, rayPlan } from '../src/game/render/post'
 import { featuresFor, GRAPHICS } from '../src/game/render/graphics'
 import { FAR_DIVISOR, NEAR_PX, HordeGrid, planTicks } from '../src/game/combat/horde'
 
-test('the post stack is ultra-only, and ultra is the only tier with a full-frame pass', () => {
+test('the capture post stack is ultra-only', () => {
   for (const tier of Object.keys(GRAPHICS) as Array<keyof typeof GRAPHICS>) {
     const f = featuresFor(tier)
     const on = f.bloom || f.godRays
@@ -31,12 +31,12 @@ test('ultra is strictly richer than high — extra PASSES, not just bigger numbe
   // the passes high does not have at all
   assert.equal(ultra.bloom, true)
   assert.equal(ultra.godRays, true)
-  assert.equal(ultra.depthHaze, true)
   assert.equal(high.bloom, false)
   assert.equal(high.godRays, false)
-  assert.equal(high.depthHaze, false)
   // and the shared flags stay monotonic
-  assert.ok(ultra.penumbra >= high.penumbra)
+  assert.equal(ultra.actorMirror, high.actorMirror)
+  assert.equal(high.shadows, 'cast')
+  assert.equal(ultra.shadows, 'cast+props')
   assert.ok(ultra.reflection < high.reflection)
   assert.equal(ultra.keyTop, true)
 })

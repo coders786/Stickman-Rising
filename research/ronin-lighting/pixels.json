@@ -1,0 +1,546 @@
+{
+  "canvas": {
+    "entry": {
+      "changedAbove5": 758,
+      "untouchedBlack": 3897,
+      "originalBlack": 4575,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        23,
+        37,
+        37
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.19933822177672894,
+        "y": 0.2653113846712198,
+        "r": 0.05454266815192543,
+        "g": 0.130274940489736,
+        "b": 0.13450602118688812,
+        "w": 0.13450602118688812
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "warm": {
+      "changedAbove5": 1119,
+      "untouchedBlack": 3579,
+      "originalBlack": 4568,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        82,
+        57,
+        32
+      ],
+      "headMoon": 0.12464235504935767,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0.5984891890613182,
+        "g": 0.2697145025810133,
+        "b": 0.06622237023162032,
+        "w": 0.5984891890613182
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "left": {
+      "changedAbove5": 767,
+      "untouchedBlack": 3902,
+      "originalBlack": 4588,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        62,
+        73,
+        74
+      ],
+      "headMoon": 0.13488693217670214,
+      "torsoPrincipal": {
+        "x": -0.6929356557386794,
+        "y": 0.19520701546672115,
+        "r": 0.039204025873446076,
+        "g": 0.09363865594904827,
+        "b": 0.0966798602528376,
+        "w": 0.0966798602528376
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "cool": {
+      "changedAbove5": 1084,
+      "untouchedBlack": 3615,
+      "originalBlack": 4551,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        59,
+        70,
+        79
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.3415312003237376,
+        "y": -0.740051625558234,
+        "r": 0.2818888835753023,
+        "g": 0.40503540222214973,
+        "b": 0.5329961369392328,
+        "w": 0.5329961369392328
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "open": {
+      "changedAbove5": 602,
+      "untouchedBlack": 4053,
+      "originalBlack": 4602,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        57,
+        58,
+        59
+      ],
+      "headMoon": 0.1451315093040466,
+      "torsoPrincipal": {
+        "x": 0.3415312003237376,
+        "y": -0.740051625558234,
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "w": 0
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "covered": {
+      "changedAbove5": 707,
+      "untouchedBlack": 3844,
+      "originalBlack": 4405,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        83,
+        52,
+        27
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.05940421024519239,
+        "y": -0.6748090093062658,
+        "r": 0.4000738988031519,
+        "g": 0.14353840191527584,
+        "b": 0.025420876511991635,
+        "w": 0.4000738988031519
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "strike": {
+      "changedAbove5": 1348,
+      "untouchedBlack": 3787,
+      "originalBlack": 4831,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        93,
+        86,
+        79
+      ],
+      "headMoon": 0.1451315093040466,
+      "torsoPrincipal": {
+        "x": 0.15649790149582835,
+        "y": -0.7786244862502565,
+        "r": 0.6445640631599675,
+        "g": 0.29047855642882114,
+        "b": 0.07132051974994594,
+        "w": 0.6445640631599675
+      },
+      "peakTransient": 0.4124720672562113,
+      "oldVsUnlitDifferentPixels": 0
+    }
+  },
+  "denied": {
+    "entry": {
+      "changedAbove5": 495,
+      "untouchedBlack": 2386,
+      "originalBlack": 2802,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        23,
+        37,
+        37
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.19933822177672894,
+        "y": 0.2653113846712198,
+        "r": 0.05454266815192543,
+        "g": 0.130274940489736,
+        "b": 0.13450602118688812,
+        "w": 0.13450602118688812
+      },
+      "peakTransient": 0
+    },
+    "warm": {
+      "changedAbove5": 758,
+      "untouchedBlack": 2191,
+      "originalBlack": 2801,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        82,
+        57,
+        32
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0.5984891890613182,
+        "g": 0.2697145025810133,
+        "b": 0.06622237023162032,
+        "w": 0.5984891890613182
+      },
+      "peakTransient": 0
+    },
+    "open": {
+      "changedAbove5": 0,
+      "untouchedBlack": 2801,
+      "originalBlack": 2801,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": null,
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "w": 0
+      },
+      "peakTransient": 0
+    },
+    "covered": {
+      "changedAbove5": 468,
+      "untouchedBlack": 2349,
+      "originalBlack": 2697,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        83,
+        52,
+        27
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.05940421024519239,
+        "y": -0.6748090093062658,
+        "r": 0.4000738988031519,
+        "g": 0.14353840191527584,
+        "b": 0.025420876511991635,
+        "w": 0.4000738988031519
+      },
+      "peakTransient": 0
+    }
+  },
+  "lean": {
+    "entry": {
+      "changedAbove5": 494,
+      "untouchedBlack": 2371,
+      "originalBlack": 2771,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        23,
+        37,
+        37
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.19933822177672894,
+        "y": 0.2653113846712198,
+        "r": 0.05454266815192543,
+        "g": 0.130274940489736,
+        "b": 0.13450602118688812,
+        "w": 0.13450602118688812
+      },
+      "peakTransient": 0
+    },
+    "warm": {
+      "changedAbove5": 747,
+      "untouchedBlack": 2181,
+      "originalBlack": 2768,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        82,
+        57,
+        32
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0.5984891890613182,
+        "g": 0.2697145025810133,
+        "b": 0.06622237023162032,
+        "w": 0.5984891890613182
+      },
+      "peakTransient": 0
+    },
+    "open": {
+      "changedAbove5": 0,
+      "untouchedBlack": 2766,
+      "originalBlack": 2766,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": null,
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "w": 0
+      },
+      "peakTransient": 0
+    },
+    "covered": {
+      "changedAbove5": 468,
+      "untouchedBlack": 2422,
+      "originalBlack": 2771,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        82,
+        52,
+        27
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.05940421024519239,
+        "y": -0.6748090093062658,
+        "r": 0.4000738988031519,
+        "g": 0.14353840191527584,
+        "b": 0.025420876511991635,
+        "w": 0.4000738988031519
+      },
+      "peakTransient": 0
+    }
+  },
+  "master": {
+    "warm": {
+      "changedAbove5": 1397,
+      "untouchedBlack": 3065,
+      "originalBlack": 4191,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        77,
+        50,
+        28
+      ],
+      "headMoon": 0.12464235504935767,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0.5984891890613182,
+        "g": 0.2697145025810133,
+        "b": 0.06622237023162032,
+        "w": 0.5984891890613182
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "cool": {
+      "changedAbove5": 1020,
+      "untouchedBlack": 3119,
+      "originalBlack": 4159,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        58,
+        69,
+        78
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.3415312003237376,
+        "y": -0.740051625558234,
+        "r": 0.2818888835753023,
+        "g": 0.40503540222214973,
+        "b": 0.5329961369392328,
+        "w": 0.5329961369392328
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "open": {
+      "changedAbove5": 822,
+      "untouchedBlack": 3598,
+      "originalBlack": 4199,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        43,
+        44,
+        46
+      ],
+      "headMoon": 0.1451315093040466,
+      "torsoPrincipal": {
+        "x": 0.3415312003237376,
+        "y": -0.740051625558234,
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "w": 0
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "covered": {
+      "changedAbove5": 801,
+      "untouchedBlack": 3428,
+      "originalBlack": 3965,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        80,
+        44,
+        21
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.05940421024519239,
+        "y": -0.6748090093062658,
+        "r": 0.4000738988031519,
+        "g": 0.14353840191527584,
+        "b": 0.025420876511991635,
+        "w": 0.4000738988031519
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "strike": {
+      "changedAbove5": 1516,
+      "untouchedBlack": 3398,
+      "originalBlack": 4527,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        106,
+        99,
+        92
+      ],
+      "headMoon": 0.1451315093040466,
+      "torsoPrincipal": {
+        "x": 0.15649790149582835,
+        "y": -0.7786244862502565,
+        "r": 0.6445640631599675,
+        "g": 0.29047855642882114,
+        "b": 0.07132051974994594,
+        "w": 0.6445640631599675
+      },
+      "peakTransient": 0.4124720672562113,
+      "oldVsUnlitDifferentPixels": 0
+    }
+  },
+  "optimized": {
+    "entry": {
+      "changedAbove5": 506,
+      "untouchedBlack": 2326,
+      "originalBlack": 2711,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        12,
+        24,
+        25
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.19933822177672894,
+        "y": 0.2653113846712198,
+        "r": 0.05454266815192543,
+        "g": 0.130274940489736,
+        "b": 0.13450602118688812,
+        "w": 0.13450602118688812
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "warm": {
+      "changedAbove5": 747,
+      "untouchedBlack": 2153,
+      "originalBlack": 2711,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        77,
+        49,
+        29
+      ],
+      "headMoon": 0.17770794311691732,
+      "torsoPrincipal": {
+        "x": 0.33101474697454086,
+        "y": -0.743008416237374,
+        "r": 0.5984891890613182,
+        "g": 0.2697145025810133,
+        "b": 0.06622237023162032,
+        "w": 0.5984891890613182
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "cool": {
+      "changedAbove5": 661,
+      "untouchedBlack": 2169,
+      "originalBlack": 2733,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        58,
+        71,
+        78
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.3415312003237376,
+        "y": -0.740051625558234,
+        "r": 0.2818888835753023,
+        "g": 0.40503540222214973,
+        "b": 0.5329961369392328,
+        "w": 0.5329961369392328
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "covered": {
+      "changedAbove5": 480,
+      "untouchedBlack": 2262,
+      "originalBlack": 2591,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        82,
+        45,
+        22
+      ],
+      "headMoon": 0,
+      "torsoPrincipal": {
+        "x": 0.05940421024519239,
+        "y": -0.6748090093062658,
+        "r": 0.4000738988031519,
+        "g": 0.14353840191527584,
+        "b": 0.025420876511991635,
+        "w": 0.4000738988031519
+      },
+      "peakTransient": 0,
+      "oldVsUnlitDifferentPixels": 0
+    },
+    "strike": {
+      "changedAbove5": 948,
+      "untouchedBlack": 2207,
+      "originalBlack": 2881,
+      "outOfSupportAbove5": 0,
+      "brightInkMedianRGB": [
+        106,
+        99,
+        92
+      ],
+      "headMoon": 0.20692020773887634,
+      "torsoPrincipal": {
+        "x": 0.15649790149582835,
+        "y": -0.7786244862502565,
+        "r": 0.6445640631599675,
+        "g": 0.29047855642882114,
+        "b": 0.07132051974994594,
+        "w": 0.6445640631599675
+      },
+      "peakTransient": 0.4124720672562113,
+      "oldVsUnlitDifferentPixels": 0
+    }
+  }
+}

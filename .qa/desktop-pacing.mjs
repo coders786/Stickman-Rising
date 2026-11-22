@@ -39,8 +39,7 @@ try {
     } finally {
       Math.random = rand
     }
-    g.dprTarget = 1
-    g.resize()
+    g.setDiagnosticRenderScale(1)
     g.player.x = 1715
     g.debugSpawn('heavy', 1790)
     g.debugSpawn('grunt', 1650)

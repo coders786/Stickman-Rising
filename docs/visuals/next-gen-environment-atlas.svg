@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1072" viewBox="0 0 1440 1072" role="img" aria-labelledby="atlas-title atlas-desc">
+  <title id="atlas-title">Stickman Rising: one fight plane, four worlds</title>
+  <desc id="atlas-desc">An annotated concept atlas, not gameplay screenshots. Wet Bridge has a blue exterior with amber fixture returns. Night Station uses warm diffuse light on dry tile. Rain Market shows open rain and dry ground under one canopy. Red Quarry uses warm dry stone, dust in the distance and a pale daylight key. The same fighter pose and foot plane appear in every panel.</desc>
+  <defs>
+    <linearGradient id="paper" x2="0" y2="1"><stop stop-color="#121b29"/><stop offset="1" stop-color="#0a111a"/></linearGradient>
+    <linearGradient id="bridge-sky" x2="0" y2="1"><stop stop-color="#10192e"/><stop offset=".54" stop-color="#283b56"/><stop offset="1" stop-color="#67616a"/></linearGradient>
+    <linearGradient id="bridge-air" x2="0" y2="1"><stop stop-color="#dca17d" stop-opacity="0"/><stop offset="1" stop-color="#dca17d" stop-opacity=".33"/></linearGradient>
+    <linearGradient id="bridge-deck" x2="0" y2="1"><stop stop-color="#374752"/><stop offset="1" stop-color="#212c37"/></linearGradient>
+    <linearGradient id="station-wall" x2="0" y2="1"><stop stop-color="#263c43"/><stop offset="1" stop-color="#152731"/></linearGradient>
+    <linearGradient id="station-recess" x2="0" y2="1"><stop stop-color="#0d1e29"/><stop offset="1" stop-color="#3c5053"/></linearGradient>
+    <linearGradient id="station-floor" x2="0" y2="1"><stop stop-color="#607071"/><stop offset="1" stop-color="#34484e"/></linearGradient>
+    <linearGradient id="market-sky" x2="0" y2="1"><stop stop-color="#1b2c42"/><stop offset=".72" stop-color="#56728a"/><stop offset="1" stop-color="#637581"/></linearGradient>
+    <linearGradient id="canvas" x2="0" y2="1"><stop stop-color="#495057"/><stop offset="1" stop-color="#202930"/></linearGradient>
+    <linearGradient id="market-floor" x2="0" y2="1"><stop stop-color="#655956"/><stop offset="1" stop-color="#3c3635"/></linearGradient>
+    <linearGradient id="quarry-sky" x2="0" y2="1"><stop stop-color="#858c90"/><stop offset=".7" stop-color="#c1b09c"/><stop offset="1" stop-color="#e0b788"/></linearGradient>
+    <linearGradient id="quarry-rock" x2="0" y2="1"><stop stop-color="#9c725e"/><stop offset="1" stop-color="#624940"/></linearGradient>
+    <linearGradient id="quarry-floor" x2="0" y2="1"><stop stop-color="#876d5e"/><stop offset="1" stop-color="#513f3e"/></linearGradient>
+    <radialGradient id="moon-air"><stop stop-color="#daeaff" stop-opacity=".32"/><stop offset="1" stop-color="#bddeff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="fixture-air"><stop stop-color="#ffd2a4" stop-opacity=".83"/><stop offset=".38" stop-color="#ffb876" stop-opacity=".32"/><stop offset="1" stop-color="#fbb573" stop-opacity="0"/></radialGradient>
+    <radialGradient id="soft-pool"><stop stop-color="#f4cda1" stop-opacity=".32"/><stop offset=".6" stop-color="#e7b783" stop-opacity=".14"/><stop offset="1" stop-color="#e7b783" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sun-air"><stop stop-color="#ffe9b5" stop-opacity=".85"/><stop offset=".55" stop-color="#f7d9a1" stop-opacity=".29"/><stop offset="1" stop-color="#f5d69b" stop-opacity="0"/></radialGradient>
+    <clipPath id="shot"><rect width="624" height="242" rx="5"/></clipPath>
+    <clipPath id="outside"><path d="M0 0h149v149l-13 41v39H0zM523 0h101v229h-76l-25-39z"/></clipPath>
+    <pattern id="streaks" width="94" height="69" patternUnits="userSpaceOnUse">
+      <path d="M13 4l-6 12m41 3-6 12m46-24-9 18M30 40l-5 10m40-5-8 16M3 58l-5 11m90-24-6 13" fill="none" stroke="#b5d8f0" stroke-opacity=".42" stroke-width="1.15" stroke-linecap="round"/>
+    </pattern>
+    <pattern id="aggregate" width="97" height="24" patternUnits="userSpaceOnUse">
+      <path d="M2 5h5m15 12h17m24-8h6m-19 9h3m33-3h7m-9-11h6m-63-2h9m7 8h4m-37 12h5" fill="none" stroke="#c7d2d9" stroke-opacity=".15" stroke-width=".8" stroke-linecap="round"/>
+    </pattern>
+    <pattern id="tiles" width="124" height="36" patternUnits="userSpaceOnUse">
+      <path d="M0 0h124M0 18h124M30 0v18m60-18v18M0 18v18m62-18v18" stroke="#152a31" stroke-opacity=".59" fill="none"/>
+      <path d="M0 1h124M0 19h124" stroke="#b2bdb3" stroke-opacity=".17" fill="none"/>
+    </pattern>
+    <g id="fighter">
+      <ellipse cx="1" cy="0" rx="22" ry="4" fill="#101823" opacity=".78"/>
+      <path d="M-11-35l-12 6-31 19 2 3 46-23-1-6z" fill="#1a2028" stroke="#8b989e" stroke-width="1.1" stroke-linejoin="round"/>
+      <path d="M-16-31l-35 20" stroke="#d7b695" stroke-width="1.05" opacity=".8"/>
+      <path d="M-3-31l-7 13-1 15-8 1m22-28L16-17 15-3l8 1m-32-55-6 14 7 11m15-24 3 12 12 2" stroke="#91a3b0" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M-3-31l-7 13-1 15-8 1m22-28L16-17 15-3l8 1m-32-55-6 14 7 11m15-24 3 12 12 2" stroke="#111821" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M-11-59l5-6 8 1 7 7-4 13 1 11-7 3-10-4-2-11z" fill="#121d29" stroke="#8a9ca8" stroke-width="1.15"/>
+      <path d="M-10-56l7-4 7 3-3 12-9 5z" fill="#243549"/>
+      <path d="M-5-64l.7-6 7-1 1 7" fill="#172330" stroke="#899ba6" stroke-width="1"/>
+      <path d="M-7-82l6-3 8 2 3 5-3 7-7 3-6-5-2-5z" fill="#151f2b" stroke="#899ba6" stroke-width="1.25"/>
+      <path d="M-5-81l6-1 5 2m-21 42 10 3 9-1m17-5 7 2" stroke="#b9cbd5" opacity=".65" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <circle cx="-12" cy="-34" r="3.4" stroke="#9fb2bf" stroke-width="1.1" fill="#293547"/>
+      <path d="M4-77l4 1" stroke="#dbe7e9" stroke-width="1.1" stroke-linecap="round"/>
+    </g>
+    <style>
+      text { font-family: system-ui, 'Segoe UI', sans-serif; fill: #ebf0f5; }
+      .mono { font-family: ui-monospace, 'DejaVu Sans Mono', monospace; }
+      .card { fill: #111c28; stroke: #2b3a4a; }
+      .meta { letter-spacing: 1.6px; font-size: 12px; font-weight: 650; fill: #b5c9d8; }
+      .card-name { font-weight: 700; font-size: 23px; }
+      .code { font-size: 15px; font-weight: 700; fill: #f5bf86; }
+      .caption { font-size: 15px; fill: #d5e0e8; }
+      .target { fill: #11202d; stroke: #c7d9e5; stroke-width: 1.2; }
+      .target-text { font-size: 11px; fill: #f5f8fa; font-weight: 700; text-anchor: middle; }
+      .leader { fill: none; stroke: #d5e2ed; stroke-width: 1.15; stroke-opacity: .72; }
+    </style>
+  </defs>
+
+  <rect width="1440" height="1072" fill="url(#paper)"/>
+  <path d="M56 34h25" stroke="#f5bf86" stroke-width="3"/>
+  <text x="94" y="40" class="meta mono">STICKMAN RISING / ENVIRONMENT DESIGN</text>
+  <text x="1384" y="40" text-anchor="end" class="meta mono">DESIGN ATLAS · 01</text>
+  <text x="54" y="108" font-size="56" font-weight="750" letter-spacing="-1.7">One fight plane. Four worlds.</text>
+  <text x="57" y="145" font-size="19" fill="#b6c6d5">A shape and color study for procedural sky, local exposure and anchored light.</text>
+  <path d="M56 169h1328" stroke="#364454"/>
+
+  <!-- A: Open exterior. No scene reflection: the road marks are static shapes. -->
+  <g transform="translate(56 193)">
+    <rect class="card" width="652" height="368" rx="10"/>
+    <text x="17" y="37" class="mono code">A</text>
+    <text x="49" y="38" class="card-name">Wet Bridge</text>
+    <text x="635" y="35" text-anchor="end" class="meta mono">EXTERIOR / REFERENCE</text>
+    <g transform="translate(14 58)" clip-path="url(#shot)">
+      <rect width="624" height="242" fill="url(#bridge-sky)"/>
+      <ellipse cx="380" cy="41" rx="94" ry="73" fill="url(#moon-air)"/>
+      <circle cx="380" cy="41" r="23" fill="#d5e1eb" opacity=".84"/>
+      <path d="M357 44c9 6 18 3 22 6 3 4 7 7 18 5-6 9-20 11-30 5-5-3-8-8-10-16z" fill="#aabdd3" opacity=".63"/>
+      <path d="M0 32c68-14 95-20 142-9 57 12 83 4 123-3L327 26l-36 12-85 8-48-6L84 40 0 52zM412 44c42 2 48-15 90-13 26 1 53 8 68 6l54-5v24c-63-5-87 7-122 2l-94 3z" fill="#4b5b71" opacity=".48"/>
+      <path d="M0 68c44-5 59 2 95-1 49-4 73-12 151-3 50 5 120-8 153-3 46 7 48 6 98 2 41-2 78-15 127-9v23c-84-11-118 16-177 12L275 79l-89 5C99 70 51 103 0 94z" fill="#293d54"/>
+      <path d="M0 136h28v-18h26v-19h22V84h10v15h22v41h26v-29h39V92h51v24h19v15h25v-26h19V82h44v14h19v36h31v-20h31v21h19v-31h38v16h17V93h33v45h26v-26h19v18h17v-19h28v47H0z" fill="#354a61"/>
+      <path d="M0 157h21v-69h21l13-9 34 1 16 9v52h40v-18h36v40h44v-35h28v14h46v-19h43v19h42v-37h32v22h40v20h29v-25h27v-30h56v13h17v54h39v29H0z" fill="#243748"/>
+      <path d="M29 97h58v4H29zm0 11h58v4H29zm491 0h39v3h-39zm0 10h39v3h-39z" fill="#8493a1" opacity=".13"/>
+      <path d="M0 161h624v18H0z" fill="url(#bridge-air)"/>
+      <path d="M0 169h624v8H0zM0 184h624v3H0z" fill="#192937"/>
+      <path d="M41 171v17m80-17v17m89-17v17m103-17v17m96-17v17m96-17v17m79-17v17" stroke="#1c2a35" stroke-width="7"/>
+      <path d="M0 170h624" stroke="#77868d" opacity=".46"/>
+      <rect x="0" y="187" width="624" height="55" fill="url(#bridge-deck)"/>
+      <path d="M179 191l-42 4 6 2 21 1-22 4 25-1-43 6 50-1-30 8 46-2 22-7-7-4 19-3-30-8z" fill="#c19372" opacity=".43"/>
+      <path d="M528 196l-25 2-26 6 22 1-16 5 55-3 35-6-15-5z" fill="#b07caa" opacity=".38"/>
+      <path d="M0 188h624v40H0z" fill="url(#aggregate)"/>
+      <path d="M18 216h65m125 0h69m161 0h69m69 0h30" stroke="#b0adb0" stroke-width="2.5" opacity=".61"/>
+      <path d="M0 225h624v17H0z" fill="#121f2b"/><path d="M0 225h624" stroke="#5a6b79" stroke-width="2"/>
+      <path d="M8 233h608" stroke="#35495b" stroke-width="1" stroke-dasharray="32 4 9 9"/>
+      <path d="M182 187V69h-23" stroke="#1b262f" stroke-width="7" fill="none"/>
+      <path d="M182 184V69" stroke="#687985" stroke-width="2"/>
+      <path d="M140 68h41l-5 8h-31z" fill="#24313c"/>
+      <ellipse cx="161" cy="76" rx="34" ry="18" fill="url(#fixture-air)"/>
+      <path d="M147 76h26" stroke="#ffd2a2" stroke-width="3" stroke-linecap="round"/>
+      <path d="M146 79h30l20 74h-76z" fill="#ffc391" opacity=".082"/>
+      <path d="M503 148h62v21h-62z" fill="#263342" stroke="#53536c" stroke-width="1.5"/>
+      <path d="M511 159h13m6 0h4m7 0h15" stroke="#d497c5" stroke-width="2.8" stroke-linecap="round"/>
+      <rect y="39" width="624" height="145" fill="url(#streaks)" opacity=".46"/>
+      <path d="M312 202l-78 7-15 4 31 1 64-10z" fill="#17242f" opacity=".66"/>
+      <use href="#fighter" x="312" y="203"/>
+      <path class="leader" d="M418 43h-15m-272 144 13 11"/>
+      <circle class="target" cx="431" cy="43" r="11"/><text class="target-text mono" x="431" y="47">1</text>
+      <circle class="target" cx="123" cy="179" r="11"/><text class="target-text mono" x="123" y="183">2</text>
+    </g>
+    <text class="caption" x="17" y="327"><tspan class="code mono">01</tspan><tspan dx="10">Cool sky bearing behind a fixed skyline</tspan></text>
+    <text class="caption" x="17" y="350"><tspan class="code mono">02</tspan><tspan dx="10">Broken baked returns stay underneath road paint</tspan></text>
+  </g>
+
+  <!-- B: Closed interior. The pool is broad and diffuse, not an image of the lamp. -->
+  <g transform="translate(732 193)">
+    <rect class="card" width="652" height="368" rx="10"/>
+    <text x="17" y="37" class="mono code">B</text>
+    <text x="49" y="38" class="card-name">Night Station</text>
+    <text x="635" y="35" text-anchor="end" class="meta mono">CLOSED / REFERENCE</text>
+    <g transform="translate(14 58)" clip-path="url(#shot)">
+      <rect width="624" height="242" fill="url(#station-wall)"/>
+      <g fill="url(#station-recess)" stroke="#52646a" stroke-width="4.5">
+        <path d="M-42 169V66c0-59 144-59 144 0v103z"/>
+        <path d="M121 169V66c0-61 146-61 146 0v103z"/>
+        <path d="M287 169V66c0-59 146-59 146 0v103z"/>
+        <path d="M454 169V66c0-61 148-61 148 0v103z"/>
+      </g>
+      <path d="M0 17h624v13H0z" fill="#192a34"/><path d="M0 29h624" stroke="#839095" opacity=".34"/>
+      <g fill="#233943" stroke="#405760" stroke-width="2">
+        <rect x="9" y="86" width="65" height="45" rx="3"/><rect x="156" y="86" width="77" height="45" rx="3"/>
+        <rect x="322" y="86" width="77" height="45" rx="3"/><rect x="489" y="86" width="74" height="45" rx="3"/>
+      </g>
+      <path d="M0 144h624v34H0z" fill="#475a61" opacity=".67"/>
+      <path d="M0 158h624m0 12H0" stroke="#293e49" stroke-width="2.5" opacity=".78"/>
+      <path d="M97 46h16v127H97zM263 45h16v128h-16zM430 47h16v126h-16zM596 47h16v126h-16z" fill="#293d45" stroke="#556772" stroke-width="2"/>
+      <g stroke="#799297" stroke-width="1.5" opacity=".42"><path d="M97 58v108m166-108v108m167-108v108m166-108v108"/></g>
+      <path d="M0 173h624v14H0z" fill="#192b35"/>
+      <rect y="187" width="624" height="55" fill="url(#station-floor)"/>
+      <ellipse cx="472" cy="201" rx="108" ry="22" fill="url(#soft-pool)"/>
+      <path d="M0 189h624v36H0z" fill="url(#tiles)"/>
+      <path d="M0 187h624" stroke="#87989b" stroke-width="2.5"/>
+      <path d="M0 225h624v17H0z" fill="#253743"/>
+      <path d="M0 224h624" stroke="#c4a677" stroke-width="2" opacity=".77"/><path d="M0 230h624" stroke="#617882" opacity=".57"/>
+      <path d="M496 186V65h-39" stroke="#22323e" stroke-width="8" fill="none"/>
+      <path d="M495 185V66" stroke="#76888b" stroke-width="2.2"/>
+      <path d="M446 68h46l-6 9h-35z" fill="#182a33" stroke="#6c7b7f" stroke-width="1.2"/>
+      <ellipse cx="467" cy="77" rx="41" ry="19" fill="url(#fixture-air)"/>
+      <path d="M452 76h31" stroke="#ffd2a7" stroke-width="3" stroke-linecap="round"/>
+      <path d="M453 79h24l11 48-46 6z" fill="#edbc88" opacity=".061"/>
+      <path d="M316 202l-79 10-16 5 30-1 68-12z" fill="#23323d" opacity=".7"/>
+      <use href="#fighter" x="312" y="203"/>
+      <path class="leader" d="M138 45l-12 11m377 145h-14"/>
+      <circle class="target" cx="148" cy="38" r="11"/><text class="target-text mono" x="148" y="42">1</text>
+      <circle class="target" cx="516" cy="201" r="11"/><text class="target-text mono" x="516" y="205">2</text>
+    </g>
+    <text class="caption" x="17" y="327"><tspan class="code mono">01</tspan><tspan dx="10">Opaque arches establish depth; no exterior needed</tspan></text>
+    <text class="caption" x="17" y="350"><tspan class="code mono">02</tspan><tspan dx="10">Warm diffuse spill on matte, dry tile</tspan></text>
+  </g>
+
+  <!-- C: One exterior sample, clipped rain, sheltered floor and light. -->
+  <g transform="translate(56 585)">
+    <rect class="card" width="652" height="368" rx="10"/>
+    <text x="17" y="37" class="mono code">C</text>
+    <text x="49" y="38" class="card-name">Rain Market</text>
+    <text x="635" y="35" text-anchor="end" class="meta mono">PARTIAL COVER / PROPOSAL</text>
+    <g transform="translate(14 58)" clip-path="url(#shot)">
+      <rect width="624" height="242" fill="url(#market-sky)"/>
+      <path d="M0 36c66-10 133 8 194 4 110-6 204-14 322-20 30-1 70-4 108-12v44c-72 10-166 10-242 8C236 66 158 54 0 73z" fill="#324964"/>
+      <path d="M0 151h24v-29h15v-22h41v24h27v44h25v-31h32v-30h34v19h37v-20h47v17h38v15h36v-23h60v50h31v-23h38v-29h21V87h35v40h39v12h24v-34h20v85H0z" fill="#3b5264"/>
+      <path d="M0 176h97v-30h44l28-13 52 28h206l33-12h43v17h121v25H0z" fill="#283f4d"/>
+      <rect x="150" y="54" width="372" height="133" fill="#2a3034"/>
+      <path d="M177 172v-48h17v-18h105v66zm140-67h170v67H317z" fill="#202a32"/>
+      <path d="M190 115h92m-92 9h92m-92 9h92m-92 9h92m-92 9h92m42-39h140m-140 9h140m-140 9h140m-140 9h140m-140 9h140" stroke="#696364" stroke-opacity=".23" stroke-width="2"/>
+      <path d="M169 8 493 8l49 54-9 19-16-8-22 9-27-8-26 7-28-7-30 9-27-9-31 10-33-10-30 9-30-8-26 7-25-6-17 8-22-8-24 8-12-22z" fill="url(#canvas)" stroke="#20292f" stroke-width="1.6"/>
+      <path d="M169 8 492 8m-339 50h374M207 12l-25 45m109-45-9 45m79-45 7 45m89-45 24 45" stroke="#818483" opacity=".29" fill="none"/>
+      <path d="M145 63h389" stroke="#a18c7a" opacity=".47" stroke-width="2"/>
+      <path d="M149 75v111m374-110v110" stroke="#222d35" stroke-width="9"/>
+      <path d="M152 79v107m369-108v108" stroke="#7c7b75" stroke-width="2" opacity=".62"/>
+      <path d="M398 79h33v9h-33z" fill="#1a252c" stroke="#716659" stroke-width="1.3"/>
+      <ellipse cx="415" cy="92" rx="45" ry="24" fill="url(#fixture-air)"/>
+      <path d="M403 89h23" stroke="#fbd2a2" stroke-width="3" stroke-linecap="round"/>
+      <path d="M402 93h25l40 75H356z" fill="#f7b87c" opacity=".064"/>
+      <rect y="186" width="624" height="56" fill="#3d5460"/>
+      <path d="M150 186h372l28 56H130z" fill="url(#market-floor)"/>
+      <ellipse cx="415" cy="200" rx="91" ry="32" fill="url(#soft-pool)"/>
+      <path d="M0 186h624v56H0z" fill="url(#aggregate)" opacity=".81"/>
+      <path d="M0 201h624m0 13H0m67-13-11 13m89-28-9 15m7 13-6 28m87-56-5 15m51 0v13m107 0 4 28m88-56 5 15m55 0 9 13m51 0 16 28" stroke="#242f37" stroke-opacity=".64" stroke-width="1.3" fill="none"/>
+      <path d="M18 207h21m44-10h35m-6 19h18m418-20h36m16 12h12m-60 11h23" stroke="#afd3e2" stroke-opacity=".45" stroke-width="1.9" stroke-linecap="round"/>
+      <g clip-path="url(#outside)"><rect width="624" height="227" fill="url(#streaks)"/></g>
+      <path d="M145 94l-3 11m397-25-3 10m-5 33-2 7m-391 22-3 11" fill="none" stroke="#bfd7e4" stroke-opacity=".76" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M0 226h624v16H0z" fill="#23313b"/><path d="M0 226h624" stroke="#6f838c" stroke-width="2" opacity=".79"/>
+      <path d="M312 202l-66 6-29 6 24-1 72-9z" fill="#221f24" opacity=".68"/>
+      <use href="#fighter" x="312" y="203"/>
+      <path class="leader" d="M80 151h29m273 49-22 5"/>
+      <circle class="target" cx="67" cy="151" r="11"/><text class="target-text mono" x="67" y="155">1</text>
+      <circle class="target" cx="393" cy="197" r="11"/><text class="target-text mono" x="393" y="201">2</text>
+    </g>
+    <text class="caption" x="17" y="327"><tspan class="code mono">01</tspan><tspan dx="10">Rain continues beyond both edges of one canopy</tspan></text>
+    <text class="caption" x="17" y="350"><tspan class="code mono">02</tspan><tspan dx="10">Sheltered paving stays dry under a steady practical</tspan></text>
+  </g>
+
+  <!-- D: Dry exterior. Dust is distant; daylight explains the cast. -->
+  <g transform="translate(732 585)">
+    <rect class="card" width="652" height="368" rx="10"/>
+    <text x="17" y="37" class="mono code">D</text>
+    <text x="49" y="38" class="card-name">Red Quarry</text>
+    <text x="635" y="35" text-anchor="end" class="meta mono">DRY DAYLIGHT / PROPOSAL</text>
+    <g transform="translate(14 58)" clip-path="url(#shot)">
+      <rect width="624" height="242" fill="url(#quarry-sky)"/>
+      <ellipse cx="525" cy="43" rx="156" ry="111" fill="url(#sun-air)"/>
+      <path d="M473 26h134l-43 5-89 4-48-2zm-106 23 59-6 57 1 24 5-88 4z" fill="#e5d3af" opacity=".37"/>
+      <path d="M0 152 72 119l49-12 52-10 38 6 44 19 30-3 47-20 38-11 33 8 49 6 55-23 28-15 31-8 58 9v132H0z" fill="#887776"/>
+      <path d="M0 161c46-5 94-19 142-15 47 4 118-5 168-16 44-9 100-6 142-20 69-15 124-13 172-30v35c-80 11-110 22-180 27l-162 26L124 168 0 182z" fill="#c2a892" opacity=".51"/>
+      <path d="M0 45 72 50 96 61 136 61 151 76 194 85 210 117 246 126 259 149 290 159l17 29H0z" fill="url(#quarry-rock)"/>
+      <path d="M0 54l66 5 35 17 30-2 36 22 27 6 23 35 38 11 15 19 28 14H0z" fill="#75534e"/>
+      <path d="M0 88l52 8 20 10 35 3 30 18 43 7 24 14 51 10 18 22H0z" fill="#694d49"/>
+      <path d="M0 73l59 8 54 19m14-28-15 23 9 13m87 12-15 6 8 19m-185-9 93 10 39 12 68 5m-143-23-8 22 9 18" fill="none" stroke="#ad8268" opacity=".39" stroke-width="2"/>
+      <path d="M363 185l22-29 58-8 16-21 43-7 17-22 42-8 63-30v126z" fill="url(#quarry-rock)"/>
+      <path d="M404 172l39-13 28-24 46-5 29-23 78-19v98H378z" fill="#79564a"/>
+      <path d="M624 107l-61 20-56 13-30 10-31 25m91-30-22 7 3 11-24 13m77-51 5 23-18 13 4 12" fill="none" stroke="#c99a79" opacity=".48" stroke-width="2"/>
+      <path d="M196 173c57-8 77-7 118-6 25 1 67-3 117-9l63-17-44 23c-34 8-62 11-106 11-41 0-88 4-126 6z" fill="#ad9685" opacity=".38"/>
+      <path d="M0 187h624v55H0z" fill="url(#quarry-floor)"/>
+      <path d="M0 188h624v39H0z" fill="url(#aggregate)" opacity=".85"/>
+      <path d="M0 187h624" stroke="#b4957b" stroke-width="2" opacity=".69"/>
+      <path d="M30 196l42 3 12 6 48 3m50-16 35 2 19 10 45 3m144-15 27 3 14 7 28 4m42-15 43 7 19 10 26 1" fill="none" stroke="#493b3d" opacity=".8" stroke-width="1.3"/>
+      <path d="M0 226h624v16H0z" fill="#4c3d3e"/><path d="M0 226h624" stroke="#b08a70" opacity=".71" stroke-width="2"/>
+      <path d="M312 202l-51 6-22 6 24-1 51-8z" fill="#382e35" opacity=".77"/>
+      <use href="#fighter" x="312" y="203"/>
+      <path class="leader" d="M523 53l-15 17m-282 129 17 6"/>
+      <circle class="target" cx="531" cy="44" r="11"/><text class="target-text mono" x="531" y="48">1</text>
+      <circle class="target" cx="216" cy="194" r="11"/><text class="target-text mono" x="216" y="198">2</text>
+    </g>
+    <text class="caption" x="17" y="327"><tspan class="code mono">01</tspan><tspan dx="10">Pale daylight and haze separate the distant cuts</tspan></text>
+    <text class="caption" x="17" y="350"><tspan class="code mono">02</tspan><tspan dx="10">A short cast and matte stone, no wet treatment</tspan></text>
+  </g>
+
+  <path d="M56 978h1328" stroke="#364454"/>
+  <text x="56" y="1010" class="meta mono">CONCEPT DIAGRAMS · NOT GAMEPLAY CAPTURES</text>
+  <text x="56" y="1037" font-size="15" fill="#bccddb">The place and weather can change. The fighter, footing and combat cues must stay readable.</text>
+  <text x="1384" y="1037" text-anchor="end" class="meta mono">NEXT-GEN ENVIRONMENT PLAN · §08</text>
+</svg>

@@ -204,6 +204,15 @@ export class Animator {
 
   }
 
+  /** New life: no residual from the previous run, no time advanced. */
+  reset(clip: Clip): void {
+    this.hasDisplayPose = false
+    this.displayedVelocity.fill(0)
+    this.velocity.fill(0)
+    this.play(clip, { blend: 0, restart: true })
+    this.update(0)
+  }
+
   /** returns true when a non-looping clip finished this frame */
   update(dt: number, loopPhase?: number, physicsTime?:number): boolean {
     if (!this.clip) return false

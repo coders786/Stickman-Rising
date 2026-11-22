@@ -9,12 +9,15 @@ export const ROAD = {
   soffit: 82,
 } as const
 
+/** The dry plate's always-opaque base begins behind the asphalt. */
+export const ROAD_PLATE_TOP = ROAD.sidewalk - 10
+
 /** Continuous point/plane test for the sole. Infinity = no contact this step.
  * A body already touching the plane may leave it upwards without magnetism. */
-export function floorTOI(from: number, to: number): number {
-  if (to < ROAD.lane || to < from) return Infinity
-  if (from >= ROAD.lane) return 0
-  return (ROAD.lane - from) / (to - from)
+export function floorTOI(from: number, to: number, floor: number = ROAD.lane): number {
+  if (to < floor || to < from) return Infinity
+  if (from >= floor) return 0
+  return (floor - from) / (to - from)
 }
 
 /** Sweep against a standing opponent's side, testing vertical overlap AT impact.

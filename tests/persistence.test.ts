@@ -23,6 +23,16 @@ test('settings reject invalid types/ranges and retain valid fields', () => {
   assert.equal(settings.gore, 'energy')
   assert.equal(parseSettings('{"shakeIntensity":1.5}').shakeIntensity, 1.5)
 })
+test('save retains safe counters and valid blade order, dropping a malformed list', () => {
+  const save = parseSave('{"totalKills":12,"best":9007199254740992,"unlocked":["inferno","katana","inferno","thunder"]}')
+  assert.deepEqual(save, { totalKills: 12, best: 0, unlocked: ['katana', 'inferno', 'thunder'] })
+  assert.deepEqual(parseSave('{"totalKills":7.5,"best":250,"unlocked":["inferno","bogus"]}'),
+    { totalKills: 0, best: 250, unlocked: ['katana'] })
+})
+test('settings keep valid player choices, never a saved art preview or non-finite volume', () => {
+  assert.deepEqual(parseSettings('{"quality":"low","qualityV":2,"level":"station","sfxVolume":1e400,"musicVolume":0,"muted":true,"showFps":true,"gore":"blood"}', true, 'medium'),
+    { ...DEFAULT_SETTINGS, quality: 'low', musicVolume: 0, muted: true, showFps: true, gore: 'blood' })
+})
 test('storage access safely fails outside the browser', () => {
   assert.equal(readStorage('key'), null)
   assert.equal(writeStorage('key', 'value'), false)
@@ -45,4 +55,18 @@ test('settings: a legacy "low" is not treated as a choice', () => {
   // A legacy record that is NOT the old default is a real choice.
   const saved = JSON.stringify({ quality: 'ultra' })
   assert.equal(parseSettings(saved, true, 'medium').quality, 'ultra')
+})
+
+test('fresh detection starts adaptive; all chosen presets and their locks survive reload', () => {
+  assert.equal(parseSettings(null, false, 'medium').adaptiveQuality, true)
+  assert.equal(parseSettings(null, true, 'low').adaptiveQuality, false) // Already at the floor.
+  assert.equal(parseSettings('{"quality":"low","qualityV":2,"adaptiveQuality":true}', true, 'medium').adaptiveQuality, false)
+  assert.equal(parseSettings('{"qualityV":3,"adaptiveQuality":"true"}').adaptiveQuality, false)
+  for (const quality of ['low', 'medium', 'high', 'ultra'] as const) {
+    for (const adaptiveQuality of [true, false]) {
+      const preferences = { ...DEFAULT_SETTINGS, quality, adaptiveQuality }
+      const raw = JSON.stringify({ ...preferences, qualityV: 3 })
+      assert.deepEqual(parseSettings(raw, true, 'medium'), preferences)
+    }
+  }
 })

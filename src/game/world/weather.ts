@@ -43,11 +43,12 @@ export const WEATHER_ORDER: readonly WeatherKind[] = ['clear', 'haze', 'drizzle'
 export interface WeatherBand {
   /** Multiplier on the run's own rain. 0 = no drops at all. */
   rain: number
-  /** Multiplier on the fog plane's alpha and on the horizon mist. */
+  /** Multiplier on the moving fog plane's alpha. */
   fog: number
   /** Multiplier on the shared wind (cloud drift + rigging + pennants). */
   gust: number
-  /** Grade offset, −1 cold/wet … +1 warm/sodium. Feeds the sky tint fill. */
+  /** Optional sky tint, −1 cold/wet … +1 warm/sodium. Stages with authored
+   * airlight retain their base colour instead. */
   tint: number
   /** Multiplier on the wet-deck glitter gain (the reflection's response). */
   wet: number
@@ -258,19 +259,14 @@ export class WeatherFront {
   }
 }
 
-/** Which way the tint leans, as a fill colour for the sky pass. Warm sodium
- *  against cold rain — the two halves of a city night's colour temperature. */
+/** Solid CSS colour for scenes that let weather tint the skyline. Keep the
+ * colour fixed and interpolate the opacity through zero between the two. */
 export function tintColour(tint: number): string {
-  return tint >= 0 ? '255,150,74' : '74,140,255'
+  return tint >= 0 ? '#ff964a' : '#4a8cff'
 }
 
-/** Alpha of that fill, from the tint's magnitude. Capped low (a grade is a
- *  whisper; anything over ~0.12 reads as a coloured gel over the lens) and
- *  quantised to 32 levels so `rgbaConst` can cache the string (render/color.ts)
- *  — the draw path must not format colours per frame. */
+/** Use this as globalAlpha. A 1/32 step is visible across a dark city even
+ * if it is small enough for a thin particle stroke. */
 export function tintAlpha(tint: number): number {
-  const a = Math.min(0.12, Math.abs(tint) * 0.26)
-  // FLOOR, not round: rounding 0.12 up to 4/32 would break the cap that makes
-  // this a grade instead of a coloured gel.
-  return Math.floor(a * 32) / 32
+  return Math.min(0.12, Math.abs(tint) * 0.26)
 }

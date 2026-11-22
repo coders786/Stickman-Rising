@@ -1,0 +1,279 @@
+{
+  "productionBuild": "Passed: NEXT_PUBLIC_STICKMAN_PREVIEW=1 npm run build:iso",
+  "typecheck": true,
+  "boundaryLint": true,
+  "targetedLint": true,
+  "focused": {
+    "passed": 112,
+    "total": 112
+  },
+  "gate": {
+    "passed": 487,
+    "total": 492,
+    "preExistingFailures": [
+      "the blade cleaves a tight pack (26px), every sword strike",
+      "how deep the blade cuts does not depend on the frame rate",
+      "no joint is welded shut in any core strike",
+      "six extra authored keys in each sword ritual preserve timing and gate beats",
+      "a connecting strike puts the striking joint ON the body, not near it"
+    ]
+  },
+  "retries": {
+    "desktop": {
+      "arena": "Wet Bridge",
+      "route": "forward",
+      "engaged": true,
+      "retries": 20,
+      "scene": [
+        1440,
+        810
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "relayStore": [
+        759,
+        52
+      ],
+      "sceneSamples": 0,
+      "surfaces": [
+        58,
+        59
+      ],
+      "bytes": [
+        20934656,
+        22654976
+      ],
+      "peakBytes": 25079808,
+      "afterDestroy": 0
+    },
+    "capture": {
+      "arena": "Wet Bridge",
+      "route": "capture",
+      "engaged": true,
+      "retries": 20,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "relayStore": [
+        954,
+        52
+      ],
+      "sceneSamples": 0,
+      "surfaces": [
+        58,
+        59
+      ],
+      "bytes": [
+        21770240,
+        23490560
+      ],
+      "peakBytes": 25915392,
+      "afterDestroy": 0
+    },
+    "station": {
+      "arena": "Night Station",
+      "route": "capture",
+      "engaged": true,
+      "retries": 20,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "relayStore": null,
+      "sceneSamples": 0,
+      "surfaces": [
+        29,
+        29
+      ],
+      "bytes": [
+        13053952,
+        13053952
+      ],
+      "peakBytes": 13094912,
+      "afterDestroy": 0
+    }
+  },
+  "quality": {
+    "desktop": {
+      "arena": "Wet Bridge",
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          2250,
+          1395
+        ],
+        "route": "forward"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    },
+    "touch": {
+      "arena": "Night Station",
+      "locked": {
+        "sameRun": true,
+        "hudUnchanged": true,
+        "scene": [
+          877,
+          1899
+        ],
+        "route": "capture"
+      },
+      "fixedLoad": [
+        "ultra",
+        0,
+        2.25,
+        2.25,
+        2.25,
+        0
+      ],
+      "adaptiveCliff": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "resumedAndPersisted": true
+    }
+  },
+  "play": {
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          30,
+          42,
+          57
+        ]
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trustedClicks": [
+        [
+          "ENGAGE",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ],
+        [
+          "CANCEL",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ]
+      ]
+    },
+    "touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "paused": {
+        "scene": 0,
+        "hud": 8,
+        "frozen": true
+      },
+      "pauseControl": {
+        "scene": 8,
+        "hud": 8,
+        "frozen": true
+      },
+      "invalidation": {
+        "scene": 1,
+        "sameNight": true,
+        "alpha": 255,
+        "rgb": [
+          16,
+          21,
+          32
+        ]
+      },
+      "teardown": {
+        "queued": true,
+        "aborted": true,
+        "oldDestroyed": true,
+        "pending": null,
+        "newOwner": true,
+        "lowHpReleased": true
+      },
+      "trustedClicks": [
+        [
+          "ENGAGE",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ],
+        [
+          "CANCEL",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ],
+        [
+          "RETRY",
+          true,
+          true
+        ]
+      ]
+    }
+  }
+}

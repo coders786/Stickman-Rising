@@ -1,0 +1,2643 @@
+{
+  "schema": 1,
+  "base": "9d27d2b25e4ef0e0a5ca100d7e0f365cc3a66520",
+  "branch": "arena/3320aa08-stickman-rising",
+  "build": {
+    "node": "v22.22.3",
+    "next": "16.4.6",
+    "id": "hdEknTCbH-I7pQhyLYyDF",
+    "sourceTreeSha256": "a2a45dfe5e1a822e4a87688f0d55fcd2a6bd2677dc9bef68895631c2276f306d",
+    "production": "passed"
+  },
+  "deliveredBridgeControlPatchSha256": "6a0ec49227da541e5e1922cdfc7e4b26bbabf33d1b66e58e34892734b0a69738",
+  "checks": {
+    "types": "passed",
+    "boundaries": "20 known, 0 new",
+    "focused": {
+      "tests": 126,
+      "pass": 126,
+      "fail": 0
+    },
+    "full": {
+      "tests": 515,
+      "pass": 510,
+      "fail": 5,
+      "exit": 1,
+      "failures": [
+        "a connecting strike puts the striking joint ON the body, not near it",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "the blade cleaves a tight pack (26px), every sword strike"
+      ],
+      "sameFailureNamesAsBaseline": true,
+      "controlFailureNamesSha256": "1c35e9424d87e67b7f8b0d099c83859bf2151a44a3b69e7a068bc61ef7c10ab1"
+    },
+    "remoteCI": "not run in this session"
+  },
+  "methodology": {
+    "pacing": "Real foreground rAF, locked Ultra, seeded 42, scripted movement/attacks with a protected QA hero. Software Chromium; not GPU or physical-device FPS.",
+    "governor": "Injected frame samples only during the separate drop/recovery check. Real canvas resizing, same route, time, weather, feature set and HUD backing.",
+    "visuals": "Planted checkpoints with real CDP keyboard/touch input. Stills are separate from the pacing window.",
+    "soak": "Gameplay build MJwZ-MV66Ip6fFUKenQPz, before the touch-only dock layout change. Real Engage and 20 Retry inputs per viewport. Fixed play steps; QA hero protected and bosses finished through the hit resolver after the gate block. Tracked RGBA backing, not browser or GPU memory."
+  },
+  "browserChecks": {
+    "desktop": {
+      "settingsAndPacing": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "compact": {
+          "start": [
+            1036.8125,
+            40,
+            96,
+            44
+          ],
+          "end": [
+            1036.8125,
+            40,
+            96,
+            44
+          ],
+          "contentScrolls": true,
+          "scrollTop": 281,
+          "viewportScroll": 0,
+          "sliders": [
+            [
+              "Shake intensity",
+              "100%"
+            ],
+            [
+              "Sound effects volume",
+              "80%"
+            ],
+            [
+              "Music volume",
+              "55%"
+            ]
+          ]
+        },
+        "locked": {
+          "min": 1.25,
+          "final": 1.25,
+          "steps": [],
+          "sameRun": true
+        },
+        "adaptive": {
+          "min": 0.75,
+          "final": 1.25,
+          "steps": [
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.75,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.25,
+              "shadow": "cast+props",
+              "stableHud": true
+            }
+          ],
+          "sameRun": true
+        },
+        "pacing": {
+          "frames": 563,
+          "initialSnap": 6.8735,
+          "badScale": 0,
+          "endX": 5220,
+          "duration": 30030.699999997763,
+          "insets": {
+            "top": 24,
+            "right": 10,
+            "bottom": 20,
+            "left": 12
+          },
+          "viewport": [
+            1180,
+            660
+          ],
+          "seed": 42,
+          "scale": 1.25,
+          "backing": [
+            1475,
+            825
+          ],
+          "publishCount": 112,
+          "p50": 50,
+          "p95": 83.3,
+          "p99": 83.4,
+          "worst": 133.3,
+          "firstLabel": {
+            "label": "104 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          },
+          "lastLabel": {
+            "label": "22 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          }
+        },
+        "persisted": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": true,
+          "volume": 0.5
+        }
+      },
+      "liveControlsAndSeams": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "seams": [
+          {
+            "x": 240,
+            "y": 0,
+            "time": 0.2333333333333333,
+            "tick": 14,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.2856,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 605.8151850579262,
+            "y": 0,
+            "time": 1.4166666666666665,
+            "tick": 85,
+            "wet": 0,
+            "cover": "concourse",
+            "key": 0.513416,
+            "drive": 0.07711200000000001,
+            "level": 0.07744132298203205,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 872.4637034491874,
+            "y": 0,
+            "time": 2.366666666666663,
+            "tick": 142,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.2856,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 319.9818517245926,
+            "y": 0,
+            "time": 4.116666666666657,
+            "tick": 247,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.2856,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 528.2970367825187,
+            "y": 0,
+            "time": 4.933333333333321,
+            "tick": 296,
+            "wet": 0,
+            "cover": "concourse",
+            "key": 0.513416,
+            "drive": 0.07711200000000001,
+            "level": 0.07711200000000001,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          }
+        ],
+        "frozen": {
+          "dt": 0,
+          "ticks": 6
+        },
+        "service": {
+          "id": 2,
+          "buff": "Chain Lightning Dash"
+        },
+        "reward": {
+          "hp": 73,
+          "shield": 50,
+          "remaining": 29.900000000000006,
+          "active": "Chain Lightning Dash",
+          "flow": 0,
+          "best": "B"
+        },
+        "execute": 3,
+        "overdrive": true,
+        "teardown": {
+          "newRoute": true,
+          "starts": [
+            [
+              42,
+              0
+            ],
+            [
+              43,
+              0
+            ]
+          ],
+          "audioClosed": true,
+          "stores": 0
+        }
+      },
+      "checkpoints": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "fixtures": "planted checkpoints; live jump, drop, draw and attack inputs",
+        "seed": 42,
+        "platform": {
+          "left": 13915,
+          "right": 14269,
+          "y": -142
+        },
+        "footing": {
+          "x": 14074.3,
+          "y": -142,
+          "floorY": -142,
+          "toes": [
+            -144.41669958748105,
+            -145.33363929290869
+          ],
+          "biome": "Industrial Grid",
+          "weather": {
+            "openClips": 1,
+            "streaks": 98,
+            "splashes": 0,
+            "wetMarks": 0
+          }
+        },
+        "drop": true,
+        "boss": {
+          "gate": "locked",
+          "bossX": 5081.318561721148,
+          "heroX": 5002,
+          "hp": 950,
+          "scale": 1.85,
+          "head": {
+            "x": 665.6589259878319,
+            "y": 324.7149478007407
+          },
+          "hero": {
+            "x": 541.0289429330927,
+            "y": 503.0579677340032
+          },
+          "controlsTop": null,
+          "view": [
+            1180,
+            660
+          ],
+          "zoom": 1.2222222222222223
+        },
+        "ribbon": {
+          "count": 5,
+          "hilt": [
+            6745.458707080869,
+            -57.50178459065795
+          ],
+          "tip": [
+            6842.957683685825,
+            -45.439805396001404
+          ],
+          "renderProjection": {
+            "x": 782.2933495571926,
+            "y": 411.35134896044275
+          },
+          "controlsTop": null,
+          "age": 0.11669999999999892
+        }
+      },
+      "pauseRetryAndRemount": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": false,
+        "engage": {
+          "seed": 2602399390,
+          "requested": 2602399390,
+          "route": true,
+          "tier": "low",
+          "starts": 1,
+          "lightEdges": 0,
+          "plates": {
+            "moonSource": "cpu",
+            "starSource": "cpu",
+            "moonMs": 27.5,
+            "starMs": 1,
+            "note": "software WebGL",
+            "sprites": 0
+          }
+        },
+        "retry": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 8.099999997764826,
+          "starMs": 0.6999999992549419,
+          "note": "software WebGL",
+          "sprites": 0,
+          "audio": "running"
+        },
+        "cancelledUnpublishedNight": true,
+        "lowHp": {
+          "hp": 10,
+          "initial": 100,
+          "delayed": 60.234883224658105,
+          "stableBacking": true,
+          "before": [
+            1000,
+            1000
+          ],
+          "bytesAdded": 0
+        },
+        "paused": {
+          "scene": 0,
+          "hud": 8,
+          "frozen": true
+        },
+        "pauseControl": {
+          "scene": 8,
+          "hud": 8,
+          "frozen": true
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            20,
+            27,
+            36
+          ]
+        },
+        "editor": {
+          "scene": 8,
+          "hud": 8,
+          "frozen": true
+        },
+        "hiddenPause": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "teardown": {
+          "queued": true,
+          "aborted": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        },
+        "trace": {
+          "starts": 2,
+          "lightEdges": 3,
+          "clicks": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ],
+          "phases": [
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "gameover",
+            "preparing",
+            "playing",
+            "gameover",
+            "preparing"
+          ]
+        }
+      },
+      "startup": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": false,
+        "early": false,
+        "cpuCompositor": true,
+        "ttfbMs": 13,
+        "domMs": 242.80000000074506,
+        "fcpMs": 272,
+        "bootReadyMs": 1852.9000000022352,
+        "menuMs": 693,
+        "titleSubmitMs": 1819,
+        "titleSceneMs": 1855.300000000745,
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 2016.800000000745,
+            "active": true,
+            "paintedTitle": true,
+            "readyMs": 825.4000000022352,
+            "seed": 42,
+            "sky": {
+              "moonSource": "cpu",
+              "starSource": "cpu",
+              "moonMs": 14.699999999254942,
+              "starMs": 1.1000000014901161,
+              "note": "software WebGL",
+              "sprites": 0
+            },
+            "bakeMs": 582.2000000029802,
+            "simMs": 1106,
+            "maxLongTaskMs": 752,
+            "acceptedToPlayMs": 824.3000000007451
+          },
+          "RETRY": {
+            "clickAt": 3433.400000002235,
+            "active": true,
+            "paintedTitle": true,
+            "readyMs": 761.3000000007451,
+            "seed": 43,
+            "sky": {
+              "moonSource": "cpu",
+              "starSource": "cpu",
+              "moonMs": 6.100000001490116,
+              "starMs": 1.0999999977648258,
+              "note": "software WebGL",
+              "sprites": 0
+            },
+            "bakeMs": 617.3999999985099,
+            "simMs": 949.5,
+            "maxLongTaskMs": 732,
+            "acceptedToPlayMs": 760.3999999985099
+          }
+        }
+      },
+      "soak": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "retries": 20,
+        "realUI": true,
+        "rows": [
+          {
+            "run": 0,
+            "seed": 42,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23797760,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 99,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6755.599999997765
+          },
+          {
+            "run": 1,
+            "seed": 43,
+            "retired": true,
+            "from": 240,
+            "end": 10874.8158288956,
+            "gross": 10634.8158288956,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23945216,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 94,
+            "maxSplashes": 10,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6568.70000000298
+          },
+          {
+            "run": 2,
+            "seed": 44,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24211456,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 98,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 8111.5
+          },
+          {
+            "run": 3,
+            "seed": 45,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23904256,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 94,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 6574
+          },
+          {
+            "run": 4,
+            "seed": 46,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24072192,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 101,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6383.599999997765
+          },
+          {
+            "run": 5,
+            "seed": 47,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24276992,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 96,
+            "maxSplashes": 6,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 6820.5
+          },
+          {
+            "run": 6,
+            "seed": 48,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 86,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24510464,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 99,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 5717.10000000149
+          },
+          {
+            "run": 7,
+            "seed": 49,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23810048,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 95,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 5352.5
+          },
+          {
+            "run": 8,
+            "seed": 50,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24059904,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 95,
+            "maxSplashes": 9,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 5681.10000000149
+          },
+          {
+            "run": 9,
+            "seed": 51,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24145920,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 102,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6094.599999997765
+          },
+          {
+            "run": 10,
+            "seed": 52,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24236032,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 94,
+            "maxSplashes": 6,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6185.5
+          },
+          {
+            "run": 11,
+            "seed": 53,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 86,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24178688,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 102,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6073.800000000745
+          },
+          {
+            "run": 12,
+            "seed": 54,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23953408,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 95,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6190.5
+          },
+          {
+            "run": 13,
+            "seed": 55,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24010752,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 100,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 7633.699999999255
+          },
+          {
+            "run": 14,
+            "seed": 56,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23859200,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 100,
+            "maxSplashes": 9,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 6282.39999999851
+          },
+          {
+            "run": 15,
+            "seed": 57,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23977984,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 99,
+            "maxSplashes": 8,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 6542.39999999851
+          },
+          {
+            "run": 16,
+            "seed": 58,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 24272896,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 106,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6159.70000000298
+          },
+          {
+            "run": 17,
+            "seed": 59,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23961600,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 104,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 5810.400000002235
+          },
+          {
+            "run": 18,
+            "seed": 60,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 89,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23515136,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 99,
+            "maxSplashes": 9,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 5569.800000000745
+          },
+          {
+            "run": 19,
+            "seed": 61,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 23834624,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 95,
+            "maxSplashes": 7,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 5826.699999999255
+          },
+          {
+            "run": 20,
+            "seed": 62,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 7,
+            "maxBytes": 24092672,
+            "maxStores": 48,
+            "maxChunks": 3,
+            "maxWeather": 102,
+            "maxSplashes": 9,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 6301
+          }
+        ],
+        "end": {
+          "starts": [
+            {
+              "seed": 42,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 43,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 44,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 45,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 46,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 47,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 48,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 49,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 50,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 51,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 52,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 53,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 54,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 55,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 56,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 57,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 58,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 59,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 60,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 61,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            },
+            {
+              "seed": 62,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1.25
+            }
+          ],
+          "sceneSamples": 0,
+          "lastStoresReleased": true,
+          "liveBytes": 0,
+          "liveStores": 0
+        },
+        "preset": "ultra",
+        "minNetWorldUnits": 10630.14916222898
+      }
+    },
+    "touch": {
+      "settingsAndPacing": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "compact": {
+          "start": [
+            278,
+            40,
+            96,
+            44
+          ],
+          "end": [
+            278,
+            40,
+            96,
+            44
+          ],
+          "contentScrolls": true,
+          "scrollTop": 304,
+          "viewportScroll": 0,
+          "sliders": [
+            [
+              "Shake intensity",
+              "100%"
+            ],
+            [
+              "Sound effects volume",
+              "80%"
+            ],
+            [
+              "Music volume",
+              "55%"
+            ]
+          ]
+        },
+        "locked": {
+          "min": 1.25,
+          "final": 1.25,
+          "steps": [],
+          "sameRun": true
+        },
+        "adaptive": {
+          "min": 0.75,
+          "final": 1.25,
+          "steps": [
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.75,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.85,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 0.95,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.05,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.15,
+              "shadow": "cast+props",
+              "stableHud": true
+            },
+            {
+              "type": "quality",
+              "active": "ultra",
+              "scale": 1.25,
+              "shadow": "cast+props",
+              "stableHud": true
+            }
+          ],
+          "sameRun": true
+        },
+        "pacing": {
+          "frames": 1067,
+          "initialSnap": 4.6278999999999995,
+          "badScale": 0,
+          "endX": 5220,
+          "duration": 30001.799999999253,
+          "insets": {
+            "top": 24,
+            "right": 10,
+            "bottom": 20,
+            "left": 12
+          },
+          "viewport": [
+            400,
+            844
+          ],
+          "seed": 42,
+          "scale": 1.25,
+          "backing": [
+            500,
+            1055
+          ],
+          "publishCount": 115,
+          "p50": 33.3,
+          "p95": 50,
+          "p99": 66.6,
+          "worst": 83.2,
+          "firstLabel": {
+            "label": "54 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          },
+          "lastLabel": {
+            "label": "48 FPS",
+            "x": 68,
+            "y": 198,
+            "w": 70
+          }
+        },
+        "persisted": {
+          "preset": "ULTRA",
+          "adaptiveEnabled": false,
+          "renderScale": 1.25,
+          "showFPS": true,
+          "volume": 0.4
+        }
+      },
+      "liveControlsAndSeams": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "seams": [
+          {
+            "x": 240,
+            "y": 0,
+            "time": 0.15,
+            "tick": 9,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.2856,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 614.6268284409757,
+            "y": 0,
+            "time": 1.733333333333332,
+            "tick": 104,
+            "wet": 0,
+            "cover": "concourse",
+            "key": 0.513416,
+            "drive": 0.07711200000000001,
+            "level": 0.07850281694715075,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 859.300165384342,
+            "y": 0,
+            "time": 2.7666666666666617,
+            "tick": 166,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.281760997457604,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 319.36520954188813,
+            "y": 0,
+            "time": 4.683333333333322,
+            "tick": 281,
+            "wet": 0.47,
+            "cover": null,
+            "key": 0.8264,
+            "drive": 0.2856,
+            "level": 0.28137553579292507,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          },
+          {
+            "x": 540.4587132766158,
+            "y": 0,
+            "time": 5.649999999999985,
+            "tick": 339,
+            "wet": 0,
+            "cover": "concourse",
+            "key": 0.513416,
+            "drive": 0.07711200000000001,
+            "level": 0.0845585596559234,
+            "same": true,
+            "score": 0,
+            "phase": "playing"
+          }
+        ],
+        "frozen": {
+          "dt": 0,
+          "ticks": 6
+        },
+        "service": {
+          "id": 2,
+          "buff": "Chain Lightning Dash"
+        },
+        "reward": {
+          "hp": 73,
+          "shield": 50,
+          "remaining": 29.950000000000003,
+          "active": "Chain Lightning Dash",
+          "flow": 0,
+          "best": "B"
+        },
+        "execute": 3,
+        "overdrive": true,
+        "teardown": {
+          "newRoute": true,
+          "starts": [
+            [
+              42,
+              0
+            ],
+            [
+              43,
+              0
+            ]
+          ],
+          "audioClosed": true,
+          "stores": 0
+        }
+      },
+      "checkpoints": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "fixtures": "planted checkpoints; live jump, drop, draw and attack inputs",
+        "seed": 42,
+        "platform": {
+          "left": 13915,
+          "right": 14269,
+          "y": -142
+        },
+        "footing": {
+          "x": 14074.3,
+          "y": -142,
+          "floorY": -142,
+          "toes": [
+            -148.1772533487206,
+            -145.48030961245675
+          ],
+          "biome": "Industrial Grid",
+          "weather": {
+            "openClips": 1,
+            "streaks": 14,
+            "splashes": 3,
+            "wetMarks": 0
+          }
+        },
+        "drop": true,
+        "boss": {
+          "gate": "locked",
+          "bossX": 5081.633950077287,
+          "heroX": 5002,
+          "hp": 950,
+          "scale": 1.85,
+          "head": {
+            "x": 277.77732819891384,
+            "y": 375.5815511165926
+          },
+          "hero": {
+            "x": 146.7755725993943,
+            "y": 572.7877982019953
+          },
+          "controlsTop": 624,
+          "view": [
+            400,
+            844
+          ],
+          "zoom": 1.3160372776193838
+        },
+        "ribbon": {
+          "count": 4,
+          "hilt": [
+            6726.384496143799,
+            -62.474039824413204
+          ],
+          "tip": [
+            6795.4515996598875,
+            10.853711894138215
+          ],
+          "renderProjection": {
+            "x": 322.5895866208465,
+            "y": 571.8158015530605
+          },
+          "controlsTop": 624,
+          "age": 0.13339999999999969
+        }
+      },
+      "pauseRetryAndRemount": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": true,
+        "engage": {
+          "seed": 1946033358,
+          "requested": 1946033358,
+          "route": false,
+          "tier": "low",
+          "starts": 1,
+          "lightEdges": 0,
+          "plates": {
+            "moonSource": "cpu",
+            "starSource": "cpu",
+            "moonMs": 12.400000002235174,
+            "starMs": 0.8000000007450581,
+            "note": "software WebGL",
+            "sprites": 0
+          }
+        },
+        "retry": {
+          "moonSource": "cpu",
+          "starSource": "cpu",
+          "moonMs": 6.199999999254942,
+          "starMs": 0.6999999992549419,
+          "note": "software WebGL",
+          "sprites": 0,
+          "audio": "running"
+        },
+        "cancelledUnpublishedNight": true,
+        "lowHp": {
+          "hp": 10,
+          "initial": 100,
+          "delayed": 81.28669259148413,
+          "stableBacking": true,
+          "before": [
+            400,
+            800
+          ],
+          "bytesAdded": 0
+        },
+        "paused": {
+          "scene": 0,
+          "hud": 8,
+          "frozen": true
+        },
+        "pauseControl": {
+          "scene": 8,
+          "hud": 8,
+          "frozen": true
+        },
+        "invalidation": {
+          "scene": 1,
+          "sameNight": true,
+          "alpha": 255,
+          "rgb": [
+            11,
+            16,
+            24
+          ]
+        },
+        "editor": {
+          "scene": 8,
+          "hud": 8,
+          "frozen": true
+        },
+        "hiddenPause": {
+          "scene": 0,
+          "hud": 0,
+          "frozen": true
+        },
+        "teardown": {
+          "queued": true,
+          "aborted": true,
+          "oldDestroyed": true,
+          "pending": null,
+          "newOwner": true,
+          "storesReleased": true
+        },
+        "trace": {
+          "starts": 2,
+          "lightEdges": 3,
+          "clicks": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ],
+          "phases": [
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "gameover",
+            "preparing",
+            "playing",
+            "gameover",
+            "preparing"
+          ]
+        }
+      },
+      "startup": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": true,
+        "early": false,
+        "cpuCompositor": true,
+        "ttfbMs": 14.5,
+        "domMs": 197.90000000223517,
+        "fcpMs": 312,
+        "bootReadyMs": 1156.800000000745,
+        "menuMs": 581.4000000022352,
+        "titleSubmitMs": 1138.4000000022352,
+        "titleSceneMs": 1159.199999999255,
+        "runs": {
+          "ENGAGE": {
+            "clickAt": 1305.1000000014901,
+            "active": true,
+            "paintedTitle": true,
+            "readyMs": 631.1999999992549,
+            "seed": 42,
+            "sky": {
+              "moonSource": "cpu",
+              "starSource": "cpu",
+              "moonMs": 11.800000000745058,
+              "starMs": 1.1000000014901161,
+              "note": "software WebGL",
+              "sprites": 0
+            },
+            "bakeMs": 440.30000000074506,
+            "simMs": 820.8000000007451,
+            "maxLongTaskMs": 598,
+            "acceptedToPlayMs": 630.0999999977648
+          },
+          "RETRY": {
+            "clickAt": 2288.300000000745,
+            "active": true,
+            "paintedTitle": true,
+            "readyMs": 521.1000000014901,
+            "seed": 43,
+            "sky": {
+              "moonSource": "cpu",
+              "starSource": "cpu",
+              "moonMs": 6.599999997764826,
+              "starMs": 1.300000000745058,
+              "note": "software WebGL",
+              "sprites": 0
+            },
+            "bakeMs": 395.5,
+            "simMs": 704.1999999992549,
+            "maxLongTaskMs": 486,
+            "acceptedToPlayMs": 520.1999999992549
+          }
+        }
+      },
+      "soak": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "retries": 20,
+        "realUI": true,
+        "rows": [
+          {
+            "run": 0,
+            "seed": 42,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 19705856,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 26,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2526.89999999851
+          },
+          {
+            "run": 1,
+            "seed": 43,
+            "retired": true,
+            "from": 240,
+            "end": 10874.8158288956,
+            "gross": 10634.8158288956,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20434944,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 23,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2332.699999999255
+          },
+          {
+            "run": 2,
+            "seed": 44,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20664320,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 26,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2053.800000000745
+          },
+          {
+            "run": 3,
+            "seed": 45,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20037632,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 22,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2086.300000000745
+          },
+          {
+            "run": 4,
+            "seed": 46,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20492288,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 23,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2077.5
+          },
+          {
+            "run": 5,
+            "seed": 47,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20267008,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 23,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2114
+          },
+          {
+            "run": 6,
+            "seed": 48,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 86,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20176896,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 25,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2066.5
+          },
+          {
+            "run": 7,
+            "seed": 49,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 19804160,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 30,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2099.199999999255
+          },
+          {
+            "run": 8,
+            "seed": 50,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20561920,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 29,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2273.099999997765
+          },
+          {
+            "run": 9,
+            "seed": 51,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20283392,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 25,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2215
+          },
+          {
+            "run": 10,
+            "seed": 52,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20254720,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 28,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2019.4000000022352
+          },
+          {
+            "run": 11,
+            "seed": 53,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 86,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20316160,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 23,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2187.89999999851
+          },
+          {
+            "run": 12,
+            "seed": 54,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20439040,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 28,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2009.6000000014901
+          },
+          {
+            "run": 13,
+            "seed": 55,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20148224,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 26,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2158.900000002235
+          },
+          {
+            "run": 14,
+            "seed": 56,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 19697664,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 23,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 1914.2999999970198
+          },
+          {
+            "run": 15,
+            "seed": 57,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 19849216,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 25,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 9,
+            "elapsed": 2034.800000000745
+          },
+          {
+            "run": 16,
+            "seed": 58,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20361216,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 26,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2129.199999999255
+          },
+          {
+            "run": 17,
+            "seed": 59,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20201472,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 26,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2123.199999999255
+          },
+          {
+            "run": 18,
+            "seed": 60,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 89,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 19542016,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 28,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 10,
+            "elapsed": 2142.5
+          },
+          {
+            "run": 19,
+            "seed": 61,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 87,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 6,
+            "maxBytes": 20328448,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 25,
+            "maxSplashes": 4,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2011.6000000014901
+          },
+          {
+            "run": 20,
+            "seed": 62,
+            "retired": true,
+            "from": 240,
+            "end": 10870.14916222898,
+            "gross": 10630.14916222898,
+            "steps": 1865,
+            "paints": 88,
+            "gates": 2,
+            "shelters": 3,
+            "maxThreats": 7,
+            "maxBytes": 20500480,
+            "maxStores": 46,
+            "maxChunks": 2,
+            "maxWeather": 22,
+            "maxSplashes": 3,
+            "maxDryRain": 0,
+            "offscreen": true,
+            "evictions": 8,
+            "elapsed": 2178.400000002235
+          }
+        ],
+        "end": {
+          "starts": [
+            {
+              "seed": 42,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 43,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 44,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 45,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 46,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 47,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 48,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 49,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 50,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 51,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 52,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 53,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 54,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 55,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 56,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 57,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 58,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 59,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 60,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 61,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            },
+            {
+              "seed": 62,
+              "tick": 0,
+              "gate": "ahead",
+              "x": 240,
+              "scale": 1
+            }
+          ],
+          "sceneSamples": 0,
+          "lastStoresReleased": true,
+          "liveBytes": 0,
+          "liveStores": 0
+        },
+        "preset": "medium",
+        "minNetWorldUnits": 10630.14916222898
+      }
+    }
+  },
+  "touchCompositor": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "softwareRequested": true,
+    "viewport": {
+      "width": 400,
+      "height": 844,
+      "deviceScaleFactor": 2,
+      "isMobile": true,
+      "hasTouch": true
+    },
+    "trials": [
+      {
+        "mode": "flat",
+        "continuous": true,
+        "startX": 792,
+        "layers": 0,
+        "surfaces": 10,
+        "layout": [
+          500,
+          1055,
+          800,
+          1688,
+          1.25,
+          "ultra"
+        ],
+        "samples": 72,
+        "p50": 16.799999999999727,
+        "p95": 50,
+        "p99": 50.09999999999991,
+        "stalls250ms": 0,
+        "seed": 42,
+        "playerX": 1366.3158288955756,
+        "time": 1.6999999999999988,
+        "weather": {
+          "seed": 42,
+          "version": 1,
+          "tick": 642,
+          "changes": 1,
+          "startTick": 564,
+          "from": "drizzle",
+          "kind": "haze",
+          "s": 0.0179086258,
+          "rain": 0.34,
+          "fog": 0.4200007666748047,
+          "cloud": 0.5504166666666667,
+          "key": 0.6902995560894732,
+          "gust": 0.22994441467142532,
+          "windX": 0.22994441467142532,
+          "wet": 0.47
+        }
+      }
+    ]
+  },
+  "replays": {
+    "industrialCrowd": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "sourceDigest": "6278db3967acd9c032aeb3aeeeedd021f427ea2a341cf6dc2a945922311f13cf",
+      "config": {
+        "shadowRaster": false,
+        "route": "forward",
+        "tier": "ultra",
+        "fixture": "crowd",
+        "scale": 1.25,
+        "width": 1180,
+        "height": 660,
+        "warmup": 30,
+        "frames": 72,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "route",
+        "atX": 10872,
+        "quiet": false,
+        "denyBank": false,
+        "frontTick": 720,
+        "roll": null,
+        "liveWaves": false,
+        "traceState": true,
+        "shadowMetrics": false,
+        "shadowProps": false,
+        "opticsMetrics": false
+      },
+      "final": {
+        "layout": [
+          1180,
+          660,
+          1475,
+          825,
+          1180,
+          660,
+          "ultra",
+          "forward"
+        ],
+        "seed": 42,
+        "weather": {
+          "seed": 42,
+          "version": 1,
+          "tick": 822,
+          "changes": 1,
+          "startTick": 564,
+          "from": "drizzle",
+          "kind": "haze",
+          "s": 0.37045491579999995,
+          "rain": 0.3012215847619209,
+          "fog": 0.4318429407470703,
+          "cloud": 0.39921995342402544,
+          "key": 0.7423938582057457,
+          "gust": 0.19140042361651408,
+          "windX": 0.19140042361651408,
+          "wet": 0.4690599445914946
+        },
+        "bakes": {
+          "moonSource": "gpu",
+          "starSource": "gpu",
+          "moonMs": 221.5,
+          "starMs": 68.80000000074506,
+          "note": "",
+          "sprites": 0
+        },
+        "particleLevel": 0,
+        "gore": "energy",
+        "sector": 3,
+        "cache": {
+          "indices": [
+            9,
+            10
+          ],
+          "bakes": 4,
+          "evicted": 2,
+          "offscreen": true
+        },
+        "skyBackend": "city-bank",
+        "weatherWork": {
+          "openClips": 1,
+          "streaks": 83,
+          "splashes": 3,
+          "wetMarks": 0
+        }
+      },
+      "retainedAfterDestroy": [],
+      "sceneSamples": 0,
+      "eventDigest": "ed643a786f7275209225d4a898eb9f43d9316697bfcf7c372cd47c566212e8df",
+      "stateDigest": "5412739d0e9e420c2a7bf7aeea1e447aceb968ea2be11ddc5241ecbf6297d269"
+    },
+    "optionalBankDenied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "sourceDigest": "6278db3967acd9c032aeb3aeeeedd021f427ea2a341cf6dc2a945922311f13cf",
+      "config": {
+        "shadowRaster": false,
+        "route": "capture",
+        "tier": "medium",
+        "fixture": "idle",
+        "scale": 1,
+        "width": 400,
+        "height": 844,
+        "warmup": 24,
+        "frames": 48,
+        "fixed": true,
+        "stages": true,
+        "stall": false,
+        "seed": 42,
+        "wet": false,
+        "sky": "cache",
+        "emptyTeardown": true,
+        "scene": "route",
+        "atX": 4075,
+        "quiet": false,
+        "denyBank": true,
+        "frontTick": 720,
+        "roll": 0.09,
+        "liveWaves": false,
+        "traceState": false,
+        "shadowMetrics": false,
+        "shadowProps": false,
+        "opticsMetrics": false
+      },
+      "final": {
+        "layout": [
+          400,
+          844,
+          400,
+          844,
+          400,
+          844,
+          "medium",
+          "capture"
+        ],
+        "seed": 42,
+        "weather": {
+          "seed": 42,
+          "version": 1,
+          "tick": 792,
+          "changes": 1,
+          "startTick": 564,
+          "from": "drizzle",
+          "kind": "haze",
+          "s": 0.2834907008,
+          "rain": 0.321637264141856,
+          "fog": 0.42790748359374997,
+          "cloud": 0.4314875403881391,
+          "key": 0.7274662683366754,
+          "gust": 0.20335205838485934,
+          "windX": 0.20335205838485934,
+          "wet": 0.46967186303318903
+        },
+        "bakes": {
+          "moonSource": "gpu",
+          "starSource": "gpu",
+          "moonMs": 94.30000000074506,
+          "starMs": 57.400000002235174,
+          "note": "",
+          "sprites": 0
+        },
+        "particleLevel": 0,
+        "gore": "energy",
+        "sector": 1,
+        "cache": {
+          "indices": [
+            3
+          ],
+          "bakes": 2,
+          "evicted": 1,
+          "offscreen": true
+        },
+        "skyBackend": "city-decks",
+        "weatherWork": {
+          "openClips": 1,
+          "streaks": 3,
+          "splashes": 0,
+          "wetMarks": 0
+        }
+      },
+      "retainedAfterDestroy": [],
+      "sceneSamples": 0,
+      "eventDigest": "2341f4104b874d75fdaaad1a369b9623b84e3be6cd3a2caf4f3e655926a2d429",
+      "stateDigest": null
+    }
+  },
+  "screenshots": {
+    "desktop-outer-transit.jpg": "Real Engage, seed 42, Outer Transit entry.",
+    "desktop-market-katana.jpg": "Market Overpass checkpoint, real draw/slash and a solved ribbon.",
+    "desktop-industrial-catwalk.jpg": "Industrial Grid checkpoint, landed on the y−142 catwalk with real jump input.",
+    "touch-boss-windup.jpg": "400×844 touch; the local boss reaction and hero are framed above the action buttons.",
+    "touch-market-katana.jpg": "400×844 touch; the live attack and ribbon stay above the revised combat dock.",
+    "touch-service.jpg": "400×844 touch; terminal tooltip and contextual Service control before trade.",
+    "touch-presets.png": "400×844 touch; four offered presets, Ultra locked, Adaptive Resolution off."
+  }
+}

@@ -14,9 +14,10 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
+import { createCanvas } from '@napi-rs/canvas'
 
 import {
-  PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, LIGHT_HEX, LIGHT_INK, falloff, liveGain,
+  PRACTICAL_SIGN_X, PRACTICAL_LAMP_X, LIGHT_HEX, falloff, liveGain,
   makeStageLights, type PointLight,
 } from '../src/game/world/lightfield'
 import { RibbonField, newProbe } from '../src/game/lighting/ribbons'
@@ -40,7 +41,7 @@ function stubCtx(): { ctx: CanvasRenderingContext2D; ops: number } {
   const noop = (): void => { state.ops++ }
   const ctx = {
     save: noop, restore: noop, beginPath: noop, closePath: noop, fill: noop,
-    stroke: noop, fillRect: noop, moveTo: noop, lineTo: noop, arc: noop,
+    stroke: noop, fillRect: noop, rect: noop, moveTo: noop, lineTo: noop, arc: noop,
     ellipse: noop, quadraticCurveTo: noop, translate: noop, scale: noop,
     clearRect: noop, drawImage: noop, createRadialGradient: () => ({ addColorStop: noop }),
     createLinearGradient: () => ({ addColorStop: noop }),
@@ -170,12 +171,6 @@ test('light field: two lights sum, and the sum can exceed either alone', () => {
   assert.ok(two.warm > 0.9, `the overlap is too weak to read as two lights (${two.warm})`)
 })
 
-test('light field: every kind has an ink, and no two families share one', () => {
-  const inks = Object.values(LIGHT_INK)
-  assert.equal(new Set(inks).size, inks.length, 'two light families cast the same shadow colour')
-  assert.ok(inks.every((v) => v.split(',').length === 3))
-})
-
 /* ------------------------------------------------------------- the city -- */
 
 test('the hash is pure, bounded and not constant', () => {
@@ -242,6 +237,37 @@ test('buildings: the draw honours the tier budget exactly', () => {
   assert.equal(none, 0, 'budget 0 still drew something')
 })
 
+test('panning a vent offscreen neither changes sign blending nor admits another sign', () => {
+  const g = createCanvas(250, 80).getContext('2d')
+  const sign: BuildingAnim = { kind: 'buzz', band: 'mid', tx: 160, ty: 30, w: 16, h: 4, phase: .47, rate: 1 }
+  const first: BuildingAnim = { ...sign, kind: 'steam', tx: 20, w: 3, h: 12 }
+  const extra = { ...sign, tx: 220 }
+  const sample = (m: number) => {
+    g.fillStyle = '#202020'; g.fillRect(0, 0, 250, 80)
+    drawBuildingAnims(g as unknown as CanvasRenderingContext2D, [first, sign, extra], .21, m, 0, 2048, 0, 250, 2)
+    assert.equal(g.getImageData(extra.tx - m + 2, 31, 1, 1).data[0], 32, 'culling freed a slot for a new sign')
+    return g.getImageData(sign.tx - m + 2, 31, 1, 1).data[0]
+  }
+  const visibleVent = sample(12)
+  assert.ok(visibleVent > 32, 'the admitted sign must be visible')
+  assert.equal(sample(65), visibleVent)
+})
+
+test('neon tubes and all chase cells keep a visible floor with no hard frame jumps', () => {
+  const g = createCanvas(120, 50).getContext('2d')
+  for (const kind of ['buzz', 'chase'] as const) {
+    const sign: BuildingAnim = { kind, band: 'mid', tx: 20, ty: 20, w: 24, h: 4, phase: .47, rate: 1.2 }
+    let prev: number[] = []
+    for (let i = 0; i < 160; i++) {
+      g.fillStyle = '#000'; g.fillRect(0, 0, 120, 50)
+      drawBuildingAnims(g as unknown as CanvasRenderingContext2D, [sign], i / 120, 0, 0, 2048, 0, 120, 1)
+      const red = [22, 30, 38].map(x => g.getImageData(x, 21, 1, 1).data[0])
+      assert.ok(red.every((v, c) => v > 48 && (i === 0 || Math.abs(v - prev[c]) <= 4)), `${kind} stepped at frame ${i}`)
+      prev = red
+    }
+  }
+})
+
 /* ------------------------------------------------------------- the roof -- */
 
 test('roof: the prop set is deterministic and bounded by the requested count', () => {
@@ -293,26 +319,24 @@ test('roof: at most one bulb, and the bulb is a real light in the field', () => 
 test('roof: the draw culls to the view and reports what it drew', () => {
   const { props } = makeRoofProps(606, { count: 22, x0: -70, x1: 2670 })
   const stub = stubCtx()
-  const all = drawRoofProps(stub.ctx, props, -1000, 4000, true, .7)
-  assert.equal(all, props.length)
-  const none = drawRoofProps(stub.ctx, props, 9000, 9500, true, .7)
-  assert.equal(none, 0, 'props were drawn outside the frustum')
+  for (const tier of ['low', 'medium', 'high', 'ultra'] as const) {
+    const finish = featuresFor(tier).roofFinish
+    const all = drawRoofProps(stub.ctx, props, -1000, 4000, finish, .7)
+    assert.equal(all, props.length, 'a tier may not drop a blocker or bulb')
+    const none = drawRoofProps(stub.ctx, props, 9000, 9500, finish, .7)
+    assert.equal(none, 0, 'props were drawn outside the frustum')
+  }
 })
 
 /* ------------------------------------------------------- tiers + wiring -- */
 
-test('tiers: the new dials are monotone and low is genuinely bare', () => {
+test('tiers: extra work is monotone, excluding the steady light baked on every tier', () => {
   const order: Tier[] = ['low', 'medium', 'high', 'ultra']
-  const f = order.map((t) => featuresFor(t))
-  assert.equal(f[0].roofProps, 0, 'low draws rooftop props it cannot afford')
+  const f = order.map(featuresFor)
+  assert.deepEqual(f.map(p => p.roofFinish), [0, 1, 2, 3])
+  assert.deepEqual(f.map(p => p.poolModulations), [0, 0, 1, 5])
   assert.equal(f[0].buildingAnims, 0, 'low animates the city')
-  assert.equal(f[0].lightPools, 0, 'low draws deck pools')
-  for (let i = 1; i < f.length; i++) {
-    assert.ok(f[i].roofProps >= f[i - 1].roofProps)
-    assert.ok(f[i].buildingAnims >= f[i - 1].buildingAnims)
-    assert.ok(f[i].lightPools >= f[i - 1].lightPools)
-  }
-  assert.ok(f[3].roofProps > 0 && f[3].buildingAnims > 0 && f[3].lightPools > 0)
+  for (let i = 1; i < f.length; i++) assert.ok(f[i].buildingAnims >= f[i - 1].buildingAnims)
 })
 
 test('wiring: the field is sampled, not just tabulated', () => {
@@ -329,7 +353,7 @@ test('wiring: the field is sampled, not just tabulated', () => {
   assert.match(bg, /this\.drawLightPools\(ctx, cam\)/, 'the pools are built but never called')
 
   const r = readFileSync('src/game/render/renderer.ts', 'utf8')
-  assert.match(r, /e\.draw\(ctx, time, lighting\(e\), noirEnemies\)/, 'enemies stand in the light and stay unlit')
+  assert.match(r, /e\.draw\(ctx, time, lighting\(e\), noirEnemies\b/, 'enemies stand in the light and stay unlit')
 })
 
 
@@ -424,11 +448,7 @@ test('the roadside advisory has a steady rectangular emitter and open space unde
   assert.ok(field.sample(lamp.x,0,newProbe()).warm>.5)
 })
 
-test('the roof sits in the city glow, gated by the tier', () => {
-  const bg = readFileSync('src/game/world/background.ts', 'utf8')
-  assert.match(bg, /function buildCityGlow/, 'no city glow plate')
-  assert.match(bg, /hasPixels\(this\.cityGlow\) && RF\.lightPools > 0/, 'the city glow is not tier-gated')
-  assert.match(bg, /drawImage\(glow, gx, ROAD\.sidewalk - glow\.height \+ 28\)/, 'the glow is not anchored to the deck line')
+test('the roof props catch city light from below', () => {
   const rp = readFileSync('src/game/world/roofprops.ts', 'utf8')
   assert.match(rp, /const CITY_EDGE/, 'roof props are not lit from below by the city')
   assert.match(rp, /CITY_UNDER/, 'no city bounce around the prop bases')

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { BOOT_WATCH } from "./boot-watch";
+
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export const metadata: Metadata = {
   title: "Stickman Rising",
-  description: "A fast-paced wave-survival stickman combat game with six elemental swords.",
+  description: "A fast-paced stickman combat run across a rain-soaked procedural bridge.",
 };
 
 export default function RootLayout({
@@ -16,11 +16,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: BOOT_WATCH }} /></head>
       <body
-        className={`${GeistSans.variable} ${GeistMono.variable} antialiased bg-background text-foreground`}
+        className="antialiased bg-background text-foreground"
       >
         {children}
-        <Toaster />
+        <aside id="sr-boot-report" className="sr-boot-report" hidden suppressHydrationWarning>
+          <details open>
+            <summary>Startup report</summary>
+            <output suppressHydrationWarning>Starting the game…</output>
+            <div><a href="/">Reload game</a><button type="button">Copy timings</button></div>
+          </details>
+        </aside>
+        <noscript><p className="sr-boot-report">Enable JavaScript in the preview to play Stickman Rising.</p></noscript>
       </body>
     </html>
   );

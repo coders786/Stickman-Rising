@@ -1,0 +1,760 @@
+{
+  "build": "ZUuFFUCbnKrghXZV8qZ1L",
+  "controlBuild": "YthrLk2hBQ8JzYrg-ORS3",
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "scope": "Headless correctness, not hardware timings. WebGL tests allow software; Master shader completion is shimmed if the extension is unavailable, with real links, draws and final fence. Profile measurements include no artwork minimum.",
+  "tests": {
+    "bridge": {
+      "tests": 218,
+      "pass": 218,
+      "fail": 0
+    },
+    "offlineShaderLinks": 17,
+    "full": {
+      "tests": 607,
+      "pass": 602,
+      "fail": 5,
+      "failures": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ],
+      "matchesBaselineFailures": true
+    }
+  },
+  "renderer": {
+    "master": {
+      "shaderCompletion": "shim",
+      "first": {
+        "path": "master-webgl2",
+        "frame": {
+          "id": 5,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "tick": 0,
+        "weather": 0,
+        "input": true,
+        "music": true,
+        "overlay": false,
+        "programs": [
+          "masterBase",
+          "masterActors",
+          "masterGrade",
+          "masterRoad",
+          "masterSky",
+          "receiver",
+          "weather",
+          "trail",
+          "bloom"
+        ],
+        "frameDraws": 17,
+        "bloomLevels": 4,
+        "bloomUpPasses": 3,
+        "skyResident": true,
+        "lutStrips": [
+          "brotli",
+          "brotli",
+          "brotli",
+          "brotli"
+        ],
+        "formats": {
+          "ripple": "bc5",
+          "l1": "bc7",
+          "l2": "astc"
+        },
+        "transport": {
+          "cpuID": 1,
+          "activeID": 1,
+          "staging": null,
+          "seed": 42
+        }
+      },
+      "held": {
+        "shaderHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": false,
+          "staged": false
+        },
+        "gradeHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "nativeHold": {
+          "stage": "lighting",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "fenced": {
+          "stage": "frame",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": true
+        }
+      },
+      "retry": {
+        "first": {
+          "path": "master-webgl2",
+          "frame": {
+            "id": 19,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "time": 0,
+          "tick": 0,
+          "weather": 0,
+          "input": true,
+          "music": true,
+          "overlay": false,
+          "programs": [
+            "masterBase",
+            "masterActors",
+            "masterGrade",
+            "masterRoad",
+            "masterSky",
+            "receiver",
+            "weather",
+            "trail",
+            "bloom"
+          ],
+          "frameDraws": 16,
+          "bloomLevels": 4,
+          "bloomUpPasses": 3,
+          "skyResident": true,
+          "lutStrips": [
+            "brotli",
+            "brotli",
+            "brotli",
+            "brotli"
+          ],
+          "formats": {
+            "ripple": "bc5",
+            "l1": "bc7",
+            "l2": "astc"
+          },
+          "transport": {
+            "cpuID": 7,
+            "activeID": 7,
+            "staging": null,
+            "seed": 44
+          }
+        },
+        "elapsedMs": 4974,
+        "noRelinks": true
+      },
+      "cancel": {
+        "oldFrame": {
+          "id": 18,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.8000000000000008,
+          "hp": 0,
+          "threats": 2
+        },
+        "unpublishedSize": [
+          738,
+          482
+        ],
+        "retainedGL": [
+          700,
+          460
+        ],
+        "retainedHUD": [
+          700,
+          460
+        ],
+        "sameComposedPatch": true,
+        "workersRetired": true
+      },
+      "teardown": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "optimized": {
+      "shaderCompletion": "off",
+      "first": {
+        "path": "mobile-webgl2",
+        "frame": {
+          "id": 5,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "tick": 0,
+        "weather": 0,
+        "input": true,
+        "music": true,
+        "overlay": false,
+        "programs": [
+          "mobileBase",
+          "mobileActors",
+          "mobileGrade",
+          "mobileRoad",
+          "mobileSky",
+          "mobileResolve"
+        ],
+        "frameDraws": 6,
+        "bloomLevels": 0,
+        "bloomUpPasses": 0,
+        "skyResident": true,
+        "lutStrips": [
+          "brotli",
+          "brotli",
+          "brotli",
+          "brotli"
+        ],
+        "formats": {
+          "l2": "astc",
+          "l1": "bc7"
+        },
+        "transport": {
+          "cpuID": 1,
+          "activeID": 1,
+          "staging": null,
+          "seed": 42
+        }
+      },
+      "held": {
+        "shaderHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": false,
+          "staged": false
+        },
+        "gradeHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "nativeHold": {
+          "stage": "lighting",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "fenced": {
+          "stage": "frame",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": true
+        }
+      },
+      "retry": {
+        "first": {
+          "path": "mobile-webgl2",
+          "frame": {
+            "id": 27,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "time": 0,
+          "tick": 0,
+          "weather": 0,
+          "input": true,
+          "music": true,
+          "overlay": false,
+          "programs": [
+            "mobileBase",
+            "mobileActors",
+            "mobileGrade",
+            "mobileRoad",
+            "mobileSky",
+            "mobileResolve"
+          ],
+          "frameDraws": 6,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "skyResident": true,
+          "lutStrips": [
+            "brotli",
+            "brotli",
+            "brotli",
+            "brotli"
+          ],
+          "formats": {
+            "l2": "astc",
+            "l1": "bc7"
+          },
+          "transport": {
+            "cpuID": 7,
+            "activeID": 7,
+            "staging": null,
+            "seed": 44
+          }
+        },
+        "elapsedMs": 2204.8,
+        "noRelinks": true
+      },
+      "cancel": {
+        "oldFrame": {
+          "id": 26,
+          "layer": "finish",
+          "kind": "webgl",
+          "hud": "layer",
+          "seed": 42,
+          "time": 1.3166666666666669,
+          "hp": 0,
+          "threats": 2
+        },
+        "unpublishedSize": [
+          438,
+          782
+        ],
+        "retainedGL": [
+          400,
+          760
+        ],
+        "retainedHUD": [
+          400,
+          760
+        ],
+        "sameComposedPatch": true,
+        "workersRetired": true
+      },
+      "teardown": {
+        "stores": 0,
+        "staged": false
+      }
+    },
+    "loss": {
+      "shaderCompletion": "shim",
+      "first": {
+        "path": "mobile-canvas",
+        "frame": {
+          "id": 5,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        },
+        "time": 0,
+        "tick": 0,
+        "weather": 0,
+        "input": true,
+        "music": true,
+        "overlay": false
+      },
+      "held": {
+        "shaderHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": false,
+          "staged": false
+        },
+        "gradeHold": {
+          "stage": "renderer",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "nativeHold": {
+          "stage": "lighting",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": false
+        },
+        "fenced": {
+          "stage": "frame",
+          "initialized": true,
+          "overlay": true,
+          "input": false,
+          "music": false,
+          "tick": 0,
+          "weather": 0,
+          "platesReady": true,
+          "staged": true
+        }
+      }
+    }
+  },
+  "canvas": {
+    "desktopLive": [
+      {
+        "gesture": "ENGAGE",
+        "submitMs": 1225.7,
+        "visibleCuts": [
+          1,
+          2
+        ],
+        "frame": {
+          "id": 3,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 2975624249,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      {
+        "gesture": "RETRY",
+        "submitMs": 245.7,
+        "visibleCuts": [
+          1
+        ],
+        "frame": {
+          "id": 16,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 1498961282,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      {
+        "gesture": "ENGAGE",
+        "submitMs": 535.6,
+        "visibleCuts": [
+          1
+        ],
+        "frame": {
+          "id": 30,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 2473320081,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      }
+    ],
+    "reducedMotionTouch": [
+      {
+        "gesture": "ENGAGE",
+        "submitMs": 1264.1,
+        "visibleCuts": [
+          1
+        ],
+        "frame": {
+          "id": 3,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 1090835739,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      {
+        "gesture": "RETRY",
+        "submitMs": 379.3,
+        "visibleCuts": [
+          1
+        ],
+        "frame": {
+          "id": 22,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 3051901198,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      },
+      {
+        "gesture": "ENGAGE",
+        "submitMs": 262.3,
+        "visibleCuts": [
+          1
+        ],
+        "frame": {
+          "id": 43,
+          "layer": "scene",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 4197218497,
+          "time": 0,
+          "hp": 100,
+          "threats": 1
+        }
+      }
+    ],
+    "heldDeck": {
+      "heldAtMs": 12403.9,
+      "shot": 8,
+      "worldTime": 0,
+      "input": false,
+      "first": {
+        "id": 3,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 180433829,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "reelDenied": false
+    },
+    "deniedReel": {
+      "heldAtMs": 12422.5,
+      "shot": null,
+      "worldTime": 0,
+      "input": false,
+      "first": {
+        "id": 3,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 67545235,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "reelDenied": true
+    }
+  },
+  "coverage": {
+    "gl": {
+      "checks": [
+        "engage",
+        "master",
+        "context-lost-canvas",
+        "context-restored",
+        "optimized",
+        "interrupted-source",
+        "held-after-resize",
+        "recovered",
+        "retry"
+      ],
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      },
+      "firstFrame": {
+        "id": 4,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "tickZeroHudInk": 840
+    },
+    "denied": {
+      "checks": [
+        "engage",
+        "full-canvas",
+        "hud-unavailable-inline",
+        "hud-restored",
+        "interrupted-source",
+        "held-after-resize",
+        "recovered",
+        "retry"
+      ],
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      },
+      "firstFrame": {
+        "id": 2,
+        "layer": "scene-work",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 42,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      },
+      "tickZeroHudInk": 992
+    }
+  },
+  "packedAssets": {
+    "available": {
+      "formats": {
+        "ripple": "bc5",
+        "l1": "bc7",
+        "l2": "astc"
+      },
+      "deck": "brotli",
+      "lut": "brotli",
+      "lutStrips": [
+        "brotli",
+        "brotli",
+        "brotli",
+        "brotli"
+      ],
+      "byteLength": 716688,
+      "uploadBytesThisFrame": 16
+    },
+    "404": {
+      "formats": {
+        "ripple": "denied",
+        "l1": "denied",
+        "l2": "denied"
+      },
+      "deck": "local",
+      "lut": "local",
+      "lutStrips": [
+        "local",
+        "local",
+        "local",
+        "local"
+      ],
+      "byteLength": 0,
+      "uploadBytesThisFrame": 0
+    }
+  },
+  "visuals": {
+    "master": {
+      "path": "master-webgl2",
+      "views": {
+        "metro": {
+          "darkening": -3.5136,
+          "coveredDelta": 0,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.49102797305933826
+        },
+        "market": {
+          "darkening": -2.7432,
+          "coveredDelta": null,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.6048303548303549
+        }
+      }
+    },
+    "optimized": {
+      "path": "mobile-webgl2",
+      "views": {
+        "metro": {
+          "darkening": -3.0299,
+          "coveredDelta": 0,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.8297038327526133
+        },
+        "market": {
+          "darkening": -2.0927,
+          "coveredDelta": null,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.5960875755762366
+        }
+      }
+    },
+    "canvas": {
+      "path": "mobile-canvas",
+      "views": {
+        "metro": {
+          "darkening": -3.943,
+          "coveredDelta": 0,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.41056987736816125
+        },
+        "market": {
+          "darkening": -5.5673,
+          "coveredDelta": null,
+          "actorNoop": 0,
+          "cityDetailRetained": 0.5433327538247565
+        }
+      }
+    }
+  },
+  "served": {
+    "sameStagedRoot": true,
+    "previewHostOriginAccepted": true,
+    "immutableLinks": 13,
+    "bridgeAssets": 21,
+    "unchangedDecodablePNGs": 8,
+    "scoresApi": true,
+    "embeddedPhase": "playing",
+    "embeddedErrors": []
+  }
+}

@@ -1,0 +1,608 @@
+{
+  "branch": "arena/3320aa08-stickman-rising",
+  "base": "9d27d2b25e4ef0e0a5ca100d7e0f365cc3a66520",
+  "control": "Frozen environment pilot before the combined run",
+  "controlPatchSha256": "56a260b70cf90d69fd18a4e2a74a0b71f1b02f9e08ac451ff27c82e869f6b451",
+  "browser": "HeadlessChrome/153.0.8010.0",
+  "build": "Production without a preview flag",
+  "checks": {
+    "typecheck": true,
+    "boundaryLint": {
+      "known": 20,
+      "new": 0
+    },
+    "touchedFileLint": true,
+    "focused": {
+      "pass": 19,
+      "total": 19
+    },
+    "full": {
+      "pass": 502,
+      "total": 507,
+      "existingFailures": [
+        "a connecting strike puts the striking joint ON the body, not near it",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "the blade cleaves a tight pack (26px), every sword strike"
+      ]
+    },
+    "live": {
+      "settingsDesktop": true,
+      "settingsTouch": true,
+      "cpuSkyStartup": {
+        "starts": 2,
+        "firstInputs": 2
+      },
+      "touchCancellationAndOwnership": true
+    }
+  },
+  "replay": {
+    "sourceDigest": "472291470e49cdf0f6dfd0d8e40c3f2b9f13e8947d17337859aa9888a3355ed7",
+    "seed": 8,
+    "composition": {
+      "version": 1,
+      "shelters": [
+        {
+          "kind": "concourse",
+          "left": 1085,
+          "right": 1429
+        },
+        {
+          "kind": "service",
+          "left": 2108,
+          "right": 2340
+        }
+      ]
+    },
+    "pairs": [
+      {
+        "name": "crowd",
+        "controlSourceDigest": "a485d2785dfbc6e739d0bd62f00a58e23cfc12a11fb276f27b50768ce2e0d5c3",
+        "stateDigest": "63b3a69b18320e1aa677d1d5e9df051848b876383a1274029e208cc17bf26a2a",
+        "eventDigest": "af23bcb504c547c92932799a3ae2fd68b1736b519ff98b89b40a6a1f9f49af2e",
+        "stateAndEventsMatchControl": true,
+        "steps": 140,
+        "maxBodies": 10,
+        "score": 16,
+        "player": {
+          "hp": 92,
+          "x": 1428.1080847014803,
+          "y": 0,
+          "state": "move"
+        },
+        "panWorldPx": 133.77907418947348,
+        "sceneSamples": 0,
+        "weather": {
+          "seed": 8,
+          "version": 1,
+          "tick": 1400,
+          "changes": 1,
+          "startTick": 595,
+          "from": "rain",
+          "kind": "rain",
+          "s": 1,
+          "rain": 0.72,
+          "fog": 0.65,
+          "cloud": 0.83,
+          "key": 0.51,
+          "gust": 0.36,
+          "windX": -0.36,
+          "wet": 0.6897174388555065
+        },
+        "work": {
+          "openClips": 2,
+          "streaks": 26,
+          "splashes": 0,
+          "wetMarks": 14
+        },
+        "skyBackend": "city-bank",
+        "layout": [
+          1000,
+          560,
+          1500,
+          840,
+          1000,
+          560,
+          "high",
+          "forward"
+        ],
+        "backingBytes": 20668416,
+        "optics": {
+          "bodies": 480,
+          "scatter": 0,
+          "shafts": 0,
+          "pool": 0,
+          "airborneWash": 0,
+          "vignette": 0,
+          "actorStrip": 0,
+          "propStrip": 0,
+          "moonGlitter": 0,
+          "wetGlints": 0
+        },
+        "trackedAfterDestroy": 0
+      },
+      {
+        "name": "waves",
+        "controlSourceDigest": "a485d2785dfbc6e739d0bd62f00a58e23cfc12a11fb276f27b50768ce2e0d5c3",
+        "stateDigest": "3741cfe40bc054310070aca247719029b94ce953c4d0db76679da66056d061a6",
+        "eventDigest": "9871a154b52a9797552918a6ec9817d574b50eb7e82a7465056f91f0cf195b41",
+        "stateAndEventsMatchControl": true,
+        "steps": 260,
+        "maxBodies": 4,
+        "score": 0,
+        "player": {
+          "hp": 100,
+          "x": 1057.970366412206,
+          "y": 0,
+          "state": "move"
+        },
+        "panWorldPx": 768.9221813059733,
+        "sceneSamples": null,
+        "weather": {
+          "seed": 8,
+          "version": 1,
+          "tick": 1510,
+          "changes": 1,
+          "startTick": 595,
+          "from": "rain",
+          "kind": "rain",
+          "s": 1,
+          "rain": 0.72,
+          "fog": 0.65,
+          "cloud": 0.83,
+          "key": 0.51,
+          "gust": 0.36,
+          "windX": -0.36,
+          "wet": 0.7189564438612167
+        },
+        "work": {
+          "openClips": 1,
+          "streaks": 10,
+          "splashes": 0,
+          "wetMarks": 7
+        },
+        "skyBackend": "city-decks",
+        "layout": [
+          390,
+          844,
+          390,
+          844,
+          390,
+          844,
+          "low",
+          "capture"
+        ],
+        "backingBytes": 19156992,
+        "trackedAfterDestroy": 0
+      }
+    ],
+    "repeatedPixelHashes": {
+      "scene": "40a57057f18d1b945c2e6412d1602b13606caaf82ca578e66349753374dedabc",
+      "hud": "5eabf26bffa3a344b336b0f8508e63dd7bd5d8a4833c0dba9093de777095856d"
+    },
+    "repeatedSeedMatched": true,
+    "liveWaveCrossings": [
+      {
+        "pos": "west",
+        "tick": 1,
+        "x": 960.7222222222222,
+        "wave": 0
+      },
+      {
+        "pos": "under",
+        "tick": 25,
+        "x": 1085.1491622289116,
+        "wave": 0
+      },
+      {
+        "pos": "east",
+        "tick": 84,
+        "x": 1429.3158288955738,
+        "wave": 0
+      },
+      {
+        "pos": "under",
+        "tick": 197,
+        "x": 1425.4703664122012,
+        "wave": 1
+      },
+      {
+        "pos": "west",
+        "tick": 256,
+        "x": 1081.303699745539,
+        "wave": 1
+      }
+    ],
+    "quietRolledEave": {
+      "sky": "city-decks",
+      "work": {
+        "openClips": 1,
+        "streaks": 5,
+        "splashes": 0,
+        "wetMarks": 7
+      },
+      "layout": [
+        390,
+        844,
+        390,
+        844,
+        390,
+        844,
+        "low",
+        "capture"
+      ]
+    }
+  },
+  "retries": [
+    {
+      "portrait": false,
+      "runs": 21,
+      "scene": [
+        1440,
+        810
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "fixedCount": 5,
+      "stageBytes": 1277952,
+      "peakBytes": 21614592,
+      "trackedSurfaces": 49,
+      "sceneSamples": 0,
+      "trackedAfterDestroy": 0,
+      "masksReleased": 84
+    },
+    {
+      "portrait": true,
+      "runs": 21,
+      "scene": [
+        877,
+        1899
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "fixedCount": 5,
+      "stageBytes": 1277952,
+      "peakBytes": 22011904,
+      "trackedSurfaces": 49,
+      "sceneSamples": 0,
+      "trackedAfterDestroy": 0,
+      "masksReleased": 84
+    }
+  ],
+  "wrappers": [
+    {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": false,
+      "checkedLegacyLinks": true,
+      "open": {
+        "tick": 0,
+        "quiet": false,
+        "route": true
+      },
+      "hitstop": {
+        "tickDelta": 6,
+        "simSeconds": 0
+      },
+      "local": [
+        {
+          "x": 1307.3327404136119,
+          "y": 0,
+          "time": 0.26666666666666666,
+          "tick": 22,
+          "phase": "playing",
+          "wet": 0,
+          "cover": "matte-paving",
+          "key": 0.513416,
+          "level": 0.0918,
+          "camX": 1315.3655880803453,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1493.6489773154372,
+          "y": 0,
+          "time": 0.9500000000000013,
+          "tick": 63,
+          "phase": "playing",
+          "wet": 0.47,
+          "cover": "wet-asphalt",
+          "key": 0.8264,
+          "level": 0.3359812330572445,
+          "camX": 1491.612622212695,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1022.833792257516,
+          "y": 0,
+          "time": 2.449999999999996,
+          "tick": 153,
+          "phase": "playing",
+          "wet": 0.47,
+          "cover": "wet-asphalt",
+          "key": 0.8264,
+          "level": 0.32885526401026044,
+          "camX": 1026.0055404562015,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1172.4369941801365,
+          "y": 0,
+          "time": 3.016666666666661,
+          "tick": 187,
+          "phase": "playing",
+          "wet": 0,
+          "cover": "matte-paving",
+          "key": 0.513416,
+          "level": 0.0918,
+          "camX": 1169.310729324412,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        }
+      ],
+      "paused": {
+        "state": {
+          "seed": 8,
+          "version": 1,
+          "tick": 188,
+          "changes": 0,
+          "startTick": 0,
+          "from": "drizzle",
+          "kind": "drizzle",
+          "s": 1,
+          "rain": 0.34,
+          "fog": 0.42,
+          "cloud": 0.56,
+          "key": 0.69,
+          "gust": 0.23,
+          "windX": -0.23,
+          "wet": 0.47
+        },
+        "sameKit": true,
+        "samePlan": true,
+        "volume": 0,
+        "scene": [
+          880,
+          544
+        ],
+        "hud": [
+          880,
+          544
+        ]
+      },
+      "hiddenTick": 188,
+      "terminal": 1261,
+      "layout": {
+        "controls": 0,
+        "flat": true,
+        "sky": "city-bank",
+        "stormTime": 0,
+        "flash": 0
+      },
+      "teardown": {
+        "retrySeed": 42,
+        "newPlan": true,
+        "sameKit": true,
+        "sameVoice": true,
+        "audioState": "closed",
+        "released": true,
+        "trace": {
+          "starts": 2,
+          "attacks": 2,
+          "phases": [
+            "preparing",
+            "attract",
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "playing"
+          ],
+          "launches": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": true,
+      "checkedLegacyLinks": false,
+      "open": {
+        "tick": 0,
+        "quiet": true,
+        "route": false
+      },
+      "hitstop": {
+        "tickDelta": 6,
+        "simSeconds": 0
+      },
+      "local": [
+        {
+          "x": 1309.4994070802786,
+          "y": 0,
+          "time": 0.4833333333333333,
+          "tick": 35,
+          "phase": "playing",
+          "wet": 0,
+          "cover": "matte-paving",
+          "key": 0.513416,
+          "level": 0.0918,
+          "drive": 0.0918,
+          "camX": 1310.3901742735775,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1488.1575341144958,
+          "y": 0,
+          "time": 1.266666666666667,
+          "tick": 82,
+          "phase": "playing",
+          "wet": 0.47,
+          "cover": "wet-asphalt",
+          "key": 0.8264,
+          "level": 0.33686033201350885,
+          "drive": 0.34,
+          "camX": 1484.6451905472861,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1023.552286967788,
+          "y": 0,
+          "time": 2.9833333333333276,
+          "tick": 185,
+          "phase": "playing",
+          "wet": 0.47,
+          "cover": "wet-asphalt",
+          "key": 0.8264,
+          "level": 0.3332371948012465,
+          "drive": 0.34,
+          "camX": 1027.502271747512,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        },
+        {
+          "x": 1168.6526009397605,
+          "y": 0,
+          "time": 3.6333333333333253,
+          "tick": 224,
+          "phase": "playing",
+          "wet": 0,
+          "cover": "matte-paving",
+          "key": 0.513416,
+          "level": 0.09348058340672015,
+          "drive": 0.0918,
+          "camX": 1164.9013500736658,
+          "score": 0,
+          "sameRun": true,
+          "starts": 1
+        }
+      ],
+      "paused": {
+        "state": {
+          "seed": 8,
+          "version": 1,
+          "tick": 231,
+          "changes": 0,
+          "startTick": 0,
+          "from": "drizzle",
+          "kind": "drizzle",
+          "s": 1,
+          "rain": 0.34,
+          "fog": 0.42,
+          "cloud": 0.56,
+          "key": 0.69,
+          "gust": 0.23,
+          "windX": -0.23,
+          "wet": 0.47
+        },
+        "sameKit": true,
+        "samePlan": true,
+        "volume": 0,
+        "scene": [
+          844,
+          390
+        ],
+        "hud": [
+          1688,
+          780
+        ]
+      },
+      "hiddenTick": 233,
+      "terminal": 243,
+      "layout": {
+        "controls": 11,
+        "flat": true,
+        "sky": "city-bank",
+        "stormTime": 0,
+        "flash": 0
+      },
+      "teardown": {
+        "retrySeed": 42,
+        "newPlan": true,
+        "sameKit": true,
+        "sameVoice": true,
+        "audioState": "closed",
+        "released": true,
+        "trace": {
+          "starts": 2,
+          "attacks": 2,
+          "phases": [
+            "preparing",
+            "attract",
+            "preparing",
+            "playing",
+            "paused",
+            "playing",
+            "paused",
+            "playing",
+            "gameover",
+            "preparing",
+            "playing"
+          ],
+          "launches": [
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "CANCEL",
+              true,
+              true
+            ],
+            [
+              "ENGAGE",
+              true,
+              true
+            ],
+            [
+              "RETRY",
+              true,
+              true
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "physicalDeviceCertified": false
+}

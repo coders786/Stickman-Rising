@@ -1,0 +1,29 @@
+name: Bridge regression checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Validate and link GLSL ES 3.00 programs offline
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y glslang-tools
+          npm run check:webgl:offline -- --require-compiler
+      - run: npm run check:bridge
+      - run: npm run build:iso
+        env:
+          DATABASE_URL: file:./db/ci.db

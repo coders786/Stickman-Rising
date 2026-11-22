@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import { createCanvas } from '@napi-rs/canvas'
 import { POINT, FLOOD, SIGN_FACE, emission } from '../src/game/lighting/emitters'
 import { RibbonField, newProbe } from '../src/game/lighting/ribbons'
-import { liveGain, makeStageLights } from '../src/game/world/lightfield'
+import { liveGain, makeStageLights, PRACTICAL_SIGN_X } from '../src/game/world/lightfield'
 import { CyberBackground } from '../src/game/world/background'
+import { RAY_BLITS, rayPlan } from '../src/game/render/post'
 
 test('shape, not tint, controls omni, cone and panel emission', () => {
   assert.equal(emission(POINT, 0, -1, -1), 1)
@@ -41,41 +42,55 @@ test('streetlamp ballast stays continuous at 120 Hz even on the stormiest seed p
     prev = v
   }
 })
-test('panning past a different light does not switch off the pool under the observer', () => {
+test('the road keeps its steady sign pool through pans and quality drops', () => {
   const old = Object.getOwnPropertyDescriptor(globalThis, 'document')
   Object.defineProperty(globalThis, 'document', {
     value: { createElement: () => createCanvas(1, 1) },
     configurable: true,
   })
   try {
-    const bg = new CyberBackground('medium')
+    const bg = new CyberBackground('medium', undefined, { clean: true })
     bg.setRunSeed(123)
     bg.resize(1000, 520)
-    const tile = createCanvas(100, 54),
-      ctx = tile.getContext('2d')
-    ctx.translate(-1705, 0)
-    const sample = (cx: number) => {
-      // Fixed world-space patch within both frusta. Move only the camera.
-      Object.assign(
-        (bg as unknown as { lastCam: { x: number; zoom: number } }).lastCam,
-        { x: cx, zoom: 1 },
-      )
-      ctx.clearRect(1705, 0, 100, 54)
-      bg.drawLightPools(ctx as unknown as CanvasRenderingContext2D)
-      return Buffer.from(ctx.getImageData(0, 0, 100, 54).data)
+    const ctx = createCanvas(100, 40).getContext('2d')
+    ctx.translate(PRACTICAL_SIGN_X * -1 + 50, 0)
+    const sample = (scene: CyberBackground, x: number) => {
+      ctx.clearRect(PRACTICAL_SIGN_X - 50, 0, 100, 40)
+      scene.drawArena(ctx as unknown as CanvasRenderingContext2D, false, { x, y: 0, zoom: 1 })
+      return Buffer.from(ctx.getImageData(0, 0, 100, 40).data)
     }
-    const a = sample(1350),
-      b = sample(1810)
-    assert.ok(a.some((n) => n > 0))
-    assert.deepEqual(a, b)
-    bg.setQuality('ultra')
-    assert.ok(sample(1810).some((n) => n > 0))
-    bg.setQuality('medium')
-    assert.deepEqual(sample(1350), a)
+    const lit = sample(bg, 1350)
+    assert.deepEqual(sample(bg, 1810), lit, 'camera pan changed a shared world patch')
+    bg.setQuality('low')
+    assert.deepEqual(sample(bg, 1810), lit, 'a budget drop turned off steady illumination')
+
+    const unlit = new CyberBackground('low', undefined, { clean: true })
+    unlit.setRunSeed(123)
+    unlit.resize(1000, 520)
+    ;(unlit as unknown as { bakeRoadLighting: () => void }).bakeRoadLighting = () => {}
+    const withoutPools = sample(unlit, 1810)
+    assert.ok(lit.some((v, i) => i % 4 === 0 && v > withoutPools[i] + 12), 'the sign must still light the asphalt')
   } finally {
     if (old) Object.defineProperty(globalThis, 'document', old)
     else Reflect.deleteProperty(globalThis, 'document')
   }
+})
+
+test('a steady sign keeps its share of the ray budget as another light enters the view', () => {
+  const bg = new CyberBackground('ultra', undefined, { amberSpecimen: true })
+  bg.setRunSeed(123)
+  const w = 1280, h = 720
+  const signWeight = (x: number) => {
+    const cam = { x, y: -122, zoom: 1 }
+    const sources = bg.raySources(w, h, cam)
+    const sx = w / 2 + PRACTICAL_SIGN_X - x
+    const taps = rayPlan(sources, .2, w, h)
+    assert.ok(taps.length <= RAY_BLITS)
+    const sign = taps.filter(t => t.lx === sx)
+    assert.equal(sign.length, 2, 'this sign lost its allocated taps')
+    return sign.map(t => t.alpha)
+  }
+  assert.deepEqual(signWeight(1300), signWeight(2000))
 })
 
 test('moving camera: cached sky keeps its moon; quality changes cannot move the light field',()=>{

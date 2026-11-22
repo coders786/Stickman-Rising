@@ -1,5 +1,7 @@
 # Rooftop lighting: before and after
 
+For the current renderer, new scene rules, and mobile budget, start with the [graphics engine map](../GRAPHICS-ENGINE-MAP.md). This page records the earlier rooftop lighting comparison.
+
 ![Matched crops of the same Ultra frame](comparison.jpg)
 
 [Original frame](before.png) · [Rewritten frame](after.png)
@@ -35,10 +37,10 @@ The production build and typecheck pass. A fresh Chromium desktop at 1280 × 720
 
 ## Impact accents and Ultra lens finish
 
-[Normal frame vs. peak guard-break focus](impact-focus.jpg). Ultra stretches the already feathered, downsampled light-source patch into a horizontal glint: at most two small extra draws, no new surface or frame capture. No glint is attached to fighters.
+[Normal frame vs. peak guard-break focus](impact-focus.jpg). Ultra's capture path stretches each feathered light-source patch into a horizontal glint. The stage has at most five sources including the moon, all share the same capture, and no glint is attached to fighters.
 
 Guard breaks, perfect parries, execution separations and boss defeats can request an accent. One beat draws six short marks at the contact and briefly dims the periphery before the HUD; the centre stays clear. The 160–200 ms envelope uses real time, including during hitstop. There is one slot, no queue, and a 1.6–2.4 s lockout. A routine hit cannot request it just because it deals high damage. Turning off screen shake or enabling reduced motion disables the accent; local combat feedback remains.
 
 To reproduce the accent still, add `SR_CAPTURE_BEAT=1` to the capture command. Run `node --import tsx --test tests/impact-focus.test.ts` for the cooldown, coverage, opt-out and lens-budget regressions.
 
-Subsequent lighting replacement: [RibbonGI — captures, reference comparison and timings](ribbons/README.md).
+Subsequent work: [RibbonGI — captures, reference comparison and timings](ribbons/README.md) · [Road and sign lighting stability](road-and-sign-stability.md) · [Adaptive graphics presets](graphics-tiers.md).

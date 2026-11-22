@@ -1,0 +1,7438 @@
+{
+  "release": {
+    "priorBridge": "yXaaEUvW6WLwnUpMmW9wN",
+    "handoff": "Ddi8k3l0vaASOKHfKK9wu"
+  },
+  "method": "Warm standalone production servers, fresh Headless Chromium 153 pages, trusted click/touch, seed 42 and 43 unless labeled otherwise. The desktop timing pairs ran in AB, BA, AB order. CPU submit and next rAF are not scanout. Latency is subject to browser/host scheduling.",
+  "reportedScreenshot": {
+    "crop": [
+      747,
+      838,
+      1120,
+      160
+    ],
+    "rgb": [
+      22,
+      25,
+      28
+    ],
+    "matchingPixels": 179200,
+    "hp": 92,
+    "threats": 2,
+    "conclusion": "Canvas underpaint visible; original trigger unproven."
+  },
+  "buildGate": {
+    "bridge": {
+      "tests": 203,
+      "pass": 203,
+      "fail": 0,
+      "failedTests": []
+    },
+    "glslES300ProgramsLinked": 17,
+    "full": {
+      "tests": 592,
+      "pass": 587,
+      "fail": 5,
+      "failedTests": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    }
+  },
+  "startup": {
+    "desktop": {
+      "prior": [
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 565.3999999985099,
+          "menuMs": 466.1000000014901,
+          "titleSubmitMs": 539.1000000014901,
+          "titleSceneMs": 569.3999999985099,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 1554.1000000014901,
+              "readyMs": 1554.3999999985099,
+              "afterSubmitRafMs": 1566.7999999970198,
+              "stepSubmitMs": 1594.8999999985099,
+              "simMs": 2142.6999999955297,
+              "jumpAt": 1564.1999999955297,
+              "jumpMs": 1595,
+              "acceptedToPlayMs": 1553.5,
+              "bakeMs": 1.2000000029802322,
+              "maxLongTaskMs": 379,
+              "inputToJumpMs": 30.80000000447035
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 2557.5,
+              "readyMs": 2559.60000000149,
+              "afterSubmitRafMs": 2577.39999999851,
+              "stepSubmitMs": 2592.7999999970198,
+              "simMs": 2771.6999999955297,
+              "jumpAt": 2577.10000000149,
+              "jumpMs": 2592.89999999851,
+              "acceptedToPlayMs": 2559,
+              "bakeMs": 1.6999999955296516,
+              "maxLongTaskMs": 0,
+              "inputToJumpMs": 15.799999997019768
+            }
+          }
+        },
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 518.1000000014901,
+          "menuMs": 426.1000000014901,
+          "titleSubmitMs": 514.5,
+          "titleSceneMs": 520.8999999985099,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 1898.3000000044703,
+              "readyMs": 1898.6000000014901,
+              "afterSubmitRafMs": 1908.8000000044703,
+              "stepSubmitMs": 2095.8000000044703,
+              "simMs": 2484.89999999851,
+              "jumpAt": 1908.2000000029802,
+              "jumpMs": 2095.89999999851,
+              "acceptedToPlayMs": 1896.2000000029802,
+              "bakeMs": 1.2000000029802322,
+              "maxLongTaskMs": 157,
+              "inputToJumpMs": 187.69999999552965
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 212,
+              "readyMs": 219.5,
+              "afterSubmitRafMs": 233.39999999850988,
+              "stepSubmitMs": 4283.79999999702,
+              "simMs": 4396.10000000149,
+              "jumpAt": 229.29999999701977,
+              "jumpMs": 4283.79999999702,
+              "acceptedToPlayMs": 217.60000000149012,
+              "bakeMs": 0.9000000059604645,
+              "maxLongTaskMs": 119,
+              "inputToJumpMs": 4054.5
+            }
+          }
+        },
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 691.5,
+          "menuMs": 566.6000000014901,
+          "titleSubmitMs": 688.6000000014901,
+          "titleSceneMs": null,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": false,
+              "submitMs": 1986.1000000014901,
+              "readyMs": 1986.5,
+              "afterSubmitRafMs": 1996.3000000044703,
+              "stepSubmitMs": 2035,
+              "simMs": 2817.10000000149,
+              "jumpAt": 1995.7000000029802,
+              "jumpMs": 2035.1000000014901,
+              "acceptedToPlayMs": 1982.2999999970198,
+              "bakeMs": 1.7999999970197678,
+              "maxLongTaskMs": 205,
+              "inputToJumpMs": 39.399999998509884
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": false,
+              "submitMs": 3349.10000000149,
+              "readyMs": 3349.6999999955297,
+              "afterSubmitRafMs": 3358.60000000149,
+              "stepSubmitMs": 3380.5,
+              "simMs": 3571.6999999955297,
+              "jumpAt": 3357,
+              "jumpMs": 3380.5,
+              "acceptedToPlayMs": 3344.0999999940395,
+              "bakeMs": 0.6999999955296516,
+              "maxLongTaskMs": 72,
+              "inputToJumpMs": 23.5
+            }
+          }
+        }
+      ],
+      "updated": [
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 384.30000000447035,
+          "menuMs": 406.80000000447035,
+          "titleSubmitMs": null,
+          "titleSceneMs": null,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": false,
+              "submitMs": 89,
+              "readyMs": 89.30000000447035,
+              "afterSubmitRafMs": 94.80000000447035,
+              "stepSubmitMs": 129.5,
+              "simMs": 366.5,
+              "jumpAt": 150.20000000298023,
+              "jumpMs": 283.6000000014901,
+              "acceptedToPlayMs": 88.30000000447035,
+              "bakeMs": 5.399999998509884,
+              "maxLongTaskMs": 65,
+              "firstKind": "starter",
+              "richMs": 468.1000000014901,
+              "richKind": "canvas",
+              "inputToJumpMs": 133.39999999850988
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": false,
+              "submitMs": 59.69999999552965,
+              "readyMs": 59.899999998509884,
+              "afterSubmitRafMs": 71.19999999552965,
+              "stepSubmitMs": 89.59999999403954,
+              "simMs": 254.89999999850988,
+              "jumpAt": 65.79999999701977,
+              "jumpMs": 89.69999999552965,
+              "acceptedToPlayMs": 58.899999998509884,
+              "bakeMs": 1.2000000029802322,
+              "maxLongTaskMs": 0,
+              "firstKind": "starter",
+              "richMs": 312.5,
+              "richKind": "canvas",
+              "inputToJumpMs": 23.899999998509884
+            }
+          }
+        },
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 697.3000000044703,
+          "menuMs": 578,
+          "titleSubmitMs": 677.8000000044703,
+          "titleSceneMs": 701.9000000059605,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 65.89999999850988,
+              "readyMs": 66.19999999552965,
+              "afterSubmitRafMs": 74,
+              "stepSubmitMs": 102.29999999701977,
+              "simMs": 2164,
+              "jumpAt": 72.39999999850988,
+              "jumpMs": 102.39999999850988,
+              "acceptedToPlayMs": 64.89999999850988,
+              "bakeMs": 2.2000000029802322,
+              "maxLongTaskMs": 124,
+              "firstKind": "starter",
+              "richMs": 2146.39999999851,
+              "richKind": "canvas",
+              "inputToJumpMs": 30.0
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 838.2000000029802,
+              "readyMs": 838.5,
+              "afterSubmitRafMs": 851.1000000014901,
+              "stepSubmitMs": 872.3999999985099,
+              "simMs": 1034.3999999985099,
+              "jumpAt": 841.5,
+              "jumpMs": 872.5,
+              "acceptedToPlayMs": 838,
+              "bakeMs": 1.1999999955296516,
+              "maxLongTaskMs": 0,
+              "firstKind": "starter",
+              "richMs": 1067.2000000029802,
+              "richKind": "canvas",
+              "inputToJumpMs": 31.0
+            }
+          }
+        },
+        {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 936.1999999955297,
+          "menuMs": 761.0999999940395,
+          "titleSubmitMs": 914,
+          "titleSceneMs": 945.5,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 70.59999999403954,
+              "readyMs": 71.09999999403954,
+              "afterSubmitRafMs": 78.09999999403954,
+              "stepSubmitMs": 2552.7999999970198,
+              "simMs": 2793.39999999851,
+              "jumpAt": 2566.5999999940395,
+              "jumpMs": 2570.89999999851,
+              "acceptedToPlayMs": 69.59999999403954,
+              "bakeMs": 2,
+              "maxLongTaskMs": 149,
+              "firstKind": "starter",
+              "richMs": 2773.5,
+              "richKind": "canvas",
+              "inputToJumpMs": 4.300000004470348
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 1264.1000000014901,
+              "readyMs": 1267.3999999985099,
+              "afterSubmitRafMs": 1278.2000000029802,
+              "stepSubmitMs": 1304.7999999970198,
+              "simMs": 1461.3999999985099,
+              "jumpAt": 1270.7999999970198,
+              "jumpMs": 1304.8999999985099,
+              "acceptedToPlayMs": 1266.5,
+              "bakeMs": 1.4000000059604645,
+              "maxLongTaskMs": 0,
+              "firstKind": "starter",
+              "richMs": 1557,
+              "richKind": "canvas",
+              "inputToJumpMs": 34.100000001490116
+            }
+          }
+        }
+      ],
+      "medians": {
+        "prior": {
+          "ENGAGE": {
+            "submitMs": 1898.3,
+            "afterSubmitRafMs": 1908.8,
+            "simMs": 2484.9,
+            "inputToJumpMs": 39.4
+          },
+          "RETRY": {
+            "submitMs": 2557.5,
+            "afterSubmitRafMs": 2577.4,
+            "simMs": 3571.7,
+            "inputToJumpMs": 23.5
+          }
+        },
+        "updated": {
+          "ENGAGE": {
+            "submitMs": 70.6,
+            "afterSubmitRafMs": 78.1,
+            "simMs": 2164,
+            "inputToJumpMs": 30.0
+          },
+          "RETRY": {
+            "submitMs": 838.2,
+            "afterSubmitRafMs": 851.1,
+            "simMs": 1034.4,
+            "inputToJumpMs": 31.0
+          }
+        }
+      }
+    },
+    "touch": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": true,
+        "cpuCompositor": false,
+        "early": true,
+        "path": "mobile-canvas",
+        "bootReadyMs": 1017.2999999970198,
+        "menuMs": 827.0999999940395,
+        "titleSubmitMs": 977.1999999955297,
+        "titleSceneMs": 2987.6999999955297,
+        "runs": {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 168.10000000149012,
+            "readyMs": 168.79999999701977,
+            "afterSubmitRafMs": 202.69999999552965,
+            "stepSubmitMs": 447,
+            "simMs": 802.7999999970198,
+            "jumpAt": 760.6000000014901,
+            "jumpMs": 793.7999999970198,
+            "acceptedToPlayMs": 167.59999999403954,
+            "bakeMs": 1.3000000044703484,
+            "maxLongTaskMs": 153,
+            "inputToJumpMs": 33.19999999552965
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 54.79999999701977,
+            "readyMs": 55.100000001490116,
+            "afterSubmitRafMs": 2737.2000000029802,
+            "stepSubmitMs": 2747.7999999970198,
+            "simMs": 2860.10000000149,
+            "jumpAt": 2777,
+            "jumpMs": 2781.39999999851,
+            "acceptedToPlayMs": 54.20000000298023,
+            "bakeMs": 0.7999999970197678,
+            "maxLongTaskMs": 0,
+            "inputToJumpMs": 4.399999998509884
+          }
+        }
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": true,
+        "cpuCompositor": false,
+        "early": true,
+        "path": "mobile-canvas",
+        "bootReadyMs": 725.7999999970198,
+        "menuMs": 780.6000000014901,
+        "titleSubmitMs": 920.6999999955297,
+        "titleSceneMs": 942.3999999985099,
+        "runs": {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 54.899999998509884,
+            "readyMs": 55.29999999701977,
+            "afterSubmitRafMs": 60.29999999701977,
+            "stepSubmitMs": 80.19999999552965,
+            "simMs": 457.59999999403954,
+            "jumpAt": 283,
+            "jumpMs": 300.59999999403954,
+            "acceptedToPlayMs": 54.5,
+            "bakeMs": 1.3999999985098839,
+            "maxLongTaskMs": 93,
+            "firstKind": "starter",
+            "richMs": 448.19999999552965,
+            "richKind": "canvas",
+            "inputToJumpMs": 17.599999994039536
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 18.5,
+            "readyMs": 25.599999994039536,
+            "afterSubmitRafMs": 41.399999998509884,
+            "stepSubmitMs": 52.099999994039536,
+            "simMs": 215.5,
+            "jumpAt": 84.69999999552965,
+            "jumpMs": 100.59999999403954,
+            "acceptedToPlayMs": 24.80000000447035,
+            "bakeMs": 2.399999998509884,
+            "maxLongTaskMs": 0,
+            "firstKind": "starter",
+            "richMs": 271.5,
+            "richKind": "canvas",
+            "inputToJumpMs": 15.899999998509884
+          }
+        }
+      }
+    },
+    "sameSeedPackedDenied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": false,
+      "cpuCompositor": false,
+      "early": true,
+      "path": "mobile-canvas",
+      "bootReadyMs": 753,
+      "menuMs": 620.6000000014901,
+      "titleSubmitMs": 729.1000000014901,
+      "titleSceneMs": 755.2999999970198,
+      "runs": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 56.29999999701977,
+          "readyMs": 56.69999999552965,
+          "afterSubmitRafMs": 72.19999999552965,
+          "stepSubmitMs": 110,
+          "simMs": 2356.0999999940395,
+          "jumpAt": 132.59999999403954,
+          "jumpMs": 2311.7999999970198,
+          "acceptedToPlayMs": 54.600000001490116,
+          "bakeMs": 4,
+          "maxLongTaskMs": 226,
+          "firstKind": "starter",
+          "richMs": 2538.39999999851,
+          "richKind": "canvas",
+          "postPromotionMs": 4156.0999999940395,
+          "richMovement": 10.830726551141026,
+          "inputToJumpMs": 2179.2000000029802
+        },
+        "RETRY": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 54.900000005960464,
+          "readyMs": 55.100000001490116,
+          "afterSubmitRafMs": 62.30000000447035,
+          "stepSubmitMs": 86.60000000149012,
+          "simMs": 244.5,
+          "jumpAt": 58.100000001490116,
+          "jumpMs": 91.20000000298023,
+          "acceptedToPlayMs": 54.19999999552965,
+          "bakeMs": 0.30000000447034836,
+          "maxLongTaskMs": 0,
+          "firstKind": "starter",
+          "richMs": 321.90000000596046,
+          "richKind": "canvas",
+          "postPromotionMs": 587.2000000029802,
+          "richMovement": 22.87427873812004,
+          "inputToJumpMs": 33.100000001490116
+        }
+      }
+    },
+    "touchPromotion": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": true,
+      "cpuCompositor": false,
+      "early": true,
+      "path": "mobile-canvas",
+      "bootReadyMs": 683,
+      "menuMs": 766,
+      "titleSubmitMs": 881.1000000014901,
+      "titleSceneMs": 908.7999999970198,
+      "runs": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 72.5,
+          "readyMs": 73.70000000298023,
+          "afterSubmitRafMs": 78,
+          "stepSubmitMs": 2532.2000000029802,
+          "simMs": 2865.2000000029802,
+          "jumpAt": 2864.8000000044703,
+          "jumpMs": 2925.9000000059605,
+          "acceptedToPlayMs": 71.80000000447035,
+          "bakeMs": 1.1000000014901161,
+          "maxLongTaskMs": 179,
+          "firstKind": "starter",
+          "richMs": 2822.10000000149,
+          "richKind": "canvas",
+          "postPromotionMs": 4278.4000000059605,
+          "richMovement": 62.80786688289993,
+          "inputToJumpMs": 61.100000001490116
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 32.80000000447035,
+          "readyMs": 32.899999998509884,
+          "afterSubmitRafMs": 47.80000000447035,
+          "stepSubmitMs": 65.20000000298023,
+          "simMs": 231.39999999850988,
+          "jumpAt": 67,
+          "jumpMs": 82.20000000298023,
+          "acceptedToPlayMs": 32.19999999552965,
+          "bakeMs": 0.8999999985098839,
+          "maxLongTaskMs": 0,
+          "firstKind": "starter",
+          "richMs": 256.20000000298023,
+          "richKind": "canvas",
+          "postPromotionMs": 565,
+          "richMovement": 10.181030175488871,
+          "inputToJumpMs": 15.200000002980232
+        }
+      }
+    },
+    "profiles": {
+      "prior": {
+        "profile": {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 548,
+          "menuMs": 470.5,
+          "titleSubmitMs": 539,
+          "titleSceneMs": 558.8999999985099,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 1439,
+              "readyMs": 1439.3999999985099,
+              "afterSubmitRafMs": 1452.3999999985099,
+              "stepSubmitMs": 1480.7999999970198,
+              "simMs": 2023.2999999970198,
+              "jumpAt": 1449.6999999955297,
+              "jumpMs": 1480.8999999985099,
+              "acceptedToPlayMs": 1437.7999999970198,
+              "bakeMs": 1.3999999985098839,
+              "maxLongTaskMs": 368,
+              "inputToJumpMs": 31.200000002980232
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 110.10000000149012,
+              "readyMs": 110.39999999850988,
+              "afterSubmitRafMs": 117.70000000298023,
+              "stepSubmitMs": 138.20000000298023,
+              "simMs": 2704.7999999970198,
+              "jumpAt": 117.29999999701977,
+              "jumpMs": 138.29999999701977,
+              "acceptedToPlayMs": 103.70000000298023,
+              "bakeMs": 0.8999999985098839,
+              "maxLongTaskMs": 52,
+              "inputToJumpMs": 21.0
+            }
+          }
+        },
+        "widgetShutdown": {
+          "event": "LayerTreeHost::~LayerTreeHost",
+          "fromEngageMs": 431.788,
+          "wallMs": 859.895,
+          "threadCpuMs": 0.066
+        },
+        "compositorFinish": {
+          "event": "ProxyImpl::FinishGLOnImplThread",
+          "fromEngageMs": 431.833,
+          "wallMs": 857.841,
+          "threadCpuMs": 0.385
+        },
+        "writePixels": {
+          "event": "RasterDecoderImpl::DoWritePixelsINTERNAL",
+          "fromEngageMs": -43.659,
+          "wallMs": 727.433,
+          "threadCpuMs": 8.0
+        },
+        "canvasReadback": {
+          "event": "RasterImplementation::ReadbackImagePixels",
+          "fromEngageMs": 2291.943,
+          "wallMs": 2446.999,
+          "threadCpuMs": 0.527
+        },
+        "endRaster": {
+          "event": "RasterDecoderImpl::DoEndRasterCHROMIUM",
+          "fromEngageMs": 1581.479,
+          "wallMs": 266.865,
+          "threadCpuMs": 48.605
+        },
+        "markTimes": [
+          [
+            "sr:engine-request",
+            248.5
+          ],
+          [
+            "sr:menu",
+            257.69999999552965
+          ],
+          [
+            "sr:engine-module",
+            429.79999999701977
+          ],
+          [
+            "sr:title-submit",
+            539
+          ],
+          [
+            "sr:ready",
+            548
+          ],
+          [
+            "sr:engage",
+            585.8999999985099
+          ],
+          [
+            "sr:run-submit",
+            2023.3999999985099
+          ],
+          [
+            "sr:playing",
+            2023.6999999955297
+          ],
+          [
+            "sr:first-step",
+            2065.1999999955297
+          ],
+          [
+            "sr:retry",
+            2771.2999999970198
+          ],
+          [
+            "sr:run-submit",
+            2874.89999999851
+          ],
+          [
+            "sr:playing",
+            2875
+          ],
+          [
+            "sr:first-step",
+            2903.0999999940395
+          ]
+        ],
+        "assets": [
+          {
+            "stage": "response.bytes",
+            "at": 460.29999999701977,
+            "ms": 89.60000000149012,
+            "phase": "attract",
+            "name": "/bridge/packed-v4/deck.rgba.br",
+            "bytes": 851968
+          },
+          {
+            "stage": "response.bytes",
+            "at": 460.59999999403954,
+            "ms": 89.40000000596046,
+            "phase": "attract",
+            "name": "/bridge/packed-v4/lut-16.rgba.br",
+            "bytes": 65536
+          },
+          {
+            "stage": "image.decode",
+            "at": 437.5,
+            "ms": 112.69999999552965,
+            "phase": "attract",
+            "name": "/bridge/props-v1.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 472.69999999552965,
+            "ms": 104.39999999850988,
+            "phase": "attract",
+            "name": "/bridge/l2.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 472.69999999552965,
+            "ms": 104.5,
+            "phase": "attract",
+            "name": "/bridge/metro-street.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 472.69999999552965,
+            "ms": 104.60000000149012,
+            "phase": "attract",
+            "name": "/bridge/l1.webp"
+          },
+          {
+            "stage": "response.bytes",
+            "at": 557.3999999985099,
+            "ms": 19.899999998509884,
+            "phase": "attract",
+            "name": "/bridge/sky-basis-v3.rgba.br",
+            "bytes": 1169408
+          },
+          {
+            "stage": "worker.create",
+            "at": 2502.5,
+            "ms": 4.5999999940395355,
+            "phase": "playing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.create",
+            "at": 2525.5999999940395,
+            "ms": 1.7000000029802322,
+            "phase": "playing",
+            "name": "bridge-art"
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 2828.5,
+            "ms": 0,
+            "phase": "preparing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 2828.5,
+            "ms": 0,
+            "phase": "preparing",
+            "name": "bridge-art"
+          },
+          {
+            "stage": "worker.create",
+            "at": 5331.5999999940395,
+            "ms": 0.10000000149011612,
+            "phase": "playing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.create",
+            "at": 5344,
+            "ms": 0.09999999403953552,
+            "phase": "playing",
+            "name": "bridge-art"
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5331.69999999553,
+            "ms": 618.7000000029802,
+            "phase": "playing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 480
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 6657.5999999940395,
+            "ms": 0.10000000149011612,
+            "phase": "playing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 6657.69999999553,
+            "ms": 0,
+            "phase": "playing",
+            "name": "bridge-art"
+          }
+        ],
+        "opticsWorkerStarts": 4
+      },
+      "updated": {
+        "profile": {
+          "browser": "HeadlessChrome/153.0.8010.0",
+          "touch": false,
+          "cpuCompositor": false,
+          "early": true,
+          "path": "mobile-canvas",
+          "bootReadyMs": 964.2000000029802,
+          "menuMs": 783.2999999970198,
+          "titleSubmitMs": 931.5,
+          "titleSceneMs": 974,
+          "runs": {
+            "ENGAGE": {
+              "seed": 42,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 93,
+              "readyMs": 93.5,
+              "afterSubmitRafMs": 2231,
+              "stepSubmitMs": 2263.3000000044703,
+              "simMs": 2360.2000000029802,
+              "jumpAt": 2268,
+              "jumpMs": 2272.9000000059605,
+              "acceptedToPlayMs": 92.10000000149012,
+              "bakeMs": 13.5,
+              "maxLongTaskMs": 210,
+              "firstKind": "starter",
+              "richMs": 2550.60000000149,
+              "richKind": "canvas",
+              "inputToJumpMs": 4.9000000059604645
+            },
+            "RETRY": {
+              "seed": 43,
+              "active": true,
+              "paintedTitle": true,
+              "submitMs": 1450.2000000029802,
+              "readyMs": 1450.3999999985099,
+              "afterSubmitRafMs": 1467.1000000014901,
+              "stepSubmitMs": 1484.6000000014901,
+              "simMs": 1647.6000000014901,
+              "jumpAt": 1453.8999999985099,
+              "jumpMs": 1484.7999999970198,
+              "acceptedToPlayMs": 1449.2999999970198,
+              "bakeMs": 0.6999999955296516,
+              "maxLongTaskMs": 142,
+              "firstKind": "starter",
+              "richMs": 1773.5,
+              "richKind": "canvas",
+              "postPromotionMs": 2266.2000000029802,
+              "inputToJumpMs": 30.899999998509884
+            }
+          }
+        },
+        "widgetShutdown": {
+          "event": "LayerTreeHost::~LayerTreeHost",
+          "fromEngageMs": 117.483,
+          "wallMs": 2110.676,
+          "threadCpuMs": 1.17
+        },
+        "compositorFinish": {
+          "event": "ProxyImpl::FinishGLOnImplThread",
+          "fromEngageMs": 117.542,
+          "wallMs": 2107.249,
+          "threadCpuMs": 1.545
+        },
+        "writePixels": null,
+        "canvasReadback": null,
+        "endRaster": {
+          "event": "RasterDecoderImpl::DoEndRasterCHROMIUM",
+          "fromEngageMs": 3026.695,
+          "wallMs": 1216.802,
+          "threadCpuMs": 70.077
+        },
+        "markTimes": [
+          [
+            "sr:engine-request",
+            434.6000000014901
+          ],
+          [
+            "sr:menu",
+            459.70000000298023
+          ],
+          [
+            "sr:engine-module",
+            729.7000000029802
+          ],
+          [
+            "sr:title-submit",
+            931.5
+          ],
+          [
+            "sr:ready",
+            964.2000000029802
+          ],
+          [
+            "sr:engage",
+            1018.6000000014901
+          ],
+          [
+            "sr:run-submit",
+            1110.2999999970198
+          ],
+          [
+            "sr:playing",
+            1110.7000000029802
+          ],
+          [
+            "sr:first-step",
+            3280.60000000149
+          ],
+          [
+            "sr:retry",
+            3828
+          ],
+          [
+            "sr:run-submit",
+            5277.20000000298
+          ],
+          [
+            "sr:playing",
+            5277.29999999702
+          ],
+          [
+            "sr:first-step",
+            5311.60000000149
+          ]
+        ],
+        "assets": [
+          {
+            "stage": "image.decode",
+            "at": 745.2999999970198,
+            "ms": 218.70000000298023,
+            "phase": "attract",
+            "name": "/bridge/props-v2.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 785.3999999985099,
+            "ms": 194.20000000298023,
+            "phase": "attract",
+            "name": "/bridge/l1.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 785.5,
+            "ms": 212.79999999701977,
+            "phase": "attract",
+            "name": "/bridge/l2.webp"
+          },
+          {
+            "stage": "image.decode",
+            "at": 785.5,
+            "ms": 213.39999999850988,
+            "phase": "attract",
+            "name": "/bridge/metro-street.webp"
+          },
+          {
+            "stage": "response.bytes",
+            "at": 972.7000000029802,
+            "ms": 26.299999997019768,
+            "phase": "attract",
+            "name": "/bridge/sky-basis-v3.rgba.br",
+            "bytes": 1169408
+          },
+          {
+            "stage": "worker.create",
+            "at": 3396,
+            "ms": 0.10000000149011612,
+            "phase": "playing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.create",
+            "at": 3525.2999999970198,
+            "ms": 0.20000000298023224,
+            "phase": "playing",
+            "name": "bridge-art"
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3401.5,
+            "ms": 1208.1000000014901,
+            "phase": "preparing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 42,
+            "bakeMs": 818.8999999985099
+          },
+          {
+            "stage": "worker.reply",
+            "at": 3529.89999999851,
+            "ms": 1272.6000000014901,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 1012.2999999970198
+          },
+          {
+            "stage": "worker.reply",
+            "at": 4802.60000000149,
+            "ms": 291.19999999552965,
+            "phase": "preparing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 42,
+            "bakeMs": 290.70000000298023
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5565.5,
+            "ms": 256.1000000014901,
+            "phase": "playing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 169.60000000149012
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5821.60000000149,
+            "ms": 289.29999999701977,
+            "phase": "playing",
+            "name": "bridge-art",
+            "type": "plate",
+            "seed": 43,
+            "bakeMs": 240
+          },
+          {
+            "stage": "worker.reply",
+            "at": 5475.60000000149,
+            "ms": 635.5,
+            "phase": "playing",
+            "name": "bridge-bake",
+            "type": "window",
+            "seed": 43,
+            "bakeMs": 595.7000000029802
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 8853.5,
+            "ms": 0,
+            "phase": "playing",
+            "name": "bridge-bake"
+          },
+          {
+            "stage": "worker.terminate",
+            "at": 8853.5,
+            "ms": 0,
+            "phase": "playing",
+            "name": "bridge-art"
+          }
+        ],
+        "opticsWorkerStarts": 2
+      }
+    },
+    "cpuCompositorControl": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": false,
+        "cpuCompositor": true,
+        "early": true,
+        "path": "mobile-canvas",
+        "bootReadyMs": 578.7999999970198,
+        "menuMs": 428.20000000298023,
+        "titleSubmitMs": 532.2000000029802,
+        "titleSceneMs": 582.5,
+        "runs": {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 213,
+            "readyMs": 213.60000000149012,
+            "afterSubmitRafMs": 248.29999999701977,
+            "stepSubmitMs": 307.79999999701977,
+            "simMs": 470,
+            "jumpAt": 375.3999999985099,
+            "jumpMs": 389,
+            "acceptedToPlayMs": 212.5,
+            "bakeMs": 1.2999999970197678,
+            "maxLongTaskMs": 186,
+            "inputToJumpMs": 13.600000001490116
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 50.399999998509884,
+            "readyMs": 53.899999998509884,
+            "afterSubmitRafMs": 83,
+            "stepSubmitMs": 123.70000000298023,
+            "simMs": 322.20000000298023,
+            "jumpAt": 106.10000000149012,
+            "jumpMs": 123.80000000447035,
+            "acceptedToPlayMs": 53.100000001490116,
+            "bakeMs": 1.8000000044703484,
+            "maxLongTaskMs": 0,
+            "inputToJumpMs": 17.700000002980232
+          }
+        }
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "touch": false,
+        "cpuCompositor": true,
+        "early": true,
+        "path": "mobile-canvas",
+        "bootReadyMs": 781.8000000044703,
+        "menuMs": 606.8000000044703,
+        "titleSubmitMs": 725.8999999985099,
+        "titleSceneMs": 794.5,
+        "runs": {
+          "ENGAGE": {
+            "seed": 42,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 70.69999999552965,
+            "readyMs": 71.29999999701977,
+            "afterSubmitRafMs": 87.69999999552965,
+            "stepSubmitMs": 126.10000000149012,
+            "simMs": 252.29999999701977,
+            "jumpAt": 144.29999999701977,
+            "jumpMs": 148.60000000149012,
+            "acceptedToPlayMs": 70.30000000447035,
+            "bakeMs": 1.7999999970197678,
+            "maxLongTaskMs": 0,
+            "firstKind": "starter",
+            "inputToJumpMs": 4.300000004470348
+          },
+          "RETRY": {
+            "seed": 43,
+            "active": true,
+            "paintedTitle": true,
+            "submitMs": 24.200000002980232,
+            "readyMs": 24.399999998509884,
+            "afterSubmitRafMs": 39,
+            "stepSubmitMs": 57.899999998509884,
+            "simMs": 222.30000000447035,
+            "jumpAt": 30.399999998509884,
+            "jumpMs": 58,
+            "acceptedToPlayMs": 23.69999999552965,
+            "bakeMs": 0.7000000029802322,
+            "maxLongTaskMs": 0,
+            "firstKind": "starter",
+            "richMs": 311.80000000447035,
+            "richKind": "canvas",
+            "inputToJumpMs": 27.600000001490116
+          }
+        }
+      }
+    }
+  },
+  "composedCoverage": {
+    "canvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": true,
+      "glTest": false,
+      "rows": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 1,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 457.32363075182815,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 459.60071505503157,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 466.41583476783956,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 467.91111111111115,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 115,
+            "roadTones": 104,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 0,
+            "bodies": [
+              [
+                214,
+                297,
+                162
+              ],
+              [
+                201,
+                211,
+                227
+              ]
+            ]
+          }
+        },
+        {
+          "label": "full-canvas",
+          "frame": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 82,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 46425,
+            "warning": 113
+          }
+        },
+        {
+          "label": "hud-unavailable-inline",
+          "frame": {
+            "id": 5,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "world",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 114,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 118
+          }
+        },
+        {
+          "label": "hud-restored",
+          "frame": {
+            "id": 6,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 82,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 46425,
+            "warning": 113
+          }
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 7,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 896,
+          "height": 564,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 323.1389007869187,
+              "y": 272.9907862117356
+            },
+            {
+              "x": 321.848262019078,
+              "y": 288.0952307245103
+            },
+            {
+              "x": 336.50611843777665,
+              "y": 361.4820950068501
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 430.1590037292138,
+                  "y": 305.5362790870744
+                },
+                {
+                  "x": 427.05936635724777,
+                  "y": 317.18810747436004
+                },
+                {
+                  "x": 430.4748152086815,
+                  "y": 373.6911451363436
+                }
+              ],
+              "tell": {
+                "x": 419.8666666666667,
+                "y": 260.65155555555555
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 228.8763692481719,
+                  "y": 299.73823001525176
+                },
+                {
+                  "x": 226.59928494496845,
+                  "y": 311.57832054195586
+                },
+                {
+                  "x": 219.7841652321605,
+                  "y": 371.78890589992034
+                }
+              ],
+              "tell": {
+                "x": 218.2888888888889,
+                "y": 257.71875550376046
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            365.55555555555554,
+            439.7111111111111
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 116,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 413,
+            "roadPx": 46425,
+            "warning": 118,
+            "bodies": [
+              [
+                214,
+                297,
+                162
+              ],
+              [
+                299,
+                259,
+                197
+              ],
+              [
+                256,
+                228,
+                213
+              ]
+            ]
+          }
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 9,
+            "layer": "scene",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": true,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            896,
+            564
+          ],
+          "hero": [
+            {
+              "x": 361.1047876616682,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 359.0967188520968,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 374.99465197416805,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 470.4114911753303,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 467.07966505323765,
+                  "y": 332.09364730045655
+                },
+                {
+                  "x": 470.51728978101255,
+                  "y": 391.06508536503213
+                }
+              ],
+              "tell": {
+                "x": 459.29479610522407,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 262.82318846323426,
+                  "y": 315.3403138572378
+                },
+                {
+                  "x": 260.3042372612691,
+                  "y": 327.6991103587413
+                },
+                {
+                  "x": 254.08087677162584,
+                  "y": 390.54456380404866
+                }
+              ],
+              "tell": {
+                "x": 251.22075224703113,
+                "y": 270.4288587333096
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.9814814814815
+          ],
+          "image": {
+            "hpInk": 0,
+            "skyTones": 44,
+            "roadTones": 104,
+            "hole": 1,
+            "black": 397,
+            "roadPx": 52806,
+            "warning": 37
+          }
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 10,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 361.1047876616682,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 359.0967188520968,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 374.99465197416805,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 470.4114911753303,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 467.07966505323765,
+                  "y": 332.09364730045655
+                },
+                {
+                  "x": 470.51728978101255,
+                  "y": 391.06508536503213
+                }
+              ],
+              "tell": {
+                "x": 459.29479610522407,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 262.82318846323426,
+                  "y": 315.3403138572378
+                },
+                {
+                  "x": 260.3042372612691,
+                  "y": 327.6991103587413
+                },
+                {
+                  "x": 254.08087677162584,
+                  "y": 390.54456380404866
+                }
+              ],
+              "tell": {
+                "x": 251.22075224703113,
+                "y": 270.4288587333096
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.9814814814815
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 115,
+            "roadTones": 104,
+            "hole": 1,
+            "black": 471,
+            "roadPx": 52806,
+            "warning": 146
+          }
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 15,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 44,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 948,
+          "height": 572,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            948,
+            572
+          ],
+          "hero": [
+            {
+              "x": 327.72243129453466,
+              "y": 276.8629959452354
+            },
+            {
+              "x": 326.41348559381674,
+              "y": 292.18168789790764
+            },
+            {
+              "x": 341.2792548695182,
+              "y": 366.60950060978416
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 463.8104907624924,
+                  "y": 303.9898361147589
+                },
+                {
+                  "x": 466.1198741338264,
+                  "y": 315.9978711879411
+                },
+                {
+                  "x": 473.03166221135507,
+                  "y": 377.0625074020469
+                }
+              ],
+              "tell": {
+                "x": 474.5481481481482,
+                "y": 261.37434068821096
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            370.74074074074076,
+            445.94814814814816
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 114,
+            "roadTones": 103,
+            "hole": 0,
+            "black": 434,
+            "roadPx": 49780,
+            "warning": 0,
+            "bodies": [
+              [
+                216,
+                295,
+                160
+              ],
+              [
+                295,
+                238,
+                233
+              ]
+            ]
+          }
+        }
+      ],
+      "cancelled": {
+        "frame": {
+          "id": 14,
+          "layer": "scene-work",
+          "kind": "canvas",
+          "hud": "layer",
+          "seed": 42,
+          "time": 0.08333333333333333,
+          "hp": 92,
+          "threats": 2
+        },
+        "held": false,
+        "pending": false
+      },
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    },
+    "gl": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denied": false,
+      "glTest": true,
+      "rows": [
+        {
+          "label": "engage",
+          "frame": {
+            "id": 1,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 377.8595956211913,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 379.7410163397956,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 385.3719485847752,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 386.6074074074074,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 840,
+            "skyTones": 120,
+            "roadTones": 79,
+            "hole": 0,
+            "black": 275,
+            "roadPx": 30690,
+            "warning": 0
+          }
+        },
+        {
+          "label": "master",
+          "frame": {
+            "id": 39,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "master-webgl2",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 121,
+            "roadTones": 77,
+            "hole": 2,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 94,
+            "bodies": [
+              [
+                183,
+                273,
+                128
+              ],
+              [
+                177,
+                100,
+                114
+              ],
+              [
+                205,
+                142,
+                105
+              ]
+            ]
+          }
+        },
+        {
+          "label": "context-lost-canvas",
+          "frame": {
+            "id": 42,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 120,
+            "roadTones": 86,
+            "hole": 0,
+            "black": 275,
+            "roadPx": 30690,
+            "warning": 78,
+            "bodies": [
+              [
+                175,
+                270,
+                136
+              ],
+              [
+                186,
+                198,
+                166
+              ],
+              [
+                233,
+                211,
+                173
+              ]
+            ]
+          }
+        },
+        {
+          "label": "context-restored",
+          "frame": {
+            "id": 65,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "master-webgl2",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 124,
+            "roadTones": 74,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 92
+          }
+        },
+        {
+          "label": "optimized",
+          "frame": {
+            "id": 81,
+            "layer": "finish",
+            "kind": "webgl",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-webgl2",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 123,
+            "roadTones": 75,
+            "hole": 0,
+            "black": 0,
+            "roadPx": 30690,
+            "warning": 92
+          }
+        },
+        {
+          "label": "interrupted-source",
+          "frame": {
+            "id": 82,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0,
+          "width": 716,
+          "height": 466,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 266.99065206862434,
+              "y": 225.55621697636312
+            },
+            {
+              "x": 265.924273228529,
+              "y": 238.0361303503933
+            },
+            {
+              "x": 278.0351971489431,
+              "y": 298.67137637090804
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 355.4150633649177,
+                  "y": 252.44664194073874
+                },
+                {
+                  "x": 352.85401546538554,
+                  "y": 262.0738618493826
+                },
+                {
+                  "x": 355.6759998000808,
+                  "y": 308.75899580414205
+                }
+              ],
+              "tell": {
+                "x": 346.9111111111111,
+                "y": 215.36103703703705
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 189.10707104547535,
+                  "y": 247.65605529628957
+                },
+                {
+                  "x": 187.2256503268711,
+                  "y": 257.4388251286373
+                },
+                {
+                  "x": 181.59471808189144,
+                  "y": 307.1872874988704
+                }
+              ],
+              "tell": {
+                "x": 180.35925925925926,
+                "y": 212.9378369942418
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            302.03703703703707,
+            363.30740740740737
+          ],
+          "image": {
+            "hpInk": 772,
+            "skyTones": 120,
+            "roadTones": 86,
+            "hole": 0,
+            "black": 275,
+            "roadPx": 30690,
+            "warning": 78,
+            "bodies": [
+              [
+                175,
+                270,
+                136
+              ],
+              [
+                186,
+                198,
+                166
+              ],
+              [
+                233,
+                211,
+                173
+              ]
+            ]
+          }
+        },
+        {
+          "label": "held-after-resize",
+          "frame": {
+            "id": 84,
+            "layer": "scene-work",
+            "kind": "emergency",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": true,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            716,
+            466
+          ],
+          "hero": [
+            {
+              "x": 376.49546735606447,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 374.48739854649307,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 390.38533166856433,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 485.8021708697265,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 482.4703447476339,
+                  "y": 332.0936473004565
+                },
+                {
+                  "x": 485.9079694754088,
+                  "y": 391.0650853650321
+                }
+              ],
+              "tell": {
+                "x": 474.6854757996203,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 278.1000636564464,
+                  "y": 315.31201781750883
+                },
+                {
+                  "x": 275.588713046624,
+                  "y": 327.6723610262551
+                },
+                {
+                  "x": 269.44754342785825,
+                  "y": 390.52067746180217
+                }
+              ],
+              "tell": {
+                "x": 266.5268744329133,
+                "y": 270.4182737111604
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 0,
+            "skyTones": 42,
+            "roadTones": 111,
+            "hole": 1,
+            "black": 362,
+            "roadPx": 52806,
+            "warning": 34
+          }
+        },
+        {
+          "label": "recovered",
+          "frame": {
+            "id": 85,
+            "layer": "scene",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 42,
+            "time": 0.016666666666666666,
+            "hp": 92,
+            "threats": 2
+          },
+          "hp": 92,
+          "sim": 0.016666666666666666,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 376.49546735606447,
+              "y": 286.34133985761594
+            },
+            {
+              "x": 374.48739854649307,
+              "y": 302.0713638815958
+            },
+            {
+              "x": 390.38533166856433,
+              "y": 378.32968893784795
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 485.8021708697265,
+                  "y": 319.92878393025796
+                },
+                {
+                  "x": 482.4703447476339,
+                  "y": 332.0936473004565
+                },
+                {
+                  "x": 485.9079694754088,
+                  "y": 391.0650853650321
+                }
+              ],
+              "tell": {
+                "x": 474.6854757996203,
+                "y": 272.78103706412844
+              },
+              "state": "windup"
+            },
+            {
+              "body": [
+                {
+                  "x": 278.1000636564464,
+                  "y": 315.31201781750883
+                },
+                {
+                  "x": 275.588713046624,
+                  "y": 327.6723610262551
+                },
+                {
+                  "x": 269.44754342785825,
+                  "y": 390.52067746180217
+                }
+              ],
+              "tell": {
+                "x": 266.5268744329133,
+                "y": 270.4182737111604
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 912,
+            "skyTones": 114,
+            "roadTones": 89,
+            "hole": 0,
+            "black": 488,
+            "roadPx": 52806,
+            "warning": 142
+          }
+        },
+        {
+          "label": "retry",
+          "frame": {
+            "id": 90,
+            "layer": "scene-work",
+            "kind": "starter",
+            "hud": "layer",
+            "seed": 43,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "hp": 100,
+          "sim": 0,
+          "width": 980,
+          "height": 590,
+          "held": false,
+          "path": "mobile-canvas",
+          "fallback": "scene-work",
+          "fallbackReady": true,
+          "fallbackSize": [
+            980,
+            590
+          ],
+          "hero": [
+            {
+              "x": 338.03537493667034,
+              "y": 285.5754678456099
+            },
+            {
+              "x": 336.6852386369788,
+              "y": 301.3762165380516
+            },
+            {
+              "x": 352.01881184093656,
+              "y": 378.14616321638573
+            }
+          ],
+          "threats": [
+            {
+              "body": [
+                {
+                  "x": 507.9059257864869,
+                  "y": 313.5559498386499
+                },
+                {
+                  "x": 510.2879820611146,
+                  "y": 325.94186014140774
+                },
+                {
+                  "x": 517.4172739592648,
+                  "y": 388.9281107818316
+                }
+              ],
+              "tell": {
+                "x": 518.9814814814815,
+                "y": 269.5994073532246
+              },
+              "state": "chase"
+            }
+          ],
+          "insets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "road": [
+            382.4074074074074,
+            459.98148148148147
+          ],
+          "image": {
+            "hpInk": 992,
+            "skyTones": 113,
+            "roadTones": 86,
+            "hole": 0,
+            "black": 469,
+            "roadPx": 52806,
+            "warning": 0,
+            "bodies": [
+              [
+                221,
+                296,
+                165
+              ],
+              [
+                219,
+                223,
+                231
+              ]
+            ]
+          }
+        }
+      ],
+      "cancelled": null,
+      "teardown": {
+        "stores": 0,
+        "coverageBytes": 0,
+        "hudBytes": 0
+      }
+    }
+  },
+  "railLift": {
+    "desktop": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "legacy": true,
+        "grounded": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": 0,
+          "heroHead": {
+            "x": 507.8958173117854,
+            "y": 302.793616887036
+          },
+          "lane": 431.5185185185185,
+          "height": 610,
+          "width": 984,
+          "streetY": 551.2592592592592,
+          "rail": {
+            "leadX": 920.5188909131537,
+            "railY": 145.10589629629632,
+            "footingY": 551.2592592592592,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s",
+            "scale": 0.8020370370370369
+          },
+          "path": "mobile-canvas"
+        },
+        "air": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -137.6086444463606,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 490.31496479493995,
+            "y": 173.80148138905577
+          },
+          "lane": 460.4468020597777,
+          "height": 610,
+          "width": 984,
+          "streetY": 580.1875428005185,
+          "rail": {
+            "leadX": 920.5188909131537,
+            "railY": 159.894034842588,
+            "footingY": 580.1875428005185,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s",
+            "scale": 0.8020370370370369
+          },
+          "path": "mobile-canvas"
+        },
+        "railDelta": 14.788138546291691,
+        "footingDelta": 28.928283541259248,
+        "resources": 0
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": false,
+        "viewport": {
+          "width": 1180,
+          "height": 660,
+          "deviceScaleFactor": 1
+        },
+        "legacy": false,
+        "grounded": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -112,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": 0,
+          "heroHead": {
+            "x": 502.60531231682126,
+            "y": 295.25599217935945
+          },
+          "lane": 431.5185185185185,
+          "height": 610,
+          "width": 984,
+          "streetY": 551.2592592592592,
+          "rail": {
+            "leadX": 920.5188909131537,
+            "scale": 0.8020370370370369,
+            "railY": 145.10589629629632,
+            "footingY": 551.2592592592592,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "air": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -137.6086444463606,
+            "zoom": 1.1296296296296295
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 490.2033516777629,
+            "y": 173.76730905127212
+          },
+          "lane": 460.4468020597777,
+          "height": 610,
+          "width": 984,
+          "streetY": 553.8182712447999,
+          "rail": {
+            "leadX": 920.5188909131537,
+            "scale": 0.8020370370370369,
+            "railY": 147.66490828183694,
+            "footingY": 553.8182712447999,
+            "bearings": 3,
+            "bodies": 6,
+            "trains": 1,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "railDelta": 2.5590119855406215,
+        "footingDelta": 2.5590119855406783,
+        "resources": 0
+      }
+    },
+    "touch": {
+      "prior": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "legacy": true,
+        "grounded": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -85,
+            "zoom": 1.5629629629629629
+          },
+          "bodyY": 0,
+          "heroHead": {
+            "x": 209.01879467822343,
+            "y": 368.9680705162382
+          },
+          "lane": 554.8518518518518,
+          "height": 844,
+          "width": 400,
+          "streetY": 720.5259259259259,
+          "rail": {
+            "leadX": 487.30917499977255,
+            "railY": 179.19682962962963,
+            "footingY": 720.5259259259259,
+            "bearings": 1,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s",
+            "scale": 1.1097037037037036
+          },
+          "path": "mobile-canvas"
+        },
+        "air": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -110.60864444636066,
+            "zoom": 1.5629629629629629
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 197.45734382905243,
+            "y": 198.29188909091022
+          },
+          "lane": 594.8772146532008,
+          "height": 844,
+          "width": 400,
+          "streetY": 760.5512887272748,
+          "rail": {
+            "leadX": 487.30917499977255,
+            "railY": 199.6577950936792,
+            "footingY": 760.5512887272748,
+            "bearings": 1,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s",
+            "scale": 1.1097037037037036
+          },
+          "path": "mobile-canvas"
+        },
+        "railDelta": 20.460965464049565,
+        "footingDelta": 40.02536280134893,
+        "resources": 0
+      },
+      "updated": {
+        "browser": "HeadlessChrome/153.0.8010.0",
+        "software": true,
+        "touch": true,
+        "viewport": {
+          "width": 400,
+          "height": 844,
+          "deviceScaleFactor": 2,
+          "isMobile": true,
+          "hasTouch": true
+        },
+        "legacy": false,
+        "grounded": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -85,
+            "zoom": 1.5629629629629629
+          },
+          "bodyY": 0,
+          "heroHead": {
+            "x": 214.67357966458547,
+            "y": 366.3181268842285
+          },
+          "lane": 554.8518518518518,
+          "height": 844,
+          "width": 400,
+          "streetY": 720.5259259259259,
+          "rail": {
+            "leadX": 487.30917499977255,
+            "scale": 1.1097037037037036,
+            "railY": 179.19682962962963,
+            "footingY": 720.5259259259259,
+            "bearings": 1,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "air": {
+          "x": 3088,
+          "time": 75.353103481293,
+          "camera": {
+            "x": 3088,
+            "y": -110.60864444636066,
+            "zoom": 1.5629629629629629
+          },
+          "bodyY": -129.03958333333333,
+          "heroHead": {
+            "x": 197.45734382905243,
+            "y": 198.22967207189262
+          },
+          "lane": 594.8772146532008,
+          "height": 844,
+          "width": 400,
+          "streetY": 724.0665916895264,
+          "rail": {
+            "leadX": 487.30917499977255,
+            "scale": 1.1097037037037036,
+            "railY": 182.73749539323012,
+            "footingY": 724.0665916895264,
+            "bearings": 1,
+            "bodies": 4,
+            "trains": 1,
+            "blockers": 2,
+            "clipped": 0,
+            "kind": "Airport express",
+            "speed": 1279.5036909729242,
+            "wake": 0,
+            "units": "native px/s"
+          },
+          "path": "mobile-canvas"
+        },
+        "railDelta": 3.5406657636004866,
+        "footingDelta": 3.5406657636004866,
+        "resources": 0
+      }
+    }
+  },
+  "finalBrowserChecks": {
+    "preview-boot": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "flags": [
+        "--held-frame"
+      ],
+      "initial": {
+        "engine": true,
+        "phase": "attract",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": true,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 10 ms\nMenu: 226 ms from navigation\nEngine import: 140 ms including script evaluation\nEngage enabled: 366 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible",
+        "marks": [
+          [
+            "sr:engine-request",
+            215
+          ],
+          [
+            "sr:menu",
+            226.10000000149012
+          ],
+          [
+            "sr:engine-module",
+            354.69999999552965
+          ],
+          [
+            "sr:ready",
+            366.3999999985099
+          ]
+        ]
+      },
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 10 ms\nMenu: 226 ms from navigation\nEngine import: 140 ms including script evaluation\nEngage enabled: 366 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible\nEngage \u2192 playing: 48 ms\nEngage \u2192 first scene submitted: 48 ms\nEngage \u2192 first simulation frame submitted: 97 ms",
+        "marks": [
+          [
+            "sr:engine-request",
+            215
+          ],
+          [
+            "sr:menu",
+            226.10000000149012
+          ],
+          [
+            "sr:engine-module",
+            354.69999999552965
+          ],
+          [
+            "sr:ready",
+            366.3999999985099
+          ],
+          [
+            "sr:engage",
+            387.69999999552965
+          ],
+          [
+            "sr:run-submit",
+            435.19999999552965
+          ],
+          [
+            "sr:playing",
+            435.69999999552965
+          ],
+          [
+            "sr:first-step",
+            484.6000000014901
+          ]
+        ]
+      },
+      "timing": {
+        "readyAt": 382,
+        "resources": [
+          {
+            "path": "/_next/static/media/GeistMono_Variable.p.2vtemngyy8z-u.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/media/Geist_Variable-s.p.43azbxi7zpibd.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2vu3ab_2np7iw.css",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/369hzmzm1ocz-.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0q5pxrraqwba9.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1on60-l6dgfqc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/turbopack-2u1d16houkiyo.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3qfy96eoyh-ek.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3802m8uy2z_ug.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2hd98qteq0owm.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3w533qkxr90hc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2mkhdbdd4himb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/007e_u0jlo9ka.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0at06mlkeimt2.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0h7w15xozcf-i.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0lmjguiwgqdad.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2cw8e42t9znhb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/397o4hcr18fhg.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          }
+        ],
+        "clickAt": 386.79999999701977,
+        "playAt": 436
+      },
+      "errors": [],
+      "failed": []
+    },
+    "weather-canvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "canvas": true,
+      "path": "mobile-canvas",
+      "dry": {
+        "rain": 0,
+        "rainStrokes": 0,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0
+      },
+      "shower": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 74,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0
+      },
+      "quiet": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 11,
+        "instances": 0,
+        "motes": 0,
+        "x": 9678,
+        "y": 0,
+        "count": 0,
+        "ventPaints": 0
+      },
+      "changed": 41,
+      "peak": 72,
+      "tick": 795,
+      "paused": 795,
+      "errors": 0
+    },
+    "weather-master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "canvas": false,
+      "path": "master-webgl2",
+      "dry": {
+        "rain": 0,
+        "rainStrokes": 0,
+        "instances": 0,
+        "motes": 84,
+        "x": 9678,
+        "y": 43,
+        "count": 1
+      },
+      "shower": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 0,
+        "instances": 350,
+        "motes": 84,
+        "x": 9678,
+        "y": 43,
+        "count": 1
+      },
+      "quiet": {
+        "rain": 0.7343999999999999,
+        "rainStrokes": 0,
+        "instances": 36,
+        "motes": 0,
+        "x": 9678,
+        "y": 43,
+        "count": 0,
+        "ventPaints": 0
+      },
+      "changed": 80,
+      "peak": 333,
+      "tick": 860,
+      "paused": 860,
+      "errors": 0
+    },
+    "environment-touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "seams": [
+        {
+          "x": 240,
+          "y": 0,
+          "time": 0.06666666666666667,
+          "tick": 4,
+          "wet": 0.47,
+          "cover": null,
+          "key": 0.8264,
+          "drive": 0.2856,
+          "level": 0.2856,
+          "same": true,
+          "score": 0,
+          "phase": "playing"
+        },
+        {
+          "x": 620.1101614661989,
+          "y": 0,
+          "time": 1.3833333333333333,
+          "tick": 83,
+          "wet": 0,
+          "cover": "concourse",
+          "key": 0.513416,
+          "drive": 0.07711200000000001,
+          "level": 0.07850281694715075,
+          "same": true,
+          "score": 0,
+          "phase": "playing"
+        },
+        {
+          "x": 874.9420497316154,
+          "y": 0,
+          "time": 2.3999999999999964,
+          "tick": 144,
+          "wet": 0.47,
+          "cover": null,
+          "key": 0.8264,
+          "drive": 0.2856,
+          "level": 0.281760997457604,
+          "same": true,
+          "score": 0,
+          "phase": "playing"
+        },
+        {
+          "x": 308.4288142855943,
+          "y": 0,
+          "time": 4.383333333333323,
+          "tick": 263,
+          "wet": 0.47,
+          "cover": null,
+          "key": 0.8264,
+          "drive": 0.2856,
+          "level": 0.2813755372062591,
+          "same": true,
+          "score": 0,
+          "phase": "playing"
+        },
+        {
+          "x": 534.9753791815655,
+          "y": 0,
+          "time": 5.349999999999986,
+          "tick": 321,
+          "wet": 0,
+          "cover": "concourse",
+          "key": 0.513416,
+          "drive": 0.07711200000000001,
+          "level": 0.08455856271603623,
+          "same": true,
+          "score": 0,
+          "phase": "playing"
+        }
+      ],
+      "frozen": {
+        "dt": 0,
+        "ticks": 6
+      },
+      "service": {
+        "id": 2,
+        "buff": "Chain Lightning Dash"
+      },
+      "reward": {
+        "hp": 73,
+        "shield": 50,
+        "remaining": 29.96666666666667,
+        "active": "Chain Lightning Dash",
+        "flow": 0,
+        "best": "B"
+      },
+      "execute": 3,
+      "overdrive": true,
+      "teardown": {
+        "newRoute": true,
+        "starts": [
+          [
+            42,
+            0
+          ],
+          [
+            43,
+            0
+          ]
+        ],
+        "audioClosed": true,
+        "stores": 0
+      }
+    },
+    "surface-denial": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denial": "surface",
+      "rows": [
+        {
+          "label": "surface",
+          "seed": 42,
+          "before": [
+            240,
+            0,
+            100,
+            0.09999999999999999,
+            6
+          ],
+          "after": [
+            240,
+            0,
+            100,
+            0.09999999999999999,
+            6
+          ],
+          "dpr": 1.25,
+          "draw": [
+            0,
+            0
+          ],
+          "scene": [
+            920,
+            587
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "hidden": true,
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "composed": {
+            "width": 736,
+            "height": 470,
+            "road": [
+              306.21078187517094,
+              368.87744854183757
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "hp": 100,
+            "id": 42,
+            "roadTones": 63,
+            "backdropHoles": 0,
+            "roadSamples": 8463,
+            "hpInk": 50
+          },
+          "gpuResources": 0,
+          "propAtlases": 0,
+          "overSurfaces": 0,
+          "path": "mobile-canvas",
+          "reason": "surface budget",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 13,
+            "casts": 2,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": "plate",
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": true,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 1113.7999999970198,
+              "plateMaxMs": 138.5,
+              "decodeMaxMs": 1.1000000014901161,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "surfaceAttempts": [
+        "bridge-master-actors",
+        "bridge-mobile-actors"
+      ],
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "presentation": {
+          "path": "mobile-canvas",
+          "reason": "released",
+          "requestedScale": 1.25,
+          "backingScale": 1.25,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 13,
+            "casts": 2,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "stream": {
+              "worker": false,
+              "plateWorker": false,
+              "pending": null,
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": true,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 1113.7999999970198,
+              "plateMaxMs": 594.5,
+              "decodeMaxMs": 1.1000000014901161,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        },
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "optimized-denial": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "denial": "master-surface",
+      "rows": [
+        {
+          "label": "master-surface",
+          "seed": 42,
+          "before": [
+            240,
+            0,
+            100,
+            0.09999999999999999,
+            6
+          ],
+          "after": [
+            240,
+            0,
+            100,
+            0.09999999999999999,
+            6
+          ],
+          "dpr": 1.25,
+          "draw": [
+            736,
+            470
+          ],
+          "scene": [
+            736,
+            470
+          ],
+          "hud": [
+            736,
+            470
+          ],
+          "hidden": false,
+          "config": {
+            "preset": "ULTRA",
+            "adaptiveEnabled": false,
+            "renderScale": 1.25,
+            "showFPS": false
+          },
+          "composed": {
+            "width": 736,
+            "height": 470,
+            "road": [
+              306.271531578871,
+              368.9381982455377
+            ],
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "hp": 100,
+            "id": 55,
+            "roadTones": 57,
+            "backdropHoles": 0,
+            "roadSamples": 8463,
+            "hpInk": 50
+          },
+          "gpuResources": 1,
+          "propAtlases": 0,
+          "overSurfaces": 0,
+          "path": "mobile-webgl2",
+          "reason": "Optimized renderer \u00b7 surface budget",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": {
+            "size": [
+              736,
+              470
+            ],
+            "format": "RGBA8",
+            "hdrBytes": 0,
+            "targetBytes": 2111360,
+            "dataBytes": 7692118,
+            "outputBytes": 1383680,
+            "sourceTextureBytes": 2767360,
+            "uploadBytes": 2767360,
+            "setupMs": {
+              "rig": 12.899999998509884,
+              "deck": 0.6000000014901161,
+              "look-0": 0.4000000059604645,
+              "look-1": 0.10000000149011612,
+              "look-2": 0,
+              "look-3": 0.10000000149011612,
+              "transport-storage": 0.10000000149011612
+            },
+            "frameDraws": 5,
+            "rainInstances": 0,
+            "moteInstances": 0,
+            "bloomLevels": 0,
+            "bloomUpPasses": 0,
+            "roadSize": [
+              368,
+              235
+            ],
+            "maxK": 4,
+            "uboBytes": 3584,
+            "uboOffsets": [
+              0,
+              640,
+              1664,
+              2176,
+              2432,
+              3072,
+              3456
+            ],
+            "stratumVersion": 1,
+            "transport": {
+              "active": 1,
+              "origin": -640,
+              "staging": null,
+              "stagingLevel": null,
+              "uploads": 9,
+              "updates": 1,
+              "quietDeferrals": 0,
+              "uploadThisFrame": 0,
+              "uploadBytesThisFrame": 0,
+              "uploadMs": 0,
+              "levels": 9
+            },
+            "stratumA": {
+              "size": [
+                160,
+                56
+              ],
+              "format": "RGBA8",
+              "opticalCeiling": 1.06,
+              "frames": 0,
+              "refreshes": 0,
+              "refreshed": true,
+              "live": true
+            },
+            "packedAssets": {
+              "formats": {},
+              "deck": "brotli",
+              "lut": "brotli",
+              "lutStrips": [
+                "brotli",
+                "brotli",
+                "brotli",
+                "brotli"
+              ],
+              "byteLength": 0,
+              "uploadBytesThisFrame": 0
+            },
+            "environment": {
+              "format": "RGBA8",
+              "irradiance": "RGB9_E5",
+              "blockerLimit": 24,
+              "size": [
+                1024,
+                128
+              ],
+              "version": 1,
+              "vectors": [
+                512,
+                16
+              ],
+              "skyBands": [
+                [
+                  256,
+                  60
+                ],
+                [
+                  256,
+                  70
+                ]
+              ],
+              "castCoverage": null,
+              "sourcePass": "SACR v4 road",
+              "shadowLights": 1
+            },
+            "sectorLut": [
+              256,
+              16
+            ]
+          },
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 13,
+            "casts": 2,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "stream": {
+              "worker": true,
+              "plateWorker": true,
+              "pending": null,
+              "plates": 2,
+              "plateBytes": 4165632,
+              "lit": false,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 681.7000000029802,
+              "plateMaxMs": 164.40000000596046,
+              "decodeMaxMs": 5.799999997019768,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": {
+            "version": "4.0",
+            "shadowK": 1,
+            "casters": 2,
+            "elevatedCasters": 0,
+            "primitives": 9,
+            "feet": 4,
+            "arcs": 0,
+            "emissives": 0,
+            "scarves": 2,
+            "undersides": 1,
+            "maxK": 4,
+            "atlasVersion": 1,
+            "portals": 2,
+            "camWorldX": -1.25,
+            "atlasOriginX": -10,
+            "viewWidthMeters": 17.617021276595747
+          }
+        }
+      ],
+      "dryRaster": null,
+      "dryResolve": null,
+      "surfaceAttempts": [
+        "bridge-master-actors"
+      ],
+      "end": {
+        "stores": 0,
+        "bytes": 0,
+        "presentation": {
+          "path": "mobile-canvas",
+          "reason": "released",
+          "requestedScale": 1.25,
+          "backingScale": 1,
+          "gpu": null,
+          "field": {
+            "emitters": 0,
+            "impulses": 0,
+            "cover": 1,
+            "blockers": 13,
+            "casts": 2,
+            "deckCasts": 0,
+            "roadFromDeck": 0,
+            "stream": {
+              "worker": false,
+              "plateWorker": false,
+              "pending": null,
+              "plates": 0,
+              "plateBytes": 0,
+              "lit": false,
+              "windows": 1,
+              "stale": 0,
+              "workerMaxMs": 681.7000000029802,
+              "plateMaxMs": 164.40000000596046,
+              "decodeMaxMs": 5.799999997019768,
+              "wireBytes": 1593856,
+              "error": null,
+              "plateError": null
+            },
+            "quads": 0,
+            "overflow": false,
+            "trailTriangles": 0,
+            "landings": 0
+          },
+          "sacr": null
+        },
+        "finish": [
+          0,
+          0,
+          true
+        ]
+      }
+    },
+    "stream": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "denied": false,
+      "mode": "mobile-webgl2",
+      "delayed": {
+        "id": 1,
+        "origin": -512,
+        "upload": 0,
+        "held": 1
+      },
+      "admission": [
+        [
+          "hitstop",
+          0,
+          1
+        ],
+        [
+          "parry",
+          0,
+          2
+        ],
+        [
+          "quiet",
+          1,
+          1,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          2,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          3,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          4,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          5,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          6,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          7,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          8,
+          1,
+          -512
+        ],
+        [
+          "quiet",
+          1,
+          null,
+          4,
+          11264
+        ]
+      ],
+      "sameSeed": {
+        "previous": 4,
+        "active": 11,
+        "origin": -512,
+        "stale": 1,
+        "keptWorker": true
+      },
+      "swap": {
+        "id": 14,
+        "seed": 43,
+        "previousOrigin": 11264,
+        "origin": -512,
+        "visualBand": 1
+      },
+      "read": {
+        "shadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "expectedShadow": [
+          0,
+          20,
+          217,
+          51
+        ],
+        "grid": [
+          [
+            42,
+            146,
+            116,
+            42
+          ],
+          [
+            42,
+            146,
+            116,
+            42
+          ]
+        ],
+        "levels": [
+          [
+            [
+              126,
+              45,
+              8
+            ],
+            [
+              126,
+              45,
+              8
+            ]
+          ],
+          [
+            [
+              122,
+              43,
+              7
+            ],
+            [
+              122,
+              43,
+              7
+            ]
+          ],
+          [
+            [
+              114,
+              40,
+              7
+            ],
+            [
+              114,
+              40,
+              7
+            ]
+          ]
+        ],
+        "maxError": 0,
+        "glError": 0
+      },
+      "fx": {
+        "base": 0.005815490196078431,
+        "blocked": 0.005815490196078431,
+        "open": 0.007426274509803921,
+        "admitted": 1,
+        "traced": true,
+        "firstGain": 0.9444444444444444,
+        "decay": 0.34446975745269975,
+        "ended": 0,
+        "glError": 0
+      },
+      "recovery": {
+        "loss": "mobile-canvas",
+        "restored": "mobile-webgl2",
+        "seed": 43
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true
+      },
+      "final": {
+        "path": "mobile-webgl2",
+        "reason": "active",
+        "requestedScale": 1.25,
+        "backingScale": 1,
+        "gpu": {
+          "size": [
+            400,
+            844
+          ],
+          "format": "RGBA8",
+          "hdrBytes": 0,
+          "targetBytes": 2062464,
+          "dataBytes": 4392790,
+          "outputBytes": 1350400,
+          "sourceTextureBytes": 2700800,
+          "uploadBytes": 2700800,
+          "setupMs": {
+            "rig": 0.7999999970197678,
+            "deck": 3.899999998509884,
+            "look-0": 0.19999999552965164,
+            "look-1": 0.20000000298023224,
+            "look-2": 0.20000000298023224,
+            "look-3": 0,
+            "transport-storage": 0.20000000298023224
+          },
+          "frameDraws": 5,
+          "rainInstances": 0,
+          "moteInstances": 0,
+          "bloomLevels": 0,
+          "bloomUpPasses": 0,
+          "roadSize": [
+            200,
+            422
+          ],
+          "maxK": 4,
+          "uboBytes": 3584,
+          "uboOffsets": [
+            0,
+            640,
+            1664,
+            2176,
+            2432,
+            3072,
+            3456
+          ],
+          "stratumVersion": 14,
+          "transport": {
+            "active": 14,
+            "origin": -512,
+            "staging": null,
+            "stagingLevel": null,
+            "uploads": 9,
+            "updates": 1,
+            "quietDeferrals": 0,
+            "uploadThisFrame": 1,
+            "uploadBytesThisFrame": 4096,
+            "uploadMs": 0,
+            "levels": 9
+          },
+          "stratumA": {
+            "size": [
+              96,
+              96
+            ],
+            "format": "RGBA8",
+            "opticalCeiling": 1.06,
+            "frames": 0,
+            "refreshes": 0,
+            "refreshed": true,
+            "live": false
+          },
+          "packedAssets": {
+            "formats": {},
+            "deck": "brotli",
+            "lut": "brotli",
+            "lutStrips": [
+              "brotli",
+              "brotli",
+              "brotli",
+              "brotli"
+            ],
+            "byteLength": 0,
+            "uploadBytesThisFrame": 0
+          },
+          "environment": {
+            "format": "RGBA8",
+            "irradiance": "RGB9_E5",
+            "blockerLimit": 24,
+            "size": [
+              1024,
+              128
+            ],
+            "version": 14,
+            "vectors": [
+              512,
+              16
+            ],
+            "skyBands": [
+              [
+                256,
+                60
+              ],
+              [
+                256,
+                70
+              ]
+            ],
+            "castCoverage": null,
+            "sourcePass": "SACR v4 road",
+            "shadowLights": 1
+          },
+          "sectorLut": [
+            256,
+            16
+          ]
+        },
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 10,
+          "casts": 1,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "stream": {
+            "worker": true,
+            "plateWorker": true,
+            "pending": null,
+            "plates": 2,
+            "plateBytes": 4165632,
+            "lit": false,
+            "windows": 4,
+            "stale": 2,
+            "workerMaxMs": 946,
+            "plateMaxMs": 403.69999999552965,
+            "decodeMaxMs": 0.3999999985098839,
+            "wireBytes": 6375424,
+            "error": null,
+            "plateError": null
+          },
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": {
+          "version": "4.0",
+          "shadowK": 1,
+          "casters": 1,
+          "elevatedCasters": 0,
+          "primitives": 6,
+          "feet": 2,
+          "arcs": 0,
+          "emissives": 0,
+          "scarves": 2,
+          "undersides": 1,
+          "maxK": 4,
+          "atlasVersion": 0,
+          "portals": 0,
+          "camWorldX": 2.2986165102618283,
+          "atlasOriginX": 0,
+          "viewWidthMeters": 8.152766979476345
+        }
+      },
+      "requestedAssets": [
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/deck.rgba.br"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/lut-16.rgba.br"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/l1-bc7.ktx"
+        ],
+        [
+          200,
+          "/bridge/packed-v4/l2-astc.ktx"
+        ],
+        [
+          200,
+          "/_next/static/chunks/turbopack-worker-1hrsqshz0gfey.js"
+        ]
+      ]
+    },
+    "metro-fallback": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "cached": {
+        "pixels": {
+          "colors": 527,
+          "samples": 63720,
+          "opaque": 63720,
+          "lights": 1642
+        },
+        "stores": [
+          "route-vignette",
+          "bridge-wet-strip",
+          "route-chunk",
+          "route-shelter-kit",
+          "route-chunk",
+          "bridge-rail-span",
+          "bridge-mist-transmittance",
+          "route-under-city",
+          "bridge-city-aerial-perspective",
+          "bridge-lunar-optics",
+          "bridge-cloud-radiance"
+        ]
+      },
+      "direct": {
+        "pixels": {
+          "colors": 541,
+          "samples": 63720,
+          "opaque": 63720,
+          "lights": 1931
+        },
+        "stores": [
+          "bridge-wet-strip",
+          "bridge-mist-transmittance",
+          "bridge-city-aerial-perspective",
+          "bridge-lunar-optics",
+          "bridge-cloud-radiance",
+          "route-vignette",
+          "route-chunk",
+          "route-shelter-kit",
+          "route-chunk",
+          "bridge-rail-span"
+        ]
+      },
+      "damage": {
+        "kind": "med",
+        "x": 124,
+        "variant": 2,
+        "hull": [
+          42,
+          57
+        ],
+        "max": 2,
+        "miss": 2,
+        "hit": 1,
+        "culled": true,
+        "restored": {
+          "hp": 1,
+          "x": 124,
+          "variant": 2
+        },
+        "heal": 95,
+        "gone": true
+      },
+      "path": "mobile-canvas",
+      "denied": [
+        "/bridge/props-v2.webp",
+        "/bridge/l1.webp",
+        "/bridge/l2.webp",
+        "/bridge/metro-street.webp"
+      ]
+    },
+    "visual-title": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "title": {
+        "horizon": 510.7481481481482,
+        "horizonJump": 0.37522603978305114,
+        "horizonRows": 8,
+        "maxRowJump": 2.037371910789801,
+        "maxRowJumpY": 461,
+        "bottom": 13,
+        "opaque": 1,
+        "worldWorker": false
+      },
+      "css": [
+        1106,
+        722
+      ],
+      "committed": {
+        "left": 21.311111111111096,
+        "right": 20.36111111111111,
+        "delta": 0.9499999999999851
+      },
+      "neighborMissing": {
+        "left": 39.01111111111108,
+        "right": 37.250000000000014,
+        "delta": 1.761111111111063
+      },
+      "poses": [
+        {
+          "head": {
+            "x": 550.7359574919225,
+            "y": 187.991430506062
+          },
+          "sole": {
+            "x": 553,
+            "y": 370.71056343218174
+          },
+          "position": [
+            1150,
+            -132.34375,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "scale": 0.9492962962962962,
+            "railY": 175.00085295342373,
+            "footingY": 655.7266366571274,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        },
+        {
+          "head": {
+            "x": 553.5272965402875,
+            "y": 135.6291280464559
+          },
+          "sole": {
+            "x": 553,
+            "y": 318.33214253462813
+          },
+          "position": [
+            1150,
+            -238.68749999999994,
+            0
+          ],
+          "rail": {
+            "leadX": 0,
+            "scale": 0.9492962962962962,
+            "railY": 180.46324204733958,
+            "footingY": 661.1890257510432,
+            "bearings": 3,
+            "bodies": 0,
+            "trains": 0,
+            "blockers": 4,
+            "clipped": 0,
+            "kind": "",
+            "speed": 0,
+            "wake": 0,
+            "units": "native px/s"
+          }
+        }
+      ],
+      "sword": [
+        "nodachi",
+        "FIELD NODACHI"
+      ],
+      "variants": [
+        {
+          "seed": 40,
+          "moonVis": 0.915388286113739,
+          "moonTransmission": 0.9783014199685353,
+          "centerTransmission": 0.979607807725583,
+          "phaseEnergy": 0.935691460725115,
+          "moonVariant": "Porcelain full",
+          "moonTint": [
+            0.9100000006705522,
+            0.9661999997720122,
+            1.0401999987661839
+          ],
+          "moonCss": [
+            365.68274712862376,
+            90.90163567125126
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.5804831086334925,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 70.756,
+          "parallax": 0
+        },
+        {
+          "seed": 41,
+          "moonVis": 0.3033084273338318,
+          "moonTransmission": 0.913950780734436,
+          "centerTransmission": 0.8630176464798128,
+          "phaseEnergy": 0.3318651616807191,
+          "moonVariant": "Copper half",
+          "moonTint": [
+            1.0999999964237213,
+            0.9965999993532896,
+            0.7856000065803528
+          ],
+          "moonCss": [
+            367.4326596344378,
+            84.25385256051436
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.4234164327284604,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 62.09199999999999,
+          "parallax": 0
+        },
+        {
+          "seed": 42,
+          "moonVis": 0.39308446645736694,
+          "moonTransmission": 0.5984642702182605,
+          "centerTransmission": 0.6010283570617396,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            353.790217008668,
+            77.00618137688912
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.34254357946069935,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 57.76,
+          "parallax": 0
+        },
+        {
+          "seed": 43,
+          "moonVis": 0.18742336332798004,
+          "moonTransmission": 0.9282198115318772,
+          "centerTransmission": 0.9571571288817573,
+          "phaseEnergy": 0.20191700768196671,
+          "moonVariant": "Ash crescent",
+          "moonTint": [
+            0.9799999991059303,
+            0.9773999998383224,
+            0.9464000016450882
+          ],
+          "moonCss": [
+            348.36698910596834,
+            93.84035166463514
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.19844715056528306,
+          "lightningFalloff": 2.3567014702748774,
+          "skyHeight": 510.7481481481482,
+          "moonDiameterCss": 50.540000000000006,
+          "parallax": 0
+        }
+      ],
+      "ownsProps": 0,
+      "assets": [
+        "/bridge/props-v2.webp",
+        "/bridge/l1.webp",
+        "/bridge/l2.webp",
+        "/bridge/metro-street.webp",
+        "/bridge/sky-basis-v3.rgba.br"
+      ],
+      "teardown": 0
+    },
+    "metro-canvas": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": true,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "motion": {
+        "turn": 0,
+        "stopped": 0,
+        "cleared": 0,
+        "travel": 520.5687203791467,
+        "backward": 0,
+        "reverse": 0,
+        "bossOnscreen": 361.65925925925956,
+        "viewport": 400
+      },
+      "pass": {
+        "leadX": 285.2282891662705,
+        "scale": 1.1097037037037036,
+        "railY": 179.19682962962963,
+        "footingY": 720.5259259259259,
+        "bearings": 1,
+        "bodies": 2,
+        "trains": 1,
+        "blockers": 3,
+        "clipped": 0,
+        "kind": "Airport express",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "stock": [
+        {
+          "leadX": 285.2282891662705,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 75.22828916627729,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Parcel freight",
+          "speed": 1069.7279737703502,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 285.228289166275,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Night service",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 285.2282891662795,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        }
+      ],
+      "pair": {
+        "x": 1149.0718817398822,
+        "at": 804.5011829049688,
+        "directions": [
+          1,
+          -1
+        ],
+        "leadX": 218.61339989543012,
+        "scale": 1.1097037037037036,
+        "railY": 179.19682962962963,
+        "footingY": 720.5259259259259,
+        "bearings": 1,
+        "bodies": 4,
+        "trains": 2,
+        "blockers": 2,
+        "clipped": 0,
+        "kind": "Metro local",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "seamDelta": {
+        "x": 0.07999999999242391,
+        "wake": 0,
+        "bodies": [
+          3,
+          3
+        ]
+      },
+      "reduced": {
+        "trains": 0,
+        "wake": 0,
+        "streetTime": 0,
+        "activeStreetTime": 804.5011829049688,
+        "flash": 0
+      },
+      "fixtures": {
+        "torso": [
+          {
+            "r": 0.04842972622256668,
+            "g": 0.11567420361624459,
+            "b": 0.11943108032821433,
+            "dx": -0.49685929050695954,
+            "dy": 0.23480476386514415,
+            "dz": 0.8354624876696468,
+            "strength": 0.11943108032821433,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          },
+          {
+            "r": 0.10508692146478647,
+            "g": 0.037703056396271736,
+            "b": 0.006677270528203361,
+            "dx": 0.3066606338998241,
+            "dy": -0.26986102717616944,
+            "dz": 0.9127618975546584,
+            "strength": 0.10508692146478647,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          }
+        ],
+        "litParts": 6,
+        "warm": {
+          "rgb": [
+            10541,
+            6700,
+            3074
+          ],
+          "changed": 1537
+        },
+        "cool": {
+          "rgb": [
+            9841,
+            14492,
+            14678
+          ],
+          "changed": 2528
+        },
+        "restored": {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "changed": 0
+        },
+        "size": [
+          194,
+          321
+        ],
+        "dynamic": 0
+      },
+      "deck": {
+        "maxBlue": 57,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "local": [
+        [
+          2.0913179140719014,
+          1.7288032940085771,
+          1.8596201862255461,
+          2.265796296754061,
+          1.3515419534681181,
+          1.547483126221558
+        ],
+        [
+          1.4487569038439732,
+          1.8524982464959683,
+          1.0886519427100003,
+          1.2992636618822042,
+          0.9677727461390899,
+          0.6055709199525949
+        ]
+      ],
+      "blockedSource": 0,
+      "rendered": {
+        "player": {
+          "maxR": 123,
+          "changed": 225,
+          "rgbDelta": [
+            22566,
+            9149,
+            5825
+          ]
+        },
+        "enemy": {
+          "maxR": 127,
+          "changed": 212,
+          "rgbDelta": [
+            15631,
+            6344,
+            4031
+          ]
+        },
+        "prop": {
+          "maxR": 71,
+          "changed": 225,
+          "rgbDelta": [
+            11720,
+            4765,
+            3042
+          ]
+        },
+        "road": {
+          "maxR": 53,
+          "changed": 225,
+          "rgbDelta": [
+            11705,
+            4305,
+            2634
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 123,
+          "changed": 225,
+          "rgbDelta": [
+            22566,
+            9149,
+            5825
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 71,
+          "changed": 225,
+          "rgbDelta": [
+            11720,
+            4765,
+            3042
+          ]
+        },
+        "road": {
+          "maxR": 53,
+          "changed": 225,
+          "rgbDelta": [
+            11705,
+            4305,
+            2634
+          ]
+        }
+      },
+      "reset": {
+        "player": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "road": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "orb": {
+        "impulse": 1,
+        "color": "#35f2ff",
+        "torso": 1.588030001720674
+      },
+      "priority": {
+        "hits": 1,
+        "impactFirst": true,
+        "orbKept": false
+      },
+      "lightning": {
+        "first": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5947.746585845947,
+            -84.61111450195312
+          ]
+        },
+        "restrike": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5950.058364868164,
+            -84.43943786621094
+          ]
+        },
+        "after": 0
+      },
+      "path": "mobile-canvas",
+      "glError": 0,
+      "css": [
+        400,
+        844
+      ],
+      "backing": [
+        500,
+        1055
+      ],
+      "teardown": 0
+    },
+    "metro-optimized": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "motion": {
+        "turn": 0,
+        "stopped": 0,
+        "cleared": 0,
+        "travel": 520.5687203791467,
+        "backward": 0,
+        "reverse": 0,
+        "bossOnscreen": 361.65925925925956,
+        "viewport": 400
+      },
+      "pass": {
+        "leadX": 285.2282891662705,
+        "scale": 1.1097037037037036,
+        "railY": 179.19682962962963,
+        "footingY": 720.5259259259259,
+        "bearings": 1,
+        "bodies": 2,
+        "trains": 1,
+        "blockers": 3,
+        "clipped": 0,
+        "kind": "Airport express",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "stock": [
+        {
+          "leadX": 285.2282891662705,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 75.22828916627729,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Parcel freight",
+          "speed": 1069.7279737703502,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 285.228289166275,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Night service",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 285.2282891662795,
+          "scale": 1.1097037037037036,
+          "railY": 179.19682962962963,
+          "footingY": 720.5259259259259,
+          "bearings": 1,
+          "bodies": 2,
+          "trains": 1,
+          "blockers": 3,
+          "clipped": 0,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        }
+      ],
+      "pair": {
+        "x": 1149.0718817398822,
+        "at": 804.5011829049688,
+        "directions": [
+          1,
+          -1
+        ],
+        "leadX": 218.61339989543012,
+        "scale": 1.1097037037037036,
+        "railY": 179.19682962962963,
+        "footingY": 720.5259259259259,
+        "bearings": 1,
+        "bodies": 4,
+        "trains": 2,
+        "blockers": 2,
+        "clipped": 0,
+        "kind": "Metro local",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "seamDelta": {
+        "x": 0.07999999999242391,
+        "wake": 0,
+        "bodies": [
+          3,
+          3
+        ]
+      },
+      "reduced": {
+        "trains": 0,
+        "wake": 0,
+        "streetTime": 0,
+        "activeStreetTime": 804.5011829049688,
+        "flash": 0
+      },
+      "fixtures": {
+        "torso": [
+          {
+            "r": 0.04842972622256668,
+            "g": 0.11567420361624459,
+            "b": 0.11943108032821433,
+            "dx": -0.49685929050695954,
+            "dy": 0.23480476386514415,
+            "dz": 0.8354624876696468,
+            "strength": 0.11943108032821433,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          },
+          {
+            "r": 0.10508692146478647,
+            "g": 0.037703056396271736,
+            "b": 0.006677270528203361,
+            "dx": 0.3066606338998241,
+            "dy": -0.26986102717616944,
+            "dz": 0.9127618975546584,
+            "strength": 0.10508692146478647,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          }
+        ],
+        "litParts": 6,
+        "warm": {
+          "rgb": [
+            1864,
+            571,
+            743
+          ],
+          "changed": 497
+        },
+        "cool": {
+          "rgb": [
+            2093,
+            8419,
+            3658
+          ],
+          "changed": 2060
+        },
+        "restored": {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "changed": 0
+        },
+        "size": [
+          157,
+          258
+        ],
+        "dynamic": 0
+      },
+      "deck": {
+        "maxBlue": 42,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "local": [
+        [
+          2.0913179140719014,
+          1.7288032940085771,
+          1.8596201862255461,
+          2.265796296754061,
+          1.3515419534681181,
+          1.547483126221558
+        ],
+        [
+          1.4487569038439732,
+          1.8524982464959683,
+          1.0886519427100003,
+          1.2992636618822042,
+          0.9677727461390899,
+          0.6055709199525949
+        ]
+      ],
+      "blockedSource": 0,
+      "rendered": {
+        "player": {
+          "maxR": 147,
+          "changed": 225,
+          "rgbDelta": [
+            25642,
+            10929,
+            8120
+          ]
+        },
+        "enemy": {
+          "maxR": 156,
+          "changed": 208,
+          "rgbDelta": [
+            19640,
+            10606,
+            8242
+          ]
+        },
+        "prop": {
+          "maxR": 79,
+          "changed": 225,
+          "rgbDelta": [
+            12538,
+            6714,
+            5113
+          ]
+        },
+        "road": {
+          "maxR": 34,
+          "changed": 225,
+          "rgbDelta": [
+            5010,
+            1307,
+            821
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 147,
+          "changed": 225,
+          "rgbDelta": [
+            25642,
+            10929,
+            8120
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 79,
+          "changed": 225,
+          "rgbDelta": [
+            12538,
+            6714,
+            5113
+          ]
+        },
+        "road": {
+          "maxR": 34,
+          "changed": 225,
+          "rgbDelta": [
+            5010,
+            1307,
+            821
+          ]
+        }
+      },
+      "reset": {
+        "player": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "road": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "orb": {
+        "impulse": 1,
+        "color": "#35f2ff",
+        "torso": 1.588030001720674
+      },
+      "priority": {
+        "hits": 1,
+        "impactFirst": true,
+        "orbKept": false
+      },
+      "lightning": {
+        "first": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5951.1896324157715,
+            -81.60023498535156
+          ]
+        },
+        "restrike": {
+          "count": 1,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5948.2339725494385,
+            -81.42855834960938
+          ]
+        },
+        "after": 0
+      },
+      "path": "mobile-webgl2",
+      "glError": 0,
+      "css": [
+        400,
+        844
+      ],
+      "backing": [
+        400,
+        844
+      ],
+      "teardown": 0
+    },
+    "metro-master": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "motion": {
+        "turn": 0,
+        "stopped": 0,
+        "cleared": 0,
+        "travel": 464,
+        "backward": 0,
+        "reverse": 0,
+        "bossOnscreen": 564.5925925925926,
+        "viewport": 848
+      },
+      "pass": {
+        "leadX": 725.1516793066022,
+        "scale": 0.6837037037037036,
+        "railY": 123.69682962962963,
+        "footingY": 469.9259259259259,
+        "bearings": 3,
+        "bodies": 5,
+        "trains": 1,
+        "blockers": 5,
+        "clipped": 5,
+        "kind": "Airport express",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "stock": [
+        {
+          "leadX": 725.1516793066022,
+          "scale": 0.6837037037037036,
+          "railY": 123.69682962962963,
+          "footingY": 469.9259259259259,
+          "bearings": 3,
+          "bodies": 5,
+          "trains": 1,
+          "blockers": 5,
+          "clipped": 5,
+          "kind": "Airport express",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 515.151679306609,
+          "scale": 0.6837037037037036,
+          "railY": 123.69682962962963,
+          "footingY": 469.9259259259259,
+          "bearings": 3,
+          "bodies": 5,
+          "trains": 1,
+          "blockers": 5,
+          "clipped": 0,
+          "kind": "Parcel freight",
+          "speed": 1069.7279737703502,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 725.1516793066068,
+          "scale": 0.6837037037037036,
+          "railY": 123.69682962962963,
+          "footingY": 469.9259259259259,
+          "bearings": 3,
+          "bodies": 3,
+          "trains": 1,
+          "blockers": 5,
+          "clipped": 0,
+          "kind": "Night service",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        },
+        {
+          "leadX": 725.1516793066113,
+          "scale": 0.6837037037037036,
+          "railY": 123.69682962962963,
+          "footingY": 469.9259259259259,
+          "bearings": 3,
+          "bodies": 4,
+          "trains": 1,
+          "blockers": 5,
+          "clipped": 5,
+          "kind": "Metro local",
+          "speed": 1279.5036909729242,
+          "wake": 0,
+          "units": "native px/s"
+        }
+      ],
+      "pair": {
+        "x": 1149.0718817398822,
+        "at": 804.5011829049688,
+        "directions": [
+          1,
+          -1
+        ],
+        "leadX": 658.5367900357619,
+        "scale": 0.6837037037037036,
+        "railY": 123.69682962962963,
+        "footingY": 469.9259259259259,
+        "bearings": 3,
+        "bodies": 10,
+        "trains": 2,
+        "blockers": 4,
+        "clipped": 13,
+        "kind": "Metro local",
+        "speed": 1279.5036909729242,
+        "wake": 0,
+        "units": "native px/s"
+      },
+      "seamDelta": {
+        "x": 0.08000000001072749,
+        "wake": 0,
+        "bodies": [
+          6,
+          6
+        ]
+      },
+      "reduced": {
+        "trains": 0,
+        "wake": 0,
+        "streetTime": 0,
+        "activeStreetTime": 804.5011829049688,
+        "flash": 0
+      },
+      "fixtures": {
+        "torso": [
+          {
+            "r": 0.04842972622256668,
+            "g": 0.11567420361624459,
+            "b": 0.11943108032821433,
+            "dx": -0.49685929050695954,
+            "dy": 0.23480476386514415,
+            "dz": 0.8354624876696468,
+            "strength": 0.11943108032821433,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          },
+          {
+            "r": 0.10508692146478647,
+            "g": 0.037703056396271736,
+            "b": 0.006677270528203361,
+            "dx": 0.3066606338998241,
+            "dy": -0.26986102717616944,
+            "dz": 0.9127618975546584,
+            "strength": 0.10508692146478647,
+            "strike": 0,
+            "strikeX": 0,
+            "strikeY": 0
+          }
+        ],
+        "litParts": 6,
+        "warm": {
+          "rgb": [
+            1321,
+            1729,
+            623
+          ],
+          "changed": 181
+        },
+        "cool": {
+          "rgb": [
+            1939,
+            2859,
+            2806
+          ],
+          "changed": 219
+        },
+        "restored": {
+          "rgb": [
+            0,
+            0,
+            0
+          ],
+          "changed": 0
+        },
+        "size": [
+          120,
+          197
+        ],
+        "dynamic": 0
+      },
+      "deck": {
+        "maxBlue": 38,
+        "changed": 225,
+        "slabCasts": true
+      },
+      "local": [
+        [
+          2.0913179140719014,
+          1.7288032940085771,
+          1.8596201862255461,
+          2.265796296754061,
+          1.3515419534681181,
+          1.547483126221558
+        ],
+        [
+          1.4487569038439732,
+          1.8524982464959683,
+          1.0886519427100003,
+          1.2992636618822042,
+          0.9677727461390899,
+          0.6055709199525949
+        ]
+      ],
+      "blockedSource": 0,
+      "rendered": {
+        "player": {
+          "maxR": 171,
+          "changed": 225,
+          "rgbDelta": [
+            26391,
+            11282,
+            7820
+          ]
+        },
+        "enemy": {
+          "maxR": 174,
+          "changed": 196,
+          "rgbDelta": [
+            15790,
+            8384,
+            6159
+          ]
+        },
+        "prop": {
+          "maxR": 84,
+          "changed": 210,
+          "rgbDelta": [
+            11884,
+            6113,
+            4659
+          ]
+        },
+        "road": {
+          "maxR": 49,
+          "changed": 225,
+          "rgbDelta": [
+            6680,
+            2002,
+            1385
+          ]
+        }
+      },
+      "occluded": {
+        "player": {
+          "maxR": 171,
+          "changed": 225,
+          "rgbDelta": [
+            26391,
+            11282,
+            7820
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 84,
+          "changed": 210,
+          "rgbDelta": [
+            11884,
+            6113,
+            4659
+          ]
+        },
+        "road": {
+          "maxR": 49,
+          "changed": 225,
+          "rgbDelta": [
+            6680,
+            2002,
+            1385
+          ]
+        }
+      },
+      "reset": {
+        "player": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "enemy": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "prop": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        },
+        "road": {
+          "maxR": 0,
+          "changed": 0,
+          "rgbDelta": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "orb": {
+        "impulse": 1,
+        "color": "#35f2ff",
+        "torso": 1.588030001720674
+      },
+      "priority": {
+        "hits": 2,
+        "impactFirst": true,
+        "orbKept": true
+      },
+      "lightning": {
+        "first": {
+          "count": 2,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5947.071891784668,
+            -81.15186309814453
+          ]
+        },
+        "restrike": {
+          "count": 2,
+          "match": true,
+          "first": [
+            5940,
+            -83,
+            5949.383670806885,
+            -80.98018646240234
+          ]
+        },
+        "after": 0
+      },
+      "path": "master-webgl2",
+      "glError": 0,
+      "css": [
+        848,
+        520
+      ],
+      "backing": [
+        1060,
+        650
+      ],
+      "teardown": 0
+    },
+    "atmosphere": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "loads": [
+        200
+      ],
+      "path": "master-webgl2",
+      "view": [
+        820,
+        520
+      ],
+      "before": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "after": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "states": {
+        "clear": {
+          "moonVis": 0.5776220560073853,
+          "moonTransmission": 0.8794195770257094,
+          "centerTransmission": 0.893103744763953,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "broken-cloud": {
+          "moonVis": 0.23150022327899933,
+          "moonTransmission": 0.3524550628919316,
+          "centerTransmission": 0.3212165434503983,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "sheet-lightning": {
+          "moonVis": 0.23150022327899933,
+          "moonTransmission": 0.3524550628919316,
+          "centerTransmission": 0.3212165434503983,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0.75,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        },
+        "haze": {
+          "moonVis": 0.5610419511795044,
+          "moonTransmission": 0.8541766306279941,
+          "centerTransmission": 0.922249188370696,
+          "phaseEnergy": 0.6568219364872221,
+          "moonVariant": "Silver gibbous",
+          "moonTint": [
+            0.94,
+            0.971,
+            1
+          ],
+          "moonCss": [
+            266.5248100339437,
+            103.80966382125393
+          ],
+          "flash": 0,
+          "lightningEpicenter": 0.3470435501307976,
+          "lightningFalloff": 2.42603550295858,
+          "skyHeight": 416.20000000000005,
+          "moonDiameterCss": 41.6,
+          "parallax": 0
+        }
+      },
+      "naturalEdgeContrast": 0.6440072454297336,
+      "open": {
+        "moonVis": 0.6453918814659119,
+        "moonTransmission": 0.9825979082939217,
+        "centerTransmission": 0.9823129264629965,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 176.92592592592592,
+        "bottom": 187.5185185185185
+      },
+      "partial": {
+        "moonVis": 0.3339453637599945,
+        "moonTransmission": 0.5084260413662367,
+        "centerTransmission": 0.8447567245752796,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 187.5185185185185
+      },
+      "hidden": {
+        "moonVis": 0.0006765205762349069,
+        "moonTransmission": 0.0010299907980278922,
+        "centerTransmission": 0.001029692070887339,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          266.5248100339437,
+          84.4096638212539
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.3470435501307976,
+        "lightningFalloff": 2.42603550295858,
+        "skyHeight": 396.8,
+        "moonDiameterCss": 41.6,
+        "parallax": 0,
+        "top": 27.962962962962962,
+        "bottom": 28.77777777777778
+      },
+      "fog": {
+        "dryCount": 10078,
+        "dryMax": 0,
+        "skyChanged": 16196
+      },
+      "driver": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "rgbError": 2.7060508728027344e-05,
+        "alphaError": 0.00011331144401538484,
+        "brightestMist": 0.689453125,
+        "fluxError": 0.0009605799649754221,
+        "returnError": 0,
+        "glError": 0
+      },
+      "submits": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "quiet": {
+        "flash": 0,
+        "time": 0,
+        "frozen": true
+      },
+      "variants": [
+        {
+          "seed": 40,
+          "name": "Porcelain full",
+          "energy": 0.935691460725115,
+          "max": 5.958974361419678e-05,
+          "glError": 0
+        },
+        {
+          "seed": 41,
+          "name": "Copper half",
+          "energy": 0.3318651616807191,
+          "max": 6.085634231567383e-05,
+          "glError": 0
+        },
+        {
+          "seed": 42,
+          "name": "Silver gibbous",
+          "energy": 0.6568219364872221,
+          "max": 0.00010862946510314941,
+          "glError": 0
+        },
+        {
+          "seed": 43,
+          "name": "Ash crescent",
+          "energy": 0.20191700768196671,
+          "max": 5.8203935623168945e-05,
+          "glError": 0
+        }
+      ],
+      "teardown": 0
+    },
+    "packed": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "expected": {
+        "l1": "bc7",
+        "l2": "astc",
+        "ripple": "bc5"
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "packed": {
+        "formats": {
+          "ripple": "bc5",
+          "l1": "bc7",
+          "l2": "astc"
+        },
+        "deck": "brotli",
+        "lut": "brotli",
+        "lutStrips": [
+          "brotli",
+          "brotli",
+          "brotli",
+          "brotli"
+        ],
+        "byteLength": 716688,
+        "uploadBytesThisFrame": 16
+      },
+      "sky": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "opticalCeiling": 1.06,
+        "frames": 29,
+        "refreshes": 29,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 0.02550073340535164,
+        "moonTransmission": 0.03882442281342039,
+        "centerTransmission": 0.038459042584736126,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          195.15274579403575,
+          40.66024547154913
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.6576666173070358,
+        "lightningFalloff": 2.42914979757085,
+        "skyHeight": 268.94549114063284,
+        "moonDiameterCss": 30.400000000000002,
+        "parallax": 0
+      },
+      "pixel": [
+        0.0362548828125,
+        0.06488037109375,
+        0.09136962890625,
+        1
+      ],
+      "glError": 0,
+      "deny": false,
+      "decoded": {
+        "deck": {
+          "status": 200,
+          "encoding": "br",
+          "bytes": 851968
+        },
+        "lut-32": {
+          "status": 200,
+          "encoding": "br",
+          "bytes": 524288
+        }
+      },
+      "fetched": [
+        "/bridge/props-v2.webp",
+        "/bridge/sky-basis-v3.rgba.br",
+        "/bridge/l1.webp",
+        "/bridge/l2.webp",
+        "/bridge/metro-street.webp",
+        "/bridge/packed-v4/deck.rgba.br",
+        "/bridge/packed-v4/lut-32.rgba.br",
+        "/bridge/packed-v4/l1-bc7.ktx",
+        "/bridge/packed-v4/l2-astc.ktx",
+        "/bridge/packed-v4/ripple-bc5.ktx"
+      ]
+    },
+    "packed-denied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": false,
+      "viewport": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "expected": {
+        "l1": "bc7",
+        "l2": "astc",
+        "ripple": "bc5"
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": false
+      },
+      "packed": {
+        "formats": {
+          "ripple": "denied",
+          "l1": "denied",
+          "l2": "denied"
+        },
+        "deck": "local",
+        "lut": "local",
+        "lutStrips": [
+          "local",
+          "local",
+          "local",
+          "local"
+        ],
+        "byteLength": 0,
+        "uploadBytesThisFrame": 0
+      },
+      "sky": {
+        "size": [
+          256,
+          88
+        ],
+        "format": "RGBA16F",
+        "opticalCeiling": 1.06,
+        "frames": 1,
+        "refreshes": 1,
+        "refreshed": true,
+        "live": true,
+        "moonVis": 0.02552282065153122,
+        "moonTransmission": 0.03885805078432918,
+        "centerTransmission": 0.03841689762506041,
+        "phaseEnergy": 0.6568219364872221,
+        "moonVariant": "Silver gibbous",
+        "moonTint": [
+          0.94,
+          0.971,
+          1
+        ],
+        "moonCss": [
+          195.15274579403575,
+          40.70898715840369
+        ],
+        "flash": 0,
+        "lightningEpicenter": 0.6576666173070358,
+        "lightningFalloff": 2.42914979757085,
+        "skyHeight": 268.9942328274874,
+        "moonDiameterCss": 30.400000000000002,
+        "parallax": 0
+      },
+      "pixel": [
+        0.0364990234375,
+        0.06494140625,
+        0.09210205078125,
+        1
+      ],
+      "glError": 0,
+      "deny": true,
+      "decoded": null,
+      "fetched": [
+        "/bridge/props-v2.webp",
+        "/bridge/l1.webp",
+        "/bridge/l2.webp",
+        "/bridge/metro-street.webp",
+        "/bridge/sky-basis-v3.rgba.br"
+      ]
+    },
+    "workers-denied": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "software": false,
+      "touch": true,
+      "viewport": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "denied": true,
+      "stream": {
+        "worker": false,
+        "plateWorker": false,
+        "pending": null,
+        "plates": 0,
+        "plateBytes": 0,
+        "lit": true,
+        "windows": 0,
+        "stale": 0,
+        "workerMaxMs": 0,
+        "plateMaxMs": 0,
+        "decodeMaxMs": 0,
+        "wireBytes": 0,
+        "error": "SecurityError: QA Worker denial",
+        "plateError": "SecurityError: QA Worker denial"
+      },
+      "rendered": true,
+      "presentation": {
+        "path": "mobile-canvas",
+        "reason": "Error: Software WebGL adapter; using Canvas fallback",
+        "requestedScale": 1.25,
+        "backingScale": 1.25,
+        "gpu": null,
+        "field": {
+          "emitters": 0,
+          "impulses": 0,
+          "cover": 1,
+          "blockers": 10,
+          "casts": 0,
+          "deckCasts": 0,
+          "roadFromDeck": 0,
+          "stream": {
+            "worker": false,
+            "plateWorker": false,
+            "pending": null,
+            "plates": 0,
+            "plateBytes": 0,
+            "lit": true,
+            "windows": 0,
+            "stale": 0,
+            "workerMaxMs": 0,
+            "plateMaxMs": 0,
+            "decodeMaxMs": 0,
+            "wireBytes": 0,
+            "error": "SecurityError: QA Worker denial",
+            "plateError": "SecurityError: QA Worker denial"
+          },
+          "quads": 0,
+          "overflow": false,
+          "trailTriangles": 0,
+          "landings": 0
+        },
+        "sacr": null
+      },
+      "config": {
+        "preset": "ULTRA",
+        "adaptiveEnabled": false,
+        "renderScale": 1.25,
+        "showFPS": true
+      },
+      "requestedAssets": []
+    }
+  },
+  "currentSourceDiagnostics": {
+    "dryStationRetries": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": true,
+      "combined": false,
+      "capture": true,
+      "checkRelay": false,
+      "checkBaked": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11276288,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 43,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 44,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 45,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 46,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 47,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 48,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 49,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 50,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 51,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 52,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 53,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 54,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 55,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 56,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 57,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 58,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 59,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 60,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 61,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        },
+        {
+          "seed": 62,
+          "surfaces": 23,
+          "bytes": 11276288,
+          "peakBytes": 11304960,
+          "stageBytes": 6303744
+        }
+      ],
+      "fixedCount": 8,
+      "scale": 1.25,
+      "scene": [
+        487,
+        1055
+      ],
+      "hud": [
+        780,
+        1688
+      ],
+      "peakBytes": 11304960,
+      "sceneSamples": 0,
+      "relayStore": null,
+      "maskStores": [],
+      "masksReleased": 0,
+      "afterDestroy": 0
+    },
+    "finiteCombinedRetries": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "station": false,
+      "combined": true,
+      "capture": false,
+      "checkRelay": false,
+      "checkBaked": true,
+      "rows": [
+        {
+          "seed": 42,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 19255296,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              294,
+              526
+            ],
+            [
+              "concourse",
+              1108,
+              1452
+            ]
+          ]
+        },
+        {
+          "seed": 43,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              237,
+              469
+            ],
+            [
+              "concourse",
+              1082,
+              1426
+            ]
+          ]
+        },
+        {
+          "seed": 44,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              246,
+              478
+            ],
+            [
+              "concourse",
+              1113,
+              1457
+            ]
+          ]
+        },
+        {
+          "seed": 45,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1088,
+              1432
+            ],
+            [
+              "service",
+              2104,
+              2336
+            ]
+          ]
+        },
+        {
+          "seed": 46,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1095,
+              1439
+            ],
+            [
+              "service",
+              2155,
+              2387
+            ]
+          ]
+        },
+        {
+          "seed": 47,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              227,
+              459
+            ],
+            [
+              "concourse",
+              1069,
+              1413
+            ]
+          ]
+        },
+        {
+          "seed": 48,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1062,
+              1406
+            ],
+            [
+              "service",
+              2147,
+              2379
+            ]
+          ]
+        },
+        {
+          "seed": 49,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1113,
+              1457
+            ],
+            [
+              "service",
+              2074,
+              2306
+            ]
+          ]
+        },
+        {
+          "seed": 50,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              209,
+              441
+            ],
+            [
+              "concourse",
+              1078,
+              1422
+            ]
+          ]
+        },
+        {
+          "seed": 51,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              214,
+              446
+            ],
+            [
+              "concourse",
+              1093,
+              1437
+            ]
+          ]
+        },
+        {
+          "seed": 52,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              263,
+              495
+            ],
+            [
+              "concourse",
+              1101,
+              1445
+            ]
+          ]
+        },
+        {
+          "seed": 53,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              239,
+              471
+            ],
+            [
+              "concourse",
+              1117,
+              1461
+            ]
+          ]
+        },
+        {
+          "seed": 54,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1075,
+              1419
+            ],
+            [
+              "service",
+              2109,
+              2341
+            ]
+          ]
+        },
+        {
+          "seed": 55,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1132,
+              1476
+            ],
+            [
+              "service",
+              2149,
+              2381
+            ]
+          ]
+        },
+        {
+          "seed": 56,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1074,
+              1418
+            ],
+            [
+              "service",
+              2181,
+              2413
+            ]
+          ]
+        },
+        {
+          "seed": 57,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1087,
+              1431
+            ],
+            [
+              "service",
+              2064,
+              2296
+            ]
+          ]
+        },
+        {
+          "seed": 58,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              243,
+              475
+            ],
+            [
+              "concourse",
+              1074,
+              1418
+            ]
+          ]
+        },
+        {
+          "seed": 59,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1084,
+              1428
+            ],
+            [
+              "service",
+              2185,
+              2417
+            ]
+          ]
+        },
+        {
+          "seed": 60,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              256,
+              488
+            ],
+            [
+              "concourse",
+              1102,
+              1446
+            ]
+          ]
+        },
+        {
+          "seed": 61,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "concourse",
+              1070,
+              1414
+            ],
+            [
+              "service",
+              2033,
+              2265
+            ]
+          ]
+        },
+        {
+          "seed": 62,
+          "surfaces": 49,
+          "bytes": 19255296,
+          "peakBytes": 21614592,
+          "stageBytes": 1277952,
+          "shelters": [
+            [
+              "service",
+              300,
+              532
+            ],
+            [
+              "concourse",
+              1090,
+              1434
+            ]
+          ]
+        }
+      ],
+      "fixedCount": 5,
+      "scale": 1.25,
+      "scene": [
+        800,
+        450
+      ],
+      "hud": [
+        640,
+        360
+      ],
+      "peakBytes": 21614592,
+      "sceneSamples": 0,
+      "relayStore": null,
+      "maskStores": [],
+      "masksReleased": 0,
+      "afterDestroy": 0
+    }
+  },
+  "assets": {
+    "props-v2.webp": {
+      "bytes": 5910,
+      "sha256": "bd65ec2d26a7199758bd0300d3cdcfb9f22eea1d6db8b70227ea26d0580d32fc"
+    },
+    "sky-basis-v3.rgba.br": {
+      "bytes": 390437,
+      "sha256": "acf71d75d5109ce7d045e801b6c1f0a9b5afd452a36da7d4c2b4e8c3ff3a2ff8"
+    }
+  },
+  "publishedPreview": {
+    "port": 3000,
+    "build": "Ddi8k3l0vaASOKHfKK9wu",
+    "rootSha256": "daeb1752c3026d38412e6bc2d6c34299c17c8f38591aaaf138cab4327e0a8e36",
+    "previewHostHeaders": "Local Host/Origin, static asset and API checks passed. Public HTTPS not reachable from the sandbox.",
+    "heldFrameEmbed": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "flags": [
+        "--held-frame"
+      ],
+      "initial": {
+        "engine": true,
+        "phase": "attract",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": true,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 13 ms\nMenu: 225 ms from navigation\nEngine import: 144 ms including script evaluation\nEngage enabled: 369 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible",
+        "marks": [
+          [
+            "sr:engine-request",
+            213.70000000298023
+          ],
+          [
+            "sr:menu",
+            225.40000000596046
+          ],
+          [
+            "sr:engine-module",
+            357.70000000298023
+          ],
+          [
+            "sr:ready",
+            369.20000000298023
+          ]
+        ]
+      },
+      "final": {
+        "engine": true,
+        "phase": "playing",
+        "loadingArsenal": false,
+        "loadingEngine": false,
+        "engageEnabled": false,
+        "reportVisible": true,
+        "report": "Game ready.\nPage response (first byte): 13 ms\nMenu: 225 ms from navigation\nEngine import: 144 ms including script evaluation\nEngage enabled: 369 ms from navigation\nStartup scripts: 15 (size unavailable)\nPreview: visible\nEngage \u2192 playing: 53 ms\nEngage \u2192 first scene submitted: 53 ms\nEngage \u2192 first simulation frame submitted: 104 ms",
+        "marks": [
+          [
+            "sr:engine-request",
+            213.70000000298023
+          ],
+          [
+            "sr:menu",
+            225.40000000596046
+          ],
+          [
+            "sr:engine-module",
+            357.70000000298023
+          ],
+          [
+            "sr:ready",
+            369.20000000298023
+          ],
+          [
+            "sr:engage",
+            387.09999999403954
+          ],
+          [
+            "sr:run-submit",
+            439.79999999701977
+          ],
+          [
+            "sr:playing",
+            440.29999999701977
+          ],
+          [
+            "sr:first-step",
+            491.40000000596046
+          ]
+        ]
+      },
+      "timing": {
+        "readyAt": 380.59999999403954,
+        "resources": [
+          {
+            "path": "/_next/static/media/GeistMono_Variable.p.2vtemngyy8z-u.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/media/Geist_Variable-s.p.43azbxi7zpibd.woff2",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2vu3ab_2np7iw.css",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/369hzmzm1ocz-.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0q5pxrraqwba9.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/1on60-l6dgfqc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/turbopack-2u1d16houkiyo.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3qfy96eoyh-ek.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3802m8uy2z_ug.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2hd98qteq0owm.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/3w533qkxr90hc.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2mkhdbdd4himb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/007e_u0jlo9ka.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0at06mlkeimt2.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0h7w15xozcf-i.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/0lmjguiwgqdad.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/2cw8e42t9znhb.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          },
+          {
+            "path": "/_next/static/chunks/397o4hcr18fhg.js",
+            "encoded": 0,
+            "decoded": 0,
+            "transfer": 0
+          }
+        ],
+        "clickAt": 385.90000000596046,
+        "playAt": 440.5
+      },
+      "errors": [],
+      "failed": []
+    },
+    "desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": false,
+      "cpuCompositor": true,
+      "early": true,
+      "path": "mobile-canvas",
+      "bootReadyMs": 444.70000000298023,
+      "menuMs": 364.5,
+      "titleSubmitMs": 423.79999999701977,
+      "titleSceneMs": 456.59999999403954,
+      "runs": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 47.099999994039536,
+          "readyMs": 47.5,
+          "afterSubmitRafMs": 56.900000005960464,
+          "stepSubmitMs": 77.59999999403954,
+          "simMs": 227.5,
+          "jumpAt": 56.29999999701977,
+          "jumpMs": 77.70000000298023,
+          "acceptedToPlayMs": 46,
+          "bakeMs": 1.199999988079071,
+          "maxLongTaskMs": 86,
+          "firstKind": "starter",
+          "richMs": 299.59999999403954,
+          "richKind": "canvas",
+          "postPromotionMs": 602.9000000059605,
+          "richMovement": 41.97597287942227,
+          "inputToJumpMs": 21.400000005960464
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 27.299999997019768,
+          "readyMs": 27.5,
+          "afterSubmitRafMs": 42.1000000089407,
+          "stepSubmitMs": 60.29999999701977,
+          "simMs": 225.29999999701977,
+          "jumpAt": 33,
+          "jumpMs": 60.5,
+          "acceptedToPlayMs": 26.5,
+          "bakeMs": 0.9000000059604645,
+          "maxLongTaskMs": 0,
+          "firstKind": "starter",
+          "richMs": 261.6000000089407,
+          "richKind": "canvas",
+          "postPromotionMs": 562.6000000089407,
+          "richMovement": 12.88802941753653,
+          "inputToJumpMs": 27.5
+        }
+      }
+    },
+    "touch": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "touch": true,
+      "cpuCompositor": true,
+      "early": true,
+      "path": "mobile-canvas",
+      "bootReadyMs": 456.79999999701977,
+      "menuMs": 373.5,
+      "titleSubmitMs": 432.70000000298023,
+      "titleSceneMs": 465.8999999910593,
+      "runs": {
+        "ENGAGE": {
+          "seed": 42,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 49.099999994039536,
+          "readyMs": 49.400000005960464,
+          "afterSubmitRafMs": 58.400000005960464,
+          "stepSubmitMs": 76.90000000596046,
+          "simMs": 229,
+          "jumpAt": 152.59999999403954,
+          "jumpMs": 166.40000000596046,
+          "acceptedToPlayMs": 48.20000000298023,
+          "bakeMs": 1.7000000029802322,
+          "maxLongTaskMs": 0,
+          "firstKind": "starter",
+          "richMs": 307.29999999701977,
+          "richKind": "canvas",
+          "postPromotionMs": 626.7999999970198,
+          "richMovement": 9.521401245647922,
+          "inputToJumpMs": 13.800000011920929
+        },
+        "RETRY": {
+          "seed": 43,
+          "active": true,
+          "paintedTitle": true,
+          "submitMs": 31.200000002980232,
+          "readyMs": 31.399999991059303,
+          "afterSubmitRafMs": 46.5,
+          "stepSubmitMs": 63.8999999910593,
+          "simMs": 229.59999999403954,
+          "jumpAt": 69.09999999403954,
+          "jumpMs": 81,
+          "acceptedToPlayMs": 30.700000002980232,
+          "bakeMs": 0.699999988079071,
+          "maxLongTaskMs": 119,
+          "firstKind": "starter",
+          "richMs": 310.8999999910593,
+          "richKind": "canvas",
+          "postPromotionMs": 611.8999999910593,
+          "richMovement": 46.35786646151382,
+          "inputToJumpMs": 11.900000005960464
+        }
+      }
+    }
+  }
+}

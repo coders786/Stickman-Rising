@@ -1,0 +1,713 @@
+{
+  "build": "ncp34jFV9QnZXWSlWSvfb",
+  "candidate": "6ysDHpV6NwUbLqk3l_0VN",
+  "served": {
+    "rootSha256": "8c1dd14cc68b3337bb089d0af0aaf138688398e0d5eec171514fcc1fd3ce1c6c",
+    "sameStagedRoot": true,
+    "immutableNextFiles": 13,
+    "iframeHeadersClear": true,
+    "hostOriginAccepted": true,
+    "scoresApi": true,
+    "samePriorBridgeAssets": true,
+    "bridgeAssets": 21
+  },
+  "sources": {
+    "format": "original PNG, no optimizer or re-encoding",
+    "width": 1376,
+    "height": 768,
+    "bytes": 16752024,
+    "files": {
+      "01-last-train.png": {
+        "bytes": 2021554,
+        "sha256": "564fe2b87a083bd28c660ecb91c43115cc5a8cdeb5e328757b7e5f798e1b5d8d"
+      },
+      "02-rain-step.png": {
+        "bytes": 2373978,
+        "sha256": "d5ce1eadc262fd5228f9a8ba17ec8ca7562713c84d179352dc427e6a62c9d3be"
+      },
+      "03-shadow-ronin.png": {
+        "bytes": 1999215,
+        "sha256": "41b55be89e9ed23dcae535f03148b29b21750c496ae3e3cb8377ecc088133c4f"
+      },
+      "04-brass-guard.png": {
+        "bytes": 1728172,
+        "sha256": "7c38b1f21ec2d1d13f4f1e734bbef4b7e7e61064dfe045bd5bbbd5e6b23e42cb"
+      },
+      "05-murasama.png": {
+        "bytes": 1684228,
+        "sha256": "f7dfd1125edbc5d74a03434b5f6427608d960588033ce90f0f4bfbfaa1bd401d"
+      },
+      "06-crossing.png": {
+        "bytes": 2297520,
+        "sha256": "66137ea308470bf6acf33b3cb934f990bde06fde2ab2da5c9c1879203b95d0d4"
+      },
+      "07-still-steel.png": {
+        "bytes": 2308551,
+        "sha256": "718f500b76401a9582135efe99b9058ecd6488b9c46a16948b73bb540f281a85"
+      },
+      "08-night-line.png": {
+        "bytes": 2338806,
+        "sha256": "24af766eabc99e38fbbf140a91956c821482afc70897d72d66ae08c733a6dbb5"
+      }
+    }
+  },
+  "embed": {
+    "browser": "HeadlessChrome/153.0.8010.0",
+    "phase": "playing",
+    "errors": []
+  },
+  "nominalMs": 5000,
+  "timings": {
+    "load-desktop": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "view": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "reduced": false,
+      "attempts": [
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5360,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3497451930,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "RETRY",
+          "visibleMs": 5120,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 20,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 1640252385,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5100,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 32,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 2979491102,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        }
+      ]
+    },
+    "final-portrait": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "view": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "reduced": false,
+      "attempts": [
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5213,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3550956488,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "RETRY",
+          "visibleMs": 5060,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 34,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3678772580,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5075,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 58,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3725377727,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        }
+      ]
+    },
+    "load-reduce": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "view": {
+        "width": 400,
+        "height": 844,
+        "deviceScaleFactor": 2,
+        "isMobile": true,
+        "hasTouch": true
+      },
+      "reduced": true,
+      "attempts": [
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5155,
+          "cuts": [
+            1
+          ],
+          "first": {
+            "id": 4,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3113701412,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "RETRY",
+          "visibleMs": 5065,
+          "cuts": [
+            1
+          ],
+          "first": {
+            "id": 26,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 3301728580,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5055,
+          "cuts": [
+            1
+          ],
+          "first": {
+            "id": 46,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 2146101773,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        }
+      ]
+    },
+    "load-short": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "view": {
+        "width": 720,
+        "height": 360,
+        "deviceScaleFactor": 1,
+        "hasTouch": true,
+        "isMobile": true
+      },
+      "reduced": false,
+      "attempts": [
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5197,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 3,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 662198678,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "RETRY",
+          "visibleMs": 5160,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 29,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 1426552527,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5103,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 50,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 558926681,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        }
+      ]
+    },
+    "served-load": {
+      "browser": "HeadlessChrome/153.0.8010.0",
+      "view": {
+        "width": 1180,
+        "height": 660,
+        "deviceScaleFactor": 1
+      },
+      "reduced": false,
+      "attempts": [
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5279,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 2,
+            "layer": "scene-work",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 1514239945,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "RETRY",
+          "visibleMs": 5060,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 21,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 379721819,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        },
+        {
+          "gesture": "ENGAGE",
+          "visibleMs": 5062,
+          "cuts": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "first": {
+            "id": 35,
+            "layer": "scene",
+            "kind": "canvas",
+            "hud": "layer",
+            "seed": 4047418944,
+            "time": 0,
+            "hp": 100,
+            "threats": 1
+          },
+          "cueInView": true
+        }
+      ]
+    }
+  },
+  "heldAsset": {
+    "route": "/bridge/deck-pier.webp",
+    "still": {
+      "phase": "preparing",
+      "time": 0,
+      "input": false,
+      "frame": {
+        "id": 1,
+        "layer": "scene",
+        "kind": "title",
+        "hud": "off",
+        "seed": 5350089,
+        "time": 0,
+        "hp": 100,
+        "threats": 0
+      },
+      "want": 3828978237,
+      "shot": 8,
+      "picture": [
+        1376,
+        768
+      ],
+      "animation": "none",
+      "text": "Loading arena Finishing the skyline and bridge deck",
+      "focus": "CANCEL",
+      "fit": true,
+      "elapsed": 5908.9000000059605,
+      "prior": {
+        "id": 1,
+        "layer": "scene",
+        "kind": "title",
+        "hud": "off",
+        "seed": 5350089,
+        "time": 0,
+        "hp": 100,
+        "threats": 0
+      },
+      "playing": 0
+    },
+    "cuts": [
+      {
+        "index": 1,
+        "at": 453.40000000596046
+      },
+      {
+        "index": 2,
+        "at": 937.7000000029802
+      },
+      {
+        "index": 3,
+        "at": 1496.300000011921
+      },
+      {
+        "index": 4,
+        "at": 2126.5
+      },
+      {
+        "index": 5,
+        "at": 2591
+      },
+      {
+        "index": 6,
+        "at": 3223.7000000029802
+      },
+      {
+        "index": 7,
+        "at": 3790.800000011921
+      },
+      {
+        "index": 8,
+        "at": 4357.300000011921
+      }
+    ],
+    "first": {
+      "id": 2,
+      "layer": "scene-work",
+      "kind": "canvas",
+      "hud": "layer",
+      "seed": 3828978237,
+      "time": 0,
+      "hp": 100,
+      "threats": 1
+    },
+    "marks": [
+      [
+        "sr:run-workers",
+        1232.7000000029802
+      ],
+      [
+        "sr:run-backdrop-ready",
+        7296.399999991059
+      ],
+      [
+        "sr:run-submit",
+        7467.5999999940395
+      ]
+    ],
+    "assetResponseEnd": 7286.20000000298
+  },
+  "deniedReel": {
+    "shotsFetched": 8,
+    "cuts": [],
+    "first": {
+      "id": 2,
+      "layer": "scene-work",
+      "kind": "canvas",
+      "hud": "layer",
+      "seed": 160150024,
+      "time": 0,
+      "hp": 100,
+      "threats": 1
+    }
+  },
+  "heldSurfaces": {
+    "gl": {
+      "earlyCancel": {
+        "duration": 471.90000000596046,
+        "pending": false,
+        "input": false,
+        "starts": 0
+      },
+      "held": true,
+      "cut": "8",
+      "input": false,
+      "tracksStarted": 0,
+      "cancelledRetryFocus": "RETRY",
+      "freshAttempt": {
+        "id": 27,
+        "layer": "finish",
+        "kind": "webgl",
+        "hud": "layer",
+        "seed": 46,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      }
+    },
+    "touch-denied": {
+      "earlyCancel": {
+        "duration": 115.80000001192093,
+        "pending": false,
+        "input": false,
+        "starts": 0
+      },
+      "held": true,
+      "cut": "1",
+      "input": false,
+      "tracksStarted": 0,
+      "cancelledRetryFocus": "RETRY",
+      "freshAttempt": {
+        "id": 25,
+        "layer": "scene",
+        "kind": "canvas",
+        "hud": "layer",
+        "seed": 46,
+        "time": 0,
+        "hp": 100,
+        "threats": 1
+      }
+    }
+  },
+  "coverage": {
+    "cases": [
+      {
+        "label": "engage",
+        "path": "mobile-canvas",
+        "kind": "canvas"
+      },
+      {
+        "label": "master",
+        "path": "master-webgl2",
+        "kind": "webgl"
+      },
+      {
+        "label": "context-lost-canvas",
+        "path": "mobile-canvas",
+        "kind": "starter"
+      },
+      {
+        "label": "context-restored",
+        "path": "master-webgl2",
+        "kind": "webgl"
+      },
+      {
+        "label": "optimized",
+        "path": "mobile-webgl2",
+        "kind": "webgl"
+      },
+      {
+        "label": "interrupted-source",
+        "path": "mobile-canvas",
+        "kind": "emergency"
+      },
+      {
+        "label": "held-after-resize",
+        "path": "mobile-canvas",
+        "kind": "emergency"
+      },
+      {
+        "label": "recovered",
+        "path": "mobile-canvas",
+        "kind": "starter"
+      },
+      {
+        "label": "retry",
+        "path": "mobile-canvas",
+        "kind": "canvas"
+      }
+    ],
+    "teardown": {
+      "stores": 0,
+      "coverageBytes": 0,
+      "hudBytes": 0
+    }
+  },
+  "tests": {
+    "bridge": {
+      "tests": 215,
+      "pass": 215,
+      "fail": 0
+    },
+    "shaders": 17,
+    "full": {
+      "tests": 604,
+      "pass": 599,
+      "fail": 5,
+      "unchanged": true,
+      "failureNames": [
+        "the blade cleaves a tight pack (26px), every sword strike",
+        "how deep the blade cuts does not depend on the frame rate",
+        "no joint is welded shut in any core strike",
+        "six extra authored keys in each sword ritual preserve timing and gate beats",
+        "a connecting strike puts the striking joint ON the body, not near it"
+      ]
+    }
+  }
+}

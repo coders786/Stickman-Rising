@@ -53,8 +53,8 @@ test('airborne cast and contact passes leave the air above the deck empty', () =
   actor.y = -28
   const path = new NativePath()
   path.rect(-5, -25, 10, 70)
-  drawCastShadow(ctx as unknown as CanvasRenderingContext2D, actor, path as unknown as Path2D, 0.8, 0.5, 4)
-  drawContactAO(ctx as unknown as CanvasRenderingContext2D, actor.x, actor.y, 24, 0.44)
+  drawCastShadow(ctx as unknown as CanvasRenderingContext2D, actor, path as unknown as Path2D, 0.8)
+  drawContactAO(ctx as unknown as CanvasRenderingContext2D, actor)
   const alpha = (y: number, h: number) =>
     ctx.getImageData(0, y, 240, h).data.some((v, i) => i % 4 === 3 && v > 0)
   assert.equal(alpha(0, 72), false)
