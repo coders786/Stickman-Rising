@@ -38,11 +38,13 @@ import { MOVES } from './combat/moveset'
 import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
 import { HUD, HudState } from './render/hud'
+import { retireHudInk, restoreHudInk } from './render/hud-fade'
 import { Renderer, RenderWorld } from './render/renderer'
 import { RenderScaleControl } from './render/render-scale'
 import { BridgePresentation } from './render/bridge-presentation'
 import type { BridgeAdmission } from './render/bridge-finish'
 import { OPENING_MAX_GAP_MS, OpeningPace } from './render/opening-pace'
+import { openingExpiry } from './render/opening-budget'
 import { advancePaint, OPENING_PAINT_SLICE_MS } from './render/paint-slices'
 import { worldBounds, type ViewBounds } from './world/exposed-weather'
 import { LIGHT_HEX } from './world/lightfield'
@@ -57,7 +59,7 @@ import { Inspect, InspectMode } from './debug/inspect'
 const { left: ARENA_MIN, right: ARENA_MAX, entryX: ENTRY_X } = FLAT_LANE
 // Bound an unsatisfied opening without waiving dependencies or lowering
 // the grade just because a transfer/driver is slow. No minimum.
-const OPENING_TOTAL_BUDGET_MS = 25_000
+
 
 /* ------------------------------------------------------------------ */
 
@@ -77,6 +79,9 @@ interface RunRequest {
   initialized?: boolean
   stage: RunPreparationStage
   activeMs: number
+  /** rAF timestamp of the last *observable* step forward (stage change, first
+   *  submit, settled frame). The watchdog measures staleness, not total time. */
+  progressAt: number
   frameAt?: number
   presented: boolean
   pace: OpeningPace
@@ -154,6 +159,9 @@ interface UltState {
 export class Game {
   touchControls = false
   private hudCtx: CanvasRenderingContext2D | null = null
+  /** Live HUD ink (1 = normal, 0 = retired for the results card). The value is
+   *  mirrored from the layer's compositor style by setHudInk(). */
+  private hudInk = 1
   private mountCanvas: HTMLCanvasElement | null = null
   private get canvas(): HTMLCanvasElement | null { return this.ctx?.canvas ?? this.mountCanvas }
   private ctx: CanvasRenderingContext2D | null = null
@@ -394,6 +402,21 @@ export class Game {
 
   private emit(e: GameEvent): void {
     for (const cb of this.listeners) cb(e)
+  }
+
+  /** Retire or restore the separate HUD layer. The world is frozen on the
+   *  results screen, so the ink is faded by ONE compositor transition instead
+   *  of a per-frame repaint; a new run restores it before input opens. */
+  private setHudInk(next: number, animate: boolean): void {
+    if (this.hudInk === next) return
+    this.hudInk = next
+    const canvas = this.hudCtx?.canvas
+    // The inline fallback paints HUD into the retained world plate; there is
+    // no separate surface to fade, and repainting a frozen frame is worse
+    // than the stale panel this fixes.
+    if (!canvas || canvas === this.canvas || !canvas.style) return
+    if (next === 1) restoreHudInk(canvas.style)
+    else if (animate) retireHudInk(canvas.style, this.reducedMotion)
   }
 
   private setPhase(p: GamePhase): void {
@@ -726,7 +749,7 @@ export class Game {
     this.audio.resume() // unlock on the actual gesture, not the deferred bake
     this.input.setEnabled(false)
     this.pendingRun = { sword, seed: (Math.random() * 0xffffffff) >>> 0, returnTo: this.phase, stage: 'opening',
-      needsPaint: true, activeMs: 0, presented: false, pace: new OpeningPace() }
+      needsPaint: true, activeMs: 0, progressAt: performance.now(), presented: false, pace: new OpeningPace() }
     if (this.continuous) this.renderer.beginBridgeOpening()
     this.setPhase('preparing')
     if (this.continuous) {
@@ -764,6 +787,7 @@ export class Game {
     if (!request) return
     request.pace.reset()
     request.warmed = false
+    request.progressAt = performance.now()
     if (!request.cut) return
     request.cut = undefined
     request.stage = 'frame'
@@ -804,6 +828,7 @@ export class Game {
   private preparationStage(request: RunRequest, stage: RunPreparationStage): void {
     if (request.stage === stage) return
     request.stage = stage
+    request.progressAt = performance.now()
     this.emit({ type: 'runPreparing', stage, presented: request.presented })
   }
 
@@ -811,7 +836,13 @@ export class Game {
     const request = this.pendingRun
     this.lastFrame = now
     if (!request) return
-    if (document.hidden) { request.needsPaint = true; request.frameAt = undefined; request.pace.reset(); return }
+    if (document.hidden) {
+      // A hidden tab is not a stalled preparation: no frame can advance it, so
+      // the stall clock must not run while the player cannot see the screen.
+      request.needsPaint = true; request.frameAt = undefined; request.pace.reset()
+      request.progressAt = performance.now()
+      return
+    }
     const started = performance.now()
     request.activeMs += Math.max(0, now - (request.frameAt ?? now))
     request.frameAt = now
@@ -821,14 +852,17 @@ export class Game {
     request.needsPaint = false
     if (yieldDraw && !this.continuous) return
     try {
-      if (request.activeMs >= OPENING_TOTAL_BUDGET_MS) {
+      // A wedged preparation fails in 8 s of NO PROGRESS; a slow but advancing
+      // one keeps its full budget. See render/opening-budget.ts.
+      const expiry = openingExpiry(request.activeMs, now - request.progressAt)
+      if (expiry) {
         if (this.continuous) {
           discardPendingBridgePlates()
           discardPendingBridgeSky()
           this.renderer.resetBridgeOpening()
         }
         this.cancelRunPreparation()
-        markBoot('run-failed')
+        markBoot(expiry === 'stall' ? 'run-stalled' : 'run-failed')
         this.emit({ type: 'runUnavailable' })
         return
       }
@@ -889,6 +923,7 @@ export class Game {
       if (!request.presented && request.stage !== 'surface') this.preparationStage(request, 'frame')
       if (this.paint(0, false, false, opening)) {
         request.warmed = true
+        request.progressAt = performance.now()
         if (!request.presented) { request.presented = true; markBoot('run-submit') }
         if (this.continuous) {
           // Present real world + HUD frames under the opaque veil. A staged
@@ -1028,6 +1063,7 @@ export class Game {
   }
 
   private openCombat(): void {
+    this.setHudInk(1, false)
     this.audio.startMusic()
     this.audio.setMusicIntensity(0.55)
     this.input.setEnabled(true)
@@ -1060,6 +1096,7 @@ export class Game {
   }
 
   quitToMenu(): void {
+    this.setHudInk(1, false)
     this.discardRunPreparation()
     this.enemies.length = 0
     this.projectiles.clear()
@@ -1091,6 +1128,9 @@ export class Game {
   }
 
   private gameOver(): void {
+    // Results owns the screen. Retire the score/sector/boss ink now; the card
+    // animates in over the same 200 ms.
+    this.setHudInk(0, true)
     this.setPhase('gameover')
     this.input.setEnabled(false)
     this.audio.setMusicIntensity(0.1)
@@ -1920,17 +1960,27 @@ export class Game {
         break
       }
       case 'blocked': {
+        // A shield that absorbed every point of the strike dealt no damage,
+        // so it earns no number: a faceted deflection down the barrier plane,
+        // ricochet sparks and a one-frame recoil read the event instead.
+        const dir = Math.atan2(ey - hy, ex - hx)
         this.audio.play('clang', { pitch: 0.9 })
-        this.fx.impact(ex, ey, Math.atan2(ey - hy, ex - hx), false, '#ffffff', '#46ffb4')
-        this.fx.text(ex, ey - 46, 'BLOCK', '#46ffb4', 11)
+        this.fx.impact(ex, ey, dir, false, '#ffffff', '#46ffb4')
+        this.fx.guardRipple(ex, ey, dir + Math.PI / 2, '#46ffb4', 30, .18)
+        this.fx.sparks(ex, ey, dir, 1.1, 10, '#46ffb4', 380, 0.45)
+        this.fx.tag(ex, ey - 46, '[GUARD]', '#8ff0c6')
         this.addHitstop(0.03)
         this.cam.addTrauma(0.06)
         break
       }
       case 'armored': {
+        // Plated chassis: the edge skidded, it did not bite. Same rule as a
+        // guarded strike — facets and grit, never a damage readout.
+        const dir = Math.atan2(ey - hy, ex - hx)
         this.audio.play('clang', { pitch: 0.6, volume: 0.8 })
-        this.fx.sparks(ex, ey, Math.atan2(ey - hy, ex - hx), 0.9, 8, '#ffae2e', 320, 0.35)
-        this.fx.text(ex, ey - 46, 'ARMOR', '#ffae2e', 11)
+        this.fx.sparks(ex, ey, dir, 0.9, 8, '#ffae2e', 320, 0.35)
+        this.fx.guardRipple(ex, ey, dir + Math.PI / 2, '#ffae2e', 24, .15)
+        this.fx.tag(ex, ey - 46, '[PLATE]', '#ffcf8a')
         this.addHitstop(0.02)
         break
       }
@@ -2332,6 +2382,7 @@ export class Game {
       particleLevel: getParticleLevel(),
       runTime: this.runTime,
       attract: this.phase === 'attract',
+      opacity: this.hudInk,
     }
   }
 

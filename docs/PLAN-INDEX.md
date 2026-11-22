@@ -16,6 +16,8 @@ Kept for reference: `docs/mobile-2.5d/LIGHT-SHADOW-MATCH-PLAN.md`, `docs/ANIMATI
 
 ## Start here for current graphics work
 
+- [Master overhaul execution record — 2026-11-22](ULTRA-OVERHAUL-2026-11-22.md) — what the "100% WebGL2 / SACR utilisation / 350 ms boot" plan asked for, which of its complaints the current source already answers (with file:line), the three fixes landed in that pass (stall watchdog, guard deflection, death-state HUD retirement), and the honest open list.
+
 - [Bridge visual rules](BRIDGE-VISUAL-RULES.md) — prioritized fighter readability, rain on asphalt, and city depth; implementation and matched in-game comparisons.
 - [Procedural bridge run](PROCEDURAL-BRIDGE.md) — the current Engage path: streamed sectors, service/Flow, single-resolution governor and verification.
 - [Retired environment pilot](ENVIRONMENT-PILOT.md) — reference art and evidence from the former separate previews.

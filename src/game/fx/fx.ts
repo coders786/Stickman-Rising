@@ -76,7 +76,34 @@ interface Ring {
   litColor?: string
 }
 
-export const BRIDGE_SPARK_LIMIT = 256, BRIDGE_SHOCKWAVE_LIMIT = 8
+/** A guarded strike is a DEFLECTION, not damage. It gets its own effect
+ *  rather than a floating number: one hexagonal Fresnel ripple at the blade
+ *  contact, six faceted corners and no damage readout of any kind. */
+interface ShieldRipple {
+  active: boolean
+  x: number; y: number
+  /** Rotation of the facet pattern (the strike normal), radians. */
+  dir: number
+  age: number; life: number
+  color: string
+  radius: number
+}
+
+/** Six-sided path at `r`. A shield is a faceted emitter, so its deflection
+ *  must not read as the perfect circle every hit already uses for shockwaves. */
+function hexPath(ctx: CanvasRenderingContext2D, r: number): void {
+  ctx.beginPath()
+  for (let i = 0; i < 6; i++) {
+    const a = i * Math.PI / 3
+    const x = Math.cos(a) * r, y = Math.sin(a) * r
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+}
+
+export const BRIDGE_SPARK_LIMIT = 256, BRIDGE_SHOCKWAVE_LIMIT = 8,
+  BRIDGE_GUARD_RIPPLE_LIMIT = 4
 /** Only the mixed-type metadata lives in JS; all per-step scalars occupy
  * fixed packed slots. The views are constructed once, never in a fight. */
 class SparkSlot implements Particle {
@@ -305,6 +332,10 @@ export class FX {
   private readonly rFree = Array.from({ length: BRIDGE_SHOCKWAVE_LIMIT }, (_, i) => new WaveSlot(this.waveData, i * 9))
   private cracks: Crack[] = []
   private cFree: Crack[] = []
+  /** Pre-allocated: a guard ripple must never allocate during a tick. */
+  private readonly guardRipples: ShieldRipple[] = Array.from({ length: BRIDGE_GUARD_RIPPLE_LIMIT }, () => ({
+    active: false, x: 0, y: 0, dir: 0, age: 0, life: .18, color: '#00e5ff', radius: 28,
+  }))
   private texts: DmgText[] = []
   private txtFree: DmgText[] = []
   private debris: Debris[] = []
@@ -376,6 +407,7 @@ export class FX {
     this.texts.length = 0
     for (const d of this.debris) { d.active = false; this.dFree.push(d) }
     this.debris.length = 0
+    for (const g of this.guardRipples) g.active = false
     for (const l of this.lines) { l.active = false; this.lFree.push(l) }
     this.lines.length = 0
     for (const s of this.smears) { s.active = false; this.smFree.push(s) }
@@ -763,8 +795,39 @@ export class FX {
     this.cracks.push(c)
   }
 
-  text(x: number, y: number, str: string, color: string, size = 15): void {
+  /** Directional hexagonal shield ripple at the blade contact. Guard hits are
+   *  legible from the DEFLECTION (facets + ricochet sparks + recoil beat), so
+   *  they never need a number or a stacked WEAK POINT ring. */
+  guardRipple(x: number, y: number, dir: number, color = '#00e5ff', radius = 28, life = .18): void {
+    // ZERO-ALLOC TICK: one pass, no closures, no array helpers.
+    let slot: ShieldRipple | undefined
+    let oldest = this.guardRipples[0], oldestAge = -1
+    for (const r of this.guardRipples) {
+      if (!r.active) { slot = r; break }
+      const age = r.age / r.life
+      if (age > oldestAge) { oldestAge = age; oldest = r }
+    }
+    // Steal the closest-to-expiry ripple: the newest deflection is the one the
+    // player just caused.
+    slot ??= oldest
+    slot.active = true
+    slot.x = x; slot.y = y; slot.dir = dir
+    slot.age = 0; slot.life = life
+    slot.color = color
+    slot.radius = radius
+  }
+
+  /** Crisp diegetic micro-tag (GUARD / PLATE). Short ink, no drift. */
+  tag(x: number, y: number, str: string, color: string, size = 10): void {
+    this.text(x, y, str, color, size, .2)
+  }
+
+  text(x: number, y: number, str: string, color: string, size = 15, life = .85): void {
     if (this.texts.length > 60) return
+    // A shield that absorbed EVERY point of a strike has no damage to report.
+    // "0" over a guard is a scoreboard glitch, not feedback: the ripple below
+    // carries the event instead.
+    if (!str || /^[+-]?0+$/.test(str.trim()) || str === '-0') return
     const t = this.txtFree.pop() ?? {
       active: false, x: 0, y: 0, vx: 0, vy: 0, str: '', color: '#fff', size: 15, age: 0, life: 1,
     }
@@ -775,7 +838,7 @@ export class FX {
     t.str = str
     t.color = color
     t.size = size
-    t.age = 0; t.life = 0.85
+    t.age = 0; t.life = life
     this.texts.push(t)
   }
 
@@ -978,6 +1041,12 @@ export class FX {
         this.rings.splice(i, 1)
         this.rFree.push(r)
       }
+    }
+    // shield ripples (fixed pool, no array churn)
+    for (const g of this.guardRipples) {
+      if (!g.active) continue
+      g.age += dt
+      if (g.age >= g.life) g.active = false
     }
     // cracks
     for (let i = this.cracks.length - 1; i >= 0; i--) {
@@ -1326,6 +1395,40 @@ export class FX {
       ctx.moveTo(f.x + cy * 0.6, f.y - cx * 0.6)
       ctx.lineTo(f.x - cy * 0.6, f.y + cx * 0.6)
       ctx.stroke()
+    }
+
+    // GUARD DEFLECTION — directional hex Fresnel ripple. Deliberately outside
+    // the particle gate: this is combat feedback, not decoration.
+    for (const g of this.guardRipples) {
+      if (!g.active) continue
+      const k = 1 - g.age / g.life
+      const grow = 1 - k * k
+      const r = g.radius * (0.38 + 0.62 * grow)
+      ctx.save()
+      ctx.translate(g.x, g.y)
+      ctx.rotate(g.dir)
+      // Squashed along the strike normal: a barrier seen edge-on, not a disc.
+      ctx.scale(1, 0.62)
+      ctx.strokeStyle = rgba(g.color, 0.10 * k)
+      ctx.lineWidth = 5 * k + 1
+      hexPath(ctx, r)
+      ctx.stroke()
+      ctx.strokeStyle = rgba(g.color, 0.42 * k)
+      ctx.lineWidth = 1.6
+      hexPath(ctx, r * 0.86)
+      ctx.stroke()
+      // Facet corners: the two that meet the edge are the hottest read.
+      ctx.strokeStyle = rgba('#ffffff', 0.45 * k)
+      ctx.lineWidth = 1.1
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3, ca = Math.cos(a), sa = Math.sin(a)
+        const inner = r * 0.86, outer = r * (1.04 + 0.10 * (i % 2))
+        ctx.beginPath()
+        ctx.moveTo(ca * inner, sa * inner)
+        ctx.lineTo(ca * outer, sa * outer)
+        ctx.stroke()
+      }
+      ctx.restore()
     }
 
     // particles + rings — gated by the particle toggle (OFF skips both;

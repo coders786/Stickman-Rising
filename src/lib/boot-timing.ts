@@ -1,5 +1,5 @@
 type BootStage = 'menu' | 'engine-request' | 'engine-module' | 'ready' | 'engine-failed'
-  | 'run-initialized' | 'run-workers' | 'run-backdrop-ready' | 'run-renderer-ready' | 'run-settled' | 'run-cut' | 'title-submit' | 'engage' | 'retry' | 'run-submit' | 'playing' | 'first-step' | 'cancelled' | 'run-failed'
+  | 'run-initialized' | 'run-workers' | 'run-backdrop-ready' | 'run-renderer-ready' | 'run-settled' | 'run-cut' | 'title-submit' | 'engage' | 'retry' | 'run-submit' | 'playing' | 'first-step' | 'cancelled' | 'run-failed' | 'run-stalled'
 
 /** Local browser measurements only. The head script can display these even
  * if an engine import fails; nothing is sent to the server. */

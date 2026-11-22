@@ -64,6 +64,10 @@ export interface HudState {
   particleLevel: number
   runTime: number
   attract: boolean
+  /** 1 = full HUD ink, 0 = none. The death state ramps this to 0 over 200 ms
+   *  (see render/hud-fade.ts) so the terminal overlay never sits on top of a
+   *  live score/sector panel. */
+  opacity?: number
 }
 
 export const HUD_PAD = 16
@@ -128,6 +132,9 @@ class HudInkStamp {
   update(s: HudState, w: number, delayedHp: number, scene: string): boolean {
     this.at = 0; this.same = true
     this.mark(s.attract)
+    // A fade is ink: a layer that skipped this would keep a stale opaque HUD
+    // on screen while the game believed it had already faded out.
+    this.mark(s.opacity ?? 1)
     if (!s.attract) {
       // Layout and vitality.
       this.mark(!!s.touch)
@@ -242,10 +249,11 @@ export class HUD {
 
   private paint(ctx: CanvasRenderingContext2D, w: number, h: number, s: HudState): void {
     this.fpsInk = null
-    if (s.attract) return
+    const fade = Math.max(0, Math.min(1, s.opacity ?? 1))
+    if (s.attract || fade <= 0.002) return
     const r = hudRegions(w, h, !!s.touch, s.shield, s.insets)
     ctx.save()
-    ctx.globalAlpha = 1
+    ctx.globalAlpha = fade
     ctx.globalCompositeOperation = 'source-over'
     ctx.textBaseline = 'alphabetic'
     this.vitality(ctx, r.vitality, s)
@@ -270,7 +278,7 @@ export class HUD {
     if (alpha && s.banner) {
       const width = Math.min(300, r.r - r.l)
       const b = { x: Math.round((r.l + r.r - width) / 2), y: Math.max(r.score.y + r.score.h + GAP, noticeY), w: width, h: 41 }
-      ctx.save(); ctx.globalAlpha = alpha
+      ctx.save(); ctx.globalAlpha = alpha * fade
       plate(ctx, b, s.banner.color)
       text(ctx, s.banner.title, b.x + b.w / 2, b.y + 17, b.w - 18, 13, INK, 'center', true)
       text(ctx, s.banner.sub, b.x + b.w / 2, b.y + 32, b.w - 18, 10, DIM, 'center')
