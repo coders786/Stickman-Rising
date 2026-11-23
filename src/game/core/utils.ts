@@ -120,19 +120,23 @@ export const segHitsCircle = (
 
 /* ---------------- color ---------------- */
 
-const rgbaCache = new Map<string, string>()
+const rgbaCache = new Map<string, Map<number, string>>()
 
-/** '#rrggbb' + alpha → 'rgba(...)', cached. */
+/** '#rrggbb' + alpha → 'rgba(...)', cached. Alpha is quantized to 1/255 —
+ * exactly what the canvas rasterizer keeps — so the hot per-particle path
+ * builds no key strings and two Map lookups replace string concatenation. */
 export function rgba(hex: string, a: number): string {
-  const key = hex + a.toFixed(3)
-  const hit = rgbaCache.get(key)
+  const q = a < 0 ? 0 : a > 1 ? 1 : Math.round(a * 255) / 255
+  let byAlpha = rgbaCache.get(hex)
+  if (!byAlpha) { byAlpha = new Map(); rgbaCache.set(hex, byAlpha) }
+  const hit = byAlpha.get(q)
   if (hit) return hit
   const h = hex.replace('#', '')
   const r = parseInt(h.slice(0, 2), 16)
   const g = parseInt(h.slice(2, 4), 16)
   const b = parseInt(h.slice(4, 6), 16)
-  const out = `rgba(${r},${g},${b},${a < 0 ? 0 : a > 1 ? 1 : a})`
-  rgbaCache.set(key, out)
+  const out = `rgba(${r},${g},${b},${q})`
+  byAlpha.set(q, out)
   return out
 }
 

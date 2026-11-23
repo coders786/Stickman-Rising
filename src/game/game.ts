@@ -38,7 +38,7 @@ import { crossedExecutionCuts, executionRoot, executionTimeline } from './combat
 import { MOVES } from './combat/moveset'
 import { EXECUTE_POSE_CLIP } from './anim/clips'
 import { installQA } from './debug/animQA'
-import { HUD, HudState } from './render/hud'
+import { HUD, HudState, RouteTelemetry } from './render/hud'
 import { Renderer, RenderWorld } from './render/renderer'
 import { RenderScaleControl } from './render/render-scale'
 import { BridgePresentation } from './render/bridge-presentation'
@@ -60,6 +60,9 @@ const { left: ARENA_MIN, right: ARENA_MAX, entryX: ENTRY_X } = FLAT_LANE
 // the grade just because a transfer/driver is slow. No minimum.
 const OPENING_TOTAL_BUDGET_MS = 25_000
 const OPENING_GL_FALLBACK_MS = 12_000
+/** Retry paints behind an opaque interlude: nobody is reading those frames,
+ * so each slice may run longer than the interactive 6 ms opening slice. */
+const RETRY_PAINT_SLICE_MS = 14
 
 /* ------------------------------------------------------------------ */
 
@@ -296,6 +299,17 @@ export class Game {
   private runTime = 0
   private fps = 60
   private pendingRun: RunRequest | null = null
+  /** The next run's seed, decided at death. RETRY then starts from a known
+   * address instead of inventing one mid-gesture — the hook the Chunk-0
+   * pre-bake hangs on without stretching any previous seed's data. */
+  private nextRunSeed = 0
+  /** Persistent submit packet: one RenderWorld refilled in place per paint. */
+  private renderWorld: RenderWorld | null = null
+  private routeState: NonNullable<RenderWorld['routeState']> | null = null
+  private hudState: HudState | null = null
+  private hudTelemetry: RouteTelemetry | null = null
+  private hudGate: NonNullable<RouteTelemetry['gate']> | null = null
+  private hudBoss: NonNullable<HudState['boss']> | null = null
   private paintDraft?: PaintDraft
   private readonly dirtyWork = new WeakSet<CanvasRenderingContext2D>()
   private openingCut = false
@@ -728,7 +742,9 @@ export class Game {
     this.audio.resume() // unlock on the actual gesture, not the deferred bake
     this.input.setEnabled(false)
     graphicsTrace?.event('run-request', this.phase === 'gameover' ? 'retry' : 'engage')
-    this.pendingRun = { sword, seed: (Math.random() * 0xffffffff) >>> 0, returnTo: this.phase, stage: 'opening',
+    const seed = this.phase === 'gameover' && this.nextRunSeed ? this.nextRunSeed : (Math.random() * 0xffffffff) >>> 0
+    this.nextRunSeed = 0
+    this.pendingRun = { sword, seed, returnTo: this.phase, stage: 'opening',
       needsPaint: true, activeMs: 0, presented: false, pace: new OpeningPace() }
     if (this.continuous) this.renderer.beginBridgeOpening()
     this.setPhase('preparing')
@@ -1124,6 +1140,17 @@ export class Game {
   private gameOver(): void {
     this.setPhase('gameover')
     this.input.setEnabled(false)
+    // YOU HAVE FALLEN reads the last world frame, not frozen vitals. Clear
+    // the HUD layer once so the death card composes over clean ink instead
+    // of a lingering vitality plate (the old residual-HUD bug).
+    this.hud.reset()
+    const hud = this.hudCtx
+    if (hud && !hud.isContextLost?.()) {
+      hud.save(); hud.setTransform(1, 0, 0, 1, 0, 0)
+      hud.clearRect(0, 0, hud.canvas.width, hud.canvas.height)
+      hud.restore()
+    }
+    this.nextRunSeed = (Math.random() * 0xffffffff) >>> 0
     this.audio.setMusicIntensity(0.1)
     this.audio.setRainAmbience(0)
     this.audio.play('deathHeavy', { volume: 0.9 })
@@ -1222,6 +1249,10 @@ export class Game {
       // the run preparation path if the player beats the attract bake.
       if (this.attractNeedsPaint) { this.attractNeedsPaint = false; return }
       this.bg.warmAttract?.()
+      // Idle menu frames prewarm the WebGL path one step per frame: adapter
+      // probe, context creation, async links, backing reservation. ENGAGE
+      // then starts the opening on assets alone instead of link latency.
+      this.renderer.prewarmBridge(this.cssW, this.cssH, this.dpr)
       if (this.continuous && this.inspect?.mode === 'off') {
         // A quiet title needs one frame per asset arrival or resize, not
         // repeated full-frame submissions behind interactive menu controls.
@@ -1243,7 +1274,12 @@ export class Game {
     // The transition into Results already paints the final pose. Retain it
     // even across resize: a cancelled Retry can have initialized new sim
     // state that must never be rendered beneath the old score card.
-    if (this.continuous && this.phase === 'gameover' && this.inspect?.mode === 'off') return
+    if (this.continuous && this.phase === 'gameover' && this.inspect?.mode === 'off') {
+      // Results-screen idle keeps stepping the GL pipeline so RETRY finds
+      // programs, textures and backings already resident (zero recompiles).
+      this.renderer.prewarmBridge(this.cssW, this.cssH, this.dpr)
+      return
+    }
     // Preserve the raw gap for pacing telemetry; clamp only the time fed into
     // simulation and visuals so a long frame cannot trigger unbounded work.
     const frameGap = dtRaw
@@ -1414,24 +1450,7 @@ export class Game {
       // Don't clear/resize the HUD on a failed scene build. If its context
       // is unavailable, ordinary Canvas can paint vitals into the work plate.
       const hudCtx = this.hudUsable ? this.hudCtx : null
-      const world: RenderWorld = draft?.world ?? {
-        renderScale: this.dpr, provisional, opening,
-        streamQuiet: this.streamQuiet && this.hitstopT <= 0 && this.player.state !== 'parry',
-        hudCtx: this.inspect.mode === 'off' ? hudCtx : null,
-        cam: this.cam,
-        fx: this.fx,
-        bg: this.bg,
-        enemies: this.enemies,
-        player: this.player,
-        projectiles: this.projectiles,
-        props: this.props,
-        hud: this.hud,
-        hudState: this.buildHudState(),
-        routeState: this.route ? { route: this.route, gate: this.encounters?.gate, clearedGate: this.encounters?.previousGate, pickups: this.pickups,
-          service: this.service, active: this.phase !== 'attract' && this.inspect.mode === 'off', quiet: this.reducedMotion,
-          opticalPulse: Math.max(0, 1 - (this.ult?.t ?? this.exec?.t ?? 1) / .12) } : undefined,
-        time: this.renderTime,
-      }
+      const world = draft?.world ?? this.fillRenderWorld(provisional, opening, hudCtx)
       const observe = this.phase === 'playing' && !document.hidden && this.inspect.mode === 'off' ? this.graphicsObserver : undefined
       const start = observe || graphicsTrace ? performance.now() : 0
       let kind: WorldSubmit['kind'] = this.phase === 'attract' ? 'title' : provisional && world.routeState?.active ? 'starter' : 'canvas'
@@ -1441,7 +1460,8 @@ export class Game {
         if (draft || (this.coverage && (this.phase === 'attract' || (opening !== undefined && !this.pendingRun?.warmed)))) {
           const job = draft ?? (this.paintDraft = { ctx, world, steps: this.renderer.drawSteps(ctx, world, w, h, dt) })
           const sliceStart = traceStart()
-          const completed = !job.steps || advancePaint(job.steps)
+          const sliceMs = this.pendingRun?.returnTo === 'gameover' ? RETRY_PAINT_SLICE_MS : undefined
+          const completed = !job.steps || advancePaint(job.steps, sliceMs)
           traceEnd('paint.draftSlice', sliceStart)
           if (!completed) return false
           job.steps = undefined
@@ -2311,6 +2331,41 @@ export class Game {
       y: this.cssH / 2 + (dx * s + dy * c) * cam.zoom }
   }
 
+  /** The submit path's largest per-frame churn was the RenderWorld literal.
+   * One persistent instance, refilled in place; a draft keeps the frozen
+   * reference it was created with, exactly like the old literal did. */
+  private fillRenderWorld(provisional: boolean, opening: BridgeAdmission | null | undefined,
+    hudCtx: CanvasRenderingContext2D | null): RenderWorld {
+    const w = this.renderWorld ??= {
+      cam: this.cam, fx: this.fx, bg: this.bg, enemies: this.enemies, player: this.player,
+      projectiles: this.projectiles, props: this.props, hud: this.hud,
+      hudCtx: null, hudState: this.buildHudState(), time: this.renderTime,
+    }
+    w.provisional = provisional; w.opening = opening
+    w.streamQuiet = this.streamQuiet && this.hitstopT <= 0 && this.player.state !== 'parry'
+    w.hudCtx = this.inspect.mode === 'off' ? hudCtx : null
+    w.hudState = this.buildHudState()
+    w.routeState = this.route ? this.fillRouteState() : undefined
+    w.time = this.renderTime
+    return w
+  }
+
+  private fillRouteState(): NonNullable<RenderWorld['routeState']> {
+    const r = this.routeState ??= {
+      route: undefined as never, gate: undefined, clearedGate: null, pickups: null,
+      service: undefined as never, active: false, quiet: false, opticalPulse: 0,
+    }
+    r.route = this.route!
+    r.gate = this.encounters?.gate
+    r.clearedGate = this.encounters?.previousGate
+    r.pickups = this.pickups
+    r.service = this.service
+    r.active = this.phase !== 'attract' && this.inspect.mode === 'off'
+    r.quiet = this.reducedMotion
+    r.opticalPulse = Math.max(0, 1 - (this.ult?.t ?? this.exec?.t ?? 1) / .12)
+    return r
+  }
+
   private buildHudState(): HudState {
     const p = this.player
     const boss = this.enemies.find(e => e.kind === 'boss' && !e.dead && !e.spawning)
@@ -2319,60 +2374,101 @@ export class Game {
     const terminal = this.phase === 'playing' && this.serviceAvailable() ? shelter : null
     const gate = this.encounters?.gate
     const remaining = gate ? Math.max(0, gate.x - 420 - p.x) : 0
-    const telemetry = this.route ? {
-      metres: travelledMetres(p.x), sector: sectorAt(p.x) + 1, biome: biomeAt(p.x),
-      safe: shelter ? (shelter.kind === 'service' ? 'SERVICE BAY' : 'TRANSIT COVER') : null,
-      gate: gate ? { locked: gate.state === 'locked', distance: remaining / WORLD_UNITS_PER_METRE,
-        eta: p.vx > 40 && gate.state === 'ahead' ? remaining / p.vx : null } : null,
-    } : undefined
-    return {
-      hp: p.hp,
-      maxHp: p.maxHp,
-      shield: p.shield,
-      energy: p.energy,
-      maxEnergy: p.maxEnergy,
-      stamina: p.stamina,
-      maxStamina: p.maxStamina,
-      dashCharge: p.dashChargeProgress,
-      slashCharge: p.slashChargeProgress,
-      swordDrawn: p.swordDrawn,
-      fistStrike: p.fistStrikeNext,
-      staminaCooldown: p.staminaCooldown,
-      meter: p.meter,
-      swordName: p.swordDrawn?p.sword.name+' / DRAWN':'EMPTY HAND / SHEATHED',
-      swordColor: p.sword.colors.accent,
-      abilityName: p.swordDrawn?p.sword.ability.name:'FOCUSED PALM',
-      abilityCost: p.sword.ability.cost,
-      combo: {
-        hits: this.combo.hits,
-        mult: this.combo.mult,
-        rank: this.combo.lastRank,
-        timer: this.combo.timer,
-        timerMax: this.combo.timerMax,
-        rankUpT: this.combo.rankUpT,
-        lastHitT: 0,
-      },
-      wave: Math.max(1, this.encounters?.patrol ?? this.waves.wave),
-      enemiesLeft: this.enemies.reduce((n, e) => n + Number(isThreat(e, p.x)), 0),
-      route: telemetry,
-      kills: this.stats.kills,
-      score: this.stats.score,
-      boss: boss ? { hp: boss.hp, maxHp: boss.maxHp, name: 'GEMINI MK-II' } : null,
-      banner: this.banner,
-      executePrompt: target ? this.project(target.x + target.face * target.scale * target.geom.headC.x,
-        target.hipY + target.scale * (target.geom.headC.y - 15)) : null,
-      terminal: terminal ? { ...this.project(terminal.terminal, -135), progress: this.service.progress / SERVICE_HOLD, buff: terminal.buff } : undefined,
-      buff: this.service.buff ? { name: this.service.buff, seconds: Math.ceil(this.service.remaining) } : undefined,
-      ultReady: this.canOverdrive(),
-      abilityReady: p.energy >= p.sword.ability.cost,
-      fps: this.sampledFps,
-      touch: this.touchControls,
-      showFps: this.settings.showFps,
-      insets: this.insets,
-      particleLevel: getParticleLevel(),
-      runTime: this.runTime,
-      attract: this.phase === 'attract',
+    // One persistent HudState refilled in place. The HUD repaints only when
+    // its ink stamp changes, but this object itself was rebuilt — with eight
+    // fresh nested objects — every frame. Telemetry, gate, boss, prompt,
+    // terminal and buff are all refilled slots now.
+    const s = this.hudState ??= {
+      hp: 0, maxHp: 0, energy: 0, maxEnergy: 0, stamina: 0, maxStamina: 0,
+      dashCharge: 0, slashCharge: 0, swordDrawn: false, fistStrike: 'punch' as 'punch' | 'kick',
+      staminaCooldown: 0, meter: 0, swordName: '', swordColor: '', abilityName: '', abilityCost: 0,
+      combo: { hits: 0, mult: 1, rank: '', timer: 0, timerMax: 0, rankUpT: 0, lastHitT: 0 },
+      wave: 1, enemiesLeft: 0, kills: 0, score: 0, boss: null, banner: null,
+      executePrompt: null, ultReady: false, abilityReady: false,
+      fps: 60, showFps: false, particleLevel: 0, runTime: 0, attract: false,
     }
+    if (this.route) {
+      const t = this.hudTelemetry ??= { metres: 0, sector: 1, biome: '', safe: null, gate: null }
+      t.metres = travelledMetres(p.x); t.sector = sectorAt(p.x) + 1; t.biome = biomeAt(p.x)
+      t.safe = shelter ? (shelter.kind === 'service' ? 'SERVICE BAY' : 'TRANSIT COVER') : null
+      if (gate) {
+        const g = this.hudGate ??= { locked: false, distance: 0, eta: null }
+        g.locked = gate.state === 'locked'
+        g.distance = remaining / WORLD_UNITS_PER_METRE
+        g.eta = p.vx > 40 && gate.state === 'ahead' ? remaining / p.vx : null
+        t.gate = g
+      } else t.gate = null
+      s.route = t
+    } else s.route = undefined
+    s.hp = p.hp
+    s.maxHp = p.maxHp
+    s.shield = p.shield
+    s.energy = p.energy
+    s.maxEnergy = p.maxEnergy
+    s.stamina = p.stamina
+    s.maxStamina = p.maxStamina
+    s.dashCharge = p.dashChargeProgress
+    s.slashCharge = p.slashChargeProgress
+    s.swordDrawn = p.swordDrawn
+    s.fistStrike = p.fistStrikeNext
+    s.staminaCooldown = p.staminaCooldown
+    s.meter = p.meter
+    s.swordName = p.swordDrawn ? p.sword.name + ' / DRAWN' : 'EMPTY HAND / SHEATHED'
+    s.swordColor = p.sword.colors.accent
+    s.abilityName = p.swordDrawn ? p.sword.ability.name : 'FOCUSED PALM'
+    s.abilityCost = p.sword.ability.cost
+    s.combo.hits = this.combo.hits
+    s.combo.mult = this.combo.mult
+    s.combo.rank = this.combo.lastRank
+    s.combo.timer = this.combo.timer
+    s.combo.timerMax = this.combo.timerMax
+    s.combo.rankUpT = this.combo.rankUpT
+    s.combo.lastHitT = 0
+    s.wave = Math.max(1, this.encounters?.patrol ?? this.waves.wave)
+    s.enemiesLeft = this.enemies.reduce((n, e) => n + Number(isThreat(e, p.x)), 0)
+    s.kills = this.stats.kills
+    s.score = this.stats.score
+    if (boss) {
+      const b = this.hudBoss ??= { hp: 0, maxHp: 0, name: '' }
+      b.hp = boss.hp; b.maxHp = boss.maxHp; b.name = 'GEMINI MK-II'
+      s.boss = b
+    } else s.boss = null
+    s.banner = this.banner
+    if (target) {
+      // Same projection math as project(), filled into the persistent slot.
+      const e = s.executePrompt ??= { x: 0, y: 0 }
+      const cam = this.cam, c = Math.cos(cam.rot), sn = Math.sin(cam.rot)
+      const dx = target.x + target.face * target.scale * target.geom.headC.x - cam.x - cam.offX
+      const dy = target.hipY + target.scale * (target.geom.headC.y - 15) - cam.y - cam.offY
+      e.x = this.cssW / 2 + (dx * c - dy * sn) * cam.zoom
+      e.y = this.cssH / 2 + (dx * sn + dy * c) * cam.zoom
+      s.executePrompt = e
+    } else s.executePrompt = null
+    if (terminal) {
+      const t = s.terminal ??= { x: 0, y: 0, progress: 0, buff: '' }
+      const cam = this.cam, c = Math.cos(cam.rot), sn = Math.sin(cam.rot)
+      const dx = terminal.terminal - cam.x - cam.offX, dy = -135 - cam.y - cam.offY
+      t.x = this.cssW / 2 + (dx * c - dy * sn) * cam.zoom
+      t.y = this.cssH / 2 + (dx * sn + dy * c) * cam.zoom
+      t.progress = this.service.progress / SERVICE_HOLD
+      t.buff = terminal.buff
+      s.terminal = t
+    } else s.terminal = undefined
+    if (this.service.buff) {
+      const b = s.buff ??= { name: '', seconds: 0 }
+      b.name = this.service.buff; b.seconds = Math.ceil(this.service.remaining)
+      s.buff = b
+    } else s.buff = undefined
+    s.ultReady = this.canOverdrive()
+    s.abilityReady = p.energy >= p.sword.ability.cost
+    s.fps = this.sampledFps
+    s.touch = this.touchControls
+    s.showFps = this.settings.showFps
+    s.insets = this.insets
+    s.particleLevel = getParticleLevel()
+    s.runTime = this.runTime
+    s.attract = this.phase === 'attract'
+    return s
   }
 
   get isRunning(): boolean {

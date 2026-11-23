@@ -177,6 +177,29 @@ export class BridgeFinish {
 
   beginOpening(): void { this.forcedCanvas = false; this.loading = true }
 
+  /** Idle-time prewarm, stepped once per quiet frame. Performs exactly what
+   * the first admission would do — adapter probe, context creation, one
+   * async link/init/resize step — without ever admitting a frame or
+   * touching the visible output. ENGAGE then finds `ready()` already true
+   * and the backing reserved, so the opening starts on its assets alone. */
+  warm(requested: BridgeGLTier | null, w: number, h: number, preferred: number): void {
+    if (!requested || !this.output || this.lost || this.forcedCanvas) return
+    this.remember(requested, w, h, preferred)
+    if (!this.diagnosticSoftware) {
+      const device = this.device.poll()
+      if (!device) return
+      if (device === 'software') {
+        this.refused.master = this.refused.mobile = 'Software WebGL adapter; using Canvas fallback'
+        return
+      }
+      this.adapterChecked = device === 'hardware'
+    }
+    this.pipeline(requested, w, h, preferred, (pipe, b) => {
+      pipe.advanceResize(b.w, b.h)
+      return true
+    })
+  }
+
   /** A run may use Canvas when GL setup never completes. Keep the requested
    * preset unchanged and retry GL only at the next run boundary. */
   fallbackOpening(): void {

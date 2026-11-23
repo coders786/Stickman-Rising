@@ -18,7 +18,7 @@ import { ROAD } from '../stage/road-section'
 import { MATERIAL_TILE, Material, PUDDLE_PITCH, drainageOffset, RETURN_X, RETURN_Y } from '../stage/bridge-material'
 import { DISTRICT_PANEL, districtSocket, flickerGain } from '../stage/bridge-sockets'
 import { deckFace } from '../stage/bridge-deck-face'
-import { bridgeBiomeMix, type BridgeRoute } from '../stage/route'
+import { bridgeBiomeMix, type BridgeRoute, type RouteChunk } from '../stage/route'
 import { SHELTER_KIT } from '../stage/run-layout'
 import { worldBounds, type ViewBounds } from '../world/exposed-weather'
 import type { Gate } from '../world/encounters'
@@ -110,6 +110,7 @@ export class BridgeFrame {
   readonly blockerData = new Float32Array(BLOCKER_LIMIT * 4)
   readonly blockers: Blocker[] = []
   private readonly fixtures: LightPoint[] = []
+  private readonly chunkScratch: RouteChunk[] = []
   get lensSources(): readonly LightPoint[] { return this.fixtures }
   blockerCount = 0
   readonly landings = new Float32Array(BRIDGE_LANDINGS * 4)
@@ -296,7 +297,11 @@ export class BridgeFrame {
     }
     // Always admit the relevant roofs and gate before optional moving props.
     for (const g of [gate, previous]) if (g) add({ left: g.x - 16, top: -265, right: g.x + 17, bottom: 43, kind: 'pier' })
-    const chunks = [...route.between(left - reach, right + reach)]
+    // Reused scratch: route.between() is a generator, and materializing it
+    // with a spread every frame was the packet path's only remaining churn.
+    const chunks = this.chunkScratch
+    chunks.length = 0
+    for (const c of route.between(left - reach, right + reach)) chunks.push(c)
     this.fixtures.length = 0
     for (const c of chunks) for (const p of chunkLightData(c).points) {
       if (this.fixtures.length < ACTOR_FIXTURE_LIMIT && p.kind !== 'strip' &&

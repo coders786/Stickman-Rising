@@ -4,6 +4,8 @@ import { newReceiverRig, RECEIVER, sampleReceiverRig } from '../lighting/receive
 import { bridgeSkyBasis } from '../../graphics/bridge/SkyBasis'
 import { MOON_KEY, MOON_SLOPE, roadFixtureVisibility, softVisibility, staticFalloff, type LightPoint } from '../../graphics/bridge/NoirGeometry'
 import { lightDepth } from '../../graphics/bridge/LightVectorGrid'
+import type { CastSource } from '../../graphics/bridge/LightVectorGrid'
+import type { Blocker } from '../../graphics/bridge/NoirGeometry'
 import { SACR_CURB_Z, SACR_NEAR_Z } from '../../graphics/sacr/SACRMath'
 import { castKey, castProjection, drawBridgeCast, type CastKey, type CastReceiver } from './bridge-casts'
 import { BridgeShopGlass } from './bridge-shop-glass'
@@ -61,6 +63,10 @@ function tracePaintStage(name: string, start: number, cold: boolean): number {
   return now
 }
 
+/** Shared empty admission list: castKey only iterates it. */
+const NO_CAST_DIRECTIONS: readonly CastSource[] = []
+const ZERO_TINT: readonly [number, number, number] = [0, 0, 0]
+
 export interface RenderWorld {
   cam: Camera
   fx: FX
@@ -90,6 +96,11 @@ export class Renderer {
   private cullSkipped = 0
   private readonly visibleEnemies: Enemy[] = []
   private readonly reflectorEnemies: Enemy[] = []
+  private enemySortCenter = 0
+  private readonly byDistanceToCenter = (a: Enemy, b: Enemy): number =>
+    Math.abs(a.x - this.enemySortCenter) - Math.abs(b.x - this.enemySortCenter) || a.id - b.id
+  private readonly propBlockerPool: Blocker[] = [0, 1, 2, 3].map(() =>
+    ({ left: 0, right: 0, top: 0, bottom: 0, kind: 'cargo' }) as Blocker)
   private probes = new WeakMap<ShadowActor, Probe>()
   private forward = false
   setDesktopLighting(enabled:boolean):void { this.forward=enabled }
@@ -156,6 +167,12 @@ export class Renderer {
   discardBridgeOpeningFrame(): void { this.bridgeFinish.discardOpeningFrame() }
   endBridgeOpening(): void { this.bridgeFinish.endOpening() }
   publishBridgeOpening(gpu: BridgeAdmission | null): void { this.bridgeFinish.publishOpening(gpu) }
+  /** One idle step of adapter probe → context → async links → backing.
+   * Called from the menu and the Results screen so ENGAGE/RETRY never pay
+   * the link+init latency inside the opening watchdog budget. */
+  prewarmBridge(w: number, h: number, scale: number): void {
+    this.bridgeFinish.warm(this.requestedBridgeTier(), w, h, scale)
+  }
 
   setQuality(q: GameSettings['quality']): void {
     this.quality = q
@@ -178,29 +195,35 @@ export class Renderer {
     const f = this.bridgeField
     if (moonOnly) {
       const e = f.sample(x, y, road)
-      return castKey(moonSlope, f.atmo.key[0], e.moon * e.ao * f.key, [])
+      return castKey(moonSlope, f.atmo.key[0], e.moon * e.ao * f.key, NO_CAST_DIRECTIONS)
     }
     const e = f.castSample(x, y, road)
     return castKey(moonSlope, f.atmo.key[0], e.moon * f.key, e.directions)
   }
 
+  private readonly castTintOut: [number, number, number] = [0, 0, 0]
   private castTint(x: number, y: number, road: boolean, key: CastKey, route: BridgeRoute, fixture?: LightPoint): readonly [number, number, number] {
     const f = this.bridgeField, e = f.sample(x, y, road)
+    const out = this.castTintOut
     const moon = road && route.shelterAt(x) ? 0 : e.moon * f.atmo.key[0] * f.key * .81
     const fill = .21 + .34 * e.sky, r = moon * .78, g = moon * .94
     // Approximate inverse display tone curve for the admitted direct lobe.
     // Canvas combat illumination is added afterwards, never multiplied here.
     const share = (source: number, total: number) => Math.min(.72, source / Math.max(.1, fill + total) * .70)
-    if (key.source !== 'practical') return [share(r, r + e.r), share(g, g + e.g), share(moon, moon + e.b)]
-    if (!fixture) return [0, 0, 0]
+    if (key.source !== 'practical') {
+      out[0] = share(r, r + e.r); out[1] = share(g, g + e.g); out[2] = share(moon, moon + e.b)
+      return out
+    }
+    if (!fixture) return ZERO_TINT
     const height = road ? y * .56 : y
     const fade = staticFalloff(fixture, x - fixture.x, height - fixture.y)
-    if (fade < .001) return [0, 0, 0]
+    if (fade < .001) return ZERO_TINT
     const z = SACR_CURB_Z + (SACR_NEAR_Z - SACR_CURB_Z) * (y - ROAD.rear) / (ROAD.front - ROAD.rear)
     const visibility = road ? roadFixtureVisibility(x, height, z, fixture, lightDepth(fixture), f.blockers) :
       softVisibility(x, y, fixture.x, fixture.y, fixture.physicalRadius, f.blockers)
     const w = fade * visibility, [cr, cg, cb] = fixture.rgb
-    return [share(Math.min(e.r, cr * w), r + e.r), share(Math.min(e.g, cg * w), g + e.g), share(Math.min(e.b, cb * w), moon + e.b)]
+    out[0] = share(Math.min(e.r, cr * w), r + e.r); out[1] = share(Math.min(e.g, cg * w), g + e.g); out[2] = share(Math.min(e.b, cb * w), moon + e.b)
+    return out
   }
 
   /** Contact on all tiers, one live cast on High/Ultra. Only ungraded
@@ -432,8 +455,13 @@ export class Renderer {
       f.keyX = MOON_KEY[0]
       f.impulseLimit = master ? MASTER_FLASH_LIMIT : MOBILE_FLASH_LIMIT
       props.bridgeCasters(f.view.left - 125, f.view.right + 125, (x, width, height, gain) => {
-        if (f.propBlockers.length < 4 && gain > .65) f.propBlockers.push({ left: x - width * .5, right: x + width * .5,
-          top: -height, bottom: 2, kind: 'cargo' })
+        if (f.propBlockers.length < 4 && gain > .65) {
+          // Reused records: the blocker array is rebuilt every frame anyway.
+          const slot = f.propBlockers.length, b = this.propBlockerPool[slot]
+          b.left = x - width * .5; b.right = x + width * .5
+          b.top = -height; b.bottom = 2; b.kind = 'cargo'
+          f.propBlockers.push(b)
+        }
       })
       f.gatherBlockers(route, gate, clearedGate, f.propBlockers)
       // Shared source records feed world lights, posed reflections and casts.
@@ -478,7 +506,8 @@ export class Renderer {
         const nearest = this.reflectorEnemies
         nearest.length = 0
         for (const e of visible) if (e.kind !== 'boss') nearest.push(e)
-        nearest.sort((a, b) => Math.abs(a.x - worldCam.x) - Math.abs(b.x - worldCam.x) || a.id - b.id)
+        this.enemySortCenter = worldCam.x
+        nearest.sort(this.byDistanceToCenter)
         for (const e of nearest) if (id < SACR_SOLID_ID) s.actor(e, id++, SACR_PRIORITY.enemy, bridgeTint(e.cfg.style.dark))
         s.seal()
         traceEnd('sacr.packAndBin', packStart)

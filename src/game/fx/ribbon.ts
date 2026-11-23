@@ -45,6 +45,7 @@ export function catmullRom(a: number, b: number, c: number, d: number, t: number
 
 // Renderer-owned scratch, no point lists or temporary canvas per attack.
 const mesh = new Float32Array((RIBBON_CAPACITY * RIBBON_STEPS + 1) * 5)
+const anchorScratch = [0, 0, 0, 0]
 const at = (t: Trail, from: number, index: number) => ((from + Math.max(0, Math.min(t.count - 1, index))) % t.N) * 4
 
 export function ribbonFade(t: Trail): number { return t.emitting ? 1 : Math.max(0, 1 - t.age / t.life) }
@@ -55,7 +56,13 @@ export function sampleRibbon(t: Trail, anchor?: RibbonSegment): number {
   if (!t.active || t.count < 2 || ribbonFade(t) <= .005) return 0
   const start = (t.head - t.count + t.N) % t.N, rowCount = (t.count - 1) * RIBBON_STEPS + 1
   const last = at(t, start, t.count - 1)
-  const anchored = anchor ? [anchor.bx, anchor.by, anchor.tx, anchor.ty] : null
+  // Reused 4-slot scratch: the anchored row is consumed before the next call.
+  let anchored: readonly number[] | null = null
+  if (anchor) {
+    anchorScratch[0] = anchor.bx; anchorScratch[1] = anchor.by
+    anchorScratch[2] = anchor.tx; anchorScratch[3] = anchor.ty
+    anchored = anchorScratch
+  }
   const value = (row: number, axis: number) => anchored && row === last ? anchored[axis] : t.pts[row + axis]
   let row = 0
   for (let i = 0; i < t.count - 1; i++) {
