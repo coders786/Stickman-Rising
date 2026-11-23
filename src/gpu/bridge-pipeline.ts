@@ -231,6 +231,7 @@ export class BridgePipeline {
   private *initialize(): Generator<string> {
     const gl = this.gl, master = this.mode === 'master'
     gl.activeTexture(gl.TEXTURE0)
+    gl.clearColor(0, 0, 0, 0)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false)
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
     this.uboOffsets = bindSACRBlock(gl, this.road.handle)
@@ -371,6 +372,9 @@ export class BridgePipeline {
   private field(p: Program, f: BridgeFrame, cssW: number, cssH: number): void {
     const gl = this.gl, { cam } = f, roll = cam.rot ?? 0
     gl.uniform2f(p.loc('uView'), cssW, cssH); gl.uniform4f(p.loc('uCam'), cam.y, cam.zoom, Math.cos(roll), Math.sin(roll))
+    // The SACR section address belongs to every UBO consumer, not only the
+    // road: spark occlusion (actors/weather) and rain-actor columns read it.
+    gl.uniform2f(p.loc('u_SacrView'), f.sacr.pOffsetMeters, f.sacr.viewWidthMeters)
     gl.uniform1i(p.loc('uCount'), f.count); gl.uniform1i(p.loc('uRoofs'), f.roofs)
     gl.uniform4fv(p.loc('uLights[0]'), f.source); gl.uniform4fv(p.loc('uEnergy[0]'), f.energy); gl.uniform4fv(p.loc('uShape[0]'), f.shape)
     gl.uniform4fv(p.loc('uCover[0]'), f.cover)
@@ -405,7 +409,6 @@ export class BridgePipeline {
     gl.uniform1f(p.loc('uEnvReady'), +!!w)
     gl.uniform2f(p.loc('uEnvWindow'), (w?.origin ?? 0) - f.cam.x, 1 / (w?.width ?? 1))
     gl.uniform1i(p.loc('u_CasterCount'), f.sacr.casters)
-    gl.uniform2f(p.loc('u_SacrView'), f.sacr.pOffsetMeters, f.sacr.viewWidthMeters)
     this.input(p, 'uEnvBasis', 7, g.env)
     this.input(p, 'uIrradiance', 14, g.light)
     this.input(p, 'u_LightVectorGrid', 8, g.grid)
@@ -473,6 +476,8 @@ export class BridgePipeline {
     if (!this.skyDirty) return
     const p = this.skyProgram
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); gl.viewport(0, 0, target.width, target.height)
+    // TBDR: signal the full discard up front, before the tile path starts.
+    gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT)
     gl.useProgram(p.handle)
     this.skyUniforms(p, f); this.bindSkyBasis(p, f, 0)
     this.fullscreen()
@@ -531,14 +536,30 @@ export class BridgePipeline {
 
   private fullscreen(): void { this.gl.drawArrays(this.gl.TRIANGLES, 0, 3); this.frameDraws++ }
 
-  private blur(src: Target, dst: Target, pass: number, wide = src, tight = src): void {
+  private blur(src: Target, dst: Target, pass: number, wide = src, tight = src, clearDst = true): void {
     const gl = this.gl, p = this.filter
     gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo); gl.viewport(0, 0, dst.width, dst.height)
+    // Every downsampling destination is fully overwritten by a fullscreen
+    // quad; the early clear keeps tile memory defined instead of a
+    // read-modify-write. The additive up passes keep their destination's
+    // downsampled content and must not clear.
+    if (clearDst) { gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT) }
     this.input(p, 'uInput', 0, src.color)
     this.input(p, 'uWide', 1, wide.color)
     this.input(p, 'uTight', 2, tight.color)
     gl.uniform2f(p.loc('uTexel'), 1 / src.width, 1 / src.height)
     gl.uniform1i(p.loc('uPass'), pass); this.fullscreen()
+  }
+
+  /** TBDR load/store discipline. Intermediate targets are invalidated the
+   * moment their last reader of this frame has drawn; the storage stays
+   * allocated, only the tile memory is released back to the driver. */
+  private invalidate(t: Target, attachments: number[]): void {
+    const gl = this.gl
+    if (gl.isContextLost()) return
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo)
+    gl.invalidateFramebuffer(gl.FRAMEBUFFER, attachments)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   }
 
   private particles(f: BridgeFrame, w: number, h: number, near: boolean, warm = false): void {
@@ -594,6 +615,11 @@ export class BridgePipeline {
     const gl = this.gl, p = this.road, atlas = this.transport.current(f.seed), half = this.roadHalf
     const target = half ?? scene
     gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); gl.viewport(0, 0, target.width, target.height)
+    if (half) {
+      // The half-res MRT is rewritten from scratch: discard the stale tiles
+      // before the scissored trace starts, on both color attachments.
+      gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT)
+    }
     this.scissorRoad(f, cssH, target)
     gl.useProgram(p.handle); this.field(p, f, cssW, cssH)
     this.input(p, 'uBase', 0, this.baseTex); this.input(p, 'uDeckMask', 3, this.deck)
@@ -618,6 +644,9 @@ export class BridgePipeline {
       this.receiverLighting(q, f)
       this.input(q, 'uRoadVisibility', 6, this.roadLightHalf!.color)
       this.fullscreen(); gl.disable(gl.SCISSOR_TEST)
+      // Both half-res attachments were consumed by this resolve. Nothing
+      // samples them again before next frame's clear rewrites them.
+      this.invalidate(half, [gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1])
     }
   }
 
@@ -668,6 +697,9 @@ export class BridgePipeline {
     passes.sky = this.frameDraws
     if (cold) yield
     gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fbo); gl.viewport(0, 0, this.w, this.h)
+    // TBDR: the sparse base discards the whole tile before sampling the two
+    // Canvas sources. Clear cost on a tile path is a register write.
+    gl.disable(gl.SCISSOR_TEST); gl.clear(gl.COLOR_BUFFER_BIT)
     gl.useProgram(this.base.handle); this.input(this.base, 'uBase', 0, this.baseTex); this.field(this.base, f, cssW, cssH)
     this.baseLayers(f); this.fullscreen()
     passes.base = this.frameDraws - passes.sky
@@ -707,15 +739,28 @@ export class BridgePipeline {
     if (master) {
       const [tight, medium, wide, bloom] = this.bloomTargets
       gl.useProgram(this.filter.handle)
+      // Dual-filter Kawase: three 13-tap reductions, then two additive tent
+      // upsamples that fold the smaller mips back into the larger one, and
+      // one compose of the upsampled core with the raw deep skirt. Six
+      // bounded draws, same four allocations as the previous box chain.
       this.blur(scene, tight, 0)
       if (cold) yield
       this.blur(tight, medium, 1)
       if (cold) yield
       this.blur(medium, wide, 1)
       if (cold) yield
-      // One no-feedback composition of the sharp core and both soft skirts.
-      this.blur(medium, bloom, 2, wide, tight)
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE)
+      this.blur(wide, medium, 3, wide, wide, false)
       if (cold) yield
+      this.blur(medium, tight, 3, medium, medium, false)
+      gl.disable(gl.BLEND)
+      if (cold) yield
+      // One no-feedback composition of the upsampled core and deep skirt.
+      this.blur(tight, bloom, 2, wide)
+      if (cold) yield
+      this.invalidate(medium, [gl.COLOR_ATTACHMENT0])
+      this.invalidate(tight, [gl.COLOR_ATTACHMENT0])
+      this.invalidate(wide, [gl.COLOR_ATTACHMENT0])
     }
     passes.bloom = this.frameDraws - beforeBloom
     if (opening) this.bindOpeningTarget()
@@ -734,6 +779,12 @@ export class BridgePipeline {
     gl.uniform4fv(p.loc('uGradeCover[0]'), f.cover)
     this.fullscreen()
     passes.grade = 1
+    if (master && this.scene) {
+      // Grade was the last reader of both the HDR scene and the composed
+      // bloom; release their tile memory before the next frame rewrites.
+      this.invalidate(this.scene, [gl.COLOR_ATTACHMENT0])
+      this.invalidate(this.bloomTargets[3], [gl.COLOR_ATTACHMENT0])
+    }
     this.actorDebugDrawn = 0; this.actorDebugOverflow = !opening && f.actorPrototype.overflow
     if (!opening && this.actorDebugPass?.draw(f.actorPrototype, cssW, cssH, f.cam.y, f.cam.zoom, a)) {
       this.actorDebugDrawn = f.actorPrototype.count; this.frameDraws++; passes.debug = 1
@@ -837,11 +888,11 @@ export class BridgePipeline {
       passDraws: { ...this.passDraws }, canvasUploads: { worldBytes: this.w * this.h * 4, choreographyBytes: this.w * this.h * 4 },
       outputBytes: this.w * this.h * 4, sourceTextureBytes: this.w * this.h * 8, uploadBytes: this.uploadBytes,
       setupMs: { ...this.setupMs }, frameDraws: this.frameDraws, rainInstances: this.rainInstances, moteInstances: this.moteInstances,
-      bloomLevels: master ? BLOOM_DIVISORS.length : 0, bloomUpPasses: 0,
+      bloomLevels: master ? BLOOM_DIVISORS.length : 0, bloomUpPasses: master ? 2 : 0,
       bloom: master ? { targets: this.bloomTargets.map(t => [t.width, t.height]), divisors: BLOOM_TARGET_DIVISORS,
         format: this.packedBloom ? 'R11F_G11F_B10F' : 'RGBA16F',
         bytes: this.bloomTargets.reduce((n, t) => n + t.width * t.height * t.bytesPerPixel, 0),
-        passes: BLOOM_DIVISORS.length + 1, downPasses: BLOOM_DIVISORS.length, upPasses: 0, compositeTaps: 3 } : null,
+        passes: BLOOM_DIVISORS.length + 3, downPasses: BLOOM_DIVISORS.length, upPasses: 2, compositeTaps: 2 } : null,
       roadSize: this.roadHalf ? [this.roadHalf.width, this.roadHalf.height] : [this.w, this.h], maxK: master ? SACR_MASTER_K : SACR_MOBILE_K,
       uboBytes: SACRUniformBuffer.BYTE_LENGTH, uboOffsets: this.uboOffsets.slice(), stratumVersion: this.transport.receipt().active, transport: this.transport.receipt(),
       stratumA: this.skyCache && { size: [this.skyCache.width, this.skyCache.height], format: master ? 'RGBA16F' : 'RGBA8', opticalCeiling: SKY_CACHE_CEILING,
