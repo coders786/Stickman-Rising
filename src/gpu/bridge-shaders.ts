@@ -1,6 +1,7 @@
 import { SACR_LOCAL_GEOMETRY } from '../graphics/sacr/SACRLocalLight'
 import { SACR_BLOCK } from '../graphics/sacr/SACRBlock'
-import { SACR_MASTER_K, SACR_MOBILE_K } from '../graphics/sacr/SACRPacker'
+import { SACR_MASTER_K, SACR_MOBILE_K, SACR_PX_PER_METER, SACR_SOLID_ID } from '../graphics/sacr/SACRPacker'
+import { SACR_ACTOR_Z } from '../graphics/sacr/SACRMath'
 import { SACR_SHADOW } from '../graphics/sacr/SACRShadow'
 import { BLOCKER_LIMIT } from '../graphics/bridge/NoirGeometry'
 import { GLASS_EXTINCTION, GLASS_IOR, GLASS_RADIANCE_RANGE, GLASS_THICKNESS_M, SHOP_FRONT_LIMIT } from '../graphics/bridge/ShopGlassOptics'
@@ -58,6 +59,11 @@ uniform ivec2 uFlashIDs; // only .x is admitted on Mobile
 uniform vec4 uWeather; // time, wet, fog, key
 uniform vec4 uMood;    // keyX, storm rim, tex origin, puddle origin
 uniform vec4 uDirectBounds, uEmissionBounds, uWeatherBounds;
+uniform vec2 u_SacrView; // camera-centre X offset (m), column window width (m)
+uint sacrWordLane(uvec4 q,int i){return i==0?q.x:i==1?q.y:i==2?q.z:q.w;}
+int sacrColumn(float x){
+  return clamp(int(floor((x*(1./${SACR_PX_PER_METER}.)+u_SacrView.x)*80./max(.001,u_SacrView.y))),0,79);
+}
 bool inLightBox(vec2 p,vec4 box){
   // Manual shader probes can omit the optional broad phase.
   return (all(greaterThanEqual(p,box.xy))&&all(lessThanEqual(p,box.zw)))||all(equal(box,vec4(0.)));
@@ -115,6 +121,38 @@ float receivedLight(vec2 q,vec2 receiver,vec4 a,vec4 s,float depth,out vec3 L){
 float receivedLight(vec2 q,vec2 receiver,vec4 a,vec4 s){
   vec3 L;
   return receivedLight(q,receiver,a,s,0.,L);
+}
+// U3 — a combat impulse is a real emitter: opaque posed capsules between the
+// spark and this receiver block it, with one shadow-bin column and four
+// slots. Emissive records never shade their own light; slabs stay out
+// (their trace owns the eave), and endpoint hits are the two bodies
+// themselves, not occluders.
+float sparkGate(vec2 receiver,vec2 source,float depth){
+  vec2 d=source-receiver;
+  float span=max(.0001,dot(d,d));
+  int col=sacrColumn(.5*(receiver.x+source.x));
+  float gate=1.;
+  float zRecv=${SACR_ACTOR_Z.toFixed(3)}+depth*${(1 / SACR_PX_PER_METER).toFixed(6)};
+  for(int slot=0;slot<4;slot++){
+    int word=col*2+slot/4;
+    uint bits=sacrWordLane(u_ColBins[word/4],word%4);
+    uint id=(bits>>uint((slot%4)*8))&255u;
+    if(id==0u||id>64u)break;
+    uvec4 a=u_PrimPool[int(id)-1];
+    uint m=a.w;
+    vec2 rZ=unpackHalf2x16(a.z);
+    if(rZ.x<0.||((m>>21u)&31u)!=0u||(m>>26u)==${SACR_SOLID_ID}u)continue;
+    if(rZ.y>zRecv+.02)continue;
+    vec2 A=unpackHalf2x16(a.x),B=unpackHalf2x16(a.y);
+    float k=clamp(dot(A-receiver,d)/span,0.,1.);
+    if(k<.09||k>.91)continue;
+    vec2 p=receiver+d*k;
+    vec2 v=B-A;
+    float t=clamp(dot(p-A,v)/max(.000001,dot(v,v)),0.,1.);
+    float cov=smoothstep(-.05,.05,rZ.x-length(p-A-v*t));
+    gate*=1.-cov*.92;
+  }
+  return gate;
 }
 float faceLight(vec3 N,vec3 L){return .14+.86*max(0.,dot(N,L));}
 `
@@ -292,7 +330,8 @@ void main() {
     if(src.w!=3.)continue;
     float u=spanDist(q,src.xy,dst.xy)/max(1.,dst.z);
     float open=(1.-a.a)*(1.-a.a);
-    if(open>.005)glow+=e.rgb*min(.24,e.w*.090)*exp(-u*u*.69)*open*transmits(q,sectionEmitter(q,src,dst));
+    vec2 emit=sectionEmitter(q,src,dst);
+    if(open>.005)glow+=e.rgb*min(.24,e.w*.090)*exp(-u*u*.69)*open*transmits(q,emit)*sparkGate(q,emit,0.);
   }
   outColor=vec4(min(vec3(1.),(a.a>0.?toLinear(a.rgb)*a.a:vec3(0.))+glow),a.a);
 }`
@@ -306,7 +345,7 @@ void main(){ vRadiance=aRadiance; gl_Position=vec4(worldUV(aWorld)*2.-1.,0.,1.);
 export const TRAIL_FRAG = PROLOG_300 + `in vec3 vRadiance; out vec4 outColor;
 void main(){outColor=vec4(vRadiance,0.);}`
 
-export const EMISSION_FRAG = PROLOG_300 + SCREEN_IN + VIEW + LIGHTS + `
+export const EMISSION_FRAG = PROLOG_300 + `#define SACR_K ${SACR_MASTER_K}\n` + SCREEN_IN + VIEW + LIGHTS + `
 uniform sampler2D uActors;
 void main() {
   vec4 a=texture(uActors,vUV);
@@ -316,6 +355,38 @@ void main() {
   // opaque metal panel never qualifies for the bloom extractor.
   bool canEmit=a.a<=.995&&inLightBox(q,uEmissionBounds);
   if(!canEmit&&a.a==0.)discard;
+  // U5 — the wet deck mirrors admitted emission upward. Emissive capsules
+  // in the receiver's own column, read through the same UBO, warm boots,
+  // hem and blade spine from below. Bounded finite-source falloff over real
+  // posed records — never a screen halo or a bloom substitute.
+  vec3 bounce=vec3(0.);
+  if(a.a>0.&&uWeather.y>.04){
+    float groundY=${ROAD.lane}.;
+    float height=1.-smoothstep(0.,110.,max(0.,groundY-q.y));
+    if(height>0.){
+      int col=sacrColumn(q.x);
+      for(int slot=0;slot<SACR_K;slot++){
+        int word=col*2+slot/4;
+        uint bits=sacrWordLane(u_ColBins[word/4],word%4);
+        uint id=(bits>>uint((slot%4)*8))&255u;
+        if(id==0u||id>64u)break;
+        uvec4 pr=u_PrimPool[int(id)-1];
+        vec2 rZ=unpackHalf2x16(pr.z);
+        if(rZ.x<0.)continue;          // arcs already paint their own return
+        uint eQ=(pr.w>>21u)&31u;
+        if(eQ==0u)continue;
+        vec2 A=unpackHalf2x16(pr.x),B=unpackHalf2x16(pr.y);
+        float ey=max(A.y,B.y);        // SACR metres, up positive
+        if(ey<${((ROAD.lane - 150) / SACR_PX_PER_METER).toFixed(3)}||ey>${((ROAD.lane + 46) / SACR_PX_PER_METER).toFixed(3)})continue;
+        vec2 v=B-A;
+        float t=clamp(dot(q-A,v)/max(.000001,dot(v,v)),0.,1.);
+        vec2 pc=A+v*t;
+        float e=.25*(exp2(float(eQ)*.23)-1.);
+        vec3 tint=vec3(float((pr.w>>6u)&31u),float((pr.w>>11u)&31u),float((pr.w>>16u)&31u))/31.;
+        bounce+=tint*e*height*sectionFalloff(vec3(q-pc,0.),max(6.,rZ.x))*uWeather.y*.55;
+      }
+    }
+  }
   if(canEmit)for(int i=0;i<MAX_L;i++) {
     if(i>=uCount) break;
     vec4 f=uLights[i], b=uEnergy[i], s=uShape[i];
@@ -330,11 +401,13 @@ void main() {
       d=length(p/vec2(1.35,f.w==1.?1.5:1.12));
     }
     float core=exp(-d*d*1.32), halo=exp(-d*d*.21)*.060;
-    float visible=(1.-a.a)*(1.-a.a)*transmits(q,sectionEmitter(q,f,s));
+    vec2 emit=sectionEmitter(q,f,s);
+    float visible=(1.-a.a)*(1.-a.a)*transmits(q,emit);
+    if(f.w==3.)visible*=sparkGate(q,emit,0.);
     float power=b.w*(f.w==1.?.42:f.w==3.?.84:.78);
     emissive+=mix(b.rgb,max(b.rgb,vec3(.46)),core*.16)*(core+halo)*power*visible;
   }
-  outColor=vec4((a.a>0.?toLinear(a.rgb)*a.a:vec3(0.))+emissive,a.a);
+  outColor=vec4((a.a>0.?toLinear(a.rgb)*a.a:vec3(0.))+emissive+bounce,a.a);
 }`
 
 // Screen space -> section space is affine. Interpolate it over one
@@ -430,6 +503,9 @@ uniform vec3 uWindPhase; // translated phase pair, reduced motion
 uniform int uVentCount, uCount;
 uniform vec3 uVents[${BRIDGE_VENT_BUDGET}];
 uniform vec4 uLights[${BRIDGE_LIGHT_BUDGET}], uEnergy[${BRIDGE_LIGHT_BUDGET}];
+${SACR_BLOCK}
+uniform vec2 u_SacrView; // same section address the road evaluator uses
+uint weatherLane(uvec4 q,int i){return i==0?q.x:i==1?q.y:i==2?q.z:q.w;}
 out vec2 vWorld, vSt;
 flat out vec4 vPaint;
 flat out vec2 vFoot;
@@ -475,6 +551,37 @@ void main() {
     vec3 rgb=mix(vec3(.26,.30,.34),vec3(.51,.56,.61),float(uKind)*.42);
     float admit=1.-smoothstep(.44+.49*squall,.53+.50*squall,c);
     vPaint=vec4(rgb,uRain.y*rainLane(gain,uKind)*life*admit*(.61+b*.39));
+    // U4 — O(1) rain/actor contact. The mid plane shares the actor lane, so
+    // one shadow-bin column at the drop's section X answers "which posed
+    // capsule is under this foot" without any CPU AABB pass. A foot that
+    // lands on a fighter's surface becomes a small crown pinned there.
+    if(uKind==1&&uRain.y>.025){
+      float sx=vFoot.x*(1./${SACR_PX_PER_METER}.)+u_SacrView.x;
+      int col=clamp(int(floor(sx*80./max(.001,u_SacrView.y))),0,79);
+      for(int slot=0;slot<${SACR_MASTER_K};slot++){
+        int word=col*2+slot/4;
+        uint bits=weatherLane(u_ColBins[word/4],word%4);
+        uint id=(bits>>uint((slot%4)*8))&255u;
+        if(id==0u||id>64u)break;
+        uvec4 pr=u_PrimPool[int(id)-1];
+        uint m=pr.w;
+        vec2 rZ=unpackHalf2x16(pr.z);
+        // Arcs are emission, slabs are eaves the cover test already owns;
+        // only posed opaque fighters catch drops.
+        if(rZ.x<0.||((m>>21u)&31u)!=0u||(m>>26u)==${SACR_SOLID_ID}u)continue;
+        if(rZ.y<1.2||rZ.y>5.8)continue;
+        vec2 A=unpackHalf2x16(pr.x),B=unpackHalf2x16(pr.y);
+        float top=max(A.y,B.y)+rZ.x;          // highest surface, SACR metres
+        float hitY=-top*${SACR_PX_PER_METER}.; // same surface, world px (y down)
+        float lo=min(A.x,B.x)-rZ.x,hi=max(A.x,B.x)+rZ.x;
+        if(sx<lo||sx>hi||vFoot.y<hitY||vFoot.y>hitY+30.)continue;
+        vMode=5;
+        vFoot=vec2(vFoot.x,hitY);
+        w=vec2(vFoot.x,hitY-7.)+vec2((st.x-.5)*11.,(st.y-.5)*14.);
+        vPaint=vec4(vec3(.60,.66,.72),uRain.y*(.42+.30*rand(key+3u)));
+        break;
+      }
+    }
   } else {
     // Up to twelve glowing motes per vent and three brief sparks per impulse.
     // Sparks are only visible in the source's covered/exposed column.
@@ -517,11 +624,12 @@ void main(){
   else edge=1.-smoothstep(.02,.50,length(vSt-.5));
   float a=edge*vPaint.a;
   vec3 color=vPaint.rgb;
-  if(vMode<3&&a>.015&&inLightBox(vWorld,uWeatherBounds))for(int i=0;i<MAX_L;i++){
+  if((vMode<3||vMode==5)&&a>.015&&inLightBox(vWorld,uWeatherBounds))for(int i=0;i<MAX_L;i++){
     if(i>=uCount)break;
     vec4 l=uLights[i];
     if(l.w!=1.&&l.w!=4.&&l.w!=3.)continue;
     float k=receivedLight(vWorld,vWorld,l,uShape[i]);
+    if(k>.0&&l.w==3.)k*=sparkGate(vWorld,sectionEmitter(vWorld,l,uShape[i]),0.);
     if(k>.0){vec3 L=normalize(vec3(l.xy-vWorld,-64.));color+=uEnergy[i].rgb*(k*pow(max(-L.z,0.),4.)*1.6);}
   }
   outColor=vec4(color*a,a);

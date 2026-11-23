@@ -20,7 +20,8 @@ float capsuleDistance(vec2 p,vec2 a,vec2 b,float ra,float rb){
 `
 export const SACR_SHADOW = SACR_DISTANCE + `
 uniform sampler2D u_LightVectorGrid;
-uniform vec2 u_SacrView; // camera-centre X offset (m), column window width (m)
+// u_SacrView is declared beside the SACR block in LIGHTS so every UBO
+// consumer (road, facades, actors, weather) shares one section address.
 uniform int u_CasterCount;
 struct DirectLoss { float moon; float practical; float combat; int combatId; };
 float combatVisibility(DirectLoss loss,int source){return source==loss.combatId?1.-loss.combat*.82:1.;}
