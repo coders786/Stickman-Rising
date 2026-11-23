@@ -261,6 +261,9 @@ export class RouteWeather {
         if (!near && !quiet) this.layer(ctx, view, cameraX, tier, 1, time, rain, false)
       }
       if (!near && !quiet) {
+        // The instanced Master rain replaces the Canvas streaks only; the
+        // splash rings, runoff and wet foot marks stay authored Canvas —
+        // the road's uLandings ripple the surface beneath them.
         this.splashes(ctx, view, time, rain)
         this.eaveRunoff(ctx, view, time)
       }
